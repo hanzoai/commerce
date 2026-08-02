@@ -9,6 +9,13 @@
 // reason: enforcement must not depend on a network hop. A scoring outage may
 // cost a score; it may never lift a reserve.
 //
+// NOTHING HERE IS A RUNNING TOTAL. A reserve's ceiling is measured against what
+// the reserve is actually holding, and that number lives in models/reserve,
+// behind the one door that moves money. It was a field on this row once, and a
+// balance on a declaration is a balance every op that can touch the declaration
+// can move — which made the ceiling a consumable a merchant could spend with a
+// money-free screen, disarming its own reserve. A declaration declares.
+//
 // Three kinds, orthogonal by what they stop:
 //
 //	reserve  a share of every outbound move is withheld  (partial, out)
@@ -77,12 +84,6 @@ type Control struct {
 	// merchant can reconcile and a platform can release.
 	Cap int64 `json:"cap,omitempty"`
 
-	// Held is the cumulative exact minor units this reserve has actually
-	// withheld — the running total the ceiling is measured against, and the
-	// amount a release returns. It is written by the money plane as moves are
-	// judged and never by a caller.
-	Held int64 `json:"held,omitempty"`
-
 	// Currency scopes a reserve to the money it is denominated in. A ceiling is
 	// an amount, and an amount without a currency is a number: 10000 of held EUR
 	// does not satisfy a cap declared in USD. Empty means the reserve bears on
@@ -142,49 +143,16 @@ func (c *Control) Bears(cur currency.Type) bool {
 // Bounded reports whether this reserve declares a ceiling.
 func (c *Control) Bounded() bool { return c.Effect == Reserve && c.Cap > 0 }
 
-// Headroom is how much more a BOUNDED reserve may still withhold before it
-// reaches its ceiling: exact minor units, never negative. It is meaningless on
-// an unbounded reserve and on the other effects, which is what [Bounded] is for.
-func (c *Control) Headroom() int64 {
-	if c.Cap <= c.Held {
-		return 0
-	}
-	return c.Cap - c.Held
-}
-
-// Withhold adds n to the running total this reserve has withheld and STORES it.
-// It is the ONE way Held moves, so the ceiling is measured against a number
-// nothing else writes.
-//
-// It re-reads the control by id first, and that is not defensive tidiness —
-// A ROW HANDED BACK BY A QUERY ITERATOR CANNOT BE WRITTEN THROUGH IN THIS ORM.
-// Update and Put on one land nowhere AND RETURN NO ERROR (see the
-// iterator-write test in control_test.go). Every read on the money path
-// ([LiveFor], [All]) is a query, so a running total incremented on what a query
-// returned would silently never move — and a ceiling measured against a number
-// that never moves is not a ceiling. Reading it back by id is what makes the
-// write real.
-func Withhold(db *datastore.Datastore, id string, n int64) (*Control, error) {
-	if n <= 0 {
-		return nil, nil
-	}
-	c := New(db)
-	if err := c.GetById(id); err != nil {
-		return nil, err
-	}
-	c.Held += n
-	if err := c.Update(); err != nil {
-		return nil, err
-	}
-	return c, nil
-}
-
 // Lift releases the control named by id and STORES it, returning the stored
 // row. Releasing one already released is a no-op that does not rewrite who
 // lifted it first.
 //
-// Like [Withhold] it reads by id: the control a caller is looking at usually
-// came from a query, and a query row is not writable here.
+// It reads BY ID, and that is not defensive tidiness — A ROW HANDED BACK BY A
+// QUERY ITERATOR CANNOT BE WRITTEN THROUGH IN THIS ORM. Update and Put on one
+// land nowhere AND RETURN NO ERROR (see the iterator-write test in
+// control_test.go). Every read on the money path ([LiveFor], [All]) is a query,
+// so a release applied to what a query returned would silently never happen.
+// Reading it back by id is what makes the write real.
 func Lift(db *datastore.Datastore, id, by string, now time.Time) (*Control, error) {
 	c := New(db)
 	if err := c.GetById(id); err != nil {

@@ -120,7 +120,7 @@ func Deposit(c *zip.Ctx) error {
 	idemKey := strings.TrimSpace(c.Header("X-Idempotency-Key"))
 	var idemRec *idempotencykey.IdempotencyKey
 	if idemKey != "" {
-		rec, replay, gerr := idempotencykey.Begin(db, "billing-deposit:"+req.User, idemKey)
+		rec, replay, gerr := idempotencykey.Begin(db, idempotencykey.Guard{Scope: "billing-deposit:" + req.User, Key: idemKey})
 		if gerr != nil {
 			log.Error("deposit idempotency Begin failed (user=%s): %v", req.User, gerr, c)
 		} else if replay {

@@ -582,6 +582,11 @@ func TestRenewSubscription_ParallelExactlyOneCharge(t *testing.T) {
 	sub := seedCardBackedSub(t, db, "sc-par-renew", "pro", "ccof_pr", "cust_pr")
 	charger := chargeProviderForOrg(org)
 
+	// Name the row ONCE, here. Id() mints the key lazily and writes it back, so
+	// calling it from N goroutines is a write race on the shared model — the test
+	// racing itself, not the code under test.
+	subID := sub.Id()
+
 	const N = 8
 	var wg sync.WaitGroup
 	for i := 0; i < N; i++ {
@@ -590,7 +595,7 @@ func TestRenewSubscription_ParallelExactlyOneCharge(t *testing.T) {
 			defer wg.Done()
 			// Each goroutine renews its OWN loaded instance (no shared struct races).
 			s := subscription.New(db)
-			if err := s.GetById(sub.Id()); err != nil {
+			if err := s.GetById(subID); err != nil {
 				return
 			}
 			_, _, _ = engine.RenewSubscription(ctx, db, s, BurnCredits, charger)
@@ -624,6 +629,8 @@ func TestPayInvoice_ConcurrentCollect_OneCharge(t *testing.T) {
 	inv := seedOpenInvoice(t, db, sub, 2000)
 
 	charger := chargeProviderForOrg(org)
+	invID := inv.Id() // named once — see the note in the parallel-renew test
+
 	const N = 8
 	var wg sync.WaitGroup
 	for i := 0; i < N; i++ {
@@ -631,7 +638,7 @@ func TestPayInvoice_ConcurrentCollect_OneCharge(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			i2 := billinginvoice.New(db)
-			if err := i2.GetById(inv.Id()); err != nil {
+			if err := i2.GetById(invID); err != nil {
 				return
 			}
 			if i2.Status != billinginvoice.Open {

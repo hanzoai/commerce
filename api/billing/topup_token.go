@@ -148,7 +148,7 @@ func TopupWithToken(c *zip.Ctx) error {
 	// dedup — the only backstop that survives a guard-store outage — was never
 	// engaged at all.
 	squareKey := gatewayKey("topup", billingKey, idemKey)
-	rec, replay, gerr := idemBegin(db, "billing-topup:"+billingKey, idemKey)
+	rec, replay, gerr := idemBegin(db, idempotencykey.Guard{Scope: "billing-topup:" + billingKey, Key: idemKey})
 	if gerr != nil {
 		// The guard store is unavailable, so we cannot tell a first attempt from a
 		// retry. Refuse. Proceeding used to be justified by "the single-use nonce

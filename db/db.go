@@ -17,6 +17,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -433,6 +434,21 @@ type DB interface {
 	Put(ctx context.Context, key Key, src interface{}) (Key, error)
 	Delete(ctx context.Context, key Key) error
 
+	// Claim writes src at key ONLY IF nothing live is there, and reports
+	// whether this caller now owns it.
+	//
+	// It is the store's mutual exclusion, and it exists because Put is an
+	// upsert and an upsert is not a guard: an idempotency guard written as
+	// read-then-write lets two concurrent callers both observe "not started"
+	// and both move money. This is ONE statement, so the backend's own row
+	// lock decides the winner and exactly one caller is told it owns the key.
+	//
+	// A row that was DELETED is revived and claimed — an operation that
+	// released its guard because nothing happened must be re-runnable. A row
+	// that is live is left exactly as it is: the claim reports false and the
+	// caller reads the owner to find out what it should replay.
+	Claim(ctx context.Context, key Key, src interface{}) (bool, error)
+
 	// Batch operations
 	GetMulti(ctx context.Context, keys []Key, dst interface{}) error
 	PutMulti(ctx context.Context, keys []Key, src interface{}) ([]Key, error)
@@ -563,6 +579,70 @@ const (
 	IsolationRepeatableRead
 	IsolationSerializable
 )
+
+// sqlIsolation maps a requested level onto the driver's. IsolationDefault means
+// the caller stated none and gets the server's, which is what every caller that
+// passes nil options already gets.
+func sqlIsolation(opts *TransactionOptions) sql.IsolationLevel {
+	if opts == nil {
+		return sql.LevelDefault
+	}
+	switch opts.Isolation {
+	case IsolationReadUncommitted:
+		return sql.LevelReadUncommitted
+	case IsolationReadCommitted:
+		return sql.LevelReadCommitted
+	case IsolationRepeatableRead:
+		return sql.LevelRepeatableRead
+	case IsolationSerializable:
+		return sql.LevelSerializable
+	default:
+		return sql.LevelDefault
+	}
+}
+
+// txAttempts is how many times a transaction body may be re-run when the store
+// refuses to serialize it. One attempt is the floor: a caller that stated no
+// budget gets exactly the single try it has always got.
+func txAttempts(opts *TransactionOptions) int {
+	if opts == nil || opts.MaxAttempts < 1 {
+		return 1
+	}
+	return opts.MaxAttempts
+}
+
+// serializationFailure reports whether err is the store saying "these two
+// transactions cannot both have happened" — the one error a retry can fix.
+//
+// It matches on the SQLSTATE text the drivers surface rather than importing a
+// driver's error type, because this package speaks to more than one of them and
+// a retry predicate that only knows one backend silently stops retrying on the
+// other.
+//
+// It matches NOTHING ELSE. Every string here names a conflict between two
+// transactions that a re-run resolves; anything a re-run would only repeat — a
+// constraint violation, a nested BEGIN, a closed connection — must surface on
+// the first attempt, because spending a retry budget on it converts one honest
+// error into N and reports the last one.
+func serializationFailure(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	for _, sig := range []string{
+		"40001",               // SQLSTATE serialization_failure (Postgres)
+		"could not serialize", // Postgres message text
+		"deadlock detected",   // Postgres 40P01, resolved the same way
+		"database is locked",  // SQLite SQLITE_BUSY: another writer holds it
+		"SQLITE_BUSY",
+		"SQLITE_LOCKED",
+	} {
+		if strings.Contains(s, sig) {
+			return true
+		}
+	}
+	return false
+}
 
 // Key represents a unique identifier for an entity
 type Key interface {

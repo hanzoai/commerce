@@ -2,82 +2,20 @@ package idempotencykey_test
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
-	"net/url"
-	"os"
-	"os/user"
+	"sync"
 	"testing"
-	"time"
 
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/db"
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/nscontext"
+	"github.com/hanzoai/commerce/util/test/postgres"
 )
 
-// openReproPostgres returns a real Postgres-backed db.DB on a FRESH, uniquely
-// named database (dropped on cleanup), or SKIPS if no local Postgres is
-// reachable.
-//
-// Why this test needs the real Postgres backend: production commerce runs on
-// Postgres — commerce.go wires db.NewPostgresDB when SQL_URL is set and installs
-// it via datastore.SetDefaultDB, and the billing usage path calls datastore.New
-// directly against it. The in-repo unit tests, by contrast, run on SQLite
-// (util/test/ae). The idempotency round-trip defect is INVISIBLE on SQLite —
-// SQLiteDB.Get has a kind-less fallback (db/sqlite.go) — and only bites on
-// Postgres, whose Get requires an exact kind match (db/postgres.go). A faithful
-// reproduction of the production double-charge therefore MUST exercise Postgres.
-func openReproPostgres(t *testing.T) (backend db.DB, cleanup func()) {
-	t.Helper()
-
-	base := os.Getenv("COMMERCE_TEST_PG_DSN")
-	if base == "" {
-		u := "postgres"
-		if cu, err := user.Current(); err == nil && cu.Username != "" {
-			u = cu.Username
-		}
-		base = fmt.Sprintf("postgres://%s@localhost:5432/postgres?sslmode=disable", u)
-	}
-
-	admin, err := sql.Open("postgres", base)
-	if err != nil {
-		t.Skipf("no local postgres (open: %v)", err)
-	}
-	if err := admin.Ping(); err != nil {
-		admin.Close()
-		t.Skipf("local postgres not reachable (ping: %v)", err)
-	}
-
-	name := fmt.Sprintf("commerce_idem_repro_%d", time.Now().UnixNano())
-	if _, err := admin.Exec("CREATE DATABASE " + name); err != nil {
-		admin.Close()
-		t.Skipf("cannot create test database: %v", err)
-	}
-
-	childURL, err := url.Parse(base)
-	if err != nil {
-		admin.Exec("DROP DATABASE " + name)
-		admin.Close()
-		t.Fatalf("parse base DSN: %v", err)
-	}
-	childURL.Path = "/" + name
-
-	pg, err := db.NewPostgresDB(&db.PostgresDBConfig{DSN: childURL.String(), TenantID: "system"})
-	if err != nil {
-		admin.Exec("DROP DATABASE " + name)
-		admin.Close()
-		t.Fatalf("NewPostgresDB: %v", err)
-	}
-
-	return pg, func() {
-		pg.Close()
-		admin.Exec("DROP DATABASE " + name)
-		admin.Close()
-	}
-}
+// These run against REAL Postgres, because both properties they assert are
+// properties of the STORE and SQLite provides them for free — see the package
+// doc on util/test/postgres.
 
 // TestBegin_Idempotent_NoDoubleDebit_Postgres reproduces the LIVE double-charge
 // on the production (Postgres) backend. It mirrors the money path of
@@ -97,8 +35,7 @@ func openReproPostgres(t *testing.T) (backend db.DB, cleanup func()) {
 // the unfixed code — SQLite's kind-less Get fallback hides the bug — which is
 // exactly why this Postgres-backed reproduction is required.
 func TestBegin_Idempotent_NoDoubleDebit_Postgres(t *testing.T) {
-	pg, cleanup := openReproPostgres(t)
-	defer cleanup()
+	pg := postgres.New(t)
 
 	const ns = "usage-idem-pg-org"
 	ctx := nscontext.WithNamespace(context.Background(), ns)
@@ -110,7 +47,7 @@ func TestBegin_Idempotent_NoDoubleDebit_Postgres(t *testing.T) {
 	moves := 0
 	debitOnce := func() {
 		d := datastore.NewWithDB(ctx, pg)
-		rec, replay, err := idempotencykey.Begin(d, scope, key)
+		rec, replay, err := idempotencykey.Begin(d, idempotencykey.Guard{Scope: scope, Key: key})
 		if err != nil {
 			t.Fatalf("Begin: %v", err)
 		}
@@ -156,5 +93,91 @@ func TestBegin_Idempotent_NoDoubleDebit_Postgres(t *testing.T) {
 	if len(withdraws) != 1 {
 		t.Fatalf("Postgres holds %d withdraw rows for %s; want 1 (double charge persisted)",
 			len(withdraws), subject)
+	}
+}
+
+// TestBegin_ConcurrentClaimsHaveExactlyOneWinner_Postgres is the guard's whole
+// reason to exist, asserted where it has to hold.
+//
+// N requests arrive at once under ONE key. A guard that READS and then WRITES
+// lets every one of them observe "not started" and every one of them move
+// money — the duplicate disbursement, wearing a lock. A CLAIM is one store
+// statement, so the row's own lock picks a winner and the losers are told.
+//
+// SQLite cannot fail this test: it serialises every write behind one process
+// mutex, so a read-then-write looks atomic there and the defect is invisible.
+// Production is Postgres, and Postgres is where the claim has to be a claim.
+func TestBegin_ConcurrentClaimsHaveExactlyOneWinner_Postgres(t *testing.T) {
+	pg := postgres.New(t)
+	ctx := nscontext.WithNamespace(context.Background(), "claim-race-org")
+
+	const n = 12
+	var (
+		wg      sync.WaitGroup
+		mu      sync.Mutex
+		winners int
+		replays int
+		fails   []error
+	)
+	start := make(chan struct{})
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			// Its own datastore, exactly as its own request would have.
+			_, replay, err := idempotencykey.Begin(
+				datastore.NewWithDB(ctx, pg),
+				idempotencykey.Guard{Scope: "billing-payout:acct_1", Key: "one-key"},
+			)
+			mu.Lock()
+			defer mu.Unlock()
+			switch {
+			case err != nil:
+				fails = append(fails, err)
+			case replay:
+				replays++
+			default:
+				winners++
+			}
+		}()
+	}
+	close(start)
+	wg.Wait()
+
+	for _, e := range fails {
+		t.Errorf("Begin: %v", e)
+	}
+	if winners != 1 {
+		t.Fatalf("DUPLICATE DISBURSEMENT: %d of %d concurrent callers were told they own "+
+			"the key and would each have moved money; want exactly 1", winners, n)
+	}
+	if winners+replays != n {
+		t.Fatalf("%d callers of %d got an answer", winners+replays, n)
+	}
+}
+
+// TestBegin_AReleasedGuardCanBeClaimedAgain_Postgres pins the other half of the
+// claim: an operation that establishes NOTHING happened releases its guard by
+// deleting it, and the key must then be free. A claim that could not revive a
+// released row would wedge a merchant's key forever on the first refusal.
+func TestBegin_AReleasedGuardCanBeClaimedAgain_Postgres(t *testing.T) {
+	pg := postgres.New(t)
+	ctx := nscontext.WithNamespace(context.Background(), "claim-release-org")
+	g := idempotencykey.Guard{Scope: "billing-payout:acct_1", Key: "k"}
+
+	first, replay, err := idempotencykey.Begin(datastore.NewWithDB(ctx, pg), g)
+	if err != nil || replay {
+		t.Fatalf("first: replay=%v err=%v", replay, err)
+	}
+	if err := first.Delete(); err != nil {
+		t.Fatalf("release: %v", err)
+	}
+	if _, replay, err = idempotencykey.Begin(datastore.NewWithDB(ctx, pg), g); err != nil || replay {
+		t.Fatalf("a released key was not free again: replay=%v err=%v", replay, err)
+	}
+	// And it is a guard again: the next caller is refused.
+	if _, replay, err = idempotencykey.Begin(datastore.NewWithDB(ctx, pg), g); err != nil || !replay {
+		t.Fatalf("the re-claimed key does not guard: replay=%v err=%v", replay, err)
 	}
 }

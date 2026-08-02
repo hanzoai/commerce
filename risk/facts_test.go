@@ -19,7 +19,7 @@ import (
 // closed list with a size on it.
 
 func TestFacts_KeepsOnlyAllowlistedKeys(t *testing.T) {
-	got := Facts(map[string]string{
+	got, dropped := Facts(map[string]string{
 		"ip":       "203.0.113.7",
 		"UA":       "curl/8",
 		" email ":  "a@b.c",
@@ -29,6 +29,9 @@ func TestFacts_KeepsOnlyAllowlistedKeys(t *testing.T) {
 		"note":     "anything at all",
 	})
 	want := map[string]string{"ip": "203.0.113.7", "ua": "curl/8", "email": "a@b.c"}
+	if dropped != 4 {
+		t.Fatalf("dropped=%d, want the 4 that are not facts — a bound that binds is counted", dropped)
+	}
 	if len(got) != len(want) {
 		t.Fatalf("facts=%v want %v", got, want)
 	}
@@ -41,7 +44,7 @@ func TestFacts_KeepsOnlyAllowlistedKeys(t *testing.T) {
 
 func TestFacts_DropsAValueTooLargeToBeTheFactItClaims(t *testing.T) {
 	long := strings.Repeat("x", factMax+1)
-	got := Facts(map[string]string{"ip": long, "ua": strings.Repeat("y", factMax), "email": ""})
+	got, _ := Facts(map[string]string{"ip": long, "ua": strings.Repeat("y", factMax), "email": ""})
 	if _, ok := got["ip"]; ok {
 		t.Fatalf("a %d-byte value travelled under the name of an ip", len(long))
 	}
@@ -64,7 +67,7 @@ func TestFacts_IsBoundedHoweverHardACallerPushes(t *testing.T) {
 	for k := range factKeys {
 		in[k] = strings.Repeat("v", factMax)
 	}
-	got := Facts(in)
+	got, _ := Facts(in)
 	if len(got) > len(factKeys) {
 		t.Fatalf("%d facts travelled, want at most %d", len(got), len(factKeys))
 	}

@@ -19,6 +19,13 @@ import (
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
+// noDeadline turns off fiber Test's 1-second wall clock. It defaults to 1s, so
+// on a loaded runner a money gate fails for the runner's reason and not the
+// code's — and a gate that goes red at random is a gate people learn to ignore.
+// A handler that genuinely wedges is still caught, by go test's own timeout,
+// with a goroutine dump that says far more than "i/o timeout".
+const noDeadline = -1
+
 // invokeMoneyHandler drives a single billing handler directly with a real
 // org + datastore context and an optional header set — the harness for the H1
 // money-correctness tests (Deposit/Refund behavior, independent of the C1 gate,
@@ -42,7 +49,7 @@ func invokeMoneyHandler(org *organization.Organization, ctx context.Context, h z
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Fiber().Test(req, noDeadline)
 	if err != nil {
 		panic(err)
 	}
@@ -63,7 +70,7 @@ func driveSeeded(seed func(*zip.Ctx), routePattern string, req *http.Request, ha
 		}
 		return c.Next()
 	}, handler)
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Fiber().Test(req, noDeadline)
 	if err != nil {
 		panic(err)
 	}

@@ -371,6 +371,49 @@ func (db *SQLiteDB) Put(ctx context.Context, key Key, src any) (Key, error) {
 	return key, nil
 }
 
+// Claim writes src at key only if nothing live is there. See [DB.Claim].
+func (db *SQLiteDB) Claim(ctx context.Context, key Key, src any) (bool, error) {
+	if key == nil {
+		return false, ErrInvalidKey
+	}
+
+	data, err := marshalForDB(src)
+	if err != nil {
+		return false, fmt.Errorf("db: failed to marshal entity: %w", err)
+	}
+
+	var parentID *string
+	if p := key.Parent(); p != nil {
+		id := p.Encode()
+		parentID = &id
+	}
+
+	ns := getNamespace(ctx)
+
+	db.writeMu.Lock()
+	defer db.writeMu.Unlock()
+
+	// The WHERE on the conflict clause is what makes this a claim rather than a
+	// Put: when a LIVE row already holds the key the update is skipped and the
+	// statement affects nothing, so the loser of a race learns it lost.
+	res, err := db.writeDB.ExecContext(ctx, `
+		INSERT INTO _entities (id, kind, namespace, parent_id, data, updated_at)
+		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+		ON CONFLICT(id, kind, namespace) DO UPDATE SET
+			parent_id = excluded.parent_id,
+			data = excluded.data, updated_at = CURRENT_TIMESTAMP, deleted = 0
+		WHERE _entities.deleted = 1
+	`, key.Encode(), key.Kind(), ns, parentID, data)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return n > 0, nil
+}
+
 // Delete removes an entity (soft delete)
 func (db *SQLiteDB) Delete(ctx context.Context, key Key) error {
 	if key == nil {
@@ -719,12 +762,31 @@ func (ns tenantKeys) AllocateIDs(kind string, parent Key, n int) ([]Key, error) 
 	return keys, nil
 }
 
-// RunInTransaction executes a function within a transaction
+// RunInTransaction executes a function within a transaction.
+//
+// writeMu is the isolation: this store has ONE writer, so the whole body runs
+// alone and a read-modify-write inside it cannot lose an update to a concurrent
+// one. opts is honored for the levels the driver understands and for the retry
+// budget; a caller that passes nil gets exactly what it always got.
 func (db *SQLiteDB) RunInTransaction(ctx context.Context, fn func(tx Transaction) error, opts *TransactionOptions) error {
+	var err error
+	for attempt := txAttempts(opts); attempt > 0; attempt-- {
+		err = db.runOnce(ctx, fn, opts)
+		if !serializationFailure(err) {
+			return err
+		}
+	}
+	return err
+}
+
+func (db *SQLiteDB) runOnce(ctx context.Context, fn func(tx Transaction) error, opts *TransactionOptions) error {
 	db.writeMu.Lock()
 	defer db.writeMu.Unlock()
 
-	sqlTx, err := db.writeDB.BeginTx(ctx, nil)
+	sqlTx, err := db.writeDB.BeginTx(ctx, &sql.TxOptions{
+		Isolation: sqlIsolation(opts),
+		ReadOnly:  opts != nil && opts.ReadOnly,
+	})
 	if err != nil {
 		return err
 	}

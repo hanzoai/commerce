@@ -15,7 +15,7 @@ import (
 // Create a new logger
 func New() *Logger {
 	log := new(Logger)
-	log.backend = NewBackend(nil)
+	log.backend = NewBackend()
 
 	// Log formatters, color for dev, plain for production
 	plainFormatter := MustStringFormatter("%{longfile} %{longfunc} %{message}")
@@ -47,9 +47,10 @@ func Verbose() bool {
 }
 
 func Debug(formatOrError interface{}, args ...interface{}) {
-	args = std.parseArgs(args...)
+	c := std.parseArgs(args...)
+	args = c.args
 
-	if !std.Verbose() {
+	if !c.verbose {
 		return
 	}
 
@@ -62,7 +63,7 @@ func Debug(formatOrError interface{}, args ...interface{}) {
 }
 
 func Info(formatOrError interface{}, args ...interface{}) {
-	args = std.parseArgs(args...)
+	args = std.parseArgs(args...).args
 
 	switch v := formatOrError.(type) {
 	case error:
@@ -73,7 +74,7 @@ func Info(formatOrError interface{}, args ...interface{}) {
 }
 
 func Warn(formatOrError interface{}, args ...interface{}) {
-	args = std.parseArgs(args...)
+	args = std.parseArgs(args...).args
 
 	switch v := formatOrError.(type) {
 	case error:
@@ -84,7 +85,7 @@ func Warn(formatOrError interface{}, args ...interface{}) {
 }
 
 func Error(formatOrError interface{}, args ...interface{}) error {
-	args = std.parseArgs(args...)
+	args = std.parseArgs(args...).args
 
 	switch v := formatOrError.(type) {
 	case error:
@@ -100,7 +101,7 @@ func Error(formatOrError interface{}, args ...interface{}) error {
 }
 
 func Fatal(formatOrError interface{}, args ...interface{}) {
-	args = std.parseArgs(args...)
+	args = std.parseArgs(args...).args
 
 	switch v := formatOrError.(type) {
 	case error:
@@ -111,7 +112,7 @@ func Fatal(formatOrError interface{}, args ...interface{}) {
 }
 
 func Panic(formatOrError interface{}, args ...interface{}) {
-	args = std.parseArgs(args...)
+	args = std.parseArgs(args...).args
 
 	switch v := formatOrError.(type) {
 	case error:
@@ -122,9 +123,10 @@ func Panic(formatOrError interface{}, args ...interface{}) {
 }
 
 func Dump(formatOrObject interface{}, args ...interface{}) {
-	args = std.parseArgs(args...)
+	c := std.parseArgs(args...)
+	args = c.args
 
-	if !std.Verbose() {
+	if !c.verbose {
 		return
 	}
 
@@ -141,9 +143,10 @@ func Dump(formatOrObject interface{}, args ...interface{}) {
 }
 
 func JSON(formatOrObject interface{}, args ...interface{}) {
-	args = std.parseArgs(args...)
+	c := std.parseArgs(args...)
+	args = c.args
 
-	if !std.Verbose() {
+	if !c.verbose {
 		return
 	}
 
@@ -158,9 +161,10 @@ func JSON(formatOrObject interface{}, args ...interface{}) {
 }
 
 func Request(req *http.Request, args ...interface{}) error {
-	args = std.parseArgs(args...)
+	c := std.parseArgs(args...)
+	args = c.args
 
-	if !std.Verbose() {
+	if !c.verbose {
 		return nil
 	}
 
@@ -174,9 +178,10 @@ func Request(req *http.Request, args ...interface{}) error {
 }
 
 func RequestOut(req *http.Request, args ...interface{}) error {
-	args = std.parseArgs(args...)
+	c := std.parseArgs(args...)
+	args = c.args
 
-	if !std.Verbose() {
+	if !c.verbose {
 		return nil
 	}
 
@@ -190,9 +195,10 @@ func RequestOut(req *http.Request, args ...interface{}) error {
 }
 
 func Response(res *http.Response, args ...interface{}) error {
-	args = std.parseArgs(args...)
+	c := std.parseArgs(args...)
+	args = c.args
 
-	if !std.Verbose() {
+	if !c.verbose {
 		return nil
 	}
 
@@ -206,7 +212,7 @@ func Response(res *http.Response, args ...interface{}) error {
 }
 
 func Stack(args ...interface{}) {
-	args = std.parseArgs(args...)
+	args = std.parseArgs(args...).args
 
 	if len(args) == 0 {
 		std.Debugf(stack(4))

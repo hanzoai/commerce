@@ -1,7 +1,10 @@
 package billing
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -45,17 +48,27 @@ type createPayoutRequest struct {
 //
 //	POST /v1/billing/payouts
 //
-// IT IS IDEMPOTENT, and the guard is taken BEFORE anything happens. A payout is
-// money leaving with no natural backstop — no nonce is consumed, no card
+// IT IS IDEMPOTENT, and the guard is CLAIMED before anything happens. A payout
+// is money leaving with no natural backstop — no nonce is consumed, no card
 // refuses the second charge — so a retried request, a double-clicked console,
 // or a client that resends because it never saw the response is a SECOND
-// PAYOUT unless something says otherwise. The row's own doc claimed the Idem
-// field made a retry return the first answer; nothing implemented that, so the
-// promise was a lie of exactly the kind that gets believed on a money route.
+// PAYOUT unless something says otherwise. The claim is one store statement that
+// exactly one of N concurrent callers wins; a guard read and then written would
+// let all N through, which is the same duplicate disbursement wearing a lock.
+//
+// The claim also carries a DIGEST of the request, so one key used for a
+// DIFFERENT payout is refused (409) rather than answered with the first
+// payout's receipt. That is the same answer the screen door gives to the same
+// mistake, from the same predicate — two doors must not disagree about what an
+// idempotency key means.
 //
 // It fails CLOSED. If the guard store cannot tell a first attempt from a retry,
 // the payout is refused: that costs the caller a retry, while proceeding costs
 // the merchant a duplicate disbursement.
+//
+// THE ORDER IS THE MONEY. Claim, judge, WITHHOLD, write the row, seal — the
+// reserve's share is taken at the disbursement and for exactly what leaves, and
+// if the row fails to write the share is returned. A judgement takes nothing.
 func CreatePayout(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c.Context()))
@@ -72,8 +85,15 @@ func CreatePayout(c *zip.Ctx) error {
 		return http.Fail(c, 400, "destinationId is required", nil)
 	}
 
-	guard, replay, gerr := idemBegin(db, payoutScope+req.DestinationId, payoutKey(c, req))
-	if gerr != nil {
+	guard, replay, gerr := idemBegin(db, idempotencykey.Guard{
+		Scope:  payoutScope + req.DestinationId,
+		Key:    payoutKey(c, req),
+		Digest: payoutDigest(req),
+	})
+	switch {
+	case errors.Is(gerr, idempotencykey.ErrConflict):
+		return http.Fail(c, 409, "this idempotency key was used for a different payout", nil)
+	case gerr != nil:
 		log.Error("Failed to take the payout idempotency guard: %v", gerr, c)
 		return http.Fail(c, 503, "payout guard unavailable; retry", gerr)
 	}
@@ -86,17 +106,31 @@ func CreatePayout(c *zip.Ctx) error {
 				return c.JSON(201, prior)
 			}
 		}
-		// A genuine attempt under this key is still in flight. Do not run a
-		// second payout alongside it.
-		return http.Fail(c, 409, "a payout under this idempotency key is already in flight", nil)
+		// The key was CLAIMED and never sealed, so this payout's outcome is not
+		// known: it may be running beside us, or its process may have died
+		// mid-disbursement. Either way a second attempt under this key is a
+		// second payout, so the answer is the same and it says which state it is
+		// in rather than asserting one it cannot see.
+		return http.Fail(c, 409, "a payout under this idempotency key was started and "+
+			"its outcome is not known; it is never retried automatically — send a new key "+
+			"once the first payout's state has been established", nil)
 	}
-	// abandon releases the guard when NO money was committed, so a refusal does
-	// not wedge the key: the caller may fix the cause and ask again, and the
-	// next attempt is screened against the controls in force then rather than
-	// replaying a refusal from a restraint that has since been lifted.
+	// abandon releases the guard when NO money was committed and NOTHING was
+	// withheld, so a refusal does not wedge the key: the caller may fix the
+	// cause and ask again. It does not un-refuse the SCREEN, which is sticky on
+	// its own key by design — a caller that wants a fresh judgement after a
+	// restraint is lifted sends a fresh idempotency key, which is what a key is.
+	//
+	// A release that FAILS is logged, because the merchant is then wedged on
+	// that key until it sends another and the only way anyone learns why is if
+	// this said so.
 	abandon := func() {
-		if guard != nil {
-			_ = guard.Delete()
+		if guard == nil {
+			return
+		}
+		if err := guard.Delete(); err != nil {
+			log.Error("Failed to release the payout idempotency guard; this key now "+
+				"refuses until the caller sends a new one: %v", err, c)
 		}
 	}
 
@@ -104,9 +138,13 @@ func CreatePayout(c *zip.Ctx) error {
 	// merchant stops the money HERE, in the store that holds the control — no
 	// network hop, so a scoring outage can never lift a restraint. Risk
 	// declares; this is where commerce enforces.
-	gate, err := gatePayout(c, db, req)
+	s := &risk.Screener{DB: db, By: whoever(c)}
+	gate, err := gatePayout(c, s, req)
 	if err != nil {
 		abandon()
+		if errors.Is(err, risk.ErrIdem) {
+			return http.Fail(c, 409, "this idempotency key was used for a different move", nil)
+		}
 		log.Error("Failed to screen payout: %v", err, c)
 		return http.Fail(c, 500, "failed to screen the payout", err)
 	}
@@ -115,8 +153,29 @@ func CreatePayout(c *zip.Ctx) error {
 		return http.Fail(c, gate.Status, gate.Message, nil)
 	}
 
+	// The reserve takes its share HERE, where the money leaves, for exactly what
+	// leaves — and the ledger and the running total move with it, in one store
+	// transaction. A judgement withholds nothing.
+	allowed, held, werr := s.Withhold(gate.rec)
+	if werr != nil {
+		abandon()
+		log.Error("Failed to withhold the reserve's share: %v", werr, c)
+		return http.Fail(c, 503, "the reserve account is unavailable; retry", werr)
+	}
+	restore := func() {
+		if err := s.Restore(gate.rec); err != nil {
+			log.Error("Failed to return a withheld share for screen %s: %v", gate.Screen, err, c)
+		}
+	}
+	if allowed <= 0 {
+		restore()
+		abandon()
+		return http.Fail(c, 403, fmt.Sprintf(
+			"a reserve withholds all %d of this payout", req.Amount), nil)
+	}
+
 	p := payout.New(db)
-	p.Amount = int64(gate.Allow)
+	p.Amount = int64(allowed)
 	if req.Currency != "" {
 		p.Currency = currency.Type(req.Currency)
 	}
@@ -128,6 +187,7 @@ func CreatePayout(c *zip.Ctx) error {
 	}
 
 	if err := p.Create(); err != nil {
+		restore()
 		abandon()
 		log.Error("Failed to create payout: %v", err, c)
 		return http.Fail(c, 500, "failed to create payout", err)
@@ -136,11 +196,16 @@ func CreatePayout(c *zip.Ctx) error {
 	// A reserve is DISCLOSED, never silent: the response states what was asked
 	// for, what was withheld and the screen that decided it, so a merchant
 	// reconciling a short payout can see why without asking.
+	//
+	// It discloses whenever the JUDGEMENT named a reserve, including when the
+	// disbursement withheld LESS than the judgement forecast — the ceiling can
+	// fill between the two, and a payout that quietly goes out whole against a
+	// screen recording held=100 is two records of one move that disagree.
 	resp := payoutResponse(p)
 	resp["screen"] = gate.Screen
-	if gate.Held > 0 {
+	if held > 0 || gate.rec.Held > 0 {
 		resp["requested"] = req.Amount
-		resp["held"] = int64(gate.Held)
+		resp["held"] = int64(held)
 	}
 
 	// Seal the guard with the answer, so a retry replays THIS response instead
@@ -173,10 +238,30 @@ func payoutKey(c *zip.Ctx, req createPayoutRequest) string {
 	if k := strings.TrimSpace(req.Idem); k != "" {
 		return k
 	}
-	return guardKey(c, strings.Join([]string{
+	return guardKey(c, payoutFacts(req))
+}
+
+// payoutDigest is the exact payout a key was taken for, as a stable digest: the
+// destination, the merchant, the currency and the amount.
+//
+// It is what makes the key mean "this payout" rather than "this string". A key
+// reused for a DIFFERENT payout is a caller's mistake, and without the digest
+// the mistake is answered with 201 and the first payout's receipt — the caller
+// asked for $10,000 and is told a $1 disbursement was created.
+//
+// It is derived from the SAME facts the fallback key is derived from, so the
+// two cannot drift into disagreeing about which two requests are the same one.
+func payoutDigest(req createPayoutRequest) string {
+	sum := sha256.Sum256([]byte(payoutFacts(req)))
+	return hex.EncodeToString(sum[:16])
+}
+
+// payoutFacts are the request details that stay STABLE across a retry.
+func payoutFacts(req createPayoutRequest) string {
+	return strings.Join([]string{
 		"payout", req.DestinationType, req.DestinationId, req.Merchant,
 		req.Currency, strconv.FormatInt(req.Amount, 10),
-	}, ":"))
+	}, ":")
 }
 
 // GetPayout retrieves a payout by ID.
@@ -209,9 +294,15 @@ func ListPayouts(c *zip.Ctx) error {
 	// Bounded at the store. A payout list grows with every disbursement an org
 	// ever made, so a read with no ceiling is one request that materialises the
 	// whole history — in a process shared with every other tenant.
-	rootKey := db.NewKey("synckey", "", 1, nil)
+	//
+	// It filters by NO ANCESTOR, for the reason written down once on
+	// screen.Query: a row read by id and written back comes out of its ancestor
+	// group, so an ancestor-filtered read loses it the moment anything updates
+	// it — and CancelPayout, in this file, is exactly a read by id and a write.
+	// A cancelled payout vanished from the merchant's own list. The tenant
+	// boundary is the datastore's namespace either way.
 	payouts := make([]*payout.Payout, 0)
-	iter := payout.Query(db).Ancestor(rootKey).Order("-CreatedAt").Limit(pageMax).Run()
+	iter := payout.Query(db).Order("-CreatedAt").Limit(pageMax).Run()
 
 	for {
 		p := payout.New(db)
@@ -264,11 +355,12 @@ func CancelPayout(c *zip.Ctx) error {
 type payoutGate struct {
 	Status  int
 	Message string
-	// Allow and Held are exact minor units and always sum to the requested
-	// amount.
-	Allow  currency.Cents
-	Held   currency.Cents
-	Screen string
+	Screen  string
+	// rec is the judgement itself, which the disbursement needs so it can
+	// withhold the reserve's share against the SAME screen the judgement
+	// recorded. It is unexported: the gate is a decision, and a caller that
+	// could reach past it into the record would be a second enforcement point.
+	rec *screen.Screen
 }
 
 // gatePayout screens the payout before a row is written and reports how much
@@ -281,13 +373,12 @@ type payoutGate struct {
 // simply reserves a share of the smaller amount too, and the caller is walked
 // in a circle it can never leave. Withholding the share is what a reserve IS —
 // and it is disclosed in the response, so it is not a silent shrink.
-func gatePayout(c *zip.Ctx, db *datastore.Datastore, req createPayoutRequest) (payoutGate, error) {
+func gatePayout(c *zip.Ctx, s *risk.Screener, req createPayoutRequest) (payoutGate, error) {
 	subject := risk.Subject{Kind: risk.KindPayout, ID: req.DestinationId}
 	if req.Merchant != "" {
 		subject = risk.Subject{Kind: risk.KindMerchant, ID: req.Merchant}
 	}
 
-	s := &risk.Screener{DB: db, By: whoever(c)}
 	rec, err := s.Screen(c.Context(), risk.Move{
 		Stage:     risk.Payout,
 		Subject:   subject,
@@ -309,11 +400,7 @@ func gatePayout(c *zip.Ctx, db *datastore.Datastore, req createPayoutRequest) (p
 		return payoutGate{Status: 403, Message: fmt.Sprintf(
 			"a reserve withholds all %d of this payout", req.Amount), Screen: rec.Id()}, nil
 	}
-	return payoutGate{
-		Allow:  currency.Cents(rec.Allowed),
-		Held:   currency.Cents(rec.Held),
-		Screen: rec.Id(),
-	}, nil
+	return payoutGate{Screen: rec.Id(), rec: rec}, nil
 }
 
 func payoutRefusal(rec *screen.Screen) string {

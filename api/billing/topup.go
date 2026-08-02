@@ -78,7 +78,7 @@ func chargeAndCredit(c *zip.Ctx, org *organization.Organization, db *datastore.D
 	// fails CLOSED: if the store is unavailable we cannot tell a first attempt
 	// from a retry, and refusing costs a retry while proceeding costs the
 	// customer a duplicate charge on their statement.
-	rec, replay, gerr := idemBegin(db, "billing-charge:"+userId, idemKey)
+	rec, replay, gerr := idemBegin(db, idempotencykey.Guard{Scope: "billing-charge:" + userId, Key: idemKey})
 	if gerr != nil {
 		return "", 0, fmt.Errorf("%w: %v", errGuardUnavailable, gerr)
 	}

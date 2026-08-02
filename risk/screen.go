@@ -114,7 +114,14 @@ func (s *Screener) Screen(ctx context.Context, m Move) (*screen.Screen, error) {
 	if m.Amount < 0 {
 		return nil, errors.New("risk: amount is negative")
 	}
-	m.Signals = Facts(m.Signals)
+	// Every caller string on this move is bounded HERE, before anything is
+	// stored, so both doors into the plane get the same ceiling — see [Text].
+	if err := Bound(string(m.Stage), m.Subject.Kind, m.Subject.ID,
+		string(m.Currency), m.Reference, m.Processor, m.Idem); err != nil {
+		return nil, err
+	}
+	var dropped int
+	m.Signals, dropped = Facts(m.Signals)
 	now := s.now()
 
 	live, err := control.LiveFor(s.DB, m.Subject.Kind, m.Subject.ID, now)
@@ -122,7 +129,7 @@ func (s *Screener) Screen(ctx context.Context, m Move) (*screen.Screen, error) {
 		return nil, err
 	}
 	restraint := Restrain(live, m.Amount, m.Currency, m.Out, now)
-	restraint = Cap(restraint, Headroom(restraint.Reserve))
+	restraint = Cap(restraint, currency.Cents(reserve.Headroom(s.DB, restraint.Reserve)))
 
 	if prior, ok := screen.ByIdem(s.DB, m.Idem); ok {
 		return s.repeat(prior, m, restraint, now)
@@ -142,12 +149,23 @@ func (s *Screener) Screen(ctx context.Context, m Move) (*screen.Screen, error) {
 	rec.Held = int64(restraint.Held)
 	rec.Allowed = int64(restraint.Allowed)
 	rec.Reason = restraint.Reason
+	if restraint.Reserve != nil {
+		rec.Reserve = restraint.Reserve.Ref()
+	}
 	rec.Detail = map[string]any{}
 	if len(restraint.Controls) > 0 {
 		rec.Detail["controls"] = restraint.Controls
 	}
 	if len(m.Signals) > 0 {
 		rec.Detail["signals"] = m.Signals
+	}
+	// Every bound this judgement's inputs hit, counted on the judgement. A
+	// dropped signal or a truncated rule list is a fact the score was NOT
+	// computed from; recording nothing would leave an operator reading a flat
+	// score with no way to learn its inputs never arrived.
+	lost := map[string]any{}
+	if dropped > 0 {
+		lost["signals"] = dropped
 	}
 
 	action := Allow
@@ -173,10 +191,17 @@ func (s *Screener) Screen(ctx context.Context, m Move) (*screen.Screen, error) {
 			if d.Refusal != "" {
 				rec.Refusal = d.Refusal
 			}
-			if len(d.Hits) > 0 {
-				rec.Detail["hits"] = d.Hits
+			h, lostHits := hits(d.Hits)
+			if len(h) > 0 {
+				rec.Detail["hits"] = h
+			}
+			if lostHits > 0 {
+				lost["hits"] = lostHits
 			}
 		}
+	}
+	if len(lost) > 0 {
+		rec.Detail["dropped"] = lost
 	}
 
 	// A shadow decision is advisory by construction: it is recorded exactly as
@@ -187,18 +212,17 @@ func (s *Screener) Screen(ctx context.Context, m Move) (*screen.Screen, error) {
 	}
 	rec.Action = string(action)
 	if !action.Moves() {
+		// A refused move withholds everything BY NOT HAPPENING, and that is not a
+		// reserve taking money — it is money that never left. Naming the reserve
+		// here would let the disbursement boundary withhold against a payout the
+		// plane blocked: a merchant's ceiling burned on moves that never occurred,
+		// and a ledger saying money was taken out of nothing.
 		rec.Allowed = 0
 		rec.Held = int64(m.Amount)
+		rec.Reserve = ""
 	}
 
 	if err := rec.Create(); err != nil {
-		return nil, err
-	}
-
-	// The money a reserve withheld is ACCOUNTED FOR, against the declaration
-	// that took it. A withheld cent that nothing records is not a reserve, it is
-	// a shortfall on a merchant's payout with no name and no way back.
-	if err := s.withhold(rec, restraint); err != nil {
 		return nil, err
 	}
 	return rec, nil
@@ -238,9 +262,10 @@ func (s *Screener) repeat(prior *screen.Screen, m Move, r Restraint, now time.Ti
 // whether it moved. It is pure over the two values and never loosens: the
 // action composes by [Strictest] and the allowed amount can only fall.
 //
-// It does NOT post to the reserve ledger. A repeat moves no money — the money
-// moved on the first answer — so a hold recorded twice would be a hold that
-// happened once.
+// It moves no money, and neither does the judgement it belongs to: what a
+// repeat answers becomes real when the disbursement withholds it ([Withhold]),
+// against the judgement's own id, which is why a tightened repeat and a first
+// answer are accounted for by exactly the same act.
 func reassert(prior *screen.Screen, r Restraint) bool {
 	action := Strictest(Action(prior.Action), refusal(r))
 	allowed := prior.Allowed
@@ -251,8 +276,16 @@ func reassert(prior *screen.Screen, r Restraint) bool {
 		allowed = 0
 	}
 	held := prior.Amount - allowed
+	reserved := prior.Reserve
+	if r.Reserve != nil {
+		reserved = r.Reserve.Ref()
+	}
+	if r.Blocked || !action.Moves() {
+		reserved = "" // refused: nothing was taken, so nothing took it
+	}
 
-	if string(action) == prior.Action && allowed == prior.Allowed && held == prior.Held {
+	if string(action) == prior.Action && allowed == prior.Allowed &&
+		held == prior.Held && reserved == prior.Reserve {
 		return false
 	}
 	// Keep what this row FIRST answered. A record that quietly rewrote itself is
@@ -277,6 +310,7 @@ func reassert(prior *screen.Screen, r Restraint) bool {
 	prior.Action = string(action)
 	prior.Allowed = allowed
 	prior.Held = held
+	prior.Reserve = reserved
 	return true
 }
 
@@ -290,23 +324,104 @@ func refusal(r Restraint) Action {
 	return Allow
 }
 
-// withhold accounts for money a reserve took: a durable ledger entry naming the
-// judgement and the declaration, and the running total on the control the
-// ceiling is measured against.
+// Withhold takes the reserve's share of a judged move AT THE MOMENT THE MONEY
+// LEAVES, and reports what may actually go out and what was actually held.
 //
-// It fails the SCREEN when it cannot record the hold. A reserve whose account
-// did not take the entry is a reserve that is not bounded by its own ceiling,
-// and the money plane must not hand back an Allowed it cannot account for.
-func (s *Screener) withhold(rec *screen.Screen, r Restraint) error {
-	if r.Reserve == nil || r.Held <= 0 || rec.Held <= 0 {
+// THIS IS THE ACCOUNTING BOUNDARY, and it is deliberately not [Screen]. A
+// judgement answers a question; it must not spend a ceiling, because a ceiling
+// any authenticated caller can consume with a money-free screen is worse than
+// no ceiling — it switches the reserve off. So the account moves here, once,
+// for the amount the money actually moved, called by the disbursement that is
+// about to write the payout row.
+//
+// It is IDEMPOTENT ON THE JUDGEMENT: a retried disbursement under one screen
+// re-reads its own hold and takes nothing more, because the screen is
+// idempotent and the two must agree about how many times one move happened.
+//
+// It returns the AUTHORITATIVE split. The judgement's Held is a forecast
+// clamped against a headroom read outside any transaction; this clamp happens
+// inside one, so the reserve may withhold LESS than the judgement said — never
+// more — and then more money leaves, which the caller discloses.
+func (s *Screener) Withhold(rec *screen.Screen) (allowed, held currency.Cents, err error) {
+	if rec == nil {
+		return 0, 0, errors.New("risk: nothing to disburse")
+	}
+	if !Action(rec.Action).Moves() {
+		// A refused move moves nothing, so nothing may be withheld from it. The
+		// gate refuses before this point; this is the invariant, not the gate.
+		return 0, 0, nil
+	}
+	if rec.Held <= 0 || rec.Reserve == "" {
+		// NOTHING NAMED, NOTHING WITHHELD, so the whole amount goes out — and
+		// deliberately not rec.Allowed. A judgement carrying Held with no reserve
+		// to take it is not a reserve, it is a shortfall on a merchant's payout
+		// that no ledger entry names, no ceiling counts and no lift returns. Held
+		// and Allowed always sum to Amount, so paying Amount here is exact.
+		return currency.Cents(rec.Amount), 0, nil
+	}
+	c, err := s.reserve(rec)
+	if err != nil {
+		return 0, 0, err
+	}
+	if c == nil {
+		// The declaration is gone or no longer a live reserve: nothing may be
+		// withheld under it, so the whole move goes out.
+		return currency.Cents(rec.Amount), 0, nil
+	}
+	took, err := reserve.Take(s.DB, c, rec.Held, reserve.Cause{
+		SubjectKind: rec.SubjectKind,
+		Subject:     rec.Subject,
+		Currency:    rec.Currency,
+		Screen:      rec.Id(),
+		Reference:   rec.Reference,
+	})
+	if err != nil {
+		return 0, 0, err
+	}
+	return currency.Cents(rec.Amount - took), currency.Cents(took), nil
+}
+
+// Restore gives back what [Withhold] took, because the move it was taken from
+// did not happen after all.
+//
+// A disbursement that failed AFTER its share was withheld would otherwise leave
+// the merchant short by that share forever, under a ceiling that believes it is
+// that much fuller. It is idempotent on the judgement, so calling it on a move
+// that withheld nothing is not an error.
+func (s *Screener) Restore(rec *screen.Screen) error {
+	if rec == nil || rec.Reserve == "" {
 		return nil
 	}
-	if _, err := reserve.Hold(s.DB, rec.SubjectKind, rec.Subject, rec.Currency,
-		int64(r.Held), r.Reserve.Ref(), rec.Id(), rec.Reference); err != nil {
+	c, err := s.reserve(rec)
+	if err != nil || c == nil {
 		return err
 	}
-	_, err := control.Withhold(s.DB, r.Reserve.Ref(), int64(r.Held))
+	_, err = reserve.Return(s.DB, c, rec.Id())
 	return err
+}
+
+// reserve reads back the declaration a judgement named, BY ID, because a
+// control that came from a query cannot be written through in this ORM and the
+// account's transaction needs a row it can name.
+//
+// A declaration that is gone, is not a reserve, or is NO LONGER IN FORCE
+// returns nil and no error: it holds nothing further. Withholding under a
+// declaration that has been lifted is precisely the money-under-something-that-
+// no-longer-exists that lifting a reserve is supposed to end, and the direction
+// it errs in — the whole payout goes out — is the one that does not strand a
+// merchant's money.
+func (s *Screener) reserve(rec *screen.Screen) (*control.Control, error) {
+	c := control.New(s.DB)
+	if err := c.GetById(rec.Reserve); err != nil {
+		if errors.Is(err, datastore.ErrNoSuchEntity) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if c.Effect != control.Reserve || !c.Live(s.now()) {
+		return nil, nil
+	}
+	return c, nil
 }
 
 // facts is what actually travels to the scoring plane: the caller's allowlisted

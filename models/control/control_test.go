@@ -4,6 +4,7 @@ package control
 
 import (
 	"context"
+	"reflect"
 	"testing"
 	"time"
 
@@ -38,8 +39,8 @@ func place(t *testing.T, db *datastore.Datastore, effect string, rate int64) *Co
 // A row handed back by a query iterator has no writable identity here. Update
 // lands nowhere AND REPORTS NO ERROR. This test asserts the hazard is still
 // real; if it ever starts failing, the ORM grew the ability and the reload in
-// [Withhold] and [Lift] can go — but until then, deleting the reload silently
-// unbolts the reserve ceiling.
+// [Lift] can go — but until then, deleting the reload silently stops releases
+// from landing.
 func TestAQueryRowCannotBeWrittenThrough(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
@@ -52,7 +53,7 @@ func TestAQueryRowCannotBeWrittenThrough(t *testing.T) {
 		t.Fatalf("live=%d err=%v", len(live), err)
 	}
 	fromQuery := live[0]
-	fromQuery.Held = 100
+	fromQuery.Reason = "written through a query row"
 	if err := fromQuery.Update(); err != nil {
 		t.Fatalf("update reported an error: %v", err)
 	}
@@ -61,52 +62,38 @@ func TestAQueryRowCannotBeWrittenThrough(t *testing.T) {
 	if err := back.GetById(placed.Id()); err != nil {
 		t.Fatalf("read back: %v", err)
 	}
-	if back.Held == 100 {
-		t.Skip("the ORM now writes through query rows; the reload in Withhold/Lift is no longer load-bearing")
+	if back.Reason == "written through a query row" {
+		t.Skip("the ORM now writes through query rows; the reload in Lift is no longer load-bearing")
 	}
-	if back.Held != 0 {
-		t.Fatalf("held=%d, want 0 — this test exists to pin that a query row's write does NOT land", back.Held)
+	if back.Reason != "" {
+		t.Fatalf("reason=%q, want empty — this test exists to pin that a query row's write does NOT land", back.Reason)
 	}
 }
 
-// TestWithhold_MovesTheRunningTotalInTheStore — the write that a query row
-// cannot do.
-func TestWithhold_MovesTheRunningTotalInTheStore(t *testing.T) {
-	c := ae.NewContext()
-	defer c.Close()
-	db := nsDB(c, "withhold")
-
-	placed := place(t, db, Reserve, 2500)
-	for i := 0; i < 3; i++ {
-		if _, err := Withhold(db, placed.Id(), 40); err != nil {
-			t.Fatalf("withhold %d: %v", i, err)
+// TestNoBalanceLivesOnADeclaration is the structural half of the fix that moved
+// the reserve's running total out of this package.
+//
+// A total on the control was a total every op that could read or place a
+// declaration could move — which is how a money-free screen came to disarm a
+// merchant's own ceiling. The balance now lives in models/reserve behind the one
+// door that moves money, and this test pins that no field here can be mistaken
+// for it again.
+func TestNoBalanceLivesOnADeclaration(t *testing.T) {
+	forbidden := map[string]bool{"Held": true, "Balance": true, "Withheld": true, "Total": true}
+	typ := reflect.TypeOf(Control{})
+	for i := 0; i < typ.NumField(); i++ {
+		if forbidden[typ.Field(i).Name] {
+			t.Fatalf("Control.%s is a balance on a declaration — it belongs to the account, "+
+				"behind reserve.Take", typ.Field(i).Name)
 		}
 	}
-	back := New(db)
-	if err := back.GetById(placed.Id()); err != nil {
-		t.Fatalf("read back: %v", err)
-	}
-	if back.Held != 120 {
-		t.Fatalf("held=%d after three withholdings of 40, want 120", back.Held)
-	}
-	if _, err := Withhold(db, placed.Id(), 0); err != nil {
-		t.Fatalf("a zero withholding is a no-op, not an error: %v", err)
-	}
 }
 
-// TestHeadroom_IsWhatIsLeftUnderTheCeiling.
-func TestHeadroom_IsWhatIsLeftUnderTheCeiling(t *testing.T) {
-	c := &Control{Effect: Reserve, Rate: 2500, Cap: 1000, Currency: currency.USD}
-	if !c.Bounded() || c.Headroom() != 1000 {
-		t.Fatalf("bounded=%v headroom=%d", c.Bounded(), c.Headroom())
-	}
-	c.Held = 900
-	if c.Headroom() != 100 {
-		t.Fatalf("headroom=%d want 100", c.Headroom())
-	}
-	c.Held = 5000 // over the ceiling: never negative
-	if c.Headroom() != 0 {
-		t.Fatalf("headroom=%d want 0", c.Headroom())
+// TestBounded_IsAboutTheDeclarationAndNothingElse — a ceiling is declared here;
+// what has been withheld against it is the account's business.
+func TestBounded_IsAboutTheDeclarationAndNothingElse(t *testing.T) {
+	if !(&Control{Effect: Reserve, Rate: 2500, Cap: 1000, Currency: currency.USD}).Bounded() {
+		t.Fatal("a reserve with a cap did not report itself bounded")
 	}
 	if (&Control{Effect: Reserve, Rate: 2500}).Bounded() {
 		t.Fatal("a reserve with no cap reported itself bounded")
@@ -179,9 +166,6 @@ func TestReadsAreTenantScoped(t *testing.T) {
 	}
 	if len(live) != 0 {
 		t.Fatalf("org B read %d of org A's live controls", len(live))
-	}
-	if _, err := Withhold(b, placed.Id(), 10); err == nil {
-		t.Fatal("org B moved the running total on org A's control")
 	}
 	if _, err := Lift(b, placed.Id(), "b", time.Now()); err == nil {
 		t.Fatal("org B lifted org A's control")

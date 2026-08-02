@@ -169,7 +169,7 @@ func RecordUsage(c *zip.Ctx) error {
 		idemKey = strings.TrimSpace(req.RequestID)
 	}
 	if idemKey != "" {
-		rec, replay, gerr := idempotencykey.Begin(db, "billing-usage", idemKey)
+		rec, replay, gerr := idempotencykey.Begin(db, idempotencykey.Guard{Scope: "billing-usage", Key: idemKey})
 		if gerr != nil {
 			// Guard store unavailable — log and proceed WITHOUT the replay guard
 			// rather than drop a legitimate usage record (matches topup posture).

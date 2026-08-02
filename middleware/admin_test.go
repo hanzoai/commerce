@@ -136,3 +136,72 @@ func httptestGet(path string) *http.Request {
 	req, _ := http.NewRequest(http.MethodGet, path, nil)
 	return req
 }
+
+// TestIsAdmin_TheHeaderPathCarriesTheTenantBinding is the gate on delegation.
+//
+// The two identity edges mint the org-admin flag under two names, and each
+// names an admin OF THE CALLER'S HOME ORG. IAMTokenRequired resolves both once
+// against the org the request ACTS IN and records the bound answer; reading the
+// raw claim again afterwards re-derives the same authority with no tenant in
+// it, so a principal that is an admin at home inherits authority over a foreign
+// tenant — on the gate that places and lifts restraints on real money.
+//
+// It drives the HEADER path deliberately: the earlier tests seed the bound
+// local directly, so the clause that reads the claim was never exercised, and
+// an untested clause on a money boundary is where this went wrong.
+func TestIsAdmin_TheHeaderPathCarriesTheTenantBinding(t *testing.T) {
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+
+	var admin, bound bool
+	app.Delete("/probe", func(c *zip.Ctx) error {
+		// Exactly the state IAMTokenRequired leaves behind for a caller whose
+		// edge-minted org-admin flag is for its HOME org "attacker" while the
+		// request acts in the EFFECTIVE org "victim".
+		c.Locals("iam_authenticated", true)
+		c.Locals("permissions", bit.Field(permission.Live)) // no permission.Admin
+		c.Locals(iammiddleware.LocalOrgAdmin, false)        // the bound answer: NOT this org's admin
+		bound = iammiddleware.IsOrgAdmin(c)
+		admin = IsAdmin(c)
+		return c.JSON(http.StatusOK, map[string]string{"ok": "1"})
+	})
+
+	req, _ := http.NewRequest(http.MethodDelete, "/probe", nil)
+	req.Header.Set("X-User-IsAdmin", "true") // the gateway mints this for an ORG admin
+	req.Header.Set("X-User-Owner", "attacker")
+	req.Header.Set("X-Org-Id", "victim")
+	if _, err := app.Fiber().Test(req); err != nil {
+		t.Fatalf("drive: %v", err)
+	}
+
+	if bound {
+		t.Fatal("precondition: the bound org-admin fact should be false")
+	}
+	if admin {
+		t.Fatal("an admin of ANOTHER org administers this one — the boundary delegated its own tenant check")
+	}
+}
+
+// TestIsAdmin_ASuperAdminHeaderStillAdmits — the cross-tenant exception is the
+// reserved admin org and it survives the clause that was deleted beside it.
+func TestIsAdmin_ASuperAdminHeaderStillAdmits(t *testing.T) {
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+
+	var admin bool
+	app.Delete("/probe", func(c *zip.Ctx) error {
+		c.Locals("iam_authenticated", true)
+		c.Locals("permissions", bit.Field(permission.Live))
+		c.Locals(iammiddleware.LocalOrgAdmin, false)
+		admin = IsAdmin(c)
+		return c.JSON(http.StatusOK, map[string]string{"ok": "1"})
+	})
+
+	req, _ := http.NewRequest(http.MethodDelete, "/probe", nil)
+	req.Header.Set("X-User-Owner", "admin")
+	req.Header.Set("X-Org-Id", "victim")
+	if _, err := app.Fiber().Test(req); err != nil {
+		t.Fatalf("drive: %v", err)
+	}
+	if !admin {
+		t.Fatal("a platform SuperAdmin arriving by header was refused")
+	}
+}

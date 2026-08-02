@@ -131,8 +131,9 @@ func Count(s *Screener, subject Subject) (*Standing, error) {
 		return nil, err
 	}
 	st.Controls = live
+	held := reserve.Accounts(s.DB) // one read for the whole set, never one per control
 	for _, c := range live {
-		st.Reserved += currency.Cents(c.Held)
+		st.Reserved += currency.Cents(held[c.Ref()])
 	}
 	st.Ledger = reserve.For(s.DB, subject.Kind, subject.ID, ledger)
 	return st, nil
@@ -235,6 +236,11 @@ func Place(s *Screener, p Placement) (*control.Control, error) {
 	if err := p.Subject.Valid(); err != nil {
 		return nil, err
 	}
+	// A reason is read back on every list, up to control.Max of them at a time.
+	// The row cap bounds the COUNT; [Text] is what bounds the bytes.
+	if err := Bound(p.Effect, p.Subject.Kind, p.Subject.ID, string(p.Currency), p.Reason); err != nil {
+		return nil, err
+	}
 	if !control.Effects(p.Effect) {
 		return nil, ErrKind
 	}
@@ -279,25 +285,26 @@ func Place(s *Screener, p Placement) (*control.Control, error) {
 	return c, nil
 }
 
-// Lift releases the control named by id and RETURNS what it was holding: a
-// reserve posts a release to the ledger for its running total, so the account
-// closes instead of leaving money withheld under a declaration that no longer
-// exists.
+// Lift releases the control named by id and RETURNS EXACTLY what it was
+// holding, so the account closes instead of leaving money withheld under a
+// declaration that no longer exists.
+//
+// What comes back is the account's own total, zeroed and posted to the ledger
+// in ONE store transaction — so the release cannot disagree with the holds it
+// returns. Releasing twice returns the money once, because the second Close
+// finds an empty account.
 //
 // It takes an ID and not a control, so it cannot be handed a row from a query —
-// which in this ORM is a row whose writes land nowhere (see control.Withhold).
-// Releasing twice is a no-op, and the release entry is named by the control, so
-// a retried lift re-posts the same row rather than returning the money twice on
-// paper.
+// which in this ORM is a row whose writes land nowhere (see control.Lift).
 func Lift(s *Screener, id string) (*control.Control, error) {
 	c, err := control.Lift(s.DB, id, s.By, s.now())
 	if err != nil {
 		return nil, err
 	}
-	if c.Effect != control.Reserve || c.Held <= 0 {
+	if c.Effect != control.Reserve {
 		return c, nil
 	}
-	if _, err := reserve.Release(s.DB, c.SubjectKind, c.Subject, c.Currency, c.Held, c.Ref()); err != nil {
+	if _, err := reserve.Close(s.DB, c); err != nil {
 		return nil, err
 	}
 	return c, nil

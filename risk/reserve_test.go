@@ -16,6 +16,29 @@ import (
 // haircut on a caller-chosen number, with no ceiling it converges on, no
 // account of what was taken, and nothing to return when the declaration is
 // lifted.
+//
+// Every test that concerns MONEY runs the whole path — judge, then disburse —
+// because the judgement moves nothing. What the ceiling does to a judgement is
+// a forecast; what it does at the disbursement is the money. See
+// account_test.go for the properties of the boundary itself.
+
+// disburse is one whole money move: the judgement, then the withholding the
+// payout boundary does. It reports the authoritative split.
+func disburse(t *testing.T, s *Screener, m Move) (held, allowed int64) {
+	t.Helper()
+	rec, err := s.Screen(context.Background(), m)
+	if err != nil {
+		t.Fatalf("screen %s: %v", m.Idem, err)
+	}
+	a, h, err := s.Withhold(rec)
+	if err != nil {
+		t.Fatalf("withhold %s: %v", m.Idem, err)
+	}
+	if int64(a+h) != int64(m.Amount) {
+		t.Fatalf("%s: the split lost a cent: %d + %d != %d", m.Idem, h, a, m.Amount)
+	}
+	return int64(h), int64(a)
+}
 
 // TestReserve_StopsAtItsCeiling — the rate says what share, the ceiling says
 // how much in total. Past the ceiling the reserve takes nothing further and the
@@ -33,16 +56,9 @@ func TestReserve_StopsAtItsCeiling(t *testing.T) {
 	}
 	pay := func(idem string, amount currency.Cents) (held, allowed int64) {
 		t.Helper()
-		rec, err := s.Screen(context.Background(), Move{
+		return disburse(t, s, Move{
 			Stage: Payout, Subject: m, Amount: amount, Currency: currency.USD, Out: true, Idem: idem,
 		})
-		if err != nil {
-			t.Fatalf("screen %s: %v", idem, err)
-		}
-		if rec.Held+rec.Allowed != int64(amount) {
-			t.Fatalf("%s: the split lost a cent: %d + %d != %d", idem, rec.Held, rec.Allowed, amount)
-		}
-		return rec.Held, rec.Allowed
 	}
 
 	// 50% of 1200 is 600, under the 1000 ceiling.
@@ -71,14 +87,11 @@ func TestReserve_WithoutACeilingIsUnchanged(t *testing.T) {
 		t.Fatalf("place: %v", err)
 	}
 	for i, idem := range []string{"a", "b", "c"} {
-		rec, err := s.Screen(context.Background(), Move{
+		held, allowed := disburse(t, s, Move{
 			Stage: Payout, Subject: m, Amount: 400, Currency: currency.USD, Out: true, Idem: idem,
 		})
-		if err != nil {
-			t.Fatalf("screen %d: %v", i, err)
-		}
-		if rec.Held != 100 || rec.Allowed != 300 {
-			t.Fatalf("move %d held=%d allowed=%d, want 100/300", i, rec.Held, rec.Allowed)
+		if held != 100 || allowed != 300 {
+			t.Fatalf("move %d held=%d allowed=%d, want 100/300", i, held, allowed)
 		}
 	}
 }
@@ -101,6 +114,12 @@ func TestReserve_TheLedgerRecordsWhatWasWithheld(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("screen: %v", err)
+	}
+	if n := len(reserve.For(s.DB, m.Kind, m.ID, 0)); n != 0 {
+		t.Fatalf("the judgement alone posted %d ledger entries", n)
+	}
+	if _, held, err := s.Withhold(rec); err != nil || held != 101 {
+		t.Fatalf("withhold: held=%d err=%v, want 101", held, err)
 	}
 
 	rows := reserve.For(s.DB, m.Kind, m.ID, 0)
@@ -142,15 +161,18 @@ func TestReserve_ABlockPostsNothing(t *testing.T) {
 	if !Refused(rec) {
 		t.Fatalf("the block did not refuse: %s", rec.Action)
 	}
+	if _, held, err := s.Withhold(rec); err != nil || held != 0 {
+		t.Fatalf("a blocked move withheld %d (%v)", held, err)
+	}
 	if n := len(reserve.For(s.DB, m.Kind, m.ID, 0)); n != 0 {
 		t.Fatalf("%d ledger entries for a move that never happened", n)
 	}
 }
 
-// TestLift_ReturnsWhatTheReserveHeld — releasing a declaration closes its
-// account instead of leaving money withheld under something that no longer
-// exists.
-func TestLift_ReturnsWhatTheReserveHeld(t *testing.T) {
+// TestLift_RecordsWhoLiftedIt — releasing a declaration closes its account and
+// says who closed it. What the release RETURNS is
+// [TestLift_ReturnsExactlyWhatWasWithheld]; this is the audit half.
+func TestLift_RecordsWhoLiftedIt(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
@@ -160,10 +182,10 @@ func TestLift_ReturnsWhatTheReserveHeld(t *testing.T) {
 	if err != nil {
 		t.Fatalf("place: %v", err)
 	}
-	if _, err := s.Screen(context.Background(), Move{
+	if held, _ := disburse(t, s, Move{
 		Stage: Payout, Subject: m, Amount: 600, Currency: currency.USD, Out: true, Idem: "p1",
-	}); err != nil {
-		t.Fatalf("screen: %v", err)
+	}); held != 300 {
+		t.Fatalf("withheld %d, want 300", held)
 	}
 
 	lifted, err := Lift(s, c.Id())
@@ -173,25 +195,8 @@ func TestLift_ReturnsWhatTheReserveHeld(t *testing.T) {
 	if !lifted.Released || lifted.ReleasedBy != "u_test" {
 		t.Fatalf("lifted=%+v — a release records who lifted it", lifted)
 	}
-
-	var released int64
-	for _, e := range reserve.For(s.DB, m.Kind, m.ID, 0) {
-		released += e.Released
-	}
-	if released != 300 {
-		t.Fatalf("the ledger returned %d, want the 300 the reserve had taken", released)
-	}
-
-	// Lifting twice returns the money once.
-	if _, err := Lift(s, c.Id()); err != nil {
-		t.Fatalf("second lift: %v", err)
-	}
-	released = 0
-	for _, e := range reserve.For(s.DB, m.Kind, m.ID, 0) {
-		released += e.Released
-	}
-	if released != 300 {
-		t.Fatalf("a retried lift returned the money twice on paper: %d", released)
+	if got := reserve.Held(s.DB, c); got != 0 {
+		t.Fatalf("the account still holds %d after the declaration was lifted", got)
 	}
 }
 
@@ -251,23 +256,15 @@ func TestReserve_ScopedToItsCurrency(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("place: %v", err)
 	}
-	usd, err := s.Screen(context.Background(), Move{
+	if held, _ := disburse(t, s, Move{
 		Stage: Payout, Subject: m, Amount: 400, Currency: currency.USD, Out: true, Idem: "u1",
-	})
-	if err != nil {
-		t.Fatalf("usd: %v", err)
+	}); held != 100 {
+		t.Fatalf("usd held=%d want 100", held)
 	}
-	if usd.Held != 100 {
-		t.Fatalf("usd held=%d want 100", usd.Held)
-	}
-	eur, err := s.Screen(context.Background(), Move{
+	if held, allowed := disburse(t, s, Move{
 		Stage: Payout, Subject: m, Amount: 400, Currency: currency.EUR, Out: true, Idem: "e1",
-	})
-	if err != nil {
-		t.Fatalf("eur: %v", err)
-	}
-	if eur.Held != 0 || eur.Allowed != 400 {
-		t.Fatalf("a USD-denominated reserve took %d from a EUR payout", eur.Held)
+	}); held != 0 || allowed != 400 {
+		t.Fatalf("a USD-denominated reserve took %d from a EUR payout", held)
 	}
 }
 
@@ -275,7 +272,7 @@ func TestReserve_ScopedToItsCurrency(t *testing.T) {
 func TestCap_IsPureAndKeepsTheSplitExact(t *testing.T) {
 	base := Restraint{Held: 600, Allowed: 600}
 	for _, c := range []struct{ headroom, held, allowed currency.Cents }{
-		{Unlimited, 600, 600},
+		{currency.Cents(reserve.Unlimited), 600, 600},
 		{1000, 600, 600},
 		{600, 600, 600},
 		{250, 250, 950},
@@ -309,21 +306,17 @@ func TestReserve_TheLedgerIsTenantScoped(t *testing.T) {
 	if _, err := Place(a, Placement{Subject: m, Effect: control.Reserve, Rate: 2500}); err != nil {
 		t.Fatalf("place: %v", err)
 	}
-	if _, err := a.Screen(context.Background(), Move{
+	if held, _ := disburse(t, a, Move{
 		Stage: Payout, Subject: m, Amount: 400, Currency: currency.USD, Out: true, Idem: "p1",
-	}); err != nil {
-		t.Fatalf("a screen: %v", err)
+	}); held != 100 {
+		t.Fatalf("org A withheld %d, want 100", held)
 	}
 	if n := len(reserve.For(b.DB, m.Kind, m.ID, 0)); n != 0 {
 		t.Fatalf("org B read %d entries of org A's reserve ledger", n)
 	}
-	rb, err := b.Screen(context.Background(), Move{
+	if held, allowed := disburse(t, b, Move{
 		Stage: Payout, Subject: m, Amount: 400, Currency: currency.USD, Out: true, Idem: "p1",
-	})
-	if err != nil {
-		t.Fatalf("b screen: %v", err)
-	}
-	if rb.Held != 0 {
-		t.Fatalf("org A's reserve withheld %d of org B's payout", rb.Held)
+	}); held != 0 || allowed != 400 {
+		t.Fatalf("org A's reserve withheld %d of org B's payout", held)
 	}
 }

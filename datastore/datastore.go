@@ -223,15 +223,26 @@ type TransactionOptions struct {
 	ReadOnly bool
 }
 
-// RunInTransaction runs a function within a transaction
+// RunInTransaction calls fn with a datastore built from this one's context. See
+// the package-level [RunInTransaction]: IT IS NOT A TRANSACTION.
 func (d *Datastore) RunInTransaction(fn func(db *Datastore) error, opts *TransactionOptions) error {
 	return RunInTransaction(d.Context, fn, opts)
 }
 
-// RunInTransaction runs a function within a transaction
+// RunInTransaction calls fn with a datastore built from ctx, and provides NO
+// ISOLATION AND NO ATOMICITY. Writes inside fn land one at a time, exactly as
+// they would outside it; a failure half-way leaves the earlier ones committed;
+// two callers interleave freely; opts is not read.
+//
+// THE NAME IS OLDER THAN THE BEHAVIOUR and it is what makes this dangerous: a
+// money path that reads a total, adds to it and writes it back inside here
+// loses updates under concurrency and is told nothing. Every caller that needs
+// indivisibility must go to the STORE — db.DB.RunInTransaction, reached as
+// ds.DB().RunInTransaction(ctx, fn, opts) — which honors the isolation level
+// and the retry budget it is given. models/reserve is the worked example, and
+// TestTheMoneyPlaneNeverAsksForAFakeTransaction pins that the money plane never
+// comes back here.
 func RunInTransaction(ctx context.Context, fn func(db *Datastore) error, opts *TransactionOptions) error {
-	// For now, just run the function directly
-	// The proper implementation would use db.DB.RunInTransaction
 	ds := New(ctx)
 	return fn(ds)
 }

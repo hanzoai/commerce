@@ -178,7 +178,7 @@ func PayInvoice(c *zip.Ctx) error {
 	// onto ONE collection (deterministic-id ON CONFLICT). The card charge (via
 	// chargeProviderForOrg) ALSO carries a stable per-period Square idempotency key,
 	// so even the narrow concurrent-first window cannot double-charge.
-	rec, replay, gerr := idempotencykey.Begin(db, "billing-pay", "invoice:"+inv.Id())
+	rec, replay, gerr := idempotencykey.Begin(db, idempotencykey.Guard{Scope: "billing-pay", Key: "invoice:" + inv.Id()})
 	if gerr == nil && replay {
 		if rec.Status == idempotencykey.StatusCompleted && rec.Response != "" {
 			c.SetHeader("Content-Type", "application/json")

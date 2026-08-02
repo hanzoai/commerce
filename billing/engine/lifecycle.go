@@ -101,7 +101,7 @@ func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscr
 	// chargeProvider) ALSO carries a stable per-period Square idempotency key, so
 	// even the narrow concurrent-first window can never double-charge.
 	guardKey := "period:" + strconv.FormatInt(sub.PeriodStart.Unix(), 10)
-	rec, replay, gerr := idempotencykey.Begin(db, "billing-renew:"+sub.Id(), guardKey)
+	rec, replay, gerr := idempotencykey.Begin(db, idempotencykey.Guard{Scope: "billing-renew:" + sub.Id(), Key: guardKey})
 	if gerr == nil && replay {
 		if again, e := findInvoiceForPeriod(db, sub); e == nil && again != nil {
 			return again, resultFromInvoice(again), nil

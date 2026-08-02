@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hanzoai/commerce/models/control"
+	"github.com/hanzoai/commerce/models/reserve"
 	"github.com/hanzoai/commerce/models/types/currency"
 )
 
@@ -50,10 +51,6 @@ const rateFloor, rateCeil = 0, control.FullRate
 // overflowing int64. Above it the arithmetic would silently wrap, which on a
 // money path is the one failure that must never be silent.
 const maxCents = math.MaxInt64 / control.FullRate
-
-// Unlimited is the headroom of a reserve that declares no ceiling. It is a
-// value and not a nil, so the clamp has one shape for both cases.
-const Unlimited = currency.Cents(math.MaxInt64)
 
 // Restrain applies the controls in force to one move and reports what may
 // happen. Composition of two controls is the STRICTEST of them, never their
@@ -129,16 +126,6 @@ func Restrain(controls []*control.Control, amount currency.Cents, cur currency.T
 	return r
 }
 
-// Headroom is how much more the reserve that took a restraint's share may still
-// withhold before it reaches the ceiling it declared. A reserve that declares
-// none has [Unlimited] headroom; one that has reached its ceiling has none.
-func Headroom(c *control.Control) currency.Cents {
-	if c == nil || !c.Bounded() {
-		return Unlimited
-	}
-	return currency.Cents(c.Headroom())
-}
-
 // Cap clamps what a restraint withholds to the headroom left under the reserve
 // that took it, and hands the cents it releases back to Allowed — so Held plus
 // Allowed is still the requested amount exactly.
@@ -149,19 +136,28 @@ func Headroom(c *control.Control) currency.Cents {
 // neither testable. A reserve with no ceiling is unchanged by this, so the
 // composition is safe to apply always and there is no branch to forget.
 //
+// The clamp itself is [reserve.Grant] and is not restated here: the judgement
+// applies it against [reserve.Headroom], a read that forecasts what a payout
+// would withhold, and the disbursement applies THE SAME FUNCTION against the
+// total the store holds inside its own transaction, which is the one that
+// decides. Two headrooms, one arithmetic — spelled twice they would be two
+// arithmetics, and a forecast that disagrees with the decision by a cent is a
+// payout a merchant cannot reconcile.
+//
 // A ceiling never loosens a BLOCK: a blocked move withholds everything by not
 // happening, which is not a reserve taking money and not something a ceiling
 // has any claim on.
 func Cap(r Restraint, headroom currency.Cents) Restraint {
-	if r.Blocked || r.Held <= 0 || headroom >= r.Held {
+	if r.Blocked || r.Held <= 0 {
 		return r
 	}
-	if headroom < 0 {
-		headroom = 0
+	granted := currency.Cents(reserve.Grant(int64(r.Held), int64(headroom)))
+	if granted == r.Held {
+		return r
 	}
 	amount := r.Held + r.Allowed
-	r.Held = headroom
-	r.Allowed = amount - headroom
+	r.Held = granted
+	r.Allowed = amount - granted
 	if r.Held == 0 {
 		// The ceiling is reached: this reserve withholds nothing further, so it
 		// is not the control that bore on this move and must not be recorded as

@@ -189,7 +189,7 @@ func SubscribeWithCard(c *zip.Ctx) error {
 	// guard store is unavailable OR two submits race — the definitive backstop.
 	squareKey := gatewayKey("subscribe", subject, guard)
 
-	rec, replay, gerr := idempotencykey.Begin(db, "billing-subscribe:"+subject+":"+req.StoreID, guard)
+	rec, replay, gerr := idempotencykey.Begin(db, idempotencykey.Guard{Scope: "billing-subscribe:" + subject + ":" + req.StoreID, Key: guard})
 	if gerr != nil {
 		// Guard store unavailable. Proceed WITHOUT the local guard: the stable Square
 		// idempotency key above still makes the CHARGE exactly-once at the processor,

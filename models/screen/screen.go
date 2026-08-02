@@ -55,10 +55,21 @@ type Screen struct {
 	Refusal string `json:"refusal,omitempty"`
 	Shadow  bool   `json:"shadow,omitempty"`
 
-	// Held is the exact minor units a reserve withheld from this move, and
-	// Allowed what remained. Both are zero on an inbound move.
+	// Held is the exact minor units a reserve WOULD withhold from this move, and
+	// Allowed what would remain. Both are zero on an inbound move.
+	//
+	// They are the JUDGEMENT, not the money. The money is withheld at the
+	// disbursement boundary, for this judgement's id, and what it actually took
+	// is in the reserve ledger — a screen answers a question and answering a
+	// question must not move money.
 	Held    int64 `json:"held,omitempty"`
 	Allowed int64 `json:"allowed,omitempty"`
+
+	// Reserve names the declaration whose rate took Held, when one bore on the
+	// move. It is what lets the disbursement withhold against the SAME reserve
+	// the judgement measured, without re-deriving it from the controls in force
+	// at a later moment — which is a different question with a different answer.
+	Reserve string `json:"reserve,omitempty"`
 
 	// Reference is the money object this judged — a payment intent, a payout, a
 	// dispute — so the record joins back to the books.
@@ -157,6 +168,19 @@ func Query(db *datastore.Datastore) datastore.Query {
 // dies of it is not the org that asked. A limit of zero used to mean "all";
 // it now means "the bound", and the difference is a whole class of outage.
 const Max = 200
+
+// Bytes is the most ONE row of this kind can weigh, so [Max] × Bytes is what a
+// single read can cost the process.
+//
+// A ROW CAP IS NOT A BOUND WHEN THE VALUES ARE THE CALLER'S. 200 rows of
+// unbounded strings is 200 times whatever a caller feels like sending. Every
+// string that reaches this row is bounded at the door instead — risk.Text for
+// each caller field, risk.Facts for the signals (15 × 256), risk.Hits for the
+// rule names (32 × 256), control.Max for the control ids — so the worst case is
+// a product of CONSTANTS. This is that product with room to spare, and
+// TestScreen_ARowCannotOutweighItsPublishedCeiling measures a real worst-case
+// row against it rather than trusting the arithmetic.
+const Bytes = 48 << 10
 
 // bound clamps a caller's limit into 1..Max.
 func bound(limit int) int {

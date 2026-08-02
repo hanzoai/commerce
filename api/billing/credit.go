@@ -145,7 +145,7 @@ func creditToDatastore(c *zip.Ctx, org, cur, reason, tag string, amountCents int
 	// verbatim (200); an in-flight key 409s.
 	var idemRec *idempotencykey.IdempotencyKey
 	if idemKey != "" {
-		rec, replay, gerr := idempotencykey.Begin(db, "billing-credit:"+subject, idemKey)
+		rec, replay, gerr := idempotencykey.Begin(db, idempotencykey.Guard{Scope: "billing-credit:" + subject, Key: idemKey})
 		if gerr != nil {
 			log.Error("credit idempotency Begin failed (org=%s): %v", subject, gerr, c)
 		} else if replay {

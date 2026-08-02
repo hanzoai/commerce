@@ -31,6 +31,7 @@ import (
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/models/control"
 	"github.com/hanzoai/commerce/models/outcome"
+	"github.com/hanzoai/commerce/models/reserve"
 	"github.com/hanzoai/commerce/models/screen"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
@@ -417,12 +418,13 @@ func riskControls(ctx context.Context, in *riskControlsIn) (*riskControlPage, er
 		return nil, err
 	}
 	now := time.Now()
+	held := reserve.Accounts(s.DB) // one read for the page, never one per row
 	out := &riskControlPage{Controls: []*riskControlOut{}}
 	for _, c := range control.All(s.DB, in.Limit) {
 		if in.Live && !c.Live(now) {
 			continue
 		}
-		out.Controls = append(out.Controls, controlView(c, now))
+		out.Controls = append(out.Controls, controlView(held[c.Ref()], c, now))
 	}
 	return out, nil
 }
@@ -460,7 +462,7 @@ func riskControlPlace(ctx context.Context, in *riskControlIn) (*riskControlOut, 
 	if err != nil {
 		return nil, badRequest(err)
 	}
-	return controlView(c, time.Now()), nil
+	return controlView(reserve.Held(s.DB, c), c, time.Now()), nil
 }
 
 // riskControlRelease lifts a control and RETURNS what it was holding: a reserve
@@ -481,13 +483,19 @@ func riskControlRelease(ctx context.Context, in *riskRef) (*riskControlOut, erro
 	if err != nil {
 		return nil, zip.ErrNotFound("control not found")
 	}
-	return controlView(c, time.Now()), nil
+	return controlView(reserve.Held(s.DB, c), c, time.Now()), nil
 }
 
-func controlView(c *control.Control, now time.Time) *riskControlOut {
+// controlView renders one declaration and what it is holding.
+//
+// The total is a VALUE the caller reads from the account, never a field on the
+// declaration: a balance on a row every op can touch is a balance every op can
+// move, which is why the field is not there to read. It is passed in rather
+// than fetched here so a page costs one read and not one per row.
+func controlView(held int64, c *control.Control, now time.Time) *riskControlOut {
 	out := &riskControlOut{
 		ID: c.Id(), Effect: c.Effect, SubjectKind: c.SubjectKind, Subject: c.Subject,
-		Rate: c.Rate, Cap: c.Cap, Currency: string(c.Currency), Held: c.Held,
+		Rate: c.Rate, Cap: c.Cap, Currency: string(c.Currency), Held: held,
 		Reason: c.Reason, By: c.By, Live: c.Live(now), Released: c.Released,
 		ReleasedBy: c.ReleasedBy,
 	}
@@ -580,7 +588,7 @@ func riskMerchant(ctx context.Context, in *riskMerchantIn) (*riskStandingOut, er
 	if err != nil {
 		return nil, badRequest(err)
 	}
-	return standingView(st), nil
+	return standingView(s.DB, st), nil
 }
 
 // riskReviewIn reviews one merchant now.
@@ -612,10 +620,10 @@ func riskMerchantReview(ctx context.Context, in *riskReviewIn) (*riskStandingOut
 	if err != nil {
 		return nil, badRequest(err)
 	}
-	return standingView(st), nil
+	return standingView(s.DB, st), nil
 }
 
-func standingView(st *risk.Standing) *riskStandingOut {
+func standingView(db *datastore.Datastore, st *risk.Standing) *riskStandingOut {
 	out := &riskStandingOut{
 		Subject: st.Subject.ID, Screens: st.Screens, Refused: st.Refused,
 		Disputes: st.Disputes, Lost: st.Lost, Refunds: st.Refunds,
@@ -627,8 +635,9 @@ func standingView(st *risk.Standing) *riskStandingOut {
 		Placed:   st.Placed,
 	}
 	now := time.Now()
+	held := reserve.Accounts(db) // one read for the page, never one per row
 	for _, c := range st.Controls {
-		out.Controls = append(out.Controls, controlView(c, now))
+		out.Controls = append(out.Controls, controlView(held[c.Ref()], c, now))
 	}
 	for _, e := range st.Ledger {
 		row := &riskReserveOut{
@@ -703,6 +712,13 @@ func riskOutcome(ctx context.Context, in *riskOutcomeIn) (*riskOutcomeOut, error
 	}
 	subject := risk.Subject{Kind: in.SubjectKind, ID: in.Subject}
 	if err := subject.Valid(); err != nil {
+		return nil, badRequest(err)
+	}
+	// An outcome is a durable row read back a page at a time, so every caller
+	// string on it is bounded by the SAME ceiling every other caller string on
+	// this plane is — see risk.Text.
+	if err := risk.Bound(in.Event, subject.Kind, subject.ID, in.Currency,
+		in.Screen, in.Reference, in.Note, in.Idem); err != nil {
 		return nil, badRequest(err)
 	}
 	if prior, ok := outcome.ByIdem(s.DB, in.Idem); ok {

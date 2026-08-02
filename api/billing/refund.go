@@ -105,7 +105,7 @@ func Refund(c *zip.Ctx) error {
 	// refused. Scoped to the subject; the datastore is already org-namespaced.
 	// Fail CLOSED (503) if the guard store is unreachable — a refund we cannot
 	// dedupe must not run.
-	rec, replay, gerr := idempotencykey.Begin(db, "billing-refund:"+req.User, req.OriginalTransactionID)
+	rec, replay, gerr := idempotencykey.Begin(db, idempotencykey.Guard{Scope: "billing-refund:" + req.User, Key: req.OriginalTransactionID})
 	if gerr != nil {
 		log.Error("refund idempotency Begin failed (user=%s, orig=%s): %v", req.User, req.OriginalTransactionID, gerr, c)
 		return http.Fail(c, 503, "refund temporarily unavailable; retry", gerr)

@@ -72,8 +72,15 @@ func RequireAdmin(c *zip.Ctx) bool {
 // mints X-User-IsOrgAdmin for a merchant admin. Reading only the first left a
 // real merchant admin 403'd behind cloud on gates whose stated bar is "org
 // admin" — the same authority, refused because of where the request entered.
-// iammiddleware.IsOrgAdmin carries the home==effective binding with it, so an
-// org-switched principal never inherits authority over a foreign tenant.
+//
+// IT ASKS iammiddleware.IsOrgAdmin AND NOTHING ELSE for clause 3, because that
+// is the answer that CARRIES THE HOME==EFFECTIVE BINDING: IAMTokenRequired
+// resolves both spellings once, against the org the request actually acts in,
+// and records the bound result. Reading claims.IsAdmin again here re-derived
+// the same authority from a raw header with no tenant in it — so a principal
+// whose org-admin flag is for its HOME org inherited authority over a FOREIGN
+// one, three lines under a doc claiming the opposite. A money boundary must not
+// delegate its own tenant check, and this one no longer has a way to.
 func IsAdmin(c *zip.Ctx) bool {
 	if v := c.Locals("permissions"); v != nil {
 		if f, ok := v.(bit.Field); ok && f.Has(permission.Admin) {
@@ -86,6 +93,5 @@ func IsAdmin(c *zip.Ctx) bool {
 	if iammiddleware.IsOrgAdmin(c) {
 		return true
 	}
-	claims := iammiddleware.GetIAMClaims(c) // non-nil by contract
-	return claims.IsAdmin || claims.IsSuperAdmin()
+	return iammiddleware.GetIAMClaims(c).IsSuperAdmin() // non-nil by contract
 }

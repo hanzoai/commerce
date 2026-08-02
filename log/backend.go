@@ -1,7 +1,6 @@
 package log
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"os"
@@ -22,14 +21,16 @@ const (
 	LevelCritical
 )
 
-// Custom logger backend that writes to stdout/stderr
+// Backend writes log lines to stdout/stderr.
+//
+// It holds NO per-call state. It used to carry the current request's context,
+// URI and error, written by every log call on the one shared logger — a data
+// race, and a line about one request wearing another's URI. Nothing ever read
+// them back; per-call facts now travel with the call ([call]).
 type Backend struct {
-	context    context.Context
-	error      error
-	requestURI string
-	verbose    bool
-	logger     *log.Logger
-	errLogger  *log.Logger
+	verbose   bool
+	logger    *log.Logger
+	errLogger *log.Logger
 }
 
 func (b Backend) Verbose() bool {
@@ -37,9 +38,8 @@ func (b Backend) Verbose() bool {
 }
 
 // NewBackend creates a new logging backend
-func NewBackend(ctx context.Context) *Backend {
+func NewBackend() *Backend {
 	return &Backend{
-		context:   ctx,
 		verbose:   config.IsDevelopment,
 		logger:    log.New(os.Stdout, "", log.LstdFlags),
 		errLogger: log.New(os.Stderr, "", log.LstdFlags),

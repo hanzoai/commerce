@@ -2,9 +2,9 @@ package idempotencykey
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/util/nscontext"
@@ -15,12 +15,13 @@ func nsDB(parent context.Context, ns string) *datastore.Datastore {
 	return datastore.New(nscontext.WithNamespace(parent, ns))
 }
 
-func TestBegin_FirstThenReplay(t *testing.T) {
+func TestGuard_FirstThenReplay(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
 	db := nsDB(c, "acme")
 
-	rec, replay, err := Begin(db, "refund:ord_1", "key_abc")
+	g := Guard{Scope: "refund:ord_1", Key: "key_abc"}
+	rec, replay, err := Begin(db, g)
 	if err != nil {
 		t.Fatalf("begin: %v", err)
 	}
@@ -37,7 +38,7 @@ func TestBegin_FirstThenReplay(t *testing.T) {
 	}
 
 	// A replay returns the stored completed record + response.
-	rec2, replay2, err := Begin(db, "refund:ord_1", "key_abc")
+	rec2, replay2, err := Begin(db, g)
 	if err != nil {
 		t.Fatalf("begin replay: %v", err)
 	}
@@ -52,36 +53,60 @@ func TestBegin_FirstThenReplay(t *testing.T) {
 	}
 }
 
-func TestBegin_DifferentScopeSameKeyNoCollision(t *testing.T) {
+func TestGuard_DifferentScopeSameKeyNoCollision(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
 	db := nsDB(c, "acme")
 
-	_, replayA, _ := Begin(db, "refund:ord_1", "same_key")
-	_, replayB, _ := Begin(db, "refund:ord_2", "same_key") // different scope
+	_, replayA, _ := Begin(db, Guard{Scope: "refund:ord_1", Key: "same_key"})
+	_, replayB, _ := Begin(db, Guard{Scope: "refund:ord_2", Key: "same_key"})
 	if replayA || replayB {
 		t.Fatalf("distinct scopes collided: A=%v B=%v", replayA, replayB)
 	}
 }
 
-// TestBegin_ConcurrentSameKey proves the deterministic id collapses concurrent
-// first-time Begins to a SINGLE stored record (the ledger never forks), even
-// though the read-then-write may let more than one caller see "not started".
-func TestBegin_ConcurrentSameKey(t *testing.T) {
+// TestGuard_ConcurrentSameKeyHasExactlyOneWinner is the property the whole
+// package exists for, and the one a read-then-write cannot provide.
+//
+// N callers race on a first-ever key. The store's own claim decides, so EXACTLY
+// ONE is told to perform the side effect; every other is told the key is taken.
+// Before the claim, all N could observe "not started" and all N could move
+// money — one record in the store, N disbursements in the world.
+func TestGuard_ConcurrentSameKeyHasExactlyOneWinner(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
 
 	const n = 20
-	var wg sync.WaitGroup
+	var (
+		wg      sync.WaitGroup
+		mu      sync.Mutex
+		winners int
+		fails   []error
+	)
 	wg.Add(n)
 	for i := 0; i < n; i++ {
 		go func() {
 			defer wg.Done()
 			db := nsDB(c, "acme")
-			_, _, _ = Begin(db, "refund:ord_race", "race_key")
+			_, replay, err := Begin(db, Guard{Scope: "refund:ord_race", Key: "race_key"})
+			mu.Lock()
+			defer mu.Unlock()
+			switch {
+			case err != nil:
+				fails = append(fails, err)
+			case !replay:
+				winners++
+			}
 		}()
 	}
 	wg.Wait()
+
+	if len(fails) > 0 {
+		t.Fatalf("%d of %d claims errored: %v", len(fails), n, fails[0])
+	}
+	if winners != 1 {
+		t.Fatalf("%d of %d concurrent callers were told to move the money; want exactly 1", winners, n)
+	}
 
 	db := nsDB(c, "acme")
 	recs := make([]*IdempotencyKey, 0, n)
@@ -89,21 +114,20 @@ func TestBegin_ConcurrentSameKey(t *testing.T) {
 		t.Fatalf("query: %v", err)
 	}
 	if len(recs) != 1 {
-		t.Fatalf("concurrent Begin created %d records; want 1 (deterministic id must collapse them)", len(recs))
+		t.Fatalf("concurrent Begin created %d records; want 1", len(recs))
 	}
 }
 
-func TestBegin_TenantIsolation(t *testing.T) {
+func TestGuard_TenantIsolation(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
 
-	acme := nsDB(c, "acme")
-	_, _, _ = Begin(acme, "refund:ord_1", "shared")
-	rec, _ := New(acme), 0
-	_ = rec
+	g := Guard{Scope: "refund:ord_1", Key: "shared"}
+	if _, _, err := Begin(nsDB(c, "acme"), g); err != nil {
+		t.Fatalf("acme begin: %v", err)
+	}
 	// Same scope+key in beta is a DIFFERENT record (namespace-scoped id column).
-	beta := nsDB(c, "beta")
-	_, replay, err := Begin(beta, "refund:ord_1", "shared")
+	_, replay, err := Begin(nsDB(c, "beta"), g)
 	if err != nil {
 		t.Fatalf("beta begin: %v", err)
 	}
@@ -112,66 +136,98 @@ func TestBegin_TenantIsolation(t *testing.T) {
 	}
 }
 
-// TestBegin_FreshStartedIsInFlight proves a not-yet-completed guard that is
-// still fresh reports replay=true (in-flight) so the caller fails closed (409)
-// rather than running a second concurrent money move.
-func TestBegin_FreshStartedIsInFlight(t *testing.T) {
+// TestGuard_AStartedGuardIsNeverReclaimed — the money rule. A guard whose
+// operation started and never completed does NOT know whether the money moved,
+// so the retry is refused rather than run: a retry costs a retry, and running
+// costs a duplicate disbursement. There is no clock that makes that safe.
+func TestGuard_AStartedGuardIsNeverReclaimed(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
 	db := nsDB(c, "acme")
 
-	rec, replay, err := Begin(db, "refund:ord_x", "k")
-	if err != nil || replay {
+	g := Guard{Scope: "refund:ord_x", Key: "k"}
+	if _, replay, err := Begin(db, g); err != nil || replay {
 		t.Fatalf("first begin: err=%v replay=%v", err, replay)
 	}
-	if rec.Recoverable() {
-		t.Fatal("a just-created started guard must NOT be recoverable")
-	}
-
-	// Second Begin while still fresh + not completed → in-flight replay.
-	_, replay2, err := Begin(db, "refund:ord_x", "k")
-	if err != nil {
-		t.Fatalf("second begin: %v", err)
-	}
-	if !replay2 {
-		t.Fatal("fresh started guard: second Begin must report replay=true (in-flight)")
+	for i := 0; i < 3; i++ {
+		if _, replay, err := Begin(db, g); err != nil || !replay {
+			t.Fatalf("attempt %d: a started guard let a second caller through (replay=%v err=%v)", i, replay, err)
+		}
 	}
 }
 
-// TestBegin_StaleStartedRecovers proves a crashed (stale, never-completed) guard
-// is re-claimed so a retry can proceed — the money move's deterministic gateway
-// key makes the retry safe. Uses the nowFn clock seam to simulate elapsed time.
-func TestBegin_StaleStartedRecovers(t *testing.T) {
+// TestGuard_AnAbandonedGuardIsFree — the ONE way a key becomes available again:
+// the operation itself establishes that nothing happened and releases it. That
+// is what keeps a refusal from wedging a merchant, without a timer that would
+// let an unknown outcome be retried.
+func TestGuard_AnAbandonedGuardIsFree(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
 	db := nsDB(c, "acme")
 
-	if _, replay, err := Begin(db, "refund:ord_y", "k"); err != nil || replay {
-		t.Fatalf("seed started guard: err=%v replay=%v", err, replay)
+	g := Guard{Scope: "payout:ba_1", Key: "k"}
+	rec, replay, err := Begin(db, g)
+	if err != nil || replay {
+		t.Fatalf("first begin: err=%v replay=%v", err, replay)
+	}
+	if err := rec.Delete(); err != nil {
+		t.Fatalf("abandon: %v", err)
 	}
 
-	// Jump the clock past StartedTTL — the guard now looks crashed.
-	orig := nowFn
-	nowFn = func() time.Time { return orig().Add(StartedTTL + time.Minute) }
-	defer func() { nowFn = orig }()
-
-	rec, replay, err := Begin(db, "refund:ord_y", "k")
+	again, replay, err := Begin(db, g)
 	if err != nil {
-		t.Fatalf("recover begin: %v", err)
+		t.Fatalf("begin after abandon: %v", err)
 	}
 	if replay {
-		t.Fatal("stale started guard must be RE-CLAIMED (replay=false) so the caller can retry, not stuck at 409 forever")
+		t.Fatal("an abandoned guard stayed taken — the key is wedged for good")
 	}
-	if rec.Status != StatusStarted {
-		t.Fatalf("re-claimed guard status = %q, want started", rec.Status)
+	if err := Complete(again, `{"ok":true}`); err != nil {
+		t.Fatalf("complete after re-claim: %v", err)
+	}
+	got, replay, _ := Begin(db, g)
+	if !replay || got.Response != `{"ok":true}` {
+		t.Fatalf("post-reclaim replay: replay=%v resp=%q", replay, got.Response)
+	}
+}
+
+// TestGuard_ADifferentRequestUnderOneKeyIsRefused — a key names ONE question.
+// Answering a second question with the first one's answer is how a caller asks
+// for a $10,000 payout and is told "created" with a $1 receipt.
+func TestGuard_ADifferentRequestUnderOneKeyIsRefused(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := nsDB(c, "acme")
+
+	small := Guard{Scope: "payout:ba_1", Key: "same", Digest: "amount=100"}
+	large := Guard{Scope: "payout:ba_1", Key: "same", Digest: "amount=1000000"}
+
+	first, replay, err := Begin(db, small)
+	if err != nil || replay {
+		t.Fatalf("first: err=%v replay=%v", err, replay)
+	}
+	if err := Complete(first, `{"amount":100}`); err != nil {
+		t.Fatalf("complete: %v", err)
 	}
 
-	// Completing it now works and future replays return the response.
-	if err := Complete(rec, `{"ok":true}`); err != nil {
-		t.Fatalf("complete after recovery: %v", err)
+	if _, _, err := Begin(db, large); !errors.Is(err, ErrConflict) {
+		t.Fatalf("one key for a different request returned %v; want ErrConflict", err)
 	}
-	got, replay3, _ := Begin(db, "refund:ord_y", "k")
-	if !replay3 || got.Status != StatusCompleted || got.Response != `{"ok":true}` {
-		t.Fatalf("post-recovery replay: replay=%v status=%q resp=%q", replay3, got.Status, got.Response)
+	// The SAME request still replays.
+	if _, replay, err := Begin(db, small); err != nil || !replay {
+		t.Fatalf("the same request stopped replaying: err=%v replay=%v", err, replay)
+	}
+}
+
+// TestGuard_ADigestIsNotPartOfTheKey — if it were, a retry of the same request
+// would mint a NEW guard and the money would move twice, which is the exact
+// opposite of what the digest is for.
+func TestGuard_ADigestIsNotPartOfTheKey(t *testing.T) {
+	plain := Guard{Scope: "s", Key: "k"}
+	digested := Guard{Scope: "s", Key: "k", Digest: "d"}
+	if plain.ID() != digested.ID() {
+		t.Fatalf("the digest changed the guard's identity: %s != %s", plain.ID(), digested.ID())
+	}
+	if (Guard{Scope: "s", Key: "other"}).ID() == plain.ID() {
+		t.Fatal("two different keys share one guard row")
 	}
 }

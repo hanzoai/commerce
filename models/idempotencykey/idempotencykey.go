@@ -1,37 +1,38 @@
-// Package idempotencykey is a reusable idempotency guard for money-moving HTTP
-// requests (refunds, captures, payouts). It stores one record per
-// (scope, key) whose STORAGE id is deterministic, so a duplicate submit
-// collapses onto the same row via the backend ON CONFLICT(id, kind, namespace)
-// upsert — independent of datastore.RunInTransaction, which is a no-op on this
-// backend and provides no isolation.
+// Package idempotencykey is the guard on a money-moving request: refunds,
+// captures, payouts, charges.
+//
+// One record per [Guard], whose STORAGE id is derived from the guard, so the
+// key names a row rather than merely labelling one.
+//
+// IT IS A CLAIM, NOT A READ-THEN-WRITE. [Begin] takes the row with one store
+// statement that succeeds for exactly one caller ([datastore.Datastore.Claim]),
+// because the alternative — read, decide, write — lets two concurrent callers
+// both observe "not started" and both move money, which is the duplicate
+// disbursement this package exists to prevent. The winner performs the side
+// effect; every other caller is told the key is taken and replays or refuses.
 //
 // Lifecycle of a guarded operation:
 //
-//	rec, replay, err := idempotencykey.Begin(db, scope, key)
-//	  replay == true  ⇒ this exact request already ran; return rec.Response,
-//	                    do NOT move money again.
-//	  replay == false ⇒ we recorded the in-flight marker first; perform the
-//	                    side effect, then idempotencykey.Complete(rec, response).
+//	rec, replay, err := idempotencykey.Begin(db, idempotencykey.Guard{...})
+//	  replay == true  ⇒ this key is already taken; return rec.Response when
+//	                    Status==completed, else refuse — do NOT move money.
+//	  replay == false ⇒ we own it; perform the side effect, then
+//	                    idempotencykey.Complete(rec, response).
+//	  err == ErrConflict ⇒ the key was used for a DIFFERENT request.
 //
-// LIMITATION (documented, not hidden): Begin uses read-then-write, and this
-// backend has no atomic compare-and-swap reachable from mixin.Model[T]
-// (db.SQLiteDB.RunInTransaction is real but the datastore layer routes to the
-// no-op datastore.RunInTransaction). So two callers racing on a FIRST-EVER key
-// can both observe "not started" and both proceed. The deterministic id still
-// guarantees a single STORED record (the second Create upserts), but the side
-// effect could run twice in that narrow window. Callers whose side effect is
-// itself non-idempotent (e.g. a raw gateway refund) MUST additionally pass the
-// SAME key through to the gateway (Stripe/Square both honor an idempotency key)
-// so the gateway de-dups the money move. This guard de-dups OUR ledger and
-// replays OUR response; the gateway key closes the money-move window. See
-// api/checkout refund for the wired example.
+// A GUARD IS NEVER RECLAIMED ON A TIMER. An operation that crashed between
+// [Begin] and [Complete] leaves a started guard, and a started guard refuses
+// the retry: we do not know whether the money moved, and a retry that "assumes
+// it did not" is a second disbursement. The refusal is loud (the caller gets a
+// conflict, not a silent replay) and it is reversible by the operation itself —
+// a caller that establishes NOTHING happened releases the guard by deleting it,
+// which is the one legitimate way a key becomes free again.
 package idempotencykey
 
 import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"time"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
@@ -42,29 +43,49 @@ func init() {
 	orm.Register[IdempotencyKey]("idempotency-key", orm.WithStringKey[IdempotencyKey]())
 }
 
-// nowFn is the clock, a seam so tests can simulate elapsed time for the
-// stale-guard recovery path without sleeping.
-var nowFn = time.Now
-
 // Status values.
 const (
 	StatusStarted   = "started"
 	StatusCompleted = "completed"
 )
 
-// StartedTTL bounds how long a "started" guard is treated as a live in-flight
-// operation. A money op (refund/capture) completes in seconds; a "started" guard
-// older than this is presumed CRASHED (the process died between Begin and
-// Complete) and is recoverable — Begin re-claims it and lets the caller retry.
-// This is only safe because the guarded money move ALSO carries the same
-// deterministic gateway idempotency key, so the gateway de-dupes the retry (no
-// double charge). Without that gateway key a stale guard must stay fail-closed.
-const StartedTTL = 5 * time.Minute
+// ErrConflict refuses a key that was already used for a DIFFERENT request.
+//
+// A key names ONE question. Answering a second question with the first one's
+// answer is how a caller asks for a $10,000 payout and is told "created" with
+// the receipt for a $1 one — so a request whose digest does not match the
+// guard's is a caller mistake and is named as one, at every door, the same way.
+var ErrConflict = errors.New("idempotencykey: this key was used for a different request")
 
-// IdempotencyKey records one guarded request. Scope namespaces the key to a
-// resource kind + id (e.g. "refund:ord_123") so the same key under different
-// scopes never collides. Response holds the JSON body returned on first success
-// so a replay returns byte-identical output.
+// Guard names one guarded request.
+//
+// It is a VALUE and not three positional strings because the third one is
+// OPTIONAL and changes what the guard means: with a digest the guard also
+// answers "is this the same request?", and a digest that ends up in the key
+// field would silently turn every retry into a new operation.
+type Guard struct {
+	// Scope namespaces the key to a resource kind and id ("refund:ord_123"), so
+	// one key under two scopes never collides.
+	Scope string
+	// Key is the caller's idempotency key.
+	Key string
+	// Digest is a stable fingerprint of the REQUEST this key answers. When it is
+	// set, a later request under the same key whose digest differs is refused
+	// with [ErrConflict] instead of replaying the first request's answer. Empty
+	// means the guard only de-dups and does not compare.
+	Digest string
+}
+
+// ID is the stable storage id for this guard. Same guard → same id → the claim
+// is a race between callers for one row.
+//
+// The digest is deliberately NOT in it: the id must be the same for a retry of
+// the same key so the second caller FINDS the first's row and can be refused,
+// which is exactly what a digest in the id would prevent.
+func (g Guard) ID() string { return DeterministicID(g.Scope, g.Key) }
+
+// IdempotencyKey records one guarded request. Response holds the JSON body
+// returned on first success so a replay returns byte-identical output.
 type IdempotencyKey struct {
 	mixin.Model[IdempotencyKey]
 
@@ -72,7 +93,10 @@ type IdempotencyKey struct {
 	// IdemKey is the caller idempotency key. Named IdemKey (not Key) because a
 	// field named Key would shadow the embedded Model[T].Key() method and break
 	// the mixin.Entity interface. JSON stays "key" for the API.
-	IdemKey  string `json:"key"`
+	IdemKey string `json:"key"`
+	// Digest is the fingerprint of the request this guard was taken for. It is
+	// what makes the key mean "the same request" rather than "the same string".
+	Digest   string `json:"digest,omitempty"`
 	Status   string `json:"status" orm:"default:started"`
 	Response string `json:"response,omitempty" datastore:",noindex"`
 
@@ -89,69 +113,58 @@ func (k *IdempotencyKey) Save() ([]datastore.Property, error) {
 	return datastore.SaveStruct(k)
 }
 
-// Begin looks up (or records) the guard for (scope, key).
+// Begin CLAIMS the guard for g.
 //
-// Returns replay=true with the stored record when the key was already seen
-// (whether still in-flight or completed) — the caller must NOT repeat the side
-// effect and should return rec.Response if Status==completed. Returns
-// replay=false with a freshly-created "started" marker when this is the first
-// sighting; the caller performs the side effect then calls Complete.
-func Begin(db *datastore.Datastore, scope, key string) (rec *IdempotencyKey, replay bool, err error) {
-	id := DeterministicID(scope, key)
-
-	// Replay: the guard for this (scope,key) already exists. Its STORAGE id is
-	// deterministic, so concurrent first-time Begins collapse onto ONE row via
-	// the backend ON CONFLICT(id,kind,namespace) upsert — no ledger fork.
-	//
-	// Read it by its EXACT storage key (kind + deterministic id + namespace). Do
-	// NOT route this read through GetById: GetById decodes the id as a hashid,
-	// and a deterministic NON-hashid string ("idem_<hex>") decodes to a KIND-LESS
-	// key. The production Postgres backend's Get requires an exact kind match
-	// (db/postgres.go), so a kind-less lookup never finds the row this guard just
-	// wrote under kind "idempotency-key" — every retry then looks brand-new and
-	// the money move runs AGAIN (double charge). SQLite's Get has a kind-less
-	// fallback (db/sqlite.go), which is the ONLY reason this passed in tests and
-	// bit solely in production. A kind-qualified Get round-trips on both backends.
-	existing := New(db)
-	guardKey := db.NewKey(existing.Kind(), id, 0, nil)
-	if e := existing.Get(guardKey); e == nil {
-		// Completed → always a replay (return the stored response).
-		if existing.Status == StatusCompleted {
-			return existing, true, nil
-		}
-		// Started + FRESH → a genuine concurrent in-flight op. Replay (caller
-		// 409s) — do not run a second money move alongside it.
-		if !existing.Recoverable() {
-			return existing, true, nil
-		}
-		// Started + STALE → the original crashed between Begin and Complete.
-		// Re-claim (Put bumps UpdatedAt) and let the caller RETRY: the money
-		// move carries the same deterministic gateway key, so the gateway
-		// de-dupes if the original had in fact reached it. Fail-safe recovery
-		// of an otherwise-stuck guard.
-		existing.SetId(id)
-		existing.Status = StatusStarted
-		if e := existing.Put(); e != nil {
-			return nil, false, e
-		}
-		return existing, false, nil
-	} else if !errors.Is(e, datastore.ErrNoSuchEntity) {
-		return nil, false, e
-	}
+// Returns replay=false with the record when this caller now owns the key: it
+// performs the side effect and calls [Complete]. Returns replay=true with the
+// stored record when the key is already taken — completed (return
+// rec.Response) or still started (refuse; the first attempt's outcome is not
+// known). Returns [ErrConflict] when the key is held for a different request.
+//
+// The claim reads the row back by its EXACT storage key (kind + deterministic
+// id + namespace). It does NOT route that read through GetById: GetById decodes
+// the id as a hashid, and a deterministic NON-hashid string ("idem_<hex>")
+// decodes to a KIND-LESS key. The production Postgres backend's Get requires an
+// exact kind match (db/postgres.go), so a kind-less lookup never finds the row
+// this guard just wrote under kind "idempotency-key" — every retry then looks
+// brand-new and the money move runs AGAIN. SQLite's Get has a kind-less
+// fallback (db/sqlite.go), which is the ONLY reason this passed in tests and
+// bit solely in production. A kind-qualified Get round-trips on both backends.
+func Begin(db *datastore.Datastore, g Guard) (rec *IdempotencyKey, replay bool, err error) {
+	id := g.ID()
 
 	rec = New(db)
 	rec.SetId(id)
-	rec.Scope = scope
-	rec.IdemKey = key
+	rec.Scope = g.Scope
+	rec.IdemKey = g.Key
+	rec.Digest = g.Digest
 	rec.Status = StatusStarted
-	if e := rec.Create(); e != nil {
+
+	mine, e := rec.Claim()
+	if e != nil {
 		return nil, false, e
 	}
-	return rec, false, nil
+	if mine {
+		return rec, false, nil
+	}
+
+	existing := New(db)
+	if e := existing.Get(db.NewKey(existing.Kind(), id, 0, nil)); e != nil {
+		// The claim said someone holds the key and the read cannot say who. That
+		// is exactly the state in which proceeding costs a duplicate
+		// disbursement, so it is an error and never a first attempt.
+		if errors.Is(e, datastore.ErrNoSuchEntity) {
+			return nil, false, errors.New("idempotencykey: the guard is held by a record that cannot be read")
+		}
+		return nil, false, e
+	}
+	if g.Digest != "" && existing.Digest != "" && existing.Digest != g.Digest {
+		return existing, true, ErrConflict
+	}
+	return existing, true, nil
 }
 
-// DeterministicID derives the stable storage id for a (scope, key) pair. Same
-// inputs → same id → the second concurrent Create upserts onto the first's row.
+// DeterministicID derives the stable storage id for a (scope, key) pair.
 func DeterministicID(scope, key string) string {
 	sum := sha256.Sum256([]byte(scope + "\x00" + key))
 	return "idem_" + hex.EncodeToString(sum[:16])
@@ -180,12 +193,4 @@ func New(db *datastore.Datastore) *IdempotencyKey {
 // Query returns a query for this kind, scoped to db's namespace.
 func Query(db *datastore.Datastore) datastore.Query {
 	return db.Query("idempotency-key")
-}
-
-// Recoverable reports whether a "started" guard is stale enough to presume its
-// originator crashed — i.e. safe to re-claim and retry. A completed guard is
-// never recoverable (it's a replay); a fresh started guard is a live in-flight
-// op (fail-closed, caller 409s).
-func (k *IdempotencyKey) Recoverable() bool {
-	return k.Status == StatusStarted && nowFn().Sub(k.UpdatedAt) >= StartedTTL
 }

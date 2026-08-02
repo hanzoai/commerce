@@ -233,6 +233,46 @@ func (b *Model[T]) Put() error {
 	return err
 }
 
+// Claim writes this entity ONLY IF nothing live holds its key, and reports
+// whether this caller now owns the row.
+//
+// It is [Model.Put]'s mutual-exclusion sibling and does everything Put does
+// except overwrite: the Save hook, the timestamps and the underscore-field
+// serialization are the same, so a claimed row and a put row are the same
+// bytes. Put is how you write what you own; Claim is how you find out whether
+// you own it — which an upsert cannot tell you, and which is the whole
+// difference between an idempotency guard and a race.
+//
+// The entity MUST already carry the id it is claiming: a claim on an allocated
+// key is a claim on a name nobody else could have asked for, which is not a
+// claim at all.
+func (b *Model[T]) Claim() (bool, error) {
+	if b.ds == nil {
+		return false, fmt.Errorf("mixin: claim needs a datastore")
+	}
+	if b.Model.Id_ == "" {
+		return false, fmt.Errorf("mixin: claim needs the id it is claiming")
+	}
+	b.callSave()
+	now := time.Now()
+	if b.Model.CreatedAt.IsZero() {
+		b.Model.CreatedAt = now
+	}
+	b.Model.UpdatedAt = now
+	if err := orm.SerializeFields(b.self()); err != nil {
+		return false, fmt.Errorf("mixin: serialize: %w", err)
+	}
+	// Materialize the key through the model, exactly as Put does. It is not
+	// tidiness: orm.Model.DeleteCtx reads the CACHED key field and not Key(), so
+	// an entity that only ever carried an id — which is every claimed row —
+	// nil-dereferences the moment anyone releases it.
+	key := OrmKeyToDS(b.Model.Key())
+	if key == nil {
+		return false, fmt.Errorf("mixin: claim could not name %s/%s", b.Model.Kind(), b.Model.Id_)
+	}
+	return b.ds.Claim(key, b.self())
+}
+
 func (b *Model[T]) Create() error {
 	b.callSave()
 	b.ensureKey()

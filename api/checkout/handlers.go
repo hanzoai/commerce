@@ -197,7 +197,7 @@ func Refund(c *zip.Ctx) error {
 	idemKey := strings.TrimSpace(c.Header("X-Idempotency-Key"))
 	if idemKey != "" {
 		scope := "refund:" + ord.Id()
-		rec, replay, gerr := idempotencykey.Begin(db, scope, idemKey)
+		rec, replay, gerr := idempotencykey.Begin(db, idempotencykey.Guard{Scope: scope, Key: idemKey})
 		if gerr != nil {
 			return http.Fail(c, 500, "idempotency guard failed", gerr)
 		}

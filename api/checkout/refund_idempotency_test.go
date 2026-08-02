@@ -64,7 +64,7 @@ func TestRefund_Idempotency_ReplayReturnsStored(t *testing.T) {
 	// Pre-record a COMPLETED refund guard for this order + key, with a sentinel
 	// response body — as if a first refund already succeeded.
 	scope := "refund:" + ord.Id()
-	rec, replay, err := idempotencykey.Begin(db, scope, "refund_key_1")
+	rec, replay, err := idempotencykey.Begin(db, idempotencykey.Guard{Scope: scope, Key: "refund_key_1"})
 	if err != nil || replay {
 		t.Fatalf("seed guard begin: err=%v replay=%v", err, replay)
 	}
@@ -123,7 +123,7 @@ func TestRefund_Idempotency_InFlightRejected(t *testing.T) {
 
 	// Start (but do NOT complete) a guard — simulating an in-flight refund.
 	scope := "refund:" + ord.Id()
-	if _, replay, err := idempotencykey.Begin(db, scope, "inflight_key"); err != nil || replay {
+	if _, replay, err := idempotencykey.Begin(db, idempotencykey.Guard{Scope: scope, Key: "inflight_key"}); err != nil || replay {
 		t.Fatalf("seed in-flight guard: err=%v replay=%v", err, replay)
 	}
 

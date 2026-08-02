@@ -68,6 +68,16 @@ func (d tenantDB) Put(ctx context.Context, key Key, src interface{}) (Key, error
 	return out, err
 }
 
+func (d tenantDB) Claim(ctx context.Context, key Key, src interface{}) (bool, error) {
+	var mine bool
+	err := d.do(ctx, func(db DB) error {
+		var e error
+		mine, e = db.Claim(ctx, key, src)
+		return e
+	})
+	return mine, err
+}
+
 func (d tenantDB) Delete(ctx context.Context, key Key) error {
 	return d.do(ctx, func(db DB) error { return db.Delete(ctx, key) })
 }

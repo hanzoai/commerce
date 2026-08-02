@@ -282,7 +282,7 @@ func TestPayout_AGuardOutageRefusesRatherThanPayingTwice(t *testing.T) {
 	risk.Set(answers{})
 
 	restore := idemBegin
-	idemBegin = func(*datastore.Datastore, string, string) (*idempotencykey.IdempotencyKey, bool, error) {
+	idemBegin = func(*datastore.Datastore, idempotencykey.Guard) (*idempotencykey.IdempotencyKey, bool, error) {
 		return nil, false, errors.New("guard store unavailable")
 	}
 	defer func() { idemBegin = restore }()

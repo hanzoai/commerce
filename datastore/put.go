@@ -55,6 +55,24 @@ func (d *Datastore) Put(keyOrKind interface{}, val interface{}) (*key.DatastoreK
 	return dskey, nil
 }
 
+// Claim writes val at key ONLY IF nothing live is there, and reports whether
+// this caller now owns it. It is the store's mutual exclusion — see [db.DB]'s
+// Claim for why an upsert is not a guard.
+//
+// It carries the same mint gate Put does: a claim is a write, and the one place
+// the mint invariant lives must not have a second door beside it.
+func (d *Datastore) Claim(keyOrKind interface{}, val interface{}) (bool, error) {
+	if d.database == nil {
+		return false, errors.New("datastore: database not initialized")
+	}
+	if err := mintauth.Enforce(d.Context, val); err != nil {
+		d.warn("Refused unauthorized mint (%v, %#v): %v", convertKeyOrKind(d, keyOrKind), val, err, d.Context)
+		return false, err
+	}
+	dskey := convertKeyOrKind(d, keyOrKind)
+	return d.database.Claim(d.Context, dskey.ToDBKey(d.database), val)
+}
+
 // Keys may be either either []datastore.Key or []*key.DatastoreKey, vals expected in typical format
 func (d *Datastore) PutMulti(keys interface{}, vals interface{}) ([]*key.DatastoreKey, error) {
 	if d.database == nil {

@@ -221,9 +221,13 @@ func TestScreen_ARepeatWithNothingChangedCostsNoScoringHopAndNoSecondRow(t *test
 	}
 }
 
-// TestScreen_ARepeatDoesNotWithholdTwice — a repeat moves no money, so the
-// reserve ledger must not record a second hold for it. A ledger that
-// double-posts under retry is worse than no ledger.
+// TestScreen_ARepeatDoesNotWithholdTwice — one move retried three times is one
+// move, so the reserve takes its share once: one ledger entry and one account
+// total. A ledger that double-posts under retry is worse than no ledger.
+//
+// The retry is the WHOLE money path — judge and disburse — because that is what
+// a client retry actually re-runs, and the two layers have to agree about how
+// many times one move happened.
 func TestScreen_ARepeatDoesNotWithholdTwice(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -237,8 +241,12 @@ func TestScreen_ARepeatDoesNotWithholdTwice(t *testing.T) {
 	move := Move{Stage: Payout, Subject: subject, Amount: 400, Currency: currency.USD, Out: true, Idem: "pay-5"}
 
 	for i := 0; i < 3; i++ {
-		if _, err := s.Screen(context.Background(), move); err != nil {
+		rec, err := s.Screen(context.Background(), move)
+		if err != nil {
 			t.Fatalf("attempt %d: %v", i, err)
+		}
+		if _, held, err := s.Withhold(rec); err != nil || held != 100 {
+			t.Fatalf("attempt %d: withheld %d (%v), want 100", i, held, err)
 		}
 	}
 	rows := reserve.For(s.DB, subject.Kind, subject.ID, 0)
@@ -248,12 +256,8 @@ func TestScreen_ARepeatDoesNotWithholdTwice(t *testing.T) {
 	if rows[0].Held != 100 {
 		t.Fatalf("ledger held=%d, want the 100 the 25%% reserve took of 400", rows[0].Held)
 	}
-	fresh := control.New(s.DB)
-	if err := fresh.GetById(c.Id()); err != nil {
-		t.Fatalf("reload the control: %v", err)
-	}
-	if fresh.Held != 100 {
-		t.Fatalf("the reserve's running total is %d after one move retried three times, want 100", fresh.Held)
+	if got := reserve.Held(s.DB, c); got != 100 {
+		t.Fatalf("the reserve holds %d after one move retried three times, want 100", got)
 	}
 }
 

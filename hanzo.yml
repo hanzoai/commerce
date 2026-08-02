@@ -53,18 +53,26 @@ images:
 # plans/*.json via go:embed), GOPRIVATE + GOWORK=off resolve private hanzoai/*
 # modules via direct authenticated git (same contract the image build uses).
 test:
+  # GOTAGS is the ONE build-tag set every Go stanza below uses. hanzoai/base
+  # makes a cgo build without sqlite_math_functions a COMPILE ERROR on purpose
+  # (base/core/sqlite_math_required.go), so any stanza that enables cgo and
+  # omits the tag fails to build the dependency rather than testing this repo.
+  # `go vet ./...` runs with cgo enabled wherever a C compiler is present, which
+  # is every real runner — so it carries the tag too.
   - name: go-vet
     run: |
       set -e
       export GOPRIVATE='github.com/hanzoai/*' GOWORK=off
+      export GOTAGS=sqlite_math_functions
       sh scripts/fetch-plans.sh
-      go vet ./...
+      go vet -tags "$GOTAGS" ./...
   - name: go-unit
     run: |
       set -e
       export GOPRIVATE='github.com/hanzoai/*' GOWORK=off CGO_ENABLED=1
+      export GOTAGS=sqlite_math_functions
       sh scripts/fetch-plans.sh
-      go test -count=1 -timeout=10m \
+      go test -count=1 -timeout=10m -tags "$GOTAGS" \
         ./billing/... \
         ./risk/... \
         ./delay/... \
@@ -75,17 +83,37 @@ test:
         ./models/networktoken/... \
         ./models/product/... \
         ./payment/...
-  # The money plane's risk face: the domain under -race (tenant isolation, the
-  # exact reserve arithmetic, idempotency) and the wire gates that keep the face
-  # typed. Kept separate from go-unit because it is the only suite that must run
+  # The money plane: the domain under -race (tenant isolation, the exact reserve
+  # arithmetic, idempotency, the admin predicate) and the wire gates that keep
+  # the face typed. Separate from go-unit because it is the suite that must run
   # under the race detector to mean anything.
+  #
+  # WHOLE PACKAGES, NO -run FILTER. A name filter is a gate that silently stops
+  # covering anything it was not told about: every test added under a new prefix
+  # never runs, and nobody finds out. If a test in one of these packages is too
+  # slow or too flaky for this gate, fix the test — do not narrow the gate.
+  #
+  # COMMERCE_TEST_PG_DSN names a Postgres for the store-level gates
+  # (util/test/postgres). Production is Postgres and two money properties only
+  # hold there — a guard that finds its own row, and a transaction that does not
+  # lose an update — so SQLite cannot fail those tests. Set, and an unreachable
+  # store FAILS the run; unset, and each such test says out loud that it asserted
+  # nothing. It is a repo/org CI var, not a secret: a throwaway database.
   - name: go-risk
     run: |
       set -e
       export GOPRIVATE='github.com/hanzoai/*' GOWORK=off CGO_ENABLED=1
+      export GOTAGS=sqlite_math_functions
       sh scripts/fetch-plans.sh
-      go test -count=1 -race -timeout=10m ./risk/...
-      go test -count=1 -race -timeout=10m -run 'TestRisk|TestPayout_' ./api/billing/...
+      go test -count=1 -race -timeout=15m -tags "$GOTAGS" \
+        ./risk/... \
+        ./api/billing/... \
+        ./models/reserve/... \
+        ./models/control/... \
+        ./models/screen/... \
+        ./models/idempotencykey/... \
+        ./middleware/... \
+        ./db/...
   # zipdoc lifts each typed op's doc comment into zipdoc_gen.go, which is
   # committed and compiled in — so a bare `go build` cannot regenerate it and a
   # drifted lift ships a document with the wrong prose. Run PER PACKAGE, the way

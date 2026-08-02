@@ -384,6 +384,46 @@ func (db *PostgresDB) Put(ctx context.Context, key Key, src interface{}) (Key, e
 	return key, nil
 }
 
+// Claim writes src at key only if nothing live is there. See [DB.Claim].
+//
+// ON CONFLICT ... DO UPDATE takes the row lock, so two concurrent claims on one
+// key serialize and the second sees the first's live row through the WHERE.
+func (db *PostgresDB) Claim(ctx context.Context, key Key, src interface{}) (bool, error) {
+	if key == nil {
+		return false, ErrInvalidKey
+	}
+
+	data, err := json.Marshal(src)
+	if err != nil {
+		return false, fmt.Errorf("db: failed to marshal entity: %w", err)
+	}
+
+	var parentID *string
+	if p := key.Parent(); p != nil {
+		id := p.Encode()
+		parentID = &id
+	}
+
+	res, err := db.db.ExecContext(ctx, `
+		INSERT INTO _entities (id, kind, tenant_id, parent_id, data, updated_at)
+		VALUES ($1, $2, $3, $4, $5, NOW())
+		ON CONFLICT (id, kind, tenant_id) DO UPDATE SET
+			parent_id = EXCLUDED.parent_id,
+			data = EXCLUDED.data,
+			updated_at = NOW(),
+			deleted = FALSE
+		WHERE _entities.deleted = TRUE
+	`, key.Encode(), key.Kind(), db.tenantFor(ctx), parentID, data)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return n > 0, nil
+}
+
 // Delete removes an entity (soft delete), scoped to the ctx tenant.
 func (db *PostgresDB) Delete(ctx context.Context, key Key) error {
 	if key == nil {
@@ -682,9 +722,30 @@ func (db *PostgresDB) AllocateIDs(kind string, parent Key, n int) ([]Key, error)
 	return keys, nil
 }
 
-// RunInTransaction executes a function within a transaction
+// RunInTransaction executes a function within a transaction.
+//
+// It HONORS the isolation the caller asks for. Postgres defaults to READ
+// COMMITTED, under which a read-modify-write across two concurrent
+// transactions loses one of the writes — which on a running total that bounds
+// money is a ceiling quietly breached. A caller that must not lose an update
+// asks for [IsolationSerializable] and a retry budget; one that passes nil gets
+// exactly what it always got.
 func (db *PostgresDB) RunInTransaction(ctx context.Context, fn func(tx Transaction) error, opts *TransactionOptions) error {
-	sqlTx, err := db.db.BeginTx(ctx, nil)
+	var err error
+	for attempt := txAttempts(opts); attempt > 0; attempt-- {
+		err = db.runOnce(ctx, fn, opts)
+		if !serializationFailure(err) {
+			return err
+		}
+	}
+	return err
+}
+
+func (db *PostgresDB) runOnce(ctx context.Context, fn func(tx Transaction) error, opts *TransactionOptions) error {
+	sqlTx, err := db.db.BeginTx(ctx, &sql.TxOptions{
+		Isolation: sqlIsolation(opts),
+		ReadOnly:  opts != nil && opts.ReadOnly,
+	})
 	if err != nil {
 		return err
 	}

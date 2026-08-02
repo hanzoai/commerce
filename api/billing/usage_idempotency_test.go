@@ -62,7 +62,7 @@ func TestRecordUsage_Idempotent_NoDoubleDebit(t *testing.T) {
 	const key = "req-abc-123" // the requestId chat sends per spend
 
 	debitOnce := func() {
-		rec, replay, err := idempotencykey.Begin(db, scope, key)
+		rec, replay, err := idempotencykey.Begin(db, idempotencykey.Guard{Scope: scope, Key: key})
 		if err != nil {
 			t.Fatalf("Begin: %v", err)
 		}

@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -91,7 +92,14 @@ func faceAs(t *testing.T, ctx context.Context, orgName string, seed func(*zip.Ct
 	org := &organization.Organization{}
 	org.Name = orgName
 	org.Live = true
+	return faceFor(t, ctx, org, seed)
+}
 
+// faceFor mounts the real face against an EXISTING organization, so a test can
+// drive the typed risk ops and the raw money handlers inside ONE tenant — which
+// is the only way to prove where the money actually moves.
+func faceFor(t *testing.T, ctx context.Context, org *organization.Organization, seed func(*zip.Ctx)) caller {
+	t.Helper()
 	app := zip.New(zip.Config{DisableStartupMessage: true, AppName: "risk-api-test"})
 	app.Use(func(c *zip.Ctx) error {
 		c.SetContext(ctx)
@@ -108,7 +116,7 @@ func faceAs(t *testing.T, ctx context.Context, orgName string, seed func(*zip.Ct
 		}
 		req := httptest.NewRequest(method, path, rdr)
 		req.Header.Set("Content-Type", "application/json")
-		res, err := app.Fiber().Test(req)
+		res, err := app.Fiber().Test(req, noDeadline)
 		if err != nil {
 			t.Fatalf("%s %s: %v", method, path, err)
 		}
@@ -409,7 +417,7 @@ func TestRiskAPI_AnUnauthenticatedCallerIsRefused(t *testing.T) {
 	} {
 		req := httptest.NewRequest(r[0], r[1], bytes.NewBufferString(`{}`))
 		req.Header.Set("Content-Type", "application/json")
-		res, err := app.Fiber().Test(req)
+		res, err := app.Fiber().Test(req, noDeadline)
 		if err != nil {
 			t.Fatalf("%s %s: %v", r[0], r[1], err)
 		}
@@ -585,24 +593,52 @@ func TestRiskAPI_AKeyReusedForADifferentMoveIs409(t *testing.T) {
 // TestRiskAPI_TheReserveCeilingAndItsLedgerAreVisible — a reserve is a quantity
 // a merchant can reconcile, so the ceiling, the running total and the movements
 // are all on the wire.
+//
+// THE MONEY MOVES THROUGH THE PAYOUT DOOR AND NOWHERE ELSE, which is the point:
+// the same org SCREENS as much as it likes and its ceiling does not move, then
+// disburses three real payouts and the ceiling bounds exactly those. A screen
+// that spent the ceiling would let a merchant disarm its own reserve with a
+// money-free request.
 func TestRiskAPI_TheReserveCeilingAndItsLedgerAreVisible(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	risk.Set(answers{})
 
-	call := merchantAdmin(t, ctx, "apicap")
+	org := moneyOrg("apicap")
+	call := faceFor(t, ctx, org, func(c *zip.Ctx) {
+		c.Locals("iam_authenticated", true)
+		c.Locals("permissions", bit.Field(permission.Live))
+		c.Locals(iammiddleware.LocalOrgAdmin, true)
+	})
 	placed := decode(t, call(http.MethodPost, "/v1/billing/risk/controls",
 		`{"effect":"reserve","subjectKind":"merchant","subject":"m1","rate":5000,"cap":1000,"currency":"usd"}`))
 	if placed["cap"].(float64) != 1000 || placed["currency"] != "usd" {
 		t.Fatalf("the ceiling was not recorded: %v", placed)
 	}
 
-	for i, idem := range []string{"a", "b", "c"} {
+	// Ten money-free screens. The judgement forecasts the same 600 every time
+	// because nothing has been withheld yet.
+	for i := 0; i < 10; i++ {
 		out := decode(t, call(http.MethodPost, "/v1/billing/risk/screen",
-			`{"stage":"payout","subjectKind":"merchant","subject":"m1","amount":1200,"currency":"usd","out":true,"idem":"`+idem+`"}`))
-		want := []float64{600, 400, 0}[i]
-		if out["held"].(float64) != want {
-			t.Fatalf("payout %d held=%v want %v — the ceiling bounds the total", i, out["held"], want)
+			`{"stage":"payout","subjectKind":"merchant","subject":"m1","amount":1200,"currency":"usd","out":true,"idem":"q`+strconv.Itoa(i)+`"}`))
+		if out["held"].(float64) != 600 {
+			t.Fatalf("screen %d answered held=%v — a question changed the answer to the next question", i, out["held"])
+		}
+	}
+	if st := decode(t, call(http.MethodGet, "/v1/billing/risk/merchants/m1", "")); st["reserved"].(float64) != 0 {
+		t.Fatalf("ten screens moved the account to %v", st["reserved"])
+	}
+
+	// Three real payouts. NOW the ceiling bounds the total.
+	for i, want := range []float64{600, 400, 0} {
+		body := decode(t, invokeMoneyHandler(org, ctx, CreatePayout,
+			`{"amount":1200,"currency":"usd","merchant":"m1","destinationType":"bank_account","destinationId":"ba_1","idem":"p`+strconv.Itoa(i)+`"}`, nil))
+		held, _ := body["held"].(float64)
+		if held != want {
+			t.Fatalf("payout %d withheld %v want %v — the ceiling bounds the total", i, held, want)
+		}
+		if body["amount"].(float64) != 1200-want {
+			t.Fatalf("payout %d paid %v with %v withheld of 1200", i, body["amount"], want)
 		}
 	}
 
