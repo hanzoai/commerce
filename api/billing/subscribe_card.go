@@ -140,6 +140,10 @@ func SubscribeWithCard(c *zip.Ctx) error {
 	if err != nil {
 		return http.Fail(c, 404, "plan not found", err)
 	}
+	if !p.Listed() {
+		// Refused BEFORE the card is charged — a retired tier must never take money.
+		return http.Fail(c, 404, "plan not found", nil)
+	}
 	if int64(p.Price) <= 0 {
 		// A $0 plan needs no card — the free tier is self-serve via POST
 		// /v1/billing/subscriptions. This endpoint's contract is a PAID card sub.
