@@ -116,6 +116,22 @@ type Plan struct {
 	// distinguishes "authoritative" from "accidental", closing the divergence.
 	Managed bool `json:"managed,omitempty"`
 
+	// Status is the row's lifecycle, on the Shopify product model: a plan is
+	// ACTIVE (sold and listed), DRAFT (exists, not yet listed) or ARCHIVED
+	// (retired, kept). Only ACTIVE rows reach the public catalog.
+	//
+	// It exists because without it "stop selling this" and "destroy this" were the
+	// SAME operation. The public read returned every stored row, so the only way to
+	// unlist a plan was DELETE — which takes the row's history with it and orphans
+	// any subscription that recorded the slug. Retiring a tier should never be
+	// destructive; archiving keeps the row resolvable for invoices and renewals
+	// that already reference it.
+	//
+	// EMPTY MEANS ACTIVE, deliberately. Every row written before this field existed
+	// has no value for it, and a zero-value that meant "draft" would unlist the
+	// entire catalog on deploy. Use Listed() rather than comparing this directly.
+	Status string `json:"status,omitempty"`
+
 	// Metadata is the display envelope (features/limits/bundles/includedIn) — the
 	// typed money fields above are authoritative, this is presentation. Metadata_
 	// MUST be datastore:",noindex" (persisted), NOT "-" (skipped): with "-" the
@@ -126,6 +142,33 @@ type Plan struct {
 	Metadata_ string `json:"-" datastore:",noindex"`
 
 	Ref refs.EcommerceRef `json:"ref,omitempty"`
+}
+
+// Plan lifecycle, on the Shopify product model. A plan is never deleted to stop
+// selling it — it is archived, so invoices and subscriptions that recorded the
+// slug still resolve.
+const (
+	StatusActive   = "active"   // sold and listed publicly
+	StatusDraft    = "draft"    // exists, not listed — being written
+	StatusArchived = "archived" // retired, kept for history
+)
+
+// Listed reports whether this plan is ON SALE — the ONE predicate behind both
+// halves of that, because they are one decision:
+//
+//   - it appears in the public catalog (GET /v1/billing/plans), and
+//   - a NEW subscription may open on it (the three purchase entrypoints).
+//
+// Resolving a plan is a DIFFERENT question and is deliberately not gated here:
+// resolveSubscriptionPlan answers "which row is this" and must keep answering for
+// an archived plan, or a renewal or invoice on a retired tier would fail to price
+// itself. Retiring a tier stops new sales; it never strands a subscriber.
+//
+// An empty Status counts as active: every row written before Status existed has
+// no value for it, and treating that as unlisted would blank the catalog the
+// moment this ships. Only an explicit draft/archived hides a row.
+func (p *Plan) Listed() bool {
+	return p.Status == "" || p.Status == StatusActive
 }
 
 func (p *Plan) Load(ps []datastore.Property) (err error) {
