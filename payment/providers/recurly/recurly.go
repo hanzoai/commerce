@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hanzoai/money"
+
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 )
@@ -298,7 +300,19 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 		return nil, err
 	}
 
-	amountCents := decimalToCents(txn.Amount, currency.Type(strings.ToLower(txn.Currency)))
+	// The currency's own decimal convention decides the scale — a zero-decimal
+	// currency (JPY) must not gain two. commerce's currency table is the
+	// authority on that; money.ParseMinor is the authority on the conversion.
+	cur := currency.Type(strings.ToLower(txn.Currency))
+	decimals := int32(2)
+	if cur.IsZeroDecimal() {
+		decimals = 0
+	}
+	minor, err := money.ParseMinor(txn.Amount.String(), money.Currency{Code: cur.Code(), Decimals: decimals})
+	if err != nil {
+		return nil, fmt.Errorf("recurly transaction %s amount: %w", txID, err)
+	}
+	amountCents := currency.Cents(minor)
 
 	var createdAt, updatedAt int64
 	if t, err := time.Parse(time.RFC3339, txn.CreatedAt); err == nil {
@@ -724,14 +738,6 @@ func centsToDecimalString(cents currency.Cents, zeroDecimal bool) string {
 	return fmt.Sprintf("%d.%02d", whole, frac)
 }
 
-// decimalToCents converts a decimal amount from Recurly to cents.
-func decimalToCents(amount float64, cur currency.Type) currency.Cents {
-	if cur.IsZeroDecimal() {
-		return currency.Cents(int64(amount))
-	}
-	return currency.Cents(int64(amount * 100))
-}
-
 // --- Recurly API request/response types ---
 
 type recurlyPurchase struct {
@@ -779,21 +785,26 @@ type recurlyInvoice struct {
 }
 
 type recurlyTransaction struct {
-	ID               string  `json:"id"`
-	Object           string  `json:"object"`
-	UUID             string  `json:"uuid"`
-	Type             string  `json:"type"`
-	Status           string  `json:"status"`
-	StatusMessage    string  `json:"status_message"`
-	Amount           float64 `json:"amount"`
-	Currency         string  `json:"currency"`
-	PaymentMethod    string  `json:"payment_method_object"`
-	CollectionMethod string  `json:"collection_method"`
-	Origin           string  `json:"origin"`
-	AccountCode      string  `json:"-"`
-	InvoiceID        string  `json:"-"`
-	CreatedAt        string  `json:"created_at"`
-	UpdatedAt        string  `json:"updated_at"`
+	ID            string `json:"id"`
+	Object        string `json:"object"`
+	UUID          string `json:"uuid"`
+	Type          string `json:"type"`
+	Status        string `json:"status"`
+	StatusMessage string `json:"status_message"`
+	// Amount is json.Number, not float64, so the decimal digits Recurly sent
+	// survive to be converted exactly. Through a float64 they do not: 19.99
+	// has no exact binary form, so the value is 19.9899999… and the old
+	// int64(amount*100) truncated it to 1998 — a cent lost on every ordinary
+	// price, on money already captured.
+	Amount           json.Number `json:"amount"`
+	Currency         string      `json:"currency"`
+	PaymentMethod    string      `json:"payment_method_object"`
+	CollectionMethod string      `json:"collection_method"`
+	Origin           string      `json:"origin"`
+	AccountCode      string      `json:"-"`
+	InvoiceID        string      `json:"-"`
+	CreatedAt        string      `json:"created_at"`
+	UpdatedAt        string      `json:"updated_at"`
 }
 
 // UnmarshalJSON handles the nested account and invoice references in transaction responses.
