@@ -50,8 +50,16 @@ func TestF1_PatchUpgrade_NonMint_Gated(t *testing.T) {
 	if got.Plan.Slug != "pro" {
 		t.Fatalf("sub plan = %q after gated PATCH, want unchanged 'pro' (no laundering)", got.Plan.Slug)
 	}
-	if IncludedMonthlyCents(got.Plan.Slug) != 500 {
-		t.Fatalf("post-gate allotment anchor = %d, want 500 (pro), never 10000 (max)", IncludedMonthlyCents(got.Plan.Slug))
+	// Read both anchors from the catalog rather than restating cents: the property
+	// is that the gate left the sub on pro, so the allotment still anchors on pro
+	// and never on max. That holds at any price, and a reprice should not fail a
+	// test with no opinion about the price.
+	wantPro, wantMax := IncludedMonthlyCents("pro"), IncludedMonthlyCents("max")
+	if wantPro == wantMax {
+		t.Fatal("pro and max mint the same allotment; this test cannot tell laundering from a no-op")
+	}
+	if got := IncludedMonthlyCents(got.Plan.Slug); got != wantPro {
+		t.Fatalf("post-gate allotment anchor = %d, want %d (pro), never %d (max)", got, wantPro, wantMax)
 	}
 
 	// Control: a mint principal (cloud-api after a real payment) MAY upgrade — the

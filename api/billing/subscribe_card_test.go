@@ -20,6 +20,7 @@ import (
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
+	"github.com/hanzoai/commerce/models/plan"
 	storemodel "github.com/hanzoai/commerce/models/store"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -134,15 +135,16 @@ func TestSubscribeWithCard_VaultChargeCreateInvoice(t *testing.T) {
 	m := squareMock("cust_1", "ccof_1", "sqpay_1")
 	withFakeSquare(t, m)
 
-	// pro = $20/mo (2000 cents), flat. Body carries no amount — the price is the
-	// catalog's, always.
+	// Flat plan, no amount in the body — the price is the catalog's, always. Read
+	// rather than restated, so a reprice does not fail a test about authority.
+	proCents := float64(lookupPlan("pro").Price)
 	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"pro"}`, nil)
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("status=%d body=%s, want 201", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
 	out := jsonBody(t, resp)
-	if out["amountCents"].(float64) != 2000 {
-		t.Fatalf("response amountCents=%v, want 2000 (catalog pro price)", out["amountCents"])
+	if out["amountCents"].(float64) != proCents {
+		t.Fatalf("response amountCents=%v, want %v (catalog pro price)", out["amountCents"], proCents)
 	}
 	if out["subscriptionId"] == "" || out["invoiceId"] == "" {
 		t.Fatalf("response missing ids: %+v", out)
@@ -165,8 +167,8 @@ func TestSubscribeWithCard_VaultChargeCreateInvoice(t *testing.T) {
 	if m.lastChargeCustomer != "cust_1" {
 		t.Fatalf("charge customer=%q, want cust_1", m.lastChargeCustomer)
 	}
-	if m.lastChargeAmount != 2000 {
-		t.Fatalf("charged amount=%d, want 2000 (server-authoritative)", m.lastChargeAmount)
+	if float64(m.lastChargeAmount) != proCents {
+		t.Fatalf("charged amount=%d, want %v (server-authoritative)", m.lastChargeAmount, proCents)
 	}
 
 	db := datastore.New(org.Namespaced(ctx))
@@ -220,8 +222,8 @@ func TestSubscribeWithCard_VaultChargeCreateInvoice(t *testing.T) {
 	if inv.PaymentRef != "sqpay_1" {
 		t.Fatalf("first invoice paymentRef=%q, want the charge ref sqpay_1", inv.PaymentRef)
 	}
-	if inv.AmountPaid != 2000 || inv.AmountDue != 2000 {
-		t.Fatalf("first invoice amountDue=%d amountPaid=%d, want 2000/2000", inv.AmountDue, inv.AmountPaid)
+	if float64(inv.AmountPaid) != proCents || float64(inv.AmountDue) != proCents {
+		t.Fatalf("first invoice amountDue=%d amountPaid=%d, want %v/%v", inv.AmountDue, inv.AmountPaid, proCents, proCents)
 	}
 
 	// The plan FEE must NOT have been credited to the spendable AI-credit wallet —
@@ -266,18 +268,19 @@ func TestSubscribeWithCard_ServerAuthoritativePrice(t *testing.T) {
 	m := squareMock("cust_p", "ccof_p", "sqpay_p")
 	withFakeSquare(t, m)
 
-	// A hostile client tries to pay 1 cent for the $200 "max" plan. The amount is
+	// A hostile client tries to pay 1 cent for the top "max" plan. The amount is
 	// dropped (unknown field) and the server charges the catalog price.
+	maxCents := float64(lookupPlan("max").Price)
 	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"max","amountCents":1,"amount":"0.01","price":1}`, nil)
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("status=%d body=%s, want 201", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
-	if m.lastChargeAmount != 20000 {
-		t.Fatalf("charged amount=%d, want 20000 (catalog 'max' price) — a client amount must NEVER set the charge", m.lastChargeAmount)
+	if float64(m.lastChargeAmount) != maxCents {
+		t.Fatalf("charged amount=%d, want %v (catalog 'max' price) — a client amount must NEVER set the charge", m.lastChargeAmount, maxCents)
 	}
 	out := jsonBody(t, resp)
-	if out["amountCents"].(float64) != 20000 {
-		t.Fatalf("response amountCents=%v, want 20000", out["amountCents"])
+	if out["amountCents"].(float64) != maxCents {
+		t.Fatalf("response amountCents=%v, want %v", out["amountCents"], maxCents)
 	}
 }
 
@@ -391,7 +394,17 @@ func TestSubscribeWithCard_FreePlanRejected(t *testing.T) {
 	m := squareMock("cust_f", "ccof_f", "sqpay_f")
 	withFakeSquare(t, m)
 
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"developer"}`, nil)
+	// The published ladder has no $0 tier, so a free plan is created here rather
+	// than borrowed from the catalog. The guard under test belongs to the endpoint,
+	// not to whatever the catalog happens to be selling this quarter.
+	freeDB := plan.AuthorityDB(ctx)
+	free := plan.New(freeDB)
+	free.Slug, free.Name, free.Price, free.Category, free.Managed = "sc-free-tier", "Free", 0, "personal", true
+	if err := free.Create(); err != nil {
+		t.Fatalf("create free plan: %v", err)
+	}
+
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"sc-free-tier"}`, nil)
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status=%d, want 400 (free plan needs no card)", resp.StatusCode)
 	}
@@ -503,8 +516,8 @@ func TestRenewSubscription_ChargesVaultedCard(t *testing.T) {
 	if m.lastChargeCustomer != "cust_r" {
 		t.Fatalf("renewal charge customer=%q, want cust_r", m.lastChargeCustomer)
 	}
-	if m.lastChargeAmount != 2000 {
-		t.Fatalf("renewal charged amount=%d, want 2000", m.lastChargeAmount)
+	if int64(m.lastChargeAmount) != lookupPlan("pro").Price {
+		t.Fatalf("renewal charged amount=%d, want %d (catalog pro price)", m.lastChargeAmount, lookupPlan("pro").Price)
 	}
 
 	invs := invoicesForSub(t, db, sub.Id())
