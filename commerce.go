@@ -927,10 +927,18 @@ func (app *App) Bootstrap() error {
 
 	// Subscription/DNS plan authority seed — reconcile models/plan (the editable
 	// pricing source of truth that GET /v1/billing/plans and resolveSubscriptionPlan
-	// read) to the embedded @hanzo/plans catalog on EVERY boot. Creates missing
-	// plans and force-corrects any unmanaged partial row (a subscription-flow path
-	// wrote it) while leaving admin edits authoritative. Seed values EQUAL the
-	// embed, so it changes NO charge — it makes prices editable + repairs bad rows.
+	// read) to the embedded @hanzo/plans catalog on EVERY boot.
+	//
+	// THIS CAN CHANGE WHAT A PLAN CHARGES. That is the point, and it is a reversal
+	// of what this comment used to claim ("seed values EQUAL the embed, so it
+	// changes NO charge"), which stopped being true the moment the seed could
+	// correct rows it had written itself. Shipping a new @hanzo/plans reprices the
+	// live catalog on the next boot, and retires what the catalog stopped
+	// publishing by archiving it. An admin edit (plan.AdminEdited) is never
+	// touched, and no row is ever deleted.
+	//
+	// So a catalog change is a DEPLOY, with the same review a deploy gets — not a
+	// script someone runs against production holding a SuperAdmin bearer.
 	// COMMERCE_PLANS_SEED=false to skip.
 	if getEnv("COMMERCE_PLANS_SEED", "true") != "false" {
 		app.runPlansSeed()
@@ -1028,7 +1036,9 @@ func (app *App) runCurrencySeed() {
 }
 
 // runPlansSeed reconciles the subscription/DNS plan authority (models/plan,
-// "system" ns) to the embedded @hanzo/plans catalog on EVERY boot — the SAME
+// "system" ns) to the embedded @hanzo/plans catalog on EVERY boot. It logs the
+// counts because a boot that silently reprices the catalog is a boot nobody can
+// audit afterwards — the SAME
 func (app *App) runPlansSeed() {
 	created, corrected, err := billingPkg.SeedPlans(context.Background())
 	if err != nil {
