@@ -914,6 +914,7 @@ func (app *App) Bootstrap() error {
 	if getEnv("COMMERCE_CATALOG_SEED", "true") != "false" {
 		app.runCatalogSeed()
 		app.runInfraCatalogSeed()
+		app.runEnsoCatalogSeed()
 	}
 
 	// Currency reference seed — populate the global (default-namespace) currency
@@ -989,6 +990,24 @@ func (app *App) runInfraCatalogSeed() {
 	}
 	if created > 0 {
 		slog.Info("infra catalog seeded", "tiers", created)
+	}
+}
+
+// runEnsoCatalogSeed populates the Enso family's model rows on first boot from
+// the embedded snapshot, at the retail the enso service already bills. Gated
+// SEPARATELY (SeedEnsoModelsIfEmpty counts only enso-category rows) so the family
+// seeds independently of the product and infra snapshots — per-family isolation,
+// the same rule sync.go applies so one family's failure cannot touch another's.
+// Cheap count-gated no-op once populated; failures are logged, never fatal.
+func (app *App) runEnsoCatalogSeed() {
+	db := catalogentry.SystemDB(context.Background())
+	created, err := catalogentry.SeedEnsoModelsIfEmpty(db)
+	if err != nil {
+		slog.Error("enso catalog seed failed", "err", err)
+		return
+	}
+	if created > 0 {
+		slog.Info("enso catalog seeded", "models", created)
 	}
 }
 
