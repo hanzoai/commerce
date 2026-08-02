@@ -659,8 +659,14 @@ CI injects the immutable image tag at build time so `/healthz` `version` always
 equals the deployed tag:
 
 - `docker-deploy.yml` passes `VERSION=<git tag>` (build-arg) on `v*` tag pushes.
-- `Dockerfile` / `Dockerfile.sqfix` strip the leading `v` and apply
-  `-ldflags "-X github.com/hanzoai/commerce.Version=<ver>"`.
+- `Dockerfile` strips the leading `v` and applies
+  `-ldflags "-X github.com/hanzoai/commerce.Version=<ver>"`. It is the ONLY
+  Dockerfile that builds the binary — `Dockerfile.sqfix`, `Dockerfile.prebuilt`
+  and `Dockerfile.sqfix-prebuilt` are gone. All three packaged a binary compiled
+  by hand on a laptop (zig cross-compile / hotfix builds), which is not how
+  anything ships, and none was ever referenced by `hanzo.yml`. One had drifted
+  to build tags that no longer compile, so the only thing they could still do
+  was mislead.
 - Branch builds leave `VERSION` empty → the in-source default holds.
 
 Cut releases with a `v*` git tag (`git tag -aX vX.Y.Z && git push origin vX.Y.Z`)
