@@ -28,19 +28,23 @@ import (
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/models/control"
 	"github.com/hanzoai/commerce/models/outcome"
 	"github.com/hanzoai/commerce/models/screen"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/risk"
-	"github.com/hanzoai/commerce/util/permission"
 )
 
 // pageMax bounds a list read. A caller that names no limit gets this many, and
 // one that names more gets this many — an unbounded list of a busy merchant's
 // screens is a way to take the store down, not a feature.
-const pageMax = 200
+//
+// It is the STORE's bound, not a second one declared here: the models refuse to
+// read more than screen.Max / control.Max whatever this file asks for, so the
+// two cannot drift into a page size the store will not honour.
+const pageMax = screen.Max
 
 // RiskRoute registers the money plane's risk face.
 //
@@ -50,10 +54,31 @@ const pageMax = 200
 // a prefix assembled from a parameter would file every doc comment under a path
 // that does not exist. The group carries its own auth rather than inheriting
 // the neighbouring group's by path prefix, so the gate does not depend on the
-// order two registrations happened to run in.
+// order two registrations happened to run in — and because it registers on the
+// ROOT, there is no neighbouring group to inherit from: the IAM resolution
+// other surfaces get from their /v1 group has to be named here or a merchant's
+// JWT never resolves to a tenant at all.
+//
+// WHO MAY REACH IT. The customers this face exists for are MERCHANTS, so the
+// gate is the org principal: any authenticated caller, acting inside the tenant
+// the validated principal resolves to. It was TokenRequired(permission.Admin),
+// which reads as "an administrator" and is not — that bit is deliberately
+// withheld from every org admin and reserved for the internal service token and
+// platform SuperAdmins (middleware/iammiddleware.orgAdminGrant,
+// middleware/platformonly.go), so the whole face answered 403 to exactly the
+// people it was built for. Cross-tenant is the SuperAdmin's exception, not the
+// only door.
+//
+// Authority inside the tenant is then per-op and named at each one: an op that
+// can PLACE OR LIFT a control — a restraint on real money — takes the org's own
+// administrator ([mayRestrain]); screening, reading and reporting an outcome
+// take the authenticated principal, because those are what a merchant's own
+// backend does on every transaction and requiring a human admin for them would
+// mean the integration cannot exist.
 func RiskRoute(root *zip.App) {
 	g := root.Group("/v1/billing/risk")
-	g.Use(middleware.TokenRequired(permission.Admin))
+	g.Use(iammiddleware.IAMTokenRequired())
+	g.Use(middleware.TokenRequired())
 	g.Use(middleware.Bind())
 
 	zip.Post(g, "/screen", riskScreen,
@@ -130,6 +155,24 @@ func screener(ctx context.Context) (*risk.Screener, error) {
 		DB: datastore.New(org.Namespaced(ctx)),
 		By: middleware.WhoFrom(ctx),
 	}, nil
+}
+
+// mayRestrain is the authority an op needs to PLACE OR LIFT a control.
+//
+// A control restrains real money — it stops a payout, it withholds a share of
+// every one — so placing and lifting are the org's own administrator's acts,
+// not something any key issued inside the tenant may do. Screening and reading
+// are deliberately NOT behind it: those are the calls a merchant's backend
+// makes on every transaction.
+//
+// It is the same predicate the raw money handlers use (middleware.IsAdmin),
+// carried onto the context by middleware.Bind because a typed op holds no
+// request. Fail-closed off the HTTP path.
+func mayRestrain(ctx context.Context) error {
+	if middleware.AdminFrom(ctx) {
+		return nil
+	}
+	return zip.ErrForbidden("placing or lifting a risk control requires an administrator of this organization")
 }
 
 // -----------------------------------------------------------------------------
@@ -312,21 +355,39 @@ type riskControlIn struct {
 	// basis points and not a fraction because money is integer arithmetic, and
 	// a float rate drifts the withheld amount by a cent per move at scale.
 	Rate int64 `json:"rate,omitempty"`
+	// Cap is the CEILING on what this reserve may withhold in TOTAL, exact minor
+	// units of Currency. Zero declares no ceiling.
+	//
+	// A rate on its own bounds nothing: it is a share of a number the caller
+	// chooses, so it withholds a quarter of whatever is asked for, forever, with
+	// no total it converges on. A ceiling is what turns a reserve into a
+	// quantity the merchant can reconcile and the platform can release.
+	Cap int64 `json:"cap,omitempty"`
+	// Currency denominates the ceiling and scopes the reserve to that currency.
+	// It is REQUIRED with a ceiling: an amount without a currency is a number,
+	// and holds taken in EUR do not satisfy a cap declared in USD.
+	Currency string `json:"currency,omitempty"`
 	// Until lapses the control, RFC 3339. Empty means it stands until released,
 	// which is what a fraud restraint should do.
 	Until  string `json:"until,omitempty"`
 	Reason string `json:"reason,omitempty"`
 }
 
-// riskControlOut is one standing restraint.
+// riskControlOut is one standing restraint, and — for a reserve — the account
+// it has accumulated.
 type riskControlOut struct {
 	ID          string `json:"id"`
 	Effect      string `json:"effect"`
 	SubjectKind string `json:"subjectKind"`
 	Subject     string `json:"subject"`
 	Rate        int64  `json:"rate,omitempty"`
-	Until       string `json:"until,omitempty"`
-	Reason      string `json:"reason,omitempty"`
+	Cap         int64  `json:"cap,omitempty"`
+	Currency    string `json:"currency,omitempty"`
+	// Held is the cumulative exact minor units this reserve has withheld — what
+	// the ceiling is measured against, and what a release returns.
+	Held   int64  `json:"held,omitempty"`
+	Until  string `json:"until,omitempty"`
+	Reason string `json:"reason,omitempty"`
 	// By is who placed it, from the validated principal.
 	By         string `json:"by,omitempty"`
 	Live       bool   `json:"live"`
@@ -343,6 +404,9 @@ type riskControlPage struct {
 // riskControlsIn narrows the list to controls still in force.
 type riskControlsIn struct {
 	Live bool `json:"live,omitempty"`
+	// Limit bounds the page. Zero means the default, and more than the maximum
+	// means the maximum.
+	Limit int `json:"limit,omitempty"`
 }
 
 // riskControls lists the controls this org has placed, and whether each still
@@ -354,7 +418,7 @@ func riskControls(ctx context.Context, in *riskControlsIn) (*riskControlPage, er
 	}
 	now := time.Now()
 	out := &riskControlPage{Controls: []*riskControlOut{}}
-	for _, c := range control.All(s.DB) {
+	for _, c := range control.All(s.DB, in.Limit) {
 		if in.Live && !c.Live(now) {
 			continue
 		}
@@ -369,6 +433,9 @@ func riskControls(ctx context.Context, in *riskControlsIn) (*riskControlPage, er
 // cycle does not accumulate a hundred identical holds on one merchant, and
 // releasing takes one act rather than a hundred.
 func riskControlPlace(ctx context.Context, in *riskControlIn) (*riskControlOut, error) {
+	if err := mayRestrain(ctx); err != nil {
+		return nil, err
+	}
 	s, err := screener(ctx)
 	if err != nil {
 		return nil, err
@@ -381,36 +448,47 @@ func riskControlPlace(ctx context.Context, in *riskControlIn) (*riskControlOut, 
 		}
 		until = t
 	}
-	c, err := risk.Place(s, risk.Subject{Kind: in.SubjectKind, ID: in.Subject}, in.Effect, in.Rate, until, in.Reason)
+	c, err := risk.Place(s, risk.Placement{
+		Subject:  risk.Subject{Kind: in.SubjectKind, ID: in.Subject},
+		Effect:   in.Effect,
+		Rate:     in.Rate,
+		Cap:      currency.Cents(in.Cap),
+		Currency: currency.Type(in.Currency),
+		Until:    until,
+		Reason:   in.Reason,
+	})
 	if err != nil {
 		return nil, badRequest(err)
 	}
 	return controlView(c, time.Now()), nil
 }
 
-// riskControlRelease lifts a control. Releasing one already released is not an
-// error and does not rewrite who lifted it first.
+// riskControlRelease lifts a control and RETURNS what it was holding: a reserve
+// that withheld money posts a release to the ledger, so the account closes
+// instead of leaving money reserved under a declaration that no longer exists.
+//
+// Releasing one already released is not an error and does not rewrite who
+// lifted it first.
 func riskControlRelease(ctx context.Context, in *riskRef) (*riskControlOut, error) {
+	if err := mayRestrain(ctx); err != nil {
+		return nil, err
+	}
 	s, err := screener(ctx)
 	if err != nil {
 		return nil, err
 	}
-	c := control.New(s.DB)
-	if err := c.GetById(in.ID); err != nil {
+	c, err := risk.Lift(s, in.ID)
+	if err != nil {
 		return nil, zip.ErrNotFound("control not found")
 	}
-	now := time.Now()
-	c.Release(middleware.WhoFrom(ctx), now)
-	if err := c.Update(); err != nil {
-		return nil, zip.ErrInternal("failed to release the control")
-	}
-	return controlView(c, now), nil
+	return controlView(c, time.Now()), nil
 }
 
 func controlView(c *control.Control, now time.Time) *riskControlOut {
 	out := &riskControlOut{
 		ID: c.Id(), Effect: c.Effect, SubjectKind: c.SubjectKind, Subject: c.Subject,
-		Rate: c.Rate, Reason: c.Reason, By: c.By, Live: c.Live(now), Released: c.Released,
+		Rate: c.Rate, Cap: c.Cap, Currency: string(c.Currency), Held: c.Held,
+		Reason: c.Reason, By: c.By, Live: c.Live(now), Released: c.Released,
 		ReleasedBy: c.ReleasedBy,
 	}
 	if !c.Until.IsZero() {
@@ -449,16 +527,45 @@ type riskStandingOut struct {
 	Negative    int    `json:"negative"`
 	DisputeRate int64  `json:"disputeRate"`
 	RefusalRate int64  `json:"refusalRate"`
+	// Window is how many recent screens and outcomes these numbers are counted
+	// over, and Truncated says there are more than that in the record. A rate
+	// quoted without saying what it is a rate OF is a number nobody can check.
+	Window    int  `json:"window"`
+	Truncated bool `json:"truncated,omitempty"`
 	// VolumeIn, VolumeOut and Held are exact minor units.
-	VolumeIn  int64             `json:"volumeIn"`
-	VolumeOut int64             `json:"volumeOut"`
-	Held      int64             `json:"held"`
-	Controls  []*riskControlOut `json:"controls,omitempty"`
+	VolumeIn  int64 `json:"volumeIn"`
+	VolumeOut int64 `json:"volumeOut"`
+	Held      int64 `json:"held"`
+	// Reserved is what the reserves in force are HOLDING of this subject's
+	// money right now — cumulative, exact, read off the declarations themselves.
+	// Held is what the counted window's screens withheld; this is the account.
+	Reserved int64             `json:"reserved"`
+	Controls []*riskControlOut `json:"controls,omitempty"`
+	// Ledger is the recent movements of reserved money: what was withheld, from
+	// which judgement, under which declaration, and what a release returned.
+	Ledger []*riskReserveOut `json:"ledger,omitempty"`
 	// Screen is the merchant-stage judgement, present when the standing was
 	// reviewed rather than merely counted.
 	Screen *riskScreenOut `json:"screen,omitempty"`
 	// Placed names a control the review placed.
 	Placed string `json:"placed,omitempty"`
+}
+
+// riskReserveOut is one movement of reserved money. Exactly one of Held and
+// Released is non-zero: a row records a hold or a return, never a net, because
+// a net cannot be reconciled back to the move that caused it.
+type riskReserveOut struct {
+	ID       string `json:"id"`
+	Currency string `json:"currency,omitempty"`
+	// Held and Released are exact minor units.
+	Held     int64  `json:"held,omitempty"`
+	Released int64  `json:"released,omitempty"`
+	Control  string `json:"control"`
+	Screen   string `json:"screen,omitempty"`
+	// Reference is the money object the hold came out of, so a merchant
+	// reconciling a short payout finds this row by the id on its own statement.
+	Reference string `json:"reference,omitempty"`
+	At        string `json:"at,omitempty"`
 }
 
 // riskMerchant reads a merchant's standing from this org's own record. It
@@ -494,6 +601,9 @@ type riskReviewIn struct {
 // This is the continuous monitoring a platform runs on its merchants. It is a
 // POST because it records a judgement and may restrain money.
 func riskMerchantReview(ctx context.Context, in *riskReviewIn) (*riskStandingOut, error) {
+	if err := mayRestrain(ctx); err != nil {
+		return nil, err
+	}
 	s, err := screener(ctx)
 	if err != nil {
 		return nil, err
@@ -510,13 +620,25 @@ func standingView(st *risk.Standing) *riskStandingOut {
 		Subject: st.Subject.ID, Screens: st.Screens, Refused: st.Refused,
 		Disputes: st.Disputes, Lost: st.Lost, Refunds: st.Refunds,
 		Failed: st.Failed, Negative: st.Negative,
+		Window: st.Window, Truncated: st.Truncated,
 		DisputeRate: st.DisputeRate, RefusalRate: st.RefusalRate,
 		VolumeIn: int64(st.VolumeIn), VolumeOut: int64(st.VolumeOut), Held: int64(st.Held),
-		Placed: st.Placed,
+		Reserved: int64(st.Reserved),
+		Placed:   st.Placed,
 	}
 	now := time.Now()
 	for _, c := range st.Controls {
 		out.Controls = append(out.Controls, controlView(c, now))
+	}
+	for _, e := range st.Ledger {
+		row := &riskReserveOut{
+			ID: e.Id(), Currency: string(e.Currency), Held: e.Held, Released: e.Released,
+			Control: e.Control, Screen: e.Screen, Reference: e.Reference,
+		}
+		if at := e.GetCreatedAt(); !at.IsZero() {
+			row.At = at.UTC().Format(time.RFC3339)
+		}
+		out.Ledger = append(out.Ledger, row)
 	}
 	if st.Screen != nil {
 		out.Screen = screenView(st.Screen)
@@ -744,10 +866,17 @@ func processorType(named string, e *risk.Evidence) processor.ProcessorType {
 // badRequest renders a domain refusal as the caller's mistake it is. A subject
 // kind this plane does not name and a reserve rate outside 0..100% are both
 // things the caller can fix; anything else is ours.
+//
+// Reusing one idempotency key for a DIFFERENT move is the one that gets its own
+// status. 409 and not 400 because the request is well formed and the conflict
+// is with a request that already happened — and because a client library
+// retrying a 400 forever is harmless, while one that cannot tell "you sent this
+// twice" from "you sent it wrong" will happily paper over a key collision on a
+// money route.
 func badRequest(err error) error {
 	switch {
-	case errors.Is(err, risk.ErrKind):
-		return zip.ErrBadRequest(err.Error())
+	case errors.Is(err, risk.ErrIdem):
+		return zip.Errorf(http.StatusConflict, "%s", err.Error())
 	default:
 		return zip.ErrBadRequest(err.Error())
 	}

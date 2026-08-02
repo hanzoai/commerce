@@ -1,13 +1,17 @@
 package billing
 
 import (
+	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/payout"
 	"github.com/hanzoai/commerce/models/screen"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -29,14 +33,29 @@ type createPayoutRequest struct {
 	// by that merchant's controls; one that does not is restrained by the
 	// destination's.
 	Merchant string `json:"merchant,omitempty"`
-	// Idem makes a retried payout return the first answer rather than a second
-	// judgement — and, far more importantly, than a second payout.
+	// Idem makes a retried payout return the FIRST payout's response rather
+	// than creating a second one. It is the caller's key; X-Idempotency-Key is
+	// the same key by another door, and with neither the request de-dups
+	// against the coarse window every card money move in this package uses (see
+	// idem.go) so a lost-response retry cannot pay twice.
 	Idem string `json:"idem,omitempty"`
 }
 
 // CreatePayout creates a new outbound payout.
 //
 //	POST /v1/billing/payouts
+//
+// IT IS IDEMPOTENT, and the guard is taken BEFORE anything happens. A payout is
+// money leaving with no natural backstop — no nonce is consumed, no card
+// refuses the second charge — so a retried request, a double-clicked console,
+// or a client that resends because it never saw the response is a SECOND
+// PAYOUT unless something says otherwise. The row's own doc claimed the Idem
+// field made a retry return the first answer; nothing implemented that, so the
+// promise was a lie of exactly the kind that gets believed on a money route.
+//
+// It fails CLOSED. If the guard store cannot tell a first attempt from a retry,
+// the payout is refused: that costs the caller a retry, while proceeding costs
+// the merchant a duplicate disbursement.
 func CreatePayout(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c.Context()))
@@ -53,16 +72,46 @@ func CreatePayout(c *zip.Ctx) error {
 		return http.Fail(c, 400, "destinationId is required", nil)
 	}
 
+	guard, replay, gerr := idemBegin(db, payoutScope+req.DestinationId, payoutKey(c, req))
+	if gerr != nil {
+		log.Error("Failed to take the payout idempotency guard: %v", gerr, c)
+		return http.Fail(c, 503, "payout guard unavailable; retry", gerr)
+	}
+	if replay {
+		// Ran to completion already: give back the FIRST payout's answer,
+		// verbatim, and create nothing.
+		if guard.Status == idempotencykey.StatusCompleted && guard.Response != "" {
+			var prior map[string]interface{}
+			if json.Unmarshal([]byte(guard.Response), &prior) == nil {
+				return c.JSON(201, prior)
+			}
+		}
+		// A genuine attempt under this key is still in flight. Do not run a
+		// second payout alongside it.
+		return http.Fail(c, 409, "a payout under this idempotency key is already in flight", nil)
+	}
+	// abandon releases the guard when NO money was committed, so a refusal does
+	// not wedge the key: the caller may fix the cause and ask again, and the
+	// next attempt is screened against the controls in force then rather than
+	// replaying a refusal from a restraint that has since been lifted.
+	abandon := func() {
+		if guard != nil {
+			_ = guard.Delete()
+		}
+	}
+
 	// The money plane's own gate. A reserve or a payout hold in force on this
 	// merchant stops the money HERE, in the store that holds the control — no
 	// network hop, so a scoring outage can never lift a restraint. Risk
 	// declares; this is where commerce enforces.
 	gate, err := gatePayout(c, db, req)
 	if err != nil {
+		abandon()
 		log.Error("Failed to screen payout: %v", err, c)
 		return http.Fail(c, 500, "failed to screen the payout", err)
 	}
 	if gate.Status != 0 {
+		abandon()
 		return http.Fail(c, gate.Status, gate.Message, nil)
 	}
 
@@ -79,6 +128,7 @@ func CreatePayout(c *zip.Ctx) error {
 	}
 
 	if err := p.Create(); err != nil {
+		abandon()
 		log.Error("Failed to create payout: %v", err, c)
 		return http.Fail(c, 500, "failed to create payout", err)
 	}
@@ -92,7 +142,41 @@ func CreatePayout(c *zip.Ctx) error {
 		resp["requested"] = req.Amount
 		resp["held"] = int64(gate.Held)
 	}
+
+	// Seal the guard with the answer, so a retry replays THIS response instead
+	// of paying again. A seal that fails leaves the guard "started", which
+	// refuses the retry as in-flight — the right way round: a payout that
+	// already happened must never be repeated because its receipt did not save.
+	if body, jerr := json.Marshal(resp); jerr == nil {
+		if serr := idempotencykey.Complete(guard, string(body)); serr != nil {
+			log.Error("Failed to seal the payout idempotency guard: %v", serr, c)
+		}
+	}
 	return c.JSON(201, resp)
+}
+
+// payoutScope namespaces a payout's idempotency key to its destination, so one
+// key can never collide across endpoints or across the accounts it might pay.
+const payoutScope = "billing-payout:"
+
+// payoutKey is the key a payout guards itself on: the caller's Idem, else the
+// X-Idempotency-Key header, else a key derived from the facts that stay STABLE
+// across a retry, bucketed into the coarse window every card money move in this
+// package already uses.
+//
+// The window is what makes the fallback safe in both directions: a re-submit
+// seconds later collapses onto the same key, so the money leaves once; a
+// genuine second payout to the same account minutes later gets a fresh key and
+// proceeds. A merchant that needs two identical payouts inside the window says
+// so by sending two different keys — which is what a key is for.
+func payoutKey(c *zip.Ctx, req createPayoutRequest) string {
+	if k := strings.TrimSpace(req.Idem); k != "" {
+		return k
+	}
+	return guardKey(c, strings.Join([]string{
+		"payout", req.DestinationType, req.DestinationId, req.Merchant,
+		req.Currency, strconv.FormatInt(req.Amount, 10),
+	}, ":"))
 }
 
 // GetPayout retrieves a payout by ID.
@@ -122,9 +206,12 @@ func ListPayouts(c *zip.Ctx) error {
 	}
 	db := datastore.New(org.Namespaced(c.Context()))
 
+	// Bounded at the store. A payout list grows with every disbursement an org
+	// ever made, so a read with no ceiling is one request that materialises the
+	// whole history — in a process shared with every other tenant.
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	payouts := make([]*payout.Payout, 0)
-	iter := payout.Query(db).Ancestor(rootKey).Order("-Created").Run()
+	iter := payout.Query(db).Ancestor(rootKey).Order("-CreatedAt").Limit(pageMax).Run()
 
 	for {
 		p := payout.New(db)

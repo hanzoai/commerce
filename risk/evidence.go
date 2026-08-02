@@ -160,14 +160,23 @@ func Assemble(db *datastore.Datastore, disputeID string) (*Evidence, error) {
 	if len(e.Screens) == 0 {
 		e.Gaps = append(e.Gaps, "judgement: this charge was never screened, so there is no decision to cite")
 	}
+	if len(e.Screens) >= packet {
+		e.Gaps = append(e.Gaps, "judgement: this packet cites the "+strconv.Itoa(packet)+
+			" most recent judgements of this customer; there are more in the record")
+	}
 
 	if e.Charge != nil && e.Charge.Customer != "" {
-		for _, o := range outcome.For(db, KindCustomer, e.Charge.Customer) {
+		rows := outcome.For(db, KindCustomer, e.Charge.Customer, packet)
+		for _, o := range rows {
 			row := evidenceOutcome{ID: o.Id(), Event: o.Event, Note: o.Note}
 			if at := o.GetCreatedAt(); !at.IsZero() {
 				row.At = at.UTC().Format(time.RFC3339)
 			}
 			e.Outcomes = append(e.Outcomes, row)
+		}
+		if len(rows) >= packet {
+			e.Gaps = append(e.Gaps, "outcomes: this packet cites the "+strconv.Itoa(packet)+
+				" most recent outcomes for this customer; there are more in the record")
 		}
 	}
 
@@ -175,8 +184,19 @@ func Assemble(db *datastore.Datastore, disputeID string) (*Evidence, error) {
 	return e, nil
 }
 
+// packet bounds how much of the record one defence cites. A dispute packet is
+// read by a human and filed against a deadline; the hundredth screen of the
+// same customer adds nothing an adjudicator will weigh, and reading them all
+// costs the whole table.
+const packet = 100
+
 // screensFor finds the risk record bearing on this dispute: the screen whose
-// reference IS the charge, then every screen of that customer.
+// reference IS the charge, then the recent screens of that customer.
+//
+// Both reads are QUERIES, bounded by the store. The shape this replaces read
+// every screen the org had ever written and compared references in Go — the
+// same answer at the cost of materialising a busy merchant's entire history
+// into one request's memory, in a process shared with every other tenant.
 func screensFor(db *datastore.Datastore, d *dispute.Dispute, charge *evidenceCharge) []*screen.Screen {
 	seen := map[string]bool{}
 	out := []*screen.Screen{}
@@ -191,15 +211,9 @@ func screensFor(db *datastore.Datastore, d *dispute.Dispute, charge *evidenceCha
 		}
 	}
 
-	if d.PaymentIntentId != "" {
-		for _, s := range screen.For(db, "", "", 0) {
-			if s.Reference == d.PaymentIntentId {
-				add([]*screen.Screen{s})
-			}
-		}
-	}
+	add(screen.ByReference(db, d.PaymentIntentId, packet))
 	if charge != nil && charge.Customer != "" {
-		add(screen.For(db, KindCustomer, charge.Customer, 0))
+		add(screen.For(db, KindCustomer, charge.Customer, packet))
 	}
 	return out
 }

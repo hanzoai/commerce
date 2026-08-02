@@ -5,6 +5,7 @@ package risk
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -176,5 +177,121 @@ func TestMinor_RendersExactlyWithoutAFloat(t *testing.T) {
 		if got := minor(cents); got != want {
 			t.Fatalf("minor(%d)=%q want %q", cents, got, want)
 		}
+	}
+}
+
+// TestAssemble_IsBoundedAndAsksTheStoreForTheRightRows is the gate on a read
+// that materialised EVERY screen in the org.
+//
+// The shape was: read the whole table and compare references in Go. Two GET
+// routes were reachable by any caller in the tenant, so one busy merchant's
+// history was one request away from exhausting a process shared with every
+// other tenant. This asserts both halves of the fix — the packet is bounded,
+// and the charge's own judgement is still found among far more rows than the
+// bound.
+func TestAssemble_IsBoundedAndAsksTheStoreForTheRightRows(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+
+	s := tenant("evidencebound", ctx, &oracle{answer: &Decision{ID: "d1", Action: Allow}})
+
+	pi := paymentintent.New(s.DB)
+	pi.CustomerId = "c1"
+	pi.Amount = 4200
+	pi.Currency = currency.USD
+	pi.Status = paymentintent.Succeeded
+	pi.MustCreate()
+
+	// The judgement that admitted THIS charge.
+	if _, err := s.Screen(context.Background(), Move{
+		Stage: Payment, Subject: customer("c1"), Amount: 4200, Currency: currency.USD, Reference: pi.Id(),
+	}); err != nil {
+		t.Fatalf("screen: %v", err)
+	}
+	// And a great many judgements of other customers, on other charges.
+	for i := 0; i < packet*2; i++ {
+		if _, err := s.Screen(context.Background(), Move{
+			Stage: Payment, Subject: customer("noise"), Amount: 1, Currency: currency.USD,
+			Reference: "pi_noise_" + strconv.Itoa(i),
+		}); err != nil {
+			t.Fatalf("noise %d: %v", i, err)
+		}
+	}
+
+	d := dispute.New(s.DB)
+	d.PaymentIntentId = pi.Id()
+	d.Amount = 4200
+	d.Currency = currency.USD
+	d.MustCreate()
+
+	e, err := Assemble(s.DB, d.Id())
+	if err != nil {
+		t.Fatalf("assemble: %v", err)
+	}
+	if len(e.Screens) != 1 {
+		t.Fatalf("the packet cites %d screens; it must cite the charge's own judgement, not the org's table", len(e.Screens))
+	}
+	if e.Screens[0].Decision != "d1" {
+		t.Fatalf("the cited judgement is not the one that admitted the charge: %+v", e.Screens[0])
+	}
+
+	// And when one customer genuinely has more history than the packet carries,
+	// the packet is bounded AND says so rather than quietly truncating.
+	for i := 0; i < packet+10; i++ {
+		if _, err := s.Screen(context.Background(), Move{
+			Stage: Payment, Subject: customer("c1"), Amount: 1, Currency: currency.USD,
+			Reference: "pi_c1_" + strconv.Itoa(i),
+		}); err != nil {
+			t.Fatalf("history %d: %v", i, err)
+		}
+	}
+	e, err = Assemble(s.DB, d.Id())
+	if err != nil {
+		t.Fatalf("assemble again: %v", err)
+	}
+	if len(e.Screens) > packet+1 {
+		t.Fatalf("the packet cites %d screens, want at most %d", len(e.Screens), packet+1)
+	}
+	if !strings.Contains(strings.Join(e.Gaps, " "), "most recent") {
+		t.Fatalf("a truncated packet did not say so: %v", e.Gaps)
+	}
+}
+
+// TestScreensFor_ReadsAreTenantScoped — the store's namespace is the boundary,
+// and a dispute in one org cites nothing from another.
+func TestScreensFor_ReadsAreTenantScoped(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+
+	p := &oracle{answer: &Decision{ID: "d1", Action: Allow}}
+	a := tenant("evisoa", ctx, p)
+	b := tenant("evisob", ctx, p)
+
+	pi := paymentintent.New(a.DB)
+	pi.CustomerId = "shared"
+	pi.Amount = 100
+	pi.Currency = currency.USD
+	pi.MustCreate()
+	if _, err := a.Screen(context.Background(), Move{
+		Stage: Payment, Subject: customer("shared"), Amount: 100, Currency: currency.USD, Reference: pi.Id(),
+	}); err != nil {
+		t.Fatalf("a screen: %v", err)
+	}
+
+	d := dispute.New(b.DB)
+	d.PaymentIntentId = pi.Id()
+	d.Amount = 100
+	d.Currency = currency.USD
+	d.MustCreate()
+
+	e, err := Assemble(b.DB, d.Id())
+	if err != nil {
+		t.Fatalf("assemble: %v", err)
+	}
+	if len(e.Screens) != 0 {
+		t.Fatalf("org B's packet cites %d of org A's judgements", len(e.Screens))
+	}
+	if e.Charge != nil {
+		t.Fatalf("org B's packet found org A's charge: %+v", e.Charge)
 	}
 }

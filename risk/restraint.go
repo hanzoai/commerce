@@ -28,6 +28,11 @@ type Restraint struct {
 	// Reason is the strictest applying control's reason, or empty when nothing
 	// applied.
 	Reason string
+	// Reserve is the control whose rate took Held, or nil when no reserve bore
+	// on the move. It is carried because the money that was withheld has to be
+	// accounted for AGAINST THE DECLARATION THAT TOOK IT — the ceiling, the
+	// running total and the release all live on that control.
+	Reserve *control.Control
 }
 
 // errRate refuses a reserve rate outside 0..100%. A rate a caller can state
@@ -35,12 +40,20 @@ type Restraint struct {
 // money than the move contains.
 var errRate = errors.New("risk: a reserve rate is basis points in 1..10000")
 
+// errCap refuses a ceiling that cannot be reconciled: a negative amount, or an
+// amount with no currency to be denominated in.
+var errCap = errors.New("risk: a reserve ceiling is a positive amount in a named currency")
+
 const rateFloor, rateCeil = 0, control.FullRate
 
 // maxCents is the largest amount [Restrain] will multiply by a rate without
 // overflowing int64. Above it the arithmetic would silently wrap, which on a
 // money path is the one failure that must never be silent.
 const maxCents = math.MaxInt64 / control.FullRate
+
+// Unlimited is the headroom of a reserve that declares no ceiling. It is a
+// value and not a nil, so the clamp has one shape for both cases.
+const Unlimited = currency.Cents(math.MaxInt64)
 
 // Restrain applies the controls in force to one move and reports what may
 // happen. Composition of two controls is the STRICTEST of them, never their
@@ -55,7 +68,12 @@ const maxCents = math.MaxInt64 / control.FullRate
 // A reserve and a hold bear only on money LEAVING. Money arriving is stopped by
 // a block and by nothing else: withholding a share of an inbound charge would
 // mean refusing part of a payment, which is not what a reserve is.
-func Restrain(controls []*control.Control, amount currency.Cents, out bool, now time.Time) Restraint {
+//
+// A reserve may also name a CURRENCY, and then it bears only on moves in it —
+// because a reserve that names a ceiling names an amount, and an amount in one
+// currency cannot bound holds taken in another. A hold and a block never narrow
+// this way: they are about the subject, not about an amount.
+func Restrain(controls []*control.Control, amount currency.Cents, cur currency.Type, out bool, now time.Time) Restraint {
 	r := Restraint{Allowed: amount}
 	if amount < 0 {
 		// A negative amount is not a smaller move, it is a move in the other
@@ -65,7 +83,7 @@ func Restrain(controls []*control.Control, amount currency.Cents, out bool, now 
 
 	var rate int64
 	for _, c := range controls {
-		if c == nil || !c.Live(now) {
+		if c == nil || !c.Live(now) || !c.Bears(cur) {
 			continue
 		}
 		switch c.Effect {
@@ -84,6 +102,7 @@ func Restrain(controls []*control.Control, amount currency.Cents, out bool, now 
 		case control.Reserve:
 			if out && c.Rate > rate {
 				rate = c.Rate
+				r.Reserve = c
 				r.Controls = append(r.Controls, c.Ref())
 				if r.Reason == "" {
 					r.Reason = c.Reason
@@ -96,16 +115,59 @@ func Restrain(controls []*control.Control, amount currency.Cents, out bool, now 
 		return Restraint{Blocked: true, Held: amount, Allowed: 0, Controls: r.Controls, Reason: r.Reason}
 	}
 	if rate <= rateFloor {
+		r.Reserve = nil
 		return r
 	}
 	if rate >= rateCeil || amount > maxCents {
 		// A full reserve withholds everything, and an amount too large to
 		// multiply exactly is treated the same way rather than wrapped.
-		return Restraint{Held: amount, Allowed: 0, Controls: r.Controls, Reason: r.Reason}
+		return Restraint{Held: amount, Allowed: 0, Controls: r.Controls, Reason: r.Reason, Reserve: r.Reserve}
 	}
 
 	r.Held = ceilShare(amount, rate)
 	r.Allowed = amount - r.Held
+	return r
+}
+
+// Headroom is how much more the reserve that took a restraint's share may still
+// withhold before it reaches the ceiling it declared. A reserve that declares
+// none has [Unlimited] headroom; one that has reached its ceiling has none.
+func Headroom(c *control.Control) currency.Cents {
+	if c == nil || !c.Bounded() {
+		return Unlimited
+	}
+	return currency.Cents(c.Headroom())
+}
+
+// Cap clamps what a restraint withholds to the headroom left under the reserve
+// that took it, and hands the cents it releases back to Allowed — so Held plus
+// Allowed is still the requested amount exactly.
+//
+// It is separate from [Restrain] and pure for the same reason [Restrain] is:
+// what the controls SAY (a rate) and what the account ALLOWS (a ceiling and a
+// running total) are two different questions, and braiding them would make
+// neither testable. A reserve with no ceiling is unchanged by this, so the
+// composition is safe to apply always and there is no branch to forget.
+//
+// A ceiling never loosens a BLOCK: a blocked move withholds everything by not
+// happening, which is not a reserve taking money and not something a ceiling
+// has any claim on.
+func Cap(r Restraint, headroom currency.Cents) Restraint {
+	if r.Blocked || r.Held <= 0 || headroom >= r.Held {
+		return r
+	}
+	if headroom < 0 {
+		headroom = 0
+	}
+	amount := r.Held + r.Allowed
+	r.Held = headroom
+	r.Allowed = amount - headroom
+	if r.Held == 0 {
+		// The ceiling is reached: this reserve withholds nothing further, so it
+		// is not the control that bore on this move and must not be recorded as
+		// having taken anything from it.
+		r.Reserve = nil
+	}
 	return r
 }
 

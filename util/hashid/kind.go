@@ -213,6 +213,13 @@ var kinds = map[string]int{
 	"risk-screen":  291,
 	"risk-outcome": 292,
 	"risk-control": 293,
+
+	// The reserve LEDGER: one append-only movement of withheld money, named by
+	// what it records (the screen that took it, the control that returned it)
+	// so a retry re-posts the same row. Those ids are strings and never reach
+	// the encoder; the number is here so an int-keyed row could not panic the
+	// money path if one were ever written by another door.
+	"risk-reserve": 294,
 }
 
 var kindsReversed = make(map[int]string)

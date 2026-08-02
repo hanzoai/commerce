@@ -91,6 +91,11 @@ func New(db *datastore.Datastore) *Outcome {
 	return o
 }
 
+// Query is every read on this kind. Like screen.Query it filters by NO
+// ANCESTOR — an ancestor-filtered read loses a row the moment anything updates
+// it, and the tenant boundary is the datastore's namespace either way. The full
+// reasoning lives on screen.Query; it is one property of one ORM and it is
+// written down once.
 func Query(db *datastore.Datastore) datastore.Query {
 	return db.Query("risk-outcome")
 }
@@ -100,8 +105,7 @@ func ByIdem(db *datastore.Datastore, key string) (*Outcome, bool) {
 	if key == "" {
 		return nil, false
 	}
-	root := db.NewKey("synckey", "", 1, nil)
-	iter := Query(db).Ancestor(root).Filter("Idem=", key).Run()
+	iter := Query(db).Filter("Idem=", key).Limit(1).Run()
 	o := New(db)
 	if _, err := iter.Next(o); err != nil {
 		return nil, false
@@ -109,11 +113,21 @@ func ByIdem(db *datastore.Datastore, key string) (*Outcome, bool) {
 	return o, true
 }
 
-// For reads outcomes for one subject, and with an empty subject every outcome
-// in the org. The datastore is already namespaced to one tenant.
-func For(db *datastore.Datastore, subjectKind, subject string) []*Outcome {
-	root := db.NewKey("synckey", "", 1, nil)
-	q := Query(db).Ancestor(root)
+// Max is the most outcomes any read of this kind materialises, and the bound a
+// caller gets when it names none. There is no unbounded read here and no way to
+// ask for one — see the note on screen.Max, which this mirrors deliberately:
+// two tables on the same money plane must not disagree about whether a read has
+// a ceiling.
+const Max = 200
+
+// For reads outcomes for one subject — and with an empty subject the org's
+// most recent ones — newest first, up to limit and never more than [Max]. The
+// datastore is already namespaced to one tenant.
+func For(db *datastore.Datastore, subjectKind, subject string, limit int) []*Outcome {
+	if limit <= 0 || limit > Max {
+		limit = Max
+	}
+	q := Query(db)
 	if subjectKind != "" {
 		q = q.Filter("SubjectKind=", subjectKind)
 	}
@@ -122,7 +136,7 @@ func For(db *datastore.Datastore, subjectKind, subject string) []*Outcome {
 	}
 
 	out := []*Outcome{}
-	iter := q.Run()
+	iter := q.Order("-CreatedAt").Limit(limit).Run()
 	for {
 		o := New(db)
 		if _, err := iter.Next(o); err != nil {

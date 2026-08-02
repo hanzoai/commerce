@@ -34,8 +34,9 @@ type boundKey struct{}
 // bound is everything Bind carries for one request, under ONE key so the
 // middleware costs one allocation however many facts have to cross.
 type bound struct {
-	org *organization.Organization
-	who string
+	org   *organization.Organization
+	who   string
+	admin bool
 }
 
 // Bind carries the request's tenant and principal into the typed ops beneath
@@ -50,6 +51,7 @@ func Bind() zip.Handler {
 		if u, ok := c.Locals("user").(*user.User); ok && u != nil {
 			b.who = u.Id()
 		}
+		b.admin = IsAdmin(c)
 		ctx := context.WithValue(c.Context(), boundKey{}, b)
 		if b.org != nil {
 			// The namespaced context IS the tenant boundary for every store
@@ -82,4 +84,15 @@ func WhoFrom(ctx context.Context) string {
 		return ""
 	}
 	return b.who
+}
+
+// AdminFrom reports whether the caller administers the org the op is serving —
+// [IsAdmin], answered once on the request and carried here because a typed op
+// holds a context and not a request.
+//
+// Fail-closed: off the HTTP path, or on a request Bind never saw, the answer is
+// no. An op that needs the authority refuses; an op that does not is unaffected.
+func AdminFrom(ctx context.Context) bool {
+	b, ok := ctx.Value(boundKey{}).(*bound)
+	return ok && b.admin
 }

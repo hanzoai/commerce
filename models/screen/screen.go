@@ -71,6 +71,28 @@ type Screen struct {
 	// money twice.
 	Idem string `json:"idem,omitempty"`
 
+	// Fingerprint is the exact request this key answered: the stage, the
+	// subject, the amount, the currency, the direction and the money object.
+	//
+	// A key alone is not an idempotent request. Without the fingerprint, reusing
+	// one key across two different moves returns the FIRST move's answer for the
+	// second — and since the answer carries Allowed, which the payout boundary
+	// pays out, that is a key that decides how much money leaves. A repeat whose
+	// fingerprint differs is a caller's mistake and is refused as one.
+	Fingerprint string `json:"-"`
+
+	// Reasserts counts the times a repeat under this key was re-judged against
+	// the controls in force at that moment and came back STRICTER, and
+	// ReassertedAt is when it last happened.
+	//
+	// A recorded answer is evidence of a judgement; it is not a licence to
+	// re-run the judgement's outcome later, when the org may have blocked the
+	// subject in between. So a repeat re-asserts the live controls and this row
+	// records that it did — with the answer it first gave preserved in Detail,
+	// because a record that quietly rewrote itself is not evidence.
+	Reasserts    int       `json:"reasserts,omitempty"`
+	ReassertedAt time.Time `json:"reassertedAt,omitempty"`
+
 	// Detail carries the evidence a decision has to survive on: the signals sent,
 	// the rules that hit, and the ids of the controls that bore on the move.
 	Detail  Map    `json:"detail,omitempty" datastore:"-"`
@@ -108,19 +130,58 @@ func New(db *datastore.Datastore) *Screen {
 	return s
 }
 
+// Query is every read on this kind, and it filters by NO ANCESTOR — the note
+// the whole risk plane's reads are shaped around.
+//
+// Rows are created inside a synckey group, but a row read by id and written
+// back comes out of that group, and in this ORM reading by id is the ONLY way
+// to write at all (see [Writable]). So an ancestor-filtered read stops seeing a
+// row the moment anything updates it: a control would vanish from the list the
+// first time its running total moved, and a judgement would vanish the first
+// time it was re-asserted. Rows silently disappearing from a money plane's
+// evidence is a worse failure than any grouping buys back.
+//
+// The TENANT boundary is the datastore's namespace, which every query here
+// inherits and none can widen. The ancestor was never the boundary.
 func Query(db *datastore.Datastore) datastore.Query {
 	return db.Query("risk-screen")
+}
+
+// Max is the most screens any read of this kind materialises, and the bound a
+// caller gets when it names none.
+//
+// THERE IS NO UNBOUNDED READ HERE AND NO WAY TO ASK FOR ONE. A screen is
+// written on every judged move, so this is the fastest-growing table on the
+// money plane: one request that materialises a busy merchant's whole history is
+// enough to exhaust the process — and the process is shared, so the org that
+// dies of it is not the org that asked. A limit of zero used to mean "all";
+// it now means "the bound", and the difference is a whole class of outage.
+const Max = 200
+
+// bound clamps a caller's limit into 1..Max.
+func bound(limit int) int {
+	if limit <= 0 || limit > Max {
+		return Max
+	}
+	return limit
 }
 
 // ByIdem returns the screen already written under key, if any. The datastore it
 // is handed is namespaced to one org, so a key is unique within a tenant and
 // two tenants using the same key never collide.
+//
+// It reads the OLDEST match, not an arbitrary one. Two first-ever screens under
+// one key can race (this backend has no compare-and-swap reachable from the
+// model layer — see models/idempotencykey), and if that happens every later
+// repeat must still converge on the same answer rather than alternating between
+// two. The money boundary closes the race itself: POST /v1/billing/payouts
+// takes an idempotencykey guard, whose storage id IS deterministic, before it
+// screens at all.
 func ByIdem(db *datastore.Datastore, key string) (*Screen, bool) {
 	if key == "" {
 		return nil, false
 	}
-	root := db.NewKey("synckey", "", 1, nil)
-	iter := Query(db).Ancestor(root).Filter("Idem=", key).Run()
+	iter := Query(db).Filter("Idem=", key).Order("CreatedAt").Limit(1).Run()
 	s := New(db)
 	if _, err := iter.Next(s); err != nil {
 		return nil, false
@@ -128,29 +189,63 @@ func ByIdem(db *datastore.Datastore, key string) (*Screen, bool) {
 	return s, true
 }
 
-// For reads screens, newest first, optionally narrowed to one subject. limit 0
-// means the caller stated no bound and gets the page default.
+// Writable re-reads the screen named by id so it can be CHANGED.
+//
+// A row handed back by a query iterator — which is what [ByIdem], [For] and
+// [ByReference] return — CANNOT BE WRITTEN THROUGH IN THIS ORM: Update and Put
+// on one land nowhere and RETURN NO ERROR. A judgement re-asserted on a query
+// row would look re-asserted in the response and be unchanged in the store,
+// which on this plane means the tightening survives exactly as long as the
+// process does. Every write that starts from a query goes through here.
+func Writable(db *datastore.Datastore, id string) (*Screen, error) {
+	s := New(db)
+	if err := s.GetById(id); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// For reads screens, newest first, optionally narrowed to one subject, up to
+// limit — and never more than [Max] however large a limit is asked for. The
+// bound is applied by the STORE, not by breaking out of the loop: a query that
+// selects a million rows has already cost the million rows.
 func For(db *datastore.Datastore, subjectKind, subject string, limit int) []*Screen {
-	root := db.NewKey("synckey", "", 1, nil)
-	q := Query(db).Ancestor(root)
+	q := Query(db)
 	if subjectKind != "" {
 		q = q.Filter("SubjectKind=", subjectKind)
 	}
 	if subject != "" {
 		q = q.Filter("Subject=", subject)
 	}
+	return page(db, q, limit)
+}
 
+// ByReference reads the screens that judged one money object — a payment
+// intent, a payout — newest first, up to limit and never more than [Max].
+//
+// It exists because assembling a dispute defence needs the judgement that
+// admitted ONE charge, and the way to get that is to ask the store for it. The
+// alternative this replaces was to read every screen the org ever wrote and
+// compare references in Go, which is the same answer at the cost of the whole
+// table.
+func ByReference(db *datastore.Datastore, reference string, limit int) []*Screen {
+	if reference == "" {
+		return []*Screen{}
+	}
+	return page(db, Query(db).Filter("Reference=", reference), limit)
+}
+
+// page runs a bounded query, newest first. It is the ONE read shape in this
+// package, so no caller can accidentally introduce an unbounded one.
+func page(db *datastore.Datastore, q datastore.Query, limit int) []*Screen {
 	out := []*Screen{}
-	iter := q.Run()
+	iter := q.Order("-CreatedAt").Limit(bound(limit)).Run()
 	for {
 		s := New(db)
 		if _, err := iter.Next(s); err != nil {
 			break
 		}
 		out = append(out, s)
-		if limit > 0 && len(out) >= limit {
-			break
-		}
 	}
 	return out
 }

@@ -13,11 +13,13 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/models/dispute"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -40,13 +42,51 @@ func (a answers) Decide(context.Context, *risk.Ask) (*risk.Decision, error) {
 }
 func (a answers) Label(context.Context, *risk.Label) error { return nil }
 
-// face mounts the real risk face and returns a caller bound to one org.
+// caller drives one principal against the real face.
+type caller func(method, path, body string) *http.Response
+
+// face mounts the real risk face for the caller shape a PLATFORM uses: the
+// internal service token / legacy per-org token, which carries permission.Admin.
+func face(t *testing.T, ctx context.Context, orgName string) caller {
+	t.Helper()
+	return faceAs(t, ctx, orgName, func(c *zip.Ctx) {
+		c.Locals("iam_authenticated", true)
+		c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
+	})
+}
+
+// merchantAdmin is the caller this face exists for: a MERCHANT administering
+// its OWN org. It carries no permission.Admin — that bit is deliberately
+// withheld from every org admin (middleware/iammiddleware.orgAdminGrant) and
+// reserved for the internal service token and platform SuperAdmins — so any
+// gate that keys on it answers 403 to every real customer.
+func merchantAdmin(t *testing.T, ctx context.Context, orgName string) caller {
+	t.Helper()
+	return faceAs(t, ctx, orgName, func(c *zip.Ctx) {
+		c.Locals("iam_authenticated", true)
+		c.Locals("permissions", bit.Field(permission.Live))
+		c.Locals(iammiddleware.LocalOrgAdmin, true)
+	})
+}
+
+// member is an authenticated principal inside the org that administers nothing:
+// a merchant's server-side integration key, or a user without admin. It screens
+// and reads; it does not restrain money.
+func member(t *testing.T, ctx context.Context, orgName string) caller {
+	t.Helper()
+	return faceAs(t, ctx, orgName, func(c *zip.Ctx) {
+		c.Locals("iam_authenticated", true)
+		c.Locals("permissions", bit.Field(permission.Live))
+	})
+}
+
+// faceAs mounts the real face and returns a caller bound to one org.
 //
-// The seed sets exactly what a live IAM-authenticated request carries by the
-// time it reaches this group — the validated principal's org and its scope —
-// and nothing else. TokenRequired then takes its own IAM branch, so the gate
-// under test is the production gate.
-func face(t *testing.T, ctx context.Context, orgName string) func(method, path, body string) *http.Response {
+// The seed sets exactly what a live request carries by the time it reaches this
+// group — the validated principal's org, its scope, and whether the identity
+// edge marked it an admin OF THIS ORG — and nothing else. The group's own
+// middleware chain then runs, so the gate under test is the production gate.
+func faceAs(t *testing.T, ctx context.Context, orgName string, seed func(*zip.Ctx)) caller {
 	t.Helper()
 	org := &organization.Organization{}
 	org.Name = orgName
@@ -55,8 +95,7 @@ func face(t *testing.T, ctx context.Context, orgName string) func(method, path, 
 	app := zip.New(zip.Config{DisableStartupMessage: true, AppName: "risk-api-test"})
 	app.Use(func(c *zip.Ctx) error {
 		c.SetContext(ctx)
-		c.Locals("iam_authenticated", true)
-		c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
+		seed(c)
 		c.Locals("organization", org)
 		return c.Continue()
 	})
@@ -377,5 +416,232 @@ func TestRiskAPI_AnUnauthenticatedCallerIsRefused(t *testing.T) {
 		if res.StatusCode != http.StatusUnauthorized && res.StatusCode != http.StatusForbidden {
 			t.Fatalf("%s %s answered %d to an unauthenticated caller", r[0], r[1], res.StatusCode)
 		}
+	}
+}
+
+// -----------------------------------------------------------------------------
+// who may reach the face
+// -----------------------------------------------------------------------------
+
+// theWholeFace is every op, with a body that is valid for it. It is the list
+// the reachability tests walk, so a new op cannot be added without deciding —
+// here, in one place — who may call it.
+func theWholeFace(id string) []struct {
+	method, path, body string
+	restrains          bool
+} {
+	return []struct {
+		method, path, body string
+		restrains          bool
+	}{
+		{http.MethodPost, "/v1/billing/risk/screen", `{"stage":"payment","subjectKind":"customer","subject":"c1","amount":100}`, false},
+		{http.MethodGet, "/v1/billing/risk/screens", "", false},
+		{http.MethodGet, "/v1/billing/risk/screens/" + id, "", false},
+		{http.MethodGet, "/v1/billing/risk/controls", "", false},
+		{http.MethodPost, "/v1/billing/risk/controls", `{"effect":"hold","subjectKind":"merchant","subject":"m1"}`, true},
+		{http.MethodDelete, "/v1/billing/risk/controls/" + id, "", true},
+		{http.MethodGet, "/v1/billing/risk/merchants/m1", "", false},
+		{http.MethodPost, "/v1/billing/risk/merchants/m1/review", `{}`, true},
+		{http.MethodPost, "/v1/billing/risk/outcomes", `{"event":"dispute","subjectKind":"customer","subject":"c1"}`, false},
+		{http.MethodGet, "/v1/billing/risk/disputes/" + id + "/evidence", "", false},
+		{http.MethodPost, "/v1/billing/risk/disputes/" + id + "/submit", `{}`, false},
+	}
+}
+
+// TestRiskAPI_AMerchantAdminReachesEveryOp is the gate on the defect that made
+// this face unreachable by its own customers.
+//
+// It was gated on TokenRequired(permission.Admin) — a bit deliberately withheld
+// from every org admin and reserved for the internal service token and platform
+// SuperAdmins — so all eleven ops answered 403 to every merchant. A cross-tenant
+// SuperAdmin is the EXCEPTION, not the only door.
+func TestRiskAPI_AMerchantAdminReachesEveryOp(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	risk.Set(answers{})
+
+	call := merchantAdmin(t, ctx, "merchantface")
+
+	// A real record to name, so a 404 cannot be mistaken for a refusal.
+	scr := decode(t, call(http.MethodPost, "/v1/billing/risk/screen",
+		`{"stage":"payment","subjectKind":"customer","subject":"c1","amount":100}`))
+	id, _ := scr["id"].(string)
+	if id == "" {
+		t.Fatalf("a merchant admin could not screen: %v", scr)
+	}
+	ctl := decode(t, call(http.MethodPost, "/v1/billing/risk/controls",
+		`{"effect":"hold","subjectKind":"merchant","subject":"m1"}`))
+	if ctl["id"] == nil {
+		t.Fatalf("a merchant admin could not place a control on its own merchant: %v", ctl)
+	}
+
+	for _, op := range theWholeFace(id) {
+		path := op.path
+		if op.method == http.MethodDelete {
+			path = "/v1/billing/risk/controls/" + ctl["id"].(string)
+		}
+		res := call(op.method, path, op.body)
+		if res.StatusCode == http.StatusForbidden || res.StatusCode == http.StatusUnauthorized {
+			t.Fatalf("%s %s answered %d to a merchant administering its own org",
+				op.method, path, res.StatusCode)
+		}
+	}
+}
+
+// TestRiskAPI_AMemberScreensAndReadsButCannotRestrain — authority inside the
+// tenant is per-op. Screening is what a merchant's backend does on every
+// transaction; placing and lifting a control move real money and take the org's
+// own administrator.
+func TestRiskAPI_AMemberScreensAndReadsButCannotRestrain(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	risk.Set(answers{})
+
+	admin := merchantAdmin(t, ctx, "memberface")
+	call := member(t, ctx, "memberface")
+
+	scr := decode(t, call(http.MethodPost, "/v1/billing/risk/screen",
+		`{"stage":"payment","subjectKind":"customer","subject":"c1","amount":100}`))
+	id, _ := scr["id"].(string)
+	if id == "" {
+		t.Fatalf("a member could not screen: %v", scr)
+	}
+	ctl := decode(t, admin(http.MethodPost, "/v1/billing/risk/controls",
+		`{"effect":"hold","subjectKind":"merchant","subject":"m1"}`))
+
+	for _, op := range theWholeFace(id) {
+		path := op.path
+		if op.method == http.MethodDelete {
+			path = "/v1/billing/risk/controls/" + ctl["id"].(string)
+		}
+		res := call(op.method, path, op.body)
+		if op.restrains {
+			if res.StatusCode != http.StatusForbidden {
+				t.Fatalf("%s %s answered %d to a caller that administers nothing — it can restrain money",
+					op.method, path, res.StatusCode)
+			}
+			continue
+		}
+		if res.StatusCode == http.StatusForbidden || res.StatusCode == http.StatusUnauthorized {
+			t.Fatalf("%s %s answered %d to an authenticated principal of the org",
+				op.method, path, res.StatusCode)
+		}
+	}
+
+	// And the control it could not lift is still standing.
+	list := decode(t, admin(http.MethodGet, "/v1/billing/risk/controls?live=true", ""))
+	if len(list["controls"].([]any)) != 1 {
+		t.Fatalf("a member lifted a control: %v", list)
+	}
+}
+
+// TestRiskAPI_ARepeatedScreenCannotOutrunANewControl — the critical defect, at
+// the wire.
+func TestRiskAPI_ARepeatedScreenCannotOutrunANewControl(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	risk.Set(answers{})
+
+	call := merchantAdmin(t, ctx, "apireplay")
+	move := `{"stage":"payout","subjectKind":"merchant","subject":"m1","amount":5000,"currency":"usd","out":true,"idem":"k-1"}`
+
+	first := decode(t, call(http.MethodPost, "/v1/billing/risk/screen", move))
+	if first["moves"] != true {
+		t.Fatalf("first=%v", first)
+	}
+	if res := call(http.MethodPost, "/v1/billing/risk/controls",
+		`{"effect":"block","subjectKind":"merchant","subject":"m1"}`); res.StatusCode != http.StatusCreated {
+		t.Fatalf("place: %d", res.StatusCode)
+	}
+	again := decode(t, call(http.MethodPost, "/v1/billing/risk/screen", move))
+	if again["moves"] != false || again["allowed"].(float64) != 0 {
+		t.Fatalf("a replayed idempotency key lifted a live block: %v", again)
+	}
+	if again["id"] != first["id"] {
+		t.Fatalf("the repeat wrote a second record: %v vs %v", again["id"], first["id"])
+	}
+}
+
+// TestRiskAPI_AKeyReusedForADifferentMoveIs409 — the key names one question,
+// and answering a second one with the first one's Allowed is how a small screen
+// authorizes a large payout.
+func TestRiskAPI_AKeyReusedForADifferentMoveIs409(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	risk.Set(answers{})
+
+	call := merchantAdmin(t, ctx, "apiidem")
+	if res := call(http.MethodPost, "/v1/billing/risk/screen",
+		`{"stage":"payout","subjectKind":"merchant","subject":"m1","amount":100,"currency":"usd","out":true,"idem":"k-1"}`); res.StatusCode != http.StatusOK {
+		t.Fatalf("first: %d", res.StatusCode)
+	}
+	res := call(http.MethodPost, "/v1/billing/risk/screen",
+		`{"stage":"payout","subjectKind":"merchant","subject":"m1","amount":100000000,"currency":"usd","out":true,"idem":"k-1"}`)
+	if res.StatusCode != http.StatusConflict {
+		t.Fatalf("status=%d want 409 — a key reused for a different move must not be answered from the first", res.StatusCode)
+	}
+}
+
+// TestRiskAPI_TheReserveCeilingAndItsLedgerAreVisible — a reserve is a quantity
+// a merchant can reconcile, so the ceiling, the running total and the movements
+// are all on the wire.
+func TestRiskAPI_TheReserveCeilingAndItsLedgerAreVisible(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	risk.Set(answers{})
+
+	call := merchantAdmin(t, ctx, "apicap")
+	placed := decode(t, call(http.MethodPost, "/v1/billing/risk/controls",
+		`{"effect":"reserve","subjectKind":"merchant","subject":"m1","rate":5000,"cap":1000,"currency":"usd"}`))
+	if placed["cap"].(float64) != 1000 || placed["currency"] != "usd" {
+		t.Fatalf("the ceiling was not recorded: %v", placed)
+	}
+
+	for i, idem := range []string{"a", "b", "c"} {
+		out := decode(t, call(http.MethodPost, "/v1/billing/risk/screen",
+			`{"stage":"payout","subjectKind":"merchant","subject":"m1","amount":1200,"currency":"usd","out":true,"idem":"`+idem+`"}`))
+		want := []float64{600, 400, 0}[i]
+		if out["held"].(float64) != want {
+			t.Fatalf("payout %d held=%v want %v — the ceiling bounds the total", i, out["held"], want)
+		}
+	}
+
+	st := decode(t, call(http.MethodGet, "/v1/billing/risk/merchants/m1", ""))
+	if st["reserved"].(float64) != 1000 {
+		t.Fatalf("reserved=%v want 1000", st["reserved"])
+	}
+	ledger, _ := st["ledger"].([]any)
+	if len(ledger) != 2 {
+		t.Fatalf("%d ledger rows, want the 2 movements that took money: %v", len(ledger), st["ledger"])
+	}
+
+	// Releasing the declaration closes its account.
+	if res := call(http.MethodDelete, "/v1/billing/risk/controls/"+placed["id"].(string), ""); res.StatusCode != http.StatusOK {
+		t.Fatalf("release: %d", res.StatusCode)
+	}
+	st = decode(t, call(http.MethodGet, "/v1/billing/risk/merchants/m1", ""))
+	if st["reserved"].(float64) != 0 {
+		t.Fatalf("reserved=%v after the reserve was lifted, want 0", st["reserved"])
+	}
+	if len(st["ledger"].([]any)) != 3 {
+		t.Fatalf("the release was not posted: %v", st["ledger"])
+	}
+}
+
+// TestRiskAPI_ACallerCannotStoreArbitrarySignals — the record is durable and
+// forwarded, so what a caller may put in it is a closed list with a size on it.
+func TestRiskAPI_ACallerCannotStoreArbitrarySignals(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	risk.Set(answers{})
+
+	call := merchantAdmin(t, ctx, "apisignals")
+	huge := strings.Repeat("x", 4096)
+	body := decode(t, call(http.MethodPost, "/v1/billing/risk/screen",
+		`{"stage":"payment","subjectKind":"customer","subject":"c1","amount":100,"signals":{"ip":"203.0.113.7","card":"4111111111111111","junk":"`+huge+`","ua":"`+huge+`"}}`))
+	detail, _ := body["detail"].(map[string]any)
+	stored, _ := detail["signals"].(map[string]any)
+	if len(stored) != 1 || stored["ip"] != "203.0.113.7" {
+		t.Fatalf("stored signals=%v — only allowlisted facts inside the bound are kept", stored)
 	}
 }

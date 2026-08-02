@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/hanzoai/commerce/models/control"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -109,7 +108,7 @@ func TestGuard_APayoutHoldDoesNotStopACharge(t *testing.T) {
 	defer ctx.Close()
 
 	s := tenant("guardhold", ctx, &oracle{answer: &Decision{Action: Allow}})
-	if _, err := Place(s, customer("c1"), control.Hold, 0, time.Time{}, "payouts held"); err != nil {
+	if _, err := Place(s, Placement{Subject: customer("c1"), Effect: control.Hold, Rate: 0, Reason: "payouts held"}); err != nil {
 		t.Fatalf("place: %v", err)
 	}
 	inner := &gateway{}

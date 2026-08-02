@@ -173,6 +173,14 @@
       },
       "riskControlIn": {
         "properties": {
+          "cap": {
+            "description": "Cap is the CEILING on what this reserve may withhold in TOTAL, exact minor\nunits of Currency. Zero declares no ceiling.\n\nA rate on its own bounds nothing: it is a share of a number the caller\nchooses, so it withholds a quarter of whatever is asked for, forever, with\nno total it converges on. A ceiling is what turns a reserve into a\nquantity the merchant can reconcile and the platform can release.",
+            "type": "integer"
+          },
+          "currency": {
+            "description": "Currency denominates the ceiling and scopes the reserve to that currency.\nIt is REQUIRED with a ceiling: an amount without a currency is a number,\nand holds taken in EUR do not satisfy a cap declared in USD.",
+            "type": "string"
+          },
           "effect": {
             "description": "Effect is reserve, hold or block. A reserve withholds a share of every\noutbound move; a hold stops money leaving; a block stops it moving at all.",
             "type": "string"
@@ -209,8 +217,18 @@
             "description": "By is who placed it, from the validated principal.",
             "type": "string"
           },
+          "cap": {
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string"
+          },
           "effect": {
             "type": "string"
+          },
+          "held": {
+            "description": "Held is the cumulative exact minor units this reserve has withheld — what\nthe ceiling is measured against, and what a release returns.",
+            "type": "integer"
           },
           "id": {
             "type": "string"
@@ -327,6 +345,37 @@
           "reported": {
             "description": "Reported states whether the scoring plane accepted the label, and Refusal\nwhy it did not. An unreported outcome is still a durable record here, so a\nscoring outage costs learning latency and never evidence.",
             "type": "boolean"
+          },
+          "screen": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "riskReserveOut": {
+        "properties": {
+          "at": {
+            "type": "string"
+          },
+          "control": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "held": {
+            "description": "Held and Released are exact minor units.",
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          },
+          "reference": {
+            "description": "Reference is the money object the hold came out of, so a merchant\nreconciling a short payout finds this row by the id on its own statement.",
+            "type": "string"
+          },
+          "released": {
+            "type": "integer"
           },
           "screen": {
             "type": "string"
@@ -495,6 +544,13 @@
           "held": {
             "type": "integer"
           },
+          "ledger": {
+            "description": "Ledger is the recent movements of reserved money: what was withheld, from\nwhich judgement, under which declaration, and what a release returned.",
+            "items": {
+              "$ref": "#/components/schemas/riskReserveOut"
+            },
+            "type": "array"
+          },
           "lost": {
             "type": "integer"
           },
@@ -514,6 +570,10 @@
           "refused": {
             "type": "integer"
           },
+          "reserved": {
+            "description": "Reserved is what the reserves in force are HOLDING of this subject's\nmoney right now — cumulative, exact, read off the declarations themselves.\nHeld is what the counted window's screens withheld; this is the account.",
+            "type": "integer"
+          },
           "screen": {
             "$ref": "#/components/schemas/riskScreenOut",
             "description": "Screen is the merchant-stage judgement, present when the standing was\nreviewed rather than merely counted."
@@ -524,11 +584,18 @@
           "subject": {
             "type": "string"
           },
+          "truncated": {
+            "type": "boolean"
+          },
           "volumeIn": {
             "description": "VolumeIn, VolumeOut and Held are exact minor units.",
             "type": "integer"
           },
           "volumeOut": {
+            "type": "integer"
+          },
+          "window": {
+            "description": "Window is how many recent screens and outcomes these numbers are counted\nover, and Truncated says there are more than that in the record. A rate\nquoted without saying what it is a rate OF is a number nobody can check.",
             "type": "integer"
           }
         },
@@ -584,6 +651,15 @@
             "schema": {
               "type": "boolean"
             }
+          },
+          {
+            "description": "Limit bounds the page. Zero means the default, and more than the maximum\nmeans the maximum.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -636,7 +712,7 @@
     },
     "/v1/billing/risk/controls/{id}": {
       "delete": {
-        "description": "Lifts a control. Releasing one already released is not an\nerror and does not rewrite who lifted it first.",
+        "description": "Lifts a control and RETURNS what it was holding: a reserve\nthat withheld money posts a release to the ledger, so the account closes\ninstead of leaving money reserved under a declaration that no longer exists.\n\nReleasing one already released is not an error and does not rewrite who\nlifted it first.",
         "operationId": "riskControlRelease",
         "parameters": [
           {

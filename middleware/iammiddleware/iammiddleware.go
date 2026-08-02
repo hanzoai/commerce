@@ -85,6 +85,30 @@ func orgAdminHomeMatches(c *zip.Ctx, effectiveOrg string) bool {
 	return strings.EqualFold(home, eff)
 }
 
+// LocalOrgAdmin is where IAMTokenRequired records the answer to "does this
+// caller administer the org this request acts in" — computed ONCE, where both
+// halves of the question are in hand: the edge's org-admin flag (whichever of
+// the two spellings that edge mints) AND home==effective.
+//
+// It is a recorded FACT, not a signal to re-derive. A second reader that
+// re-asked from headers would have to remember the home binding too, and the
+// one that forgets it is a merchant admin with authority over a foreign tenant.
+const LocalOrgAdmin = "iam_org_admin"
+
+// IsOrgAdmin reports whether this request's caller administers the org it is
+// acting in — a merchant's own admin, bound to its own tenant.
+//
+// Fail-closed: absent (no IAM middleware ran, or the caller is not one) is
+// false. It never widens to a foreign org, because the home==effective check is
+// already inside the value it reads.
+func IsOrgAdmin(c *zip.Ctx) bool {
+	if c == nil {
+		return false
+	}
+	v, ok := c.Locals(LocalOrgAdmin).(bool)
+	return ok && v
+}
+
 var (
 	mu          sync.RWMutex
 	initialized bool
@@ -251,11 +275,13 @@ func IAMTokenRequired() zip.Handler {
 		// gain merchant authority over a FOREIGN org. Enforced HERE (defense in depth),
 		// not merely trusted from the gateway by comment — a money/multi-tenant boundary
 		// must not delegate its own tenant check.
-		if isOrgAdmin(c) && orgAdminHomeMatches(c, ownerID) {
+		admin := isOrgAdmin(c) && orgAdminHomeMatches(c, ownerID)
+		if admin {
 			perms |= orgAdminGrant
 		}
 
 		// Mirror onto request locals for legacy handlers.
+		c.Locals(LocalOrgAdmin, admin)
 		c.Locals("iam_authenticated", true)
 		c.Locals("iam_user_id", userID)
 		c.Locals("iam_email", email)

@@ -8,15 +8,18 @@ import (
 
 func init() {
 	zip.Describe("DELETE /v1/billing/risk/controls/:id", zip.Doc{
-		Description: "Lifts a control. Releasing one already released is not an\nerror and does not rewrite who lifted it first.",
+		Description: "Lifts a control and RETURNS what it was holding: a reserve\nthat withheld money posts a release to the ledger, so the account closes\ninstead of leaving money reserved under a declaration that no longer exists.\n\nReleasing one already released is not an error and does not rewrite who\nlifted it first.",
 		Fields: map[string]string{
-			"riskControlOut.by": "By is who placed it, from the validated principal.",
+			"riskControlOut.by":   "By is who placed it, from the validated principal.",
+			"riskControlOut.held": "Held is the cumulative exact minor units this reserve has withheld — what\nthe ceiling is measured against, and what a release returns.",
 		},
 	})
 	zip.Describe("GET /v1/billing/risk/controls", zip.Doc{
 		Description: "Lists the controls this org has placed, and whether each still\nbears on a move.",
 		Fields: map[string]string{
-			"riskControlOut.by": "By is who placed it, from the validated principal.",
+			"riskControlOut.by":    "By is who placed it, from the validated principal.",
+			"riskControlOut.held":  "Held is the cumulative exact minor units this reserve has withheld — what\nthe ceiling is measured against, and what a release returns.",
+			"riskControlsIn.limit": "Limit bounds the page. Zero means the default, and more than the maximum\nmeans the maximum.",
 		},
 	})
 	zip.Describe("GET /v1/billing/risk/disputes/:id/evidence", zip.Doc{
@@ -29,6 +32,9 @@ func init() {
 		Description: "Reads a merchant's standing from this org's own record. It\ncounts and reports; it scores nothing and changes nothing, so a console may\npoll it.",
 		Fields: map[string]string{
 			"riskControlOut.by":        "By is who placed it, from the validated principal.",
+			"riskControlOut.held":      "Held is the cumulative exact minor units this reserve has withheld — what\nthe ceiling is measured against, and what a release returns.",
+			"riskReserveOut.held":      "Held and Released are exact minor units.",
+			"riskReserveOut.reference": "Reference is the money object the hold came out of, so a merchant\nreconciling a short payout finds this row by the id on its own statement.",
 			"riskScreenOut.action":     "Action is what the money plane did: allow, challenge, review, restrict or\nblock. Restrict and block mean the money did not move.",
 			"riskScreenOut.agency":     "Agency is who acted: agent, human, bot or unknown.",
 			"riskScreenOut.decision":   "Decision is the /v1/risk decision this record is anchored to.",
@@ -40,9 +46,12 @@ func init() {
 			"riskScreenOut.refusal":    "Refusal states why the scoring plane could not judge. A screen carrying a\nrefusal was decided by the controls alone — it is not a clean result.",
 			"riskScreenOut.score":      "Score is the scoring plane's weight of evidence in [0,1].",
 			"riskScreenOut.shadow":     "Shadow marks a judgement that was recorded and deliberately not enforced.",
+			"riskStandingOut.ledger":   "Ledger is the recent movements of reserved money: what was withheld, from\nwhich judgement, under which declaration, and what a release returned.",
 			"riskStandingOut.placed":   "Placed names a control the review placed.",
+			"riskStandingOut.reserved": "Reserved is what the reserves in force are HOLDING of this subject's\nmoney right now — cumulative, exact, read off the declarations themselves.\nHeld is what the counted window's screens withheld; this is the account.",
 			"riskStandingOut.screen":   "Screen is the merchant-stage judgement, present when the standing was\nreviewed rather than merely counted.",
 			"riskStandingOut.volumeIn": "VolumeIn, VolumeOut and Held are exact minor units.",
+			"riskStandingOut.window":   "Window is how many recent screens and outcomes these numbers are counted\nover, and Truncated says there are more than that in the record. A rate\nquoted without saying what it is a rate OF is a number nobody can check.",
 		},
 	})
 	zip.Describe("GET /v1/billing/risk/screens", zip.Doc{
@@ -80,11 +89,14 @@ func init() {
 	zip.Describe("POST /v1/billing/risk/controls", zip.Doc{
 		Description: "Places a reserve, a payout hold or a block on one subject.\n\nPlacing is idempotent while a control is in force: a monitor that runs every\ncycle does not accumulate a hundred identical holds on one merchant, and\nreleasing takes one act rather than a hundred.",
 		Fields: map[string]string{
+			"riskControlIn.cap":         "Cap is the CEILING on what this reserve may withhold in TOTAL, exact minor\nunits of Currency. Zero declares no ceiling.\n\nA rate on its own bounds nothing: it is a share of a number the caller\nchooses, so it withholds a quarter of whatever is asked for, forever, with\nno total it converges on. A ceiling is what turns a reserve into a\nquantity the merchant can reconcile and the platform can release.",
+			"riskControlIn.currency":    "Currency denominates the ceiling and scopes the reserve to that currency.\nIt is REQUIRED with a ceiling: an amount without a currency is a number,\nand holds taken in EUR do not satisfy a cap declared in USD.",
 			"riskControlIn.effect":      "Effect is reserve, hold or block. A reserve withholds a share of every\noutbound move; a hold stops money leaving; a block stops it moving at all.",
 			"riskControlIn.rate":        "Rate is BASIS POINTS withheld, for a reserve: 2500 is a quarter. It is\nbasis points and not a fraction because money is integer arithmetic, and\na float rate drifts the withheld amount by a cent per move at scale.",
 			"riskControlIn.subjectKind": "SubjectKind and Subject name what is restrained, inside this org.",
 			"riskControlIn.until":       "Until lapses the control, RFC 3339. Empty means it stands until released,\nwhich is what a fraud restraint should do.",
 			"riskControlOut.by":         "By is who placed it, from the validated principal.",
+			"riskControlOut.held":       "Held is the cumulative exact minor units this reserve has withheld — what\nthe ceiling is measured against, and what a release returns.",
 		},
 	})
 	zip.Describe("POST /v1/billing/risk/disputes/:id/submit", zip.Doc{
@@ -97,6 +109,9 @@ func init() {
 		Description: "Reviews a merchant now: it counts the standing, puts it to\nthe risk plane as a merchant-stage question, records the judgement, and —\nwhen asked to act — places the control the answer implies.\n\nThis is the continuous monitoring a platform runs on its merchants. It is a\nPOST because it records a judgement and may restrain money.",
 		Fields: map[string]string{
 			"riskControlOut.by":        "By is who placed it, from the validated principal.",
+			"riskControlOut.held":      "Held is the cumulative exact minor units this reserve has withheld — what\nthe ceiling is measured against, and what a release returns.",
+			"riskReserveOut.held":      "Held and Released are exact minor units.",
+			"riskReserveOut.reference": "Reference is the money object the hold came out of, so a merchant\nreconciling a short payout finds this row by the id on its own statement.",
 			"riskReviewIn.act":         "Act places the control the answer implies: a block on block, and on\nrestrict a reserve when Reserve is a rate, else a payout hold.",
 			"riskReviewIn.reserve":     "Reserve is BASIS POINTS to withhold when the answer restricts. Zero means\nhold instead of reserving.",
 			"riskScreenOut.action":     "Action is what the money plane did: allow, challenge, review, restrict or\nblock. Restrict and block mean the money did not move.",
@@ -110,9 +125,12 @@ func init() {
 			"riskScreenOut.refusal":    "Refusal states why the scoring plane could not judge. A screen carrying a\nrefusal was decided by the controls alone — it is not a clean result.",
 			"riskScreenOut.score":      "Score is the scoring plane's weight of evidence in [0,1].",
 			"riskScreenOut.shadow":     "Shadow marks a judgement that was recorded and deliberately not enforced.",
+			"riskStandingOut.ledger":   "Ledger is the recent movements of reserved money: what was withheld, from\nwhich judgement, under which declaration, and what a release returned.",
 			"riskStandingOut.placed":   "Placed names a control the review placed.",
+			"riskStandingOut.reserved": "Reserved is what the reserves in force are HOLDING of this subject's\nmoney right now — cumulative, exact, read off the declarations themselves.\nHeld is what the counted window's screens withheld; this is the account.",
 			"riskStandingOut.screen":   "Screen is the merchant-stage judgement, present when the standing was\nreviewed rather than merely counted.",
 			"riskStandingOut.volumeIn": "VolumeIn, VolumeOut and Held are exact minor units.",
+			"riskStandingOut.window":   "Window is how many recent screens and outcomes these numbers are counted\nover, and Truncated says there are more than that in the record. A rate\nquoted without saying what it is a rate OF is a number nobody can check.",
 		},
 	})
 	zip.Describe("POST /v1/billing/risk/outcomes", zip.Doc{

@@ -83,3 +83,68 @@ func TestIsOrgAdmin(t *testing.T) {
 		}
 	}
 }
+
+// TestIsOrgAdmin_ReadsBothSpellingsTheEdgesMint — the two identity edges mint
+// DIFFERENT headers for the same authority: the gateway sets X-User-IsAdmin,
+// while cloud's in-process boundary reserves that for a SuperAdmin and sets
+// X-User-IsOrgAdmin for a merchant admin. A predicate that reads only one of
+// them refuses a real org admin depending on where the request entered.
+func TestIsOrgAdmin_ReadsBothSpellingsTheEdgesMint(t *testing.T) {
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	for _, header := range []string{HeaderUserIsAdmin, HeaderUserIsOrgAdmin} {
+		c := app.TestCtx(http.MethodPost, "/v1/billing/risk/controls")
+		c.Fiber().Request().Header.Set(header, "true")
+		if !isOrgAdmin(c) {
+			t.Fatalf("%s: true did not mark an org admin", header)
+		}
+	}
+}
+
+// TestIsOrgAdmin_IsTheRecordedAnswerAndFailsClosed — the exported predicate
+// reads the answer IAMTokenRequired already computed WITH the home==effective
+// binding, rather than re-deriving it from headers. A second derivation is a
+// second chance to forget the binding, and the one that forgets it hands a
+// merchant admin authority over a foreign tenant.
+func TestIsOrgAdmin_IsTheRecordedAnswerAndFailsClosed(t *testing.T) {
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+
+	// Absent: no IAM middleware ran, or the caller is not one.
+	c := app.TestCtx(http.MethodGet, "/v1/billing/risk/controls")
+	if IsOrgAdmin(c) {
+		t.Fatal("an unmarked request reported an org admin")
+	}
+	// The headers ALONE are not enough — the recorded answer is what counts,
+	// because only that carries the home==effective check.
+	c.Fiber().Request().Header.Set(HeaderUserIsOrgAdmin, "true")
+	if IsOrgAdmin(c) {
+		t.Fatal("a header alone granted org-admin authority without the home==effective binding")
+	}
+	c.Locals(LocalOrgAdmin, true)
+	if !IsOrgAdmin(c) {
+		t.Fatal("the recorded answer was not read back")
+	}
+	c.Locals(LocalOrgAdmin, "true") // a non-bool must not be read as one
+	if IsOrgAdmin(c) {
+		t.Fatal("a non-bool marker was treated as an org admin")
+	}
+	if IsOrgAdmin(nil) {
+		t.Fatal("a nil request reported an org admin")
+	}
+}
+
+// TestOrgAdminHomeMatches_RefusesAForeignTenant — the binding itself.
+func TestOrgAdminHomeMatches_RefusesAForeignTenant(t *testing.T) {
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	c := app.TestCtx(http.MethodPost, "/v1/billing/risk/controls")
+	c.Fiber().Request().Header.Set(HeaderUserOwner, "acme")
+	if !orgAdminHomeMatches(c, "acme") {
+		t.Fatal("a caller acting in its own org did not match")
+	}
+	if orgAdminHomeMatches(c, "victim") {
+		t.Fatal("an org-switched caller inherited authority over a foreign org")
+	}
+	blank := app.TestCtx(http.MethodPost, "/v1/billing/risk/controls")
+	if orgAdminHomeMatches(blank, "acme") {
+		t.Fatal("a caller with no home org matched one")
+	}
+}
