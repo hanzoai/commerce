@@ -37,7 +37,6 @@ var _ = BeforeSuite(func() {
 
 	cfg := db.DefaultConfig()
 	cfg.DataDir = tempDir
-	cfg.OrgDataDir = filepath.Join(tempDir, "orgs")
 	cfg.UserDataDir = filepath.Join(tempDir, "users")
 	cfg.EnableDatastore = false
 	cfg.EnableVectorSearch = false

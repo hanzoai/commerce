@@ -69,7 +69,6 @@ func TestMain(m *testing.M) {
 
 	cfg := dbpkg.DefaultConfig()
 	cfg.DataDir = tempDir
-	cfg.OrgDataDir = tempDir + "/orgs"
 	cfg.UserDataDir = tempDir + "/users"
 	cfg.EnableDatastore = false
 	cfg.EnableVectorSearch = false

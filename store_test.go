@@ -36,7 +36,6 @@ func newTestManager(t *testing.T) *db.Manager {
 	mgr, err := db.NewManager(&db.Config{
 		DataDir:            tmp,
 		UserDataDir:        filepath.Join(tmp, "users"),
-		OrgDataDir:         filepath.Join(tmp, "orgs"),
 		EnableVectorSearch: false,
 		IsDev:              true,
 	})

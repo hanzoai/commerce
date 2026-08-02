@@ -29,7 +29,7 @@ require (
 	github.com/hanzoai/pubsub-go v1.0.0
 	github.com/hanzoai/search-go v0.36.0
 	github.com/hanzoai/sendgrid-go v3.4.2-0.20180724185151-733a05184a8d+incompatible
-	github.com/hanzoai/tasks v1.52.4
+	github.com/hanzoai/tasks v1.52.9
 	github.com/hanzokv/go/v9 v9.22.0
 	github.com/huandu/facebook v2.3.1+incompatible
 	github.com/icrowley/fake v0.0.0-20240710202011-f797eb4a99c0
@@ -55,7 +55,7 @@ require (
 	github.com/hanzo-ds/go v1.0.1
 	github.com/hanzoai/account v0.2.0
 	github.com/hanzoai/money v0.2.2
-	github.com/hanzoai/sqlite v0.4.0
+	github.com/hanzoai/sqlite v0.5.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/luxfi/trace v1.3.0
 	github.com/luxfi/zap v1.2.7
@@ -150,7 +150,9 @@ require (
 	github.com/gorilla/rpc v1.2.1 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/grandcat/zeroconf v1.0.0 // indirect
+	github.com/hanzoai/cek v0.2.1
 	github.com/hanzoai/dbx v1.17.2 // indirect
+	github.com/hanzoai/namespace v1.2.0
 	github.com/hanzos3/go v1.0.0
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -163,7 +165,7 @@ require (
 	github.com/luxfi/cache v1.3.1 // indirect
 	github.com/luxfi/container v0.2.1 // indirect
 	github.com/luxfi/ids v1.3.2 // indirect
-	github.com/luxfi/log v1.4.3
+	github.com/luxfi/log v1.5.0
 	github.com/luxfi/math v1.5.1 // indirect
 	github.com/luxfi/math/big v0.1.0 // indirect
 	github.com/luxfi/mdns v0.1.1 // indirect
@@ -201,7 +203,7 @@ require (
 	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.22.0
-	golang.org/x/sys v0.47.0
+	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.47.0 // indirect
