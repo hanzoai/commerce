@@ -30,11 +30,17 @@ import (
 type witness struct {
 	db.DB
 	asked []*db.TransactionOptions
+	gets  int
 }
 
 func (w *witness) RunInTransaction(ctx context.Context, fn func(db.Transaction) error, opts *db.TransactionOptions) error {
 	w.asked = append(w.asked, opts)
 	return w.DB.RunInTransaction(ctx, fn, opts)
+}
+
+func (w *witness) Get(ctx context.Context, key db.Key, dst any) error {
+	w.gets++
+	return w.DB.Get(ctx, key, dst)
 }
 
 // declared is one reserve on a store that watches how it is written.
@@ -148,6 +154,105 @@ func TestTake_RefusesAMovementItCannotName(t *testing.T) {
 	}
 	if _, err := reserve.Take(ds, notAReserve, 100, hold("s1")); !errors.Is(err, reserve.ErrControl) {
 		t.Fatalf("a hold withheld money: %v", err)
+	}
+}
+
+// TestTake_ACeilingLoweredBelowWhatIsHeldGrantsNothing — the clamp is never
+// negative, and that is not a tidiness point.
+//
+// A platform may lower a reserve's ceiling after money has been withheld under
+// it, leaving the ceiling BELOW the total. A clamp computed as cap−held is then
+// a negative number, and a negative grant is money flowing the wrong way: the
+// disbursement pays out MORE than it was asked for, and the account goes up
+// when it should stand still. [reserve.Grant] is the one place that cannot
+// produce it.
+func TestTake_ACeilingLoweredBelowWhatIsHeldGrantsNothing(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	ds, c, _ := declared(t, ctx, 1000)
+
+	if got, err := reserve.Take(ds, c, 800, hold("s1")); err != nil || got != 800 {
+		t.Fatalf("first take: %d (%v)", got, err)
+	}
+
+	// The platform lowers the ceiling under what is already held.
+	lower := control.New(ds)
+	if err := lower.GetById(c.Id()); err != nil {
+		t.Fatalf("reread: %v", err)
+	}
+	lower.Cap = 100
+	if err := lower.Update(); err != nil {
+		t.Fatalf("lower the ceiling: %v", err)
+	}
+
+	got, err := reserve.Take(ds, lower, 500, hold("s2"))
+	if err != nil {
+		t.Fatalf("take under a lowered ceiling: %v", err)
+	}
+	if got != 0 {
+		t.Fatalf("granted %d under a ceiling already exceeded — a negative grant "+
+			"pays out more than was asked for", got)
+	}
+	if held := reserve.Held(ds, lower); held != 800 {
+		t.Fatalf("the account moved to %d when nothing was granted", held)
+	}
+	if room := reserve.Headroom(ds, lower); room != 0 {
+		t.Fatalf("headroom=%d under a ceiling already exceeded", room)
+	}
+}
+
+// TestAccounts_ReadsAPageOnce — a bound on ROWS is not a bound on READS.
+//
+// Rendering a page of declarations by asking the store what each one holds is
+// one request turned into up to control.Max round trips, against a store shared
+// with every other tenant. Accounts is one query for the whole page, and it
+// must stay one however many declarations there are.
+func TestAccounts_ReadsAPageOnce(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	w := &witness{DB: ctx.DB()}
+	ds := datastore.NewWithDB(ctx, w)
+
+	const n = 6
+	held := map[string]int64{}
+	for i := 0; i < n; i++ {
+		c := control.New(ds)
+		c.Effect, c.SubjectKind, c.Subject = control.Reserve, "merchant", "m1"
+		c.Rate, c.Cap, c.Currency = control.FullRate, 1000, currency.USD
+		if err := c.Create(); err != nil {
+			t.Fatalf("declare %d: %v", i, err)
+		}
+		if _, err := reserve.Take(ds, c, int64(100*(i+1)), hold("s"+string(rune('a'+i)))); err != nil {
+			t.Fatalf("take %d: %v", i, err)
+		}
+		held[c.Ref()] = int64(100 * (i + 1))
+	}
+
+	w.gets = 0
+	page := reserve.Accounts(ds)
+	perPage := w.gets
+	for ref, want := range held {
+		if page[ref] != want {
+			t.Fatalf("account %s reads %d, want %d", ref, page[ref], want)
+		}
+	}
+	if len(page) != n {
+		t.Fatalf("the page carries %d accounts, want %d", len(page), n)
+	}
+
+	w.gets = 0
+	for _, c := range control.All(ds, 0) {
+		reserve.Held(ds, c)
+	}
+	perRow := w.gets
+
+	if perRow < n {
+		t.Fatalf("the per-row read cost %d store reads for %d declarations — "+
+			"this test is not measuring what it claims", perRow, n)
+	}
+	if perPage >= perRow {
+		t.Fatalf("a whole page cost %d store reads and asking row by row cost %d — "+
+			"the page read is not one read", perPage, perRow)
 	}
 }
 

@@ -114,7 +114,14 @@ func TestScreen_ARefusedMoveTakesNothing(t *testing.T) {
 		if !Refused(rec) {
 			t.Fatalf("%s: expected a refusal, got action=%s", idem, rec.Action)
 		}
-		// Even if the boundary tried, a refusal names no reserve to take from.
+		// A refusal NAMES NO RESERVE. Nothing moved, so nothing took a share, and
+		// a row that named one would let a disbursement boundary withhold against
+		// a payout the plane blocked — a ceiling burned on moves that never
+		// happened, and a ledger saying money came out of nothing.
+		if rec.Reserve != "" {
+			t.Fatalf("%s: a refused move names reserve %q", idem, rec.Reserve)
+		}
+		// And even if the boundary tried anyway, the refusal takes nothing.
 		allowed, held, err := s.Withhold(rec)
 		if err != nil {
 			t.Fatalf("%s: withhold: %v", idem, err)
@@ -428,6 +435,26 @@ func TestTake_HasExactlyOneCallerInThisTree(t *testing.T) {
 			t.Fatalf("%s is called from %v, want exactly %v — the account has one door per direction",
 				fn, got, expect)
 		}
+	}
+}
+
+// TestHeld_IsAskedForOneDeclarationAndNeverForAPage — A BOUND ON ROWS IS NOT A
+// BOUND ON READS.
+//
+// reserve.Held is one store read about ONE declaration. Called from a loop over
+// a page it turns one request into up to control.Max round trips against a
+// store shared with every other tenant — the same amplification a page limit
+// exists to prevent, moved one layer down and invisible in the response. A page
+// asks reserve.Accounts once. So the call sites are the invariant.
+func TestHeld_IsAskedForOneDeclarationAndNeverForAPage(t *testing.T) {
+	got := callSites(t, ".", "reserve", "Held")["reserve.Held"]
+	want := []string{
+		"api/billing/risk.go:riskControlPlace",   // one declaration, just placed
+		"api/billing/risk.go:riskControlRelease", // one declaration, just lifted
+	}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("reserve.Held is called from %v, want exactly %v — a page reads "+
+			"reserve.Accounts once", got, want)
 	}
 }
 
