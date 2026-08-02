@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hanzoai/money"
+
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 )
@@ -326,11 +328,11 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 	if len(order.PurchaseUnits) > 0 {
 		pu := order.PurchaseUnits[0]
 		tx.Currency = currency.Type(strings.ToLower(pu.Amount.CurrencyCode))
-		amount, err := decimalToCents(pu.Amount.Value, tx.Currency)
+		amount, err := money.ParseCents(pu.Amount.Value)
 		if err != nil {
 			return nil, fmt.Errorf("paypal order %s: %w", order.ID, err)
 		}
-		tx.Amount = amount
+		tx.Amount = currency.Cents(amount)
 	}
 
 	// Map PayPal status to transaction type.
@@ -695,12 +697,6 @@ func centsToDecimal(amount currency.Cents, cur currency.Type) string {
 		return fmt.Sprintf("%d", amount)
 	}
 	return fmt.Sprintf("%.2f", float64(amount)/100.0)
-}
-
-// decimalToCents converts a PayPal decimal string to currency.Cents. A value
-// PayPal sent that will not parse is an error, not a zero-value capture.
-func decimalToCents(value string, cur currency.Type) (currency.Cents, error) {
-	return currency.CentsFromString(value)
 }
 
 // ---------------------------------------------------------------------------

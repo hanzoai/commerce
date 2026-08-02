@@ -206,7 +206,7 @@ func TestCheckAvailable_Configured(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Tests: centsToDecimal / decimalToCents
+// Tests: centsToDecimal
 // ---------------------------------------------------------------------------
 
 func TestCentsToDecimal_USD(t *testing.T) {
@@ -220,26 +220,6 @@ func TestCentsToDecimal_JPY(t *testing.T) {
 	got := centsToDecimal(500, currency.JPY)
 	if got != "500" {
 		t.Errorf("centsToDecimal(500, JPY) = %q, want %q", got, "500")
-	}
-}
-
-func TestDecimalToCents(t *testing.T) {
-	got, err := decimalToCents("10.99", currency.USD)
-	if err != nil {
-		t.Fatalf("decimalToCents(10.99, USD): %v", err)
-	}
-	if got != 1099 {
-		t.Errorf("decimalToCents(10.99, USD) = %d, want 1099", got)
-	}
-
-	// 19.99 is the case the float implementation got wrong: it produced 1998.
-	if got, err := decimalToCents("19.99", currency.USD); err != nil || got != 1999 {
-		t.Errorf("decimalToCents(19.99, USD) = %d, %v; want 1999, nil", got, err)
-	}
-
-	// A capture amount that will not parse must be an error, not a free charge.
-	if got, err := decimalToCents("not-a-number", currency.USD); err == nil {
-		t.Errorf("decimalToCents(garbage) = %d with no error", got)
 	}
 }
 

@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hanzoai/money"
+
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 )
@@ -456,11 +458,11 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 	var txCurrency currency.Type
 	if amountObj, ok := node["amount"].(map[string]interface{}); ok {
 		if valStr, ok := amountObj["value"].(string); ok {
-			parsed, err := currency.CentsFromString(valStr)
+			parsed, err := money.ParseCents(valStr)
 			if err != nil {
 				return nil, fmt.Errorf("braintree amount: %w", err)
 			}
-			txAmount = parsed
+			txAmount = currency.Cents(parsed)
 		}
 		if code, ok := amountObj["currencyCode"].(string); ok {
 			txCurrency = currency.Type(strings.ToLower(code))

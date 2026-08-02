@@ -3,6 +3,7 @@ package recurly
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -168,20 +169,61 @@ func TestCentsToDecimalString(t *testing.T) {
 	}
 }
 
-func TestDecimalToCents(t *testing.T) {
-	tests := []struct {
-		amount float64
-		cur    currency.Type
+// TestGetTransaction_AmountIsExact pins the amount conversion on the real
+// path, against the digits Recurly actually puts on the wire.
+//
+// The old helper took a float64 and did int64(amount*100). 19.99 has no exact
+// binary form, so that produced 1998 — a cent lost on an ordinary price, on
+// money already captured. Reading the field as json.Number keeps the digits,
+// and money.ParseMinor converts them without ever touching a float.
+func TestGetTransaction_AmountIsExact(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		amount string // exactly as it appears in Recurly's JSON
+		cur    string
 		want   currency.Cents
 	}{
-		{10.99, currency.USD, 1099},
-		{500, currency.JPY, 500},
+		{"the case the float got wrong", "19.99", "USD", 1999},
+		{"cent-precise", "10.99", "USD", 1099},
+		{"sub-dollar", "0.29", "USD", 29},
+		{"whole dollars", "25.0", "USD", 2500},
+		{"a refund stays negative", "-19.99", "USD", -1999},
+		// A zero-decimal currency must NOT gain two: ¥500 is 500 minor units,
+		// not 50000.
+		{"zero-decimal currency", "500", "JPY", 500},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprintf(w, `{"id":"txn-1","uuid":"u-1","type":"purchase","status":"success",
+					"amount":%s,"currency":%q,"created_at":"2026-01-15T10:00:00Z"}`, tc.amount, tc.cur)
+			}))
+			defer server.Close()
+
+			tx, err := configuredProvider(server.URL).GetTransaction(context.Background(), "txn-1")
+			if err != nil {
+				t.Fatalf("GetTransaction: %v", err)
+			}
+			if tx.Amount != tc.want {
+				t.Errorf("amount %s %s = %d, want %d", tc.amount, tc.cur, tx.Amount, tc.want)
+			}
+		})
 	}
-	for _, tt := range tests {
-		got := decimalToCents(tt.amount, tt.cur)
-		if got != tt.want {
-			t.Errorf("decimalToCents(%f, %s) = %d, want %d", tt.amount, tt.cur, got, tt.want)
-		}
+}
+
+// An amount Recurly sent that will not parse must be an error, not a zero.
+// Zero is a legal amount, so mapping garbage to it reports a confident
+// free transaction.
+func TestGetTransaction_UnreadableAmountIsAnError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"id":"txn-1","uuid":"u-1","type":"purchase","status":"success",
+			"amount":"not-a-number","currency":"USD"}`)
+	}))
+	defer server.Close()
+
+	if tx, err := configuredProvider(server.URL).GetTransaction(context.Background(), "txn-1"); err == nil {
+		t.Fatalf("GetTransaction returned amount %d with no error", tx.Amount)
 	}
 }
 
