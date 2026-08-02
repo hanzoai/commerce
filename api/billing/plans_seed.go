@@ -159,8 +159,20 @@ func planAuthorityRows(ctx context.Context) ([]staticPlan, bool) {
 	}
 	out := make([]staticPlan, 0, len(rows))
 	for _, p := range rows {
+		// Draft and archived rows exist but are not sold. This is the whole point
+		// of Status: before it, the only way to unlist a plan was to DELETE it,
+		// which takes the row's history and orphans any subscription that recorded
+		// the slug. An archived plan still resolves for renewals and invoices —
+		// it just stops being offered.
+		if !p.Listed() {
+			continue
+		}
 		out = append(out, staticPlanFromModel(p))
 	}
+	// An authority holding ONLY unlisted rows is not the same as an empty one: the
+	// seed ran, the operator archived everything. Serving the embed fallback there
+	// would resurrect retired tiers on the public page, which is the exact failure
+	// this field exists to prevent. Empty-and-deliberate is a valid answer.
 	sortByEmbedOrder(out)
 	return out, true
 }
