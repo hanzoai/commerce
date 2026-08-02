@@ -48,7 +48,7 @@ func TestPostgresGuard(t *testing.T) {
 
 	refused := []struct{ name, value string }{
 		{"anthropic", "sk-ant-api03-cPXc0f"},
-		{"hanzo", "hk-feb5b4b27e2c0"},
+		{"hk", "hk-feb5b4b27e2c0"},
 		{"stripe secret", "sk_live_51H8xQ2eZvKYlo2C"},
 		{"stripe publishable", "pk_live_51H8xQ2eZvKYlo2C"},
 		{"stripe restricted", "rk_live_51H8xQ2eZvKYlo2C"},

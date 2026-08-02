@@ -24,7 +24,7 @@ import (
 // X-Roles, …) and (2) re-mints them ONLY from a cryptographically-verified IAM
 // Bearer JWT. No-op unless COMMERCE_EDGE_AUTH=true (gateway-fronted deploys keep
 // a single upstream trust boundary). It NEVER 401s — opaque service tokens and
-// hk-/sk- API keys flow straight through (they are not JWTs) and X-Org-Id is
+// sk- API keys flow straight through (they are not JWTs) and X-Org-Id is
 // NOT in the strip set, so the cloud-api -> commerce per-org billing money path
 // is untouched. Authorization is each route's own job (IAMTokenRequired, the
 // access-token middleware, handler SuperAdmin checks); EdgeAuth only guarantees

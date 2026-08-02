@@ -19,16 +19,23 @@ import (
 // an organization slug. Matching is on the normalized form (see Normalize), so
 // each entry is lowercase.
 //
+// Membership is decided by SHAPE, never by whether a marker still opens a door.
+// These values arrive on the untrusted X-Org-Id header, and one that is not
+// refused is persisted as a tenant row — a credential-shaped string in
+// plaintext, plus one Organization per distinct value. Stripe's pk_ is
+// publishable and authenticates nothing; it is on the list for that reason
+// alone, and a marker is dropped only when no such string can still be typed.
+//
 // Real org identifiers are slugs ("hanzo", "adnexus"), UUIDs, or numeric ids.
 // Matching is prefix-based and every marker ends in a separator ("-", "_", " ")
 // that a slug cannot contain, so no real name collides: "skunkworks" and
 // "hkust" do not start with "sk-"/"hk-". The lone exception is "eyj", the
 // base64 of a JWT header '{"' — a bare token pasted as a tenant.
 var Prefixes = []string{
-	// Hanzo, and the sk- provider family: Anthropic (sk-ant-), OpenAI
-	// (sk-proj-), DigitalOcean (sk-do-), Hanzo (sk-hz-).
-	"hk-",
+	// The sk- provider family: Anthropic (sk-ant-), OpenAI (sk-proj-),
+	// DigitalOcean (sk-do-), Hanzo (sk-hz-).
 	"sk-",
+	"hk-",
 	// Stripe. This is a billing system, so these are the keys most likely to
 	// reach a tenant header. The trailing underscore covers both the _live_
 	// and _test_ variants of each.

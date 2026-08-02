@@ -10,11 +10,12 @@ import (
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
-// bearerNames are the shapes a raw Hanzo API key takes. If any of these is ever
-// persisted as an org name it is simultaneously a credential leak (the key is
-// stored in plaintext as a tenant identifier — incident 2026-07-02) and an
-// unbounded-cardinality bug: one 5.25KB Organization per distinct token, which
-// is heap growth with no ceiling.
+// bearerNames are credential-shaped values a caller can type at the untrusted
+// org header. If any of these is ever persisted as an org name it is
+// simultaneously a credential leak (the value is stored in plaintext as a
+// tenant identifier — incident 2026-07-02) and an unbounded-cardinality bug:
+// one 5.25KB Organization per distinct token, which is heap growth with no
+// ceiling. Refusal turns on shape, not on whether the value opens a door.
 var bearerNames = []string{
 	"hk-2ff139c7-4dd5-4f23-9de1-df7b67331b6e",
 	"sk-live-0123456789abcdef",

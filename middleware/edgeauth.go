@@ -63,7 +63,7 @@ var identityHeaders = []string{
 //     subject lands under an arbitrary key that every read (forced to the
 //     slug) can never see — silently orphaning the record.
 //
-// Service tokens (COMMERCE_SERVICE_TOKEN) and hk-/sk- API keys are not JWTs,
+// Service tokens (COMMERCE_SERVICE_TOKEN) and sk- API keys are not JWTs,
 // so step 2 skips them. Their client-supplied X-Org-Id is NOT restored to the
 // trusted header (that would let IAMTokenRequired treat an unvalidated token as
 // a verified identity — the bypass this boundary now closes); it is stashed in a
@@ -202,7 +202,7 @@ func bearerToken(h string) string {
 }
 
 // looksLikeJWT reports whether tok has the three-segment shape of a JWS.
-// Opaque service tokens and hk-/sk- API keys have no dots and are skipped.
+// Opaque service tokens and sk- API keys have no dots and are skipped.
 func looksLikeJWT(tok string) bool {
 	return tok != "" && strings.Count(tok, ".") == 2
 }
