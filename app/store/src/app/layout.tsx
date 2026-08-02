@@ -1,6 +1,6 @@
 import { getBaseURL } from "@lib/util/env"
 import { Metadata } from "next"
-import "styles/globals.css"
+import "../styles/globals.css"
 import { AnalyticsRoot } from "@modules/analytics"
 
 export const metadata: Metadata = {
