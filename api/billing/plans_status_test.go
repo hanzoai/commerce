@@ -165,3 +165,27 @@ func TestPlanStatus_EmptyMeansActive(t *testing.T) {
 		}
 	}
 }
+
+// A contact-sales plan is NOT self-serve.
+//
+// paidTier used to read price alone, and a contact-sales row stores Price=0
+// because its price is null, not free. So a catalog holding a negotiated tier
+// with a real included allotment would have let an org admin self-subscribe and
+// mint it with no payment. That never fired only because the tier with the large
+// allotment also carried a large price — luck, not a gate.
+func TestPaidTier_ContactSalesIsNotSelfServe(t *testing.T) {
+	if !paidTier("enterprise") {
+		t.Fatal("contact-sales 'enterprise' reads as a free tier; an org admin could self-subscribe")
+	}
+	// Control: a genuinely free tier stays self-serve, which is the distinction
+	// the predicate exists to make. The published ladder has none, so this is
+	// asserted on the predicate's inputs rather than on a catalog slug.
+	for _, slug := range []string{"go", "dev", "pro", "max"} {
+		if !paidTier(slug) {
+			t.Errorf("paidTier(%q) = false; every ladder rung is paid", slug)
+		}
+	}
+	if paidTier("no-such-plan") {
+		t.Error("an unknown slug must not read as paid")
+	}
+}

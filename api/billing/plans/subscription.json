@@ -1,26 +1,25 @@
 [
   {
-    "tenant_id": "hanzo",
-    "id": "developer",
-    "name": "Developer",
-    "description": "Get started for free. Explore the API with generous included credits.",
-    "priceMonthly": 0,
-    "priceAnnual": 0,
+    "id": "go",
+    "name": "Go",
     "category": "personal",
+    "description": "Omnichannel agent hosting and the Hanzo desktop app, for builders getting started.",
+    "priceMonthly": 9,
+    "priceAnnual": 8.25,
     "features": [
-      "$5 free credit",
-      "$5/mo included usage",
-      "60 requests/min",
-      "100K tokens/min",
-      "Community support",
-      "API access",
-      "Earn up to 20% on idle compute & LLM resale"
+      "Hanzo Bot Gateway — host local agents across WhatsApp, Telegram, Discord and Slack",
+      "Hanzo Chat & UI — desktop app layout with instant global model context",
+      "$5 of foundational API gateway credits included"
     ],
     "limits": {
       "requestsPerMinute": 60,
       "tokensPerMinute": 100000,
-      "freeCredit": 5,
-      "includedCreditUsd": 5
+      "includedCreditUsd": 5,
+      "freeCredit": 5
+    },
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
     },
     "entitlements": {
       "ai.requests_per_min": 60,
@@ -29,11 +28,6 @@
       "ai.models": [
         "tier:starter"
       ],
-      "ai.rolling_window_hours": 3,
-      "ai.rolling_cap_usd": 0.75,
-      "sites.included": 1,
-      "base.included": 1,
-      "base.storage_gb": 1,
       "commerce.support_tier": "community",
       "commerce.included_credit_usd": 5,
       "commerce.idle_resale_percent": 20
@@ -41,10 +35,10 @@
     "price_ref": {
       "currency": "USD",
       "recurring": {
-        "monthly_usd": 0,
-        "annual_usd": 0,
+        "monthly_usd": 9,
+        "annual_usd": 8.25,
         "per_seat": false,
-        "stripe_lookup_key": null
+        "stripe_lookup_key": "hanzo_go_9"
       },
       "metered": [
         {
@@ -60,40 +54,24 @@
           "included": 5
         }
       ]
-    },
-    "payouts": {
-      "idleResalePercent": 20,
-      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
     }
   },
   {
-    "id": "pro",
-    "name": "Pro",
-    "description": "For developers shipping real products. One $20 subscription with unified AI usage across hanzo.ai, hanzo.app, and hanzo.team — Hanzo World Pro included.",
-    "priceMonthly": 20,
-    "priceAnnual": 16,
+    "id": "dev",
+    "name": "Dev",
     "category": "personal",
-    "popular": true,
+    "description": "Terminal-native pair programming in your own repository shell.",
+    "priceMonthly": 19,
+    "priceAnnual": 16.5,
     "features": [
-      "$20/mo included usage",
-      "Unified AI usage across hanzo.ai, hanzo.app & hanzo.team",
-      "hanzo.team access — invite up to 3 guests",
-      "500 requests/min",
-      "1M tokens/min",
-      "$5/mo cloud credits included",
-      "Email support",
-      "Analytics dashboard",
-      "Priority inference",
-      "Hanzo World Pro — live OSINT, ZAP + MCP API, unlimited alerts (included)",
-      "Pay-as-you-go beyond included usage",
-      "Earn up to 20% on idle compute & LLM resale"
+      "Hanzo Dev — full terminal-native pair programmer inside your local repo shell",
+      "Medium reasoning dial — balanced latency-to-depth for standard code generation",
+      "Unlimited local context — codebase indexing via the native desktop client",
+      "250 compute/API credits per month"
     ],
-    "limits": {
-      "requestsPerMinute": 500,
-      "tokensPerMinute": 1000000,
-      "includedCreditUsd": 20,
-      "includedCloudCredits": 5,
-      "teamGuests": 3
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
     },
     "entitlements": {
       "ai.requests_per_min": 500,
@@ -102,28 +80,29 @@
       "ai.models": [
         "tier:pro"
       ],
-      "ai.rolling_window_hours": 3,
-      "ai.rolling_cap_usd": 2.5,
-      "ai.spend_percent": 50,
-      "sites.included": 3,
-      "base.included": 3,
-      "base.storage_gb": 10,
       "cloud.included_credits_usd": 5,
       "licensing.product_ids": [
         "team"
       ],
-      "team.guests": 3,
       "commerce.support_tier": "email",
-      "commerce.included_credit_usd": 20,
-      "commerce.idle_resale_percent": 20
+      "commerce.included_credit_usd": 19,
+      "commerce.idle_resale_percent": 20,
+      "team.guests": 3
+    },
+    "limits": {
+      "requestsPerMinute": 500,
+      "tokensPerMinute": 1000000,
+      "includedCreditUsd": 19,
+      "includedCloudCredits": 5,
+      "teamGuests": 3
     },
     "price_ref": {
       "currency": "USD",
       "recurring": {
-        "monthly_usd": 20,
-        "annual_usd": 16,
+        "monthly_usd": 19,
+        "annual_usd": 16.5,
         "per_seat": false,
-        "stripe_lookup_key": "hanzo_pro_20"
+        "stripe_lookup_key": "hanzo_dev_19"
       },
       "metered": [
         {
@@ -136,7 +115,7 @@
           "entitlement": "commerce.included_credit_usd",
           "unit": "usd_month",
           "source": "static",
-          "included": 20
+          "included": 19
         },
         {
           "entitlement": "cloud.included_credits_usd",
@@ -145,41 +124,26 @@
           "included": 5
         }
       ]
-    },
-    "bundles": [
-      "world-pro"
+    }
+  },
+  {
+    "id": "pro",
+    "name": "Pro",
+    "category": "personal",
+    "popular": true,
+    "description": "Multi-agent orchestration, background review, and maximum reasoning depth.",
+    "priceMonthly": 49,
+    "priceAnnual": 41.5,
+    "features": [
+      "Auto Drive orchestration — multi-agent teams executing repo milestones (/plan, /code, /solve)",
+      "Auto Review — background watcher running changes in hidden git worktrees to suggest fixes silently",
+      "High and XHigh reasoning dials — maximum context processing depth",
+      "Headless browser CDP — the agent tests and screenshots its own front-end work",
+      "1,000 compute/API credits per month"
     ],
     "payouts": {
       "idleResalePercent": 20,
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
-    }
-  },
-  {
-    "id": "plus",
-    "name": "Plus",
-    "description": "5x Pro for power users. Unified AI usage across hanzo.ai, hanzo.app, and hanzo.team with max-tier models and priority support.",
-    "priceMonthly": 100,
-    "priceAnnual": 80,
-    "category": "personal",
-    "features": [
-      "Everything in Pro, 5x the usage",
-      "$100/mo included usage",
-      "Unified AI usage across hanzo.ai, hanzo.app & hanzo.team",
-      "hanzo.team access — invite up to 3 guests",
-      "2500 requests/min",
-      "5M tokens/min",
-      "$25/mo cloud credits included",
-      "Max-tier model access",
-      "Priority support",
-      "Hanzo World Pro included",
-      "Earn up to 20% on idle compute & LLM resale"
-    ],
-    "limits": {
-      "requestsPerMinute": 2500,
-      "tokensPerMinute": 5000000,
-      "includedCreditUsd": 100,
-      "includedCloudCredits": 25,
-      "teamGuests": 3
     },
     "entitlements": {
       "ai.requests_per_min": 2500,
@@ -188,28 +152,29 @@
       "ai.models": [
         "tier:max"
       ],
-      "ai.rolling_window_hours": 3,
-      "ai.rolling_cap_usd": 12,
-      "ai.spend_percent": 50,
-      "sites.included": 10,
-      "base.included": 10,
-      "base.storage_gb": 50,
       "cloud.included_credits_usd": 25,
       "licensing.product_ids": [
         "team"
       ],
-      "team.guests": 3,
       "commerce.support_tier": "priority",
-      "commerce.included_credit_usd": 100,
-      "commerce.idle_resale_percent": 20
+      "commerce.included_credit_usd": 49,
+      "commerce.idle_resale_percent": 20,
+      "team.guests": 3
+    },
+    "limits": {
+      "requestsPerMinute": 2500,
+      "tokensPerMinute": 5000000,
+      "includedCreditUsd": 49,
+      "includedCloudCredits": 25,
+      "teamGuests": 3
     },
     "price_ref": {
       "currency": "USD",
       "recurring": {
-        "monthly_usd": 100,
-        "annual_usd": 80,
+        "monthly_usd": 49,
+        "annual_usd": 41.5,
         "per_seat": false,
-        "stripe_lookup_key": "hanzo_plus"
+        "stripe_lookup_key": "hanzo_pro_49"
       },
       "metered": [
         {
@@ -222,7 +187,7 @@
           "entitlement": "commerce.included_credit_usd",
           "unit": "usd_month",
           "source": "static",
-          "included": 100
+          "included": 49
         },
         {
           "entitlement": "cloud.included_credits_usd",
@@ -231,43 +196,25 @@
           "included": 25
         }
       ]
-    },
-    "bundles": [
-      "world-pro"
-    ],
-    "payouts": {
-      "idleResalePercent": 20,
-      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
     }
   },
   {
     "id": "max",
     "name": "Max",
-    "description": "Maximum AI power for individuals. 20x Pro usage, unlimited premium models, and unified AI usage across hanzo.ai, hanzo.app, and hanzo.team.",
-    "priceMonthly": 200,
-    "priceAnnual": 160,
-    "pricePerUser": true,
     "category": "personal",
+    "description": "Enso orchestration, unlimited managed agents, and shared team workspaces.",
+    "priceMonthly": 99,
+    "priceAnnual": 83.25,
     "features": [
-      "Everything in Plus",
-      "Unlimited premium model access (Zen, Claude, GPT-4o, etc.)",
-      "Unified AI usage across hanzo.ai, hanzo.app & hanzo.team",
-      "hanzo.team access — invite up to 3 guests",
-      "Priority inference across all models",
-      "5000 requests/min",
-      "10M tokens/min",
-      "$100/mo cloud credits included",
-      "Custom model fine-tuning",
-      "Dedicated support channel",
-      "Pay-as-you-go or prepay for additional cloud usage",
-      "Hanzo World Pro included",
-      "Earn up to 20% on idle compute & LLM resale"
+      "Enso orchestration — dedicated routing through Hanzo's foundational framework model",
+      "Unlimited managed agents — continuous background scheduling to unified team dashboards",
+      "Shared team workspaces — RBAC, KMS-backed credentials, centralized billing",
+      "2,500 compute/API credits per month",
+      "Priority GPU inference queues"
     ],
-    "limits": {
-      "requestsPerMinute": 5000,
-      "tokensPerMinute": 10000000,
-      "includedCloudCredits": 100,
-      "teamGuests": 3
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
     },
     "entitlements": {
       "ai.requests_per_min": 5000,
@@ -278,14 +225,7 @@
       "ai.models": [
         "*"
       ],
-      "ai.rolling_window_hours": 3,
-      "ai.rolling_cap_usd": 25,
-      "ai.spend_percent": 50,
-      "sites.included": 25,
-      "base.included": 25,
-      "base.storage_gb": 200,
       "cloud.included_credits_usd": 100,
-      "team.guests": 3,
       "licensing.app_ids": [
         "hanzo"
       ],
@@ -301,15 +241,24 @@
         "audio"
       ],
       "commerce.support_tier": "dedicated",
-      "commerce.idle_resale_percent": 20
+      "commerce.idle_resale_percent": 20,
+      "commerce.included_credit_usd": 99,
+      "team.guests": 3
+    },
+    "limits": {
+      "requestsPerMinute": 5000,
+      "tokensPerMinute": 10000000,
+      "includedCreditUsd": 99,
+      "includedCloudCredits": 100,
+      "teamGuests": 3
     },
     "price_ref": {
       "currency": "USD",
       "recurring": {
-        "monthly_usd": 200,
-        "annual_usd": 160,
-        "per_seat": true,
-        "stripe_lookup_key": "hanzo_max"
+        "monthly_usd": 99,
+        "annual_usd": 83.25,
+        "per_seat": false,
+        "stripe_lookup_key": "hanzo_max_99"
       },
       "metered": [
         {
@@ -319,44 +268,33 @@
           "included": -1
         },
         {
+          "entitlement": "commerce.included_credit_usd",
+          "unit": "usd_month",
+          "source": "static",
+          "included": 99
+        },
+        {
           "entitlement": "cloud.included_credits_usd",
           "unit": "per_vm_hour",
           "source": "digitalocean",
           "included": 100
         }
       ]
-    },
-    "bundles": [
-      "world-pro"
-    ],
-    "addons": {
-      "premiumModels": true,
-      "customTraining": true
-    },
-    "payouts": {
-      "idleResalePercent": 20,
-      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
     }
   },
   {
     "id": "team",
     "name": "Team",
-    "description": "hanzo.team for your whole org. Org workspaces, SSO / IAM team management, shared billing, and enterprise-grade security. $25 per user, minimum 2 seats.",
+    "description": "For teams building together. Org workspaces, SSO via Hanzo IAM, and one unified bill.",
     "priceMonthly": 25,
-    "priceAnnual": 20,
-    "pricePerUser": true,
+    "priceAnnual": 20.0,
     "category": "team",
     "features": [
-      "hanzo.team org workspaces for your whole company",
-      "$25/user/mo — minimum 2 seats",
-      "$100/mo cloud credits per user",
-      "SSO / SAML + IAM team management",
-      "Shared billing + usage analytics",
-      "Audit log + enterprise-grade security",
-      "Up to 100 members",
-      "Priority support",
-      "Hanzo World Team — multi-seat OSINT dashboard, shared alerts (included)",
-      "Earn up to 20% on idle compute & LLM resale"
+      "$25 per user per month, or $20 billed annually — minimum 2 seats",
+      "Org workspaces with shared history and projects",
+      "SSO via Hanzo IAM",
+      "One unified bill for everyone",
+      "Centralized, KMS-backed credentials"
     ],
     "limits": {
       "requestsPerMinute": 2000,
@@ -365,29 +303,15 @@
       "minSeats": 2,
       "includedCloudCreditsPerUser": 100
     },
-    "entitlements": {
-      "ai.requests_per_min": 2000,
-      "ai.tokens_per_min": 5000000,
-      "ai.priority_inference": true,
-      "ai.models": [
-        "tier:pro"
-      ],
-      "cloud.included_credits_usd": 100,
-      "licensing.product_ids": [
-        "team"
-      ],
-      "commerce.members": 100,
-      "commerce.sso": true,
-      "commerce.shared_billing": true,
-      "commerce.audit_log": true,
-      "commerce.support_tier": "priority",
-      "commerce.idle_resale_percent": 20
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
     },
     "price_ref": {
       "currency": "USD",
       "recurring": {
         "monthly_usd": 25,
-        "annual_usd": 20,
+        "annual_usd": 20.0,
         "per_seat": true,
         "stripe_lookup_key": "hanzo_team_25"
       },
@@ -406,85 +330,44 @@
         }
       ]
     },
-    "bundles": [
-      "world-team"
-    ],
-    "payouts": {
-      "idleResalePercent": 20,
-      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
-    }
-  },
-  {
-    "id": "team-max",
-    "name": "Team Max",
-    "description": "Maximum AI power for every team member. Unlimited premium models, priority inference, and massive usage per seat.",
-    "priceMonthly": 225,
-    "priceAnnual": 180,
-    "pricePerUser": true,
-    "category": "team",
-    "features": [
-      "Everything in Team + Max",
-      "Unlimited premium model access (Zen, Claude, GPT-4o, etc.)",
-      "Priority inference across all models",
-      "5000 requests/min per user",
-      "10M tokens/min per user",
-      "$100/mo cloud credits per user included",
-      "Custom model fine-tuning",
-      "Dedicated support channel",
-      "Pay-as-you-go or prepay for additional cloud usage",
-      "Hanzo World Team included",
-      "Earn up to 20% on idle compute & LLM resale"
-    ],
-    "limits": {
-      "requestsPerMinute": 5000,
-      "tokensPerMinute": 10000000,
-      "includedCloudCreditsPerUser": 100
-    },
-    "bundles": [
-      "world-team"
-    ],
-    "addons": {
-      "teamWorkspace": true,
-      "sso": true,
-      "sharedBilling": true,
-      "premiumModels": true,
-      "customTraining": true
-    },
-    "payouts": {
-      "idleResalePercent": 20,
-      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
-    },
     "entitlements": {
+      "ai.requests_per_min": 2000,
+      "ai.tokens_per_min": 5000000,
+      "ai.priority_inference": true,
+      "ai.models": [
+        "tier:pro"
+      ],
+      "cloud.included_credits_usd": 100,
       "licensing.product_ids": [
         "team"
-      ]
+      ],
+      "commerce.members": 100,
+      "commerce.sso": true,
+      "commerce.shared_billing": true,
+      "commerce.audit_log": true,
+      "commerce.support_tier": "priority",
+      "commerce.idle_resale_percent": 20
     }
   },
   {
     "id": "enterprise",
     "name": "Enterprise",
-    "description": "Full-scale AI infrastructure. Dedicated support, SLA, and on-prem deployment.",
-    "priceMonthly": 9999,
-    "priceAnnual": 7999,
     "category": "enterprise",
+    "description": "Dedicated capacity, on-prem or air-gapped deployment, custom SLAs and model hosting.",
+    "priceMonthly": null,
+    "priceAnnual": null,
+    "contactSales": true,
     "features": [
-      "$1,000/mo included usage",
-      "Unlimited members",
-      "99.99% SLA",
-      "Dedicated account manager",
-      "Custom rate limits",
-      "On-premise deployment",
-      "SOC 2 compliance",
-      "Custom model fine-tuning",
-      "Priority inference across all models",
-      "Hanzo World Team included",
-      "Volume usage discounts beyond included credit",
-      "Earn up to 20% on idle compute & LLM resale"
+      "Dedicated compute cluster",
+      "On-premise or air-gapped deployment",
+      "Custom SLA up to 99.999%",
+      "Custom model training and hosting",
+      "SOC 2 support and compliance review",
+      "White-glove onboarding and 24/7 engineering support"
     ],
-    "limits": {
-      "requestsPerMinute": 50000,
-      "tokensPerMinute": 100000000,
-      "includedCreditUsd": 1000
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
     },
     "entitlements": {
       "ai.requests_per_min": 50000,
@@ -518,312 +401,12 @@
       "commerce.support_tier": "dedicated",
       "commerce.sla": "99.99%",
       "commerce.on_prem": true,
-      "commerce.included_credit_usd": 1000,
       "commerce.idle_resale_percent": 20
     },
-    "price_ref": {
-      "currency": "USD",
-      "recurring": {
-        "monthly_usd": 9999,
-        "annual_usd": 7999,
-        "per_seat": false,
-        "stripe_lookup_key": "hanzo_enterprise"
-      },
-      "metered": [
-        {
-          "entitlement": "commerce.included_credit_usd",
-          "unit": "usd_month",
-          "source": "static",
-          "included": 1000
-        }
-      ]
-    },
-    "bundles": [
-      "world-team"
-    ],
-    "payouts": {
-      "idleResalePercent": 20,
-      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
-    }
-  },
-  {
-    "id": "custom",
-    "name": "Custom",
-    "description": "Need more? We'll build a plan around your infrastructure, compliance, and scale requirements.",
-    "priceMonthly": null,
-    "priceAnnual": null,
-    "category": "enterprise",
-    "contactSales": true,
-    "features": [
-      "Everything in Enterprise",
-      "Custom SLA (up to 99.999%)",
-      "Dedicated compute cluster",
-      "Air-gapped / on-prem deployment",
-      "Custom model training & hosting",
-      "White-glove onboarding",
-      "24/7 engineering support",
-      "Earn up to 20% on idle compute & LLM resale"
-    ],
     "limits": {
-      "requestsPerMinute": null,
-      "tokensPerMinute": null
-    },
-    "payouts": {
-      "idleResalePercent": 20,
-      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
-    }
-  },
-  {
-    "id": "world-free",
-    "name": "World Free",
-    "description": "Real-time global intelligence dashboard — free tier.",
-    "priceMonthly": 0,
-    "priceAnnual": 0,
-    "category": "world",
-    "features": [
-      "Live OSINT dashboard",
-      "3 saved alerts",
-      "Community Discord",
-      "Daily email digest"
-    ],
-    "limits": {
-      "maxAlerts": 3,
-      "apiRateLimit": 60,
-      "mcpRateLimit": 30
-    }
-  },
-  {
-    "id": "world-pro",
-    "name": "World Pro",
-    "description": "Everything in Free plus priority feeds, unlimited alerts, ZAP + MCP API access, WhatsApp/Telegram/SMS notifications. Included free in Hanzo Pro / Plus / Max / Team / Enterprise.",
-    "priceMonthly": 29,
-    "priceAnnual": 290,
-    "category": "world",
-    "popular": true,
-    "features": [
-      "Everything in Free",
-      "Unlimited alerts",
-      "Full /v1/world + /v1/world/model API",
-      "Live SSE stream (agents subscribe)",
-      "Real-time sentiment + trader indicators",
-      "ZAP + MCP real-time API",
-      "WhatsApp / Telegram / SMS alerts",
-      "Priority data feeds (AIS, FIRMS, GDELT)",
-      "Zen AI analyst chat (pay-as-you-go)",
-      "Data export (CSV, JSON, parquet)",
-      "Priority support"
-    ],
-    "limits": {
-      "maxAlerts": -1,
-      "apiRateLimit": 6000,
-      "mcpRateLimit": 3000,
-      "modelApi": true
-    },
-    "includedIn": [
-      "pro",
-      "plus",
-      "max",
-      "team",
-      "team-max",
-      "enterprise"
-    ]
-  },
-  {
-    "id": "world-team",
-    "name": "World Team",
-    "description": "Everything in Pro for up to 5 seats + shared workspace. Included free in Hanzo Team / Team Max / Enterprise.",
-    "priceMonthly": 99,
-    "priceAnnual": 990,
-    "category": "world",
-    "features": [
-      "Everything in Pro",
-      "5 team seats",
-      "Shared alert rules",
-      "SSO via Hanzo IAM",
-      "Org-level API keys",
-      "Audit log"
-    ],
-    "limits": {
-      "maxAlerts": -1,
-      "maxMembers": 5,
-      "apiRateLimit": 30000,
-      "mcpRateLimit": 15000,
-      "modelApi": true
-    },
-    "includedIn": [
-      "team",
-      "team-max",
-      "enterprise"
-    ]
-  },
-  {
-    "id": "world-enterprise",
-    "name": "World Enterprise",
-    "description": "Custom global-intelligence infrastructure. Dedicated ingest, custom feeds and pipelines, SLA, and private deployment.",
-    "priceMonthly": null,
-    "priceAnnual": null,
-    "category": "world",
-    "contactSales": true,
-    "features": [
-      "Everything in Team",
-      "Custom data feeds & pipelines",
-      "Dedicated ingest workers",
-      "99.9% SLA",
-      "Private deployment (*.hanzo.app fork)",
-      "Dedicated support & onboarding",
-      "Custom model / analyst tuning"
-    ],
-    "limits": {
-      "maxAlerts": -1,
-      "maxMembers": -1,
-      "apiRateLimit": -1,
-      "mcpRateLimit": -1,
-      "modelApi": true
-    }
-  },
-  {
-    "id": "social-free",
-    "name": "Social Free",
-    "description": "Try Hanzo Social. 1 channel, 30 posts/month, scheduling-only.",
-    "priceMonthly": 0,
-    "priceAnnual": 0,
-    "category": "social",
-    "freeTier": true,
-    "features": [
-      "1 social channel",
-      "30 posts/month",
-      "Manual scheduling",
-      "Community support"
-    ],
-    "limits": {
-      "channels": 1,
-      "postsPerMonth": 30,
-      "imageGenerationCount": 0,
-      "generateVideos": 0,
-      "teamMembers": 0,
-      "webhooks": 0,
-      "ai": false,
-      "autoPost": false,
-      "publicApi": false,
-      "communityFeatures": false
-    }
-  },
-  {
-    "id": "social-pro",
-    "name": "Social Pro",
-    "description": "For creators shipping content. AI assist, image generation, public API, webhooks.",
-    "priceMonthly": 29,
-    "priceAnnual": 278,
-    "category": "social",
-    "features": [
-      "5 social channels",
-      "400 posts/month",
-      "20 AI-generated images",
-      "3 generated videos",
-      "Public API + webhooks (2)",
-      "Email support"
-    ],
-    "limits": {
-      "channels": 5,
-      "postsPerMonth": 400,
-      "imageGenerationCount": 20,
-      "generateVideos": 3,
-      "teamMembers": 0,
-      "webhooks": 2,
-      "ai": true,
-      "autoPost": false,
-      "publicApi": true,
-      "communityFeatures": false
-    }
-  },
-  {
-    "id": "social-team",
-    "name": "Social Team",
-    "description": "For agencies and teams. Team members, autopost, community features, more channels.",
-    "priceMonthly": 39,
-    "priceAnnual": 374,
-    "category": "social",
-    "popular": true,
-    "features": [
-      "10 social channels",
-      "Unlimited posts/month",
-      "100 AI-generated images",
-      "10 generated videos",
-      "Team members",
-      "Auto-post + community features",
-      "10 webhooks"
-    ],
-    "limits": {
-      "channels": 10,
-      "postsPerMonth": -1,
-      "imageGenerationCount": 100,
-      "generateVideos": 10,
-      "teamMembers": -1,
-      "webhooks": 10,
-      "ai": true,
-      "autoPost": true,
-      "publicApi": true,
-      "communityFeatures": true
-    }
-  },
-  {
-    "id": "social-team-max",
-    "name": "Social Team Max",
-    "description": "High-volume teams. 30 channels, 300 image gens, 30 videos, 30 webhooks.",
-    "priceMonthly": 49,
-    "priceAnnual": 470,
-    "category": "social",
-    "features": [
-      "30 social channels",
-      "Unlimited posts/month",
-      "300 AI-generated images",
-      "30 generated videos",
-      "Team members",
-      "Auto-post + community features",
-      "30 webhooks",
-      "Priority support"
-    ],
-    "limits": {
-      "channels": 30,
-      "postsPerMonth": -1,
-      "imageGenerationCount": 300,
-      "generateVideos": 30,
-      "teamMembers": -1,
-      "webhooks": 30,
-      "ai": true,
-      "autoPost": true,
-      "publicApi": true,
-      "communityFeatures": true
-    }
-  },
-  {
-    "id": "social-enterprise",
-    "name": "Social Enterprise",
-    "description": "Unlimited channels, unlimited team, dedicated support, custom SLAs.",
-    "priceMonthly": 99,
-    "priceAnnual": 950,
-    "category": "social",
-    "features": [
-      "100 social channels",
-      "Unlimited posts/month",
-      "500 AI-generated images",
-      "60 generated videos",
-      "Unlimited team members",
-      "Auto-post + community features",
-      "10000 webhooks",
-      "Dedicated support"
-    ],
-    "limits": {
-      "channels": 100,
-      "postsPerMonth": -1,
-      "imageGenerationCount": 500,
-      "generateVideos": 60,
-      "teamMembers": -1,
-      "webhooks": 10000,
-      "ai": true,
-      "autoPost": true,
-      "publicApi": true,
-      "communityFeatures": true
+      "requestsPerMinute": 50000,
+      "tokensPerMinute": 100000000,
+      "maxMembers": -1
     }
   }
 ]
