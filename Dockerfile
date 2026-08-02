@@ -146,6 +146,14 @@ COPY --from=billing-build /billing/out/ billing/ui/dist/
 
 # Build the binary with CGO for SQLite support.
 #
+# `-tags sqlite_math_functions` is REQUIRED for any cgo build: hanzoai/base's
+# search layer generates SQL calling acos/cos/sin/radians/sqrt, and csqlite only
+# compiles those in behind that tag. base asserts it at compile time
+# (core/sqlite_math_required.go) rather than letting a cgo binary ship with an
+# SQL surface smaller than the code written against it. Without the tag every
+# build of this image fails on `undefined: cgoBuildNeedsSQLiteMathFunctions` —
+# which is why v1.49.26 through v1.49.28 published no image at all.
+#
 # `-tags cloud` compiles in the HIP-0106 cloud-mount path (cloud_boot.go);
 # the binary remains backwards-compatible (legacy direct-Gin is the
 # default boot mode) but operators can now flip --cloud or
@@ -173,7 +181,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_CFLAGS="-D_LARGEFILE64_SOURCE -D_GNU_SOURCE" \
     VER="${VERSION#v}" && \
     go build -mod=mod -p=8 \
-    -tags "cloud sqlite_omit_load_extension" \
+    -tags "cloud sqlite_omit_load_extension sqlite_math_functions" \
     -ldflags="-s -w \
       ${VER:+-X github.com/hanzoai/commerce.Version=${VER}} \
       -X github.com/hanzoai/commerce.GitCommit=$(git rev-parse --short HEAD 2>/dev/null || echo sandboxfix) \
