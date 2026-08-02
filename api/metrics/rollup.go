@@ -179,7 +179,7 @@ func foldSubs(a *acc, orgName string, subs []*subscription.Subscription, test bo
 		if qty < 1 {
 			qty = 1
 		}
-		mrr := monthlyNormalizedCents(int64(s.Plan.Price), string(s.Plan.Interval)) * int64(qty)
+		mrr := billing.SubscriptionMRRCents(s)
 
 		switch s.Status {
 		case subscription.Active:
@@ -404,22 +404,6 @@ func planMeta(slug, embeddedName string) (category, name string) {
 		name = slug
 	}
 	return category, name
-}
-
-// monthlyNormalizedCents normalizes a plan price to a monthly figure by its billing
-// interval so annual and monthly plans are comparable in one MRR sum. Mirrors the
-// cloud admin's normalizer exactly so MRR agrees across surfaces.
-func monthlyNormalizedCents(priceCents int64, interval string) int64 {
-	switch strings.ToLower(strings.TrimSpace(interval)) {
-	case "year", "yearly", "annual", "annually":
-		return priceCents / 12
-	case "week", "weekly":
-		return priceCents * 52 / 12
-	case "day", "daily":
-		return priceCents * 365 / 12
-	default: // month/monthly and anything unrecognized → treat as monthly
-		return priceCents
-	}
 }
 
 func windowStart(now time.Time, window string) time.Time {
