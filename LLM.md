@@ -529,6 +529,85 @@ All require `permission.Admin` token (org live/test JWT). Cloud-api connects via
 
 **Current org**: `hanzo` (ID: `gzh2BOBnV6gKZQ0CP`)
 
+## One way to price a plan — the published catalog, applied by a DEPLOY
+
+The plan catalog is `@hanzo/plans` (npm, public). `scripts/fetch-plans.sh` vendors
+it into `api/billing/plans/*.json` at build time, `go:embed` bakes it in, and
+`plan.Seed` reconciles the live `models/plan` rows to it on EVERY boot. So
+changing a price is: edit the package → publish → re-vendor + bump
+`PinnedPlansVersion` → bump commerce → bump cloud's `go.mod` → deploy. Every step
+versioned, reviewed and revertible.
+
+There is no second way. `cloud/scripts/seed-plans.sh` (a human curling production
+with a SuperAdmin bearer, with the ladder retyped in bash) is DELETED — it was a
+second statement of the ladder kept in step by hand, which is exactly how the
+pricing page came to publish Pro at $49 while billing charged $20.
+
+**The boot seed CAN change what a plan charges.** An older comment claimed the
+opposite ("seed values EQUAL the embed, so it changes NO charge"); that stopped
+being true when the seed gained the ability to correct its own prior output.
+
+### Why the seed could not correct itself (and what fixed it)
+
+`Managed` was set by BOTH `plan.Seed` and `api/plan`'s Create/Update, so one bit
+carried two facts — "authoritative" and "who decided it" — and
+`if existing.Managed { continue }` skipped every row the seed had ever written.
+Publishing a new catalog would therefore CREATE the plans that were missing and
+LEAVE every plan that had changed at its old price: half-new, half-stale.
+
+`AdminEdited` is the discriminator that was missing. ONLY `api/plan` sets it.
+`Seed` reconciles anything else to the catalog — the rule everyone already assumed
+held: the package decides, an admin edit overrides. Proven end to end by
+`api/billing/plans_converge_test.go`, which plants the real production catalog
+(Managed rows, retired tiers, old prices) and boots it against the published one.
+
+### Lifecycle: archive, never delete (the Shopify product model)
+
+`plan.Status` is `active | draft | archived`, and **empty means active** — every
+row written before the field existed has no value for it, and a zero-value meaning
+"draft" would blank the catalog on deploy. `plan.Listed()` is the ONE predicate,
+gating both halves of "on sale":
+
+- the public catalog (`planAuthorityRows` skips unlisted rows), and
+- the three purchase entrypoints — `CreateBillingSubscription`, the PATCH
+  plan-change, and the card subscribe — which 404 an unlisted plan. Hiding a tier
+  from the page is worth nothing if the API still sells it, and the card path
+  refuses BEFORE the charge.
+
+`resolveSubscriptionPlan` is deliberately NOT gated: it answers "which row is
+this" and must keep answering for an archived plan, or a renewal on a retired tier
+could not price itself. Retiring stops new sales; it never strands a subscriber.
+Seed archives what the catalog stopped publishing; an admin-created plan is exempt
+(it is not "missing from the catalog", it is theirs).
+
+### The wire shape IS the model shape
+
+A plan's display envelope (features/limits/bundles/includedIn) used to live only
+as a packed JSON string in `Metadata`, with the packer private to `api/billing` —
+somewhere the admin handler could not reach. So `PUT /v1/plans/entries/:slug`
+carrying `features` set the price and SILENTLY DISCARDED the copy: a tier could be
+repriced but never re-described. Those fields are now first-class on `plan.Plan`
+(JSON-visible, `datastore:"-"`, still persisted packed under the same one key), so
+whatever `GET /v1/billing/plans` emits, the admin CRUD accepts. `planLimits` is an
+ALIAS of `plan.Limits`, not a second declaration.
+
+### Gotchas this cost
+
+- **A row from `GetAll` is a VALUE with no datastore binding.** `Update()` on it
+  writes nowhere AND RETURNS NO ERROR. Re-load through the bound point query
+  (`New(db)` + `Query().Filter("Slug=",…).Get()`) before writing.
+- **`Save()` must pack into `Metadata`, not `Metadata_`.** The ORM stores a row as
+  JSON of the struct and `Metadata_` is `json:"-"`, so a value written only there
+  does not survive. Measured, not assumed.
+- **`paidTier` counts a contact-sales plan as paid.** It stores `Price=0` because
+  its price is null, not free; reading price alone made a negotiated tier
+  self-serve, so a catalog row with a real allotment could be minted with no
+  payment. That never fired before only because the tier with the large allotment
+  also carried a large price — luck, not a gate.
+- **A cgo build needs `-tags sqlite_math_functions`** (hanzoai/base asserts it at
+  compile time). Without it v1.49.26–v1.49.37 each pushed a release tag and
+  published NO image — twelve dead releases.
+
 ## One way to grant credit — POST /v1/billing/credit (2026-07-16)
 
 `POST /v1/billing/credit` is the ONLY way credit enters an org ledger. It is
