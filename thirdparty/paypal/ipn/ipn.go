@@ -108,7 +108,11 @@ func Webhook(c *zip.Ctx) error {
 	}
 
 	// Parse form into ipnMessage for ease of use.
-	ipnMessage := NewIpnMessage(form)
+	ipnMessage, err := NewIpnMessage(form)
+	if err != nil {
+		log.Error("Malformed IPN, refusing to post it: %s", err, ctx)
+		return c.String(200, "")
+	}
 
 	// Update payment
 	pay := payment.New(db)
