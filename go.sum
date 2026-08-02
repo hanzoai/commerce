@@ -210,8 +210,6 @@ github.com/go-gl/glfw/v3.3/glfw v0.0.0-20191125211704-12ad95a8df72/go.mod h1:tQ2
 github.com/go-gl/glfw/v3.3/glfw v0.0.0-20200222043503-6f7a984d4dc4/go.mod h1:tQ2UAYgL5IevRw8kRxooKSPJfGvJ9fJQFa0TUsXzTg8=
 github.com/go-ini/ini v1.67.0 h1:z6ZrTEZqSWOTyH2FlglNbNgARyHG8oLW9gMELqKr06A=
 github.com/go-ini/ini v1.67.0/go.mod h1:ByCAeIL28uOIIG0E3PJtZPDL8WnHpFKFOtgjp+3Ies8=
-github.com/go-jose/go-jose/v4 v4.1.4 h1:moDMcTHmvE6Groj34emNPLs/qtYXRVcd6S7NHbHz3kA=
-github.com/go-jose/go-jose/v4 v4.1.4/go.mod h1:x4oUasVrzR7071A4TnHLGSPpNOm2a21K9Kf04k1rs08=
 github.com/go-logr/logr v1.2.2/go.mod h1:jdQByPbusPIv2/zmleS9BjJVeZ6kBagPoEUsqbVz/1A=
 github.com/go-logr/logr v1.4.3 h1:CjnDlHq8ikf6E492q6eKboGOC0T8CDaOvkHCIg8idEI=
 github.com/go-logr/logr v1.4.3/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
@@ -350,6 +348,8 @@ github.com/hanzo-ds/native v0.71.0 h1:4kXkUzXuoX7TEqoW7AhGqRcvCufHXkHRkppgQsKRF5
 github.com/hanzo-ds/native v0.71.0/go.mod h1:11FZtFdtfXMnmpybDEW6+uPRWFeC3TOT59YaV+lED+E=
 github.com/hanzoai/account v0.2.0 h1:WxIut3YMz8JNdHerlRIqP1a+k3P79BIKM1mjfRFDG0Y=
 github.com/hanzoai/account v0.2.0/go.mod h1:8OzIGRphAhlabOI74O4GoL3RM0y8mbUV0pQUKgXLjkw=
+github.com/hanzoai/authz v1.10.29 h1:b4vWtI9g4Mvay1zizW7cwly/hDk06r+oAdA/y+317Do=
+github.com/hanzoai/authz v1.10.29/go.mod h1:xkzFdiIFx4UQMlU0NkmSRz0dgRQYqSXpKgVjn8ijn3E=
 github.com/hanzoai/base v1.5.11 h1:AZxGFPQN7sus/f5phZHoeC5pz7iNLDmwf1NoE/1hSvk=
 github.com/hanzoai/base v1.5.11/go.mod h1:y6wd8mIFeDTKMsTZ570+aSQumMd3m3FvLkLFAGIYgrw=
 github.com/hanzoai/builder v0.3.13 h1:tAOJ+0Q0xrrovk7lkvaZxuKZ4lqENIB6tE0Rr9+6Bo8=
@@ -384,8 +384,6 @@ github.com/hanzoai/sqlcipher v0.1.1 h1:GARjSiUEa1lwhd1/f87XRaujZBG5s1ZwxrZW2Es/A
 github.com/hanzoai/sqlcipher v0.1.1/go.mod h1:F0soUYM1i4sawOZUpRvVnWoUayPbeGVlGq01VXy9Aqg=
 github.com/hanzoai/sqlite v0.5.0 h1:1YydiyNAvL+WcXC1lUqZsUDaR4/7YkVb+wZm9qq9DSc=
 github.com/hanzoai/sqlite v0.5.0/go.mod h1:7hlAtZspL0Ggx/j0cSo6npPFtUeikvIxnMDb7yTaJD0=
-github.com/hanzoai/tasks v1.52.4 h1:LfjSlVQKgJ+oR/4PTdHfqh4DKuiDQavmdmTZhz228S8=
-github.com/hanzoai/tasks v1.52.4/go.mod h1:cUycswLQpJxrJi9ZyGLFLA5Ww9Doss70nAOH8jq7PBE=
 github.com/hanzoai/tasks v1.52.9 h1:HneORQe/7KF5orVirmHfweFMFTMeuAmRRj8daUhqQQM=
 github.com/hanzoai/tasks v1.52.9/go.mod h1:2GdohcUvJa39vef4Y1xYys90iUDCEuadbQjO4XAEqR8=
 github.com/hanzoai/xorm v1.4.4 h1:2VRwh5BtOgbED+CAzHQ47sPZBgljBlKnJw1Ar6V6il0=
@@ -476,8 +474,6 @@ github.com/luxfi/lattice/v7 v7.1.4 h1:hQR02M6cHTAV5+joOPi9gb9Gm+z/hKJnhJF4IlciIJ
 github.com/luxfi/lattice/v7 v7.1.4/go.mod h1:DmIQFi3mJiehVsR235l1NKYEU0JhU649OX5p7gMEW2c=
 github.com/luxfi/lens v0.2.1 h1:5Qd0GdjbM+XUVgwDbZ452tKkR7yeE8QnBTHHaH8fJNY=
 github.com/luxfi/lens v0.2.1/go.mod h1:6FIhC8weEE5RbNMF3SaE+XPSB9cr6FmjypYBoHkz4JQ=
-github.com/luxfi/log v1.4.3 h1:xkUKRWvQ4ZwvlUC2e0/RTtHYZOYSMvSQ9W9lbjwBmiI=
-github.com/luxfi/log v1.4.3/go.mod h1:myIkufyiQomSQH34K981kbz6cG4WUoerRUh7F4XhlQI=
 github.com/luxfi/log v1.5.0 h1:zC0cE9ICThVd8NOxp1h1M1TgpiZ+ZbTgguHGqlxU17k=
 github.com/luxfi/log v1.5.0/go.mod h1:7EqCd7gmIpIPMEV7YPMFH3YqbrlcV2hwiPWUssJaF5c=
 github.com/luxfi/magnetar v1.2.3 h1:n4UrJZLK+mhDDZr1HLl2H/KgA6o6v62r5oiC61R7awE=
