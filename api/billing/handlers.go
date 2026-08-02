@@ -286,9 +286,6 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// opens this as a per-invoice download link.
 	user.Get("/invoices/:id/pdf", DownloadInvoicePDF)
 
-	// Card tokenization — S2S (no provider SDK on frontend)
-	user.Post("/card/tokenize", TokenizeCard)
-
 	// Public Square config for THIS org's Web Payments SDK (sandbox for test
 	// orgs, production for live orgs) — so the browser tokenizes against the
 	// same Square account commerce vaults/charges with.
