@@ -56,13 +56,20 @@ test:
   - name: go-vet
     run: |
       set -e
-      export GOPRIVATE='github.com/hanzoai/*' GOWORK=off
+      # base v1.5.11+ REFUSES to compile under cgo without this tag:
+      #   base/core/sqlite_math_required.go:30:6: undefined: cgoBuildNeedsSQLiteMathFunctions
+      # That is deliberate, not a broken dep. Base's search layer emits SQL calling
+      # acos/cos/sin/radians/sqrt; the pure-Go backend always has them, the cgo one
+      # only behind csqlite's sqlite_math_functions tag. The guard turns a runtime
+      # "no such function: acos" into a compile error. Carried via GOFLAGS so it
+      # reaches go vet, go test AND ginkgo identically.
+      export GOPRIVATE='github.com/hanzoai/*' GOWORK=off CGO_ENABLED=1 GOFLAGS=-tags=sqlite_math_functions
       sh scripts/fetch-plans.sh
       go vet ./...
   - name: go-unit
     run: |
       set -e
-      export GOPRIVATE='github.com/hanzoai/*' GOWORK=off CGO_ENABLED=1
+      export GOPRIVATE='github.com/hanzoai/*' GOWORK=off CGO_ENABLED=1 GOFLAGS=-tags=sqlite_math_functions
       sh scripts/fetch-plans.sh
       go test -count=1 -timeout=10m \
         ./billing/... \
@@ -85,7 +92,7 @@ test:
   - name: go-api-suites
     run: |
       set -e
-      export GOPRIVATE='github.com/hanzoai/*' GOWORK=off CGO_ENABLED=1
+      export GOPRIVATE='github.com/hanzoai/*' GOWORK=off CGO_ENABLED=1 GOFLAGS=-tags=sqlite_math_functions
       sh scripts/fetch-plans.sh
       go run github.com/onsi/ginkgo/v2/ginkgo -r --randomize-all --fail-fast --trace \
         --skip-package=test-integration \
