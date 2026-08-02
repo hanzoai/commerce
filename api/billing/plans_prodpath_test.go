@@ -84,7 +84,7 @@ func TestProdPath_SeedReadbackAllFields(t *testing.T) {
 // TestProdPath_CorrectsPreexistingBadRows proves fix #3: the corrective seed
 // repairs PRE-EXISTING unmanaged partial rows on the (persistent) store — not
 // just an empty DB. It plants the exact prod corruption (world-pro Price=0 like
-// the bundle write; developer with no Category; team with no minSeats), then runs
+// the bundle write; a row with no Category; team with no minSeats), then runs
 // SeedPlans and asserts the charge + display are corrected to the embed.
 func TestProdPath_CorrectsPreexistingBadRows(t *testing.T) {
 	c := ae.NewContext()
@@ -101,10 +101,12 @@ func TestProdPath_CorrectsPreexistingBadRows(t *testing.T) {
 			t.Fatalf("plant %s: %v", slug, err)
 		}
 	}
-	plant("world-pro", 0, "")   // bundle wrote $0 (the under-charge)
-	plant("world-team", 0, "")  // bundle wrote $0
-	plant("developer", 0, "")   // no Category
-	plant("pro", 2000, "")      // no Category, no PriceAnnual/envelope
+	// The prod corruption, re-planted on CURRENT slugs: a subscription-flow path
+	// wrote a $0 or category-less row where the catalog has a real one.
+	plant("go", 0, "")          // wrote $0 (the under-charge)
+	plant("dev", 0, "")         // wrote $0
+	plant("max", 0, "")         // wrote $0
+	plant("pro", 2000, "")      // stale price, no Category/PriceAnnual/envelope
 	plant("team", 2500, "team") // no minSeats/PriceAnnual
 
 	if _, corrected, err := SeedPlans(c); err != nil {
@@ -114,8 +116,10 @@ func TestProdPath_CorrectsPreexistingBadRows(t *testing.T) {
 	}
 
 	orgDB := datastore.New(nscontext.WithNamespace(c, "acme"))
-	// The charge path resolves the corrected prices — never the $0 under-charge.
-	for slug, want := range map[string]int64{"world-pro": 2900, "world-team": 9900} {
+	// The charge path resolves the CATALOG price — never the $0 under-charge, and
+	// never the stale 2000 that was planted over pro.
+	for _, slug := range []string{"go", "dev", "pro", "max"} {
+		want := lookupPlan(slug).Price
 		rp, err := resolveSubscriptionPlan(orgDB, slug)
 		if err != nil {
 			t.Fatalf("resolve %s: %v", slug, err)
@@ -133,43 +137,60 @@ func TestProdPath_CorrectsPreexistingBadRows(t *testing.T) {
 	for _, r := range rows {
 		byslug[r.Slug] = r
 	}
-	if byslug["developer"].Category != "personal" {
-		t.Fatalf("developer category=%q, want personal (not corrected)", byslug["developer"].Category)
+	if byslug["go"].Category != "personal" {
+		t.Fatalf("go category=%q, want personal (not corrected)", byslug["go"].Category)
 	}
 	if ms := minSeatsOf(ptr(byslug["team"])); ms != 2 {
 		t.Fatalf("team minSeats=%d, want 2 (not corrected)", ms)
 	}
-	if byslug["pro"].PriceAnnual != 1600 {
-		t.Fatalf("pro priceAnnual=%d, want 1600 (not corrected)", byslug["pro"].PriceAnnual)
+	if want := lookupPlan("pro").PriceAnnual; byslug["pro"].PriceAnnual != want {
+		t.Fatalf("pro priceAnnual=%d, want %d (not corrected)", byslug["pro"].PriceAnnual, want)
 	}
 }
 
-// TestProdPath_BundleSubscriptionNoAuthorityCorruption proves fix B: creating a
-// subscription to a bundle PARENT ("pro" bundles "world-pro") must NOT write a
-// partial $0 world-pro row into the authority. Before the fix, the bundle
-// expansion created world-pro Price=0 → a DIRECT world-pro sub then resolved $0.
+// TestProdPath_BundleSubscriptionNoAuthorityCorruption proves fix B: subscribing
+// to a bundle PARENT must NOT write a partial $0 child row into the authority.
+// Before the fix, the bundle expansion created the child at Price=0, so a DIRECT
+// subscription to that child then resolved $0 and under-charged.
+//
+// The published ladder carries no bundles, so the parent/child pair is CREATED
+// here rather than borrowed from the catalog. The bundle-expansion code is still
+// live and still reachable by any plan an admin gives a `bundles` list, so the
+// coverage belongs to the mechanism — not to whatever the catalog happens to sell.
 func TestProdPath_BundleSubscriptionNoAuthorityCorruption(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
 	org := moneyOrg("acme")
 
-	// A mint principal creates a "pro" sub (paid tier) → triggers the world-pro
-	// bundle child. Authority is NOT pre-seeded, so the OLD code's child-miss path
-	// would create world-pro=$0.
-	w := invokeSub(org, c, c1MintPrincipal, CreateBillingSubscription, `{"userId":"acme/owner","planId":"pro"}`)
-	if w.StatusCode != 201 {
-		t.Fatalf("create pro sub: status=%d body=%s", w.StatusCode, bodyOf(w))
+	adb := plan.AuthorityDB(c)
+	child := plan.New(adb)
+	child.Slug, child.Name, child.Category, child.Price, child.Managed = "bundle-child", "Bundle Child", "personal", 2900, true
+	if err := child.Create(); err != nil {
+		t.Fatalf("create child: %v", err)
+	}
+	parent := plan.New(adb)
+	parent.Slug, parent.Name, parent.Category, parent.Price, parent.Managed = "bundle-parent", "Bundle Parent", "personal", 4900, true
+	parent.Bundles = []string{"bundle-child"}
+	if err := parent.Create(); err != nil {
+		t.Fatalf("create parent: %v", err)
 	}
 
-	// A direct world-pro resolution must be the embed price ($29), never a $0
-	// partial the bundle wrote into the authority.
+	// A mint principal subscribes to the PARENT (a paid tier), which expands the
+	// bundle and touches the child row.
+	w := invokeSub(org, c, c1MintPrincipal, CreateBillingSubscription, `{"userId":"acme/owner","planId":"bundle-parent"}`)
+	if w.StatusCode != 201 {
+		t.Fatalf("create parent sub: status=%d body=%s", w.StatusCode, bodyOf(w))
+	}
+
+	// A direct child resolution must still be its real price, never a $0 partial
+	// the bundle expansion overwrote it with.
 	orgDB := datastore.New(nscontext.WithNamespace(c, "acme"))
-	rp, err := resolveSubscriptionPlan(orgDB, "world-pro")
+	rp, err := resolveSubscriptionPlan(orgDB, "bundle-child")
 	if err != nil {
-		t.Fatalf("resolve world-pro: %v", err)
+		t.Fatalf("resolve bundle-child: %v", err)
 	}
 	if int64(rp.Price) != 2900 {
-		t.Fatalf("world-pro resolves %d after a pro bundle sub, want 2900 (bundle corrupted the authority)", rp.Price)
+		t.Fatalf("bundle-child resolves %d after a parent bundle sub, want 2900 (bundle corrupted the authority)", rp.Price)
 	}
 }
 
