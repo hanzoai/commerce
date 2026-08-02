@@ -37,7 +37,7 @@ func TestGuardRejectsCredentialNames(t *testing.T) {
 	// namespace, as an organization's name, as a namespace entity's Name.
 	names := []string{
 		"sk-ant-api03-cPXc0f",         // the original incident shape
-		"hk-feb5b4b27e2c0",            //
+		"hk-feb5b4b27e2c0",            // refused on shape, not on authority
 		"sk_live_51H8xQ2eZvKYlo2C",    // Stripe secret — missed before
 		"pk_live_51H8xQ2eZvKYlo2C",    // Stripe publishable
 		"rk_live_51H8xQ2eZvKYlo2C",    // Stripe restricted

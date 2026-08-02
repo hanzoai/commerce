@@ -19,8 +19,12 @@ func TestLike(t *testing.T) {
 		{"anthropic", "sk-ant-api03-cPXc0f", true},
 		{"openai", "sk-proj-7qGaB9rn", true},
 		{"digitalocean", "sk-do-u_6ppglS1w", true},
-		{"hanzo sk", "sk-hz-0a2d6440-c", true},
-		{"hanzo hk", "hk-feb5b4b27e2c0", true},
+		{"hanzo", "sk-hz-0a2d6440-c", true},
+
+		// Refused on shape alone. This one authenticates nowhere, but a caller
+		// can still type it at the org header, and a name that is not refused
+		// is a row.
+		{"hk", "hk-feb5b4b27e2c0", true},
 
 		// Stripe. This is a billing system, so these are the likeliest keys
 		// to be pasted into a tenant header — and every one of them was
