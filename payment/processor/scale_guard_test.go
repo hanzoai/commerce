@@ -168,3 +168,83 @@ func isLogCall(e *ast.CallExpr) bool {
 	}
 	return false
 }
+
+// The other half of "the scale comes from the currency" is WHICH parser reads
+// it. There is one: currency.Type.Parse, which asks this tree's currency table
+// for Decimals(). money.ParseCents pins the scale to USD, and
+// money.ParseMinor(s, cur.Money()) is Type.Parse written the long way — so both
+// are a second spelling of the sanctioned conversion, and the ParseCents one is
+// wrong for any currency that is not two-decimal.
+//
+// That is not hypothetical: the PayPal IPN amount arrives as "<CURRENCY>
+// <decimal>", and parsing the digits with ParseCents read "JPY 500" as 50000
+// minor units while the currency sat in the same field.
+//
+// This walks the whole tree, not just payment/ and thirdparty/, because the
+// call sites that had it included api/costs and thirdparty/shipstation.
+func TestTypeParseIsTheOnlyDecimalToMinorConversion(t *testing.T) {
+	// The two legitimate homes for a direct money.ParseMinor call.
+	allowed := map[string]string{
+		"models/types/currency/currency.go": "the one implementation — this IS Type.Parse",
+		"thirdparty/bitcoin/bitcoin.go":     "a satoshi is 1e-8 BTC, a chain scale this table does not model",
+	}
+
+	var offences []string
+	err := filepath.WalkDir("../..", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() {
+			switch d.Name() {
+			case ".git", "vendor", "node_modules":
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		rel := filepath.ToSlash(strings.TrimPrefix(path, "../../"))
+		if _, ok := allowed[rel]; ok {
+			return nil
+		}
+
+		fset := token.NewFileSet()
+		f, perr := parser.ParseFile(fset, path, nil, 0)
+		if perr != nil {
+			return nil
+		}
+		ast.Inspect(f, func(n ast.Node) bool {
+			call, ok := n.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			sel, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			pkg, ok := sel.X.(*ast.Ident)
+			if !ok || pkg.Name != "money" {
+				return true
+			}
+			if sel.Sel.Name != "ParseCents" && sel.Sel.Name != "ParseMinor" {
+				return true
+			}
+			p := fset.Position(sel.Pos())
+			offences = append(offences, fmt.Sprintf("%s:%d: money.%s", rel, p.Line, sel.Sel.Name))
+			return true
+		})
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walking the tree: %v", err)
+	}
+
+	if len(offences) > 0 {
+		t.Errorf("a second decimal-to-minor parser in %d place(s):\n\t%s\n\n"+
+			"Use currency.Type.Parse — it applies THIS table's scale, so a zero-decimal\n"+
+			"currency is not read a hundred times too large. If a site genuinely needs a\n"+
+			"scale this table does not model, add it to `allowed` in this file with the reason.",
+			len(offences), strings.Join(offences, "\n\t"))
+	}
+}
