@@ -8,6 +8,7 @@ import (
 	"github.com/hanzoai/commerce/models/discount/target"
 	"github.com/hanzoai/commerce/models/discount/trigger"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/money"
 )
 
 // Append discounts which are valid for order creation date
@@ -178,22 +179,26 @@ func (o *Order) CalcRuleDiscount() (currency.Cents, error) {
 			price = o.LineTotal
 		}
 
-		// Apply rule
-		if quantityIx >= 0 {
-			rule := dis.Rules[quantityIx]
-			amt := rule.Action.Discount // Only handling Discount-type actions for now
-			if amt.Flat != 0 {
+		// Apply rule. A quantity trigger wins over a price trigger; either way the
+		// action is read the same way, so it is read in one place.
+		ruleIx := quantityIx
+		if ruleIx < 0 {
+			ruleIx = priceIx
+		}
+		if ruleIx >= 0 {
+			amt := dis.Rules[ruleIx].Action.Discount // Only handles Discount-type actions for now
+			switch {
+			case amt.Flat != 0:
 				totalDiscount += amt.Flat
-			} else if amt.Percent != 0 {
-				totalDiscount += currency.Cents(float64(price) * amt.Percent)
-			}
-		} else if priceIx >= 0 {
-			rule := dis.Rules[priceIx]
-			amt := rule.Action.Discount // Only handles Discount-type actions for now
-			if amt.Flat != 0 {
-				totalDiscount += amt.Flat
-			} else if amt.Percent != 0 {
-				totalDiscount += currency.Cents(float64(price) * amt.Percent)
+			case amt.Percent != 0:
+				// Percent is a float64 in the stored rule, so it becomes an exact
+				// rate before it touches money: the shortest decimal that round-trips
+				// to it, which is the rate that was entered.
+				rate, err := money.RateFromFloat(amt.Percent)
+				if err != nil {
+					return totalDiscount, err
+				}
+				totalDiscount += price.Scale(rate)
 			}
 		}
 	}

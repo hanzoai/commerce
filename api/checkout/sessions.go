@@ -28,6 +28,7 @@ import (
 	"github.com/hanzoai/commerce/models/coupon"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/store"
+	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/util/json/http"
 )
@@ -136,8 +137,10 @@ func applyDiscount(subtotalCents int64, cpn *coupon.Coupon) int64 {
 	}
 	switch cpn.Type {
 	case coupon.Percent:
-		// Amount field holds the percentage (e.g. 10 = 10%)
-		discount := subtotalCents * int64(cpn.Amount) / 100
+		// Amount field holds the percentage (e.g. 10 = 10%). Rounded, not floored by
+		// integer division: this is the same coupon the order model applies, and the
+		// number quoted at checkout has to be the number that ends up on the order.
+		discount := int64(currency.Cents(subtotalCents).Percent(cpn.Amount))
 		if discount > subtotalCents {
 			discount = subtotalCents
 		}

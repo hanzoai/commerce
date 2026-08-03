@@ -54,7 +54,8 @@ require (
 require (
 	github.com/hanzo-ds/go v1.0.1
 	github.com/hanzoai/account v0.2.0
-	github.com/hanzoai/money v0.2.3
+	github.com/hanzoai/decimal v0.1.2
+	github.com/hanzoai/money v0.2.4
 	github.com/hanzoai/sqlite v0.5.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/luxfi/trace v1.3.0
@@ -84,7 +85,6 @@ require (
 	github.com/hanzoai/authz v1.10.29 // indirect
 	github.com/hanzoai/builder v0.3.13 // indirect
 	github.com/hanzoai/csqlite v0.1.0 // indirect
-	github.com/hanzoai/decimal v0.1.2 // indirect
 	github.com/hanzoai/sqlcipher v0.1.1 // indirect
 	github.com/hanzoai/xorm v1.4.4 // indirect
 	github.com/holiman/uint256 v1.3.2 // indirect
