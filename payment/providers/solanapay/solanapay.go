@@ -397,24 +397,25 @@ func mintForCurrency(c currency.Type) string {
 	}
 }
 
-// tokenCurrency is the ON-CHAIN scale of the token being paid in: USDC/USDT are
-// 6-decimal SPL tokens, native SOL is 9-decimal lamports. commerce's currency
-// table only carries fiat scales, so the token scale is named here.
-func tokenCurrency(c currency.Type) money.Currency {
-	switch c {
-	case "usdc":
-		return money.USDC
-	case "usdt":
-		return money.USDT
-	default:
-		return money.Currency{Code: "SOL", Decimals: 9}
-	}
+// formatAmount renders minor units as the decimal string the Solana Pay
+// `amount` parameter takes, at the token's own scale — USDC/USDT are 6-decimal
+// SPL tokens and native SOL is 9-decimal lamports. The scale used to be named
+// here because commerce's currency table carried only fiat; it carries token
+// scales now, so this reads from the same place as every other amount.
+func formatAmount(c currency.Type, amount currency.Cents) string {
+	return payCurrency(c).Amount(amount).MajorString()
 }
 
-// formatAmount renders Cents as the decimal string the Solana Pay `amount`
-// parameter takes, at the token's own scale.
-func formatAmount(c currency.Type, amount currency.Cents) string {
-	return money.FromMinor(int64(amount), tokenCurrency(c)).MajorString()
+// payCurrency is the currency Solana Pay will actually settle in. It mirrors
+// mintForCurrency: a code that is not an SPL token we recognise is paid in
+// native SOL, so it must be scaled as SOL and not as two-decimal fiat.
+func payCurrency(c currency.Type) currency.Type {
+	switch c {
+	case currency.USDC, currency.USDT:
+		return c
+	default:
+		return currency.SOL
+	}
 }
 
 // Compile-time interface checks.

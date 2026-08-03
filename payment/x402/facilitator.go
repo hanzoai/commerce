@@ -118,19 +118,23 @@ func (f *Facilitator) settleLocal(ctx context.Context, req *PaymentRequest, auth
 		return nil, fmt.Errorf("x402: MPC processor not available: %w", err)
 	}
 
-	// Parse amount for the charge request.
-	// USDC amounts are in 6-decimal units; convert to cents (USD).
+	// auth.Value is already in USDC's own minor units, and USDC is a 6-decimal
+	// currency in the table, so it IS the minor-unit amount — no rescale.
+	// This used to divide by 10,000 to force the value into two-decimal cents,
+	// which threw away every fraction of a cent and, now that the table carries
+	// USDC's real scale, would under-report the charge by 1e4.
 	amount, ok := new(big.Int).SetString(auth.Value, 10)
 	if !ok {
 		return nil, fmt.Errorf("x402: invalid payment amount: %s", auth.Value)
 	}
-	// 1 USDC = 1,000,000 smallest units = 100 cents, so divide by 10,000
-	centsAmount := new(big.Int).Div(amount, big.NewInt(10000)).Int64()
+	if !amount.IsInt64() {
+		return nil, fmt.Errorf("x402: payment amount out of range: %s", auth.Value)
+	}
 
 	// Create a charge request through the MPC processor.
 	result, err := cryptoProc.Charge(ctx, processor.PaymentRequest{
-		Amount:     currency.Cents(centsAmount),
-		Currency:   "usdc",
+		Amount:     currency.Cents(amount.Int64()),
+		Currency:   currency.USDC,
 		CustomerID: auth.From,
 		Address:    req.Payee,
 		Chain:      chainFromNetwork(req.Network, req.ChainID),

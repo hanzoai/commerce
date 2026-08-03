@@ -6,7 +6,6 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/country"
-	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/searchpartial"
 )
 
@@ -281,26 +280,19 @@ func (o Order) Document() mixin.Document {
 	doc.ShippingAddressPostalCodeOption = doc.ShippingAddressPostalCode
 	doc.ShippingAddressCountryOption = doc.ShippingAddressCountry
 
-	switch o.Currency {
-	case currency.ETH, currency.BTC, currency.XBT:
-		doc.DiscountOption = float64(o.Discount) / 1e9
-		doc.SubtotalOption = float64(o.Subtotal) / 1e9
-		doc.ShippingOption = float64(o.Shipping) / 1e9
-		doc.TaxOption = float64(o.Tax) / 1e9
-		doc.AdjustmentOption = float64(o.Adjustment) / 1e9
-		doc.TotalOption = float64(o.Total) / 1e9
-		doc.PaidOption = float64(o.Paid) / 1e9
-		doc.RefundedOption = float64(o.Refunded) / 1e9
-	default:
-		doc.DiscountOption = float64(o.Discount)
-		doc.SubtotalOption = float64(o.Subtotal)
-		doc.ShippingOption = float64(o.Shipping)
-		doc.TaxOption = float64(o.Tax)
-		doc.AdjustmentOption = float64(o.Adjustment)
-		doc.TotalOption = float64(o.Total)
-		doc.PaidOption = float64(o.Paid)
-		doc.RefundedOption = float64(o.Refunded)
-	}
+	// The same amounts as above, at the same scale. These used to be their own
+	// switch: /1e9 for ETH/BTC/XBT and raw minor units for everything else. Both
+	// arms were wrong — a satoshi is 1e-8 and a wei is 1e-18, and the fiat arm
+	// indexed cents as if they were dollars — and they disagreed with the block
+	// above in this same file. The currency's own scale is the only answer.
+	doc.DiscountOption = doc.Discount
+	doc.SubtotalOption = doc.Subtotal
+	doc.ShippingOption = doc.Shipping
+	doc.TaxOption = doc.Tax
+	doc.AdjustmentOption = doc.Adjustment
+	doc.TotalOption = doc.Total
+	doc.PaidOption = doc.Paid
+	doc.RefundedOption = doc.Refunded
 
 	doc.TypeOption = string(o.Type)
 

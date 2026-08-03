@@ -140,12 +140,43 @@ const (
 	ZAR Type = "zar" // South African Rand
 	ZMW Type = "zmw" // Zambian Kwacha
 
-	// Subject to change without reason
-	ETH Type = "eth" // Ethereum
-	XBT Type = "xbt" // Bitcoin
-	BTC Type = "btc" // Old bitcoin
+	// Three-decimal fiat (ISO 4217). These are real decimal places, not a
+	// rounding convention: one Kuwaiti dinar is 1000 fils.
+	BHD Type = "bhd" // Bahraini Dinar
+	IQD Type = "iqd" // Iraqi Dinar
+	JOD Type = "jod" // Jordanian Dinar
+	KWD Type = "kwd" // Kuwaiti Dinar
+	LYD Type = "lyd" // Libyan Dinar
+	OMR Type = "omr" // Omani Rial
+	TND Type = "tnd" // Tunisian Dinar
 
-	PNT Type = "points" // points
+	// Crypto. The minor unit is the chain's own smallest indivisible unit —
+	// satoshi, wei, lamport, nanoton — not a two-decimal fiat convention.
+	BTC   Type = "btc"   // Bitcoin, 8 (satoshi)
+	XBT   Type = "xbt"   // Bitcoin, ISO-style code
+	BCH   Type = "bch"   // Bitcoin Cash, 8
+	LTC   Type = "ltc"   // Litecoin, 8
+	DOGE  Type = "doge"  // Dogecoin, 8
+	SOL   Type = "sol"   // Solana, 9 (lamport)
+	TON   Type = "ton"   // Toncoin, 9 (nanoton)
+	XRP   Type = "xrp"   // XRP, 6 (drop)
+	USDC  Type = "usdc"  // USD Coin, 6
+	USDT  Type = "usdt"  // Tether, 6
+	ETH   Type = "eth"   // Ethereum, 18 (wei)
+	MATIC Type = "matic" // Polygon, 18
+	AVAX  Type = "avax"  // Avalanche, 18
+	SHIB  Type = "shib"  // Shiba Inu, 18
+
+	// Own chains. EVM-native, so 18 like any other EVM gas token.
+	LUX   Type = "lux"   // Lux C-Chain, 18 (X/P-Chain LUX is 9 — see decimals)
+	ZOO   Type = "zoo"   // Zoo, 18
+	AI    Type = "ai"    // Hanzo native gas, 18
+	HANZO Type = "hanzo" // Hanzo, alias of AI
+	SPC   Type = "spc"   // Sparkle Pony, 18
+	PARS  Type = "pars"  // Pars Network, 18
+	HUSD  Type = "husd"  // Hanzo USD, 18
+
+	PNT Type = "points" // points, 0 — a point is indivisible
 )
 
 var Types = []Type{
