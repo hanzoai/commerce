@@ -222,18 +222,15 @@ func (p *Provider) Refund(ctx context.Context, req processor.RefundRequest) (*pr
 		return nil, processor.NewPaymentError(processor.BitPay, "INVALID_TRANSACTION",
 			"transaction ID is required for refund", nil)
 	}
-	if req.Amount <= 0 {
+	if req.Amount.Sign() <= 0 {
 		return nil, processor.NewPaymentError(processor.BitPay, "INVALID_AMOUNT",
 			"refund amount must be positive", nil)
 	}
 
-	// processor.RefundRequest carries no currency, so this path cannot know the
-	// scale and assumes two decimals — the same limitation recurly's refund has.
-	// A zero-decimal refund is wrong here until RefundRequest names its currency.
 	body := refundRequest{
 		Token:     p.apiToken,
 		InvoiceID: req.TransactionID,
-		Amount:    float64(req.Amount) / 100,
+		Amount:    json.Number(req.Amount.MajorString()),
 		Preview:   false,
 		Immediate: false,
 	}
@@ -403,11 +400,11 @@ type invoiceResponse struct {
 }
 
 type refundRequest struct {
-	Token     string  `json:"token"`
-	InvoiceID string  `json:"invoiceId"`
-	Amount    float64 `json:"amount"`
-	Preview   bool    `json:"preview"`
-	Immediate bool    `json:"immediate"`
+	Token     string      `json:"token"`
+	InvoiceID string      `json:"invoiceId"`
+	Amount    json.Number `json:"amount"`
+	Preview   bool        `json:"preview"`
+	Immediate bool        `json:"immediate"`
 }
 
 type refundData struct {

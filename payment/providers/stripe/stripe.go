@@ -239,8 +239,8 @@ func (p *Provider) Refund(ctx context.Context, req processor.RefundRequest) (*pr
 	params := url.Values{}
 	params.Set("payment_intent", req.TransactionID)
 
-	if req.Amount > 0 {
-		params.Set("amount", strconv.FormatInt(int64(req.Amount), 10))
+	if req.Amount.Sign() > 0 {
+		params.Set("amount", strconv.FormatInt(req.Amount.Minor().Int64(), 10))
 	}
 	if req.Reason != "" {
 		params.Set("reason", mapRefundReason(req.Reason))
