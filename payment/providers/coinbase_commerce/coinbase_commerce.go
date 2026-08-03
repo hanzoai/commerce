@@ -114,8 +114,12 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 		Name:        name,
 		Description: req.Description,
 		PricingType: "fixed_price",
+		// local_price is a quoted decimal, so it carries the exact digits at the
+		// currency's own scale. The old %.2f on float64(cents)/100 hardcoded two
+		// decimals, which billed a zero-decimal currency at a hundredth of the
+		// amount: ¥500 went out as "5.00".
 		LocalPrice: chargePrice{
-			Amount:   fmt.Sprintf("%.2f", float64(req.Amount)/100),
+			Amount:   req.Currency.ToStringNoSymbol(req.Amount),
 			Currency: strings.ToUpper(string(req.Currency)),
 		},
 	}

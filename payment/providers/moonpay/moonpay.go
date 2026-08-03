@@ -180,7 +180,10 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 		return nil, err
 	}
 
-	cur := currency.Type(resp.BaseCurrencyCode)
+	// The code is lower-cased because commerce's currency table is keyed that
+	// way, and the table is what supplies the scale. An upper-case "JPY" misses
+	// the zero-decimal entry and silently reads ¥500 as 50000.
+	cur := currency.Type(strings.ToLower(resp.BaseCurrencyCode))
 	amount, err := cur.Parse(resp.BaseCurrencyAmount.String())
 	if err != nil {
 		return nil, processor.NewPaymentError(processor.MoonPay, "INVALID_AMOUNT",

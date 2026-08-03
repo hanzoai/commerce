@@ -11,8 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hanzoai/money"
-
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 )
@@ -327,12 +325,15 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 	// Extract amount from first purchase unit.
 	if len(order.PurchaseUnits) > 0 {
 		pu := order.PurchaseUnits[0]
+		// The order carries its own currency, and that currency's decimal
+		// convention decides the scale — a zero-decimal currency (JPY) must not
+		// gain two. commerce's currency table is the authority on that.
 		tx.Currency = currency.Type(strings.ToLower(pu.Amount.CurrencyCode))
-		amount, err := money.ParseCents(pu.Amount.Value)
+		amount, err := tx.Currency.Parse(pu.Amount.Value)
 		if err != nil {
 			return nil, fmt.Errorf("paypal order %s: %w", order.ID, err)
 		}
-		tx.Amount = currency.Cents(amount)
+		tx.Amount = amount
 	}
 
 	// Map PayPal status to transaction type.
