@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hanzoai/money"
+	"github.com/hanzoai/commerce/models/types/currency"
 )
 
 // doAPIBase is the DigitalOcean API root. The billing endpoints are stable v2
@@ -89,7 +89,7 @@ func digitalOceanCost(ctx context.Context, client *http.Client, p string) Vendor
 	}
 
 	start, end := periodBounds(p)
-	var cents int64
+	var cents currency.Cents
 	for _, row := range hist.BillingHistory {
 		if !strings.EqualFold(row.Type, "Invoice") {
 			continue
@@ -101,7 +101,7 @@ func digitalOceanCost(ctx context.Context, client *http.Client, p string) Vendor
 		if d.Before(start) || !d.Before(end) {
 			continue
 		}
-		c, err := money.ParseCents(row.Amount)
+		c, err := currency.USD.Parse(row.Amount)
 		if err != nil {
 			// An amount we cannot read is NOT zero. Summing a 0 here would report a
 			// smaller bill than DO actually sent, with source=actual claiming it is
@@ -114,7 +114,7 @@ func digitalOceanCost(ctx context.Context, client *http.Client, p string) Vendor
 		cents += c
 	}
 
-	line.AmountCents = cents
+	line.AmountCents = int64(cents)
 	line.Source = SourceActual
 	return line
 }

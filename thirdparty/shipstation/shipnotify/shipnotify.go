@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/hanzoai/money"
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -129,11 +128,11 @@ func ShipNotify(c *zip.Ctx) error {
 		ord.Fulfillment.Trackings[0].LabelCreatedAt = parseTime(req.LabelCreateDate)
 		ord.Fulfillment.Service = req.Service
 		ord.Fulfillment.Carrier = req.Carrier
-		shipCost, err := money.ParseCents(req.ShippingCost)
+		shipCost, err := currency.USD.Parse(req.ShippingCost)
 		if err != nil {
 			return fmt.Errorf("shipstation shipping cost: %w", err)
 		}
-		ord.Fulfillment.Pricing = currency.Cents(shipCost)
+		ord.Fulfillment.Pricing = shipCost
 
 		usr := user.New(db)
 		usr.MustGetById(ord.UserId)
