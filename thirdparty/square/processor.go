@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/hanzoai/money"
 	"strings"
 	"time"
 
@@ -248,7 +249,7 @@ func (sp *SquareProcessor) Authorize(ctx context.Context, req processor.PaymentR
 }
 
 // Capture captures a previously authorized payment
-func (sp *SquareProcessor) Capture(ctx context.Context, transactionID string, amount currency.Cents) (*processor.PaymentResult, error) {
+func (sp *SquareProcessor) Capture(ctx context.Context, transactionID string, amount money.Amount) (*processor.PaymentResult, error) {
 	resp, err := sp.paymentsClient.Complete(ctx, &square.CompletePaymentRequest{
 		PaymentID: transactionID,
 	})

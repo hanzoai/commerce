@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"github.com/hanzoai/money"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/paymentintent"
@@ -135,7 +136,7 @@ func CapturePaymentIntent(ctx context.Context, db *datastore.Datastore, pi *paym
 	}
 
 	if proc != nil && proc.IsAvailable(ctx) && pi.ProviderRef != "" {
-		_, err := proc.Capture(ctx, pi.ProviderRef, currency.Cents(amount))
+		_, err := proc.Capture(ctx, pi.ProviderRef, money.FromMinor(amount, pi.Currency.Money()))
 		if err != nil {
 			pi.LastError = err.Error()
 			_ = pi.Update()

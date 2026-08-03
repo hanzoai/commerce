@@ -21,6 +21,7 @@ package router
 import (
 	"context"
 	"fmt"
+	"github.com/hanzoai/money"
 	"math/rand"
 	"strings"
 	"sync"
@@ -295,7 +296,7 @@ func (r *Router) Authorize(ctx context.Context, req processor.PaymentRequest) (*
 
 // Capture captures a previously authorized payment.
 // The transactionID must be router-prefixed ("processor:txid").
-func (r *Router) Capture(ctx context.Context, transactionID string, amount currency.Cents) (*processor.PaymentResult, error) {
+func (r *Router) Capture(ctx context.Context, transactionID string, amount money.Amount) (*processor.PaymentResult, error) {
 	pt, rawID, err := r.parseTransactionID(transactionID)
 	if err != nil {
 		return nil, err

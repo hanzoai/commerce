@@ -2,6 +2,7 @@ package processor
 
 import (
 	"context"
+	"github.com/hanzoai/money"
 
 	"github.com/hanzoai/commerce/models/types/currency"
 )
@@ -18,7 +19,12 @@ type PaymentProcessor interface {
 	Authorize(ctx context.Context, req PaymentRequest) (*PaymentResult, error)
 
 	// Capture captures a previously authorized payment
-	Capture(ctx context.Context, transactionID string, amount currency.Cents) (*PaymentResult, error)
+	// Capture takes a money.Amount, not a bare Cents, because a capture that
+	// cannot name its currency is one every gateway has to guess at — and they
+	// guessed USD, so a JPY authorization was captured at a hundredth of its
+	// value and a EUR one went out labelled USD. Same reasoning, and the same
+	// fix, as RefundRequest.Amount.
+	Capture(ctx context.Context, transactionID string, amount money.Amount) (*PaymentResult, error)
 
 	// Refund processes a refund
 	Refund(ctx context.Context, req RefundRequest) (*RefundResult, error)

@@ -625,7 +625,7 @@ func TestAuthorize_APIError(t *testing.T) {
 
 func TestCapture_NotConfigured(t *testing.T) {
 	p := newTestProvider()
-	_, err := p.Capture(context.Background(), "inv-1", 1000)
+	_, err := p.Capture(context.Background(), "inv-1", money.FromMinor(1000, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -636,7 +636,7 @@ func TestCapture_EmptyTransactionID(t *testing.T) {
 	defer server.Close()
 	p := configuredProvider(server.URL)
 
-	_, err := p.Capture(context.Background(), "", 1000)
+	_, err := p.Capture(context.Background(), "", money.FromMinor(1000, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error for empty ID")
 	}
@@ -660,7 +660,7 @@ func TestCapture_Success(t *testing.T) {
 	defer server.Close()
 
 	p := configuredProvider(server.URL)
-	result, err := p.Capture(context.Background(), "inv-auth", 2500)
+	result, err := p.Capture(context.Background(), "inv-auth", money.FromMinor(2500, currency.USD.Money()))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -684,7 +684,7 @@ func TestCapture_NoTransactions(t *testing.T) {
 	defer server.Close()
 
 	p := configuredProvider(server.URL)
-	result, err := p.Capture(context.Background(), "inv-auth-2", 0)
+	result, err := p.Capture(context.Background(), "inv-auth-2", money.FromMinor(0, currency.USD.Money()))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -701,7 +701,7 @@ func TestCapture_APIError(t *testing.T) {
 	defer server.Close()
 
 	p := configuredProvider(server.URL)
-	_, err := p.Capture(context.Background(), "inv-missing", 1000)
+	_, err := p.Capture(context.Background(), "inv-missing", money.FromMinor(1000, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error for 404")
 	}
@@ -1212,7 +1212,7 @@ func TestCapture_NetworkError(t *testing.T) {
 	server.Close()
 	p := configuredProvider(server.URL)
 
-	_, err := p.Capture(context.Background(), "inv-1", 1000)
+	_, err := p.Capture(context.Background(), "inv-1", money.FromMinor(1000, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error for network failure")
 	}
@@ -1226,7 +1226,7 @@ func TestCapture_ParseError(t *testing.T) {
 	defer server.Close()
 	p := configuredProvider(server.URL)
 
-	_, err := p.Capture(context.Background(), "inv-1", 1000)
+	_, err := p.Capture(context.Background(), "inv-1", money.FromMinor(1000, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error for unparseable response")
 	}

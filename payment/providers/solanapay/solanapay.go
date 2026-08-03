@@ -134,7 +134,7 @@ func (p *Provider) Authorize(ctx context.Context, req processor.PaymentRequest) 
 }
 
 // Capture is not supported for Solana Pay.
-func (p *Provider) Capture(ctx context.Context, transactionID string, amount currency.Cents) (*processor.PaymentResult, error) {
+func (p *Provider) Capture(ctx context.Context, transactionID string, amount money.Amount) (*processor.PaymentResult, error) {
 	return nil, processor.NewPaymentError(processor.SolanaPay, "NOT_SUPPORTED", "capture not supported for on-chain payments", nil)
 }
 

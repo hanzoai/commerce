@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/hanzoai/money"
 	"io"
 	"net/http"
 	"net/url"
@@ -211,10 +212,10 @@ func (p *Provider) Authorize(ctx context.Context, req processor.PaymentRequest) 
 }
 
 // Capture captures a previously authorized PaymentIntent.
-func (p *Provider) Capture(ctx context.Context, transactionID string, amount currency.Cents) (*processor.PaymentResult, error) {
+func (p *Provider) Capture(ctx context.Context, transactionID string, amount money.Amount) (*processor.PaymentResult, error) {
 	params := url.Values{}
-	if amount > 0 {
-		params.Set("amount_to_capture", strconv.FormatInt(int64(amount), 10))
+	if amount.Sign() > 0 {
+		params.Set("amount_to_capture", strconv.FormatInt(amount.Minor().Int64(), 10))
 	}
 
 	var pi paymentIntent

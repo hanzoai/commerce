@@ -80,7 +80,7 @@ func (m *mockProcessor) Authorize(_ context.Context, req processor.PaymentReques
 	}, nil
 }
 
-func (m *mockProcessor) Capture(_ context.Context, txID string, amount currency.Cents) (*processor.PaymentResult, error) {
+func (m *mockProcessor) Capture(_ context.Context, txID string, amount money.Amount) (*processor.PaymentResult, error) {
 	atomic.AddInt64(&m.captureCalls, 1)
 	if m.captureErr != nil {
 		return nil, m.captureErr
@@ -375,7 +375,7 @@ func TestCapture_RoutesToOriginalProcessor(t *testing.T) {
 	// Simulate an auth that went through square.
 	txID := "square:auth_square"
 
-	result, err := r.Capture(context.Background(), txID, 5000)
+	result, err := r.Capture(context.Background(), txID, money.FromMinor(5000, currency.USD.Money()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -400,7 +400,7 @@ func TestCapture_NoPrefixReturnsError(t *testing.T) {
 		Processors: []processor.ProcessorType{"stripe"},
 	})
 
-	_, err := r.Capture(context.Background(), "no_prefix_id", 5000)
+	_, err := r.Capture(context.Background(), "no_prefix_id", money.FromMinor(5000, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error for unprefixed transaction ID")
 	}
@@ -838,7 +838,7 @@ func (f *failResultProcessor) Charge(_ context.Context, _ processor.PaymentReque
 func (f *failResultProcessor) Authorize(_ context.Context, _ processor.PaymentRequest) (*processor.PaymentResult, error) {
 	return nil, fmt.Errorf("not impl")
 }
-func (f *failResultProcessor) Capture(_ context.Context, _ string, _ currency.Cents) (*processor.PaymentResult, error) {
+func (f *failResultProcessor) Capture(_ context.Context, _ string, _ money.Amount) (*processor.PaymentResult, error) {
 	return nil, fmt.Errorf("not impl")
 }
 func (f *failResultProcessor) Refund(_ context.Context, _ processor.RefundRequest) (*processor.RefundResult, error) {
@@ -920,7 +920,7 @@ func TestCapture_ProcessorNotFound(t *testing.T) {
 	reg := processor.NewRegistry(nil)
 	r := NewRouter(reg, Config{Processors: []processor.ProcessorType{}})
 
-	_, err := r.Capture(context.Background(), "nonexistent:tx-1", 1000)
+	_, err := r.Capture(context.Background(), "nonexistent:tx-1", money.FromMinor(1000, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error for missing processor")
 	}
@@ -931,7 +931,7 @@ func TestCapture_ProcessorUnavailable(t *testing.T) {
 	reg := setupRegistry(m)
 	r := NewRouter(reg, Config{Processors: []processor.ProcessorType{"stripe"}})
 
-	_, err := r.Capture(context.Background(), "stripe:tx-1", 1000)
+	_, err := r.Capture(context.Background(), "stripe:tx-1", money.FromMinor(1000, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error for unavailable processor")
 	}
@@ -947,7 +947,7 @@ func TestCapture_ProcessorError(t *testing.T) {
 		Processors: []processor.ProcessorType{"stripe"},
 	})
 
-	_, err := r.Capture(context.Background(), "stripe:tx-1", 1000)
+	_, err := r.Capture(context.Background(), "stripe:tx-1", money.FromMinor(1000, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error for capture failure")
 	}
@@ -1483,7 +1483,7 @@ func (e *emptyRefundProcessor) Charge(_ context.Context, _ processor.PaymentRequ
 func (e *emptyRefundProcessor) Authorize(_ context.Context, _ processor.PaymentRequest) (*processor.PaymentResult, error) {
 	return nil, fmt.Errorf("not impl")
 }
-func (e *emptyRefundProcessor) Capture(_ context.Context, _ string, _ currency.Cents) (*processor.PaymentResult, error) {
+func (e *emptyRefundProcessor) Capture(_ context.Context, _ string, _ money.Amount) (*processor.PaymentResult, error) {
 	return nil, fmt.Errorf("not impl")
 }
 func (e *emptyRefundProcessor) Refund(_ context.Context, req processor.RefundRequest) (*processor.RefundResult, error) {

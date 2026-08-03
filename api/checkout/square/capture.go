@@ -3,6 +3,7 @@ package square
 import (
 	"context"
 	"errors"
+	"github.com/hanzoai/money"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/order"
@@ -31,7 +32,7 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 
 	for _, p := range payments {
 		if !p.Captured {
-			result, err := proc.Capture(context.Background(), p.Account.Square.PaymentId, p.Amount)
+			result, err := proc.Capture(context.Background(), p.Account.Square.PaymentId, money.FromMinor(int64(p.Amount), p.Currency.Money()))
 			if err != nil {
 				return nil, payments, err
 			}

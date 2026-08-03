@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/hanzoai/money"
 	"io"
 	"net/http"
 	"os"
@@ -380,7 +381,7 @@ func (mp *MPCProcessor) Authorize(ctx context.Context, req processor.PaymentRequ
 }
 
 // Capture approves and executes a previously authorized transaction.
-func (mp *MPCProcessor) Capture(ctx context.Context, transactionID string, amount currency.Cents) (*processor.PaymentResult, error) {
+func (mp *MPCProcessor) Capture(ctx context.Context, transactionID string, amount money.Amount) (*processor.PaymentResult, error) {
 	// Approve the transaction via MPC API: POST /api/v1/transactions/{id}/approve
 	approveURL := fmt.Sprintf("%s/api/v1/transactions/%s/approve", mp.mpcEndpoint, transactionID)
 
