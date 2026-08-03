@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/zap-proto/fiber/v3"
 	"github.com/zap-proto/zip"
 )
 
@@ -31,7 +30,7 @@ var (
 // declaration — the gate and the registry entry are the same act, so they cannot
 // drift:
 //
-//	mint := middleware.Mint(api)
+//	mint := middleware.Mint(api, "/v1/billing")
 //	mint.Post("/deposit", Deposit)   // gated AND recorded
 //
 // This replaces the CONVENTION `api.Post("/deposit", mintRequired, Deposit)`,
@@ -41,20 +40,37 @@ var (
 // runs FIRST and the handler LAST, exactly as the explicit chain did.
 //
 // The natural shape for an authz class is a group carrying its own Use
-// (`api.Use(adminRequired)` one level up). Mint deliberately does NOT do that,
-// because this router cannot express it: fiber's Use matches by PATH PREFIX, not
-// by group membership, and a bare sub-group inherits its parent's prefix
-// verbatim — so `api.Group("").Use(PlatformOnly())` gates every neighbouring
-// route under /v1/billing, including the org-admin reads that must stay
-// reachable. TestGroupUseIsPrefixScopedNotMembership proves it and fails if that
-// scoping ever changes (at which point the gated-sub-group shape becomes right).
-// Mint therefore prepends the gate to each route's own chain, which gates exactly
-// the declared routes and nothing else.
+// (`api.Use(adminRequired)` one level up). Mint does not do that. Through zip
+// v1.18 it could not: Use matched by PATH PREFIX rather than by group
+// membership, and a bare sub-group inherited its parent's prefix verbatim, so
+// `api.Group("").Use(PlatformOnly())` gated every neighbouring route under
+// /v1/billing — the org-admin reads that must stay reachable included. zip v1.19
+// inverted that (a definition's middleware wraps its OWN subtree), so the gated
+// sub-group is now sound; TestGroupUseIsMembershipScopedNotPrefix pins the
+// current semantics in both directions and says what each implies.
+//
+// Mint keeps prepending the gate to each route's own chain, which gates exactly
+// the declared routes and nothing else under EITHER scoping. Converting it is a
+// change to a money gate that buys only half of Mint — the registry still needs a
+// decorator to record what was declared — so it is a separate decision, not a
+// side effect of a dependency bump.
 //
 // Register it on a router that has ALREADY resolved the caller — PlatformOnly
 // reads what TokenRequired sets and only ever NARROWS (see platformonly.go).
-func Mint(r zip.Router) zip.Router {
-	return &mintRouter{inner: r, prefix: groupPrefix(r), gate: PlatformOnly()}
+//
+// prefix is the absolute path r is mounted at, and it is a parameter because a
+// Router cannot be asked. zip ≥v1.19 makes a group's prefix a property of WHERE
+// the group is included — one definition may be included at two prefixes — so
+// the absolute path is composed by the router's walk and is knowable only at the
+// root: measured on v1.19.2, a group reports OpScope().Prefix == "" and its own
+// route table relative to itself ("/deposit"), while only the root app's table
+// reads "/v1/billing/deposit". The inclusion site is therefore the one place
+// that can say, and it says it here. It cannot drift silently:
+// TestMintRegistry_DeclarationImpliesEnforcement probes every recorded path
+// against the real mounted router and requires 403, so a wrong prefix fails as a
+// 404.
+func Mint(r zip.Router, prefix string) zip.Router {
+	return &mintRouter{inner: r, prefix: prefix, gate: PlatformOnly()}
 }
 
 // MintRoutes returns every route declared through Mint, sorted and deduplicated
@@ -131,21 +147,32 @@ func (m *mintRouter) All(p string, h ...zip.Handler) zip.Router {
 
 // Group returns a mint view of the sub-group: every route under it is gated and
 // recorded, so a whole mint subtree declares itself the same one way.
+//
+// The sub-group STAYS DECORATED. Returning the inner group bare would type-check
+// and silently un-gate every route registered on it — the decorator's whole
+// purpose, skipped, on the routes that move money. That is the unsoundness
+// zip.OpTarget's doc names, and it is why Group returns zip.Router rather than
+// the concrete *zip.App.
 func (m *mintRouter) Group(prefix string, handlers ...zip.Handler) zip.Router {
-	inner := m.inner.Group(prefix, handlers...)
-	return &mintRouter{inner: inner, prefix: groupPrefix(inner), gate: m.gate}
+	return &mintRouter{
+		inner:  m.inner.Group(prefix, handlers...),
+		prefix: joinPath(m.prefix, prefix),
+		gate:   m.gate,
+	}
 }
 
-// Use is refused: Mint gates per-route precisely because fiber's Use is
-// prefix-scoped and would leak the gate onto neighbouring non-mint routes. A
-// middleware meant for the whole group belongs on the group itself, before Mint
-// wraps it. Boot-time panic, never a request-time surprise — the same contract
-// zip applies to a route registered with no handler.
-func (m *mintRouter) Use(handlers ...zip.Handler) zip.Router {
+// Use is refused: Mint gates per-route, so a Use here would go to the INNER
+// group and reach every route registered on it, mint or not. A middleware meant
+// for the whole group belongs on the group itself, before Mint wraps it.
+// Boot-time panic, never a request-time surprise — the same contract zip applies
+// to a route registered with no handler.
+//
+// It takes ...Component because Use is zip's ONE composition verb: it accepts a
+// middleware or a whole App included by reference, so it cannot narrow to
+// ...Handler. A bare closure needs zip.H to become one.
+func (m *mintRouter) Use(cs ...zip.Component) zip.Router {
 	panic("middleware.Mint: Use is not supported — Mint gates per-route; apply shared middleware to the underlying group before wrapping it with Mint")
 }
-
-func (m *mintRouter) Fiber() fiber.Router { return m.inner.Fiber() }
 
 // OpScope carries the gate onto a TYPED op declared on this router, so
 // `zip.Post(mint, "/deposit", Deposit)` is gated exactly as `mint.Post` is.
@@ -215,16 +242,6 @@ func MintOp[In, Out any](on zip.Router, method, path string, fn zip.TypedHandler
 	default:
 		panic("middleware.MintOp: unsupported method " + method)
 	}
-}
-
-// groupPrefix reports the full prefix of r, read from the SAME value
-// fiber routes on (Group.Prefix, which fiber builds by joining parents). A root
-// app router has no prefix.
-func groupPrefix(r zip.Router) string {
-	if g, ok := r.Fiber().(*fiber.Group); ok {
-		return g.Prefix
-	}
-	return ""
 }
 
 // joinPath mirrors fiber's getGroupPath, so a recorded path equals the path
