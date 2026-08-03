@@ -8,7 +8,7 @@ import (
 )
 
 // DisplayPrice renders a price for a human: symbol, grouped thousands, the
-// currency's own number of decimals ("$1,234.56", "¥10000").
+// currency's own number of decimals ("$1,234.56", "¥10,000").
 //
 // This is the display funnel — every storefront, order and receipt string in
 // commerce comes through here, so it holds no arithmetic of its own. The
