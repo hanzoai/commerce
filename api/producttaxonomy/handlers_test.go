@@ -26,13 +26,13 @@ import (
 func wire(t *testing.T, base context.Context, ns string) *zip.App {
 	t.Helper()
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	r := app.Use(func(c *zip.Ctx) error {
+	r := app.Use(zip.H(func(c *zip.Ctx) error {
 		org := &organization.Organization{}
 		org.Name = ns
 		c.Locals("organization", org)
 		c.SetContext(base)
 		return c.Next()
-	})
+	}))
 	defer func() {
 		if rec := recover(); rec != nil {
 			t.Fatalf("producttaxonomy.Route panicked at wiring (sibling wildcard?): %v", rec)

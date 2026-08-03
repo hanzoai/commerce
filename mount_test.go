@@ -144,7 +144,11 @@ func TestMount_NoUngatedTypedOpSurface(t *testing.T) {
 
 	// Install the deferred projections (OpenAPI + MCP) exactly as a served app
 	// does. zip mounts /mcp here iff at least one typed op is registered.
-	app.Prepare()
+	// Build is what Listen calls, minus the sockets; it replaced the old Prepare
+	// precisely so the verdict is returned rather than discovered by serving.
+	if err := app.Build(); err != nil {
+		t.Fatalf("Build: %v", err)
+	}
 
 	req := httptest.NewRequest("POST", "/mcp",
 		strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`))

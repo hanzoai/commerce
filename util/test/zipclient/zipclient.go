@@ -51,19 +51,22 @@ type Client struct {
 // middleware runs — the same first-in-chain SetDefaults the gin router installed.
 func newApp(ctx context.Context) *zip.App {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Use(func(c *zip.Ctx) error {
+	// zip.H adapts a bare closure to a Component: Use composes middleware AND
+	// whole apps, so it takes the closed Component set rather than ...Handler.
+	app.Use(zip.H(func(c *zip.Ctx) error {
 		zipctx.SetDefaults(c, ctx)
 		return c.Next()
-	})
+	}))
 	return app
 }
 
 func New(ctx ae.Context) *Client {
 	cl := new(Client)
 	cl.app = newApp(ctx)
-	// Mount routes on a root group so cl.Router satisfies zip.Router (which
-	// *zip.App does not — its Fiber() returns *fiber.App, not fiber.Router).
-	cl.Router = cl.app.Group("")
+	// *zip.App IS a zip.Router (zip ≥v1.19 took Fiber() off the interface, so the
+	// concrete app satisfies it), and a bare group would only add a prefix-less
+	// level between the app and its routes.
+	cl.Router = cl.app
 	cl.Defaults(func(r *http.Request) {})
 	return cl
 }

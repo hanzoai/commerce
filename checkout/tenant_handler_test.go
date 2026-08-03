@@ -90,13 +90,13 @@ func newRouterWithClaims(s *store.Store, claims *auth.IAMClaims) *zip.App {
 	// Inject claims the same way iammiddleware does. The real middleware
 	// sets additional keys (iam_org, iam_email, …) — the two helpers we
 	// actually read are GetIAMClaims(c) and the presence of "iam_authenticated".
-	app.Use(func(c *zip.Ctx) error {
+	app.Use(zip.H(func(c *zip.Ctx) error {
 		if claims != nil {
 			c.Locals("iam_claims", claims)
 			c.Locals("iam_authenticated", true)
 		}
 		return c.Next()
-	})
+	}))
 
 	admin := app.Group("/_/commerce")
 	MountTenantAdmin(admin, s)

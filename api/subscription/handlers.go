@@ -127,10 +127,10 @@ func Unsubscribe(c *zip.Ctx) error {
 
 func Route(router zip.Router, args ...zip.Handler) {
 	api := router.Group("")
-	api.Use(func(c *zip.Ctx) error {
+	api.Use(zip.H(func(c *zip.Ctx) error {
 		c.SetHeader("Access-Control-Allow-Origin", "*")
 		return c.Next()
-	})
+	}))
 
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
