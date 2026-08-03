@@ -40,15 +40,15 @@ func TestFormatAmount(t *testing.T) {
 }
 
 // An unrecognized currency is native SOL, matching mintForCurrency's default.
-func TestTokenCurrencyDefaultsToSOL(t *testing.T) {
+func TestPayCurrencyDefaultsToSOL(t *testing.T) {
 	for _, c := range []currency.Type{"sol", "", "unknown"} {
-		if got := tokenCurrency(c).Decimals; got != 9 {
-			t.Errorf("tokenCurrency(%q).Decimals = %d, want 9", c, got)
+		if got := payCurrency(c).Decimals(); got != 9 {
+			t.Errorf("payCurrency(%q).Decimals() = %d, want 9 (lamports)", c, got)
 		}
 	}
 	for _, c := range []currency.Type{"usdc", "usdt"} {
-		if got := tokenCurrency(c).Decimals; got != 6 {
-			t.Errorf("tokenCurrency(%q).Decimals = %d, want 6", c, got)
+		if got := payCurrency(c).Decimals(); got != 6 {
+			t.Errorf("payCurrency(%q).Decimals() = %d, want 6", c, got)
 		}
 	}
 }
