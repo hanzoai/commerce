@@ -55,7 +55,7 @@ require (
 	github.com/hanzo-ds/go v1.0.1
 	github.com/hanzoai/account v0.2.0
 	github.com/hanzoai/decimal v0.1.2
-	github.com/hanzoai/money v0.2.4
+	github.com/hanzoai/money v0.2.5
 	github.com/hanzoai/sqlite v0.5.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/luxfi/trace v1.3.0

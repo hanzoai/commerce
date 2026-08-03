@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hanzoai/decimal"
+	"github.com/hanzoai/money"
 )
 
 // TestPercentRounds pins the rule at the one place every discount in the codebase now goes
@@ -105,4 +106,67 @@ func TestScaleOverflowPanics(t *testing.T) {
 		}
 	}()
 	_ = Cents(math.MaxInt64).Scale(decimal.New(2, 0))
+}
+
+// TestScaleCeilAndFloorRoundTheAmountNotTheFloat pins the two directed scalings at the one
+// place every fee in the codebase now goes through. `oldCeil`/`oldFloor` are what the
+// math.Ceil/math.Floor spellings they replaced returned.
+//
+// Every row here has an EXACT product — a whole number of cents, nothing to round. That is
+// the point: rounding a whole number is a no-op in either direction, and the float
+// spellings still moved it, because they rounded the float rather than the amount.
+func TestScaleCeilAndFloorRoundTheAmountNotTheFloat(t *testing.T) {
+	for _, tc := range []struct {
+		cents             Cents
+		pct               float64
+		want              Cents
+		oldCeil, oldFloor Cents
+	}{
+		{700, 0.07, 49, 50, 49}, // 0.07 is held a hair HIGH: Ceil invented a cent
+		{7000, 0.07, 490, 491, 490},
+		{100, 0.29, 29, 29, 28}, // 0.29 is held a hair LOW: Floor destroyed one
+		{2900, 0.01, 29, 29, 29},
+		{300, 0.10, 30, 30, 30},
+		{8300, 0.03, 249, 249, 249},
+		{100000, 0.029, 2900, 2900, 2900},
+	} {
+		rate, err := money.RateFromFloat(tc.pct)
+		if err != nil {
+			t.Fatalf("RateFromFloat(%v): %v", tc.pct, err)
+		}
+		if got := tc.cents.ScaleCeil(rate); got != tc.want {
+			t.Errorf("Cents(%d).ScaleCeil(%v) = %d, want %d (math.Ceil gave %d)",
+				tc.cents, tc.pct, got, tc.want, tc.oldCeil)
+		}
+		if got := tc.cents.ScaleFloor(rate); got != tc.want {
+			t.Errorf("Cents(%d).ScaleFloor(%v) = %d, want %d (math.Floor gave %d)",
+				tc.cents, tc.pct, got, tc.want, tc.oldFloor)
+		}
+	}
+}
+
+// TestScaleCeilAndFloorKeepTheirDirection: on a product that DOES have a fraction, each
+// still rounds the way its callers depend on — up for a fee we collect, down for a
+// commission we pay out and keep the remainder of. Negatives go toward the named infinity,
+// not away from zero, so a reversed fee does not gain a cent on the way back.
+func TestScaleCeilAndFloorKeepTheirDirection(t *testing.T) {
+	for _, tc := range []struct {
+		cents               Cents
+		pct                 int
+		wantCeil, wantFloor Cents
+	}{
+		{1999, 10, 200, 199},    // 199.9
+		{995, 10, 100, 99},      // 99.5
+		{29, 33, 10, 9},         // 9.57
+		{1250, 6, 75, 75},       // 75 exactly
+		{-1999, 10, -199, -200}, // -199.9
+	} {
+		rate := decimal.New(int64(tc.pct), 2)
+		if got := tc.cents.ScaleCeil(rate); got != tc.wantCeil {
+			t.Errorf("Cents(%d).ScaleCeil(%d%%) = %d, want %d", tc.cents, tc.pct, got, tc.wantCeil)
+		}
+		if got := tc.cents.ScaleFloor(rate); got != tc.wantFloor {
+			t.Errorf("Cents(%d).ScaleFloor(%d%%) = %d, want %d", tc.cents, tc.pct, got, tc.wantFloor)
+		}
+	}
 }

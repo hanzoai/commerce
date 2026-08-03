@@ -13,7 +13,9 @@ import (
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
+	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/types"
+	"github.com/hanzoai/money"
 )
 
 // periodLockStripes bounds the memory of the per-(subscription, period) renewal
@@ -376,9 +378,15 @@ func ChangePlan(sub *subscription.Subscription, newPlan *plan.Plan, prorate bool
 	fraction := remainingDays / totalDays
 
 	// Credit for unused portion of old plan (× its billable seats)
-	oldCredit := int64(float64(oldPlan.Price) * float64(seats(&oldPlan, sub.Quantity)) * fraction)
+	oldCredit, err := proration(oldPlan.Price*currency.Cents(seats(&oldPlan, sub.Quantity)), fraction)
+	if err != nil {
+		return nil, err
+	}
 	// Charge for remaining portion of new plan (× its billable seats)
-	newCharge := int64(float64(newPlan.Price) * float64(seats(newPlan, sub.Quantity)) * fraction)
+	newCharge, err := proration(newPlan.Price*currency.Cents(seats(newPlan, sub.Quantity)), fraction)
+	if err != nil {
+		return nil, err
+	}
 
 	net := newCharge - oldCredit
 
@@ -399,6 +407,27 @@ func ChangePlan(sub *subscription.Subscription, newPlan *plan.Plan, prorate bool
 
 // seats returns the billable multiplier for a plan on a subscription: the
 // subscription quantity (floored at 1) when the plan bills per seat, else 1.
+// proration returns the part of amount that fraction covers, rounded half away from zero.
+//
+// It is one function because a plan change computes two of these and subtracts them, and
+// they have to round the same way. The spelling it replaces truncated both — the credit for
+// the unused old plan, which is a cent the customer does not get back, and the charge for
+// the new one, which is a cent we do not bill. Neither direction was chosen by anyone; they
+// were just what int64() does to a fraction. Half away from zero is the rule the discount
+// and coupon paths already use, so a plan change cannot disagree with a coupon about what a
+// fraction of a cent is worth, and a downgrade credit is the upgrade charge reversed.
+//
+// A fraction that is not a number is REPORTED rather than converted: a period whose start
+// and end are the same instant makes remaining/total a NaN, and NaN to int64 is undefined
+// in Go. A proration line for an undefined number of cents is worse than no line at all.
+func proration(amount currency.Cents, fraction float64) (int64, error) {
+	rate, err := money.RateFromFloat(fraction)
+	if err != nil {
+		return 0, err
+	}
+	return money.ScaleMinor(int64(amount), rate)
+}
+
 func seats(p *plan.Plan, quantity int) int64 {
 	if !p.PerSeat || quantity < 1 {
 		return 1

@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"math"
 	"testing"
 	"time"
 
@@ -138,5 +139,59 @@ func TestRenewSubscription_NumbersDistinctPeriods(t *testing.T) {
 	}
 	if inv2.Id() == inv1.Id() {
 		t.Fatalf("distinct periods must yield distinct invoices")
+	}
+}
+
+// TestProrationRounds pins the proration arithmetic. `old` is what the truncating spelling
+// this replaced returned, and every row where it differs from `want` is a cent that fell
+// off a plan change.
+//
+// Truncating here is not merely biased, it is biased in BOTH directions at once, because
+// proration computes two amounts and subtracts them. The credit for the old plan truncates
+// down, which is a cent the customer does not get back; the charge for the new plan
+// truncates down, which is a cent we do not bill. Neither is a policy anyone chose. Half
+// away from zero is the same rule the discount path already uses, so a plan change and a
+// coupon cannot disagree about what a fraction of a cent is.
+func TestProrationRounds(t *testing.T) {
+	for _, tc := range []struct {
+		amount   currency.Cents
+		fraction float64
+		want     int64
+		old      int64
+	}{
+		{1999, 0.5, 1000, 999},   // 999.5
+		{995, 0.5, 498, 497},     // 497.5
+		{2999, 0.1, 300, 299},    // 299.9
+		{1000, 0.333, 333, 333},  // 333 exactly
+		{4999, 0.25, 1250, 1249}, // 1249.75
+		{100, 0.075, 8, 7},       // 7.5
+		{29, 0.33, 10, 9},        // 9.57
+		{0, 0.5, 0, 0},
+		{1999, 0, 0, 0},
+		{1999, 1, 1999, 1999},
+		// A downgrade credit is the same amount reversed, so it must round the same
+		// distance from zero — floor would make a refund disagree with the charge.
+		{-1999, 0.5, -1000, -999},
+	} {
+		got, err := proration(tc.amount, tc.fraction)
+		if err != nil {
+			t.Fatalf("proration(%d, %v): %v", tc.amount, tc.fraction, err)
+		}
+		if got != tc.want {
+			t.Errorf("proration(%d, %v) = %d, want %d (truncating gave %d)",
+				tc.amount, tc.fraction, got, tc.want, tc.old)
+		}
+	}
+}
+
+// TestProrationRejectsANonFraction: a period whose start and end are the same instant makes
+// remaining/total a NaN, and NaN converted to an integer is undefined in Go. A proration
+// line of an undefined number of cents is worse than no proration line.
+func TestProrationRejectsANonFraction(t *testing.T) {
+	if _, err := proration(1999, math.NaN()); err == nil {
+		t.Error("proration with a NaN fraction: want an error, got none")
+	}
+	if _, err := proration(1999, math.Inf(1)); err == nil {
+		t.Error("proration with an infinite fraction: want an error, got none")
 	}
 }

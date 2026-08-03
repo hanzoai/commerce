@@ -1,12 +1,12 @@
 package shipping
 
 import (
-	"math"
 	"sort"
 
 	"github.com/hanzoai/commerce/models/product"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/models/types/weight"
+	"github.com/hanzoai/money"
 )
 
 type RateType string
@@ -82,8 +82,21 @@ func (r Rates) GetPrice(p *product.Product) (currency.Cents, currency.Type) {
 func calculateShippingPrice(w weight.Mass, rateType RateType, price currency.Cents) currency.Cents {
 	switch rateType {
 	case Variable:
-		// Do the math and round up for variable rates
-		return currency.Cents(math.Ceil(float64(w) * float64(price)))
+		// A variable rate bills price per unit of weight, so the weight IS the rate.
+		// Round up: a part-cent of carriage is charged, not absorbed. That direction is
+		// deliberate and unchanged; what changes is that it now rounds the amount instead
+		// of the float, which used to bill a cent that was not owed — 0.07kg at 700c/kg is
+		// exactly 49c, but float 0.07 is a hair high, so the product came out
+		// 49.000000000000007 and ceilinged to 50.
+		rate, err := money.RateFromFloat(float64(w))
+		if err != nil {
+			// weight.Convert scales by 1/grams-per-unit, so a rate row with no WeightUnit
+			// makes every weight non-finite. That cannot price anything, and converting it
+			// to Cents is undefined in Go — it yielded MaxInt64, MinInt64 or 0 depending on
+			// which non-finite it was. The row's own configured price is the defined answer.
+			return price
+		}
+		return price.ScaleCeil(rate)
 	default:
 		// Flat/other cases
 		return price

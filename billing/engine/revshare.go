@@ -1,8 +1,6 @@
 package engine
 
 import (
-	"math"
-
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -10,6 +8,8 @@ import (
 	"github.com/hanzoai/commerce/models/referral"
 	"github.com/hanzoai/commerce/models/referrer"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/decimal"
+	"github.com/hanzoai/money"
 )
 
 // tierForReferralCount returns the tier matching the given referral count.
@@ -73,9 +73,20 @@ func TrackRevenueShare(db *datastore.Datastore, userID string, chargeAmount curr
 	}
 
 	// 4. Calculate commission amount (round down -- platform keeps remainder).
-	commissionAmount := currency.Cents(math.Floor(
-		float64(chargeAmount) * tier.Rewards.RevenueSharePercent / 100.0,
-	))
+	//
+	// Rounding DOWN stays: this is money paid out to an affiliate and the house keeps the
+	// part-cent, which is a policy, not an accident. It now rounds the amount rather than
+	// the float, which math.Floor did not — a float rate sits a hair below the rate it
+	// stands for, so a commission that came to exactly 29 cents floored to 28 and the
+	// affiliate lost a cent they had actually earned.
+	rate, err := money.RateFromFloat(tier.Rewards.RevenueSharePercent)
+	if err != nil {
+		log.Error("revshare: tier revenue share %v is not a rate", tier.Rewards.RevenueSharePercent)
+		return
+	}
+	// RevenueSharePercent is on a 0-100 scale; dividing by 100 shifts the decimal point
+	// exactly two places, so nothing is rounded away here.
+	commissionAmount := chargeAmount.ScaleFloor(rate.Quo(decimal.New(100, 0), rate.Scale()+2))
 	if commissionAmount <= 0 {
 		return
 	}

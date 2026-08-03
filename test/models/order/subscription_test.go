@@ -43,8 +43,8 @@ var _ = Describe("Order.Subscription", func() {
 
 			Expect(sub.Price).To(Equal(subProd.Price))
 
-			tax := 1 + currency.Cents(float64(sub.Price)*0.0885)
-			shipping := 499 + currency.Cents(float64(sub.Price)*0.1)
+			tax := 1 + (sub.Price).Scale(taxRate)
+			shipping := 499 + (sub.Price).Scale(shipRate)
 
 			Expect(sub.Tax).To(Equal(tax))
 			Expect(sub.Shipping).To(Equal(shipping))
