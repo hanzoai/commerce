@@ -77,8 +77,19 @@ func updateOrder(c *zip.Ctx, topic string, o Order) {
 
 	// Update fulfillment states
 	ord.Fulfillment.Status = fulfillment.Status(o.Status)
-	ord.Fulfillment.Pricing = currency.Cents(o.Pricing.Resource.Total * 100)
-	ord.Fulfillment.PricingEstimate = currency.Cents(o.PricingEstimate.Resource.Total * 100)
+	// Shipwire prices in USD, so the USD scale is the exact conversion. A total
+	// we cannot read leaves the old pricing standing rather than overwriting a
+	// real cost with a confident zero.
+	if cents, err := currency.USD.Parse(o.Pricing.Resource.Total.String()); err == nil {
+		ord.Fulfillment.Pricing = cents
+	} else {
+		log.Warn("Unable to read shipwire pricing for order '%s': %v", id, err, c)
+	}
+	if cents, err := currency.USD.Parse(o.PricingEstimate.Resource.Total.String()); err == nil {
+		ord.Fulfillment.PricingEstimate = cents
+	} else {
+		log.Warn("Unable to read shipwire pricing estimate for order '%s': %v", id, err, c)
+	}
 	ord.Fulfillment.SameDay = o.Options.Resource.SameDay
 	ord.Fulfillment.Service = o.Options.Resource.ServiceLevelCode
 	ord.Fulfillment.Carrier = o.Options.Resource.CarrierCode

@@ -2,6 +2,7 @@ package bitcoin
 
 import (
 	"encoding/hex"
+	"encoding/json"
 )
 
 // A Destination is the boiled-back simplistic form of a Bitcoin Output,
@@ -76,8 +77,13 @@ type GetRawTransactionResponseResultInputSig struct {
 }
 
 type GetRawTransactionResponseResultOutput struct {
-	N            int
-	Value        float64
+	N int
+	// Value is json.Number, not float64, so the decimal digits bitcoind sent
+	// survive to be converted exactly. Through a float64 they do not: 1.15 has
+	// no exact binary form, so the value is 1.14999999… and int64(value*1e8)
+	// truncated it to 114999999 — a satoshi short of the output being spent,
+	// which lands in the change and the fee of a real transaction.
+	Value        json.Number
 	Scriptpubkey GetRawTransactionResponseResultOutputScriptPubKey
 }
 

@@ -20,6 +20,8 @@ import (
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	luxcrypto "github.com/luxfi/crypto"
 
+	"github.com/hanzoai/money"
+
 	//"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
@@ -408,7 +410,19 @@ func CreateTransaction(client BitcoinClient, origins []Origin, destinations []De
 			return nil, fmt.Errorf("CreateTransaction: Wanted output index %v of input transaction %v - only %v outputs available", origin.OutputIndex, origin.TxId, len(content.Vout))
 		}
 		// Keep track of how much value we're playing with.
-		totalChange += int64(content.Vout[origin.OutputIndex].Value * 100000000) // convert to Satoshi
+		// A satoshi is the minor unit of BTC, so money.BTC's eight decimals are
+		// the scale and the digits convert exactly. int64(value*1e8) did not:
+		// 1.15 BTC came out a satoshi short, and that error lands in the change
+		// and the fee of a transaction that gets broadcast.
+		//
+		// This is the one amount that does NOT read its scale from commerce's
+		// currency table: currency.BTC is two decimals there, the denomination
+		// orders are priced in, and this is raw chain data in whole coins.
+		sat, err := money.ParseMinor(content.Vout[origin.OutputIndex].Value.String(), money.BTC)
+		if err != nil {
+			return nil, fmt.Errorf("CreateTransaction: output %v of input transaction %v has an unreadable value: %w", origin.OutputIndex, origin.TxId, err)
+		}
+		totalChange += sat
 
 		// Grab the Script of the Output we're hoing to redeem.
 		script, _ := hex.DecodeString(content.Vout[origin.OutputIndex].Scriptpubkey.Hex)
