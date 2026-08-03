@@ -370,6 +370,8 @@ github.com/hanzoai/gochimp3 v0.0.0-20241127054040-6051f77e24f1 h1:uQGUlQsmBvZmfU
 github.com/hanzoai/gochimp3 v0.0.0-20241127054040-6051f77e24f1/go.mod h1:zJr4NZygb2gyqkQpZ2Yf/UzbOhIhVfLCj8ST925KPrI=
 github.com/hanzoai/money v0.2.4 h1:qmmVcy/8IabdOKJonP62dWBwKOIMYsAlWEEg+lO2AV8=
 github.com/hanzoai/money v0.2.4/go.mod h1:V1/RwypNNDjOArVFkkbNrgUXNUKorAiV1WtDNqfx95Q=
+github.com/hanzoai/money v0.2.5 h1:rNtrr9rtcGSf48zFpB/xKVgyhgn7cQIt9f5PiKldcw4=
+github.com/hanzoai/money v0.2.5/go.mod h1:V1/RwypNNDjOArVFkkbNrgUXNUKorAiV1WtDNqfx95Q=
 github.com/hanzoai/namespace v1.2.0 h1:FLEHzR/GyE/OltXozMvT2n2FfUUxTuVVbILKZBkEjLI=
 github.com/hanzoai/namespace v1.2.0/go.mod h1:vGuxMDHg5MdhH5q2bqqjZL/afINBWJubP4WD1YwZTm4=
 github.com/hanzoai/orm v0.6.16 h1:w3UXH65huahNJ8RgC88ffUeicAbHoUpQW8oLuDCojK8=

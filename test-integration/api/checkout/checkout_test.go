@@ -1,8 +1,6 @@
 package integration
 
 import (
-	"math"
-
 	"github.com/hanzoai/commerce/api/checkout"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -21,6 +19,8 @@ import (
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/models/variant"
 	"github.com/hanzoai/commerce/util/hashid"
+	"github.com/hanzoai/decimal"
+	"github.com/hanzoai/money"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
@@ -87,19 +87,27 @@ func getReferral(orderId string) *referral.Referral {
 	return rfl
 }
 
+// These three used to re-implement the fee formulas with math.Ceil/math.Floor over a
+// float64, which meant they agreed with the order model even when the order model was
+// wrong: a float rate sits a hair off the rate it stands for, so a fee that came to exactly
+// 49 cents ceilinged to 50 in BOTH places and the test saw nothing. They now apply the rate
+// exactly, in the same direction the fee is defined to round.
+func rate(pct float64) decimal.Decimal {
+	r, err := money.RateFromFloat(pct)
+	Expect(err).ToNot(HaveOccurred())
+	return r
+}
+
 func calcPlatformFee(pricing pricing.Fees, total currency.Cents) currency.Cents {
-	pctFee := math.Ceil(float64(total) * pricing.Card.Percent)
-	return pricing.Card.Flat + currency.Cents(pctFee)
+	return pricing.Card.Flat + total.ScaleCeil(rate(pricing.Card.Percent))
 }
 
 func calcPlatformAffFee(pricing pricing.Fees, total currency.Cents) currency.Cents {
-	pctFee := math.Ceil(float64(total) * pricing.Affiliate.Percent)
-	return pricing.Affiliate.Flat + currency.Cents(pctFee)
+	return pricing.Affiliate.Flat + total.ScaleCeil(rate(pricing.Affiliate.Percent))
 }
 
 func calcAffiliateFee(comm commission.Commission, total currency.Cents) currency.Cents {
-	pctFee := math.Floor(float64(total) * comm.Percent)
-	return comm.Flat + currency.Cents(pctFee)
+	return comm.Flat + total.ScaleFloor(rate(comm.Percent))
 }
 
 var _ = Describe("/checkout/authorize", func() {

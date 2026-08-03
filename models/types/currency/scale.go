@@ -35,6 +35,42 @@ func (c Cents) Scale(rate decimal.Decimal) Cents {
 	return Cents(scaled)
 }
 
+// ScaleCeil and ScaleFloor are Scale for the amounts whose DIRECTION is the policy rather
+// than an artifact: the platform fee this codebase has always rounded up, the affiliate
+// commission it has always rounded down and kept the remainder of. Scale's half away from
+// zero is right for an amount that only has to be correct, and wrong for one somebody
+// decided always falls the same way — so those keep their direction, and only stop being
+// computed on a float.
+//
+// They round toward +infinity and toward -infinity, not away from and toward zero. A fee
+// reversed on a refund is negative, and there the two readings differ.
+//
+// The float spellings they replace, math.Ceil(float64(c)*rate) and math.Floor, do not round
+// the product — they round the FLOAT, which is a different number and wrong in the
+// direction each caller cares about most. 0.07 is held a hair high, so 700 cents at 7% is
+// 49.000000000000007 and ceilings to 50: a cent charged on an amount that was exactly 49.
+// 0.29 is held a hair low, so 100 cents at 29% is 28.999999999999996 and floors to 28: a
+// cent taken out of a commission that was exactly 29. money.ScaleMinorCeil/Floor form the
+// product exactly, so a whole product survives rounding in either direction untouched.
+//
+// PANICS on overflow, for the reason Scale does.
+func (c Cents) ScaleCeil(rate decimal.Decimal) Cents {
+	scaled, err := money.ScaleMinorCeil(int64(c), rate)
+	if err != nil {
+		panic("currency: " + err.Error())
+	}
+	return Cents(scaled)
+}
+
+// ScaleFloor returns c scaled by rate, rounded toward -infinity. See ScaleCeil.
+func (c Cents) ScaleFloor(rate decimal.Decimal) Cents {
+	scaled, err := money.ScaleMinorFloor(int64(c), rate)
+	if err != nil {
+		panic("currency: " + err.Error())
+	}
+	return Cents(scaled)
+}
+
 // Percent returns pct percent of c, rounded half away from zero — the shape coupons and
 // discount rules store a percentage in (10 means 10%, not 0.10).
 func (c Cents) Percent(pct int) Cents {

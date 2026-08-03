@@ -8,6 +8,7 @@ import (
 	"github.com/hanzoai/commerce/models/store"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/money"
 )
 
 // Calculates order totals
@@ -154,7 +155,14 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 		if srs, err := stor.GetShippingRates(); srs == nil {
 			log.Warn("Failed to get shippingrates for discount rules: %v", err, ctx)
 		} else if match, _, _ := srs.Match(o.ShippingAddress.Country, o.ShippingAddress.State, o.ShippingAddress.City, o.ShippingAddress.PostalCode, o.Subtotal); match != nil {
-			o.Shipping = match.Cost + currency.Cents(float64(o.Subtotal)*match.Percent)
+			// The stored rate is a float64, so it becomes an exact rate before it touches
+			// money, and the part-cent rounds rather than being dropped — the same rule
+			// the discount on this very order already uses.
+			rate, err := money.RateFromFloat(match.Percent)
+			if err != nil {
+				return err
+			}
+			o.Shipping = match.Cost + o.Subtotal.Scale(rate)
 		}
 
 		o.Tax = 0
@@ -162,11 +170,21 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 		if trs, err := stor.GetTaxRates(); trs == nil {
 			log.Warn("Failed to get taxrates for discount rules: %v", err, ctx)
 		} else if match, _, _ := trs.Match(o.ShippingAddress.Country, o.ShippingAddress.State, o.ShippingAddress.City, o.ShippingAddress.PostalCode, o.Subtotal); match != nil {
+			// Whether shipping is taxable changes the BASE, not the arithmetic, so the
+			// rate is applied once. Rounded, not truncated: tax is computed on our own
+			// configured rate rather than handed to us by a provider, so the part-cent is
+			// ours to get right, and truncating it under-collected on every order that
+			// had one — money we still owe the jurisdiction.
+			base := o.TaxableLineTotal
 			if match.TaxShipping {
-				o.Tax = match.Cost + currency.Cents(float64(o.TaxableLineTotal+o.Shipping)*match.Percent)
-			} else {
-				o.Tax = match.Cost + currency.Cents(float64(o.TaxableLineTotal)*match.Percent)
+				base += o.Shipping
 			}
+
+			rate, err := money.RateFromFloat(match.Percent)
+			if err != nil {
+				return err
+			}
+			o.Tax = match.Cost + base.Scale(rate)
 		}
 	}
 

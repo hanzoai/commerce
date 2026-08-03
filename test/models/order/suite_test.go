@@ -15,9 +15,20 @@ import (
 	"github.com/hanzoai/commerce/models/types/georate"
 	"github.com/hanzoai/commerce/util/test/ae"
 	"github.com/hanzoai/commerce/util/zipctx"
+	"github.com/hanzoai/decimal"
 
 	. "github.com/hanzoai/commerce/types"
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
+)
+
+// The rates the store fixture below is configured with, expressed exactly. The tests used
+// to re-derive tax and shipping with currency.Cents(float64(base)*0.0885), which duplicated
+// the production formula INCLUDING the truncation it has now dropped — so it agreed with a
+// bug, and past 2^53 cents it did not even agree with itself. Stating the rate once, in the
+// same exact form the order model applies it, is the only thing a tally test should assert.
+var (
+	taxRate  = decimal.New(885, 4) // 0.0885 — the KS rate on the fixture store
+	shipRate = decimal.New(1, 1)   // 0.1
 )
 
 func Test(t *testing.T) {
