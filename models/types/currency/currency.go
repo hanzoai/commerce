@@ -62,6 +62,22 @@ func (t Type) ToStringNoSymbol(c Cents) string {
 	return t.Amount(c).MajorString()
 }
 
+// Parse is the inverse of ToStringNoSymbol: it reads a decimal string in this
+// currency's major unit and returns exact minor units.
+//
+// It exists so an amount that arrives as a DECIMAL never has to pass through a
+// float64 to become Cents. "19.99" has no exact binary representation, so
+// Cents(f*100) on a parsed float yields 1998 — a cent lost, on money that was
+// already captured. The scale comes from this package's own currency table
+// rather than money's registry, which knows 29 of the 142 currencies here.
+func (t Type) Parse(s string) (Cents, error) {
+	minor, err := money.ParseMinor(s, t.Money())
+	if err != nil {
+		return 0, err
+	}
+	return Cents(minor), nil
+}
+
 // Give the currency's Symbol + Code string
 func (t Type) Label() string {
 	return t.Symbol() + " " + t.Code()

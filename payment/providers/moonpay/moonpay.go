@@ -180,12 +180,19 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 		return nil, err
 	}
 
+	cur := currency.Type(resp.BaseCurrencyCode)
+	amount, err := cur.Parse(resp.BaseCurrencyAmount.String())
+	if err != nil {
+		return nil, processor.NewPaymentError(processor.MoonPay, "INVALID_AMOUNT",
+			fmt.Sprintf("moonpay returned baseCurrencyAmount %q, which is not a decimal amount", resp.BaseCurrencyAmount), err)
+	}
+
 	return &processor.Transaction{
 		ID:           resp.ID,
 		ProcessorRef: resp.ID,
 		Type:         "onramp",
-		Amount:       currency.Cents(resp.BaseCurrencyAmount * 100),
-		Currency:     currency.Type(resp.BaseCurrencyCode),
+		Amount:       amount,
+		Currency:     cur,
 		Status:       mapStatus(resp.Status),
 		CreatedAt:    parseTime(resp.CreatedAt),
 		UpdatedAt:    parseTime(resp.UpdatedAt),
@@ -351,16 +358,20 @@ func (p *Provider) buildWidgetURL(cryptoCurrency, baseCurrency string, req proce
 // ---------------------------------------------------------------------------
 
 type moonpayTransaction struct {
-	ID                  string  `json:"id"`
-	Status              string  `json:"status"` // waitingPayment, pending, completed, failed
-	CurrencyCode        string  `json:"currencyCode"`
-	BaseCurrencyCode    string  `json:"baseCurrencyCode"`
-	BaseCurrencyAmount  float64 `json:"baseCurrencyAmount"`
-	QuoteCurrencyAmount float64 `json:"quoteCurrencyAmount"`
-	WalletAddress       string  `json:"walletAddress"`
-	FailureReason       string  `json:"failureReason"`
-	CreatedAt           string  `json:"createdAt"`
-	UpdatedAt           string  `json:"updatedAt"`
+	ID               string `json:"id"`
+	Status           string `json:"status"` // waitingPayment, pending, completed, failed
+	CurrencyCode     string `json:"currencyCode"`
+	BaseCurrencyCode string `json:"baseCurrencyCode"`
+	// json.Number keeps MoonPay's decimal as the digits they sent. Decoding into
+	// a float64 is where an amount loses a cent: 19.99 has no exact binary form,
+	// so Cents(amount*100) yielded 1998. The outbound side already sends
+	// json.Number for the same reason.
+	BaseCurrencyAmount  json.Number `json:"baseCurrencyAmount"`
+	QuoteCurrencyAmount json.Number `json:"quoteCurrencyAmount"`
+	WalletAddress       string      `json:"walletAddress"`
+	FailureReason       string      `json:"failureReason"`
+	CreatedAt           string      `json:"createdAt"`
+	UpdatedAt           string      `json:"updatedAt"`
 }
 
 type moonpayWebhookEvent struct {
