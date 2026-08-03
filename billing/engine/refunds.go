@@ -12,6 +12,7 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 
 	"github.com/hanzoai/commerce/payment/processor"
+	"github.com/hanzoai/money"
 )
 
 // CreateRefundParams holds the parameters for creating a refund.
@@ -80,8 +81,10 @@ func CreateRefund(ctx context.Context, db *datastore.Datastore, params CreateRef
 		if pi.ProviderRef != "" {
 			result, err := proc.Refund(ctx, processor.RefundRequest{
 				TransactionID: pi.ProviderRef,
-				Amount:        currency.Cents(amount),
-				Reason:        params.Reason,
+				// cur is the invoice's own currency, read above. The gateway
+				// needs it to render the amount at the right scale.
+				Amount: money.FromMinor(int64(amount), cur.Money()),
+				Reason: params.Reason,
 			})
 			if err != nil {
 				_ = r.MarkFailed(err.Error())

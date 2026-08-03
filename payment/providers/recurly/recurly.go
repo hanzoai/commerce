@@ -221,7 +221,7 @@ func (p *Provider) Refund(ctx context.Context, req processor.RefundRequest) (*pr
 	if req.TransactionID == "" {
 		return nil, processor.NewPaymentError(processor.Recurly, "INVALID_REQUEST", "transaction ID (invoice ID) required for refund", nil)
 	}
-	if req.Amount <= 0 {
+	if req.Amount.Sign() <= 0 {
 		return nil, processor.NewPaymentError(processor.Recurly, "INVALID_REQUEST", "refund amount must be positive", nil)
 	}
 
@@ -247,7 +247,7 @@ func (p *Provider) Refund(ctx context.Context, req processor.RefundRequest) (*pr
 	// need the currency plumbed through the request first.
 	refundBody := recurlyRefundRequest{
 		Type:                "amount",
-		Amount:              currency.USD.ToStringNoSymbol(req.Amount),
+		Amount:              req.Amount.MajorString(),
 		CreditCustomerNotes: reason,
 	}
 

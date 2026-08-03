@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/hanzoai/money"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -717,7 +718,7 @@ func TestCapture_APIError(t *testing.T) {
 func TestRefund_NotConfigured(t *testing.T) {
 	p := newTestProvider()
 	_, err := p.Refund(context.Background(), processor.RefundRequest{
-		TransactionID: "cap-1", Amount: 1000,
+		TransactionID: "cap-1", Amount: money.FromMinor(1000, currency.USD.Money()),
 	})
 	if err == nil {
 		t.Fatal("expected error for unconfigured provider")
@@ -730,7 +731,7 @@ func TestRefund_EmptyTransactionID(t *testing.T) {
 	p := configuredProvider(server.URL)
 
 	_, err := p.Refund(context.Background(), processor.RefundRequest{
-		TransactionID: "", Amount: 1000,
+		TransactionID: "", Amount: money.FromMinor(1000, currency.USD.Money()),
 	})
 	if err == nil {
 		t.Fatal("expected error for empty transaction ID")
@@ -750,7 +751,7 @@ func TestRefund_Success_PartialAmount(t *testing.T) {
 	p := configuredProvider(server.URL)
 	result, err := p.Refund(context.Background(), processor.RefundRequest{
 		TransactionID: "CAP-100",
-		Amount:        500,
+		Amount:        money.FromMinor(500, currency.USD.Money()),
 		Reason:        "Customer request",
 	})
 	if err != nil {
@@ -774,7 +775,7 @@ func TestRefund_Success_FullAmount(t *testing.T) {
 	p := configuredProvider(server.URL)
 	result, err := p.Refund(context.Background(), processor.RefundRequest{
 		TransactionID: "CAP-200",
-		Amount:        0, // full
+		Amount:        money.FromMinor(0, currency.USD.Money()), // full
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -794,7 +795,7 @@ func TestRefund_StatusNotCompleted(t *testing.T) {
 	p := configuredProvider(server.URL)
 	result, err := p.Refund(context.Background(), processor.RefundRequest{
 		TransactionID: "CAP-300",
-		Amount:        500,
+		Amount:        money.FromMinor(500, currency.USD.Money()),
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -814,7 +815,7 @@ func TestRefund_APIError(t *testing.T) {
 	p := configuredProvider(server.URL)
 	result, err := p.Refund(context.Background(), processor.RefundRequest{
 		TransactionID: "CAP-DONE",
-		Amount:        500,
+		Amount:        money.FromMinor(500, currency.USD.Money()),
 	})
 	if err == nil {
 		t.Fatal("expected error for API failure")
@@ -1186,7 +1187,7 @@ func TestRefund_InvalidResponseJSON(t *testing.T) {
 	p := configuredProvider(server.URL)
 
 	_, err := p.Refund(context.Background(), processor.RefundRequest{
-		TransactionID: "CAP-100", Amount: 500,
+		TransactionID: "CAP-100", Amount: money.FromMinor(500, currency.USD.Money()),
 	})
 	if err == nil {
 		t.Fatal("expected error for invalid JSON response")

@@ -2,6 +2,7 @@ package square
 
 import (
 	"context"
+	"github.com/hanzoai/money"
 	"testing"
 
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -183,7 +184,7 @@ func TestCapture_Unconfigured(t *testing.T) {
 func TestRefund_Unconfigured(t *testing.T) {
 	p := newTestProvider()
 	_, err := p.Refund(context.Background(), processor.RefundRequest{
-		TransactionID: "tx", Amount: 100,
+		TransactionID: "tx", Amount: money.FromMinor(100, currency.USD.Money()),
 	})
 	if err == nil {
 		t.Fatal("expected error on unconfigured Refund")

@@ -363,8 +363,8 @@ func (p *Provider) Refund(ctx context.Context, req processor.RefundRequest) (*pr
 		"transactionId": req.TransactionID,
 	}
 	// Partial refund: include amount. Full refund: omit amount.
-	if req.Amount > 0 {
-		input["amount"] = currency.USD.ToStringNoSymbol(req.Amount)
+	if req.Amount.Sign() > 0 {
+		input["amount"] = req.Amount.MajorString()
 	}
 
 	variables := map[string]interface{}{

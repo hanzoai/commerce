@@ -398,17 +398,15 @@ func (p *Provider) Refund(ctx context.Context, req processor.RefundRequest) (*pr
 		return nil, processor.NewPaymentError(processor.Adyen, "INVALID_TRANSACTION",
 			"transaction ID is required for refund", nil)
 	}
-	if req.Amount <= 0 {
+	if req.Amount.Sign() <= 0 {
 		return nil, processor.NewPaymentError(processor.Adyen, "INVALID_AMOUNT",
 			"refund amount must be positive", nil)
 	}
 
-	cur := "USD"
-
 	body := adyenRefundRequest{
 		Amount: adyenAmount{
-			Value:    int64(req.Amount),
-			Currency: cur,
+			Value:    req.Amount.Minor().Int64(),
+			Currency: req.Amount.Currency().Code,
 		},
 		MerchantAccount: p.config.MerchantAccount,
 		Reference:       fmt.Sprintf("ref_%d", time.Now().UnixNano()),

@@ -324,7 +324,7 @@ func (p *Provider) Refund(ctx context.Context, req processor.RefundRequest) (*pr
 			Type: "orders",
 			ID:   req.TransactionID,
 			Attributes: refundAttributes{
-				Amount: int64(req.Amount),
+				Amount: req.Amount.Minor().Int64(),
 			},
 		},
 	}

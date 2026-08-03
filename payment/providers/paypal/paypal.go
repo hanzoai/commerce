@@ -245,10 +245,10 @@ func (p *Provider) Refund(ctx context.Context, req processor.RefundRequest) (*pr
 	}
 
 	body := make(map[string]interface{})
-	if req.Amount > 0 {
+	if req.Amount.Sign() > 0 {
 		body["amount"] = map[string]string{
-			"value":         currency.USD.ToStringNoSymbol(req.Amount),
-			"currency_code": "USD",
+			"value":         req.Amount.MajorString(),
+			"currency_code": req.Amount.Currency().Code,
 		}
 	}
 	if req.Reason != "" {

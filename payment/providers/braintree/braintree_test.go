@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/hanzoai/money"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -681,7 +682,7 @@ func TestCapture_NoTransaction(t *testing.T) {
 func TestRefund_NotConfigured(t *testing.T) {
 	p := newTestProvider()
 	_, err := p.Refund(context.Background(), processor.RefundRequest{
-		TransactionID: "tx-1", Amount: 500,
+		TransactionID: "tx-1", Amount: money.FromMinor(500, currency.USD.Money()),
 	})
 	if err == nil {
 		t.Fatal("expected error")
@@ -693,7 +694,7 @@ func TestRefund_EmptyTransactionID(t *testing.T) {
 	defer server.Close()
 	p := configuredProvider(server.URL)
 
-	_, err := p.Refund(context.Background(), processor.RefundRequest{Amount: 500})
+	_, err := p.Refund(context.Background(), processor.RefundRequest{Amount: money.FromMinor(500, currency.USD.Money())})
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -717,7 +718,7 @@ func TestRefund_Success(t *testing.T) {
 	p := configuredProvider(server.URL)
 	result, err := p.Refund(context.Background(), processor.RefundRequest{
 		TransactionID: "bt-tx-1",
-		Amount:        500,
+		Amount:        money.FromMinor(500, currency.USD.Money()),
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -747,7 +748,7 @@ func TestRefund_FullRefund(t *testing.T) {
 	p := configuredProvider(server.URL)
 	result, err := p.Refund(context.Background(), processor.RefundRequest{
 		TransactionID: "bt-tx-2",
-		Amount:        0, // full
+		Amount:        money.FromMinor(0, currency.USD.Money()), // full
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -766,7 +767,7 @@ func TestRefund_GraphQLError(t *testing.T) {
 
 	p := configuredProvider(server.URL)
 	_, err := p.Refund(context.Background(), processor.RefundRequest{
-		TransactionID: "bt-tx-1", Amount: 500,
+		TransactionID: "bt-tx-1", Amount: money.FromMinor(500, currency.USD.Money()),
 	})
 	if err == nil {
 		t.Fatal("expected error")
@@ -784,7 +785,7 @@ func TestRefund_NoRefund(t *testing.T) {
 
 	p := configuredProvider(server.URL)
 	_, err := p.Refund(context.Background(), processor.RefundRequest{
-		TransactionID: "bt-tx-1", Amount: 500,
+		TransactionID: "bt-tx-1", Amount: money.FromMinor(500, currency.USD.Money()),
 	})
 	if err == nil {
 		t.Fatal("expected error for missing refund")

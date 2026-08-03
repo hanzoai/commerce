@@ -295,7 +295,7 @@ func (sp *SquareProcessor) Refund(ctx context.Context, req processor.RefundReque
 		IdempotencyKey: idempotencyKey,
 		PaymentID:      square.String(req.TransactionID),
 		AmountMoney: &square.Money{
-			Amount:   square.Int64(int64(req.Amount)),
+			Amount:   square.Int64(req.Amount.Minor().Int64()),
 			Currency: squareCurrency(currency.USD), // Would get from transaction
 		},
 	}
