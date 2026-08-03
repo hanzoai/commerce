@@ -85,10 +85,6 @@ import (
 // 	</Order>
 // </Orders>
 
-func formatFloat(s string) string {
-	return strings.Replace(s, ",", "", -1)[1:]
-}
-
 func parseDate(s string) time.Time {
 	date, err := time.Parse("01/02/2006 15:04", s)
 	if err != nil {
@@ -159,7 +155,11 @@ func newItem(ord *order.Order, item lineitem.LineItem) Item {
 		si.SKU = CDATA(item.VariantName)
 	}
 
-	si.UnitPrice = formatFloat(item.DisplayPrice(ord.Currency))
+	// ShipStation's schema wants a bare decimal amount, which is what
+	// ToStringNoSymbol renders. Rendering it for a human and then stripping the
+	// symbol back off was always the long way round, and it broke on a negative
+	// the moment the sign moved in front of the symbol.
+	si.UnitPrice = ord.Currency.ToStringNoSymbol(item.Price)
 	si.Quantity = item.Quantity
 	si.Weight = item.Weight.String()
 	si.WeightUnits = item.WeightUnit.Name()
@@ -257,9 +257,9 @@ func newOrder(ord *order.Order) *Order {
 	so.OrderNumber = ord.Number
 	so.OrderDate = Date(ord.CreatedAt)
 	so.LastModified = Date(ord.UpdatedAt)
-	so.OrderTotal = formatFloat(ord.DisplayTotal())
-	so.TaxAmount = formatFloat(ord.DisplayTax())
-	so.ShippingAmount = formatFloat(ord.DisplayShipping())
+	so.OrderTotal = ord.Currency.ToStringNoSymbol(ord.Total)
+	so.TaxAmount = ord.Currency.ToStringNoSymbol(ord.Tax)
+	so.ShippingAmount = ord.Currency.ToStringNoSymbol(ord.Shipping)
 	so.Items.Items = make([]Item, len(ord.Items))
 	for i, item := range ord.Items {
 		so.Items.Items[i] = newItem(ord, item)

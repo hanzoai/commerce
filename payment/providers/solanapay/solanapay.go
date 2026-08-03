@@ -10,10 +10,11 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hanzoai/money"
+
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 )
@@ -396,27 +397,24 @@ func mintForCurrency(c currency.Type) string {
 	}
 }
 
-// formatAmount converts Cents to a decimal string appropriate for Solana Pay.
-// SOL: 9 decimals (cents are lamports). USDC/USDT: 6 decimals.
-func formatAmount(c currency.Type, amount currency.Cents) string {
+// tokenCurrency is the ON-CHAIN scale of the token being paid in: USDC/USDT are
+// 6-decimal SPL tokens, native SOL is 9-decimal lamports. commerce's currency
+// table only carries fiat scales, so the token scale is named here.
+func tokenCurrency(c currency.Type) money.Currency {
 	switch c {
-	case "usdc", "usdt":
-		// amount is in smallest unit (e.g. 1_000_000 = 1 USDC)
-		whole := int64(amount) / 1_000_000
-		frac := int64(amount) % 1_000_000
-		if frac == 0 {
-			return strconv.FormatInt(whole, 10)
-		}
-		return fmt.Sprintf("%d.%06d", whole, frac)
+	case "usdc":
+		return money.USDC
+	case "usdt":
+		return money.USDT
 	default:
-		// SOL: amount is in lamports (1 SOL = 1e9 lamports)
-		whole := int64(amount) / 1_000_000_000
-		frac := int64(amount) % 1_000_000_000
-		if frac == 0 {
-			return strconv.FormatInt(whole, 10)
-		}
-		return fmt.Sprintf("%d.%09d", whole, frac)
+		return money.Currency{Code: "SOL", Decimals: 9}
 	}
+}
+
+// formatAmount renders Cents as the decimal string the Solana Pay `amount`
+// parameter takes, at the token's own scale.
+func formatAmount(c currency.Type, amount currency.Cents) string {
+	return money.FromMinor(int64(amount), tokenCurrency(c)).MajorString()
 }
 
 // Compile-time interface checks.

@@ -16,13 +16,12 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 )
 
+// centsToFloat is the last inch before gochimp3, whose money fields are float64
+// and are not ours to change. The conversion itself is exact — money renders the
+// integer, and only the final hand-off is a float. Nothing inside commerce may
+// take a money value from here.
 func centsToFloat(cents currency.Cents, typ currency.Type) float64 {
-	amount := float64(cents)
-	if !typ.IsZeroDecimal() {
-		// Convert cents to dollars
-		amount = amount * 0.01
-	}
-	return amount
+	return typ.Amount(cents).AsMajorUnits()
 }
 
 func idOrEmail(id, email string) string {

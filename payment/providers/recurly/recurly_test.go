@@ -150,22 +150,65 @@ func TestInterfaceCompliance(t *testing.T) {
 // Tests: Helper functions
 // ---------------------------------------------------------------------------
 
-func TestCentsToDecimalString(t *testing.T) {
+// The amount Recurly receives is whatever currency.Type renders, so this pins
+// the rendering the purchase and refund bodies depend on.
+func TestToStringNoSymbol(t *testing.T) {
 	tests := []struct {
-		cents       currency.Cents
-		zeroDecimal bool
-		want        string
+		cur   currency.Type
+		cents currency.Cents
+		want  string
 	}{
-		{1099, false, "10.99"},
-		{500, true, "500.0"},
-		{0, false, "0.00"},
-		{1, false, "0.01"},
+		{currency.USD, 1099, "10.99"},
+		// A zero-decimal currency has no fractional part at all. The old helper
+		// rendered ¥500 as "500.0", inventing a decimal place the currency does
+		// not have.
+		{currency.JPY, 500, "500"},
+		{currency.USD, 0, "0.00"},
+		{currency.USD, 1, "0.01"},
+		// A refund is negative, and the sign belongs in front of the whole
+		// amount. The old helper printed cents/100, a dot, then cents%100 — and
+		// Go's % keeps the sign of the dividend, so -1999 came out "-19.-99".
+		{currency.USD, -1999, "-19.99"},
 	}
 	for _, tt := range tests {
-		got := centsToDecimalString(tt.cents, tt.zeroDecimal)
+		got := tt.cur.ToStringNoSymbol(tt.cents)
 		if got != tt.want {
-			t.Errorf("centsToDecimalString(%d, %v) = %q, want %q", tt.cents, tt.zeroDecimal, got, tt.want)
+			t.Errorf("%s.ToStringNoSymbol(%d) = %q, want %q", tt.cur.Code(), tt.cents, got, tt.want)
 		}
+	}
+}
+
+// TestBuildPurchaseBody_UnitAmountIsAnExactNumber pins the OUTBOUND half: the
+// amount we charge must reach Recurly as a bare JSON number carrying the exact
+// digits, never quoted and never routed through a binary float. The field is
+// json.Number for both halves of that — 19.99 through a float64 is 19.9899999…,
+// which Go then marshals as 19.99 only by luck of shortest-round-trip
+// formatting, and the luck runs out on larger amounts.
+func TestBuildPurchaseBody_UnitAmountIsAnExactNumber(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		cur    currency.Type
+		amount currency.Cents
+		want   string // exactly as it must appear in the JSON
+	}{
+		{"cent-precise", currency.USD, 1999, `"unit_amount":19.99`},
+		{"sub-dollar", currency.USD, 29, `"unit_amount":0.29`},
+		{"large amount keeps every digit", currency.USD, 123456789012, `"unit_amount":1234567890.12`},
+		// A zero-decimal currency must not gain a fractional part.
+		{"zero-decimal currency", currency.JPY, 500, `"unit_amount":500`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := newTestProvider().buildPurchaseBody(processor.PaymentRequest{
+				Amount:     tc.amount,
+				Currency:   tc.cur,
+				CustomerID: "acct-1",
+				Token:      "tok-1",
+			}, "automatic")
+
+			if !strings.Contains(string(body), tc.want) {
+				t.Errorf("body = %s, want it to contain %s", body, tc.want)
+			}
+		})
 	}
 }
 

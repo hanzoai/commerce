@@ -11,6 +11,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/billinginvoice"
+	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -157,9 +158,9 @@ func invoiceLines(inv *billinginvoice.BillingInvoice, orgName string) []textLine
 			at(qtyX, 10, fmt.Sprintf("%d", li.Quantity))
 		}
 		if li.UnitPrice != 0 {
-			at(unitX, 10, money(li.UnitPrice))
+			at(unitX, 10, fmtAmount(inv.Currency, li.UnitPrice))
 		}
-		at(amountX, 10, money(li.Amount))
+		at(amountX, 10, fmtAmount(inv.Currency, li.Amount))
 		y -= 14
 	}
 	y -= 12
@@ -167,7 +168,7 @@ func invoiceLines(inv *billinginvoice.BillingInvoice, orgName string) []textLine
 	// Totals.
 	total := func(label string, cents int64) {
 		at(qtyX, 10, label)
-		at(amountX, 10, money(cents))
+		at(amountX, 10, fmtAmount(inv.Currency, cents))
 		y -= 14
 	}
 	total("Subtotal", inv.Subtotal)
@@ -216,14 +217,22 @@ func escapePDFText(s string) string {
 	return b.String()
 }
 
-// money renders a cents amount as $X.XX, with a leading minus for negatives.
-func money(cents int64) string {
-	sign := ""
-	if cents < 0 {
-		sign = "-"
-		cents = -cents
+// fmtAmount renders a cents figure in the invoice's own currency ("$33.34",
+// "-$5.00"), with no thousands separators so the amount column stays aligned to
+// its absolute x position.
+//
+// The rendering is currency.Type's — the hand-rolled spelling this replaces
+// printed cents/100, a dot, then cents%100, which needs a manual sign fix
+// because Go's % keeps the sign of the dividend.
+//
+// An invoice written before the currency column existed carries none, and that
+// column's default is usd, so an unset currency reads as usd here rather than
+// rendering a bare number with no symbol at all.
+func fmtAmount(cur currency.Type, cents int64) string {
+	if cur == "" {
+		cur = currency.USD
 	}
-	return fmt.Sprintf("%s$%d.%02d", sign, cents/100, cents%100)
+	return cur.ToString(currency.Cents(cents))
 }
 
 // fmtDate renders a UTC calendar date (no time-of-day) for determinism.

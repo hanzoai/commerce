@@ -242,9 +242,12 @@ func (p *Provider) Refund(ctx context.Context, req processor.RefundRequest) (*pr
 		reason = "Refund"
 	}
 
+	// RefundRequest carries no currency, so the amount renders at two decimals
+	// as it always has. Refunding a zero-decimal currency (JPY) correctly would
+	// need the currency plumbed through the request first.
 	refundBody := recurlyRefundRequest{
 		Type:                "amount",
-		Amount:              centsToDecimalString(req.Amount, false),
+		Amount:              currency.USD.ToStringNoSymbol(req.Amount),
 		CreditCustomerNotes: reason,
 	}
 
@@ -304,11 +307,7 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 	// currency (JPY) must not gain two. commerce's currency table is the
 	// authority on that; money.ParseMinor is the authority on the conversion.
 	cur := currency.Type(strings.ToLower(txn.Currency))
-	decimals := int32(2)
-	if cur.IsZeroDecimal() {
-		decimals = 0
-	}
-	minor, err := money.ParseMinor(txn.Amount.String(), money.Currency{Code: cur.Code(), Decimals: decimals})
+	minor, err := money.ParseMinor(txn.Amount.String(), cur.Money())
 	if err != nil {
 		return nil, fmt.Errorf("recurly transaction %s amount: %w", txID, err)
 	}
@@ -404,7 +403,7 @@ func (p *Provider) doRequest(ctx context.Context, method, path string, body []by
 
 func (p *Provider) buildPurchaseBody(req processor.PaymentRequest, collectionMethod string) []byte {
 	cur := req.Currency.Code()
-	amountStr := centsToDecimal(req.Amount, req.Currency)
+	unitAmount := json.Number(req.Currency.ToStringNoSymbol(req.Amount))
 
 	description := req.Description
 	if description == "" {
@@ -422,7 +421,7 @@ func (p *Provider) buildPurchaseBody(req processor.PaymentRequest, collectionMet
 		LineItems: []recurlyLineItem{
 			{
 				Currency:    cur,
-				UnitAmount:  amountStr,
+				UnitAmount:  unitAmount,
 				Quantity:    1,
 				Type:        "charge",
 				Description: description,
@@ -717,27 +716,6 @@ func extractWebhookData(payload []byte, rootName string) map[string]interface{} 
 	return data
 }
 
-// --- Currency conversion helpers ---
-
-// centsToDecimal converts cents to a decimal string for Recurly API.
-// For zero-decimal currencies (JPY, etc.), cents are already the base amount.
-func centsToDecimal(cents currency.Cents, cur currency.Type) float64 {
-	return cur.ToFloat(cents)
-}
-
-// centsToDecimalString converts cents to a string decimal for JSON fields.
-func centsToDecimalString(cents currency.Cents, zeroDecimal bool) string {
-	if zeroDecimal {
-		return fmt.Sprintf("%d.0", cents)
-	}
-	whole := int64(cents) / 100
-	frac := int64(cents) % 100
-	if frac < 0 {
-		frac = -frac
-	}
-	return fmt.Sprintf("%d.%02d", whole, frac)
-}
-
 // --- Recurly API request/response types ---
 
 type recurlyPurchase struct {
@@ -757,11 +735,16 @@ type recurlyBillingInfo struct {
 }
 
 type recurlyLineItem struct {
-	Currency    string  `json:"currency"`
-	UnitAmount  float64 `json:"unit_amount"`
-	Quantity    int     `json:"quantity"`
-	Type        string  `json:"type"`
-	Description string  `json:"description"`
+	Currency string `json:"currency"`
+	// UnitAmount is json.Number, not float64, so the amount we charge goes on
+	// the wire as the exact digits currency.Type rendered. json.Number marshals
+	// unquoted, so Recurly still reads a JSON number — just not one that took a
+	// detour through a binary float, where 19.99 is 19.9899999… and the price
+	// billed is not the price quoted.
+	UnitAmount  json.Number `json:"unit_amount"`
+	Quantity    int         `json:"quantity"`
+	Type        string      `json:"type"`
+	Description string      `json:"description"`
 }
 
 type recurlyInvoiceCollection struct {

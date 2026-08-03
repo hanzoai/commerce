@@ -2,8 +2,9 @@ package currency
 
 import (
 	"math/big"
-	"strconv"
 	"strings"
+
+	"github.com/hanzoai/money"
 )
 
 type Type string
@@ -19,38 +20,46 @@ func (t Type) IsZeroDecimal() bool {
 	return false
 }
 
-// Stringifies currency with symbol
+// Decimals is how many fractional digits the currency's minor unit has — 0 for
+// a zero-decimal currency such as JPY, 2 for everything else. This is the ONE
+// place that scale is decided; nothing else may hardcode a 100.
+func (t Type) Decimals() int32 {
+	if t.IsZeroDecimal() {
+		return 0
+	}
+	return 2
+}
+
+// Money lifts this currency into github.com/hanzoai/money — the ONE bridge
+// between commerce's currency table and the package that owns exact money.
+func (t Type) Money() money.Currency {
+	return money.Currency{Code: t.Code(), Decimals: t.Decimals(), Symbol: t.Symbol()}
+}
+
+// Amount lifts a minor-unit amount in this currency into an exact money.Amount.
+//
+// This is the ONE conversion out of Cents, and every rendering hangs off it:
+// .MajorString() for a decimal string on the wire, .Display() for a human,
+// .AsMajorUnits() for the last inch of a third-party API whose schema demands a
+// JSON number. commerce owns no arithmetic of its own here — money does, on a
+// big.Int, so no rendering can lose a cent or invent one.
+func (t Type) Amount(c Cents) money.Amount {
+	return money.FromMinor(int64(c), t.Money())
+}
+
+// ToString renders the amount with its symbol ("$10.99", "-$19.99").
 func (t Type) ToString(c Cents) string {
-	// Handle positives
-	if c >= 0 {
-		return t.Symbol() + t.ToStringNoSymbol(c)
+	s := t.ToStringNoSymbol(c)
+	if strings.HasPrefix(s, "-") {
+		return "-" + t.Symbol() + s[1:]
 	}
-
-	// Handle Negatives
-	seg1 := t.Symbol()
-	seg2 := t.ToStringNoSymbol(c)
-
-	return string(seg2[0]) + seg1 + seg2[1:]
+	return t.Symbol() + s
 }
 
-// Stringifies currency with no
+// ToStringNoSymbol renders the amount as a plain fixed-scale decimal string
+// ("10.99", "500" for a zero-decimal currency, "-19.99" for a refund).
 func (t Type) ToStringNoSymbol(c Cents) string {
-	if t.IsZeroDecimal() {
-		return strconv.Itoa(int(c))
-	}
-	cents := strconv.Itoa(int(c) % 100)
-	if len(cents) < 2 {
-		cents = "0" + cents
-	}
-	return strconv.Itoa(int(c)/100) + "." + cents
-}
-
-// Convert to float representation based on decimal convention
-func (t Type) ToFloat(c Cents) float64 {
-	if t.IsZeroDecimal() {
-		return float64(c)
-	}
-	return float64(c) / 100.0
+	return t.Amount(c).MajorString()
 }
 
 // Give the currency's Symbol + Code string

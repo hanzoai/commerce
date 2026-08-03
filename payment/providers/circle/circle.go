@@ -18,6 +18,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hanzoai/money"
+
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 )
@@ -103,7 +105,7 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 	body := map[string]interface{}{
 		"idempotencyKey": idempotencyKey,
 		"amount": map[string]interface{}{
-			"amount":   formatAmount(req.Amount),
+			"amount":   currency.USD.ToStringNoSymbol(req.Amount),
 			"currency": mapCurrency(req.Currency),
 		},
 		"settlementCurrency": mapCurrency(req.Currency),
@@ -161,7 +163,7 @@ func (p *Provider) Refund(ctx context.Context, req processor.RefundRequest) (*pr
 
 	if req.Amount > 0 {
 		body["amount"] = map[string]interface{}{
-			"amount":   formatAmount(req.Amount),
+			"amount":   currency.USD.ToStringNoSymbol(req.Amount),
 			"currency": "USD",
 		}
 	}
@@ -193,11 +195,16 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 		return nil, err
 	}
 
+	amount, err := parseAmount(resp.Amount.Amount)
+	if err != nil {
+		return nil, fmt.Errorf("circle payment %s amount: %w", txID, err)
+	}
+
 	return &processor.Transaction{
 		ID:           resp.ID,
 		ProcessorRef: resp.ID,
 		Type:         "payment",
-		Amount:       parseAmount(resp.Amount.Amount),
+		Amount:       amount,
 		Currency:     currency.Type(resp.Amount.Currency),
 		Status:       mapStatus(resp.Status),
 		CreatedAt:    parseTime(resp.CreateDate),
@@ -278,7 +285,11 @@ func (p *Provider) GetBalance(ctx context.Context, address string, chain string)
 	var available currency.Cents
 	for _, bal := range resp.Balances {
 		if bal.Currency == "USD" {
-			available += parseAmount(bal.Amount)
+			amount, err := parseAmount(bal.Amount)
+			if err != nil {
+				return nil, fmt.Errorf("circle wallet %s balance: %w", address, err)
+			}
+			available += amount
 		}
 	}
 
@@ -484,18 +495,22 @@ type snsMessage struct {
 // Helpers
 // ---------------------------------------------------------------------------
 
-// formatAmount converts Cents to a Circle amount string (e.g. "10.50").
-func formatAmount(amount currency.Cents) string {
-	whole := int64(amount) / 100
-	frac := int64(amount) % 100
-	return fmt.Sprintf("%d.%02d", whole, frac)
-}
-
 // parseAmount converts a Circle amount string (e.g. "10.50") to Cents.
-func parseAmount(s string) currency.Cents {
-	var whole, frac int64
-	_, _ = fmt.Sscanf(s, "%d.%d", &whole, &frac)
-	return currency.Cents(whole*100 + frac)
+//
+// Circle settles in USD/USDC and reports amounts as decimal strings at two
+// decimals, so money.ParseCents is the exact inverse of what we send. Reading
+// the digits by hand is what it replaces: scanning "%d.%d" made "10.5" 1005
+// instead of 1050, because a scanned fraction carries no scale.
+//
+// The error is returned rather than absorbed. Zero is a legal amount, so a
+// caller that cannot tell "the payment was for nothing" from "we could not read
+// what the payment was for" reports a confident $0.
+func parseAmount(s string) (currency.Cents, error) {
+	cents, err := money.ParseCents(s)
+	if err != nil {
+		return 0, err
+	}
+	return currency.Cents(cents), nil
 }
 
 // parseTime converts a Circle ISO 8601 timestamp to Unix epoch seconds.

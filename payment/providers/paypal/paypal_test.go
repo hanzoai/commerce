@@ -206,20 +206,23 @@ func TestCheckAvailable_Configured(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Tests: centsToDecimal
+// Tests: amount rendering
+//
+// The value PayPal receives is whatever currency.Type renders, so these pin the
+// rendering this provider depends on rather than a helper of its own.
 // ---------------------------------------------------------------------------
 
-func TestCentsToDecimal_USD(t *testing.T) {
-	got := centsToDecimal(1099, currency.USD)
+func TestToStringNoSymbol_USD(t *testing.T) {
+	got := currency.USD.ToStringNoSymbol(1099)
 	if got != "10.99" {
-		t.Errorf("centsToDecimal(1099, USD) = %q, want %q", got, "10.99")
+		t.Errorf("USD.ToStringNoSymbol(1099) = %q, want %q", got, "10.99")
 	}
 }
 
-func TestCentsToDecimal_JPY(t *testing.T) {
-	got := centsToDecimal(500, currency.JPY)
+func TestToStringNoSymbol_JPY(t *testing.T) {
+	got := currency.JPY.ToStringNoSymbol(500)
 	if got != "500" {
-		t.Errorf("centsToDecimal(500, JPY) = %q, want %q", got, "500")
+		t.Errorf("JPY.ToStringNoSymbol(500) = %q, want %q", got, "500")
 	}
 }
 
