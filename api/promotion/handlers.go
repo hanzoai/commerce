@@ -12,6 +12,7 @@ import (
 	"github.com/hanzoai/commerce/models/campaignbudget"
 	promotionModel "github.com/hanzoai/commerce/models/promotion"
 	"github.com/hanzoai/commerce/models/promotionrule"
+	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/rest"
@@ -105,8 +106,9 @@ func Evaluate(c *zip.Ctx) error {
 		switch am.Type {
 		case "percentage":
 			if am.TargetType == "order" {
-				// Value is in basis points: 1500 = 15.00%
-				discountAmount = req.CartTotal * int64(am.Value) / 10000
+				// Value is in basis points: 1500 = 15.00%. Rounded, not floored by
+				// integer division — same rule as every other discount.
+				discountAmount = int64(currency.Cents(req.CartTotal).BasisPoints(am.Value))
 			}
 		case "fixed":
 			discountAmount = int64(am.Value)

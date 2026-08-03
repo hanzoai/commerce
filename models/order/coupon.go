@@ -2,7 +2,6 @@ package order
 
 import (
 	"errors"
-	"math"
 	"strings"
 
 	"github.com/hanzoai/commerce/log"
@@ -79,9 +78,16 @@ func (o *Order) CalcCouponDiscount() currency.Cents {
 				discount += currency.Cents(c.Amount)
 			case coupon.Percent:
 				log.Warn("Percent", ctx)
+				// One coupon on the order is ONE discount, so the base is summed and
+				// rounded once. Rounding each line and adding the results would make
+				// this disagree with OrderDB.ApplyCoupon, which takes the same
+				// percentage off LineTotal in a single step — one coupon, two answers,
+				// differing by up to a minor unit per line.
+				var base currency.Cents
 				for _, item := range o.Items {
-					discount += currency.Cents(int(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01)))
+					base += item.TotalPrice()
 				}
+				discount += base.Percent(c.Amount)
 			case coupon.FreeShipping:
 				log.Warn("FreeShipping", ctx)
 				discount += currency.Cents(int(o.Shipping))
@@ -103,7 +109,10 @@ func (o *Order) CalcCouponDiscount() currency.Cents {
 						discount += currency.Cents(quantity * c.Amount)
 					case coupon.Percent:
 						log.Debug("Percent %d", c.Amount, ctx)
-						discount += currency.Cents(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01))
+						// Scoped to one item, so it rounds per line — and must, because
+						// CalcItemCouponTaxableDiscount reduces the taxable base line by
+						// line and the two have to agree on every item.
+						discount += item.TotalPrice().Percent(c.Amount)
 					case coupon.FreeItem:
 						log.Debug("FreeShipping", ctx)
 						discount += currency.Cents(item.Price)
@@ -145,7 +154,9 @@ func (o *Order) CalcItemCouponTaxableDiscount() currency.Cents {
 				}
 				taxableDiscount += currency.Cents(qty * c.Amount)
 			case coupon.Percent:
-				taxableDiscount += currency.Cents(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01))
+				// Same per-line rounding as the discount itself in CalcCouponDiscount:
+				// tax must be charged on the amount the customer was actually billed.
+				taxableDiscount += item.TotalPrice().Percent(c.Amount)
 			}
 			if c.Once {
 				break

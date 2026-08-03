@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
 	"strconv"
 	"time"
 
@@ -552,8 +551,10 @@ func (o *OrderDB) ApplyCoupon(c coupon.Coupon) error {
 	// Apply coupon discount based on type
 	switch c.Type {
 	case coupon.Percent:
-		// Amount represents percentage (e.g., 10 = 10%)
-		o.Discount += currency.Cents(math.Floor(float64(o.LineTotal) * float64(c.Amount) / 100))
+		// Amount represents percentage (e.g., 10 = 10%). Rounded once on the whole
+		// LineTotal, which is what Order.CalcCouponDiscount does for an order-level
+		// coupon too, so the two paths return the same number for the same coupon.
+		o.Discount += o.LineTotal.Percent(c.Amount)
 	case coupon.Flat:
 		// Amount is in cents
 		o.Discount += currency.Cents(c.Amount)
