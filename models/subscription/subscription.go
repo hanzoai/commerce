@@ -2,6 +2,7 @@ package subscription
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -61,6 +62,32 @@ const (
 	Canceled Status = "canceled"
 	Unpaid   Status = "unpaid"
 )
+
+// CountsTowardMRR reports whether a subscription in this status is recurring
+// revenue RIGHT NOW. Only an active one is.
+//
+// A trialing subscription is not yet revenue: nobody has been charged, and the
+// trial may end in a cancel. Counting it books money that does not exist, and
+// it does so worst exactly when a promotion drives a wave of trial signups —
+// the revenue board climbs on the day the discounting starts. past_due and
+// unpaid are billed but uncollected, and canceled is over; none of them is
+// run-rate revenue either.
+//
+// This is the ONE definition, and it exists because there were three. commerce's
+// rollup counted active only, the hanzoai/cloud admin summed active+trialing off
+// the subscriptions wire, and the warehouse SQL summed everything except
+// trialing — so one account reported three different MRRs depending on which
+// screen you opened. Every summation now asks this.
+//
+// It answers "is this revenue", NOT "is this customer entitled". A trialing
+// customer IS entitled to the product; that is the paywall's question and stays
+// a separate predicate on purpose.
+//
+// It tolerates wire noise (case and surrounding space) because hanzoai/cloud
+// reads the status off JSON before asking.
+func (s Status) CountsTowardMRR() bool {
+	return Status(strings.ToLower(strings.TrimSpace(string(s)))) == Active
+}
 
 func init() { orm.Register[Subscription]("subscription") }
 

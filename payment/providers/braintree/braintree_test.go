@@ -218,17 +218,20 @@ func TestAuthHeader(t *testing.T) {
 	}
 }
 
-func TestCentsToDecimal_USD(t *testing.T) {
-	got := centsToDecimal(1099, currency.USD)
+// The amount Braintree receives is whatever currency.Type renders, so these pin
+// the rendering this provider depends on rather than a helper of its own.
+
+func TestToStringNoSymbol_USD(t *testing.T) {
+	got := currency.USD.ToStringNoSymbol(1099)
 	if got != "10.99" {
-		t.Errorf("centsToDecimal(1099, USD) = %q, want 10.99", got)
+		t.Errorf("USD.ToStringNoSymbol(1099) = %q, want 10.99", got)
 	}
 }
 
-func TestCentsToDecimal_JPY(t *testing.T) {
-	got := centsToDecimal(500, currency.JPY)
+func TestToStringNoSymbol_JPY(t *testing.T) {
+	got := currency.JPY.ToStringNoSymbol(500)
 	if got != "500" {
-		t.Errorf("centsToDecimal(500, JPY) = %q, want 500", got)
+		t.Errorf("JPY.ToStringNoSymbol(500) = %q, want 500", got)
 	}
 }
 

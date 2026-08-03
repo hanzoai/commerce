@@ -181,8 +181,11 @@ func foldSubs(a *acc, orgName string, subs []*subscription.Subscription, test bo
 		}
 		mrr := billing.SubscriptionMRRCents(s)
 
-		switch s.Status {
-		case subscription.Active:
+		// Whether this subscription is revenue is subscription.Status's
+		// question, not this fold's — see Status.CountsTowardMRR. It is true
+		// for active only, so a trial adds headcount here and no money.
+		switch {
+		case s.Status.CountsTowardMRR():
 			a.activeSubs++
 			a.mrrCents += mrr
 			a.catMRR[cat] += mrr
@@ -204,7 +207,7 @@ func foldSubs(a *acc, orgName string, subs []*subscription.Subscription, test bo
 			if cur, ok := a.orgSince[orgName]; !ok || s.CreatedAt.Before(cur) {
 				a.orgSince[orgName] = s.CreatedAt
 			}
-		case subscription.Trialing:
+		case s.Status == subscription.Trialing:
 			a.trials++
 			a.planTrialing[slug]++
 			a.planName[slug], a.planCat[slug] = name, cat
@@ -215,14 +218,27 @@ func foldSubs(a *acc, orgName string, subs []*subscription.Subscription, test bo
 		}
 
 		// Window movement, independent of current status.
-		if inWindow(s.CreatedAt, a.start, a.now) && (s.Status == subscription.Active || s.Status == subscription.Trialing) {
+		//
+		// A new trial is a new SUBSCRIPTION but not new REVENUE, so it counts
+		// in newSubs and contributes nothing to newMRR. Booking its full price
+		// here while the run-rate above books none of it was the same trialing
+		// disagreement, inside a single function: net-new claimed revenue that
+		// MRR itself never showed.
+		if inWindow(s.CreatedAt, a.start, a.now) && (s.Status.CountsTowardMRR() || s.Status == subscription.Trialing) {
 			a.newSubs++
-			a.newMRR += mrr
+			delta := int64(0)
+			if s.Status.CountsTowardMRR() {
+				delta = mrr
+			}
+			a.newMRR += delta
 			a.events = append(a.events, SubEvent{
 				At: s.CreatedAt.UTC().Format(time.RFC3339), Org: orgName,
-				Type: "created", Plan: slug, Category: cat, MRRDeltaCents: mrr,
+				Type: "created", Plan: slug, Category: cat, MRRDeltaCents: delta,
 			})
 		}
+		// Churn is the revenue we LOST, so it takes the amount even though a
+		// canceled status counts toward nothing: what left is what the
+		// subscription was contributing while it lived.
 		if (s.Canceled || s.Status == subscription.Canceled) && inWindow(s.CanceledAt, a.start, a.now) {
 			a.canceledSubs++
 			a.churnedMRR += mrr

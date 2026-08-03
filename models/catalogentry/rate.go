@@ -139,11 +139,15 @@ func scalarRate(e *CatalogEntry) []Rate {
 
 // centsAmount renders cents as an exact USD decimal string ("" for zero, so an
 // unset cost stays absent instead of reading as free).
+//
+// Fixed scale, so 1000 reads "10.00" and not "10": a Rate amount is quoted to
+// the currency's decimals, and trimming the trailing zeros made two spellings
+// of one price.
 func centsAmount(c currency.Cents) string {
 	if c == 0 {
 		return ""
 	}
-	return decimal.New(int64(c), -2).String()
+	return currency.USD.ToStringNoSymbol(c)
 }
 
 // RatesOf returns an entry's price vector: the stored Rates when it has them,

@@ -77,9 +77,14 @@ func (p Product) Document() mixin.Document {
 	doc.UPC = p.UPC
 
 	doc.Currency = string(p.Currency)
-	doc.Price = p.Currency.ToFloat(p.Price)
-	doc.ListPrice = p.Currency.ToFloat(p.ListPrice)
-	doc.InventoryCost = p.Currency.ToFloat(p.InventoryCost)
+	// A search document is a projection, not a record. The index sorts and
+	// range-filters on price, which is what a number buys us, so these stay
+	// float64 and AsMajorUnits is spelled out at each one to make the crossing
+	// visible. The product keeps integer cents — nothing reads a price back out
+	// of the index.
+	doc.Price = p.Currency.Amount(p.Price).AsMajorUnits()
+	doc.ListPrice = p.Currency.Amount(p.ListPrice).AsMajorUnits()
+	doc.InventoryCost = p.Currency.Amount(p.InventoryCost).AsMajorUnits()
 
 	// doc.Shipping = float64(p.Shipping)
 	doc.Inventory = float64(p.Inventory)

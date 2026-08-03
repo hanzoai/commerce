@@ -209,14 +209,19 @@ func (o Order) Document() mixin.Document {
 	}
 	doc.ShippingAddressPostalCode = o.ShippingAddress.PostalCode
 
-	doc.Discount = o.Currency.ToFloat(o.Discount)
-	doc.Subtotal = o.Currency.ToFloat(o.Subtotal)
-	doc.Shipping = o.Currency.ToFloat(o.Shipping)
-	doc.Tax = o.Currency.ToFloat(o.Tax)
-	doc.Adjustment = o.Currency.ToFloat(o.Adjustment)
-	doc.Total = o.Currency.ToFloat(o.Total)
-	doc.Paid = o.Currency.ToFloat(o.Paid)
-	doc.Refunded = o.Currency.ToFloat(o.Refunded)
+	// A search document is a projection, not a record. The index sorts and
+	// range-filters on these fields, which is what a number buys us, so they
+	// are float64 here and AsMajorUnits is spelled out at each one to make the
+	// crossing visible. The order itself keeps integer cents — nothing reads
+	// money back out of the index.
+	doc.Discount = o.Currency.Amount(o.Discount).AsMajorUnits()
+	doc.Subtotal = o.Currency.Amount(o.Subtotal).AsMajorUnits()
+	doc.Shipping = o.Currency.Amount(o.Shipping).AsMajorUnits()
+	doc.Tax = o.Currency.Amount(o.Tax).AsMajorUnits()
+	doc.Adjustment = o.Currency.Amount(o.Adjustment).AsMajorUnits()
+	doc.Total = o.Currency.Amount(o.Total).AsMajorUnits()
+	doc.Paid = o.Currency.Amount(o.Paid).AsMajorUnits()
+	doc.Refunded = o.Currency.Amount(o.Refunded).AsMajorUnits()
 
 	doc.Type = string(o.Type)
 
