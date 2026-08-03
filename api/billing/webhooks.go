@@ -2,6 +2,7 @@ package billing
 
 import (
 	"context"
+	"math"
 	"net/http"
 	"os"
 	"strings"
@@ -286,7 +287,10 @@ func applySettlementEvent(db *datastore.Datastore, org *organization.Organizatio
 func settlementAmount(data Map) (currency.Cents, currency.Type) {
 	cur := currency.USD
 	if m, ok := data["amount_money"].(map[string]interface{}); ok {
-		amt := numberField(m, "amount")
+		amt, ok := numberField(m, "amount")
+		if !ok {
+			return 0, cur
+		}
 		if c := stringField(m, "currency"); c != "" {
 			cur = currency.Type(strings.ToLower(c))
 		}
@@ -296,7 +300,11 @@ func settlementAmount(data Map) (currency.Cents, currency.Type) {
 	if c := stringField(data, "currency"); c != "" {
 		cur = currency.Type(strings.ToLower(c))
 	}
-	return currency.Cents(numberField(data, "amount")), cur
+	amt, ok := numberField(data, "amount")
+	if !ok {
+		return 0, cur
+	}
+	return currency.Cents(amt), cur
 }
 
 // unwrapObject returns data[key] as a map when present (Square nests the
@@ -314,16 +322,37 @@ func stringField(m map[string]interface{}, key string) string {
 	return strings.TrimSpace(v)
 }
 
-func numberField(m map[string]interface{}, key string) int64 {
+// numberField reads a MINOR-UNIT amount out of a decoded webhook body, and
+// reports whether it could be read exactly.
+//
+// Every processor that reaches here states the amount in minor units as a whole
+// number — Square's amount_money.amount and Stripe's amount are both integer
+// cents — but the body arrives as map[string]interface{}, so encoding/json has
+// already turned each one into a float64. A whole number survives that exactly.
+//
+// A FRACTIONAL value therefore does not mean "cents with a fraction", it means
+// the payload is not the shape this code assumes — most likely major units, so
+// 19.99 is a $19.99 payment and not 19 cents. int64() truncated it, and because
+// this feeds a Deposit credited to a customer, it under-credited them by two
+// orders of magnitude and did it silently.
+//
+// There is no safe guess between the two readings, so this refuses. The caller
+// already treats a non-positive amount as "record the event, write no ledger
+// row" and warns, which is exactly the right outcome for an amount we cannot
+// read.
+func numberField(m map[string]interface{}, key string) (int64, bool) {
 	switch n := m[key].(type) {
 	case float64:
-		return int64(n)
+		if n != math.Trunc(n) {
+			return 0, false
+		}
+		return int64(n), true
 	case int64:
-		return n
+		return n, true
 	case int:
-		return int64(n)
+		return int64(n), true
 	}
-	return 0
+	return 0, false
 }
 
 func firstNonEmpty(vals ...string) string {
