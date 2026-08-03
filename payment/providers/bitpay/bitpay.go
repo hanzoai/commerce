@@ -121,8 +121,12 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 		return nil, err
 	}
 
+	// json.Number carries the exact digits, and ToStringNoSymbol renders at the
+	// CURRENCY's scale. The old float64(req.Amount)/100 was wrong twice over: it
+	// approximated the amount, and it assumed two decimals, so a zero-decimal
+	// currency was divided by 100 anyway — JPY 500 was sent as 5.00.
 	body := invoiceRequest{
-		Price:    float64(req.Amount) / 100, // cents to major unit
+		Price:    json.Number(req.Currency.ToStringNoSymbol(req.Amount)),
 		Currency: strings.ToUpper(string(req.Currency)),
 		Token:    p.apiToken,
 	}
@@ -186,12 +190,19 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 		return nil, err
 	}
 
+	cur := currency.Type(strings.ToLower(resp.Data.Currency))
+	amount, err := cur.Parse(resp.Data.Price.String())
+	if err != nil {
+		return nil, processor.NewPaymentError(processor.BitPay, "INVALID_AMOUNT",
+			fmt.Sprintf("bitpay returned price %q, which is not a decimal amount", resp.Data.Price), err)
+	}
+
 	return &processor.Transaction{
 		ID:           resp.Data.ID,
 		ProcessorRef: resp.Data.ID,
 		Type:         "invoice",
-		Amount:       currency.Cents(resp.Data.Price * 100),
-		Currency:     currency.Type(strings.ToLower(resp.Data.Currency)),
+		Amount:       amount,
+		Currency:     cur,
 		Status:       mapInvoiceStatus(resp.Data.Status),
 		CreatedAt:    resp.Data.InvoiceTime / 1000, // ms to s
 		UpdatedAt:    resp.Data.CurrentTime / 1000,
@@ -216,6 +227,9 @@ func (p *Provider) Refund(ctx context.Context, req processor.RefundRequest) (*pr
 			"refund amount must be positive", nil)
 	}
 
+	// processor.RefundRequest carries no currency, so this path cannot know the
+	// scale and assumes two decimals — the same limitation recurly's refund has.
+	// A zero-decimal refund is wrong here until RefundRequest names its currency.
 	body := refundRequest{
 		Token:     p.apiToken,
 		InvoiceID: req.TransactionID,
@@ -360,7 +374,7 @@ type invoiceBuyer struct {
 
 type invoiceRequest struct {
 	Token           string       `json:"token"`
-	Price           float64      `json:"price"`
+	Price           json.Number  `json:"price"`
 	Currency        string       `json:"currency"`
 	OrderID         string       `json:"orderId,omitempty"`
 	ItemDesc        string       `json:"itemDesc,omitempty"`
@@ -370,15 +384,18 @@ type invoiceRequest struct {
 }
 
 type invoiceData struct {
-	ID             string  `json:"id"`
-	URL            string  `json:"url"`
-	Status         string  `json:"status"`
-	Price          float64 `json:"price"`
-	Currency       string  `json:"currency"`
-	OrderID        string  `json:"orderId"`
-	InvoiceTime    int64   `json:"invoiceTime"`
-	ExpirationTime int64   `json:"expirationTime"`
-	CurrentTime    int64   `json:"currentTime"`
+	ID     string `json:"id"`
+	URL    string `json:"url"`
+	Status string `json:"status"`
+	// json.Number keeps BitPay's decimal as the digits they sent. Decoding it
+	// into a float64 is where a captured amount loses a cent: 19.99 has no exact
+	// binary form, so Cents(price*100) yielded 1998.
+	Price          json.Number `json:"price"`
+	Currency       string      `json:"currency"`
+	OrderID        string      `json:"orderId"`
+	InvoiceTime    int64       `json:"invoiceTime"`
+	ExpirationTime int64       `json:"expirationTime"`
+	CurrentTime    int64       `json:"currentTime"`
 }
 
 type invoiceResponse struct {
