@@ -1474,3 +1474,40 @@ func TestCharge_CaptureOrderError(t *testing.T) {
 		t.Fatal("expected error from captureOrder failure")
 	}
 }
+
+// TestGetTransaction_AmountScalesByItsOwnCurrency pins that the scale comes
+// from the currency PayPal reported, not a hardcoded two decimals.
+//
+// The value is a string, so the digits always survived — but money.ParseCents
+// forces a USD scale, and the order carries its own currency_code right beside
+// the value. A zero-decimal currency was read a hundred times too large: ¥500
+// became 50000 minor units.
+func TestGetTransaction_AmountScalesByItsOwnCurrency(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		value string
+		cur   string
+		want  currency.Cents
+	}{
+		{"two-decimal currency is unchanged", "19.99", "USD", 1999},
+		{"sub-dollar", "0.29", "USD", 29},
+		{"zero-decimal currency", "500", "JPY", 500},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprintf(w, `{"id":"order-1","status":"COMPLETED","intent":"CAPTURE",
+					"purchase_units":[{"amount":{"currency_code":%q,"value":%q}}]}`, tc.cur, tc.value)
+			}))
+			defer server.Close()
+
+			tx, err := configuredProvider(server.URL).GetTransaction(context.Background(), "order-1")
+			if err != nil {
+				t.Fatalf("GetTransaction: %v", err)
+			}
+			if tx.Amount != tc.want {
+				t.Errorf("amount %s %s = %d minor units, want %d", tc.value, tc.cur, tx.Amount, tc.want)
+			}
+		})
+	}
+}

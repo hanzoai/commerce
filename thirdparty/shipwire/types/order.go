@@ -1,5 +1,7 @@
 package types
 
+import "encoding/json"
+
 type OrderOptions struct {
 	Service ServiceLevelCode `json:"service"`
 }
@@ -95,25 +97,30 @@ type Order struct {
 		} `json:"resource"`
 	} `json:"options"`
 
+	// The pricing amounts are json.Number, not float64, so the decimal digits
+	// Shipwire sent survive to be converted exactly. Through a float64 they do
+	// not: 9.95 has no exact binary form, so the value is 9.9499999… and
+	// Cents(total*100) truncated it to 994 — a cent lost on every ordinary
+	// shipping charge, on a cost already incurred.
 	PricingEstimate struct {
 		ResourceLocation string `json:"resourceLocation"`
 		Resource         struct {
-			Packaging float64 `json:"packaging"`
-			Total     float64 `json:"total"`
-			Insurance float64 `json:"insurance"`
-			Shipping  float64 `json:"shipping"`
-			Handling  float64 `json:"handling"`
+			Packaging json.Number `json:"packaging"`
+			Total     json.Number `json:"total"`
+			Insurance json.Number `json:"insurance"`
+			Shipping  json.Number `json:"shipping"`
+			Handling  json.Number `json:"handling"`
 		} `json:"resource"`
 	} `json:"pricingEstimate"`
 
 	Pricing struct {
 		ResourceLocation string `json:"resourceLocation"`
 		Resource         struct {
-			Packaging float64 `json:"packaging"`
-			Total     float64 `json:"total"`
-			Handling  float64 `json:"handling"`
-			Insurance float64 `json:"insurance"`
-			Shipping  float64 `json:"shipping"`
+			Packaging json.Number `json:"packaging"`
+			Total     json.Number `json:"total"`
+			Handling  json.Number `json:"handling"`
+			Insurance json.Number `json:"insurance"`
+			Shipping  json.Number `json:"shipping"`
 		} `json:"resource"`
 	} `json:"pricing"`
 
