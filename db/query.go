@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
@@ -398,6 +399,13 @@ func (q *sqliteQuery) buildWhere() (string, []any) {
 
 	// Field filters - use JSON extraction
 	for _, f := range q.filters {
+		// A filter that cannot be expressed matches nothing. Dropping it would
+		// WIDEN the result set — the opposite of what a filter is for — so an
+		// unrepresentable field fails closed instead.
+		if !validFieldPath(f.field) {
+			conditions = append(conditions, "1 = 0")
+			continue
+		}
 		// Convert Go struct field name (PascalCase) to JSON field name (camelCase).
 		// Go's json.Marshal uses the json tag name, which is typically camelCase.
 		fieldName := toJSONFieldName(f.field)
@@ -451,6 +459,12 @@ func (q *sqliteQuery) buildOrderBy() string {
 
 	var parts []string
 	for _, o := range q.orders {
+		// A rejected sort field is dropped rather than erroring: the sort order
+		// is presentation, and no caller sending a real field is affected —
+		// they send Go struct field names, which are alphanumeric and pass.
+		if !validFieldPath(o.field) {
+			continue
+		}
 		// Use JSON extraction for ordering (convert PascalCase to camelCase)
 		jsonPath := fmt.Sprintf("json_extract(data, '$.%s')", toJSONFieldName(o.field))
 		if o.desc {
@@ -458,6 +472,10 @@ func (q *sqliteQuery) buildOrderBy() string {
 		} else {
 			parts = append(parts, jsonPath+" ASC")
 		}
+	}
+
+	if len(parts) == 0 {
+		return " ORDER BY rowid ASC"
 	}
 
 	return " ORDER BY " + strings.Join(parts, ", ")
@@ -524,6 +542,30 @@ func parseFilterString(s string) (field, op string) {
 	}
 	// Default to equality
 	return strings.TrimSpace(s), "="
+}
+
+// A field path is an IDENTIFIER. Both backends concatenate it into the JSON
+// path inside a single-quoted SQL literal — json_extract(data, '$.<path>') for
+// SQLite, data->>'<path>' for Postgres — and there is no bindable position
+// there, so a whitelist is the only thing that can protect it.
+//
+// Nothing else in the chain does. toJSONFieldName is not a guard: it lowercases
+// the first rune of each dot-segment and returns everything else untouched, so
+// an ALL-LOWERCASE payload passes through it byte for byte and a single quote
+// closes the literal. The two values sitting beside the field in queryFilter
+// are already safe — the operator goes through normalizeOp's switch, the value
+// is bound — which is exactly why the field being unchecked was easy to miss.
+//
+// The shape accepted is a Go struct field path, which is what every caller
+// actually sends: an identifier, optionally dotted ("Account.TransactionHash"),
+// plus the leading-underscore form the datastore key filter uses ("__key__").
+var fieldPathRE = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)*$`)
+
+// validFieldPath reports whether s may be concatenated into a JSON path.
+// Shared by both backends for the same reason normalizeOp is: one rule, one
+// place, so the two cannot drift apart.
+func validFieldPath(s string) bool {
+	return len(s) <= 128 && fieldPathRE.MatchString(s)
 }
 
 // normalizeOp converts operators to SQL

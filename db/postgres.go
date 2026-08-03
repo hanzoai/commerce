@@ -1108,6 +1108,12 @@ func (q *postgresQuery) buildWhere(tenant string) (string, []interface{}) {
 	// Go Filter() calls use PascalCase field names (e.g., "DestinationKind"),
 	// but JSON tags use camelCase (e.g., "destinationKind"). Convert first char to lower.
 	for _, f := range q.filters {
+		// A filter that cannot be expressed matches nothing. Dropping it would
+		// WIDEN the result set, so an unrepresentable field fails closed.
+		if !validFieldPath(f.field) {
+			conditions = append(conditions, "1 = 0")
+			continue
+		}
 		jsonField := f.field
 		if len(jsonField) > 0 {
 			jsonField = strings.ToLower(jsonField[:1]) + jsonField[1:]
@@ -1132,6 +1138,11 @@ func (q *postgresQuery) buildOrderBy() string {
 
 	var parts []string
 	for _, o := range q.orders {
+		// A rejected sort field is dropped rather than erroring; see the SQLite
+		// buildOrderBy for why the sort order is safe to fall back on.
+		if !validFieldPath(o.field) {
+			continue
+		}
 		orderField := o.field
 		if len(orderField) > 0 {
 			orderField = strings.ToLower(orderField[:1]) + orderField[1:]
@@ -1142,6 +1153,10 @@ func (q *postgresQuery) buildOrderBy() string {
 		} else {
 			parts = append(parts, jsonPath+" ASC")
 		}
+	}
+
+	if len(parts) == 0 {
+		return ""
 	}
 
 	return " ORDER BY " + strings.Join(parts, ", ")
