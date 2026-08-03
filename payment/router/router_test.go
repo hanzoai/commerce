@@ -3,6 +3,7 @@ package router
 import (
 	"context"
 	"fmt"
+	"github.com/hanzoai/money"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -422,7 +423,7 @@ func TestRefund_RoutesToOriginalProcessor(t *testing.T) {
 
 	req := processor.RefundRequest{
 		TransactionID: "square:tx_original",
-		Amount:        2000,
+		Amount:        money.FromMinor(2000, currency.USD.Money()),
 	}
 
 	result, err := r.Refund(context.Background(), req)
@@ -967,7 +968,7 @@ func TestRefund_NoPrefixReturnsError(t *testing.T) {
 
 	_, err := r.Refund(context.Background(), processor.RefundRequest{
 		TransactionID: "no_prefix_id",
-		Amount:        500,
+		Amount:        money.FromMinor(500, currency.USD.Money()),
 	})
 	if err == nil {
 		t.Fatal("expected error for unprefixed transaction ID")
@@ -980,7 +981,7 @@ func TestRefund_ProcessorNotFound(t *testing.T) {
 
 	_, err := r.Refund(context.Background(), processor.RefundRequest{
 		TransactionID: "nonexistent:tx-1",
-		Amount:        500,
+		Amount:        money.FromMinor(500, currency.USD.Money()),
 	})
 	if err == nil {
 		t.Fatal("expected error for missing processor")
@@ -999,7 +1000,7 @@ func TestRefund_ProcessorError(t *testing.T) {
 
 	_, err := r.Refund(context.Background(), processor.RefundRequest{
 		TransactionID: "stripe:tx-1",
-		Amount:        500,
+		Amount:        money.FromMinor(500, currency.USD.Money()),
 	})
 	if err == nil {
 		t.Fatal("expected error for refund failure")
@@ -1460,7 +1461,7 @@ func TestRefund_EmptyRefundIDNotPrefixed(t *testing.T) {
 
 	result, err := r.Refund(context.Background(), processor.RefundRequest{
 		TransactionID: "stripe:tx-1",
-		Amount:        500,
+		Amount:        money.FromMinor(500, currency.USD.Money()),
 	})
 	if err != nil {
 		t.Fatal(err)

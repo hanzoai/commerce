@@ -17,6 +17,7 @@ import (
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/payment/processor"
 	squarelib "github.com/hanzoai/commerce/thirdparty/square"
+	"github.com/hanzoai/money"
 )
 
 var NonSquarePayment = errors.New("only refunds for Square payments are supported via this handler")
@@ -97,7 +98,7 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 			}
 			_, err := proc.Refund(context.Background(), processor.RefundRequest{
 				TransactionID:  p.Account.Square.PaymentId,
-				Amount:         amount,
+				Amount:         money.FromMinor(int64(amount), ord.Currency.Money()),
 				Reason:         "customer refund",
 				IdempotencyKey: gwKey,
 			})

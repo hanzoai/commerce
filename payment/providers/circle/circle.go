@@ -105,7 +105,7 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 	body := map[string]interface{}{
 		"idempotencyKey": idempotencyKey,
 		"amount": map[string]interface{}{
-			"amount":   currency.USD.ToStringNoSymbol(req.Amount),
+			"amount":   req.Currency.ToStringNoSymbol(req.Amount),
 			"currency": mapCurrency(req.Currency),
 		},
 		"settlementCurrency": mapCurrency(req.Currency),
@@ -161,10 +161,10 @@ func (p *Provider) Refund(ctx context.Context, req processor.RefundRequest) (*pr
 		"paymentId":      req.TransactionID,
 	}
 
-	if req.Amount > 0 {
+	if req.Amount.Sign() > 0 {
 		body["amount"] = map[string]interface{}{
-			"amount":   currency.USD.ToStringNoSymbol(req.Amount),
-			"currency": "USD",
+			"amount":   req.Amount.MajorString(),
+			"currency": req.Amount.Currency().Code,
 		}
 	}
 

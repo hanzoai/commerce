@@ -2,6 +2,7 @@ package processor
 
 import (
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/money"
 )
 
 // ProcessorType identifies the payment processor
@@ -68,9 +69,16 @@ type PaymentResult struct {
 
 // RefundRequest represents a refund to be processed
 type RefundRequest struct {
-	TransactionID string         `json:"transactionId"`
-	Amount        currency.Cents `json:"amount"`
-	Reason        string         `json:"reason,omitempty"`
+	TransactionID string `json:"transactionId"`
+	// Amount carries its own currency, because a refund that cannot name one is
+	// a refund every gateway has to guess at. When this was a bare Cents, five
+	// providers hardcoded USD on this path and a sixth divided by 100 — so a
+	// refund of a JPY or KWD charge went out at the wrong scale, and a refund of
+	// any non-USD charge went out labelled USD. The caller always knew the
+	// currency (billing/engine/refunds.go reads it off the invoice one line
+	// before building this), it just had nowhere to put it.
+	Amount money.Amount `json:"amount"`
+	Reason string       `json:"reason,omitempty"`
 	// IdempotencyKey, when set, is forwarded to the gateway as ITS idempotency
 	// key so a retried refund (same key) is de-duplicated at the processor — the
 	// money move is idempotent regardless of pods/mutexes/in-flight guards. When

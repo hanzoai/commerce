@@ -426,7 +426,7 @@ func (mp *MPCProcessor) Refund(ctx context.Context, req processor.RefundRequest)
 		TxType:    "refund",
 		Chain:     chain,
 		ToAddress: sourceAddr,
-		Amount:    fmt.Sprintf("%d", req.Amount),
+		Amount:    req.Amount.MinorString(),
 	}, &txResp)
 	if err != nil {
 		return nil, processor.NewPaymentError(processor.MPC, "REFUND_FAILED", "failed to create MPC refund transaction", err)
