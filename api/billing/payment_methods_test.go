@@ -3,6 +3,7 @@ package billing
 import (
 	"context"
 	"errors"
+	"github.com/hanzoai/money"
 	"sync"
 	"testing"
 
@@ -115,7 +116,7 @@ func (m *mockSquareProcessor) Authorize(ctx context.Context, req processor.Payme
 	}, nil
 }
 
-func (m *mockSquareProcessor) Capture(ctx context.Context, txID string, amount currency.Cents) (*processor.PaymentResult, error) {
+func (m *mockSquareProcessor) Capture(ctx context.Context, txID string, amount money.Amount) (*processor.PaymentResult, error) {
 	return nil, errors.New("not implemented")
 }
 

@@ -3,6 +3,7 @@ package wire
 import (
 	"context"
 	"fmt"
+	"github.com/hanzoai/money"
 	"time"
 
 	"github.com/google/uuid"
@@ -98,7 +99,7 @@ func (wp *WireProcessor) Authorize(ctx context.Context, req processor.PaymentReq
 }
 
 // Capture marks a wire payment as confirmed/credited (called when wire arrives)
-func (wp *WireProcessor) Capture(ctx context.Context, transactionID string, amount currency.Cents) (*processor.PaymentResult, error) {
+func (wp *WireProcessor) Capture(ctx context.Context, transactionID string, amount money.Amount) (*processor.PaymentResult, error) {
 	return &processor.PaymentResult{
 		Success:       true,
 		TransactionID: transactionID,

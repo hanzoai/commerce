@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/hanzoai/money"
 	"io"
 	"net/http"
 	"strings"
@@ -264,7 +265,7 @@ func (p *Provider) Authorize(ctx context.Context, req processor.PaymentRequest) 
 }
 
 // Capture captures a previously authorized payment.
-func (p *Provider) Capture(ctx context.Context, transactionID string, amount currency.Cents) (*processor.PaymentResult, error) {
+func (p *Provider) Capture(ctx context.Context, transactionID string, amount money.Amount) (*processor.PaymentResult, error) {
 	if err := p.checkAvailable(); err != nil {
 		return nil, err
 	}
@@ -274,7 +275,7 @@ func (p *Provider) Capture(ctx context.Context, transactionID string, amount cur
 
 	// For capture we default to USD if no currency context is available.
 	// The amount conversion is safe because Braintree stores the currency on the auth.
-	amountStr := currency.USD.ToStringNoSymbol(amount)
+	amountStr := amount.MajorString()
 
 	query := `mutation CaptureTransaction($input: CaptureTransactionInput!) {
 		captureTransaction(input: $input) {
@@ -292,7 +293,7 @@ func (p *Provider) Capture(ctx context.Context, transactionID string, amount cur
 	input := map[string]interface{}{
 		"transactionId": transactionID,
 	}
-	if amount > 0 {
+	if amount.Sign() > 0 {
 		input["amount"] = amountStr
 	}
 

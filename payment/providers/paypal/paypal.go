@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/hanzoai/money"
 	"io"
 	"net/http"
 	"strings"
@@ -188,7 +189,7 @@ func (p *Provider) Authorize(ctx context.Context, req processor.PaymentRequest) 
 
 // Capture captures a previously authorized payment.
 // transactionID is the PayPal authorization ID returned in Authorize metadata.
-func (p *Provider) Capture(ctx context.Context, transactionID string, amount currency.Cents) (*processor.PaymentResult, error) {
+func (p *Provider) Capture(ctx context.Context, transactionID string, amount money.Amount) (*processor.PaymentResult, error) {
 	if err := p.checkAvailable(); err != nil {
 		return nil, err
 	}
@@ -198,14 +199,14 @@ func (p *Provider) Capture(ctx context.Context, transactionID string, amount cur
 
 	body := map[string]interface{}{
 		"amount": map[string]string{
-			"value":         currency.USD.ToStringNoSymbol(amount),
-			"currency_code": "USD",
+			"value":         amount.MajorString(),
+			"currency_code": amount.Currency().Code,
 		},
 	}
 	// If amount is 0, capture the full authorized amount (omit body).
 	var payload []byte
 	var err error
-	if amount > 0 {
+	if amount.Sign() > 0 {
 		payload, err = json.Marshal(body)
 		if err != nil {
 			return nil, p.payErr("MARSHAL_ERROR", "failed to marshal capture body", err)

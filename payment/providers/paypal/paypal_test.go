@@ -634,7 +634,7 @@ func TestAuthorize_NotCompleted(t *testing.T) {
 
 func TestCapture_NotConfigured(t *testing.T) {
 	p := newTestProvider()
-	_, err := p.Capture(context.Background(), "auth-id", 1000)
+	_, err := p.Capture(context.Background(), "auth-id", money.FromMinor(1000, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error for unconfigured provider")
 	}
@@ -645,7 +645,7 @@ func TestCapture_EmptyTransactionID(t *testing.T) {
 	defer server.Close()
 	p := configuredProvider(server.URL)
 
-	_, err := p.Capture(context.Background(), "", 1000)
+	_, err := p.Capture(context.Background(), "", money.FromMinor(1000, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error for empty transaction ID")
 	}
@@ -662,7 +662,7 @@ func TestCapture_Success_WithAmount(t *testing.T) {
 	defer server.Close()
 
 	p := configuredProvider(server.URL)
-	result, err := p.Capture(context.Background(), "AUTH-100", 2500)
+	result, err := p.Capture(context.Background(), "AUTH-100", money.FromMinor(2500, currency.USD.Money()))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -685,7 +685,7 @@ func TestCapture_Success_FullAmount(t *testing.T) {
 	defer server.Close()
 
 	p := configuredProvider(server.URL)
-	result, err := p.Capture(context.Background(), "AUTH-200", 0) // 0 = full amount
+	result, err := p.Capture(context.Background(), "AUTH-200", money.FromMinor(0, currency.USD.Money())) // 0 = full amount
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -705,7 +705,7 @@ func TestCapture_APIError(t *testing.T) {
 	defer server.Close()
 
 	p := configuredProvider(server.URL)
-	_, err := p.Capture(context.Background(), "NONEXISTENT", 1000)
+	_, err := p.Capture(context.Background(), "NONEXISTENT", money.FromMinor(1000, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error for 404")
 	}
@@ -1168,7 +1168,7 @@ func TestCapture_InvalidResponseJSON(t *testing.T) {
 	defer server.Close()
 	p := configuredProvider(server.URL)
 
-	_, err := p.Capture(context.Background(), "AUTH-100", 1000)
+	_, err := p.Capture(context.Background(), "AUTH-100", money.FromMinor(1000, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error for invalid JSON response")
 	}

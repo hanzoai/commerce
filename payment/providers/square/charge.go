@@ -3,8 +3,8 @@ package square
 import (
 	"context"
 	"fmt"
+	"github.com/hanzoai/money"
 
-	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 )
 
@@ -37,7 +37,7 @@ func (p *Provider) Authorize(ctx context.Context, req processor.PaymentRequest) 
 
 // Capture completes a previously authorized payment by its Square
 // payment_id.
-func (p *Provider) Capture(ctx context.Context, transactionID string, amount currency.Cents) (*processor.PaymentResult, error) {
+func (p *Provider) Capture(ctx context.Context, transactionID string, amount money.Amount) (*processor.PaymentResult, error) {
 	if err := p.checkAvailable(); err != nil {
 		return nil, err
 	}

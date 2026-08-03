@@ -668,7 +668,7 @@ func TestAuthorize_Success(t *testing.T) {
 
 func TestCapture_NotConfigured(t *testing.T) {
 	p := newTestProvider()
-	_, err := p.Capture(context.Background(), "psp-1", 1000)
+	_, err := p.Capture(context.Background(), "psp-1", money.FromMinor(1000, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -679,7 +679,7 @@ func TestCapture_EmptyTransactionID(t *testing.T) {
 	defer server.Close()
 	p := configuredProvider(server.URL)
 
-	_, err := p.Capture(context.Background(), "", 1000)
+	_, err := p.Capture(context.Background(), "", money.FromMinor(1000, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -690,7 +690,7 @@ func TestCapture_ZeroAmount(t *testing.T) {
 	defer server.Close()
 	p := configuredProvider(server.URL)
 
-	_, err := p.Capture(context.Background(), "psp-1", 0)
+	_, err := p.Capture(context.Background(), "psp-1", money.FromMinor(0, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error for zero amount")
 	}
@@ -711,7 +711,7 @@ func TestCapture_Success(t *testing.T) {
 	defer server.Close()
 
 	p := configuredProvider(server.URL)
-	result, err := p.Capture(context.Background(), "PSP-ORIG", 1500)
+	result, err := p.Capture(context.Background(), "PSP-ORIG", money.FromMinor(1500, currency.USD.Money()))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -737,7 +737,7 @@ func TestCapture_APIError(t *testing.T) {
 	defer server.Close()
 
 	p := configuredProvider(server.URL)
-	_, err := p.Capture(context.Background(), "BAD-PSP", 1000)
+	_, err := p.Capture(context.Background(), "BAD-PSP", money.FromMinor(1000, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error for API failure")
 	}

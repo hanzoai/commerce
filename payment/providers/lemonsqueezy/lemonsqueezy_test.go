@@ -442,7 +442,7 @@ func TestCapture_NotSupported(t *testing.T) {
 	p.apiKey = "key"
 	p.storeID = "store"
 
-	_, err := p.Capture(context.Background(), "tx-1", 1000)
+	_, err := p.Capture(context.Background(), "tx-1", money.FromMinor(1000, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error for unsupported operation")
 	}
