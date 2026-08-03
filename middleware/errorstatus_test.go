@@ -29,8 +29,13 @@ func do(t *testing.T, app *zip.App, target string) (*http.Response, string) {
 // and what let the status board show 12 broken services as green.
 func TestReturnedErrorKeepsItsStatus(t *testing.T) {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Group("/v1/store").Use(ErrorHandlerJSON())
-	app.Get("/v1/store/x", func(c *zip.Ctx) error {
+	// The guarded route is composed BENEATH the group that declares the guard.
+	// zip ≥v1.19 wraps a definition's own subtree, so middleware on a group whose
+	// routes were registered on the root would never run — and it refuses that
+	// program at build rather than serving it ungarded.
+	store := app.Group("/v1/store")
+	store.Use(ErrorHandlerJSON())
+	store.Get("/x", func(c *zip.Ctx) error {
 		return zip.ErrForbidden("X-Org-Id required")
 	})
 
@@ -44,8 +49,9 @@ func TestReturnedErrorKeepsItsStatus(t *testing.T) {
 // A panic carries no status, so 500 is the honest answer and the process must live.
 func TestPanicRecoversAs500(t *testing.T) {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Group("/v1/store").Use(ErrorHandlerJSON())
-	app.Get("/v1/store/boom", func(c *zip.Ctx) error { panic("boom") })
+	store := app.Group("/v1/store")
+	store.Use(ErrorHandlerJSON())
+	store.Get("/boom", func(c *zip.Ctx) error { panic("boom") })
 
 	res, body := do(t, app, "/v1/store/boom")
 	if res.StatusCode != 500 {

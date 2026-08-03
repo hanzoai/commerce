@@ -7,6 +7,14 @@ import (
 	"github.com/hanzoai/commerce/util/permission"
 )
 
+// mintPrefix is the absolute path this group is mounted at: r is the /v1 group
+// at every call site, and the group below is "billing". zip ≥v1.19 no longer
+// lets a router be asked where it was included (a prefix is a property of the
+// inclusion site), so the inclusion site states it — see middleware.Mint.
+// TestMintRegistry_DeclarationImpliesEnforcement probes each recorded path
+// against the real router, so a stale value fails as a 404 rather than drifting.
+const mintPrefix = "/v1/billing"
+
 // Route registers billing endpoints for service-to-service calls.
 // These are internal endpoints used by Cloud-API; require admin token.
 func Route(r zip.Router, args ...zip.Handler) {
@@ -29,7 +37,7 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// derived from these registrations instead of hand-listed by each consumer
 	// (cloud's billing-bridge allowlist must stay disjoint from it). See
 	// middleware/platformonly.go and middleware/mint.go.
-	mint := middleware.Mint(api)
+	mint := middleware.Mint(api, mintPrefix)
 
 	// Tier (tier-aware billing)
 	api.Get("/tier", GetTier)

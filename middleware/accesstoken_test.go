@@ -25,7 +25,7 @@ func runGate(t *testing.T, masks []bit.Mask, seed func(*zip.Ctx)) (int, bool) {
 
 	reached := false
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Use(func(c *zip.Ctx) error { seed(c); return c.Next() })
+	app.Use(zip.H(func(c *zip.Ctx) error { seed(c); return c.Next() }))
 	app.Use(TokenRequired(masks...))
 	app.Post("/x", func(c *zip.Ctx) error { reached = true; return c.NoContent(http.StatusOK) })
 

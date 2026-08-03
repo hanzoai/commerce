@@ -12,28 +12,34 @@ import (
 	"github.com/zap-proto/zip"
 )
 
-// TestGroupUseIsPrefixScopedNotMembership is the EXPERIMENT that fixes Mint's
-// shape, kept as a test because the constraint is invisible in the Group/Use API
-// and would otherwise be rediscovered the hard way.
+// TestGroupUseIsMembershipScopedNotPrefix is the EXPERIMENT behind Mint's shape,
+// kept as a test because the constraint is invisible in the Group/Use API and
+// would otherwise be rediscovered the hard way.
 //
 // The intuitive way to express an authz class is "a group carrying its own Use":
 //
 //	mint := api.Group("")
-//	mint.Use(PlatformOnly())      // ← gates the group's own routes … in theory
+//	mint.Use(PlatformOnly())      // ← gates the group's own routes
 //	mint.Post("/deposit", Deposit)
 //
-// That shape does NOT work on this router. fiber's Use matches by PATH PREFIX,
-// not by group membership, and a BARE sub-group inherits its parent's prefix
-// verbatim (getGroupPath(prefix, "") == prefix). So `mint`'s Use registers at
-// "/v1/billing" — the SAME prefix as `api` — and runs for every neighbouring
-// route under it. The gate would silently spread from the 16 mint routes to the
-// whole billing surface, 403'ing the org-admin reads (GET /balance, /invoices,
-// /subscriptions, …) that must stay reachable.
+// Through zip v1.18 that shape LEAKED. Use matched by PATH PREFIX, and a bare
+// sub-group inherited its parent's prefix verbatim (getGroupPath(prefix, "") ==
+// prefix), so the gate registered at "/v1/billing" — the SAME prefix as `api` —
+// and ran for every neighbouring route under it, 403'ing the org-admin reads
+// (GET /balance, /invoices, /subscriptions, …) that must stay reachable. Mint
+// therefore prepends the gate per-route, which gates exactly the declared routes.
 //
-// This test PROVES the leak: a marker middleware on a bare sub-group fires on a
-// sibling route registered against the PARENT. That is why Mint prepends the
-// gate per-route instead, and why mintRouter.Use is refused outright.
-func TestGroupUseIsPrefixScopedNotMembership(t *testing.T) {
+// zip v1.19 INVERTED this: a definition's middleware wraps the routes in its OWN
+// subtree, so the gate no longer reaches a sibling registered on the parent. The
+// gated-sub-group shape is now sound, and simpler than the decorator's per-route
+// prepend — but adopting it is a change to a money gate, and it is only half of
+// Mint anyway (the registry still needs a decorator to record what was declared),
+// so it is deliberately NOT taken here. Mint's per-route prepend remains correct
+// under either scoping: it gates precisely the routes registered through it.
+//
+// The test therefore pins the CURRENT semantics in both directions, because
+// "did not fire" alone would also pass for a middleware that never runs at all.
+func TestGroupUseIsMembershipScopedNotPrefix(t *testing.T) {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
 	api := app.Group("/v1").Group("billing")
 
@@ -41,36 +47,55 @@ func TestGroupUseIsPrefixScopedNotMembership(t *testing.T) {
 	// on a group" shape.
 	sub := api.Group("")
 	var sawPaths []string
-	sub.Use(func(c *zip.Ctx) error {
-		sawPaths = append(sawPaths, c.Path())
+	sub.Use(zip.H(func(c *zip.Ctx) error {
+		// CLONE: c.Path() aliases fasthttp's pooled request buffer, so a retained
+		// path is rewritten in place by the NEXT request — a recorded
+		// "/v1/billing/deposit" silently becomes "/v1/billing/balance" and the
+		// probe reports a leak that never happened.
+		sawPaths = append(sawPaths, strings.Clone(c.Path()))
 		return c.Next()
-	})
+	}))
 	sub.Post("/deposit", func(c *zip.Ctx) error { return c.JSON(http.StatusOK, "deposit") })
 
-	// A sibling NON-mint read, registered on the PARENT group. It must not be
-	// touched by the sub-group's middleware.
+	// A sibling NON-mint read, registered on the PARENT group.
 	api.Get("/balance", func(c *zip.Ctx) error { return c.JSON(http.StatusOK, "balance") })
 
-	resp, err := app.Fiber().Test(httptest.NewRequest(http.MethodGet, "/v1/billing/balance", nil))
-	if err != nil {
-		t.Fatalf("Test: %v", err)
+	saw := func(path string) bool {
+		for _, p := range sawPaths {
+			if p == path {
+				return true
+			}
+		}
+		return false
 	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("GET /v1/billing/balance: status=%d, want 200", resp.StatusCode)
+	get := func(method, path string) int {
+		resp, err := app.Fiber().Test(httptest.NewRequest(method, path, nil))
+		if err != nil {
+			t.Fatalf("Test %s %s: %v", method, path, err)
+		}
+		return resp.StatusCode
 	}
 
-	for _, p := range sawPaths {
-		if p == "/v1/billing/balance" {
-			t.Logf("CONFIRMED: a bare sub-group's Use fired on the PARENT's sibling route %q.", p)
-			t.Logf("  fiber Use is prefix-scoped, so `api.Group(\"\").Use(gate)` gates ALL of /v1/billing —")
-			t.Logf("  every org-admin read included. Mint therefore prepends the gate per-route.")
-			return
-		}
+	// (1) The sub-group's OWN route is wrapped — otherwise (2) proves nothing.
+	if code := get(http.MethodPost, "/v1/billing/deposit"); code != http.StatusOK {
+		t.Fatalf("POST /v1/billing/deposit: status=%d, want 200", code)
 	}
-	t.Fatalf("bare sub-group Use did NOT fire on the parent's sibling route (saw %v).\n"+
-		"    fiber's Use scoping may have changed: if Use is now membership-scoped, Mint SHOULD be\n"+
-		"    rewritten as a gated sub-group (mint := api.Group(\"\"); mint.Use(PlatformOnly())) — the\n"+
-		"    simpler shape this test exists to rule out.", sawPaths)
+	if !saw("/v1/billing/deposit") {
+		t.Fatalf("a sub-group's Use did NOT wrap the sub-group's own route (saw %v).\n"+
+			"    Group middleware is not running at all, so the scoping this test reports is meaningless.", sawPaths)
+	}
+
+	// (2) A sibling on the PARENT is NOT wrapped: membership, not prefix.
+	if code := get(http.MethodGet, "/v1/billing/balance"); code != http.StatusOK {
+		t.Fatalf("GET /v1/billing/balance: status=%d, want 200", code)
+	}
+	if saw("/v1/billing/balance") {
+		t.Fatalf("a bare sub-group's Use FIRED on the parent's sibling route (saw %v).\n"+
+			"    Use has reverted to PREFIX scoping: `api.Group(\"\").Use(gate)` would gate ALL of\n"+
+			"    /v1/billing, every org-admin read included. Mint's per-route prepend is then the\n"+
+			"    only safe shape — do not convert it to a gated sub-group.", sawPaths)
+	}
+	t.Logf("CONFIRMED membership scoping: sub-group Use wrapped %v, and left the parent's sibling alone.", sawPaths)
 }
 
 // TestMintRecordsFullPathAndGates proves the two halves of the single
@@ -83,7 +108,7 @@ func TestMintRecordsFullPathAndGates(t *testing.T) {
 	api := app.Group("/v1").Group("billing")
 
 	reached := false
-	Mint(api).Post("/mint-probe", func(c *zip.Ctx) error {
+	Mint(api, "/v1/billing").Post("/mint-probe", func(c *zip.Ctx) error {
 		reached = true
 		return c.JSON(http.StatusOK, "minted")
 	})
@@ -119,7 +144,7 @@ func TestMintRecordsFullPathAndGates(t *testing.T) {
 func TestMintRegistryIsASet(t *testing.T) {
 	register := func() {
 		app := zip.New(zip.Config{DisableStartupMessage: true})
-		Mint(app.Group("/v1").Group("billing")).Post("/set-probe", func(c *zip.Ctx) error { return nil })
+		Mint(app.Group("/v1").Group("billing"), "/v1/billing").Post("/set-probe", func(c *zip.Ctx) error { return nil })
 	}
 	register()
 	register()
@@ -146,7 +171,7 @@ func TestMintUseIsRefused(t *testing.T) {
 		}
 	}()
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	Mint(app.Group("/v1").Group("billing")).Use(func(c *zip.Ctx) error { return nil })
+	Mint(app.Group("/v1").Group("billing"), "/v1/billing").Use(zip.H(func(c *zip.Ctx) error { return nil }))
 }
 
 // A TYPED op declared on a mint router is gated exactly as an untyped one is.
@@ -155,7 +180,7 @@ func TestMintUseIsRefused(t *testing.T) {
 // router's whole purpose, skipped silently.
 func TestMintGatesATypedOp(t *testing.T) {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	mint := Mint(app.Group("/v1/billing"))
+	mint := Mint(app.Group("/v1/billing"), "/v1/billing")
 
 	type depositIn struct {
 		Cents int `json:"cents"`
