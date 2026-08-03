@@ -5,7 +5,6 @@ import (
 	"encoding/gob"
 	"fmt"
 	"github.com/hanzoai/orm"
-	"math"
 	"strconv"
 	"time"
 
@@ -33,6 +32,8 @@ import (
 	"github.com/hanzoai/commerce/util/hashid"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/val"
+
+	"github.com/hanzoai/money"
 
 	. "github.com/hanzoai/commerce/types"
 )
@@ -321,9 +322,24 @@ func (o *Order) AddAffiliateFee(pricing *pricing.Fees, fees []*fee.Fee) ([]*fee.
 		return fees, err
 	}
 
-	// Compute fees
-	affFee := currency.Cents(math.Floor(float64(o.Total)*aff.Commission.Percent)) + aff.Commission.Flat
-	platformFee := currency.Cents(math.Ceil(float64(affFee)*pricing.Affiliate.Percent)) + pricing.Affiliate.Flat
+	// Compute fees. Both directions below are deliberate and unchanged: the commission we
+	// pay OUT rounds down and the house keeps the part-cent, the fee we COLLECT on it
+	// rounds up. What changes is that each now rounds the amount instead of the float, so
+	// a product that was already a whole number of cents survives untouched — math.Floor
+	// was taking a cent out of a commission that was exactly 29 (100 × 29% comes to
+	// 28.999999999999996 in float64) and math.Ceil was adding one to a fee that was
+	// exactly 49 (700 × 7% comes to 49.000000000000007).
+	affRate, err := money.RateFromFloat(aff.Commission.Percent)
+	if err != nil {
+		return fees, err
+	}
+	affFee := o.Total.ScaleFloor(affRate) + aff.Commission.Flat
+
+	platRate, err := money.RateFromFloat(pricing.Affiliate.Percent)
+	if err != nil {
+		return fees, err
+	}
+	platformFee := affFee.ScaleCeil(platRate) + pricing.Affiliate.Flat
 
 	// Create affiliate fee
 	fe := fee.New(db)
@@ -346,7 +362,7 @@ func (o *Order) AddAffiliateFee(pricing *pricing.Fees, fees []*fee.Fee) ([]*fee.
 	return append(fees, fe), nil
 }
 
-func (o *Order) AddPlatformFee(pricing *pricing.Fees, fees []*fee.Fee) []*fee.Fee {
+func (o *Order) AddPlatformFee(pricing *pricing.Fees, fees []*fee.Fee) ([]*fee.Fee, error) {
 	ctx := o.Context()
 	db := datastore.New(ctx)
 
@@ -357,16 +373,26 @@ func (o *Order) AddPlatformFee(pricing *pricing.Fees, fees []*fee.Fee) []*fee.Fe
 	fe.Type = fee.Platform
 	fe.Currency = o.Currency
 
+	// The currency picks the schedule; the fee is then computed once. Rounded UP, which is
+	// the platform fee's long-standing direction, but rounded on the amount rather than on
+	// the float — the three copies of math.Ceil this replaces each billed an extra cent
+	// whenever the product was already whole, e.g. a $7.00 order at 7% is exactly 49c but
+	// float64 makes it 49.000000000000007.
+	pct, flat := pricing.Card.Percent, pricing.Card.Flat
 	switch o.Currency {
 	case currency.ETH:
-		fe.Amount = pricing.Ethereum.Flat + currency.Cents(math.Ceil(float64(o.Total)*pricing.Ethereum.Percent)) // Round up for platform fee
+		pct, flat = pricing.Ethereum.Percent, pricing.Ethereum.Flat
 	case currency.BTC, currency.XBT:
-		fe.Amount = pricing.Bitcoin.Flat + currency.Cents(math.Ceil(float64(o.Total)*pricing.Bitcoin.Percent)) // Round up for platform fee
-	default:
-		fe.Amount = pricing.Card.Flat + currency.Cents(math.Ceil(float64(o.Total)*pricing.Card.Percent)) // Round up for platform fee
+		pct, flat = pricing.Bitcoin.Percent, pricing.Bitcoin.Flat
 	}
 
-	return append(fees, fe)
+	rate, err := money.RateFromFloat(pct)
+	if err != nil {
+		return fees, err
+	}
+	fe.Amount = flat + o.Total.ScaleCeil(rate)
+
+	return append(fees, fe), nil
 }
 
 func (o *Order) AddPartnerFee(partners []pricing.Partner, fees []*fee.Fee) ([]*fee.Fee, error) {
@@ -381,14 +407,21 @@ func (o *Order) AddPartnerFee(partners []pricing.Partner, fees []*fee.Fee) ([]*f
 		fe.Type = fee.Platform
 		fe.Currency = o.Currency
 
+		// Same shape as the platform fee: the currency picks the commission, the
+		// commission is applied once, rounded up on the amount and not on the float.
+		com := partner.Card.Commission
 		switch o.Currency {
 		case currency.ETH:
-			fe.Amount = partner.Ethereum.Commission.Flat + currency.Cents(math.Ceil(float64(o.Total)*partner.Ethereum.Commission.Percent)) // Round up for platform fee
+			com = partner.Ethereum.Commission
 		case currency.BTC, currency.XBT:
-			fe.Amount = partner.Bitcoin.Commission.Flat + currency.Cents(math.Ceil(float64(o.Total)*partner.Bitcoin.Commission.Percent)) // Round up for platform fee
-		default:
-			fe.Amount = partner.Card.Commission.Flat + currency.Cents(math.Ceil(float64(o.Total)*partner.Card.Commission.Percent)) // Round up for platform fee
+			com = partner.Bitcoin.Commission
 		}
+
+		rate, err := money.RateFromFloat(com.Percent)
+		if err != nil {
+			return fees, err
+		}
+		fe.Amount = com.Flat + o.Total.ScaleCeil(rate)
 
 		fees = append(fees, fe)
 	}
@@ -407,7 +440,10 @@ func (o *Order) CalculateFees(pricing *pricing.Fees, partners []pricing.Partner)
 	}
 
 	// Add Platform fees
-	fees = o.AddPlatformFee(pricing, fees)
+	fees, err = o.AddPlatformFee(pricing, fees)
+	if err != nil {
+		return total, fees, err
+	}
 
 	// Add Partner fees
 	fees, err = o.AddPartnerFee(partners, fees)

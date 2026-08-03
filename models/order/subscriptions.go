@@ -12,6 +12,7 @@ import (
 	"github.com/hanzoai/commerce/models/types/productcachedvalues"
 	"github.com/hanzoai/commerce/models/types/refs"
 	"github.com/hanzoai/commerce/util/timeutil"
+	"github.com/hanzoai/money"
 
 	. "github.com/hanzoai/commerce/types"
 )
@@ -103,7 +104,7 @@ func (s Subscription) PeriodsRemaining() int {
 	return years
 }
 
-func (o *Order) CreateAndTallySubscriptionFromItem(stor *store.Store, item lineitem.LineItem) Subscription {
+func (o *Order) CreateAndTallySubscriptionFromItem(stor *store.Store, item lineitem.LineItem) (Subscription, error) {
 	sub := Subscription{}
 	sub.ProductCachedValues = item.ProductCachedValues
 	sub.ProductId = item.ProductId
@@ -119,7 +120,15 @@ func (o *Order) CreateAndTallySubscriptionFromItem(stor *store.Store, item linei
 	if srs, err := stor.GetShippingRates(); srs == nil {
 		log.Warn("Failed to get shippingrates for discount rules: %v", err, ctx)
 	} else if match, _, _ := srs.Match(o.ShippingAddress.Country, o.ShippingAddress.State, o.ShippingAddress.City, o.ShippingAddress.PostalCode, o.Subtotal); match != nil {
-		sub.Shipping = match.Cost + currency.Cents(float64(sub.Subtotal)*match.Percent)
+		// Same rule as the order this subscription came off: the stored float64 becomes
+		// an exact rate, and the part-cent rounds instead of being dropped. A
+		// subscription that tallied differently from its own order would bill a
+		// different number every period.
+		rate, err := money.RateFromFloat(match.Percent)
+		if err != nil {
+			return sub, err
+		}
+		sub.Shipping = match.Cost + sub.Subtotal.Scale(rate)
 	}
 
 	sub.Tax = 0
@@ -127,16 +136,22 @@ func (o *Order) CreateAndTallySubscriptionFromItem(stor *store.Store, item linei
 	if trs, err := stor.GetTaxRates(); trs == nil {
 		log.Warn("Failed to get taxrates for discount rules: %v", err, ctx)
 	} else if match, _, _ := trs.Match(o.ShippingAddress.Country, o.ShippingAddress.State, o.ShippingAddress.City, o.ShippingAddress.PostalCode, o.Subtotal); match != nil {
+		// Taxable shipping changes the BASE, not the arithmetic.
+		base := sub.Subtotal
 		if match.TaxShipping {
-			sub.Tax = match.Cost + currency.Cents(float64(sub.Subtotal+sub.Shipping)*match.Percent)
-		} else {
-			sub.Tax = match.Cost + currency.Cents(float64(sub.Subtotal)*match.Percent)
+			base += sub.Shipping
 		}
+
+		rate, err := money.RateFromFloat(match.Percent)
+		if err != nil {
+			return sub, err
+		}
+		sub.Tax = match.Cost + base.Scale(rate)
 	}
 
 	sub.Total = sub.Subtotal + sub.Shipping + sub.Tax
 
-	return sub
+	return sub, nil
 }
 
 // Update order with information from datastore and tally
@@ -194,7 +209,10 @@ func (o *Order) CreateSubscriptionsFromItems(stor *store.Store) error {
 		for q := 0; q < qty; q++ {
 			single := item
 			single.Quantity = 1
-			sub := o.CreateAndTallySubscriptionFromItem(stor, single)
+			sub, err := o.CreateAndTallySubscriptionFromItem(stor, single)
+			if err != nil {
+				return err
+			}
 			o.Subscriptions = append(o.Subscriptions, sub)
 		}
 	}

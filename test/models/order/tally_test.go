@@ -138,8 +138,8 @@ var _ = Describe("Order.UpdateAndTally", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ord.Subtotal).To(Equal(currency.Cents(50000)))
 
-			tax := 1 + currency.Cents(float64(ord.Subtotal)*0.0885)
-			shipping := 499 + currency.Cents(float64(ord.Subtotal)*0.1)
+			tax := 1 + (ord.Subtotal).Scale(taxRate)
+			shipping := 499 + (ord.Subtotal).Scale(shipRate)
 
 			Expect(ord.Tax).To(Equal(tax))
 			Expect(ord.Shipping).To(Equal(shipping))
@@ -165,8 +165,8 @@ var _ = Describe("Order.UpdateAndTally", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ord.Subtotal).To(Equal(subTotal))
 
-			tax := 1 + currency.Cents(float64(ord.Subtotal)*0.0885)
-			shipping := 499 + currency.Cents(float64(ord.Subtotal)*0.1)
+			tax := 1 + (ord.Subtotal).Scale(taxRate)
+			shipping := 499 + (ord.Subtotal).Scale(shipRate)
 
 			Expect(ord.Tax).To(Equal(tax))
 			Expect(ord.Shipping).To(Equal(shipping))
@@ -181,12 +181,32 @@ var _ = Describe("Order.UpdateAndTally", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ord.Subtotal).To(Equal(subTotal))
 
-			tax := 1 + currency.Cents(float64(ord.Subtotal)*0.0885)
-			shipping := 499 + currency.Cents(float64(ord.Subtotal)*0.1)
+			tax := 1 + (ord.Subtotal).Scale(taxRate)
+			shipping := 499 + (ord.Subtotal).Scale(shipRate)
 
 			Expect(ord.Tax).To(Equal(tax))
 			Expect(ord.Shipping).To(Equal(shipping))
 			Expect(ord.Total).To(Equal(ord.Subtotal + tax + shipping))
+		})
+
+		// The tests above apply the rate to whatever subtotal the fixture produced, which
+		// happens to divide evenly, so none of them can tell a rounded tax from a
+		// truncated one. This one picks a subtotal that cannot: $19.99 at the store's
+		// 8.85% is 176.9115 cents of tax, and at 10% is 199.9 of shipping. Truncating
+		// billed 176 and 199; both fractions are over half and both belong to the
+		// jurisdiction and the carrier, not to whichever way int64() happens to fall.
+		It("Should round tax and shipping rather than truncate them", func() {
+			ord.CouponCodes = []string{}
+			ord.Mode = order.ContributionMode
+			ord.Subtotal = 1999
+
+			err := ord.UpdateAndTally(stor)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ord.Subtotal).To(Equal(currency.Cents(1999)))
+
+			Expect(ord.Tax).To(Equal(currency.Cents(1 + 177)))        // truncating gave 1 + 176
+			Expect(ord.Shipping).To(Equal(currency.Cents(499 + 200))) // truncating gave 499 + 199
+			Expect(ord.Total).To(Equal(currency.Cents(1999 + 178 + 699)))
 		})
 
 		It("Should UpdateAndTally with Provided Subtotal for TokenSales", func() {
@@ -197,8 +217,8 @@ var _ = Describe("Order.UpdateAndTally", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ord.Subtotal).To(Equal(subTotal))
 
-			tax := 1 + currency.Cents(float64(ord.Subtotal)*0.0885)
-			shipping := 499 + currency.Cents(float64(ord.Subtotal)*0.1)
+			tax := 1 + (ord.Subtotal).Scale(taxRate)
+			shipping := 499 + (ord.Subtotal).Scale(shipRate)
 
 			Expect(ord.Tax).To(Equal(tax))
 			Expect(ord.Shipping).To(Equal(shipping))
@@ -212,8 +232,8 @@ var _ = Describe("Order.UpdateAndTally", func() {
 
 			Expect(ord.Subtotal).To(Equal(currency.Cents(49500)))
 
-			tax := 1 + currency.Cents(float64(ord.Subtotal+ord.Discount)*0.0885)
-			shipping := 499 + currency.Cents(float64(ord.Subtotal)*0.1)
+			tax := 1 + (ord.Subtotal + ord.Discount).Scale(taxRate)
+			shipping := 499 + (ord.Subtotal).Scale(shipRate)
 
 			Expect(ord.Tax).To(Equal(tax))
 			Expect(ord.Shipping).To(Equal(shipping))
@@ -229,8 +249,8 @@ var _ = Describe("Order.UpdateAndTally", func() {
 
 			Expect(ord.Subtotal).To(Equal(currency.Cents(49500)))
 
-			tax := 1 + currency.Cents(float64(ord.Subtotal+ord.Discount)*0.0885)
-			shipping := 499 + currency.Cents(float64(ord.Subtotal)*0.1)
+			tax := 1 + (ord.Subtotal + ord.Discount).Scale(taxRate)
+			shipping := 499 + (ord.Subtotal).Scale(shipRate)
 
 			Expect(ord.Tax).To(Equal(tax))
 			Expect(ord.Shipping).To(Equal(shipping))
@@ -249,8 +269,8 @@ var _ = Describe("Order.UpdateAndTally", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ord2.Subtotal).To(Equal(currency.Cents(2000)))
 
-			tax := 1 + currency.Cents(float64(ord2.Subtotal)*0.0885)
-			shipping := 499 + currency.Cents(float64(ord2.Subtotal)*0.1)
+			tax := 1 + (ord2.Subtotal).Scale(taxRate)
+			shipping := 499 + (ord2.Subtotal).Scale(shipRate)
 
 			Expect(ord2.Tax).To(Equal(tax))
 			Expect(ord2.Shipping).To(Equal(shipping))
@@ -267,8 +287,8 @@ var _ = Describe("Order.UpdateAndTally", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ord2.Subtotal).To(Equal(currency.Cents(2000)))
 
-			tax = 1 + currency.Cents(float64(ord2.Subtotal)*0.0885)
-			shipping = 499 + currency.Cents(float64(ord2.Subtotal)*0.1)
+			tax = 1 + (ord2.Subtotal).Scale(taxRate)
+			shipping = 499 + (ord2.Subtotal).Scale(shipRate)
 
 			Expect(ord2.Tax).To(Equal(tax))
 			Expect(ord2.Shipping).To(Equal(shipping))

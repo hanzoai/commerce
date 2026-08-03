@@ -6,6 +6,7 @@ import (
 	"github.com/hanzoai/commerce/models/taxrate"
 	"github.com/hanzoai/commerce/models/taxregion"
 	"github.com/hanzoai/commerce/types"
+	"github.com/hanzoai/money"
 )
 
 // TaxLine represents a single tax computation on an invoice.
@@ -62,7 +63,22 @@ func CalculateInvoiceTax(db *datastore.Datastore, inv *billinginvoice.BillingInv
 		}
 
 		for _, rate := range rates {
-			taxAmount := int64(float64(inv.Subtotal) * rate.Rate)
+			// Each rate is a separate jurisdiction's claim on the same subtotal, so each
+			// is rounded on its own and the total is their sum — a jurisdiction is
+			// remitted the amount on ITS line, and a total rounded once over the combined
+			// rate would not match the lines that make it up.
+			//
+			// These rates are our own TaxRate rows, not a figure returned by a tax
+			// provider, so the part-cent is ours to compute and truncating it
+			// under-collected tax we still owe.
+			r, err := money.RateFromFloat(rate.Rate)
+			if err != nil {
+				return nil, 0, err
+			}
+			taxAmount, err := money.ScaleMinor(inv.Subtotal, r)
+			if err != nil {
+				return nil, 0, err
+			}
 
 			jurisdiction := region.CountryCode
 			if region.ProvinceCode != "" {
