@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/hanzoai/money"
 
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -506,11 +507,11 @@ type snsMessage struct {
 // caller that cannot tell "the payment was for nothing" from "we could not read
 // what the payment was for" reports a confident $0.
 func parseAmount(s string) (currency.Cents, error) {
-	cents, err := money.ParseCents(s)
+	cents, err := currency.USD.Parse(s)
 	if err != nil {
 		return 0, err
 	}
-	return currency.Cents(cents), nil
+	return cents, nil
 }
 
 // parseTime converts a Circle ISO 8601 timestamp to Unix epoch seconds.

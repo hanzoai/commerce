@@ -6,8 +6,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/hanzoai/money"
-
 	"github.com/hanzoai/commerce/models/types/currency"
 )
 
@@ -40,12 +38,16 @@ func NewIpnMessage(form url.Values) (*IpnMessage, error) {
 		return nil, fmt.Errorf("ipn: amount %q is not \"&lt;CURRENCY&gt; &lt;decimal&gt;\"", raw)
 	}
 
-	amount, err := money.ParseCents(parts[1])
+	// The currency is read first because it decides the scale — it is in the
+	// same field as the digits, so there is nothing to guess. Parsing at a
+	// hardcoded USD scale read a zero-decimal notification a hundred times too
+	// large: "JPY 500" is 500 minor units, not 50000.
+	message.Currency = currency.Type(strings.ToLower(parts[0]))
+	amount, err := message.Currency.Parse(parts[1])
 	if err != nil {
 		return nil, fmt.Errorf("ipn: %w", err)
 	}
-	message.Amount = currency.Cents(amount)
-	message.Currency = currency.Type(strings.ToLower(parts[0]))
+	message.Amount = amount
 
 	return message, nil
 }

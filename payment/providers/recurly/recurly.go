@@ -304,14 +304,13 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 	}
 
 	// The currency's own decimal convention decides the scale — a zero-decimal
-	// currency (JPY) must not gain two. commerce's currency table is the
-	// authority on that; money.ParseMinor is the authority on the conversion.
+	// currency (JPY) must not gain two. Type.Parse applies this table's scale,
+	// and it is the one way a provider's decimal becomes minor units.
 	cur := currency.Type(strings.ToLower(txn.Currency))
-	minor, err := money.ParseMinor(txn.Amount.String(), cur.Money())
+	amountCents, err := cur.Parse(txn.Amount.String())
 	if err != nil {
 		return nil, fmt.Errorf("recurly transaction %s amount: %w", txID, err)
 	}
-	amountCents := currency.Cents(minor)
 
 	var createdAt, updatedAt int64
 	if t, err := time.Parse(time.RFC3339, txn.CreatedAt); err == nil {
