@@ -12,6 +12,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/hanzoai/money"
 	"io"
 	"net/http"
 	"os"
@@ -161,7 +162,7 @@ func (p *Provider) Authorize(ctx context.Context, req processor.PaymentRequest) 
 }
 
 // Capture is not supported for MoonPay on-ramp.
-func (p *Provider) Capture(ctx context.Context, transactionID string, amount currency.Cents) (*processor.PaymentResult, error) {
+func (p *Provider) Capture(ctx context.Context, transactionID string, amount money.Amount) (*processor.PaymentResult, error) {
 	return nil, processor.NewPaymentError(processor.MoonPay, "NOT_SUPPORTED", "capture not supported for on-ramp transactions", nil)
 }
 

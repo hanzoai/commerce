@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/hanzoai/money"
 	"io"
 	"net/http"
 	"strings"
@@ -344,7 +345,7 @@ func (p *Provider) doPayment(ctx context.Context, req processor.PaymentRequest, 
 }
 
 // Capture captures a previously authorized payment.
-func (p *Provider) Capture(ctx context.Context, transactionID string, amount currency.Cents) (*processor.PaymentResult, error) {
+func (p *Provider) Capture(ctx context.Context, transactionID string, amount money.Amount) (*processor.PaymentResult, error) {
 	if err := p.ensureAvailable(); err != nil {
 		return nil, err
 	}
@@ -352,19 +353,18 @@ func (p *Provider) Capture(ctx context.Context, transactionID string, amount cur
 		return nil, processor.NewPaymentError(processor.Adyen, "INVALID_TRANSACTION",
 			"transaction ID is required for capture", nil)
 	}
-	if amount <= 0 {
+	if amount.Sign() <= 0 {
 		return nil, processor.NewPaymentError(processor.Adyen, "INVALID_AMOUNT",
 			"capture amount must be positive", nil)
 	}
 
-	// Adyen captures require currency; default to USD if not specified in metadata.
-	// Callers should pass the currency via options on the original auth if needed.
-	cur := "USD"
-
+	// Adyen captures require the currency, and the amount now carries it — this
+	// defaulted to "USD" and told callers to pass it "via options" instead, so
+	// every non-USD capture was labelled wrong.
 	body := adyenCaptureRequest{
 		Amount: adyenAmount{
-			Value:    int64(amount),
-			Currency: cur,
+			Value:    amount.Minor().Int64(),
+			Currency: amount.Currency().Code,
 		},
 		MerchantAccount: p.config.MerchantAccount,
 		Reference:       fmt.Sprintf("cap_%d", time.Now().UnixNano()),

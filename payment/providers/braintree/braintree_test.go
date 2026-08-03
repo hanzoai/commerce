@@ -580,7 +580,7 @@ func TestAuthorize_NoTransaction(t *testing.T) {
 
 func TestCapture_NotConfigured(t *testing.T) {
 	p := newTestProvider()
-	_, err := p.Capture(context.Background(), "tx-1", 1000)
+	_, err := p.Capture(context.Background(), "tx-1", money.FromMinor(1000, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -591,7 +591,7 @@ func TestCapture_EmptyTransactionID(t *testing.T) {
 	defer server.Close()
 	p := configuredProvider(server.URL)
 
-	_, err := p.Capture(context.Background(), "", 1000)
+	_, err := p.Capture(context.Background(), "", money.FromMinor(1000, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error for empty transaction ID")
 	}
@@ -612,7 +612,7 @@ func TestCapture_Success(t *testing.T) {
 	defer server.Close()
 
 	p := configuredProvider(server.URL)
-	result, err := p.Capture(context.Background(), "bt-auth-1", 1500)
+	result, err := p.Capture(context.Background(), "bt-auth-1", money.FromMinor(1500, currency.USD.Money()))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -636,7 +636,7 @@ func TestCapture_FullAmount(t *testing.T) {
 	defer server.Close()
 
 	p := configuredProvider(server.URL)
-	result, err := p.Capture(context.Background(), "bt-auth-2", 0)
+	result, err := p.Capture(context.Background(), "bt-auth-2", money.FromMinor(0, currency.USD.Money()))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -653,7 +653,7 @@ func TestCapture_GraphQLError(t *testing.T) {
 	defer server.Close()
 
 	p := configuredProvider(server.URL)
-	_, err := p.Capture(context.Background(), "bad-tx", 1000)
+	_, err := p.Capture(context.Background(), "bad-tx", money.FromMinor(1000, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -669,7 +669,7 @@ func TestCapture_NoTransaction(t *testing.T) {
 	defer server.Close()
 
 	p := configuredProvider(server.URL)
-	_, err := p.Capture(context.Background(), "tx-1", 1000)
+	_, err := p.Capture(context.Background(), "tx-1", money.FromMinor(1000, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error for missing transaction")
 	}

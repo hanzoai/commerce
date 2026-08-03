@@ -175,7 +175,7 @@ func TestAuthorize_Unconfigured(t *testing.T) {
 
 func TestCapture_Unconfigured(t *testing.T) {
 	p := newTestProvider()
-	_, err := p.Capture(context.Background(), "tx", 100)
+	_, err := p.Capture(context.Background(), "tx", money.FromMinor(100, currency.USD.Money()))
 	if err == nil {
 		t.Fatal("expected error on unconfigured Capture")
 	}

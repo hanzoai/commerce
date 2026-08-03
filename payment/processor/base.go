@@ -2,6 +2,7 @@ package processor
 
 import (
 	"context"
+	"github.com/hanzoai/money"
 
 	"github.com/hanzoai/commerce/models/types/currency"
 )
@@ -50,7 +51,7 @@ func (b *BaseProcessor) Authorize(ctx context.Context, req PaymentRequest) (*Pay
 
 // Capture provides a default implementation
 // Processors that support auth/capture should override this
-func (b *BaseProcessor) Capture(ctx context.Context, transactionID string, amount currency.Cents) (*PaymentResult, error) {
+func (b *BaseProcessor) Capture(ctx context.Context, transactionID string, amount money.Amount) (*PaymentResult, error) {
 	return nil, NewPaymentError(b.processorType, "NOT_IMPLEMENTED", "capture not implemented", nil)
 }
 

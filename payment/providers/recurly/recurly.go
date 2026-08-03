@@ -162,7 +162,7 @@ func (p *Provider) Authorize(ctx context.Context, req processor.PaymentRequest) 
 
 // Capture collects a pending invoice (from a manual-collection purchase).
 // The transactionID should be the invoice ID returned from Authorize.
-func (p *Provider) Capture(ctx context.Context, transactionID string, amount currency.Cents) (*processor.PaymentResult, error) {
+func (p *Provider) Capture(ctx context.Context, transactionID string, amount money.Amount) (*processor.PaymentResult, error) {
 	if err := p.checkAvailable(ctx); err != nil {
 		return nil, err
 	}

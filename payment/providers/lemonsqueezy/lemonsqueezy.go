@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/hanzoai/money"
 	"io"
 	"net/http"
 	"strconv"
@@ -261,7 +262,7 @@ func (p *Provider) Authorize(ctx context.Context, req processor.PaymentRequest) 
 }
 
 // Capture is not supported by LemonSqueezy. It returns NOT_SUPPORTED.
-func (p *Provider) Capture(ctx context.Context, transactionID string, amount currency.Cents) (*processor.PaymentResult, error) {
+func (p *Provider) Capture(ctx context.Context, transactionID string, amount money.Amount) (*processor.PaymentResult, error) {
 	return nil, processor.NewPaymentError(processor.LemonSqueezy, "NOT_SUPPORTED",
 		"lemonsqueezy does not support authorize/capture; use Charge to create a checkout", nil)
 }
