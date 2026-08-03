@@ -1,34 +1,25 @@
 package types
 
 import (
-	"math"
 	"regexp"
-	"strconv"
 	"strings"
-
-	humanize "github.com/dustin/go-humanize"
 
 	"github.com/hanzoai/commerce/models/types/currency"
 )
 
-func FloatPrice(price currency.Cents) float64 {
-	return math.Floor(float64(price)*100+0.5) / 10000
-}
-
+// DisplayPrice renders a price for a human: symbol, grouped thousands, the
+// currency's own number of decimals ("$1,234.56", "¥10000").
+//
+// This is the display funnel — every storefront, order and receipt string in
+// commerce comes through here, so it holds no arithmetic of its own. The
+// amount is rendered from the integer by money, which cannot round a cent away
+// the way the float this used to compute could.
+//
+// A negative now renders "-$100.00" rather than the old "$-100.00": the sign
+// belongs to the amount, not to the digits after the symbol, and a refund is
+// the most common negative there is.
 func DisplayPrice(t currency.Type, price currency.Cents) string {
-	f := ""
-	if t.IsZeroDecimal() {
-		f = strconv.FormatFloat(float64(price), 'f', 0, 64)
-	} else {
-		f = strconv.FormatFloat(FloatPrice(price), 'f', 2, 64)
-	}
-	bits := strings.Split(f, ".")
-	decimal := ""
-	if len(bits) > 1 {
-		decimal = "." + bits[1]
-	}
-	integer, _ := strconv.ParseInt(bits[0], 10, 64)
-	return t.Symbol() + humanize.Comma(integer) + decimal
+	return t.Amount(price).Display()
 }
 
 // Non-breaking hyphens in title

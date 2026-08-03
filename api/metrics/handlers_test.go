@@ -180,16 +180,21 @@ func TestRollupAggregation(t *testing.T) {
 	if s.Revenue.PayingCustomers != 1 {
 		t.Errorf("paying customers = %d, want 1 (only acme)", s.Revenue.PayingCustomers)
 	}
-	// New: acme monthly (created -10d, active, +2000) and beta trial (created -2d, +2000).
-	if s.Subs.New != 2 || s.Revenue.NewMRRCents != 4000 {
-		t.Errorf("new = %d newMRR = %d, want 2 / 4000", s.Subs.New, s.Revenue.NewMRRCents)
+	// New: acme monthly (created -10d, active, +2000) and beta trial (created
+	// -2d). Both are new SUBSCRIPTIONS, so New is 2 — but the trial is not
+	// revenue, so it adds 0 and newMRR is 2000, not 4000. This used to book
+	// the trial's full 2000 while MRR above booked none of it, so net-new
+	// claimed revenue the run-rate never showed.
+	if s.Subs.New != 2 || s.Revenue.NewMRRCents != 2000 {
+		t.Errorf("new = %d newMRR = %d, want 2 / 2000", s.Subs.New, s.Revenue.NewMRRCents)
 	}
 	// Churn: gamma canceled -5d, would-be 5000.
 	if s.Subs.Canceled != 1 || s.Revenue.ChurnedMRRCents != 5000 {
 		t.Errorf("canceled = %d churnedMRR = %d, want 1 / 5000", s.Subs.Canceled, s.Revenue.ChurnedMRRCents)
 	}
-	if s.Revenue.NetNewMRRCents != -1000 {
-		t.Errorf("netNewMRR = %d, want -1000", s.Revenue.NetNewMRRCents)
+	// 2000 new − 5000 churned.
+	if s.Revenue.NetNewMRRCents != -3000 {
+		t.Errorf("netNewMRR = %d, want -3000", s.Revenue.NetNewMRRCents)
 	}
 	// Usage: window billed = 100+100+50+30 = 280; requests = 4; one untagged.
 	if s.Usage.WindowUsageCents != 280 || s.Usage.Requests != 4 {

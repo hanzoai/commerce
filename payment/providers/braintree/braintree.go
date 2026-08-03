@@ -107,7 +107,7 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 			fmt.Sprintf("currency %s not supported", req.Currency), processor.ErrCurrencyNotSupported)
 	}
 
-	amount := centsToDecimal(req.Amount, req.Currency)
+	amount := req.Currency.ToStringNoSymbol(req.Amount)
 	merchantAccountID := p.merchantAccountID(req)
 
 	query := `mutation ChargePaymentMethod($input: ChargePaymentMethodInput!) {
@@ -193,7 +193,7 @@ func (p *Provider) Authorize(ctx context.Context, req processor.PaymentRequest) 
 			fmt.Sprintf("currency %s not supported", req.Currency), processor.ErrCurrencyNotSupported)
 	}
 
-	amount := centsToDecimal(req.Amount, req.Currency)
+	amount := req.Currency.ToStringNoSymbol(req.Amount)
 	merchantAccountID := p.merchantAccountID(req)
 
 	query := `mutation AuthorizePaymentMethod($input: AuthorizePaymentMethodInput!) {
@@ -276,7 +276,7 @@ func (p *Provider) Capture(ctx context.Context, transactionID string, amount cur
 
 	// For capture we default to USD if no currency context is available.
 	// The amount conversion is safe because Braintree stores the currency on the auth.
-	amountStr := centsToDecimal(amount, currency.USD)
+	amountStr := currency.USD.ToStringNoSymbol(amount)
 
 	query := `mutation CaptureTransaction($input: CaptureTransactionInput!) {
 		captureTransaction(input: $input) {
@@ -364,7 +364,7 @@ func (p *Provider) Refund(ctx context.Context, req processor.RefundRequest) (*pr
 	}
 	// Partial refund: include amount. Full refund: omit amount.
 	if req.Amount > 0 {
-		input["amount"] = centsToDecimal(req.Amount, currency.USD)
+		input["amount"] = currency.USD.ToStringNoSymbol(req.Amount)
 	}
 
 	variables := map[string]interface{}{
@@ -690,15 +690,6 @@ func extractTransaction(resp map[string]interface{}, mutationName string) map[st
 	}
 	tx, _ := mutation["transaction"].(map[string]interface{})
 	return tx
-}
-
-// centsToDecimal converts cents to a decimal string like "10.00".
-// Zero-decimal currencies (e.g., JPY) return whole units.
-func centsToDecimal(amount currency.Cents, cur currency.Type) string {
-	if cur.IsZeroDecimal() {
-		return fmt.Sprintf("%d", amount)
-	}
-	return fmt.Sprintf("%.2f", float64(amount)/100.0)
 }
 
 // merchantAccountID extracts a merchant account ID from request options,

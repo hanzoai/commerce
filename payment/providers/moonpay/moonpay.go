@@ -97,11 +97,6 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 		return nil, err
 	}
 
-	body := map[string]interface{}{
-		"apiKey":             p.apiKey,
-		"baseCurrencyAmount": float64(req.Amount) / 100.0, // Convert cents to dollars
-	}
-
 	// Determine base and crypto currencies from the request
 	cryptoCurrency := "eth" // default
 	baseCurrency := "usd"   // default
@@ -112,8 +107,16 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 		baseCurrency = string(req.Currency)
 	}
 
-	body["currencyCode"] = cryptoCurrency
-	body["baseCurrencyCode"] = baseCurrency
+	// The amount is denominated in the BASE currency, so it renders at that
+	// currency's scale. json.Number carries the exact digits into the JSON body
+	// as an unquoted number — float64(cents)/100.0 handed a payment gateway a
+	// binary approximation of the amount instead.
+	body := map[string]interface{}{
+		"apiKey":             p.apiKey,
+		"baseCurrencyAmount": json.Number(currency.Type(baseCurrency).ToStringNoSymbol(req.Amount)),
+		"currencyCode":       cryptoCurrency,
+		"baseCurrencyCode":   baseCurrency,
+	}
 
 	// Wallet address from request metadata or Options
 	if req.Address != "" {
@@ -328,7 +331,7 @@ func (p *Provider) signURL(rawURL string) string {
 // buildWidgetURL constructs a signed MoonPay widget URL.
 func (p *Provider) buildWidgetURL(cryptoCurrency, baseCurrency string, req processor.PaymentRequest) string {
 	u := fmt.Sprintf("https://buy.moonpay.com?apiKey=%s&currencyCode=%s&baseCurrencyCode=%s&baseCurrencyAmount=%s",
-		p.apiKey, cryptoCurrency, baseCurrency, fmt.Sprintf("%.2f", float64(req.Amount)/100.0))
+		p.apiKey, cryptoCurrency, baseCurrency, currency.Type(baseCurrency).ToStringNoSymbol(req.Amount))
 
 	if req.Address != "" {
 		u += "&walletAddress=" + req.Address

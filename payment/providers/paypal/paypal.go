@@ -200,7 +200,7 @@ func (p *Provider) Capture(ctx context.Context, transactionID string, amount cur
 
 	body := map[string]interface{}{
 		"amount": map[string]string{
-			"value":         centsToDecimal(amount, currency.USD),
+			"value":         currency.USD.ToStringNoSymbol(amount),
 			"currency_code": "USD",
 		},
 	}
@@ -247,7 +247,7 @@ func (p *Provider) Refund(ctx context.Context, req processor.RefundRequest) (*pr
 	body := make(map[string]interface{})
 	if req.Amount > 0 {
 		body["amount"] = map[string]string{
-			"value":         centsToDecimal(req.Amount, currency.USD),
+			"value":         currency.USD.ToStringNoSymbol(req.Amount),
 			"currency_code": "USD",
 		}
 	}
@@ -608,7 +608,7 @@ func (p *Provider) createOrder(ctx context.Context, req processor.PaymentRequest
 			{
 				"amount": map[string]string{
 					"currency_code": cur.Code(),
-					"value":         centsToDecimal(req.Amount, cur),
+					"value":         cur.ToStringNoSymbol(req.Amount),
 				},
 			},
 		},
@@ -684,19 +684,6 @@ func (p *Provider) authorizeOrder(ctx context.Context, orderID string) (*paypalO
 	}
 
 	return &order, nil
-}
-
-// ---------------------------------------------------------------------------
-// Amount conversion
-// ---------------------------------------------------------------------------
-
-// centsToDecimal converts currency.Cents to a PayPal decimal string.
-// Zero-decimal currencies (JPY, etc.) are returned as whole integers.
-func centsToDecimal(amount currency.Cents, cur currency.Type) string {
-	if cur.IsZeroDecimal() {
-		return fmt.Sprintf("%d", amount)
-	}
-	return fmt.Sprintf("%.2f", float64(amount)/100.0)
 }
 
 // ---------------------------------------------------------------------------
