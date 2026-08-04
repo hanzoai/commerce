@@ -50,7 +50,6 @@
   },
   "include": [
     "next-env.d.ts",
-    "gui.config.ts",
     "gui.d.ts",
     "src",
     ".next/types/**/*.ts"

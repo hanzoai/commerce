@@ -14,7 +14,7 @@ import { GuiProvider } from '@hanzo/gui'
 import { IamProvider } from '@hanzo/iam/react'
 import { HostProvider } from '@hanzo/ui/product'
 
-import config from '../../gui.config'
+import config from '@hanzo/ui/gui-config'
 import { BASE_PATH } from '@/lib/basepath'
 import { iamConfig } from '@/lib/iam'
 
