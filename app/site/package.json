@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint --fix",
-    "typecheck": "tsgo --noEmit"
+    "typecheck": "../node_modules/typescript/bin/tsc --noEmit"
   },
   "dependencies": {
     "@hanzo/commerce-client": "workspace:*",

@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsgo --noEmit"
+    "typecheck": "../node_modules/typescript/bin/tsc --noEmit"
   },
   "dependencies": {
     "@hanzo/gui": "8.0.1",
