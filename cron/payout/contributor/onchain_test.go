@@ -17,7 +17,7 @@
 // Run:
 //
 //	SDKROOT=$(xcrun --show-sdk-path) CGO_ENABLED=1 \
-//	HUSD_RPC_URL=http://localhost:19630/ext/bc/C/rpc \
+//	HUSD_RPC_URL=http://localhost:19630/v1/bc/C/rpc \
 //	HUSD_TREASURY_KEY=<hex> HUSD_RECIPIENT=0x... \
 //	go test -tags onchain -run TestOnChainHUSDPayout_Testnet -v ./cron/payout/contributor
 package contributor

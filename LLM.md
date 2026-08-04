@@ -727,7 +727,7 @@ live in `models/contributor/`; the executor is `cron/payout/contributor/`.
   `GET /payouts/preview` shows the allocation without paying.
 - **TESTNET-FIRST**: deployed config points at Hanzo testnet (chainId 36962,
   HUSD = "Lux Dollar" `0xc57b7eCE…4D66`, 18 decimals,
-  `http://hanzod.hanzo-testnet.svc.cluster.local:9630/ext/bc/C/rpc`).
+  `http://hanzod.hanzo-testnet.svc.cluster.local:9630/v1/bc/C/rpc`).
   Proven on testnet 2026-06-27: tx
   `0xe5cf03378e2d9dd121dfc5631fa112b2ea03717c9928167d54195ae785866978`
   (treasury → contributor, 25.50 HUSD, status 0x1, block 9).
@@ -735,7 +735,7 @@ live in `models/contributor/`; the executor is `cron/payout/contributor/`.
 - **MAINNET SWITCH (OFF; requires sign-off + funded mainnet treasury)**:
   `HUSD_TOKEN_ADDRESS=0xe9e32EF8aaECB68794Da3E1E9191b0a64CeC2c83`,
   `HUSD_CHAIN_ID=36963`,
-  `HUSD_RPC_URL=http://hanzod.hanzo-mainnet.svc.cluster.local:9630/ext/bc/C/rpc`,
+  `HUSD_RPC_URL=http://hanzod.hanzo-mainnet.svc.cluster.local:9630/v1/bc/C/rpc`,
   and re-point `HUSD_TREASURY_KEY` to a funded mainnet treasury.
 - **Gas note**: `thirdparty/ethereum` `GasPrice()` queries `eth_gasPrice`
   (respects the chain's 25 gwei `minBaseFee`); the old hardcoded `1` wei caused
