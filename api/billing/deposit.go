@@ -79,16 +79,40 @@ func Deposit(c *zip.Ctx) error {
 		cur = "usd"
 	}
 
+	// MONEY-IN NAMES THE EVENT THAT CAUSED IT. Required, on every path.
+	//
+	// A credit is caused by exactly one external fact — a settlement, an on-chain
+	// transfer, an admin's decision — and only the caller knows which. Without
+	// that name, a retry of settlement X and a second genuine settlement of the
+	// same amount are THE SAME REQUEST, and no server-side rule can separate them:
+	//
+	//	additive by default -> a retried webhook funds the wallet twice. Every
+	//	                       payment processor retries; this is not an edge case.
+	//	dedupe on a window  -> two real settlements of equal amount minutes apart
+	//	                       collapse into one, and the customer is credited for
+	//	                       one of the two payments they made.
+	//
+	// The first loses OUR money, the second loses THEIRS. Guessing picks a victim,
+	// so this endpoint does not guess — it refuses. That is why deposit does NOT
+	// use guardKey (idem.go), which windows a card money move on stable facts: a
+	// card charge is a request the customer just made and is watching, while a
+	// settlement is a machine retrying an event minutes or hours old. Same-shaped
+	// helper, different truth.
+	//
+	// The key IS the reference — use the settlement/payment id or the tx hash, so
+	// the guard is bound to the money move rather than to a caller's bookkeeping.
+	idemKey := strings.TrimSpace(c.Header("X-Idempotency-Key"))
+	if idemKey == "" {
+		return http.Fail(c, 400, "X-Idempotency-Key is required: send the settlement id, payment id, or tx hash that caused this credit", nil)
+	}
+
 	// Step 4: when the chain-backed ledger is enabled, a deposit MINTS on-chain
 	// HUSD to the org's derived address (bucketed by its tags) instead of writing
 	// a DB credit row — the value is created by the treasury key, not this process.
-	// The X-Idempotency-Key (if any) makes the mint exactly-once; without one,
-	// distinct deposits are legitimately additive (a fresh key each call).
+	// The mint carries the SAME key the DB arm guards on, so a replay is refused
+	// identically whichever ledger is live.
 	if chainCreditEnabled() {
-		mintKey := randomIdemKey("deposit:" + req.User + ":")
-		if hdr := strings.TrimSpace(c.Header("X-Idempotency-Key")); hdr != "" {
-			mintKey = "deposit:" + req.User + ":" + hdr
-		}
+		mintKey := "deposit:" + req.User + ":" + idemKey
 		reason := req.Notes
 		if reason == "" {
 			reason = "deposit"
@@ -111,27 +135,29 @@ func Deposit(c *zip.Ctx) error {
 		})
 	}
 
-	// Optional idempotency (H1). A caller-supplied X-Idempotency-Key makes a
-	// retry / double-submit credit AT MOST ONCE: a completed key replays the
-	// stored body, an in-flight key 409s. Absent a key there is no guard —
-	// distinct deposits to the same user (repeated settlements) are legitimately
-	// additive, so we never dedupe by amount. Scoped to the subject so keys never
-	// collide across users; the datastore is already org-namespaced.
-	idemKey := strings.TrimSpace(c.Header("X-Idempotency-Key"))
+	// The guard on the key required above: a completed key replays the stored
+	// body, an in-flight key 409s, so a retry credits AT MOST ONCE. Scoped to the
+	// subject so keys never collide across users; the datastore is already
+	// org-namespaced.
+	//
+	// A store that cannot answer FAILS CLOSED. It is the one moment the guard
+	// cannot tell a first attempt from a retry, and crediting anyway is how a
+	// blip becomes a duplicate mint — the same decision idemBegin's seam exists
+	// to keep honest on the card path.
 	var idemRec *idempotencykey.IdempotencyKey
-	if idemKey != "" {
-		rec, replay, gerr := idempotencykey.Begin(db, "billing-deposit:"+req.User, idemKey)
-		if gerr != nil {
-			log.Error("deposit idempotency Begin failed (user=%s): %v", req.User, gerr, c)
-		} else if replay {
-			if rec.Status == idempotencykey.StatusCompleted && rec.Response != "" {
-				c.SetHeader("Content-Type", "application/json")
-				return c.Bytes(200, []byte(rec.Response))
-			}
-			return http.Fail(c, 409, "deposit already in progress", nil)
-		} else {
-			idemRec = rec
+	rec, replay, gerr := idemBegin(db, "billing-deposit:"+req.User, idemKey)
+	switch {
+	case gerr != nil:
+		log.Error("deposit idempotency Begin failed (user=%s): %v", req.User, gerr, c)
+		return http.Fail(c, 503, "cannot verify this deposit is not a replay; retry with the same key", gerr)
+	case replay:
+		if rec.Status == idempotencykey.StatusCompleted && rec.Response != "" {
+			c.SetHeader("Content-Type", "application/json")
+			return c.Bytes(200, []byte(rec.Response))
 		}
+		return http.Fail(c, 409, "deposit already in progress", nil)
+	default:
+		idemRec = rec
 	}
 
 	notes := req.Notes

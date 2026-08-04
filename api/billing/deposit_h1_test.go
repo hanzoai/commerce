@@ -1,10 +1,13 @@
 package billing
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"testing"
 
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
@@ -32,7 +35,7 @@ func TestDeposit_UnderCeiling_201(t *testing.T) {
 	org := moneyOrg("h1d-under")
 
 	body := `{"user":"h1d-under/alice","amount":1000}`
-	resp := invokeMoneyHandler(org, ctx, Deposit, body, nil)
+	resp := invokeMoneyHandler(org, ctx, Deposit, body, map[string]string{"X-Idempotency-Key": "settlement-under"})
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("at-ceiling deposit: status=%d body=%s, want 201", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
@@ -67,21 +70,65 @@ func TestDeposit_IdempotencyKey_SingleEffect(t *testing.T) {
 	}
 }
 
-// TestDeposit_NoKey_DistinctDeposits — H1 negative control: WITHOUT an idempotency
-// key, distinct deposits to the same user are legitimately additive (repeated
-// settlements) — we never dedupe by amount.
-func TestDeposit_NoKey_DistinctDeposits(t *testing.T) {
+// TestDeposit_NoKey_Refused — money-in must NAME the event that caused it.
+//
+// This replaces an earlier control that asserted keyless deposits are additive.
+// That contract cannot be held safely: a retried settlement webhook and a second
+// genuine settlement of the same amount are the same request, so "additive"
+// funds a wallet twice on every processor retry, and the obvious alternative
+// (dedupe on a time window) collapses two real payments into one credit. The
+// endpoint refuses rather than picking which way to be wrong.
+func TestDeposit_NoKey_Refused(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	org := moneyOrg("h1d-nokey")
 
 	body := `{"user":"h1d-nokey/alice","amount":500}`
-	w1 := invokeMoneyHandler(org, ctx, Deposit, body, nil)
-	w2 := invokeMoneyHandler(org, ctx, Deposit, body, nil)
+	resp := invokeMoneyHandler(org, ctx, Deposit, body, nil)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("keyless deposit: status=%d body=%s, want 400 — an unnamed credit is a replay waiting to happen",
+			resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
+	}
+}
+
+// TestDeposit_DistinctKeys_DistinctDeposits — the control the refusal must not
+// break: two REAL settlements of the same amount, each naming its own event,
+// both credit. Requiring a key must not turn into deduping by amount.
+func TestDeposit_DistinctKeys_DistinctDeposits(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("h1d-distinct")
+
+	body := `{"user":"h1d-distinct/alice","amount":500}`
+	w1 := invokeMoneyHandler(org, ctx, Deposit, body, map[string]string{"X-Idempotency-Key": "settlement-a"})
+	w2 := invokeMoneyHandler(org, ctx, Deposit, body, map[string]string{"X-Idempotency-Key": "settlement-b"})
 	if w1.StatusCode != http.StatusCreated || w2.StatusCode != http.StatusCreated {
-		t.Fatalf("two keyless deposits: statuses=%d,%d, want 201,201", w1.StatusCode, w2.StatusCode)
+		t.Fatalf("two distinct settlements: statuses=%d,%d, want 201,201", w1.StatusCode, w2.StatusCode)
 	}
 	if txID(t, w1) == txID(t, w2) {
-		t.Fatal("two keyless deposits collapsed to one transaction — over-deduped")
+		t.Fatal("two distinct settlements collapsed to one transaction — over-deduped, a customer paid twice and was credited once")
+	}
+}
+
+// TestDeposit_GuardUnavailable_FailsClosed — when the guard store cannot say
+// whether this is a first attempt or a retry, the credit does NOT land. Unknown
+// is the one case where crediting anyway turns a store blip into a duplicate
+// mint, so it is a 503 the caller can safely retry with the same key.
+func TestDeposit_GuardUnavailable_FailsClosed(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("h1d-guarddown")
+
+	orig := idemBegin
+	idemBegin = func(*datastore.Datastore, string, string) (*idempotencykey.IdempotencyKey, bool, error) {
+		return nil, false, errors.New("guard store unavailable")
+	}
+	t.Cleanup(func() { idemBegin = orig })
+
+	body := `{"user":"h1d-guarddown/alice","amount":500}`
+	resp := invokeMoneyHandler(org, ctx, Deposit, body, map[string]string{"X-Idempotency-Key": "settlement-x"})
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("guard-unavailable deposit: status=%d body=%s, want 503 — an unverifiable credit must not land",
+			resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
 }
