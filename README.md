@@ -5,7 +5,7 @@
 Checkout, billing, pricing, invoicing — the light commerce router for the Hanzo platform. **NOT in PCI-DSS scope** (PAN data lives in `hanzoai/vault`).
 
 [![Status](https://img.shields.io/badge/status-stable-green)]()
-[![License](https://img.shields.io/badge/license-MIT-blue)]()
+[![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)]()
 
 ## Quick start
 
@@ -176,3 +176,7 @@ The SDK is downloaded if it doesn’t exist. The following steps are performed:
 ### Tools
 
 Various Go tools are included in the `tools` target to assist with development (linting, formatting, etc.). These tools are installed using the `goapp get` and `goapp install` commands.
+
+## License
+
+`MIT OR Apache-2.0` (`LICENSE`, `LICENSE-MIT`, `LICENSE-APACHE`) per the Hanzo licensing standard — see hanzoai/hips; vendored third-party terms are in `NOTICE`.

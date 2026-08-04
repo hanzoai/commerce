@@ -27,7 +27,7 @@
     "node": ">=20"
   },
   "author": "Hanzo",
-  "license": "MIT",
+  "license": "MIT OR Apache-2.0",
   "scripts": {
     "build": "rimraf dist && tsc --build",
     "watch": "tsc --build --watch",

@@ -1,6 +1,7 @@
 {
   "name": "@hanzo/commerce-app",
   "private": true,
+  "license": "MIT OR Apache-2.0",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",

@@ -1361,3 +1361,50 @@ no gofiber, no net/http adaptation in the serving path. Handlers are
   req.PostForm). zip TestCtx for direct handler calls.
 - Pre-existing debt unchanged: test-integration/* needs external services;
   thirdparty/reamaze verifyHMAC has an inversion bug (flagged, not fixed here).
+
+## Licensing — `MIT OR Apache-2.0`
+
+The repo is dual-licensed. Three root files, one declaration each, no restating:
+
+- `LICENSE` — the dual offer + SPDX id + inbound=outbound contribution clause.
+  Points at the two texts and at NOTICE. Copyright `2014-2026 Hanzo AI, Inc.`
+  (the real span: root commit is 2014-09-29, this started life as `kaching`).
+- `LICENSE-MIT` — canonical MIT, Hanzo copyright line.
+- `LICENSE-APACHE` — canonical Apache-2.0, BYTE-IDENTICAL to
+  apache.org/licenses/LICENSE-2.0.txt. sha256
+  `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`, 11358 bytes,
+  git blob `d645695673349e3947e8e5ae42332d0ac3164cd7`. Verify with `sha256sum` /
+  `cmp` / `git hash-object` — never `diff` (it is a shell function on the dev box
+  and has reported "differs" on byte-identical files). Any alteration to operative
+  text means the file is no longer that licence.
+
+Every `package.json` in the tree (15 of them, all under `app/`) declares
+`"license": "MIT OR Apache-2.0"`. There is no Cargo.toml or pyproject.toml here,
+and go.mod has no licence field, so the manifests are the whole surface.
+
+`NOTICE` is the third-party attribution file — it scopes *vendored dependencies*,
+not this repo's own terms. Its btcd/btcec (ISC, `replace/btcec`) and Go stdlib
+(BSD-3) sections are untouched. Appended: **Medusa** (medusajs/medusa, MIT,
+Copyright (c) 2021 Medusajs), which was vendored but unattributed. The whole
+TypeScript frontend under `app/` is rebranded Medusa — `app/admin` is
+`@medusajs/dashboard` (its CHANGELOG.md still carries that header), `app/site` is
+the Medusa Book (upstream Cloudinary "Medusa Book" asset URLs are still inline),
+`app/packages/*` are the corresponding `@medusajs` packages, and `app/store`
+derives from medusajs/nextjs-starter-medusa (MIT, Copyright (c) 2022 Medusa; its
+yarn.lock still resolves `medusa-next@workspace:.`). MIT grants sublicensing, so
+offering the whole under `MIT OR Apache-2.0` is sound *provided* the upstream
+copyright notice is retained — that retention is what the NOTICE append is for.
+Upstream ships no NOTICE file, so nothing further propagates.
+
+The **Go backend is not a Medusa fork** — it is an independent native
+implementation that reaches parity with Medusa v2's admin domains (see "Medusa
+parity" above). Only `app/` carries upstream lineage.
+
+`app/store/LICENSE` is left alone: it is the upstream starter's MIT file with the
+copyright line swapped to Hanzo. Never edit an upstream LICENSE. The root
+`LICENSE` governs the repo; that nested file is stale and its Medusa attribution
+now lives in NOTICE.
+
+commerce stays PRIVATE. Licensing and visibility are independent: a gitleaks
+sweep of full history found live third-party merchant credentials and a
+customer's production hostnames. A licence change does not rewrite history.

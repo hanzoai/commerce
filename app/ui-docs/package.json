@@ -2,6 +2,7 @@
   "name": "@hanzo/commerce-ui-docs",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT OR Apache-2.0",
   "scripts": {
     "dev": "next dev",
     "dev:monorepo": "yarn prep && yarn dev -p 3005",
