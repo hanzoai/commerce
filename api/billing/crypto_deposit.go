@@ -141,7 +141,15 @@ func CreateCryptoDeposit(c *zip.Ctx) error {
 	address, err := cp.GenerateAddress(c.Context(), payer, chain)
 	if err != nil {
 		log.Error("crypto deposit address generation failed for %q on %s: %v", payer, chain, err, c)
-		return jsonhttp.Fail(c, 502, "Failed to generate deposit address", err)
+		// 503, NOT 502 — and the difference is what the customer reads.
+		// Cloudflare REPLACES an origin 502 with its own "Bad gateway"
+		// interstitial, so the JSON below never reaches the browser: measured on
+		// pay.hanzo.ai, the deposit call returned a text/html CF error page while
+		// the identical call to the origin returned this message. 503 passes
+		// through untouched (the wire rail's own "not configured" 503 proves it),
+		// which is also the honest code: the custody signer is unavailable, we
+		// are not a broken gateway.
+		return jsonhttp.Fail(c, 503, "Crypto deposits are temporarily unavailable — the custody service is not accepting new addresses. Try again shortly or choose another way to pay.", err)
 	}
 
 	intent := cryptopaymentintent.New(db)
