@@ -22,7 +22,7 @@
 // Run (port-forward the testnet hanzod C-chain RPC first):
 //
 //	kubectl --context do-sfo3-hanzo-k8s -n hanzo-testnet port-forward pod/hanzod-0 19630:9630 &
-//	HUSD_RPC_URL=http://localhost:19630/ext/bc/C/rpc \
+//	HUSD_RPC_URL=http://localhost:19630/v1/bc/C/rpc \
 //	HUSD_TREASURY_KEY=<hex from commerce-secrets> \
 //	CGO_ENABLED=0 go test -tags onchain -run TestOnChain_ChainBackedLedger -v ./treasury
 package treasury_test

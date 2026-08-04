@@ -116,7 +116,7 @@ func TestConfigLoadFromEnvDefaults(t *testing.T) {
 
 func TestConfigLoadFromEnvOverrides(t *testing.T) {
 	t.Setenv("HUSD_CHAIN_ID", "36962")
-	t.Setenv("HUSD_RPC_URL", "http://localhost:19630/ext/bc/C/rpc")
+	t.Setenv("HUSD_RPC_URL", "http://localhost:19630/v1/bc/C/rpc")
 	t.Setenv("HUSD_TOKEN_ADDRESS", "0xc57b7eCE2Ce2E74ef3Bc08Cfd5f5Fb41B6Ad4D66")
 	t.Setenv("HUSD_TREASURY_KEY", "deadbeef")
 	c := Config{}
