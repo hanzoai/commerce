@@ -57,7 +57,7 @@ var mintRoutes = []struct{ method, path, body string }{
 func engineWithSeed(seed func(*zip.Ctx)) *zip.App {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
 	if seed != nil {
-		app.Use(func(c *zip.Ctx) error { seed(c); return c.Next() })
+		app.Use(zip.H(func(c *zip.Ctx) error { seed(c); return c.Next() }))
 	}
 	Route(app.Group("/v1"))
 	return app

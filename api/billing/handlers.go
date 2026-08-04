@@ -9,6 +9,15 @@ import (
 
 // Route registers billing endpoints for service-to-service calls.
 // These are internal endpoints used by Cloud-API; require admin token.
+// mintMountPath is the address these routes are SERVED at: api/api.go mounts this
+// package's Route under /v1, and Route groups it under "billing". A router cannot
+// report its own absolute address — zip composes definitions, so the same one can
+// be included at more than one site — so the code that knows the mount states it.
+//
+// It is a claim, and TestMintRoutesMatchWhatIsServed checks it against the app's
+// own declaration rather than taking its word.
+const mintMountPath = "/v1/billing"
+
 func Route(r zip.Router, args ...zip.Handler) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
@@ -29,7 +38,7 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// derived from these registrations instead of hand-listed by each consumer
 	// (cloud's billing-bridge allowlist must stay disjoint from it). See
 	// middleware/platformonly.go and middleware/mint.go.
-	mint := middleware.Mint(api)
+	mint := middleware.Mint(api, mintMountPath)
 
 	// Tier (tier-aware billing)
 	api.Get("/tier", GetTier)
@@ -175,7 +184,6 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// Billing events
 	api.Get("/events", ListBillingEvents)
 	api.Get("/events/:id", GetBillingEvent)
-
 
 	// Inbound webhook ingress (unauthenticated — signature-verified per provider).
 	// Registered outside the admin-token group because providers do not carry

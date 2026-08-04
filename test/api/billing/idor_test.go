@@ -139,7 +139,7 @@ var _ = Describe("billing IDOR scoping", Ordered, ContinueOnFailure, func() {
 		other = subject + "-victim"
 
 		idorCl = zipclient.New(ctx)
-		idorCl.Router.Use(idorShim)
+		idorCl.Router.Use(zip.H(idorShim))
 		idorCl.Router.Get("/billing/methods", billingApi.ListPaymentMethods)
 		idorCl.Router.Get("/billing/methods/:id", billingApi.GetPaymentMethod)
 		idorCl.Router.Patch("/billing/methods/:id", billingApi.UpdatePaymentMethod)
@@ -148,12 +148,12 @@ var _ = Describe("billing IDOR scoping", Ordered, ContinueOnFailure, func() {
 
 		realCl = zipclient.New(ctx)
 		// A non-admin authenticated IAM member: iam_authenticated + zero permissions.
-		realCl.Router.Use(func(c *zip.Ctx) error {
+		realCl.Router.Use(zip.H(func(c *zip.Ctx) error {
 			c.Locals("organization", org)
 			c.Locals("iam_authenticated", true)
 			c.Locals("permissions", bit.Field(0))
 			return c.Next()
-		})
+		}))
 		billingApi.Route(realCl.Router)
 	})
 

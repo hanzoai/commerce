@@ -65,7 +65,7 @@ func TestTokenRequired_ServiceTokenBeatsIAMScopeGate(t *testing.T) {
 	var sawServiceToken bool
 	reached := false
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Use(stampIAMForS2S)
+	app.Use(zip.H(stampIAMForS2S))
 	app.Use(TokenRequired(permission.Admin))
 	app.Get("/v1/billing/balance", func(c *zip.Ctx) error {
 		sawServiceToken = IsServiceToken(c)
