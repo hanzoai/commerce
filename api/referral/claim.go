@@ -9,12 +9,9 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
-	"github.com/hanzoai/commerce/models/creditgrant"
 	"github.com/hanzoai/commerce/models/referral"
 	"github.com/hanzoai/commerce/models/referrer"
 	"github.com/hanzoai/commerce/util/json/http"
-
-	. "github.com/hanzoai/commerce/types"
 )
 
 type claimRequest struct {
@@ -24,7 +21,7 @@ type claimRequest struct {
 }
 
 // ClaimReferral processes a referral claim: validates the code, checks fraud
-// rules, creates credit grants for both parties, and records the referral.
+// rules, and records the referral. It moves no money and mints no credit.
 //
 //	POST /v1/referral/claim
 func ClaimReferral(c *zip.Ctx) error {
@@ -112,67 +109,14 @@ func ClaimReferral(c *zip.Ctx) error {
 	tier := cfg.TierForCount(referralCount)
 
 	now := time.Now()
-	rootKey := db.NewKey("synckey", "", 1, nil)
 
-	// 7. Create CreditGrant for referee.
-	refereeCreditCents := int64(tier.Rewards.RefereeCreditCents)
-	refereeExpiryDays := tier.Limits.CreditExpiryDays
-	if refereeExpiryDays <= 0 {
-		refereeExpiryDays = 90
-	}
+	// Claiming a code MINTS NOTHING. It used to write two CreditGrants here — a
+	// code-driven, self-service credit mint gated only by TokenRequired. The
+	// referral reward is EARNED, not granted at signup: billing/engine.TrackRevenueShare
+	// accrues it as a fee.Fee (a tracked PAYABLE) when the referee actually spends.
+	// A claim only records the relationship that makes that accrual possible.
 
-	refereeGrant := creditgrant.New(db)
-	refereeGrant.Parent = rootKey
-	refereeGrant.UserId = refereeUserId
-	refereeGrant.Name = "Referral signup bonus"
-	refereeGrant.AmountCents = refereeCreditCents
-	refereeGrant.RemainingCents = refereeCreditCents
-	refereeGrant.Currency = "usd"
-	refereeGrant.Priority = 10
-	refereeGrant.EffectiveAt = now
-	refereeGrant.ExpiresAt = now.AddDate(0, 0, refereeExpiryDays)
-	refereeGrant.Tags = "referral-bonus"
-	refereeGrant.Metadata = Map{
-		"referrerCode": req.Code,
-		"referrerId":   ref.Id(),
-		"tier":         tier.Id,
-	}
-
-	if err := refereeGrant.Create(); err != nil {
-		log.Error("Failed to create referee credit grant: %v", err, c)
-		return http.Fail(c, 500, "failed to create referee credit", err)
-	}
-
-	// 8. Create CreditGrant for referrer.
-	referrerCreditCents := int64(tier.Rewards.ReferrerCreditCents)
-	referrerExpiryDays := tier.Limits.CreditExpiryDays
-	if referrerExpiryDays <= 0 {
-		referrerExpiryDays = 90
-	}
-
-	referrerGrant := creditgrant.New(db)
-	referrerGrant.Parent = rootKey
-	referrerGrant.UserId = ref.UserId
-	referrerGrant.Name = "Referral reward"
-	referrerGrant.AmountCents = referrerCreditCents
-	referrerGrant.RemainingCents = referrerCreditCents
-	referrerGrant.Currency = "usd"
-	referrerGrant.Priority = 10
-	referrerGrant.EffectiveAt = now
-	referrerGrant.ExpiresAt = now.AddDate(0, 0, referrerExpiryDays)
-	referrerGrant.Tags = "referral-reward"
-	referrerGrant.Metadata = Map{
-		"refereeUserId": refereeUserId,
-		"referrerCode":  req.Code,
-		"tier":          tier.Id,
-	}
-
-	if err := referrerGrant.Create(); err != nil {
-		log.Error("Failed to create referrer credit grant: %v", err, c)
-		return http.Fail(c, 500, "failed to create referrer credit", err)
-	}
-
-	// 9. Create the Referral record.
+	// 7. Create the Referral record.
 	rfl := referral.New(db)
 	rfl.Type = referral.NewUser
 	rfl.UserId = refereeUserId
@@ -187,7 +131,7 @@ func ClaimReferral(c *zip.Ctx) error {
 		return http.Fail(c, 500, "failed to create referral record", err)
 	}
 
-	// 10. Update referrer state.
+	// 8. Update referrer state.
 	if ref.FirstReferredAt.IsZero() {
 		ref.FirstReferredAt = now
 	}
@@ -202,17 +146,5 @@ func ClaimReferral(c *zip.Ctx) error {
 		"referrerId": ref.Id(),
 		"refereeId":  refereeUserId,
 		"tier":       tier.Id,
-		"creditGranted": map[string]any{
-			"referee": map[string]any{
-				"grantId":     refereeGrant.Id(),
-				"amountCents": refereeCreditCents,
-				"expiresAt":   refereeGrant.ExpiresAt,
-			},
-			"referrer": map[string]any{
-				"grantId":     referrerGrant.Id(),
-				"amountCents": referrerCreditCents,
-				"expiresAt":   referrerGrant.ExpiresAt,
-			},
-		},
 	})
 }

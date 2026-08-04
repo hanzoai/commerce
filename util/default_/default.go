@@ -14,7 +14,6 @@ import (
 
 	// Imported for side-effect, ensures tasks are registered
 	_ "github.com/hanzoai/commerce/api/checkout/tasks"
-	_ "github.com/hanzoai/commerce/cron/tasks"
 	_ "github.com/hanzoai/commerce/email/tasks"
 	_ "github.com/hanzoai/commerce/models/fixtures"
 	_ "github.com/hanzoai/commerce/models/fixtures/users"
