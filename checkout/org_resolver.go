@@ -233,6 +233,15 @@ func brandForHost(host string) brand {
 	return defaultBrand()
 }
 
+// BrandSlugForHost resolves a customer-facing host to the serving brand's org
+// slug — the RECEIVING side of a deposit (whose bank account, whose KMS wire
+// path, whose custody vault). Exported for the /v1/billing wire + crypto
+// top-up surface, which shares this one host→brand table with the tenant
+// endpoint rather than growing a second.
+func BrandSlugForHost(host string) string {
+	return brandForHost(host).slug
+}
+
 // defaultBrand is the deployment's fallback tenant. It is brandHanzo unless
 // COMMERCE_DEFAULT_TENANT names another known brand (so a lux/zoo/pars-only
 // commerce deploy can flip its default without code changes).
