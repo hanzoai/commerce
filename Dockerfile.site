@@ -1,28 +1,42 @@
-# commerce-site — serve the marketing SPA via hanzoai/static, NOT nginx.
+# syntax=docker/dockerfile:1
+# commerce-site — the docs/marketing site (app/site) as production serves it: a
+# static export behind the canonical hanzoai/static plugin on :3000. Never nginx.
 #
-# The nginx-based commerce-site:0.0.1 image violates the platform rule
-# "no nginx — use hanzoai/ingress + hanzoai/static only". This Dockerfile
-# RE-SERVES the already-built marketing static export through the canonical
-# hanzoai/static server, with zero change to the published content.
+# This used to re-serve the content of the old nginx image because app/site did
+# not build: it reached for a deleted docs fork, a Tailwind preset that went with
+# it, and workspace packages that were never produced. It builds from source now
+# — the site renders the one @hanzo/gui component kit on the shared
+# @hanzo/ui/gui-config scale — so the image is built from the repo, like the
+# admin's, and the pinned-content stage is gone.
 #
-# Why reuse 0.0.1's content instead of rebuilding from app/site: this is an
-# EDGE serve-layer migration (remove nginx), not an app change. The current
-# app/site source build is independently broken (missing built workspace
-# packages like @hanzo/commerce-icons dist, an unresolved @kapaai/react-sdk
-# import, and a @/providers/BrowserProvider alias) — fixing the Next.js app
-# is a separate task. Reusing the proven, in-production static assets keeps
-# the marketing site byte-identical while eliminating nginx now.
-#
-# TODO(commerce-site app build): once app/site + its workspace packages build
-# cleanly, restore a from-source build stage here and bump the content.
+# ONE producer, ONE URL contract: the export is produced by the same
+# `turbo run typecheck build --filter=@hanzo/commerce-site` the CI gate runs, so
+# a type error fails the build here too rather than shipping an unstyled page.
 
-# 1) The existing, in-production built marketing assets.
-FROM ghcr.io/hanzoai/commerce-site:0.0.1 AS content
+# ── Stage 1: build the export from source ─────────────────────────────────────
+FROM node:20-slim AS site-build
+RUN npm install -g pnpm@9.15.9
+WORKDIR /build
+COPY app/ ./app/
+WORKDIR /build/app
+RUN pnpm install --frozen-lockfile
 
-# 2) Serve them with hanzoai/static. --spa rewrites unknown routes to
-#    index.html (Next.js export client routing); :3000 is the static default,
-#    and the commerce-site Service maps servicePort 80 -> targetPort 3000.
-FROM ghcr.io/hanzoai/static:v0.5.1
-COPY --from=content /usr/share/nginx/html /srv
+# Next inlines NEXT_PUBLIC_* into the client bundle, so the public origin is a
+# build input. SKIP_ENV_VALIDATION is not needed here — that gate belongs to the
+# storefront, whose publishable key is resolved per tenant at request time.
+ENV NEXT_PUBLIC_BASE_URL=https://commerce.hanzo.ai
+
+RUN node_modules/.bin/turbo run typecheck build --filter=@hanzo/commerce-site
+
+# ── Stage 2: arrange (hanzoai/static has no shell to move files with) ─────────
+FROM busybox:1.36 AS arrange
+COPY --from=site-build /build/app/site/out /srv
+
+# ── Stage 3: the canonical Hanzo static plugin ────────────────────────────────
+# No --spa: `output: "export"` writes an index.html per route, so a real route
+# resolves by directory index and a miss stays a 404 instead of answering 200
+# with the homepage — which is how a broken bundle hides.
+FROM ghcr.io/hanzoai/static:v0.5.2
+COPY --from=arrange /srv /srv
 EXPOSE 3000
-ENTRYPOINT ["/static", "--root=/srv", "--spa", "--port=3000"]
+ENTRYPOINT ["/static", "--root=/srv", "--port=3000", "--404=404.html"]

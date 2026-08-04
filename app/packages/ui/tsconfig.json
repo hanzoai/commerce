@@ -27,5 +27,19 @@
     }
   },
   "include": ["src", ".eslintrc.js"],
-  "exclude": ["storybook-static", "node_modules", "dist", "build"]
+  // Typecheck what the package SHIPS. The stories and specs import Storybook,
+  // Testing Library and faker, none of which are dependencies of this package or
+  // installed anywhere in the workspace — so they have never compiled and have
+  // never run, and 188 errors from them drowned out any real one. tsup builds
+  // from src/index.tsx and never reads them either.
+  "exclude": [
+    "storybook-static",
+    "node_modules",
+    "dist",
+    "build",
+    "src/**/*.stories.tsx",
+    "src/**/*.spec.tsx",
+    "src/**/*.test.tsx",
+    "src/**/__tests__/**"
+  ]
 }

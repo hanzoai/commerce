@@ -33,7 +33,9 @@ images:
     context: .
     dockerfile: Dockerfile.commerce-admin
     repo: ghcr.io/hanzoai/commerce-admin
-  # Marketing/storefront site (deployed as commerce-site, hanzoai/static plugin).
+  # Docs/marketing site (deployed as commerce-site, hanzoai/static plugin). Built
+  # FROM SOURCE again: it used to re-serve the content of the retired nginx image
+  # because app/site could not build against a deleted docs fork.
   - name: commerce-site
     context: .
     dockerfile: Dockerfile.site
@@ -91,17 +93,24 @@ test:
         --skip-package=test-integration \
         test/
 
-  # Admin typecheck — the admin renders @hanzo/ui/product from source, so a drift
-  # in the shared component set fails HERE rather than in a browser, and faster
-  # than the image build (Dockerfile runs the same command to produce
-  # the embedded export). `next build` no longer sets ignoreBuildErrors, so this
-  # gate is real.
-  - name: admin-typecheck
+  # Front-end typecheck — the admin and the docs site both render @hanzo/ui on
+  # @hanzo/gui from source, so a drift in the shared component set fails HERE
+  # rather than in a browser, and faster than the image builds (each Dockerfile
+  # runs the same command to produce its export). `next build` no longer sets
+  # ignoreBuildErrors, so this gate is real.
+  #
+  # It catches specifically what Gui cannot: Gui DROPS a style prop it does not
+  # recognise — no error, no warning, an unstyled element — and the only thing
+  # standing between that and production is the token types this typecheck
+  # enforces. Every surface that draws with Gui belongs in this filter.
+  - name: frontend-typecheck
     run: |
       set -e
       cd app
       pnpm install --frozen-lockfile
-      node_modules/.bin/turbo run typecheck --filter=@hanzo/commerce-dashboard
+      node_modules/.bin/turbo run typecheck \
+        --filter=@hanzo/commerce-dashboard \
+        --filter=@hanzo/commerce-site
 
 # NO deploy: block by design. commerce is an operator-MANAGED system service —
 # `services.hanzo.ai/commerce` (+ -admin/-site) owns `.spec.image.tag`, and the

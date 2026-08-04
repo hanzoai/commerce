@@ -1,7 +1,12 @@
 "use client"
 import { Highlight, Prism, themes } from "prism-react-renderer"
 import * as React from "react"
-;(typeof global !== "undefined" ? global : window).Prism = Prism
+// `prismjs/components/*` language packs register themselves onto a Prism they
+// find on the global object, so Prism has to be there before the import below.
+// `globalThis` is the one spelling every runtime has and the standard library
+// declares — the old `typeof global !== "undefined" ? global : window` needed
+// @types/node to compile and this package has never had it.
+;(globalThis as unknown as { Prism: typeof Prism }).Prism = Prism
 
 // @ts-ignore
 import("prismjs/components/prism-json")
