@@ -1,3 +1,6 @@
+// Package transfer records that a payable was PAID — the annotation a human
+// writes after paying out-of-band. Commerce executes no payout; a Transfer is a
+// fact about one that already happened.
 package transfer
 
 import (
@@ -7,79 +10,42 @@ import (
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/orm"
-
-	. "github.com/hanzoai/commerce/types"
 )
 
 func init() { orm.Register[Transfer]("transfer") }
 
+// Type is HOW it was paid. The three are one shape — method, reference, money,
+// when, who — so nothing branches on which one it is. Anything a method needs
+// that the others do not goes in Reference.
 type Type string
 
 const (
-	Stripe Type = "stripe"
+	ETH   Type = "eth"   // on-chain; Reference is the tx hash
+	Wire  Type = "wire"  // bank wire; Reference is the wire/confirmation ref
+	Other Type = "other" // anything else; Reference describes it
 )
 
-type Status string
-
-const (
-	// Stripe status
-	Canceled  Status = "canceled"
-	Failed    Status = "failed"
-	InTransit Status = "in-transit"
-	Paid      Status = "paid"
-	Pending   Status = "pending"
-
-	// Failed to submit to stripe
-	Error = "error"
-)
-
-type StripeAccount struct {
-	TransferId string `json:"transferId,omitempty"`
-	Type       string `json:"type,omitempty"`
-
-	ApplicationFee int64 `json:"applicationFee,omitempty"` // FIXME: Apparently not returned by stripe-go?
-
-	BalanceTransaction int64     `json:"balanceTransaction,omitempty"`
-	Created            time.Time `json:"created,omitempty"`
-	Date               time.Time `json:"date,omitempty"`
-	Description        string    `json:"description,omitempty"`
-	Destination        string    `json:"destination,omitempty"`
-	DestinationType    string    `json:"destinationType,omitempty"`
-
-	FailureCode    string `json:"failureCode,omitempty"`
-	FailureMessage string `json:"failureMessage,omitempty"`
-
-	Reversed bool `json:"reversed,omitempty"`
-
-	SourceTransaction string `json:"sourceTransaction,omitempty"`
-	SourceType        string `json:"sourceType,omitempty"`
-
-	StatementDescriptor string `json:"statementDescriptor,omitempty"`
-}
-
-type Account struct {
-	StripeAccount
-}
-
+// Transfer is one payment against one payable.
 type Transfer struct {
 	mixin.Model[Transfer]
 
-	Account
+	// FeeId is the payable this settles; PayeeId is who was paid.
+	FeeId   string `json:"feeId"`
+	PayeeId string `json:"payeeId,omitempty"`
 
-	AffiliateId string `json:"affiliateId"`
-	PartnerId   string `json:"partnerId"`
-	FeeId       string `json:"feeId"`
+	// Settles is how much of the payable this clears, in the payable's asset.
+	// Sent is what actually left, in whatever asset it left in — the two differ
+	// when a dollar-denominated payable is paid in ETH.
+	Settles currency.Money `json:"settles"`
+	Sent    currency.Money `json:"sent,omitempty"`
 
-	Currency       currency.Type  `json:"currency"`
-	Amount         currency.Cents `json:"amount"`
-	AmountReversed currency.Cents `json:"amountReversed,omitempty"`
-
-	Type   Type   `json:"type"`
-	Status Status `json:"status" orm:"default:pending"`
-	Live   bool   `json:"live,omitempty"`
-
-	Metadata  Map    `json:"metadata" datastore:"-"`
-	Metadata_ string `json:"-" datastore:",noindex"`
+	// (Type, Reference) names one real-world payment, so recording it twice
+	// settles once.
+	Type      Type      `json:"type"`
+	Reference string    `json:"reference,omitempty"`
+	PaidAt    time.Time `json:"paidAt,omitempty"`
+	Actor     string    `json:"actor,omitempty"`
+	Note      string    `json:"note,omitempty"`
 }
 
 func New(db *datastore.Datastore) *Transfer {
