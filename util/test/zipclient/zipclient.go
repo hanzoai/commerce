@@ -51,10 +51,10 @@ type Client struct {
 // middleware runs — the same first-in-chain SetDefaults the gin router installed.
 func newApp(ctx context.Context) *zip.App {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Use(func(c *zip.Ctx) error {
+	app.Use(zip.H(func(c *zip.Ctx) error {
 		zipctx.SetDefaults(c, ctx)
 		return c.Next()
-	})
+	}))
 	return app
 }
 

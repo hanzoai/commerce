@@ -36,7 +36,7 @@ func TestMintOpScope_AuthorizedOpRunsHandlerOnce(t *testing.T) {
 
 	runs := 0
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Use(func(c *zip.Ctx) error { c.SetContext(ctx); return c.Next() })
+	app.Use(zip.H(func(c *zip.Ctx) error { c.SetContext(ctx); return c.Next() }))
 	app.Use(TokenRequired(permission.Admin))
 
 	// Register the way a TYPED OP does: take the gated router's OpScope and let
@@ -76,7 +76,7 @@ func TestMintOpScope_UnauthorizedOpNeverReachesHandler(t *testing.T) {
 
 	runs := 0
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Use(func(c *zip.Ctx) error { c.SetContext(ctx); return c.Next() })
+	app.Use(zip.H(func(c *zip.Ctx) error { c.SetContext(ctx); return c.Next() }))
 	app.Use(TokenRequired(permission.Admin))
 
 	scope := Mint(app.Group("")).OpScope()
