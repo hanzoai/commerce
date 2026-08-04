@@ -1437,19 +1437,42 @@ Medusa source file was stamped with a Hanzo header. The vendored btcd/btcec
 under `replace/` keeps its ISC notices in-file (22 of 44 files carry the
 header; the rest are go.mod/go.sum/README/testdata).
 
-### Open: per-file Go headers still say MIT
+### Per-file Go headers — all 72 now agree with the root
 
-Two header styles survive in the Go tree and both now understate or contradict
-the root terms. Neither is touched here — they need one decision, applied once:
+Every Hanzo-authored Go file carries the same two-line header, and it says the
+same thing the root LICENSE says:
 
-- 71 files: `// Copyright © 2026 Hanzo AI. MIT License.` — understates the dual
-  offer. Should be an SPDX id (`SPDX-License-Identifier: MIT OR Apache-2.0`) or
-  nothing at all, deferring to the root LICENSE.
-- 1 file, `cmd/commerced/telemetry.go`:
-  `// Copyright 2023-2026 Hanzo AI Inc. All Rights Reserved.` — reads as a
-  proprietary reservation inside a repo now offered under MIT OR Apache-2.0.
+```go
+// Copyright (c) 2026-present Hanzo AI, Inc.
+// Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
+```
 
-The root LICENSE governs regardless, but a licence scanner reads headers.
+That replaced two stale forms: `// Copyright © 2026 Hanzo AI. MIT License.` (71
+files, understated the dual offer) and, in `cmd/commerced/telemetry.go`,
+`// Copyright 2023-2026 Hanzo AI Inc. All Rights Reserved.` (1 file, a
+proprietary reservation left over from before the relicense). Headers are what
+licence scanners actually read, so a header contradicting the root is the
+contradiction that gets found first.
+
+Six of the 72 have a `//go:build` constraint below the header. The rewrite
+replaced line 1 in place rather than inserting, so the constraint keeps its
+position behind blank-lines-and-line-comments only — the one way this breaks
+silently. `go vet ./...` is the gate that proves it (its buildtag analyzer
+flags a misplaced constraint); it is green, as is `CGO_ENABLED=0 go build ./...`.
+
+Nothing vendored was restamped: the only other Go files carrying a copyright
+line are the 33 under `replace/btcec`, which keep their upstream btcsuite and
+Decred ISC notices verbatim. If a file's header is upstream's, it is not ours to
+restamp — `git ls-files` the path before touching it, and note that
+`app/node_modules/` and `app/store/.next/` are untracked build output, not repo
+content.
+
+Build note unrelated to licensing: plain `go build ./...` fails under cgo with
+`undefined: cgoBuildNeedsSQLiteMathFunctions` from `hanzoai/base`. That is a
+deliberate compile-time guard in the dependency (`//go:build cgo &&
+!sqlite_math_functions`) telling you to use the pure-Go backend or add the tag.
+It reproduces identically on a clean tree, and `CGO_ENABLED=0` — what the
+Dockerfile ships — is green. Not caused by the headers.
 
 commerce stays PRIVATE. Licensing and visibility are independent: a gitleaks
 sweep of full history found live third-party merchant credentials and a

@@ -1,4 +1,5 @@
-// Copyright © 2026 Hanzo AI. MIT License.
+// Copyright (c) 2026-present Hanzo AI, Inc.
+// Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
 
 // Package mintsink_test proves the STRUCTURAL money-mint invariant at the ledger
 // layer — the datastore write sink itself refuses to persist an unauthorized
