@@ -24,7 +24,7 @@
     "src"
   ],
   "author": "Hanzo AI, Inc.",
-  "license": "MIT",
+  "license": "MIT OR Apache-2.0",
   "devDependencies": {
     "@hanzo/commerce-types": "workspace:*"
   },
