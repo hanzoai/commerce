@@ -30,7 +30,23 @@ import (
 // onboarding funds an account once via the starter-credit grant, and once
 // that is spent the account is gated until it is topped up.
 func GetTier(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
+	// No organization on the request is a REFUSAL, not a panic and not a Free.
+	//
+	// The one-value GetOrganization type-asserts and blew up here for every
+	// service-to-service caller — measured live, a 500 on every call. That is
+	// this route's main caller: IAMTokenRequired resolves an org only from a
+	// gateway-validated user identity and deliberately falls through on a bare
+	// X-Org-Id, so an S2S request reaches the handler with a nil org.
+	//
+	// Answering Free instead would be worse than the 500. Free is exactly what
+	// the router falls back to on error, so serving it from a request that could
+	// read nothing turns an unanswerable question into a confident wrong answer:
+	// every paying customer silently pinned to the most restrictive tier, with no
+	// error anywhere to find. A tier that cannot be read is reported as not read.
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		return http.Fail(c, 400, "organization is required to read a tier", nil)
+	}
 	ctx := org.Namespaced(c.Context())
 
 	user := strings.ToLower(strings.TrimSpace(c.Query("user")))

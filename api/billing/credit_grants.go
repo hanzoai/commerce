@@ -97,7 +97,15 @@ func CreateCreditGrant(c *zip.Ctx) error {
 //
 //	GET /v1/billing/credits?userId=...
 func ListCreditGrants(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
+	// Same nil-org panic as GetTier, and it 500'd live beside it. Here the honest
+	// answer differs: this is a LIST, and its five siblings on the same chain
+	// (invoices, subscriptions, alerts, payouts) already answer an empty list when
+	// no org resolves. An empty grant list matches them and cannot be mistaken for
+	// money — unlike a tier, which is an authorization the router acts on.
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		return c.JSON(200, map[string]any{"grants": []map[string]any{}, "count": 0})
+	}
 	db := datastore.New(org.Namespaced(c.Context()))
 
 	userId := strings.TrimSpace(c.Query("userId"))
