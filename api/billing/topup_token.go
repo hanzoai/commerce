@@ -34,10 +34,11 @@ type topupTokenRequest struct {
 // topupBounds returns the inclusive [min,max] card top-up amount in cents. A
 // server-side bound is the authoritative enforcement of the console's own
 // MIN_TOPUP_CENTS/MAX_TOPUP_CENTS policy (a client cap is advisory — a scripted
-// request bypasses it). Defaults: min 100 ($1), max 500000 ($5,000). Override
-// per-deploy for risk tuning with COMMERCE_TOPUP_MIN_CENTS / COMMERCE_TOPUP_MAX_CENTS.
+// request bypasses it). Defaults: min 500 ($5) — the pay-as-you-go floor, owner
+// directive 2026-08 — max 500000 ($5,000). Override per-deploy for risk tuning
+// with COMMERCE_TOPUP_MIN_CENTS / COMMERCE_TOPUP_MAX_CENTS.
 func topupBounds() (int64, int64) {
-	return envCents("COMMERCE_TOPUP_MIN_CENTS", 100), envCents("COMMERCE_TOPUP_MAX_CENTS", 500000)
+	return envCents("COMMERCE_TOPUP_MIN_CENTS", 500), envCents("COMMERCE_TOPUP_MAX_CENTS", 500000)
 }
 
 // envCents reads a positive-int-cents override from the environment, falling

@@ -82,8 +82,8 @@ func TestTopupDestination_SubjectResolution(t *testing.T) {
 // bad/non-positive override fails safe to the default bound.
 func TestTopupBounds(t *testing.T) {
 	minC, maxC := topupBounds()
-	if minC != 100 || maxC != 500000 {
-		t.Fatalf("default topupBounds() = (%d,%d), want (100,500000)", minC, maxC)
+	if minC != 500 || maxC != 500000 {
+		t.Fatalf("default topupBounds() = (%d,%d), want (500,500000)", minC, maxC)
 	}
 	inBounds := func(v int64) bool { return v >= minC && v <= maxC }
 	for _, tc := range []struct {
@@ -92,8 +92,8 @@ func TestTopupBounds(t *testing.T) {
 	}{
 		{0, false},         // zero
 		{-100, false},      // negative
-		{99, false},        // just below the $1 floor
-		{100, true},        // exactly the floor
+		{499, false},       // just below the $5 floor
+		{500, true},        // exactly the floor
 		{2500, true},       // typical
 		{500000, true},     // exactly the ceiling
 		{500001, false},    // just over the $5,000 ceiling
