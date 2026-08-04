@@ -45,12 +45,12 @@ func TestPlans_SurfaceActivePromo(t *testing.T) {
 	putReq := httptest.NewRequest(http.MethodPut, "/v1/platform/promo",
 		bytes.NewReader([]byte(`{"percentOff":50,"plans":["pro"],"active":true}`)))
 	putReq.Header.Set("Content-Type", "application/json")
-	if resp, err := a.Fiber().Test(putReq); err != nil || resp.StatusCode != 200 {
+	if resp, err := a.Test(putReq); err != nil || resp.StatusCode != 200 {
 		t.Fatalf("PUT promo: err=%v status=%v", err, statusOf(resp))
 	}
 
 	// Read the plan catalog and index by slug.
-	getResp, err := a.Fiber().Test(httptest.NewRequest(http.MethodGet, "/v1/billing/plans", nil))
+	getResp, err := a.Test(httptest.NewRequest(http.MethodGet, "/v1/billing/plans", nil))
 	if err != nil || getResp.StatusCode != 200 {
 		t.Fatalf("GET plans: err=%v status=%v", err, statusOf(getResp))
 	}

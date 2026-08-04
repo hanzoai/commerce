@@ -26,7 +26,7 @@ func TestPlans_TeamCommercialModel(t *testing.T) {
 	a := zip.New(zip.Config{DisableStartupMessage: true})
 	a.Get("/v1/billing/plans", ListPlans)
 
-	resp, err := a.Fiber().Test(httptest.NewRequest(http.MethodGet, "/v1/billing/plans", nil))
+	resp, err := a.Test(httptest.NewRequest(http.MethodGet, "/v1/billing/plans", nil))
 	if err != nil || resp.StatusCode != 200 {
 		t.Fatalf("GET plans: err=%v status=%d", err, resp.StatusCode)
 	}

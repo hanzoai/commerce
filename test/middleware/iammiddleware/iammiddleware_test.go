@@ -31,7 +31,7 @@ func TestFallthroughWithoutHeaders(t *testing.T) {
 	app.Use(iammiddleware.IAMTokenRequired())
 	app.Get("/x", func(c *zip.Ctx) error { return c.String(http.StatusOK, "ok") })
 
-	resp, err := app.Fiber().Test(httptest.NewRequest(http.MethodGet, "/x", nil))
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/x", nil))
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}

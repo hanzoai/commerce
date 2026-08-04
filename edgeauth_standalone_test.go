@@ -94,7 +94,7 @@ func TestStandaloneForge_TenantCreate_Blocked(t *testing.T) {
 	req.Header.Set("X-User-IsAdmin", "true")
 	req.Header.Set("X-User-Id", "mallory")
 
-	resp, terr := app.Router.Fiber().Test(req)
+	resp, terr := app.Router.Test(req)
 	if terr != nil {
 		t.Fatalf("Test: %v", terr)
 	}
@@ -129,7 +129,7 @@ func TestStandaloneForge_ListProviders_Blocked(t *testing.T) {
 	req.Header.Set("X-User-IsAdmin", "true")
 	req.Header.Set("X-Roles", "admin,owner,superadmin")
 
-	resp, terr := app.Router.Fiber().Test(req)
+	resp, terr := app.Router.Test(req)
 	if terr != nil {
 		t.Fatalf("Test: %v", terr)
 	}
@@ -169,7 +169,7 @@ func TestStandaloneMoneyPath_NotBlockedByBoundary(t *testing.T) {
 	req.Header.Set("Authorization", "Bearer st_opaque_service_token")
 	req.Header.Set("X-Org-Id", "maxpower")
 
-	resp, terr := app.Router.Fiber().Test(req)
+	resp, terr := app.Router.Test(req)
 	if terr != nil {
 		t.Fatalf("Test: %v", terr)
 	}

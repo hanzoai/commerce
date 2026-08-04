@@ -45,7 +45,7 @@ func newSubScopeAPI(ns string) *subScopeAPI {
 func (a *subScopeAPI) get(t *testing.T, id string) int {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, "/subscribe/"+id, nil)
-	resp, err := a.app.Fiber().Test(req)
+	resp, err := a.app.Test(req)
 	if err != nil {
 		t.Fatalf("GET /subscribe/%s: %v", id, err)
 	}

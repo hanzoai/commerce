@@ -96,7 +96,7 @@ func TestIAMTokenRequired_NeedsValidatedPrincipal(t *testing.T) {
 			if tc.user != "" {
 				req.Header.Set(pkgAuth.HeaderUserID, tc.user)
 			}
-			resp, err := app.Fiber().Test(req)
+			resp, err := app.Test(req)
 			if err != nil {
 				t.Fatalf("Test: %v", err)
 			}

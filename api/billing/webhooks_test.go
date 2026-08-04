@@ -208,7 +208,7 @@ func TestHandleProviderWebhook_MissingSignature(t *testing.T) {
 	r := newTestEngine()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/webhooks/square", strings.NewReader(`{}`))
-	resp, terr := r.Fiber().Test(req)
+	resp, terr := r.Test(req)
 	if terr != nil {
 		t.Fatalf("Test: %v", terr)
 	}
@@ -230,7 +230,7 @@ func TestHandleProviderWebhook_BadSignatureReachesSquare(t *testing.T) {
 	r := newTestEngine()
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/webhooks/square", strings.NewReader(`{"type":"payment.created"}`))
 	req.Header.Set(squareSigHeader, "dGhpcy1pcy1ub3QtdmFsaWQ=") // valid base64, wrong digest
-	resp, terr := r.Fiber().Test(req)
+	resp, terr := r.Test(req)
 	if terr != nil {
 		t.Fatalf("Test: %v", terr)
 	}
@@ -275,7 +275,7 @@ func TestHandleProviderWebhook_BodyOnlySignatureFails(t *testing.T) {
 	r := newTestEngine()
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/webhooks/square", strings.NewReader(string(body)))
 	req.Header.Set(squareSigHeader, sig)
-	resp, terr := r.Fiber().Test(req)
+	resp, terr := r.Test(req)
 	if terr != nil {
 		t.Fatalf("Test: %v", terr)
 	}

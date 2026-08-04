@@ -108,7 +108,7 @@ func newRouterWithClaims(s *store.Store, claims *auth.IAMClaims) *zip.App {
 // and response headers — the zip analog of httptest.NewRecorder + ServeHTTP.
 func doReq(t *testing.T, app *zip.App, req *http.Request) (int, []byte, http.Header) {
 	t.Helper()
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("app.Test: %v", err)
 	}

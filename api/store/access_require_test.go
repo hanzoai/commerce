@@ -38,7 +38,7 @@ func callRequireAccess(t *testing.T, ns, storeID string) int {
 	if storeID != "" {
 		req.Header.Set("X-Store-Id", storeID)
 	}
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("test request: %v", err)
 	}

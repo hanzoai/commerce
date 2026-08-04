@@ -52,7 +52,7 @@ func TestMintOpScope_AuthorizedOpRunsHandlerOnce(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/x", nil)
 	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Org-Id", "svc-org")
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestMintOpScope_UnauthorizedOpNeverReachesHandler(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/x", nil)
 	req.Header.Set("Authorization", "Bearer not-the-service-token")
 	req.Header.Set("X-Org-Id", "svc-org")
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}

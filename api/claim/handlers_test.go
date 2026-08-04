@@ -62,7 +62,7 @@ func do(t *testing.T, app *zip.App, method, path string, body []byte) (int, []by
 	}
 	req := httptest.NewRequest(method, path, r)
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("test request: %v", err)
 	}

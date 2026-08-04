@@ -81,7 +81,7 @@ func callCurrent(t *testing.T, org string) storeResp {
 		},
 		getCurrent,
 	)
-	resp, err := app.Fiber().Test(httptest.NewRequest(http.MethodGet, "/v1/store/current", nil))
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/v1/store/current", nil))
 	if err != nil {
 		t.Fatalf("org %q: Test: %v", org, err)
 	}

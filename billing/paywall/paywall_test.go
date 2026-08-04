@@ -204,7 +204,7 @@ func TestRequire_Denies402Shape(t *testing.T) {
 	app.Use(zip.H(Require))
 	app.Get("/x", func(c *zip.Ctx) error { reached = true; return c.NoContent(http.StatusOK) })
 
-	resp, err := app.Fiber().Test(httptest.NewRequest(http.MethodGet, "/x", nil))
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/x", nil))
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}

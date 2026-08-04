@@ -29,7 +29,7 @@ func runGate(t *testing.T, masks []bit.Mask, seed func(*zip.Ctx)) (int, bool) {
 	app.Use(TokenRequired(masks...))
 	app.Post("/x", func(c *zip.Ctx) error { reached = true; return c.NoContent(http.StatusOK) })
 
-	resp, err := app.Fiber().Test(httptest.NewRequest(http.MethodPost, "/x", nil))
+	resp, err := app.Test(httptest.NewRequest(http.MethodPost, "/x", nil))
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -101,7 +101,7 @@ func TestTokenRequired_BareOrgHeaderIsNotAuthenticated(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/x", nil)
 	req.Header.Set("X-Org-Id", "hanzo") // spoofed org selector, no token behind it
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestTokenRequired_ServiceTokenResolveFailsFast(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/x", nil)
 	req.Header.Set("Authorization", "Bearer "+svc)
 	req.Header.Set("X-Org-Id", "failorg")
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}

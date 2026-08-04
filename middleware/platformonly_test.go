@@ -38,7 +38,7 @@ func runMintGate(t *testing.T, seed func(*zip.Ctx), reqSetup func(*http.Request)
 	if reqSetup != nil {
 		reqSetup(req)
 	}
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestPlatformOnly_AdminBitAloneDenied(t *testing.T) {
 				reached = true
 				return c.NoContent(http.StatusOK)
 			})
-			resp, err := app.Fiber().Test(httptest.NewRequest(http.MethodPost, "/x", nil))
+			resp, err := app.Test(httptest.NewRequest(http.MethodPost, "/x", nil))
 			if err != nil {
 				t.Fatalf("request failed: %v", err)
 			}

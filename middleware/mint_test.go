@@ -59,7 +59,7 @@ func TestGroupUseIsMembershipScopedNotPrefix(t *testing.T) {
 	// touched by the sub-group's middleware.
 	api.Get("/balance", func(c *zip.Ctx) error { return c.JSON(http.StatusOK, "balance") })
 
-	resp, err := app.Fiber().Test(httptest.NewRequest(http.MethodGet, "/v1/billing/balance", nil))
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/v1/billing/balance", nil))
 	if err != nil {
 		t.Fatalf("Test: %v", err)
 	}
@@ -105,7 +105,7 @@ func TestMintRecordsFullPathAndGates(t *testing.T) {
 	}
 
 	// Gated: no service token and no SuperAdmin claim → 403, handler never runs.
-	resp, err := app.Fiber().Test(httptest.NewRequest(http.MethodPost, "/v1/billing/mint-probe", nil))
+	resp, err := app.Test(httptest.NewRequest(http.MethodPost, "/v1/billing/mint-probe", nil))
 	if err != nil {
 		t.Fatalf("Test: %v", err)
 	}
@@ -184,7 +184,7 @@ func TestMintGatesATypedOp(t *testing.T) {
 	// Gated: no platform principal, no deposit.
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/deposit", strings.NewReader(`{"cents":1}`))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatal(err)
 	}

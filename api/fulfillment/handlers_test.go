@@ -53,7 +53,7 @@ func (a *fulfillmentAPI) do(t *testing.T, path string, body any) (int, []byte) {
 	}
 	req := httptest.NewRequest(http.MethodPost, path, r)
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := a.app.Fiber().Test(req)
+	resp, err := a.app.Test(req)
 	if err != nil {
 		t.Fatalf("POST %s: %v", path, err)
 	}

@@ -66,7 +66,7 @@ func probe(t *testing.T, app *App, method, path string, host string, body []byte
 	if host != "" {
 		req.Host = host
 	}
-	resp, terr := app.Router.Fiber().Test(req)
+	resp, terr := app.Router.Test(req)
 	if terr != nil {
 		t.Fatalf("Test: %v", terr)
 	}

@@ -34,7 +34,7 @@ func evalOver(t *testing.T, ns string, body evalRequest) evalResponse {
 	raw, _ := json.Marshal(body)
 	req := httptest.NewRequest(http.MethodPost, "/promotion/evaluate", bytes.NewReader(raw))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("test request: %v", err)
 	}
