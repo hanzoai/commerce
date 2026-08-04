@@ -1,4 +1,5 @@
-// Copyright © 2026 Hanzo AI. MIT License.
+// Copyright (c) 2026-present Hanzo AI, Inc.
+// Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
 //
 // Gateway-trust shim tests. The legacy in-binary JWT validation tests
 // (~600 LOC of RSA keys + JWKS server + claim shaping) were removed
