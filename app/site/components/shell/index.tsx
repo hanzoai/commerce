@@ -94,7 +94,15 @@ export const SiteFooter = () => (
   </YStack>
 )
 
-/** Nav + content + footer, with the content column carrying the docs measure. */
+/**
+ * Nav + content + footer, with the content column carrying the docs measure.
+ *
+ * The content column GROWS, it does not `flex={1}`. Gui spells `flex={1}` the
+ * React Native way — `flexGrow:1; flexShrink:1; flexBasis:0%` — so the column's
+ * height became the leftover space in a 100vh box and every page longer than the
+ * viewport spilled its content straight through the footer. `grow` sets only
+ * flex-grow, which is what "fill what is left, then push the footer down" means.
+ */
 export const SiteShell = ({
   children,
   stickyNav = false,
@@ -107,7 +115,7 @@ export const SiteShell = ({
 }) => (
   <YStack minH="100vh" bg="$background">
     <SiteNav sticky={stickyNav} />
-    <YStack flex={1} render="main" className={prose ? "docs-prose" : undefined}>
+    <YStack grow={1} render="main" className={prose ? "docs-prose" : undefined}>
       {children}
     </YStack>
     <SiteFooter />

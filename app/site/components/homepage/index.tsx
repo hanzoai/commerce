@@ -109,13 +109,22 @@ const Grid = ({
   </View>
 )
 
+/**
+ * One tile of a `Grid`.
+ *
+ * Only the right and bottom edges are drawn: a full border on every cell doubles
+ * up on every shared edge, and the negative margin that used to hide that made
+ * each cell 4px wider than its column — a 1px horizontal overflow on a phone,
+ * invisible only because the body clips it. The section owns its outer bottom
+ * edge (`SECTION`) and the page frame owns the sides.
+ */
 const Cell = ({ children }: { children: ReactNode }) => (
   <YStack
     p="$5"
     gap="$3"
-    borderWidth={1}
+    borderRightWidth={1}
+    borderBottomWidth={1}
     borderColor="$borderColor"
-    m={-0.5}
     hoverStyle={{ bg: "$background04" }}
   >
     {children}

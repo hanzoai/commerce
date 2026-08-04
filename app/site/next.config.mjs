@@ -87,6 +87,11 @@ const withMDX = mdx({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "export",
+  // Directory-style export (out/learn/index.html) so a deep link or a refresh on
+  // a route resolves through the static server's directory index. Without it the
+  // export writes out/learn.html, which /learn does not reach — the same reason
+  // the admin sets it.
+  trailingSlash: true,
   pageExtensions: ["js", "jsx", "mdx", "ts", "tsx"],
   images: {
     unoptimized: true,
