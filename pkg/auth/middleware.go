@@ -1,4 +1,5 @@
-// Copyright © 2026 Hanzo AI. MIT License.
+// Copyright (c) 2026-present Hanzo AI, Inc.
+// Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
 
 // Package auth wires gateway-supplied identity headers (X-Org-Id,
 // X-User-Id, X-User-Email) into request context. commerced does not
