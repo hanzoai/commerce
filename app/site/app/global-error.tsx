@@ -1,23 +1,50 @@
 "use client"
 
-import { inter, robotoMono } from "./fonts"
-import clsx from "clsx"
+import { sans, mono } from "./fonts"
 import "./globals.css"
 
-export default function Error() {
+/**
+ * The last-resort shell. It renders its own <html> because it replaces the root
+ * layout, and it deliberately uses plain elements and the tokens from
+ * `globals.css` — a provider that failed to mount is exactly what got us here.
+ */
+export default function GlobalError() {
   return (
-    <html lang="en" className={clsx(inter.variable, robotoMono.variable)}>
-      <body className="w-screen h-screen overflow-hidden bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold mb-4">Something went wrong</h1>
-          <p className="text-gray-500 mb-8">An unexpected error occurred.</p>
+    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
+      <body>
+        <main
+          style={{
+            minHeight: "100vh",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "1rem",
+            padding: "1rem",
+            textAlign: "center",
+          }}
+        >
+          <h1 style={{ fontSize: "2rem", fontWeight: 500, margin: 0 }}>
+            Something went wrong
+          </h1>
+          <p style={{ color: "var(--muted-foreground)", margin: 0 }}>
+            An unexpected error occurred.
+          </p>
           <a
             href="/"
-            className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-medium"
+            style={{
+              padding: "0.5rem 1rem",
+              borderRadius: "var(--radius)",
+              background: "var(--foreground)",
+              color: "var(--background)",
+              fontSize: "0.875rem",
+              fontWeight: 500,
+              textDecoration: "none",
+            }}
           >
             Go Home
           </a>
-        </div>
+        </main>
       </body>
     </html>
   )
