@@ -190,11 +190,25 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// commerce admin tokens; the provider's signature is the trust anchor.
 	r.Post("/billing/webhooks/:provider", HandleProviderWebhook)
 
-	// Customer portal
+	// Customer portal — the SERVICE-TOKEN face of the same customer surface the
+	// `user` group below serves directly. A host that fronts commerce owns the
+	// customer address itself (cloud's billing app owns /v1/billing/methods) and
+	// reaches the data through here, so the portal family is what it may proxy to
+	// without dispatching back into its own route.
 	api.Get("/portal/overview", PortalOverview)
 	api.Get("/portal/invoices", PortalInvoices)
 	api.Get("/portal/subscriptions", PortalSubscriptions)
 	api.Get("/portal/methods", PortalPaymentMethods)
+	// Removing a saved card, at the portal address for the same reason the list is
+	// here: a proxying host cannot forward DELETE /billing/methods/:id — that is the
+	// address it publishes itself, so the forward re-enters its own handler. Without
+	// this the sub-resource had no reachable owner and a customer could add a card
+	// and never remove one (the live edge answered 405).
+	//
+	// SAME handler, SAME guards as the user-group route below: the org namespace
+	// scopes cross-org (a foreign id is a not-found miss) and
+	// callerMayReachBillingSubject closes the intra-org gap on the unpinned :id.
+	api.Delete("/portal/methods/:id", DetachPaymentMethod)
 
 	// Subscription schedules
 	api.Post("/subscription-schedules", CreateSubscriptionSchedule)

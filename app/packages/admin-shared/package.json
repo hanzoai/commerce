@@ -3,6 +3,7 @@
   "description": "Shared code for Hanzo Commerce admin packages.",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT OR Apache-2.0",
   "types": "dist/index.d.ts",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

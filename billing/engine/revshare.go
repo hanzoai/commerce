@@ -108,7 +108,7 @@ func TrackRevenueShare(db *datastore.Datastore, userID string, chargeAmount curr
 	fe := fee.New(db)
 	fe.Name = "Referral revenue share"
 	fe.Type = fee.Affiliate
-	fe.AffiliateId = affiliateID
+	fe.PayeeId = affiliateID
 	fe.Parent = rfr.Affiliate.Key()
 	fe.Currency = cur
 	fe.Amount = commissionAmount
