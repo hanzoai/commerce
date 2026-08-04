@@ -87,7 +87,7 @@ func TestMintRecordsFullPathAndGates(t *testing.T) {
 	api := app.Group("/v1").Group("billing")
 
 	reached := false
-	Mint(api).Post("/mint-probe", func(c *zip.Ctx) error {
+	Mint(api, "/v1/billing").Post("/mint-probe", func(c *zip.Ctx) error {
 		reached = true
 		return c.JSON(http.StatusOK, "minted")
 	})
@@ -123,7 +123,7 @@ func TestMintRecordsFullPathAndGates(t *testing.T) {
 func TestMintRegistryIsASet(t *testing.T) {
 	register := func() {
 		app := zip.New(zip.Config{DisableStartupMessage: true})
-		Mint(app.Group("/v1").Group("billing")).Post("/set-probe", func(c *zip.Ctx) error { return nil })
+		Mint(app.Group("/v1").Group("billing"), "/v1/billing").Post("/set-probe", func(c *zip.Ctx) error { return nil })
 	}
 	register()
 	register()
@@ -150,7 +150,7 @@ func TestMintUseIsRefused(t *testing.T) {
 		}
 	}()
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	Mint(app.Group("/v1").Group("billing")).Use(zip.H(func(c *zip.Ctx) error { return nil }))
+	Mint(app.Group("/v1").Group("billing"), "/v1/billing").Use(zip.H(func(c *zip.Ctx) error { return nil }))
 }
 
 // A TYPED op declared on a mint router is gated exactly as an untyped one is.
@@ -159,7 +159,7 @@ func TestMintUseIsRefused(t *testing.T) {
 // router's whole purpose, skipped silently.
 func TestMintGatesATypedOp(t *testing.T) {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	mint := Mint(app.Group("/v1/billing"))
+	mint := Mint(app.Group("/v1/billing"), "/v1/billing")
 
 	type depositIn struct {
 		Cents int `json:"cents"`

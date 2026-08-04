@@ -40,20 +40,32 @@ var (
 // runs FIRST and the handler LAST, exactly as the explicit chain did.
 //
 // The natural shape for an authz class is a group carrying its own Use
-// (`api.Use(adminRequired)` one level up). Mint deliberately does NOT do that,
-// because this router cannot express it: fiber's Use matches by PATH PREFIX, not
-// by group membership, and a bare sub-group inherits its parent's prefix
-// verbatim — so `api.Group("").Use(PlatformOnly())` gates every neighbouring
-// route under /v1/billing, including the org-admin reads that must stay
-// reachable. TestGroupUseIsPrefixScopedNotMembership proves it and fails if that
-// scoping ever changes (at which point the gated-sub-group shape becomes right).
-// Mint therefore prepends the gate to each route's own chain, which gates exactly
-// the declared routes and nothing else.
+// (`api.Use(adminRequired)` one level up). Mint deliberately does NOT do that.
+// It could not, when the router matched Use by PATH PREFIX rather than by group
+// membership: `api.Group("").Use(PlatformOnly())` then gated every neighbouring
+// route under /v1/billing, the org-admin reads included. zip v1.23 closed that —
+// TestGroupUseIsMembershipScopedNotPrefix now holds the guarantee — so the
+// gated-sub-group shape has become available. Mint still prepends the gate to
+// each route's own chain, which gates exactly the declared routes and does not
+// depend on which framework version is pinned. These are the routes that move
+// money; taking the simpler shape is a change on its own evidence.
+//
+// prefix is the address these routes are SERVED at, stated by the code that
+// mounts them. It cannot be discovered from r: zip composes definitions, so the
+// same router can be included at more than one site and has no single absolute
+// address until a build resolves the tree. This used to read
+// r.Fiber().(*fiber.Group).Prefix, which answered only because fiber flattened a
+// group into one prefix at declaration — an approximation that goes silently
+// wrong the moment a definition is composed twice.
+//
+// A stated address is a claim, so it is CHECKED rather than trusted:
+// TestMintRoutesMatchWhatIsServed compares MintRoutes() against the app's own
+// declaration and fails if this prefix does not name real routes.
 //
 // Register it on a router that has ALREADY resolved the caller — PlatformOnly
 // reads what TokenRequired sets and only ever NARROWS (see platformonly.go).
-func Mint(r zip.Router) zip.Router {
-	return &mintRouter{inner: r, prefix: groupPrefix(r), gate: PlatformOnly()}
+func Mint(r zip.Router, prefix string) zip.Router {
+	return &mintRouter{inner: r, prefix: prefix, gate: PlatformOnly()}
 }
 
 // MintRoutes returns every route declared through Mint, sorted and deduplicated
@@ -132,7 +144,9 @@ func (m *mintRouter) All(p string, h ...zip.Handler) zip.Router {
 // recorded, so a whole mint subtree declares itself the same one way.
 func (m *mintRouter) Group(prefix string, handlers ...zip.Handler) zip.Router {
 	inner := m.inner.Group(prefix, handlers...)
-	return &mintRouter{inner: inner, prefix: groupPrefix(inner), gate: m.gate}
+	// The sub-group's address is this router's, joined with the leaf. Known
+	// locally, so nothing has to ask the router where it lives.
+	return &mintRouter{inner: inner, prefix: joinPath(m.prefix, prefix), gate: m.gate}
 }
 
 // Use is refused: Mint gates per-route precisely because fiber's Use is
@@ -213,11 +227,6 @@ func MintOp[In, Out any](on zip.Router, method, path string, fn zip.TypedHandler
 		panic("middleware.MintOp: unsupported method " + method)
 	}
 }
-
-// groupPrefix reports the full prefix of r, read from the SAME value
-// fiber routes on (Group.Prefix, which fiber builds by joining parents). A root
-// app router has no prefix.
-func groupPrefix(r zip.Router) string { return r.OpScope().Prefix }
 
 // joinPath mirrors fiber's getGroupPath, so a recorded path equals the path
 // fiber actually routes.
