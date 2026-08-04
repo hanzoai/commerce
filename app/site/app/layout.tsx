@@ -1,8 +1,7 @@
 import type { Metadata } from "next"
 import "./globals.css"
 import { config } from "@/config"
-import { inter, robotoMono } from "./fonts"
-import clsx from "clsx"
+import { sans, mono } from "./fonts"
 
 export const metadata: Metadata = {
   title: {
@@ -19,6 +18,8 @@ export const metadata: Metadata = {
   },
 }
 
+// `t_dark` is the Gui theme class; `dark` is what @hanzo/ui/theme.css keys the
+// dark token set on. Both, once, on the element every page inherits from.
 export default function RootLayout({
   children,
 }: {
@@ -27,7 +28,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={clsx(inter.variable, robotoMono.variable)}
+      className={`${sans.variable} ${mono.variable} dark t_dark`}
       suppressHydrationWarning
     >
       {children}

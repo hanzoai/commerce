@@ -1,43 +1,180 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/**
+ * The docs site's stylesheet — plain CSS on the Hanzo token set, no Tailwind.
+ *
+ * `@hanzo/ui/theme.css` declares EVERY design token the component layer names
+ * (--background, --foreground, --muted-foreground, --border, --primary, --radius,
+ * …) for both schemes, plus the Geist bindings `app/fonts.ts` fills in. Nothing
+ * here invents a colour: every rule below reads one of those custom properties,
+ * so the CSS-rendered MDX prose and the Gui-rendered components cannot drift.
+ *
+ * The only thing this file OWNS is prose — the raw <h1>/<p>/<ul>/<pre> elements
+ * MDX emits, which no component library can style because no component wraps
+ * them. Everything a component could draw is a component (components/docs).
+ */
+@import "@hanzo/ui/theme.css";
 
-@layer base {
-
-  html {
-    @apply antialiased;
-    text-rendering: optimizeLegibility;
-  }
-
-  body {
-    @apply overflow-x-hidden;
-  }
-
-  *::selection {
-    @apply bg-hanzo-fg-base text-hanzo-fg-on-inverted;
-  }
-
-  *:not(.code-block-elm) {
-    scrollbar-color: var(--docs-border-base) var(--docs-bg-base);
-  }
-
-  .code-block-elm {
-    scrollbar-color: var(--docs-contrast-border-base) transparent;
-  }
-
-  aside * {
-    scrollbar-color: var(--docs-border-base) var(--docs-bg-subtle);
-  }
-
-  body[data-modal="opened"] {
-    @apply !overflow-hidden;
-  }
-
-  .text-wrap {
-    text-wrap: wrap;
-  }
+:root {
+  /* The docs measure and gutter, named once so the shell and the prose agree. */
+  --docs-measure: 56rem;
+  --docs-gutter: 1rem;
 }
 
-.grecaptcha-badge {
-  visibility: hidden;
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  color-scheme: dark;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+body {
+  margin: 0;
+  overflow-x: hidden;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+}
+
+*::selection {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+* {
+  scrollbar-color: var(--border) transparent;
+}
+
+a {
+  color: inherit;
+}
+
+/* ── prose ────────────────────────────────────────────────────────────────────
+   The MDX body. Scoped to `.docs-prose` so it can never reach a component. */
+
+.docs-prose {
+  max-width: var(--docs-measure);
+  margin: 0 auto;
+  padding: 2rem var(--docs-gutter) 4rem;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--foreground);
+}
+
+.docs-prose h1,
+.docs-prose h2,
+.docs-prose h3,
+.docs-prose h4 {
+  margin: 2.5rem 0 0.75rem;
+  font-weight: 500;
+  /* A ratio, not a length — spelled unitless so it stays a ratio. */
+  line-height: 1.25;
+  scroll-margin-top: 5rem;
+}
+
+.docs-prose h1 {
+  margin-top: 0;
+  font-size: 2rem;
+}
+.docs-prose h2 {
+  font-size: 1.5rem;
+}
+.docs-prose h3 {
+  font-size: 1.1875rem;
+}
+.docs-prose h4 {
+  font-size: 1rem;
+}
+
+.docs-prose p,
+.docs-prose ul,
+.docs-prose ol {
+  margin: 0 0 1rem;
+}
+
+.docs-prose ul,
+.docs-prose ol {
+  padding-left: 1.5rem;
+}
+
+.docs-prose li {
+  margin: 0.25rem 0;
+}
+
+.docs-prose a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.docs-prose hr {
+  margin: 2.5rem 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.docs-prose blockquote {
+  margin: 1rem 0;
+  padding: 0.25rem 0 0.25rem 1rem;
+  border-left: 2px solid var(--border);
+  color: var(--muted-foreground);
+}
+
+.docs-prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+}
+
+.docs-prose table {
+  width: 100%;
+  margin: 1rem 0;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.docs-prose th,
+.docs-prose td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.docs-prose th {
+  background: var(--muted);
+  font-weight: 500;
+}
+
+/* ── code ─────────────────────────────────────────────────────────────────── */
+
+.docs-prose code,
+.docs-prose kbd,
+.docs-prose samp {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.875em;
+}
+
+.docs-prose :not(pre) > code {
+  padding: 0.125em 0.35em;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.docs-prose pre {
+  margin: 1rem 0;
+  padding: 1rem;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  line-height: 1.6;
+}
+
+.docs-prose pre code {
+  padding: 0;
+  border: 0;
+  background: none;
 }

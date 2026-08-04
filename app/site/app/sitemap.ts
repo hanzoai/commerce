@@ -1,5 +1,9 @@
 import type { MetadataRoute } from "next"
 
+// The sitemap is a build-time artifact of a static export, so it must say so:
+// `output: "export"` refuses a route whose rendering mode is unstated.
+export const dynamic = "force-static"
+
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://commerce.hanzo.ai"
 
 export default function sitemap(): MetadataRoute.Sitemap {
