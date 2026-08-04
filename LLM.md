@@ -1362,9 +1362,11 @@ no gofiber, no net/http adaptation in the serving path. Handlers are
 - Pre-existing debt unchanged: test-integration/* needs external services;
   thirdparty/reamaze verifyHMAC has an inversion bug (flagged, not fixed here).
 
-## Licensing — `MIT OR Apache-2.0`
+## Licensing — `MIT OR Apache-2.0` (HIP-0137)
 
-The repo is dual-licensed. Three root files, one declaration each, no restating:
+The repo is dual-licensed per **HIP-0137 "One License"**
+(`hanzoai/hips`, `HIPs/hip-0137-one-license.md`). Three root files, one
+declaration each, no restating:
 
 - `LICENSE` — the dual offer + SPDX id + inbound=outbound contribution clause.
   Points at the two texts and at NOTICE. Copyright `2014-2026 Hanzo AI, Inc.`
@@ -1400,10 +1402,54 @@ The **Go backend is not a Medusa fork** — it is an independent native
 implementation that reaches parity with Medusa v2's admin domains (see "Medusa
 parity" above). Only `app/` carries upstream lineage.
 
-`app/store/LICENSE` is left alone: it is the upstream starter's MIT file with the
-copyright line swapped to Hanzo. Never edit an upstream LICENSE. The root
-`LICENSE` governs the repo; that nested file is stale and its Medusa attribution
-now lives in NOTICE.
+### `app/store/LICENSE` — a swapped copyright line, REPAIRED
+
+That file was the upstream starter's MIT licence with line 3 changed from
+`Copyright (c) 2022 Medusa` to `Copyright (c) 2024 Hanzo AI`. Every other byte
+matched upstream. It is restored: the file is now byte-identical to
+medusajs/nextjs-starter-medusa's LICENSE — sha256
+`770a61c897d73cdeb53ff2a367d537a80eccf57b31f81e4a5fe951fecc40c632`, git blob
+`94def62e7e4e5016c3c4af42bc426beb3ec483e8`, which is the blob id GitHub reports
+for the upstream file itself.
+
+**The rule is "never edit an upstream LICENSE," and restoring this is not an
+exception to it — it is the rule being enforced.** The rule exists to protect
+upstream attribution. This was not an intact upstream licence being altered; it
+was an already-altered one, altered in the single way MIT forbids: MIT
+conditions the grant on "the above copyright notice ... shall be included in all
+copies or substantial portions of the Software." A swapped holder line is a
+continuing breach for as long as it ships. Restoring is repair, not edit. The
+test to apply next time: *does this change move the file toward or away from
+what upstream published?* Toward = repair. Away = the thing the rule forbids.
+
+This is the second confirmed instance of this failure class, after the Papermark
+incident (a branding pass retitled Papermark's commercial licence and swapped
+its copyright holder over 100% upstream code). Both were produced by
+rebrand-everything sweeps that treated a licence file as branding surface.
+Licence and NOTICE files are not branding surface.
+
+Swept the rest of the repo for the same swap. Tracked licence files repo-wide
+are exactly five: the three root ones, NOTICE, and `app/store/LICENSE` — no
+others, nested or otherwise (the `node_modules/` and `.next/` hits a filesystem
+grep returns are untracked build output, 0 tracked). `app/store/LICENSE` was
+also the **only** Hanzo copyright claim anywhere in the vendored `app/` tree: no
+Medusa source file was stamped with a Hanzo header. The vendored btcd/btcec
+under `replace/` keeps its ISC notices in-file (22 of 44 files carry the
+header; the rest are go.mod/go.sum/README/testdata).
+
+### Open: per-file Go headers still say MIT
+
+Two header styles survive in the Go tree and both now understate or contradict
+the root terms. Neither is touched here — they need one decision, applied once:
+
+- 71 files: `// Copyright © 2026 Hanzo AI. MIT License.` — understates the dual
+  offer. Should be an SPDX id (`SPDX-License-Identifier: MIT OR Apache-2.0`) or
+  nothing at all, deferring to the root LICENSE.
+- 1 file, `cmd/commerced/telemetry.go`:
+  `// Copyright 2023-2026 Hanzo AI Inc. All Rights Reserved.` — reads as a
+  proprietary reservation inside a repo now offered under MIT OR Apache-2.0.
+
+The root LICENSE governs regardless, but a licence scanner reads headers.
 
 commerce stays PRIVATE. Licensing and visibility are independent: a gitleaks
 sweep of full history found live third-party merchant credentials and a
