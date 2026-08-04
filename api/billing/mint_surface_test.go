@@ -994,7 +994,7 @@ func orgAdminEngine(t *testing.T) *zip.App {
 func probe(eng *zip.App, method, path string) int {
 	req := httptest.NewRequest(method, path, bytes.NewBufferString(`{}`))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := eng.Fiber().Test(req)
+	resp, err := eng.Test(req)
 	if err != nil {
 		return 0
 	}

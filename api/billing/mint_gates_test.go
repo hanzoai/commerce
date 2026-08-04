@@ -55,7 +55,7 @@ func TestZapDeposit_OrgAdminDenied(t *testing.T) {
 	body := `{"method":"billing.deposit","params":{"user":"acme","amount":100000000,"currency":"usd"}}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/zap", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, terr := eng.Fiber().Test(req)
+	resp, terr := eng.Test(req)
 	if terr != nil {
 		t.Fatalf("Test: %v", terr)
 	}
@@ -80,7 +80,7 @@ func TestZapDeposit_ServiceTokenMints(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Org-Id", "zapmintorg")
-	resp, terr := eng.Fiber().Test(req)
+	resp, terr := eng.Test(req)
 	if terr != nil {
 		t.Fatalf("Test: %v", terr)
 	}
@@ -124,7 +124,7 @@ func TestZapReads_OrgAdminNotBlocked(t *testing.T) {
 	body := `{"method":"billing.getBalance","id":"r1","params":{"user":"acme/alice","currency":"usd"}}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/zap", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, terr := eng.Fiber().Test(req)
+	resp, terr := eng.Test(req)
 	if terr != nil {
 		t.Fatalf("Test: %v", terr)
 	}
@@ -160,7 +160,7 @@ func TestAllotment_OrgAdminCannotInflatePlan(t *testing.T) {
 	body := `{"user":"acme","plan":"max"}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/allotment/grant", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, terr := eng.Fiber().Test(req)
+	resp, terr := eng.Test(req)
 	if terr != nil {
 		t.Fatalf("Test: %v", terr)
 	}
@@ -220,7 +220,7 @@ func TestAllotment_OrgAdminMatchingSubscriptionHonored(t *testing.T) {
 	body := `{"user":"` + ns + `","plan":"max"}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/allotment/grant", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, terr := eng.Fiber().Test(req)
+	resp, terr := eng.Test(req)
 	if terr != nil {
 		t.Fatalf("Test: %v", terr)
 	}
@@ -253,7 +253,7 @@ func TestAllotment_ServiceTokenMayNameAnyPlan(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Org-Id", "allotorg")
-	resp, terr := eng.Fiber().Test(req)
+	resp, terr := eng.Test(req)
 	if terr != nil {
 		t.Fatalf("Test: %v", terr)
 	}

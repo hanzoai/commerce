@@ -25,7 +25,7 @@ func driveErrorRenderer(t *testing.T, handler zip.Handler) (int, string) {
 	app.Use(ErrorHandlerJSON())
 	app.Get("/x", handler)
 
-	resp, err := app.Fiber().Test(httptest.NewRequest(http.MethodGet, "/x", nil))
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/x", nil))
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}

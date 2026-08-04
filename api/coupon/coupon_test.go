@@ -35,7 +35,7 @@ func callRedeem(t *testing.T, ns, uid, code string) (int, []byte) {
 	body, _ := json.Marshal(map[string]string{"code": code})
 	req := httptest.NewRequest(http.MethodPost, "/coupon/redeem", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("test request: %v", err)
 	}

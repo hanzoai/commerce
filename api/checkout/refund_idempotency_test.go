@@ -84,7 +84,7 @@ func TestRefund_Idempotency_ReplayReturnsStored(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Idempotency-Key", "refund_key_1")
 
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("refund request: %v", err)
 	}
@@ -136,7 +136,7 @@ func TestRefund_Idempotency_InFlightRejected(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Idempotency-Key", "inflight_key")
 
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("refund request: %v", err)
 	}

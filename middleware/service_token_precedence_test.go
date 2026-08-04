@@ -76,7 +76,7 @@ func TestTokenRequired_ServiceTokenBeatsIAMScopeGate(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/v1/billing/balance?user=acme", nil)
 	req.Header.Set("Authorization", "Bearer "+svc)
 	req.Header.Set("X-Org-Id", "acme")
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}

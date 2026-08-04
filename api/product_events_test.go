@@ -25,7 +25,7 @@ func driveProduct(t *testing.T, method, path, body string, fn func(*zip.Ctx)) {
 	app.All("/v1/product/:productid", h)
 
 	req := httptest.NewRequest(method, path, strings.NewReader(body))
-	if _, err := app.Fiber().Test(req); err != nil {
+	if _, err := app.Test(req); err != nil {
 		t.Fatalf("test request: %v", err)
 	}
 }

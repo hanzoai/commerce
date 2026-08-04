@@ -42,7 +42,7 @@ func callGiftcard(t *testing.T, ns string, admin bool, cardID string, body []byt
 
 	req := httptest.NewRequest(http.MethodPost, "/giftcard/"+cardID, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("test request: %v", err)
 	}

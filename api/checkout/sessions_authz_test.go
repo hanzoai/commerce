@@ -53,7 +53,7 @@ func TestSessions_AnonymousMintBlocked(t *testing.T) {
 			for k, v := range tc.headers {
 				req.Header.Set(k, v)
 			}
-			resp, err := app.Fiber().Test(req)
+			resp, err := app.Test(req)
 			if err != nil {
 				t.Fatalf("anon %s: request error: %v", tc.name, err)
 			}

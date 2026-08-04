@@ -42,7 +42,7 @@ func invokeMoneyHandler(org *organization.Organization, ctx context.Context, h z
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		panic(err)
 	}
@@ -63,7 +63,7 @@ func driveSeeded(seed func(*zip.Ctx), routePattern string, req *http.Request, ha
 		}
 		return c.Next()
 	}, handler)
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		panic(err)
 	}

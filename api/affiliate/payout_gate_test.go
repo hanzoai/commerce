@@ -54,7 +54,7 @@ func TestPayoutExecute_OrgAdminDenied(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, path+"?execute=true", bytes.NewBufferString(`{}`))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("test request: %v", err)
 	}
@@ -77,7 +77,7 @@ func TestPayoutCalculate_OrgAdminDenied(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, path, bytes.NewBufferString(`{"totalRevenueCents":100000}`))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("test request: %v", err)
 	}
@@ -104,7 +104,7 @@ func TestPayoutExecute_ServiceTokenReaches(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Org-Id", "payoutorg")
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("test request: %v", err)
 	}

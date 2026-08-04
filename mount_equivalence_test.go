@@ -86,7 +86,7 @@ func TestMount_EquivalentToStandalone(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			reqStandalone := httptest.NewRequest(http.MethodGet, tc.path, nil)
 			reqStandalone.Host = tc.host
-			respStandalone, err := standalone.Zip().Fiber().Test(reqStandalone)
+			respStandalone, err := standalone.Zip().Test(reqStandalone)
 			if err != nil {
 				t.Fatalf("standalone Fiber Test: %v", err)
 			}
@@ -94,7 +94,7 @@ func TestMount_EquivalentToStandalone(t *testing.T) {
 
 			reqCloud := httptest.NewRequest(http.MethodGet, tc.path, nil)
 			reqCloud.Host = tc.host
-			respCloud, err := zapp.Fiber().Test(reqCloud)
+			respCloud, err := zapp.Test(reqCloud)
 			if err != nil {
 				t.Fatalf("cloud Fiber Test: %v", err)
 			}
@@ -125,7 +125,7 @@ func TestMount_ServesScopedHealthz(t *testing.T) {
 	if err := Mount(zapp, deps); err != nil {
 		t.Fatalf("Mount: %v", err)
 	}
-	resp, err := zapp.Fiber().Test(httptest.NewRequest(http.MethodGet, "/_/commerce/healthz", nil))
+	resp, err := zapp.Test(httptest.NewRequest(http.MethodGet, "/_/commerce/healthz", nil))
 	if err != nil {
 		t.Fatalf("Fiber Test: %v", err)
 	}

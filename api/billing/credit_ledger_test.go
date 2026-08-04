@@ -190,7 +190,7 @@ func TestCredit_InjectedLedger_MultiCurrency(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/v1/billing/balance?user=fx&currency=eur", nil)
 	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Org-Id", "fx")
-	resp, _ := eng.Fiber().Test(req)
+	resp, _ := eng.Test(req)
 	if bc, _ := decodeJSON(t, resp)["balance"].(float64); int64(bc) != 900 {
 		t.Fatalf("eur balance=%v, want 900", bc)
 	}

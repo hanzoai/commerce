@@ -38,7 +38,7 @@ func postCredit(eng *zip.App, tok, orgHdr, body string) *http.Response {
 	if orgHdr != "" {
 		req.Header.Set("X-Org-Id", orgHdr)
 	}
-	resp, _ := eng.Fiber().Test(req)
+	resp, _ := eng.Test(req)
 	return resp
 }
 
@@ -223,7 +223,7 @@ func getBalanceCents(t *testing.T, eng *zip.App, tok, orgID string) int64 {
 	req := httptest.NewRequest(http.MethodGet, "/v1/billing/balance?user="+orgID+"&currency=usd", nil)
 	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Org-Id", orgID)
-	resp, terr := eng.Fiber().Test(req)
+	resp, terr := eng.Test(req)
 	if terr != nil {
 		t.Fatalf("balance Test: %v", terr)
 	}

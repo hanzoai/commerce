@@ -30,7 +30,7 @@ func callAdjust(t *testing.T, ns, levelID, body string) (int, []byte) {
 
 	req := httptest.NewRequest(http.MethodPost, "/inventory/level/"+levelID+"/adjust", bytes.NewReader([]byte(body)))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("test request: %v", err)
 	}

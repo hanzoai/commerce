@@ -52,7 +52,7 @@ func do(t *testing.T, a *zip.App, method, body string) (*http.Response, string) 
 	} else {
 		r = httptest.NewRequest(method, "/v1/platform/promo", nil)
 	}
-	resp, err := a.Fiber().Test(r)
+	resp, err := a.Test(r)
 	if err != nil {
 		t.Fatalf("%s promo: %v", method, err)
 	}

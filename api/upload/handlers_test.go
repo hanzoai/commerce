@@ -92,7 +92,7 @@ func callUpload(t *testing.T, ns string, admin bool, body *bytes.Buffer, content
 
 	req := httptest.NewRequest(http.MethodPost, "/upload/images", body)
 	req.Header.Set("Content-Type", contentType)
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("test request: %v", err)
 	}

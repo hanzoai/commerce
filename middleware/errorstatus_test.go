@@ -13,7 +13,7 @@ func do(t *testing.T, app *zip.App, target string) (*http.Response, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := app.Fiber().Test(req)
+	res, err := app.Test(req)
 	if err != nil {
 		t.Fatal(err)
 	}
