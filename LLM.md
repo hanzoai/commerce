@@ -1443,7 +1443,7 @@ Every Hanzo-authored Go file carries the same two-line header, and it says the
 same thing the root LICENSE says:
 
 ```go
-// Copyright (c) 2026-present Hanzo AI, Inc.
+// Copyright (c) 2014-present Hanzo AI, Inc.
 // Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
 ```
 
@@ -1453,6 +1453,13 @@ files, understated the dual offer) and, in `cmd/commerced/telemetry.go`,
 proprietary reservation left over from before the relicense). Headers are what
 licence scanners actually read, so a header contradicting the root is the
 contradiction that gets found first.
+
+The span is `2014-present` — one string, everywhere, matching `LICENSE`,
+`LICENSE-MIT` and `NOTICE`. It is the true span: the root commit is `1a1273cc2`,
+2014-09-29, when this was `kaching`. The old `2026` was wrong on its own terms,
+post-dating files that had existed for a decade. Do not reintroduce a per-file
+year convention — nobody maintains one, and it drifts from the root within a
+release.
 
 Six of the 72 have a `//go:build` constraint below the header. The rewrite
 replaced line 1 in place rather than inserting, so the constraint keeps its

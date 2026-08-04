@@ -1,4 +1,4 @@
-// Copyright (c) 2026-present Hanzo AI, Inc.
+// Copyright (c) 2014-present Hanzo AI, Inc.
 // Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
 //
 // Suite shim. The previous JWT/JWKS test rig (~188 LOC of RSA keys +
