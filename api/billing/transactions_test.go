@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zap-proto/fiber/v3"
 	"github.com/zap-proto/zip"
 )
 
@@ -60,7 +59,7 @@ func (r *recordingRouter) record(method, path string, hs []zip.Handler) {
 	*r.rec = append(*r.rec, routeRec{method, joinGroupPath(r.prefix, path), handlerFullName(hs[len(hs)-1])})
 }
 
-func (r *recordingRouter) Use(handlers ...zip.Handler) zip.Router { r.inner.Use(handlers...); return r }
+func (r *recordingRouter) Use(cs ...zip.Component) zip.Router { r.inner.Use(cs...); return r }
 
 func (r *recordingRouter) Get(p string, h ...zip.Handler) zip.Router {
 	r.record(http.MethodGet, p, h)
@@ -105,7 +104,6 @@ func (r *recordingRouter) All(p string, h ...zip.Handler) zip.Router {
 func (r *recordingRouter) Group(prefix string, handlers ...zip.Handler) zip.Router {
 	return &recordingRouter{inner: r.inner.Group(prefix, handlers...), prefix: joinGroupPath(r.prefix, prefix), rec: r.rec}
 }
-func (r *recordingRouter) Fiber() fiber.Router { return r.inner.Fiber() }
 
 // OpScope answers where a TYPED op declared on this recorder lands: the inner
 // router's scope, untouched. This decorator only records, so it has no

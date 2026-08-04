@@ -29,7 +29,14 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// derived from these registrations instead of hand-listed by each consumer
 	// (cloud's billing-bridge allowlist must stay disjoint from it). See
 	// middleware/platformonly.go and middleware/mint.go.
-	mint := middleware.Mint(api)
+	// The absolute prefix is STATED, not discovered: zip has no accessor for a
+	// group's absolute path because one definition may be included at two
+	// prefixes, so the walk computes it per occurrence. Route() is always mounted
+	// at the "/v1" api group (config.Prefixes["api"]), so this group answers at
+	// /v1/billing — and TestMintRegistry_DeclarationImpliesEnforcement probes
+	// every recorded path over HTTP, so a stale prefix here fails loudly rather
+	// than silently shrinking the declared mint surface.
+	mint := middleware.Mint(api, "/v1/billing")
 
 	// Tier (tier-aware billing)
 	api.Get("/tier", GetTier)

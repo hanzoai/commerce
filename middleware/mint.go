@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/zap-proto/fiber/v3"
 	"github.com/zap-proto/zip"
 )
 
@@ -31,7 +30,7 @@ var (
 // declaration — the gate and the registry entry are the same act, so they cannot
 // drift:
 //
-//	mint := middleware.Mint(api)
+//	mint := middleware.Mint(api, "/v1/billing")
 //	mint.Post("/deposit", Deposit)   // gated AND recorded
 //
 // This replaces the CONVENTION `api.Post("/deposit", mintRequired, Deposit)`,
@@ -40,21 +39,30 @@ var (
 // the list. The gate's BEHAVIOR is unchanged: PlatformOnly is prepended, so it
 // runs FIRST and the handler LAST, exactly as the explicit chain did.
 //
-// The natural shape for an authz class is a group carrying its own Use
-// (`api.Use(adminRequired)` one level up). Mint deliberately does NOT do that,
-// because this router cannot express it: fiber's Use matches by PATH PREFIX, not
-// by group membership, and a bare sub-group inherits its parent's prefix
-// verbatim — so `api.Group("").Use(PlatformOnly())` gates every neighbouring
-// route under /v1/billing, including the org-admin reads that must stay
-// reachable. TestGroupUseIsPrefixScopedNotMembership proves it and fails if that
-// scoping ever changes (at which point the gated-sub-group shape becomes right).
-// Mint therefore prepends the gate to each route's own chain, which gates exactly
-// the declared routes and nothing else.
+// A gated sub-group (`mint := api.Group(""); mint.Use(PlatformOnly())`) would now
+// express the GATE correctly — as of zip v1.19 middleware is scoped by group
+// MEMBERSHIP rather than by path prefix, so it would no longer leak onto the
+// org-admin reads under /v1/billing (TestGroupUseIsMembershipScoped pins that and
+// fails if it ever reverts). Mint stays because the gate is only half of it: a
+// bare group cannot RECORD what it gated. Prepending per-route keeps the gate and
+// the MintRoutes() entry a single act, so the declared surface cannot drift from
+// the enforced one.
 //
 // Register it on a router that has ALREADY resolved the caller — PlatformOnly
 // reads what TokenRequired sets and only ever NARROWS (see platformonly.go).
-func Mint(r zip.Router) zip.Router {
-	return &mintRouter{inner: r, prefix: groupPrefix(r), gate: PlatformOnly()}
+// prefix is the ABSOLUTE path r is mounted at ("/v1/billing"), and is DECLARED
+// rather than discovered. zip has no accessor for it by design: a group's
+// absolute path is a property of where the group is INCLUDED, not of the group,
+// and one definition may be included at two prefixes — so the walk computes it
+// and nothing bakes it into the definition. MintRoutes() needs one absolute
+// path per route (cloud's billing bridge compares its forwardable allowlist
+// against these strings), so the mount point is stated at the wrapping site.
+// This is the same shape cloud's own subsystem scopes use.
+//
+// Stating it cannot silently lie: TestMintRegistry_DeclarationImpliesEnforcement
+// probes every declared path over HTTP and fails unless it really answers 403.
+func Mint(r zip.Router, prefix string) zip.Router {
+	return &mintRouter{inner: r, prefix: prefix, gate: PlatformOnly()}
 }
 
 // MintRoutes returns every route declared through Mint, sorted and deduplicated
@@ -130,10 +138,15 @@ func (m *mintRouter) All(p string, h ...zip.Handler) zip.Router {
 }
 
 // Group returns a mint view of the sub-group: every route under it is gated and
-// recorded, so a whole mint subtree declares itself the same one way.
+// recorded, so a whole mint subtree declares itself the same one way. The
+// prefix composes down the chain, exactly as the router composes it, so a route
+// registered two levels deep is recorded at the path fiber routes it on.
 func (m *mintRouter) Group(prefix string, handlers ...zip.Handler) zip.Router {
-	inner := m.inner.Group(prefix, handlers...)
-	return &mintRouter{inner: inner, prefix: groupPrefix(inner), gate: m.gate}
+	return &mintRouter{
+		inner:  m.inner.Group(prefix, handlers...),
+		prefix: joinPath(m.prefix, prefix),
+		gate:   m.gate,
+	}
 }
 
 // Use is refused: Mint gates per-route precisely because fiber's Use is
@@ -141,11 +154,9 @@ func (m *mintRouter) Group(prefix string, handlers ...zip.Handler) zip.Router {
 // middleware meant for the whole group belongs on the group itself, before Mint
 // wraps it. Boot-time panic, never a request-time surprise — the same contract
 // zip applies to a route registered with no handler.
-func (m *mintRouter) Use(handlers ...zip.Handler) zip.Router {
+func (m *mintRouter) Use(cs ...zip.Component) zip.Router {
 	panic("middleware.Mint: Use is not supported — Mint gates per-route; apply shared middleware to the underlying group before wrapping it with Mint")
 }
-
-func (m *mintRouter) Fiber() fiber.Router { return m.inner.Fiber() }
 
 // OpScope carries the gate onto a TYPED op declared on this router, so
 // `zip.Post(mint, "/deposit", Deposit)` is gated exactly as `mint.Post` is.
@@ -215,16 +226,6 @@ func MintOp[In, Out any](on zip.Router, method, path string, fn zip.TypedHandler
 	default:
 		panic("middleware.MintOp: unsupported method " + method)
 	}
-}
-
-// groupPrefix reports the full prefix of r, read from the SAME value
-// fiber routes on (Group.Prefix, which fiber builds by joining parents). A root
-// app router has no prefix.
-func groupPrefix(r zip.Router) string {
-	if g, ok := r.Fiber().(*fiber.Group); ok {
-		return g.Prefix
-	}
-	return ""
 }
 
 // joinPath mirrors fiber's getGroupPath, so a recorded path equals the path
