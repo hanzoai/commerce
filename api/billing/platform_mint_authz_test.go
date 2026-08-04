@@ -121,6 +121,9 @@ func TestC1_ServiceTokenMintsDeposit(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Org-Id", "acmeorg")
+	// Money-in names the event that caused it; this test is about AUTHZ, so it
+	// supplies a settlement id and asserts the token is what decides the outcome.
+	req.Header.Set("X-Idempotency-Key", "settlement-c1")
 	resp, terr := eng.Fiber().Test(req)
 	if terr != nil {
 		t.Fatalf("Test: %v", terr)
