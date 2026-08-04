@@ -299,6 +299,14 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// same Square account commerce vaults/charges with.
 	user.Get("/settings", GetPaymentConfig)
 
+	// Wire + crypto top-up rails (user-scoped; nothing here mints — a wire
+	// settles via the admin wire/credit verb on bank receipt, a crypto deposit
+	// via the chain watcher on confirmations).
+	user.Get("/wire", GetWireInstructions)
+	user.Get("/crypto/options", GetCryptoOptions)
+	user.Post("/crypto/deposit", CreateCryptoDeposit)
+	user.Get("/crypto/deposit/:id", GetCryptoDeposit)
+
 	// Plans (public catalog — cacheable, no writes).
 	// CF caches for 1 hour; plans rarely change.
 	user.Get("/plans", middleware.CachePublic(3600), middleware.CFCacheTags("plans"), ListPlans)
