@@ -1,4 +1,4 @@
-// Copyright (c) 2026-present Hanzo AI, Inc.
+// Copyright (c) 2014-present Hanzo AI, Inc.
 // Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
 
 // Package commerce (pkg/commerce) is the embedded Commerce server. One

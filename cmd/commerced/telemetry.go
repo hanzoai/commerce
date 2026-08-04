@@ -1,4 +1,4 @@
-// Copyright (c) 2026-present Hanzo AI, Inc.
+// Copyright (c) 2014-present Hanzo AI, Inc.
 // Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
