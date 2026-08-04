@@ -3,7 +3,6 @@
 package commerce
 
 import (
-
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
@@ -51,12 +50,12 @@ func installEventsLocal(app *App) {
 	if app == nil || app.Router == nil {
 		return
 	}
-	app.Router.Use(func(c *zip.Ctx) error {
+	app.Router.Use(zip.H(func(c *zip.Ctx) error {
 		if app.Events != nil {
 			c.Locals("events", app.Events)
 		}
 		return c.Next()
-	})
+	}))
 }
 
 // installRequireGate registers the binary-edge require-identity gate that

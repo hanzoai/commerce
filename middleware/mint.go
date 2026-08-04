@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/zap-proto/fiber/v3"
 	"github.com/zap-proto/zip"
 )
 
@@ -141,11 +140,9 @@ func (m *mintRouter) Group(prefix string, handlers ...zip.Handler) zip.Router {
 // middleware meant for the whole group belongs on the group itself, before Mint
 // wraps it. Boot-time panic, never a request-time surprise — the same contract
 // zip applies to a route registered with no handler.
-func (m *mintRouter) Use(handlers ...zip.Handler) zip.Router {
+func (m *mintRouter) Use(handlers ...zip.Component) zip.Router {
 	panic("middleware.Mint: Use is not supported — Mint gates per-route; apply shared middleware to the underlying group before wrapping it with Mint")
 }
-
-func (m *mintRouter) Fiber() fiber.Router { return m.inner.Fiber() }
 
 // OpScope carries the gate onto a TYPED op declared on this router, so
 // `zip.Post(mint, "/deposit", Deposit)` is gated exactly as `mint.Post` is.
@@ -220,12 +217,7 @@ func MintOp[In, Out any](on zip.Router, method, path string, fn zip.TypedHandler
 // groupPrefix reports the full prefix of r, read from the SAME value
 // fiber routes on (Group.Prefix, which fiber builds by joining parents). A root
 // app router has no prefix.
-func groupPrefix(r zip.Router) string {
-	if g, ok := r.Fiber().(*fiber.Group); ok {
-		return g.Prefix
-	}
-	return ""
-}
+func groupPrefix(r zip.Router) string { return r.OpScope().Prefix }
 
 // joinPath mirrors fiber's getGroupPath, so a recorded path equals the path
 // fiber actually routes.
