@@ -144,3 +144,30 @@ func TestGetTier_StarterCreditSpent_Gates(t *testing.T) {
 		t.Fatalf("effectiveAvailable = %d, want 0 — a spent account MUST gate", resp.Balance.EffectiveAvailable)
 	}
 }
+
+// A request that carries no organization must not panic.
+//
+// Measured live 2026-08-04: GET /v1/billing/tier answered 500 "internal server
+// error" for every service-to-service caller, because GetTier opened with the
+// one-value middleware.GetOrganization and the ai router's rate-limit lookup —
+// this route's whole reason to exist — reaches it as S2S. IAMTokenRequired
+// deliberately refuses to resolve an org from a bare X-Org-Id with no validated
+// user identity and falls through, so Locals("organization") is nil there and
+// the type assertion panicked into the recover handler.
+//
+// It must not answer Free either, which is why this asserts a 4xx and not a
+// body: Free is what the router falls back to, and returning it from a request
+// that could not read anything makes an unanswerable question look answered —
+// every paying customer rate-limited to the most restrictive tier in the table,
+// silently, which is the exact failure this route was added to fix.
+func TestGetTier_NoOrganizationIsRefusedNotPanicked(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/v1/billing/tier?user=alice", nil)
+	w := driveSeeded(func(c *zip.Ctx) {}, "/v1/billing/tier", req, GetTier)
+
+	if w.StatusCode == 500 {
+		t.Fatalf("no-org request panicked into a 500; want an explicit refusal")
+	}
+	if w.StatusCode < 400 {
+		t.Fatalf("no-org request answered %d; a tier it could not read must not be served", w.StatusCode)
+	}
+}
