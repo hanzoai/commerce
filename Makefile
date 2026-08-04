@@ -126,7 +126,7 @@ endif
 # ./metering); in workspace mode the toolchain also reads the committed
 # go.work.sum, which is stale, and `go mod download` then fails verification with
 # "SECURITY ERROR". The Dockerfile hit exactly that and pins GOWORK=off, as does
-# every gate in hanzo.yml. It does not change what gets compiled: metering is a
+# every check in hanzo.yml. It does not change what gets compiled: metering is a
 # standalone stdlib-only module the root never imports, and on a warm cache
 # `go list ./...` resolves identically either way. It is set so these targets
 # build EXACTLY what CI and the image build, on a cold cache too. Override for
@@ -146,7 +146,7 @@ export GOWORK := off
 #                                 compiles those in behind the tag.
 #   sqlite_omit_load_extension  — no runtime extension loading.
 build_tags = cloud sqlite_omit_load_extension sqlite_math_functions
-# What hanzo.yml's go-vet and go-unit gates carry. Not the `cloud` tag: that one
+# What hanzo.yml's go-vet and go-unit steps carry. Not the `cloud` tag: that one
 # selects a boot path, and CI pins the tested surface without it.
 test_tags  = sqlite_math_functions
 
@@ -172,15 +172,15 @@ build: ## Build the shipped binary into ./bin/commerce.
 	@mkdir -p bin
 	CGO_ENABLED=1 $(go) build -tags "$(build_tags)" -ldflags "-s -w" -o bin/commerce ./cmd/commerce
 
-# The Go surface CI gates on (hanzo.yml go-unit + go-api-suites) as ONE command.
+# The Go surface CI checks (hanzo.yml go-unit + go-api-suites) as ONE command.
 # The suites under test/ are ordinary Go tests with a ginkgo bootstrap, so
 # `go test` runs them; also invoking the ginkgo CLI would be the same tests
 # twice. test-integration/ is excluded for the reason CI excludes it
 # (--skip-package=test-integration): it talks to live third-party services.
-test: ## Run the tests CI gates on.
+test: ## Run the tests CI runs.
 	CGO_ENABLED=1 $(go) test -count=1 -timeout=20m -tags "$(test_tags)" $$($(go) list ./... | grep -v '/test-integration')
 
-lint: ## go vet across the module (hanzo.yml's go-vet gate).
+lint: ## go vet across the module (hanzo.yml's go-vet step).
 	CGO_ENABLED=1 $(go) vet -tags "$(test_tags)" ./...
 
 # Runs the SAME binary build produces — not a second compile with its own tags,
