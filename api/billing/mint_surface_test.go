@@ -980,12 +980,12 @@ func registeredMintRoutes(t *testing.T, reaches map[string]bool) []mintRoute {
 func orgAdminEngine(t *testing.T) *zip.App {
 	t.Helper()
 	eng := zip.New(zip.Config{DisableStartupMessage: true})
-	eng.Use(func(c *zip.Ctx) error {
+	eng.Use(zip.H(func(c *zip.Ctx) error {
 		c.Locals("iam_authenticated", true)
 		c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
 		c.Locals("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: true})
 		return c.Next()
-	})
+	}))
 	v1 := eng.Group("/v1")
 	routeMintSurface(v1)
 	return eng

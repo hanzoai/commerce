@@ -1024,7 +1024,7 @@ func (app *App) setupRoutes() {
 		api.Use(middleware.CachePrivate())
 
 		// Inject KMS, Events, Publisher, and KV into request locals for handlers.
-		api.Use(func(c *zip.Ctx) error {
+		api.Use(zip.H(func(c *zip.Ctx) error {
 			if app.KMS != nil {
 				c.Locals("kms", app.KMS)
 			}
@@ -1038,7 +1038,7 @@ func (app *App) setupRoutes() {
 				c.Locals("kv", kv)
 			}
 			return c.Next()
-		})
+		}))
 
 		// Trigger OnRouteSetup hooks to let extensions add routes
 		app.Hooks.TriggerRouteSetup(api)
