@@ -136,6 +136,15 @@ type Subscription struct {
 	BillingAnchor        int    `json:"billingAnchor,omitempty"`        // Day of month 1-28
 	CurrentInvoiceId     string `json:"currentInvoiceId,omitempty"`
 
+	// The promo this subscription was BOUGHT under, captured at signup and carried
+	// for its life. A renewal charges the deal the customer actually agreed to, not
+	// whatever promo happens to be running months later — and equally, a promo that
+	// has since ENDED keeps discounting a subscriber who signed up during it, which
+	// is what "50% off" on a monthly plan means to the person who clicked it.
+	// Zero percent = no promo; every invoice for this subscription prices the same way.
+	DiscountPercent int    `json:"discountPercent,omitempty"`
+	DiscountName    string `json:"discountName,omitempty"`
+
 	// Stripe livemode
 	Live bool `json:"live"`
 
