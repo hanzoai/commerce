@@ -162,20 +162,6 @@ func (mp *MPCProcessor) doJSON(ctx context.Context, method, url string, reqBody,
 
 // --- MPC API types (matching lux/mpc/pkg/api) ---
 
-type mpcCreateWalletReq struct {
-	Name     string `json:"name"`
-	KeyType  string `json:"key_type"`
-	Protocol string `json:"protocol"`
-}
-
-type mpcWalletResp struct {
-	ID         string  `json:"id"`
-	WalletID   string  `json:"walletId"`
-	EthAddress *string `json:"ethAddress,omitempty"`
-	BtcAddress *string `json:"btcAddress,omitempty"`
-	SolAddress *string `json:"solAddress,omitempty"`
-}
-
 type mpcCreateTxReq struct {
 	WalletID  string `json:"wallet_id"`
 	TxType    string `json:"tx_type"`
@@ -202,44 +188,64 @@ type mpcBalanceResp struct {
 
 // --- CryptoProcessor methods ---
 
-// GenerateAddress creates a new MPC wallet and returns the chain-specific address.
-// Calls MPC API: POST /api/v1/vaults/{vaultID}/wallets
+// mpcKeygenResp is the live luxfi/mpc node's POST /keygen response: ONE
+// threshold keygen yields the wallet's address on every chain class at once
+// (secp256k1 → EVM + BTC, ed25519 → SOL).
+type mpcKeygenResp struct {
+	WalletID   string `json:"wallet_id"`
+	ResultType string `json:"result_type"`
+	EVMAddress string `json:"evm_address"`
+	BTCAddress string `json:"btc_address"`
+	SOLAddress string `json:"sol_address"`
+	Error      string `json:"error"`
+	ErrorCode  string `json:"error_code"`
+}
+
+// GenerateAddress runs a threshold keygen on the MPC signer fleet and returns
+// the requested chain's address. Live wire contract (lux/mpc cmd/mpcd
+// /keygen, bearer = MPC internal API key):
+//
+//	req:  POST {endpoint}/keygen  {"org_id": "..."}     (wallet_id minted by the node)
+//	resp: {wallet_id, result_type, evm_address, btc_address, sol_address, ...}
+//
+// The wallet id is deliberately LEFT TO THE NODE: a deterministic client id
+// replayed into /keygen would re-key an existing wallet — silently moving the
+// address that funds may already be in flight to. Callers that want address
+// reuse hold on to the intent they recorded (the billing crypto-deposit rail
+// does exactly that), so a fresh wallet per call is correct, never wasteful.
+// Keygen needs ALL peers and can take tens of seconds — the caller's ctx
+// bounds the wait.
 func (mp *MPCProcessor) GenerateAddress(ctx context.Context, customerID string, chain string) (string, error) {
-	keyType := "secp256k1"
-	protocol := "cggmp21"
-	if chain == "solana" {
-		keyType = "ed25519"
-		protocol = "frost"
+	// org_id scopes the wallet on the MPC side; the payer key is "<org>" or
+	// "<org>/<user>", so the org is everything before the first slash.
+	orgID := customerID
+	if i := strings.IndexByte(orgID, '/'); i > 0 {
+		orgID = orgID[:i]
 	}
 
-	// Use customerID as vault context. The MPC service creates a wallet under this vault.
-	vaultID := customerID
-	reqURL := fmt.Sprintf("%s/api/v1/vaults/%s/wallets", mp.mpcEndpoint, vaultID)
-
-	var resp mpcWalletResp
-	err := mp.doJSON(ctx, http.MethodPost, reqURL, &mpcCreateWalletReq{
-		Name:     fmt.Sprintf("%s-wallet-%s", chain, customerID),
-		KeyType:  keyType,
-		Protocol: protocol,
-	}, &resp)
+	var resp mpcKeygenResp
+	err := mp.doJSON(ctx, http.MethodPost, mp.mpcEndpoint+"/keygen",
+		map[string]string{"org_id": orgID}, &resp)
 	if err != nil {
 		return "", processor.NewPaymentError(processor.MPC, "KEYGEN_FAILED", "failed to generate MPC wallet", err)
 	}
+	if resp.Error != "" {
+		return "", processor.NewPaymentError(processor.MPC, "KEYGEN_FAILED", resp.Error, nil)
+	}
 
-	// Return the address for the requested chain.
 	switch chain {
 	case "bitcoin":
-		if resp.BtcAddress != nil {
-			return *resp.BtcAddress, nil
+		if resp.BTCAddress != "" {
+			return resp.BTCAddress, nil
 		}
 	case "solana":
-		if resp.SolAddress != nil {
-			return *resp.SolAddress, nil
+		if resp.SOLAddress != "" {
+			return resp.SOLAddress, nil
 		}
 	default:
-		// EVM chains all use the same Ethereum address
-		if resp.EthAddress != nil {
-			return *resp.EthAddress, nil
+		// EVM chains all share the secp256k1-derived Ethereum address.
+		if resp.EVMAddress != "" {
+			return resp.EVMAddress, nil
 		}
 	}
 
