@@ -4,39 +4,49 @@ import Back from "@modules/common/icons/back"
 import FastDelivery from "@modules/common/icons/fast-delivery"
 import Refresh from "@modules/common/icons/refresh"
 
-import Accordion from "./accordion"
 import { HttpTypes } from "@hanzo/commerce-types"
 
 type ProductTabsProps = {
   product: HttpTypes.StoreProduct
 }
 
-const ProductTabs = ({ product }: ProductTabsProps) => {
-  const tabs = [
-    {
-      label: "Product Information",
-      component: <ProductInfoTab product={product} />,
-    },
-    {
-      label: "Shipping & Returns",
-      component: <ShippingInfoTab />,
-    },
-  ]
+/**
+ * One independently-openable panel. `<details>` is the browser's own disclosure
+ * widget — open/closed state, keyboard operation and assistive-tech semantics
+ * come with the element — and several of them side by side already behave the
+ * way a multi-open accordion does, so there is nothing left for a component
+ * library to contribute. The marker is a plus that rotates into a minus.
+ */
+const Panel = ({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) => (
+  <details className="group border-grey-20 border-t py-3 last:mb-0 last:border-b">
+    <summary className="flex w-full cursor-pointer list-none items-center justify-between px-1 [&::-webkit-details-marker]:hidden">
+      <span className="text-ui-fg-subtle text-sm">{label}</span>
+      <span className="text-grey-90 hover:bg-grey-5 rounded p-[6px]">
+        <span className="relative block h-5 w-5">
+          <span className="bg-grey-50 absolute inset-y-[31.75%] left-[48%] right-1/2 w-[1.5px] duration-300 group-open:rotate-90" />
+          <span className="bg-grey-50 absolute inset-x-[31.75%] top-[48%] bottom-1/2 h-[1.5px]" />
+        </span>
+      </span>
+    </summary>
+    <div className="px-1">{children}</div>
+  </details>
+)
 
+const ProductTabs = ({ product }: ProductTabsProps) => {
   return (
     <div className="w-full">
-      <Accordion type="multiple">
-        {tabs.map((tab, i) => (
-          <Accordion.Item
-            key={i}
-            title={tab.label}
-            headingSize="medium"
-            value={tab.label}
-          >
-            {tab.component}
-          </Accordion.Item>
-        ))}
-      </Accordion>
+      <Panel label="Product Information">
+        <ProductInfoTab product={product} />
+      </Panel>
+      <Panel label="Shipping &amp; Returns">
+        <ShippingInfoTab />
+      </Panel>
     </div>
   )
 }
