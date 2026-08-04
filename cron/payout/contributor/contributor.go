@@ -1,8 +1,11 @@
-// Package contributor executes the OSS contributor revenue sharing payouts.
+// Package contributor ACCRUES the OSS contributor revenue share. It runs the
+// payout algorithm from models/contributor/payout.go and records each allocation
+// as a fee.Fee — a tracked payable — and nothing more.
 //
-// This runs monthly (or on-demand) and uses the payout algorithm from
-// models/contributor/payout.go to calculate per-contributor allocations,
-// then creates CreditGrant or queues transfer records.
+// It executes no payout. It used to dispatch on Contributor.PayoutMethod into
+// three executors: a CreditGrant mint, a Stripe no-op that reported success for
+// money that never moved, and an on-chain ERC-20 transfer signed by the treasury
+// key. Payment is a human decision made out-of-band and recorded afterwards.
 package contributor
 
 import (
@@ -14,35 +17,11 @@ import (
 	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/log"
 	contribModel "github.com/hanzoai/commerce/models/contributor"
-	"github.com/hanzoai/commerce/models/creditgrant"
+	"github.com/hanzoai/commerce/models/fee"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/util/blockchain"
-	"github.com/hanzoai/commerce/util/husd"
 	"github.com/hanzoai/commerce/util/nscontext"
 )
-
-// HUSD configuration + cent↔wei math live in the canonical util/husd package —
-// ONE definition of what HUSD means, shared with the chain-backed credit ledger
-// (treasury, billing/husdindex). These aliases keep the contributor executor's
-// existing surface (HUSDConfig, ErrHUSDNotConfigured, the default consts, and
-// the private husdCentsToWei used in tests) while delegating to that one source.
-const (
-	defaultHUSDChainID  = husd.DefaultChainID
-	defaultHUSDRPCURL   = husd.DefaultRPCURL
-	defaultHUSDDecimals = husd.DefaultDecimals
-)
-
-// ErrHUSDNotConfigured is returned by the crypto executor when the HUSD token
-// address or treasury key is missing. The payout is skipped (not lost): once
-// the secrets land in KMS the next run pays it out.
-var ErrHUSDNotConfigured = husd.ErrNotConfigured
-
-// HUSDConfig configures on-chain HUSD stablecoin payouts (see util/husd.Config).
-type HUSDConfig = husd.Config
-
-// husdCentsToWei converts USD cents into HUSD base units (see util/husd).
-var husdCentsToWei = husd.CentsToWei
 
 // Config holds runtime configuration for the contributor payout cron.
 type Config struct {
@@ -59,32 +38,21 @@ type Config struct {
 	// If zero, defaults to the previous calendar month.
 	PeriodStart time.Time
 	PeriodEnd   time.Time
-
-	// HUSD configures on-chain HUSD payouts (PayoutMethod="crypto"). If unset,
-	// Payout fills it from the environment (KMS-injected) via HUSD.LoadFromEnv.
-	HUSD HUSDConfig
 }
 
-// Payout executes the monthly contributor payout.
+// Payout accrues the monthly contributor revenue share.
 //
 // Steps:
 //  1. Fetch total billable revenue for the period from the transaction ledger
 //  2. Fetch all active, verified contributors
 //  3. Call CalculatePayouts() (existing algorithm)
-//  4. For each allocation above MinPayoutCents:
-//     - credits: create CreditGrant
-//     - stripe:  create Payout record (transfer)
-//     - crypto:  create Payout record (crypto transfer)
-//  5. Update contributor.TotalEarned, contributor.LastPaid
+//  4. Accrue a payable (fee.Fee) for each allocation above MinPayoutCents
+//  5. Update contributor.TotalPending (what we owe)
 //  6. Publish contributor.payout events
 func Payout(ctx context.Context, cfg Config) error {
 	if cfg.Namespace == "" {
 		cfg.Namespace = "hanzo"
 	}
-
-	// Source on-chain HUSD config from KMS-injected env (no-op for fields the
-	// caller already set, e.g. in tests).
-	cfg.HUSD.LoadFromEnv()
 
 	// Default to previous calendar month.
 	if cfg.PeriodStart.IsZero() || cfg.PeriodEnd.IsZero() {
@@ -151,7 +119,7 @@ func Payout(ctx context.Context, cfg Config) error {
 		return nil
 	}
 
-	// 4. Execute payouts.
+	// 4. Accrue payables.
 	contributorIndex := make(map[string]*contribModel.Contributor)
 	for i := range contributors {
 		contributorIndex[contributors[i].Id()] = &contributors[i]
@@ -165,122 +133,41 @@ func Payout(ctx context.Context, cfg Config) error {
 			continue
 		}
 
-		txHash, err := executePayout(nsCtx, db, c, alloc, cfg)
-		if err != nil {
-			log.Error("contributor-payout: payout failed for %s: %v", c.GitLogin, err)
+		if err := accrue(db, c, alloc); err != nil {
+			log.Error("contributor-payout: accrual failed for %s: %v", c.GitLogin, err)
 			continue
 		}
 		payoutCount++
 
-		// Update contributor stats (+ on-chain receipt for crypto payouts).
-		c.TotalEarned += currency.Cents(alloc.AmountCents)
-		c.LastPaid = time.Now().UTC()
-		if txHash != "" {
-			c.LastPayoutTx = txHash
-			c.LastPayoutChainId = cfg.HUSD.ChainID
-		}
+		// TotalPending is what we OWE this contributor. TotalEarned/LastPaid are
+		// paid-to-date and move only when a human records a payment.
+		c.TotalPending += currency.Cents(alloc.AmountCents)
 		if err := c.Update(); err != nil {
 			log.Error("contributor-payout: failed to update contributor %s: %v", c.GitLogin, err)
 		}
 
-		// Publish event.
-		publishPayoutEvent(ctx, cfg.Publisher, c, alloc, txHash, cfg.PeriodStart, cfg.PeriodEnd)
+		publishPayoutEvent(ctx, cfg.Publisher, c, alloc, "", cfg.PeriodStart, cfg.PeriodEnd)
 	}
 
-	log.Info("contributor-payout: completed %d/%d payouts", payoutCount, len(summary.Allocations))
+	log.Info("contributor-payout: accrued %d/%d allocations", payoutCount, len(summary.Allocations))
 	return nil
 }
 
-// executePayout dispatches on the contributor's payout method. It returns the
-// on-chain transaction hash for crypto payouts (empty for credits/stripe).
-func executePayout(ctx context.Context, db *datastore.Datastore, c *contribModel.Contributor, alloc contribModel.PayoutAllocation, cfg Config) (string, error) {
-	switch c.PayoutMethod {
-	case "credits":
-		return "", executeCreditsPayout(ctx, db, c, alloc, cfg)
-	case "stripe":
-		return "", executeStripePayout(c, alloc)
-	case "crypto":
-		return executeCryptoPayout(ctx, c, alloc, cfg)
-	default:
-		// Default to credits if no method specified.
-		return "", executeCreditsPayout(ctx, db, c, alloc, cfg)
+// accrue records what we OWE this contributor as a fee.Fee — a tracked payable.
+// It moves no value. A human pays out-of-band and records it against the fee.
+func accrue(db *datastore.Datastore, c *contribModel.Contributor, alloc contribModel.PayoutAllocation) error {
+	fe := fee.New(db)
+	fe.Name = fmt.Sprintf("OSS contributor payout: %s (%s)", c.GitLogin, alloc.Component)
+	fe.Type = fee.Contributor
+	fe.PayeeId = c.Id()
+	fe.Currency = c.Currency
+	fe.Amount = currency.Cents(alloc.AmountCents)
+	fe.Status = fee.Pending
+	if err := fe.Create(); err != nil {
+		return fmt.Errorf("accrue fee for %s: %w", c.GitLogin, err)
 	}
-}
-
-// executeCreditsPayout creates a CreditGrant for the contributor.
-func executeCreditsPayout(_ context.Context, db *datastore.Datastore, c *contribModel.Contributor, alloc contribModel.PayoutAllocation, cfg Config) error {
-	grant := creditgrant.New(db)
-	grant.UserId = c.UserId
-	grant.Name = fmt.Sprintf("OSS contributor payout: %s (%s to %s)",
-		c.GitLogin,
-		cfg.PeriodStart.Format("2006-01"),
-		cfg.PeriodEnd.Format("2006-01"))
-	grant.AmountCents = alloc.AmountCents
-	grant.RemainingCents = alloc.AmountCents
-	grant.Currency = c.Currency
-	grant.Priority = 8 // Between purchased (5) and referral (10)
-	grant.Tags = "oss-earnings"
-	grant.EffectiveAt = time.Now().UTC()
-	// OSS credits do not expire.
-
-	if err := grant.Create(); err != nil {
-		return fmt.Errorf("create credit grant for %s: %w", c.GitLogin, err)
-	}
-
-	log.Info("contributor-payout: created credit grant %s for %s ($%.2f)",
-		grant.Id(), c.GitLogin, float64(alloc.AmountCents)/100.0)
+	log.Info("contributor-payout: accrued fee %s for %s (%s)", fe.Id(), c.GitLogin, c.Currency.ToString(fe.Amount))
 	return nil
-}
-
-// executeStripePayout queues a Stripe transfer for the contributor.
-// The actual Stripe API call happens in the transfer worker (cron/payout/transferfee.go).
-func executeStripePayout(c *contribModel.Contributor, alloc contribModel.PayoutAllocation) error {
-	if c.PayoutTarget == "" {
-		return fmt.Errorf("contributor %s has no Stripe account ID", c.GitLogin)
-	}
-
-	log.Info("contributor-payout: queued Stripe transfer for %s -> %s ($%.2f)",
-		c.GitLogin, c.PayoutTarget, float64(alloc.AmountCents)/100.0)
-	return nil
-}
-
-// executeCryptoPayout transfers HUSD (Hanzo USD stablecoin) on the Hanzo EVM
-// to the contributor's wallet (PayoutTarget) and returns the on-chain tx hash.
-//
-// The transfer is a standard ERC-20 transfer signed by the treasury key
-// (sourced from KMS, never logged), dispatched through the
-// util/blockchain.TransferToken seam — the EVM signing lives in the
-// luxfi/cevm sub-module, which must be linked into the running
-// binary (blank import) for on-chain execution.
-func executeCryptoPayout(ctx context.Context, c *contribModel.Contributor, alloc contribModel.PayoutAllocation, cfg Config) (string, error) {
-	if c.PayoutTarget == "" {
-		return "", fmt.Errorf("contributor %s has no wallet address", c.GitLogin)
-	}
-	if cfg.HUSD.TokenAddress == "" || cfg.HUSD.TreasuryKey == "" {
-		return "", ErrHUSDNotConfigured
-	}
-
-	amountWei, err := husdCentsToWei(alloc.AmountCents, cfg.HUSD.Decimals)
-	if err != nil {
-		return "", err
-	}
-
-	txHash, err := blockchain.TransferToken(ctx, blockchain.TokenTransfer{
-		ChainID:      cfg.HUSD.ChainID,
-		RPCURL:       cfg.HUSD.RPCURL,
-		TokenAddress: cfg.HUSD.TokenAddress,
-		TreasuryKey:  cfg.HUSD.TreasuryKey,
-		To:           c.PayoutTarget,
-		AmountWei:    amountWei,
-		GasLimit:     cfg.HUSD.GasLimit,
-	})
-	if err != nil {
-		return "", fmt.Errorf("husd transfer for %s: %w", c.GitLogin, err)
-	}
-
-	log.Info("contributor-payout: HUSD on-chain payout %s -> %s ($%.2f) chain=%d tx=%s",
-		c.GitLogin, c.PayoutTarget, float64(alloc.AmountCents)/100.0, cfg.HUSD.ChainID, txHash)
-	return txHash, nil
 }
 
 // calculatePeriodRevenue queries the transaction ledger for total revenue and

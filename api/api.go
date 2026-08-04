@@ -64,6 +64,7 @@ import (
 	notificationApi "github.com/hanzoai/commerce/api/notification"
 	orderApi "github.com/hanzoai/commerce/api/order"
 	organizationApi "github.com/hanzoai/commerce/api/organization"
+	payablesApi "github.com/hanzoai/commerce/api/payables"
 	planApi "github.com/hanzoai/commerce/api/plan"
 	pricingApi "github.com/hanzoai/commerce/api/pricing"
 	producttaxonomyApi "github.com/hanzoai/commerce/api/producttaxonomy"
@@ -143,7 +144,9 @@ func Route(api zip.Router) {
 	rest.New(submission.Submission{}).Route(api, tokenRequired)
 	rest.New(subscriber.Subscriber{}).Route(api, tokenRequired)
 	// rest.New(transaction.Transaction{}).Route(api, tokenRequired)
-	rest.New(transfer.Transfer{}).Route(api, tokenRequired)
+	// Transfer is the PAYMENT ANNOTATION on a payable (api/payables), so writing
+	// one settles money we owe. Admin-gated, not any token holder.
+	rest.New(transfer.Transfer{}).Route(api, adminRequired)
 	rest.New(variant.Variant{}).Route(api, tokenRequired, requireAccess)
 	rest.New(wallet.Wallet{}).Route(api, adminRequired)
 	rest.New(watchlist.Watchlist{}).Route(api, tokenRequired)
@@ -175,6 +178,7 @@ func Route(api zip.Router) {
 	inventoryApi.Route(api, tokenRequired, requireAccess)
 	orderApi.Route(api, tokenRequired, requireAccess)
 	referralApi.Route(api, tokenRequired)
+	payablesApi.Route(api, adminRequired) // what we owe + manual payment records (RequirePlatformAdmin inside)
 	affiliateApi.Route(api, tokenRequired)
 	regionApi.Route(api, tokenRequired)
 	reviewApi.Route(api, tokenRequired)
