@@ -42,7 +42,7 @@ func TestMintOpScope_AuthorizedOpRunsHandlerOnce(t *testing.T) {
 	// Register the way a TYPED OP does: take the gated router's OpScope and let
 	// it wrap the handler, rather than going through Post() — that path prepends
 	// the gate as an ordinary fiber handler and is already covered by mint_test.go.
-	scope := Mint(app.Group("")).OpScope()
+	scope := Mint(app.Group(""), "").OpScope()
 	h := zip.Handler(func(c *zip.Ctx) error { runs++; return c.NoContent(http.StatusOK) })
 	if scope.Middleware != nil {
 		h = scope.Middleware(h)
@@ -79,7 +79,7 @@ func TestMintOpScope_UnauthorizedOpNeverReachesHandler(t *testing.T) {
 	app.Use(zip.H(func(c *zip.Ctx) error { c.SetContext(ctx); return c.Next() }))
 	app.Use(TokenRequired(permission.Admin))
 
-	scope := Mint(app.Group("")).OpScope()
+	scope := Mint(app.Group(""), "").OpScope()
 	h := zip.Handler(func(c *zip.Ctx) error { runs++; return c.NoContent(http.StatusOK) })
 	if scope.Middleware != nil {
 		h = scope.Middleware(h)
