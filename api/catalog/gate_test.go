@@ -26,7 +26,7 @@ func probeGate(t *testing.T, gate func(*zip.Ctx) bool, seed func(*zip.Ctx), bear
 	admitted := false
 	app := zip.New(zip.Config{DisableStartupMessage: true})
 	if seed != nil {
-		app.Use(func(c *zip.Ctx) error { seed(c); return c.Next() })
+		app.Use(zip.H(func(c *zip.Ctx) error { seed(c); return c.Next() }))
 	}
 	app.Use(middleware.TokenRequired(permission.Admin))
 	app.Post("/x", func(c *zip.Ctx) error {
