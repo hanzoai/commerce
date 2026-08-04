@@ -2,6 +2,7 @@
   "name": "hanzo-commerce-storefront",
   "version": "1.0.6",
   "private": true,
+  "license": "MIT OR Apache-2.0",
   "author": "Hanzo AI <dev@hanzo.ai> (https://hanzo.ai)",
   "description": "Next.js Storefront for Hanzo Commerce",
   "keywords": [

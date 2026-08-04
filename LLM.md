@@ -1361,3 +1361,126 @@ no gofiber, no net/http adaptation in the serving path. Handlers are
   req.PostForm). zip TestCtx for direct handler calls.
 - Pre-existing debt unchanged: test-integration/* needs external services;
   thirdparty/reamaze verifyHMAC has an inversion bug (flagged, not fixed here).
+
+## Licensing — `MIT OR Apache-2.0` (HIP-0137)
+
+The repo is dual-licensed per **HIP-0137 "One License"**
+(`hanzoai/hips`, `HIPs/hip-0137-one-license.md`). Three root files, one
+declaration each, no restating:
+
+- `LICENSE` — the dual offer + SPDX id + inbound=outbound contribution clause.
+  Points at the two texts and at NOTICE. Copyright `2014-2026 Hanzo AI, Inc.`
+  (the real span: root commit is 2014-09-29, this started life as `kaching`).
+- `LICENSE-MIT` — canonical MIT, Hanzo copyright line.
+- `LICENSE-APACHE` — canonical Apache-2.0, BYTE-IDENTICAL to
+  apache.org/licenses/LICENSE-2.0.txt. sha256
+  `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`, 11358 bytes,
+  git blob `d645695673349e3947e8e5ae42332d0ac3164cd7`. Verify with `sha256sum` /
+  `cmp` / `git hash-object` — never `diff` (it is a shell function on the dev box
+  and has reported "differs" on byte-identical files). Any alteration to operative
+  text means the file is no longer that licence.
+
+Every `package.json` in the tree (15 of them, all under `app/`) declares
+`"license": "MIT OR Apache-2.0"`. There is no Cargo.toml or pyproject.toml here,
+and go.mod has no licence field, so the manifests are the whole surface.
+
+`NOTICE` is the third-party attribution file — it scopes *vendored dependencies*,
+not this repo's own terms. Its btcd/btcec (ISC, `replace/btcec`) and Go stdlib
+(BSD-3) sections are untouched. Appended: **Medusa** (medusajs/medusa, MIT,
+Copyright (c) 2021 Medusajs), which was vendored but unattributed. The whole
+TypeScript frontend under `app/` is rebranded Medusa — `app/admin` is
+`@medusajs/dashboard` (its CHANGELOG.md still carries that header), `app/site` is
+the Medusa Book (upstream Cloudinary "Medusa Book" asset URLs are still inline),
+`app/packages/*` are the corresponding `@medusajs` packages, and `app/store`
+derives from medusajs/nextjs-starter-medusa (MIT, Copyright (c) 2022 Medusa; its
+yarn.lock still resolves `medusa-next@workspace:.`). MIT grants sublicensing, so
+offering the whole under `MIT OR Apache-2.0` is sound *provided* the upstream
+copyright notice is retained — that retention is what the NOTICE append is for.
+Upstream ships no NOTICE file, so nothing further propagates.
+
+The **Go backend is not a Medusa fork** — it is an independent native
+implementation that reaches parity with Medusa v2's admin domains (see "Medusa
+parity" above). Only `app/` carries upstream lineage.
+
+### `app/store/LICENSE` — a swapped copyright line, REPAIRED
+
+That file was the upstream starter's MIT licence with line 3 changed from
+`Copyright (c) 2022 Medusa` to `Copyright (c) 2024 Hanzo AI`. Every other byte
+matched upstream. It is restored: the file is now byte-identical to
+medusajs/nextjs-starter-medusa's LICENSE — sha256
+`770a61c897d73cdeb53ff2a367d537a80eccf57b31f81e4a5fe951fecc40c632`, git blob
+`94def62e7e4e5016c3c4af42bc426beb3ec483e8`, which is the blob id GitHub reports
+for the upstream file itself.
+
+**The rule is "never edit an upstream LICENSE," and restoring this is not an
+exception to it — it is the rule being enforced.** The rule exists to protect
+upstream attribution. This was not an intact upstream licence being altered; it
+was an already-altered one, altered in the single way MIT forbids: MIT
+conditions the grant on "the above copyright notice ... shall be included in all
+copies or substantial portions of the Software." A swapped holder line is a
+continuing breach for as long as it ships. Restoring is repair, not edit. The
+test to apply next time: *does this change move the file toward or away from
+what upstream published?* Toward = repair. Away = the thing the rule forbids.
+
+This is the second confirmed instance of this failure class, after the Papermark
+incident (a branding pass retitled Papermark's commercial licence and swapped
+its copyright holder over 100% upstream code). Both were produced by
+rebrand-everything sweeps that treated a licence file as branding surface.
+Licence and NOTICE files are not branding surface.
+
+Swept the rest of the repo for the same swap. Tracked licence files repo-wide
+are exactly five: the three root ones, NOTICE, and `app/store/LICENSE` — no
+others, nested or otherwise (the `node_modules/` and `.next/` hits a filesystem
+grep returns are untracked build output, 0 tracked). `app/store/LICENSE` was
+also the **only** Hanzo copyright claim anywhere in the vendored `app/` tree: no
+Medusa source file was stamped with a Hanzo header. The vendored btcd/btcec
+under `replace/` keeps its ISC notices in-file (22 of 44 files carry the
+header; the rest are go.mod/go.sum/README/testdata).
+
+### Per-file Go headers — all 72 now agree with the root
+
+Every Hanzo-authored Go file carries the same two-line header, and it says the
+same thing the root LICENSE says:
+
+```go
+// Copyright (c) 2014-present Hanzo AI, Inc.
+// Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
+```
+
+That replaced two stale forms: `// Copyright © 2026 Hanzo AI. MIT License.` (71
+files, understated the dual offer) and, in `cmd/commerced/telemetry.go`,
+`// Copyright 2023-2026 Hanzo AI Inc. All Rights Reserved.` (1 file, a
+proprietary reservation left over from before the relicense). Headers are what
+licence scanners actually read, so a header contradicting the root is the
+contradiction that gets found first.
+
+The span is `2014-present` — one string, everywhere, matching `LICENSE`,
+`LICENSE-MIT` and `NOTICE`. It is the true span: the root commit is `1a1273cc2`,
+2014-09-29, when this was `kaching`. The old `2026` was wrong on its own terms,
+post-dating files that had existed for a decade. Do not reintroduce a per-file
+year convention — nobody maintains one, and it drifts from the root within a
+release.
+
+Six of the 72 have a `//go:build` constraint below the header. The rewrite
+replaced line 1 in place rather than inserting, so the constraint keeps its
+position behind blank-lines-and-line-comments only — the one way this breaks
+silently. `go vet ./...` is the gate that proves it (its buildtag analyzer
+flags a misplaced constraint); it is green, as is `CGO_ENABLED=0 go build ./...`.
+
+Nothing vendored was restamped: the only other Go files carrying a copyright
+line are the 33 under `replace/btcec`, which keep their upstream btcsuite and
+Decred ISC notices verbatim. If a file's header is upstream's, it is not ours to
+restamp — `git ls-files` the path before touching it, and note that
+`app/node_modules/` and `app/store/.next/` are untracked build output, not repo
+content.
+
+Build note unrelated to licensing: plain `go build ./...` fails under cgo with
+`undefined: cgoBuildNeedsSQLiteMathFunctions` from `hanzoai/base`. That is a
+deliberate compile-time guard in the dependency (`//go:build cgo &&
+!sqlite_math_functions`) telling you to use the pure-Go backend or add the tag.
+It reproduces identically on a clean tree, and `CGO_ENABLED=0` — what the
+Dockerfile ships — is green. Not caused by the headers.
+
+commerce stays PRIVATE. Licensing and visibility are independent: a gitleaks
+sweep of full history found live third-party merchant credentials and a
+customer's production hostnames. A licence change does not rewrite history.
