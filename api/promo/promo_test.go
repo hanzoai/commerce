@@ -32,12 +32,12 @@ func warmPlatformNS() {
 // admits. notSuper omits the bit so RequirePlatformAdmin refuses (403).
 func app(super bool) *zip.App {
 	a := zip.New(zip.Config{DisableStartupMessage: true})
-	a.Use(func(c *zip.Ctx) error {
+	a.Use(zip.H(func(c *zip.Ctx) error {
 		if super {
 			c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
 		}
 		return c.Next()
-	})
+	}))
 	a.Get("/v1/platform/promo", GetPromo)
 	a.Put("/v1/platform/promo", PutPromo)
 	return a
