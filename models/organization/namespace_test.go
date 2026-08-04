@@ -1,4 +1,5 @@
-// Copyright © 2026 Hanzo AI. MIT License.
+// Copyright (c) 2014-present Hanzo AI, Inc.
+// Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
 //
 // Package organization — M1 regression: the "platform" org-name namespace
 // bypass is gone.
