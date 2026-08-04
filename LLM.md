@@ -24,8 +24,9 @@ There is ONE Commerce admin: the Next static export in `app/admin`
 `//go:embed`) and served by it at **`/admin`**. It renders **`@hanzo/ui/product`**
 — the same component set the cloud console renders (`DataTable`, `PageHeader`,
 `StatusTag`, `EmptyState`, `MetricCard`, `BackendStateCard`, `CommerceResource`)
-— on `@hanzo/gui`. There is no commerce-local design system for the admin, and no
-second shell.
+— on `@hanzo/gui`, at the shared `@hanzo/ui/gui-config` scale (see *8.x
+convergence*). There is no commerce-local design system for the admin, no
+commerce-local Gui config, and no second shell.
 
 **One artifact, one URL contract.** `next.config.ts` sets `basePath: '/admin'`
 (from `src/lib/basepath.ts`), so chunks are `/admin/_next/*` and the client
@@ -766,17 +767,104 @@ tag/binary drift (the live 1.42.31-testmode image reported binary 1.42.5 because
 
 ## commerce-site edge (no nginx)
 
-`commerce.hanzo.ai` serves the marketing SPA via `ghcr.io/hanzoai/static`
-(`Dockerfile.site`, `--spa`, :3000) — NEVER nginx. The host's routing lives in
+`commerce.hanzo.ai` serves the docs/marketing site via `ghcr.io/hanzoai/static`
+(`Dockerfile.site`, :3000) — NEVER nginx. The host's routing lives in
 the hanzoai/ingress file provider (`universe infra/k8s/ingress/routes.yaml`):
-a high-priority `commerce-hanzo-ai-api` router sends `/v1`, `/api`, `/healthz`
+a high-priority `commerce-hanzo-ai-api` router sends `/v1`, `/healthz`
 to the commerce API (`commerce.hanzo.svc:8001`); the low-priority
-`commerce-hanzo-ai` router catches the rest → the SPA. The operator
+`commerce-hanzo-ai` router catches the rest → the site. The operator
 `commerce-site` Service CR has `ingress.enabled: false` (a plain Ingress can't
-express Traefik priority). The from-source `Dockerfile.site` Next.js build is
-currently broken (unbuilt workspace dists, a phantom `@kapaai/react-sdk` import,
-a `@/providers` alias); 0.2.0 re-serves the proven 0.0.1 assets — fix the app
-build before bumping content.
+express Traefik priority).
+
+`Dockerfile.site` builds **from source** again. It used to re-serve the content
+of the retired nginx image because `app/site` did not build; it now runs the same
+`turbo run typecheck build --filter=@hanzo/commerce-site` the CI gate runs. The
+export is directory-style (`trailingSlash: true`), so `/learn` resolves through
+the static server's directory index — no `--spa`, so a miss stays a 404 instead
+of answering 200 with the homepage.
+
+## 8.x convergence — one framework, all surfaces
+
+Every Hanzo surface draws with **`@hanzo/ui` components on `@hanzo/gui`**, and
+the scale is **`@hanzo/ui/gui-config`** — THE shared type, radius and spacing
+scale that ships WITH the components. A local `gui.config.ts` is a fork: the
+shared components are typed against that scale, so a private `$5` radius makes
+them draw at a size their author never chose. `app/admin` and `app/site` both
+import it; nothing in this repo defines a second one.
+
+State, by surface:
+
+| surface | stack | tailwind / radix |
+| --- | --- | --- |
+| `app/admin` | `@hanzo/ui/product` on `@hanzo/gui` | none |
+| `app/site` | `components/docs` + `components/shell` on `@hanzo/gui`; prose is plain CSS on `@hanzo/ui/theme.css` tokens | none |
+| `app/store` | Tailwind + `@hanzo/commerce-ui` | **both, still** |
+| `app/packages/ui` | Radix + `tailwind-merge`, consumed ONLY by `app/store` | **both, still** |
+| `app/packages/ui-preset` | the Tailwind preset `app/store` and `packages/ui` share | **tailwind, still** |
+
+Deleted with the docs fork: `packages/docs-ui` (458 files, its own Tailwind
+preset and grey scale), `packages/docs-utils`, `packages/admin-shared` and
+`packages/admin-vite-plugin` (the Vite admin's build plugin — the admin is Next).
+
+**The remaining three move together or not at all.** `app/store` is 205 files and
+1038 `className` sites; it takes 16 names from `@hanzo/commerce-ui` (Badge,
+Button, Checkbox, clx, Container, Heading, IconBadge, IconButton, Input, Label,
+RadioGroup, Table, Text, toast, Toaster, useToggleState) plus `@headlessui/react`
+in 11 files. `packages/ui` is 195 files, 23 of them on Radix, and has no other
+consumer. `packages/ui-preset` is what makes the storefront's `grey-*` and
+`text-xsmall-regular` classes mean anything. Retiring `packages/ui` therefore
+requires converting the storefront in the SAME change — dropping the preset
+without the classes leaves an unstyled store.
+
+### Gui drops what it does not recognise — the typecheck is the only gate
+
+An unrecognised style prop is DISCARDED: no error, no warning, an unstyled
+element. `hanzo.yml`'s `frontend-typecheck` runs `turbo run typecheck` over every
+surface that draws with Gui, and the registered `GuiCustomConfig` (`gui.d.ts`) is
+what makes the token types real. Any new Gui surface belongs in that filter.
+
+What it catches, found this way rather than in a browser:
+
+* `fontFamily="$mono"` — the scale declares `body` and `heading`, and nothing
+  else. Mono rides `style` with `var(--font-geist-mono)`.
+* `overflow="auto"` — the value union is React Native's (visible/hidden/scroll),
+  and `overflowX` is not in it at all. Both ride `style`.
+
+What it does NOT catch, so drive a browser:
+
+* `flex={1}` is `flexGrow:1; flexShrink:1; flexBasis:0%`. In a `minH="100vh"`
+  column that makes the content the leftover space and every long page spills
+  through the footer. `grow={1}` is the one that means "push the footer down".
+* `lineHeight={1.1}` is **1.1 pixels** — a bare number is a length, prop or
+  `style` alike. A ratio has to be the string `'1.1'`.
+* `render`, not `tag`, names the host element; `$sm`/`$md` are mobile-first
+  min-widths and `$gtSm` does not exist; `display: grid` is not in the union.
+
+### Server graph vs client graph
+
+Gui builds its contexts with `React.createContext` at module scope, and the React
+Next resolves under the `react-server` condition has none — a Gui component
+evaluated as a server component kills the static export with `r is not a
+function`. So `app/site/components/docs/parts.tsx` is `"use client"` and
+`index.tsx` is its server face, owning the two things the boundary will not
+carry: `Table.Body` (a client reference has no properties of its own) and
+component-valued props like `icon: BookOpen` (a function will not serialise —
+it is rendered to an element first).
+
+### TypeScript 7
+
+`typescript@7.0.2` IS the native Go compiler: its `tsc` resolves to an ELF binary
+built from `github.com/microsoft/typescript-go/cmd/tsgo`. It lives once, at the
+workspace root, and every `typecheck` script calls
+`../node_modules/typescript/bin/tsc`. Do NOT add `@typescript/native-preview` —
+that is 7.0.0-dev and BEHIND stable.
+
+Two things follow. TS7 has no classic JS compiler API (`"."` exports
+`lib/version.cjs`), and **Next reads `tsconfig.json` through the `typescript` it
+can `require`** — without a 5.x in the app's own `devDependencies`, `paths` come
+back EMPTY and every `@/…` import fails to resolve. Both `app/admin` and
+`app/site` therefore keep a TS 5.x devDependency for Next while the gate runs
+TS7. And TS7 removed `baseUrl`: `paths` are relative to the tsconfig.
 
 ## SBOM-driven OSS-developer payout (2026-06-25)
 
