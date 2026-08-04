@@ -17,7 +17,7 @@
     "build": "pnpm build:bundles && pnpm build:types",
     "build:bundles": "rollup -c ./rollup.config.mjs",
     "build:types": "tsc --emitDeclarationOnly",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsgo --noEmit"
   },
   "devDependencies": {
     "@atomico/rollup-plugin-sizes": "^1.1.4",

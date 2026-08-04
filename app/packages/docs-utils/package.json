@@ -14,8 +14,8 @@
   },
   "sideEffects": false,
   "scripts": {
-    "build": "tsc --noEmit",
-    "typecheck": "tsc --noEmit"
+    "build": "tsgo --noEmit",
+    "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
     "@mdx-js/mdx": "^3.1.0",
