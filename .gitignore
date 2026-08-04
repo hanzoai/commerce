@@ -34,6 +34,9 @@ vendor/
 _export
 **/*.coverprofile.*
 .ipynb_checkpoints/
+# `make build` output (bin/commerce). The bare names below it are where a plain
+# `go build ./cmd/<x>` still drops a binary.
+/bin/
 /commerce
 /commerced
 /sbom-scan

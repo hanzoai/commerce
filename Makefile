@@ -114,13 +114,93 @@ ifdef test_batch
 	test_target=$(batch)
 endif
 
+# --- The canonical vocabulary: help / build / test / lint / clean -------------
+#
+# These five mean the same thing in every Hanzo repo. Everything below them is
+# the original App Engine Makefile, kept: commerce ran on GAE (dev_appserver,
+# appcfg, gcloud deploy) and those targets are its history. What changed is that
+# build/test/clean now describe what commerce SHIPS TODAY — one Go binary, built
+# by ./Dockerfile — instead of an app that no longer exists.
+#
+# GOWORK=off, for THIS repo's own reason. commerce COMMITS a go.work (use .
+# ./metering); in workspace mode the toolchain also reads the committed
+# go.work.sum, which is stale, and `go mod download` then fails verification with
+# "SECURITY ERROR". The Dockerfile hit exactly that and pins GOWORK=off, as does
+# every gate in hanzo.yml. It does not change what gets compiled: metering is a
+# standalone stdlib-only module the root never imports, and on a warm cache
+# `go list ./...` resolves identically either way. It is set so these targets
+# build EXACTLY what CI and the image build, on a cold cache too. Override for
+# the rare cross-module case: make GOWORK= <target>.
+export GOWORK := off
+
+# Copied from ./Dockerfile line-for-line, because `make build` and the image
+# must be the same program:
+#   cloud                       — compiles in the HIP-0106 cloud-mount path
+#                                 (cloud_boot.go); legacy direct-Gin stays the
+#                                 default boot mode.
+#   sqlite_math_functions       — hanzoai/base REFUSES to compile under cgo
+#                                 without it (core/sqlite_math_required.go:
+#                                 undefined cgoBuildNeedsSQLiteMathFunctions).
+#                                 Its search layer emits SQL calling
+#                                 acos/cos/sin/radians/sqrt and csqlite only
+#                                 compiles those in behind the tag.
+#   sqlite_omit_load_extension  — no runtime extension loading.
+build_tags = cloud sqlite_omit_load_extension sqlite_math_functions
+# What hanzo.yml's go-vet and go-unit gates carry. Not the `cloud` tag: that one
+# selects a boot path, and CI pins the tested surface without it.
+test_tags  = sqlite_math_functions
+
+# First target in the file, so it is what a bare `make` runs. That USED to be
+# `all: deps test install`, and the change is deliberate: `all` starts with
+# `deps`, which runs `go get ./...` and rewrites go.mod/go.sum — so `make`, the
+# thing you type when you do not know a repo, silently changed this repo's
+# dependencies. `all` is still here; it just is not what you get by accident.
+help: ## Show this help.
+	@awk 'BEGIN{FS=":.*##";printf "\nUsage: make <target>\n\nTargets:\n"} /^[a-zA-Z_-]+:.*##/{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+# The artifact this repo ships: ONE binary, cmd/commerce, the image's ENTRYPOINT.
+# CGO_ENABLED=1 because it links csqlite rather than the pure-Go backend.
+#
+# NOT copied from the Dockerfile: `-mod=mod`, which is there so a Linux CI build
+# can ADD the go.sum hashes that direct-git private modules resolve to on Linux.
+# Adding hashes is a dependency change and does not belong in a local build; the
+# default -mod=readonly proves the committed go.sum is already complete.
+# NOT copied either: the -X version stamps CI injects from the immutable image
+# tag. The Dockerfile's own default for those is empty, for this exact case —
+# "keeps commerce.Version's in-source default for local builds".
+build: ## Build the shipped binary into ./bin/commerce.
+	@mkdir -p bin
+	CGO_ENABLED=1 $(go) build -tags "$(build_tags)" -ldflags "-s -w" -o bin/commerce ./cmd/commerce
+
+# The Go surface CI gates on (hanzo.yml go-unit + go-api-suites) as ONE command.
+# The suites under test/ are ordinary Go tests with a ginkgo bootstrap, so
+# `go test` runs them; also invoking the ginkgo CLI would be the same tests
+# twice. test-integration/ is excluded for the reason CI excludes it
+# (--skip-package=test-integration): it talks to live third-party services.
+test: ## Run the tests CI gates on.
+	CGO_ENABLED=1 $(go) test -count=1 -timeout=20m -tags "$(test_tags)" $$($(go) list ./... | grep -v '/test-integration')
+
+lint: ## go vet across the module (hanzo.yml's go-vet gate).
+	CGO_ENABLED=1 $(go) vet -tags "$(test_tags)" ./...
+
+# clean removes what these targets BUILD and nothing else. It used to be
+# `go clean -modcache`, which erases the whole MACHINE's Go module cache — every
+# repo's dependencies, not one artifact of this one. That is not what clean means
+# anywhere in this fleet and it is not recoverable without re-downloading the
+# world, so it is gone rather than renamed: a target that wipes a global cache is
+# not a repo target, and `go clean -modcache` is one command for anyone who
+# genuinely wants it.
+#
+# The bare names are the four .gitignore reserves at the repo root, from when a
+# plain `go build ./cmd/<x>` dropped its binary beside the source. Nothing
+# tracked shares those names.
+clean: ## Remove built artifacts.
+	rm -rf bin
+	rm -f commerce commerced sbom-scan backfill-events
+
+# --- Everything below is the original App Engine Makefile --------------------
+
 all: deps test install
-
-build: deps update-env
-	$(go) build $(packages)
-
-clean:
-	$(go) clean -modcache
 
 deps:
 	$(go) list ./...
@@ -151,9 +231,9 @@ tools:
 	$(gopath)/bin/gocode set lib-path "$(gopath)/pkg:$(goroot)/pkg"
 
 # TEST/ BENCH
-test: update-env-test
-	$(ginkgo) $(test_target) --compilers=2 --randomize-all --fail-fast --trace --skip-package=test-integration/* $(test_verbose)
-
+# `test` is defined above, as the canonical verb. The ginkgo runner it used to
+# be is unchanged and still reachable: test-ci runs the same suites through the
+# same CLI, test-watch and bench are untouched.
 test-watch: update-env-test
 	$(ginkgo) watch -r=true --compilers=2 --fail-fast --trace $(test_verbose)
 
@@ -182,6 +262,12 @@ deploy-dispatch:
 	@cd $(gopath)/src/hanzo.ai
 	gcloud app deploy config/$(project_env)/dispatch.yaml --project $(project_id) --version v1
 
+# HAZARD, kept only because these are pre-existing targets: both of these write a
+# config/env.go that no longer compiles. config/config.go declares `var Env =
+# os.Getenv("ENV")` itself, so the generated file collides with it —
+#   config/env.go:3:5: Env redeclared in this block
+# — and the package stops building until you delete config/env.go. That is why
+# build and test above do not depend on them.
 update-env:
 	@printf 'package config\n\nvar Env = "$(project_env)"' > config/env.go
 
@@ -250,7 +336,8 @@ artifact-upload:
 	tar -cf sdk-$(BUILDKITE_BRANCH).tar sdk
 	buildkite-agent artifact upload '*.tar'
 
-.PHONY: all auth bench build buildkite-artifact-download \
+.PHONY: help lint clean \
+	all auth bench build buildkite-artifact-download \
 	buildkite-artifact-upload compile-js compile-js-min compile-css \
 	compile-css-min datastore-import datastore-export datastore-config \
 	deploy deploy-staging deploy-production deps deps-assets deps-go \
