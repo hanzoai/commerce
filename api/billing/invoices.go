@@ -1,7 +1,6 @@
 package billing
 
 import (
-	"encoding/json"
 	"strings"
 	"time"
 
@@ -12,8 +11,6 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/billinginvoice"
-	"github.com/hanzoai/commerce/models/idempotencykey"
-	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -31,39 +28,40 @@ type createInvoiceRequest struct {
 //	POST /v1/billing/invoices
 func CreateInvoice(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req createInvoiceRequest
 	if err := c.Bind(&req); err != nil {
 		return http.Fail(c, 400, "invalid request body", err)
 	}
 
-	if req.UserId == "" {
-		return http.Fail(c, 400, "userId is required", nil)
+	in := InvoiceIn{
+		UserID:        req.UserId,
+		CustomerEmail: req.CustomerEmail,
+		Currency:      req.Currency,
 	}
-
-	inv := billinginvoice.New(db)
-	inv.UserId = req.UserId
-	inv.CustomerEmail = req.CustomerEmail
-	inv.SubscriptionId = req.SubscriptionId
-	inv.LineItems = req.LineItems
-
-	if req.Currency != "" {
-		inv.Currency = currency.Type(strings.ToLower(req.Currency))
+	for _, li := range req.LineItems {
+		in.Lines = append(in.Lines, InvoiceLine{
+			Description: li.Description,
+			Amount:      li.Amount,
+			Quantity:    li.Quantity,
+			UnitPrice:   li.UnitPrice,
+		})
 	}
-
-	if req.Metadata != nil {
-		inv.Metadata = req.Metadata
+	inv, f := raiseInvoice(c.Context(), org, in)
+	if f != nil {
+		return http.Fail(c, f.Status, f.Message, f.Err)
 	}
-
-	// Calculate subtotal from line items
-	inv.RecalculateSubtotal()
-
-	if err := inv.Create(); err != nil {
-		log.Error("Failed to create invoice: %v", err, c)
-		return http.Fail(c, 500, "failed to create invoice", err)
+	// SubscriptionId and Metadata are carried by this door only; the typed op has
+	// no field for either, so they are set after the shared core has built the row.
+	if req.SubscriptionId != "" || req.Metadata != nil {
+		inv.SubscriptionId = req.SubscriptionId
+		if req.Metadata != nil {
+			inv.Metadata = req.Metadata
+		}
+		if err := inv.Update(); err != nil {
+			log.Error("Failed to attach subscription/metadata to invoice: %v", err, c)
+		}
 	}
-
 	return c.JSON(201, invoiceResponse(inv))
 }
 
@@ -119,15 +117,10 @@ func ListInvoices(c *zip.Ctx) error {
 //
 //	GET /v1/billing/invoices/:id
 func GetInvoice(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c.Context()))
-
-	id := c.Param("id")
-	inv := billinginvoice.New(db)
-	if err := inv.GetById(id); err != nil {
-		return http.Fail(c, 404, "invoice not found", err)
+	inv, _, f := loadInvoice(c.Context(), middleware.GetOrganization(c), c.Param("id"))
+	if f != nil {
+		return http.Fail(c, f.Status, f.Message, f.Err)
 	}
-
 	return c.JSON(200, invoiceResponse(inv))
 }
 
@@ -135,26 +128,10 @@ func GetInvoice(c *zip.Ctx) error {
 //
 //	POST /v1/billing/invoices/:id/finalize
 func FinalizeInvoice(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c.Context()))
-
-	id := c.Param("id")
-	inv := billinginvoice.New(db)
-	if err := inv.GetById(id); err != nil {
-		return http.Fail(c, 404, "invoice not found", err)
+	inv, f := issueInvoice(c.Context(), middleware.GetOrganization(c), c.Param("id"), eventsOf(c))
+	if f != nil {
+		return http.Fail(c, f.Status, f.Message, f.Err)
 	}
-
-	if err := inv.Finalize(); err != nil {
-		return http.Fail(c, 400, err.Error(), nil)
-	}
-
-	if err := inv.Update(); err != nil {
-		log.Error("Failed to finalize invoice: %v", err, c)
-		return http.Fail(c, 500, "failed to finalize invoice", err)
-	}
-
-	emitInvoiceFinalized(c, org.Name, inv)
-
 	return c.JSON(200, invoiceResponse(inv))
 }
 
@@ -162,93 +139,30 @@ func FinalizeInvoice(c *zip.Ctx) error {
 //
 //	POST /v1/billing/invoices/:id/pay
 func PayInvoice(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
-	// Hydrate payment creds so an invoice unpaid by credits+balance can be settled
-	// on the subscription's vaulted card via the per-org Square processor.
-	hydratePaymentCreds(c, org)
-	db := datastore.New(org.Namespaced(c.Context()))
-
-	id := c.Param("id")
-	inv := billinginvoice.New(db)
-	if err := inv.GetById(id); err != nil {
-		return http.Fail(c, 404, "invoice not found", err)
+	oc, f := collectInvoice(c.Context(), middleware.GetOrganization(c), c.Param("id"), kmsOf(c), eventsOf(c))
+	if f != nil {
+		return http.Fail(c, f.Status, f.Message, f.Err)
 	}
-
-	// Atomic per-invoice guard: two concurrent pays of the SAME invoice collapse
-	// onto ONE collection (deterministic-id ON CONFLICT). The card charge (via
-	// chargeProviderForOrg) ALSO carries a stable per-period Square idempotency key,
-	// so even the narrow concurrent-first window cannot double-charge.
-	rec, replay, gerr := idempotencykey.Begin(db, "billing-pay", "invoice:"+inv.Id())
-	if gerr == nil && replay {
-		if rec.Status == idempotencykey.StatusCompleted && rec.Response != "" {
-			c.SetHeader("Content-Type", "application/json")
-			return c.Bytes(200, []byte(rec.Response))
-		}
-		return http.Fail(c, 409, "invoice payment already in progress", nil)
+	if oc.Replayed != nil {
+		return c.JSON(200, map[string]any{
+			"invoice":    invoiceResponse(oc.Inv),
+			"collection": oc.Replayed,
+		})
 	}
-
-	result, err := engine.CollectInvoice(c.Context(), db, inv, BurnCredits, chargeProviderForOrg(org))
-	if err != nil {
-		if rec != nil {
-			_ = rec.Delete()
-		}
-		log.Error("Failed to collect invoice: %v", err, c)
-		return http.Fail(c, 500, "failed to collect invoice payment", err)
-	}
-
-	if err := inv.Update(); err != nil {
-		log.Error("Failed to update invoice after payment: %v", err, c)
-		return http.Fail(c, 500, "failed to update invoice", err)
-	}
-
-	resp := map[string]any{
-		"invoice":    invoiceResponse(inv),
-		"collection": result,
-	}
-
-	if result.Success {
-		// Only a SUCCESSFUL collection is a paid invoice: emit invoicePaid and SEAL the
-		// guard so a concurrent/retry pay replays the paid result instead of re-charging.
-		emitInvoicePaid(c, org.Name, inv)
-		if rec != nil {
-			if body, mErr := json.Marshal(resp); mErr == nil {
-				_ = idempotencykey.Complete(rec, string(body))
-			}
-		}
-	} else if rec != nil {
-		// Declined / partial: the invoice stays OPEN. RELEASE the guard (never seal a
-		// decline) and emit NO invoicePaid — so the dunning workflow / a later PayInvoice
-		// actually RE-COLLECTS (at a higher AttemptCount → fresh gateway key) instead of
-		// replaying a sealed failure. Sealing a decline would wedge dunning + fire phantom MRR.
-		_ = rec.Delete()
-	}
-	return c.JSON(200, resp)
+	return c.JSON(200, map[string]any{
+		"invoice":    invoiceResponse(oc.Inv),
+		"collection": oc.Result,
+	})
 }
 
 // VoidInvoice voids a draft or open invoice.
 //
 //	POST /v1/billing/invoices/:id/void
 func VoidInvoice(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c.Context()))
-
-	id := c.Param("id")
-	inv := billinginvoice.New(db)
-	if err := inv.GetById(id); err != nil {
-		return http.Fail(c, 404, "invoice not found", err)
+	inv, f := voidInvoice(c.Context(), middleware.GetOrganization(c), c.Param("id"), eventsOf(c))
+	if f != nil {
+		return http.Fail(c, f.Status, f.Message, f.Err)
 	}
-
-	if err := inv.MarkVoid(); err != nil {
-		return http.Fail(c, 400, err.Error(), nil)
-	}
-
-	if err := inv.Update(); err != nil {
-		log.Error("Failed to void invoice: %v", err, c)
-		return http.Fail(c, 500, "failed to void invoice", err)
-	}
-
-	emitInvoiceVoid(c, org.Name, inv)
-
 	return c.JSON(200, invoiceResponse(inv))
 }
 
