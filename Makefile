@@ -183,6 +183,13 @@ test: ## Run the tests CI gates on.
 lint: ## go vet across the module (hanzo.yml's go-vet gate).
 	CGO_ENABLED=1 $(go) vet -tags "$(test_tags)" ./...
 
+# Runs the SAME binary build produces — not a second compile with its own tags,
+# which is how a local run drifts from the shipped one. Listens on 127.0.0.1:8090
+# and writes commerce_data/, which .gitignore anchors. `serve` below is the App
+# Engine dev_appserver and needs an SDK this repo no longer ships with.
+dev: build ## Run the shipped binary locally in development mode.
+	./bin/commerce -dev
+
 # clean removes what these targets BUILD and nothing else. It used to be
 # `go clean -modcache`, which erases the whole MACHINE's Go module cache — every
 # repo's dependencies, not one artifact of this one. That is not what clean means
@@ -336,7 +343,7 @@ artifact-upload:
 	tar -cf sdk-$(BUILDKITE_BRANCH).tar sdk
 	buildkite-agent artifact upload '*.tar'
 
-.PHONY: help lint clean \
+.PHONY: help dev lint clean \
 	all auth bench build buildkite-artifact-download \
 	buildkite-artifact-upload compile-js compile-js-min compile-css \
 	compile-css-min datastore-import datastore-export datastore-config \
