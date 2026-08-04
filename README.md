@@ -179,4 +179,4 @@ Various Go tools are included in the `tools` target to assist with development (
 
 ## License
 
-`MIT OR Apache-2.0` (`LICENSE`, `LICENSE-MIT`, `LICENSE-APACHE`) per the Hanzo licensing standard — see hanzoai/hips; vendored third-party terms are in `NOTICE`.
+`MIT OR Apache-2.0` (`LICENSE`, `LICENSE-MIT`, `LICENSE-APACHE`) per HIP-0137 One License; vendored third-party terms are in `NOTICE`.
