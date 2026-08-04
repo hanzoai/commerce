@@ -30,7 +30,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest --run --coverage",
     "lint": "eslint \"**/*.ts*\"",
-    "typecheck": "tsgo --noEmit"
+    "typecheck": "../../node_modules/typescript/bin/tsc --noEmit"
   },
   "devDependencies": {
     "@hanzo/commerce-ui-preset": "workspace:*",

@@ -21,6 +21,10 @@
     "outDir": "dist",
     "esModuleInterop": true,
     "declarationDir": "dist",
+    // Stated, not inferred: TypeScript 7 no longer guesses the common source
+    // directory when it emits (TS5011), and `dist/` must mirror `src/` — the
+    // package's `typings` names dist/index.d.ts, which is src/index.ts.
+    "rootDir": "src",
     "paths": {
       "@hanzo/commerce-icons": [
         "./src/src/index.ts"
