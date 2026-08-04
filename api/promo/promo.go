@@ -12,6 +12,7 @@
 package promo
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -207,6 +208,17 @@ func Active(c *zip.Ctx) *Promo {
 		return nil
 	}
 	return &pr
+}
+
+// Name is how the promo reads on a receipt — the ONE place a percent becomes a
+// label, so the line a customer sees on an invoice cannot drift from the offer
+// the plans page advertised. Empty for a promo that discounts nothing, because a
+// zero-value discount must not print a name beside it.
+func (p *Promo) Name() string {
+	if p == nil || p.PercentOff <= 0 {
+		return ""
+	}
+	return strconv.Itoa(p.PercentOff) + "% off"
 }
 
 // AppliesTo reports whether the promo discounts a given plan slug: an empty Plans
