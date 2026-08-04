@@ -245,6 +245,22 @@ func buildPeriodInvoice(db *datastore.Datastore, sub *subscription.Subscription)
 	// Calculate totals
 	inv.RecalculateSubtotal()
 
+	// The promo the subscription was bought under, priced off the PLAN fee only —
+	// metered usage above is real consumption and is never discounted by a plan
+	// promo. Finalize() folds Discount into AmountDue, so this must land before it.
+	if inv.Subtotal > 0 && sub.DiscountPercent > 0 {
+		planFee := int64(0)
+		for _, li := range inv.LineItems {
+			if li.Type == billinginvoice.LineSubscription {
+				planFee += li.Amount
+			}
+		}
+		if d := DiscountCents(planFee, sub.DiscountPercent); d > 0 {
+			inv.Discount = d
+			inv.DiscountName = sub.DiscountName
+		}
+	}
+
 	// Assign a sequential per-org invoice number BEFORE persisting.
 	assignInvoiceNumber(db, inv)
 

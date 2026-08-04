@@ -9,6 +9,7 @@ import (
 
 	"github.com/zap-proto/zip"
 
+	"github.com/hanzoai/commerce/api/promo"
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -167,6 +168,26 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		seatMult = int64(qty)
 	}
 	chargeCents := int64(p.Price) * seatMult
+	// The advertised promo, actually applied. GET /v1/billing/plans annotates each
+	// plan with promoPercent off the SAME gate (active + inside its window +
+	// AppliesTo), and until now nothing subtracted it here: the page could say
+	// "50% off" while this line charged full price and the receipt agreed with the
+	// charge, not the offer. Resolved once, carried on the subscription, so every
+	// renewal prices identically — and computed through engine.DiscountCents, the
+	// same function that discounts the invoice, so charge == AmountDue by
+	// construction rather than by two implementations agreeing.
+	promoPercent, promoName := 0, ""
+	if pr := promo.Active(c); pr != nil && pr.AppliesTo(req.PlanID) {
+		promoPercent, promoName = pr.PercentOff, pr.Name()
+		chargeCents -= engine.DiscountCents(chargeCents, promoPercent)
+	}
+	if chargeCents <= 0 {
+		// A 100%-off promo leaves nothing to charge, and a card sale of $0 is not a
+		// sale — Square rejects a zero charge, so this would surface as a decline.
+		// Refuse BEFORE the card is touched and name the real reason.
+		return http.Fail(c, 400,
+			fmt.Sprintf("plan %q costs nothing after the current promotion — no card charge required; use POST /v1/billing/subscriptions", req.PlanID), nil)
+	}
 	// Currency is SERVER-AUTHORITATIVE: the plan's own currency (default USD). A
 	// client currency is honored ONLY when it matches the plan's; a mismatched
 	// currency (e.g. "jpy" for a USD-priced plan) is rejected — otherwise the
@@ -297,6 +318,10 @@ func SubscribeWithCard(c *zip.Ctx) error {
 	// the subscription payment-backed (Square provider + a linked invoice), so its
 	// INCLUDED monthly allotment flows (subscriptionPaymentBacked).
 	sub.ProviderType = string(processor.Square)
+	// Stamp the promo BEFORE the invoice is built — buildPeriodInvoice prices the
+	// discount off the subscription, so setting it after would invoice the first
+	// period at full price against a discounted charge.
+	sub.DiscountPercent, sub.DiscountName = promoPercent, promoName
 	inv, err := engine.CreatePaidFirstInvoice(db, sub, "card", res.ProcessorRef)
 	if err != nil {
 		// The subscription exists and the money is collected; a first-invoice record
