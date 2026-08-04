@@ -21,8 +21,16 @@
       "@/*": [
         "./src/*"
       ],
-      // ONE React type identity + ONE Tamagui: @hanzo/ui is linked from source and
-      // carries its own copies, which TS would otherwise treat as distinct types.
+      // ONE React type identity: @hanzo/ui ships raw TS and carries its own
+      // @types/react, which TS would otherwise treat as a distinct React.
+      //
+      // Gui itself is deliberately NOT pinned here. Next feeds tsconfig `paths`
+      // to webpack as a resolve plugin that runs BEFORE `resolve.alias`, so a
+      // "@hanzogui/*" -> "./node_modules/@hanzogui/*" entry beats every alias and
+      // resolves subpaths as DIRECTORIES — past the package `exports` map and
+      // onto the legacy Metro stubs, which breaks the static export at prerender.
+      // Type identity is already guaranteed by the single pinned version set in
+      // package.json; runtime identity is next.config.ts's SINGLETONS aliases.
       "react": [
         "./node_modules/@types/react"
       ],
@@ -31,15 +39,6 @@
       ],
       "react-dom": [
         "./node_modules/@types/react-dom"
-      ],
-      "@hanzo/gui": [
-        "./node_modules/@hanzo/gui"
-      ],
-      "@hanzo/gui/*": [
-        "./node_modules/@hanzo/gui/*"
-      ],
-      "@hanzogui/*": [
-        "./node_modules/@hanzogui/*"
       ]
     },
     "plugins": [
