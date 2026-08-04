@@ -34,10 +34,10 @@ func TestPlans_SurfaceActivePromo(t *testing.T) {
 	_, _ = promotionModel.Query(wdb).Count()
 
 	a := zip.New(zip.Config{DisableStartupMessage: true})
-	a.Use(func(c *zip.Ctx) error {
+	a.Use(zip.H(func(c *zip.Ctx) error {
 		c.Locals("permissions", bit.Field(permission.Admin|permission.Live)) // SuperAdmin
 		return c.Next()
-	})
+	}))
 	a.Put("/v1/platform/promo", promo.PutPromo)
 	a.Get("/v1/billing/plans", ListPlans)
 

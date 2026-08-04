@@ -29,7 +29,7 @@ func mountAffiliate(t *testing.T, seed func(*zip.Ctx), pathSuffix string) (*zip.
 	t.Helper()
 	app := zip.New(zip.Config{DisableStartupMessage: true})
 	if seed != nil {
-		app.Use(func(c *zip.Ctx) error { seed(c); return c.Next() })
+		app.Use(zip.H(func(c *zip.Ctx) error { seed(c); return c.Next() }))
 	}
 	Route(app.Group("/v1"))
 
