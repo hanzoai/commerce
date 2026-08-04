@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Hanzo Commerce React icon library",
-  "license": "MIT",
+  "license": "MIT OR Apache-2.0",
   "main": "dist/cjs/commerce-icons.js",
   "main:umd": "dist/umd/commerce-icons.js",
   "module": "dist/esm/index.js",

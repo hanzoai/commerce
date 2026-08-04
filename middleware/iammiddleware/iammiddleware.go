@@ -1,4 +1,5 @@
-// Copyright © 2026 Hanzo AI. MIT License.
+// Copyright (c) 2014-present Hanzo AI, Inc.
+// Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
 
 // Package iammiddleware is the gateway-trust shim for legacy call
 // sites. It used to do JWKS fetch + JWT validation in-binary (293
