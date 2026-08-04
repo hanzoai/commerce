@@ -35,7 +35,7 @@ func invokeCreate(org *organization.Organization, ctx context.Context, identity 
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/transaction", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		panic(err)
 	}

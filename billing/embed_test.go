@@ -87,7 +87,7 @@ func TestUIHandler_NoAuth_Returns404(t *testing.T) {
 	}
 	for _, path := range cases {
 		req := httptest.NewRequest(http.MethodGet, path, nil)
-		resp, err := app.Fiber().Test(req)
+		resp, err := app.Test(req)
 		if err != nil {
 			t.Fatalf("%s: test request failed: %v", path, err)
 		}
@@ -106,7 +106,7 @@ func TestUIHandler_MalformedBearer_Returns404(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/billing/plans", nil)
 	req.Header.Set("Authorization", "Basic dXNlcjpwYXNz")
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("test request failed: %v", err)
 	}

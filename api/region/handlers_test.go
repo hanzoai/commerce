@@ -53,7 +53,7 @@ func (a *regionAPI) do(t *testing.T, method, path string, body any) (int, []byte
 	}
 	req := httptest.NewRequest(method, path, r)
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := a.app.Fiber().Test(req)
+	resp, err := a.app.Test(req)
 	if err != nil {
 		t.Fatalf("%s %s: %v", method, path, err)
 	}

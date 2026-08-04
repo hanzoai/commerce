@@ -62,7 +62,7 @@ func TestRoute_WiresAndOptionValuesSubrouteWorks(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/product-option/"+opt.Id()+"/values",
 		strings.NewReader(`{"value":"Large"}`))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := eng.Fiber().Test(req)
+	resp, err := eng.Test(req)
 	if err != nil {
 		t.Fatalf("add value request: %v", err)
 	}
@@ -74,7 +74,7 @@ func TestRoute_WiresAndOptionValuesSubrouteWorks(t *testing.T) {
 
 	// GET the values back.
 	req2 := httptest.NewRequest(http.MethodGet, "/product-option/"+opt.Id()+"/values", nil)
-	resp2, err := eng.Fiber().Test(req2)
+	resp2, err := eng.Test(req2)
 	if err != nil {
 		t.Fatalf("list values request: %v", err)
 	}

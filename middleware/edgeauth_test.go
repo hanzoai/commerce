@@ -37,7 +37,7 @@ func runEdgeAuth(t *testing.T, req *http.Request, captureHeaders ...string) (rea
 		stashedOrg = clientOrgFromContext(c)
 		return c.NoContent(http.StatusOK)
 	})
-	if _, err := app.Fiber().Test(req); err != nil {
+	if _, err := app.Test(req); err != nil {
 		t.Fatalf("edgeauth request: %v", err)
 	}
 	return

@@ -59,7 +59,10 @@ func (r *recordingRouter) record(method, path string, hs []zip.Handler) {
 	*r.rec = append(*r.rec, routeRec{method, joinGroupPath(r.prefix, path), handlerFullName(hs[len(hs)-1])})
 }
 
-func (r *recordingRouter) Use(handlers ...zip.Component) zip.Router { r.inner.Use(handlers...); return r }
+func (r *recordingRouter) Use(handlers ...zip.Component) zip.Router {
+	r.inner.Use(handlers...)
+	return r
+}
 
 func (r *recordingRouter) Get(p string, h ...zip.Handler) zip.Router {
 	r.record(http.MethodGet, p, h)
@@ -158,7 +161,7 @@ func TestTransactionsRouteNot404(t *testing.T) {
 	engine, _ := mountRoutes(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/billing/transactions", nil)
-	resp, terr := engine.Fiber().Test(req)
+	resp, terr := engine.Test(req)
 	if terr != nil {
 		t.Fatalf("Test: %v", terr)
 	}

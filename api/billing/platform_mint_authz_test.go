@@ -94,7 +94,7 @@ func TestC1_OrgAdminDeniedOnEveryMintRoute(t *testing.T) {
 		t.Run(r.method+" "+r.path, func(t *testing.T) {
 			req := httptest.NewRequest(r.method, r.path, bytes.NewBufferString(r.body))
 			req.Header.Set("Content-Type", "application/json")
-			resp, terr := eng.Fiber().Test(req)
+			resp, terr := eng.Test(req)
 			if terr != nil {
 				t.Fatalf("Test: %v", terr)
 			}
@@ -124,7 +124,7 @@ func TestC1_ServiceTokenMintsDeposit(t *testing.T) {
 	// Money-in names the event that caused it; this test is about AUTHZ, so it
 	// supplies a settlement id and asserts the token is what decides the outcome.
 	req.Header.Set("X-Idempotency-Key", "settlement-c1")
-	resp, terr := eng.Fiber().Test(req)
+	resp, terr := eng.Test(req)
 	if terr != nil {
 		t.Fatalf("Test: %v", terr)
 	}
@@ -164,7 +164,7 @@ func TestC1_NonMintRouteNotOverBlocked(t *testing.T) {
 	eng := engineWithSeed(orgAdmin)
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/billing/balance?user=acme/alice&currency=usd", nil)
-	resp, terr := eng.Fiber().Test(req)
+	resp, terr := eng.Test(req)
 	if terr != nil {
 		t.Fatalf("Test: %v", terr)
 	}

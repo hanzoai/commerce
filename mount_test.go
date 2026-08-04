@@ -44,7 +44,7 @@ func TestMount_RegistersHealth(t *testing.T) {
 	}
 
 	req := httptest.NewRequest("GET", "/_/commerce/healthz", nil)
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("Fiber Test: %v", err)
 	}
@@ -87,7 +87,7 @@ func TestMount_GinSurfaceReachable(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/v1/commerce/tenant", nil)
 	req.Host = "pay.example.test"
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("Fiber Test: %v", err)
 	}
@@ -149,7 +149,7 @@ func TestMount_NoUngatedTypedOpSurface(t *testing.T) {
 	req := httptest.NewRequest("POST", "/mcp",
 		strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("Fiber Test: %v", err)
 	}

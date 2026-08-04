@@ -40,7 +40,7 @@ func TestEmbedRequireIdentity(t *testing.T) {
 
 	// /healthz is unauthenticated by design — probes run before sessions.
 	r := httptest.NewRequest(http.MethodGet, "/healthz", nil)
-	resp, terr := srv.Zip().Fiber().Test(r)
+	resp, terr := srv.Zip().Test(r)
 	if terr != nil {
 		t.Fatalf("Test: %v", terr)
 	}
@@ -103,7 +103,7 @@ func TestEmbedAdminServesItsOwnAssets(t *testing.T) {
 
 	get := func(path string) (*http.Response, string) {
 		t.Helper()
-		resp, terr := srv.Zip().Fiber().Test(httptest.NewRequest(http.MethodGet, path, nil))
+		resp, terr := srv.Zip().Test(httptest.NewRequest(http.MethodGet, path, nil))
 		if terr != nil {
 			t.Fatalf("GET %s: %v", path, terr)
 		}

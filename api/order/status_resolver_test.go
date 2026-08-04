@@ -102,7 +102,7 @@ func TestStatus_ResolverInstalled_FindsPerOrgOrder(t *testing.T) {
 		return c.Next()
 	}, Status)
 
-	resp, err := app.Fiber().Test(httptest.NewRequest("GET", "/order/"+orderId+"/status", nil))
+	resp, err := app.Test(httptest.NewRequest("GET", "/order/"+orderId+"/status", nil))
 	if err != nil {
 		t.Fatalf("test request: %v", err)
 	}

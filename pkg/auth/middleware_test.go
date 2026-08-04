@@ -113,7 +113,7 @@ func TestIdentity(t *testing.T) {
 
 	t.Run("401 without identity", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/x", nil)
-		resp, err := app.Fiber().Test(req)
+		resp, err := app.Test(req)
 		if err != nil {
 			t.Fatalf("test request: %v", err)
 		}
@@ -126,7 +126,7 @@ func TestIdentity(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/x", nil)
 		req.Header.Set(HeaderOrgID, "hanzo")
 		req.Header.Set(HeaderUserID, "u1")
-		resp, err := app.Fiber().Test(req)
+		resp, err := app.Test(req)
 		if err != nil {
 			t.Fatalf("test request: %v", err)
 		}

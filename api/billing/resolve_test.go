@@ -39,7 +39,7 @@ func subjectFor(t *testing.T, org, user, claim string) string {
 	if claim != "" {
 		req.Header.Set("X-Billing-Account-Id", claim)
 	}
-	if _, err := app.Fiber().Test(req); err != nil {
+	if _, err := app.Test(req); err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
 	return got

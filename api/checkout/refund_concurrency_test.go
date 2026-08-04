@@ -101,7 +101,7 @@ func TestRefund_Concurrent_DistinctAmounts_NoOverRefund(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/v1/order/"+orderId+"/refund", bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("X-Idempotency-Key", idem)
-		resp, err := app.Fiber().Test(req)
+		resp, err := app.Test(req)
 		if err != nil {
 			t.Errorf("refund request: %v", err)
 			return 0

@@ -41,7 +41,7 @@ func probeGate(t *testing.T, gate func(*zip.Ctx) bool, seed func(*zip.Ctx), bear
 	if bearer != "" {
 		req.Header.Set("Authorization", "Bearer "+bearer)
 	}
-	resp, err := app.Fiber().Test(req)
+	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
