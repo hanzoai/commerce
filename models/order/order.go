@@ -347,7 +347,7 @@ func (o *Order) AddAffiliateFee(pricing *pricing.Fees, fees []*fee.Fee) ([]*fee.
 	fe.Parent = aff.Key()
 	fe.Type = fee.Affiliate
 	fe.Currency = o.Currency
-	fe.AffiliateId = aff.Id()
+	fe.PayeeId = aff.Id()
 	fe.Amount = affFee
 
 	fees = append(fees, fe)

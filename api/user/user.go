@@ -158,7 +158,7 @@ func getTransfers(c *zip.Ctx) error {
 	}
 
 	trans := make([]transfer.Transfer, 0)
-	if _, err := transfer.Query(db).Filter("AffiliateId=", usr.AffiliateId).GetAll(&trans); err != nil {
+	if _, err := transfer.Query(db).Filter("PayeeId=", usr.AffiliateId).GetAll(&trans); err != nil {
 		return http.Fail(c, 400, "Could not query transfer", err)
 	}
 

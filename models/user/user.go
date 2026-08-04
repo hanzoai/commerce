@@ -301,7 +301,7 @@ func (u *User) LoadAffiliateAndPendingFees() error {
 	u.Affiliate = *aff
 
 	u.PendingFees = make([]fee.Fee, 0)
-	if _, err := fee.Query(db).Filter("AffiliateId=", u.AffiliateId).Filter("Status=", fee.Payable).GetAll(&u.PendingFees); err != nil {
+	if _, err := fee.Query(db).Filter("PayeeId=", u.AffiliateId).Filter("Status=", fee.Payable).GetAll(&u.PendingFees); err != nil {
 		return err
 	}
 
