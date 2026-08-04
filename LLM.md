@@ -1361,3 +1361,45 @@ no gofiber, no net/http adaptation in the serving path. Handlers are
   req.PostForm). zip TestCtx for direct handler calls.
 - Pre-existing debt unchanged: test-integration/* needs external services;
   thirdparty/reamaze verifyHMAC has an inversion bug (flagged, not fixed here).
+
+## Provenance, licence, and why this repo is still private (2026-08-03)
+
+Commerce is original work, not a fork. Root commit `1a1273cc2` (2014-09-29) is 882
+lines of hand-written CoffeeScript — `Cakefile`, `app.coffee`, `paypal.coffee`,
+`db.coffee` — authored as `kaching` under the `verus-io` org, renamed `crowdstart`,
+then Hanzo Commerce. `NOTICE` correctly scopes third-party attribution to the vendored
+pieces only (btcd/btcec ISC, Go stdlib BSD-3).
+
+**The tip is clean; the history is not.** Every `config/*.go` at tip reads credentials
+from `os.Getenv`, and `.secrets.baseline` (detect-secrets 1.5.0, 2026-03-02) covers 91
+files. But detect-secrets baselines the working tree, not the object graph. A gitleaks
+sweep of all refs — 21,604 commits, 532 MB — returns 240 findings, every real one dated
+2014-2019: a Google API key plus Salesforce consumer key/secret in `config/skully.go`,
+a Facebook AppSecret and Mandrill API key in `config/production.go`, and PayPal
+REST/ExpressCheckout credentials for third-party merchants in
+`settings/development.coffee`. `config/skully.go` also carries a named customer's
+production hostnames. All are deleted at tip and reachable in history — which is the
+distinction that matters, because publishing a repo publishes its object graph.
+
+**A partial history rewrite already happened, and it was incomplete.** The literal
+string `REDACTED` appears inside 2015-dated commits of `config/production.go` — a
+string nobody typed in 2015. Stripe keys were scrubbed retroactively; Facebook,
+Mandrill, Salesforce, Google and PayPal were missed in that same pass. So "was it
+cleaned up" has a precise answer: the tip was; the history was attempted and left
+half-done. Going public needs git-filter-repo over the whole graph plus rotation of
+anything still live — not a tip-side edit. (The four post-2020 gitleaks hits are one
+Ethereum *address* in this file: a public value, not a key.)
+
+**Dual-licensing is constrained by authorship, not by provenance.** `git shortlog -sne`
+over 8,241 commits: z across all identities 52.2%, Hanzo bots 6.1%, and 41.6% other
+people — David Tai alone 29.1%, then Timothy Messer, ssb, Marvel Mathew. The existing
+MIT grant ("Copyright (c) 2024 Hanzo AI, Inc.") was already applied over that same
+mixed-authorship history, so adding Apache-2.0 alongside is the same class of act and
+no larger a step — but both rest on IP assignment from those contributors existing.
+That is a paperwork question, not a git question.
+
+**Unblocking the build needs none of the above.** The public Go module proxy froze at
+v1.42.23 when the repo went private (that tag is dated 2026-06-07); v1.49.53 and
+v1.49.59 both 404 there, while iam/o11y/base return 200. Setting
+`GOPRIVATE=github.com/hanzoai/commerce` with a fetch credential in CI resolves it
+today, and is reversible — unlike publication.
