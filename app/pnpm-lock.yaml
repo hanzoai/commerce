@@ -14,6 +14,9 @@ importers:
 
   admin:
     dependencies:
+      '@hanzo/design':
+        specifier: ^0.4.9
+        version: 0.4.9
       '@hanzo/gui':
         specifier: 7.3.0
         version: 7.3.0(expo@57.0.8)(react-dom@19.0.4(react@19.0.4))(react-native-web@0.21.2(react-dom@19.0.4(react@19.0.4))(react@19.0.4))(react-native@0.86.2(@babel/core@7.29.0)(@react-native/metro-config@0.86.2(@babel/core@7.29.0))(@types/react@19.0.3)(react@19.0.4))(react@19.0.4)(sf-symbols-typescript@2.2.0)
@@ -1817,6 +1820,10 @@ packages:
     peerDependencies:
       '@hanzo/gui': '>=7.2.2'
       react: '>=19'
+
+  '@hanzo/design@0.4.9':
+    resolution: {integrity: sha512-8zhsAxJM1y+nqc6nRrXs1/Ig5V2Lk4/XkXduP/7o/S7XahDlG9dYRTIz6uIyMzAAC7uv8Zo28KiohMizhZeKOQ==}
+    hasBin: true
 
   '@hanzo/event@0.3.3':
     resolution: {integrity: sha512-faooSLA2UR4N8B0hOcSuQk3yi48Dahp5IMTrQn/WdKQc4JkKGx0lmdASp7os80ita48VQUNheqF6lpdXIj6ZYQ==}
@@ -11000,6 +11007,8 @@ snapshots:
     dependencies:
       '@hanzo/gui': 7.3.0(expo@57.0.8)(react-dom@19.0.4(react@19.0.4))(react-native-web@0.21.2(react-dom@19.0.4(react@19.0.4))(react@19.0.4))(react-native@0.86.2(@babel/core@7.29.0)(@react-native/metro-config@0.86.2(@babel/core@7.29.0))(@types/react@19.0.3)(react@19.0.4))(react@19.0.4)(sf-symbols-typescript@2.2.0)
       react: 19.0.4
+
+  '@hanzo/design@0.4.9': {}
 
   '@hanzo/event@0.3.3(react@19.0.4)':
     optionalDependencies:
