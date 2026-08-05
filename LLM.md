@@ -837,11 +837,14 @@ useToggleState):
   payment/shipping/pickup lists render, replacing headlessui's `Radio`).
 - **CSS order in `store/src/app/layout.tsx` is load-bearing**: theme.css
   (tokens) → kit.css (kit defaults) → globals.css (the frozen utility sheet),
-  so a caller's utility className still overrides a kit default. theme.css at
-  `8.0.46` is light-FIRST (`:root` is the light look, `.dark` the opt-in), so
-  the html element carries only `data-mode="light"` — the old
-  `className="light"` was a class no sheet defines, and the css-check reads
-  exactly that as a miss.
+  so a caller's utility className still overrides a kit default. theme.css
+  flipped conventions INSIDE the `^8.0.39` range: 8.0.39 was light-first
+  (`:root` light, `.dark` opt-in — `.light` had NO rule and the css-check
+  read `className="light"` as a miss), 8.0.47 is dark-first (`:root` dark,
+  `.light` the DEFINED opt-out — the file's own comment at the `.light` block
+  says one convention now). The storefront is a light surface, so on 8.0.47
+  `<html className="light" data-mode="light">` is REQUIRED, and the check is
+  what notices whichever way the convention points.
 - headlessui's other faces became: common `Modal` → `@hanzo/ui` Dialog (same
   compound API for its consumers), mobile-actions bottom sheet → Dialog with
   bottom-anchored style, cart-dropdown/side-menu Popover + country/language/
@@ -877,6 +880,12 @@ classes with no rule that had never rendered: three root-level demo pages
 middleware 307s every bare path to `/{countryCode}`, so they were unreachable
 anyway) are deleted; the footer's `txt-ui-fg-base` typo is `text-ui-fg-base`;
 an orphaned `peer` marker and the dead `product-page-constraint` are dropped.
+The one ALLOWANCE is cited, not guessed (`store/gui-css-check.json`):
+`btn`/`btn-*` are `@hanzo/ui` 8.0.47's stable Button class handles — its
+button.js says styling lives in the tokens and the class only names the
+variant — the same contract as the `hanzo-button` handles the checker already
+allows by default; 8.0.47 renamed them and the checker's allowlist predates
+the rename.
 
 ### The css gate — a build cannot see a class with no rule
 
@@ -888,9 +897,9 @@ gate is END TO END and owns its world: `store/e2e/css-check.mjs` boots the
 (generateStaticParams needs a live backend; a page prerendered without one
 cannot SSR later — `DYNAMIC_SERVER_USAGE`), serves it, and drives
 `gui-css-check --render` over home, shop-all, product and cart:
-**254/254 classes covered, 100.0%**, zero page errors, every `.flex`
-computing `display:flex`, one styled render (screenshot-verified). `pnpm run
-e2e:css` locally; `store-css-check` in `hanzo.yml` in CI. The middleware 307s
+**263/263 classes covered, 100.0%** (at ui 8.0.47), zero page errors, every
+`.flex` computing `display:flex`, one styled render (screenshot-verified).
+`pnpm run e2e:css` locally; `store-css-check` in `hanzo.yml` in CI. The middleware 307s
 to set `_hanzo_cache_id` before it passes a request through, so curl needs a
 cookie jar; Playwright does not.
 

@@ -15,10 +15,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout(props: { children: React.ReactNode }) {
   return (
-    // theme.css is light-first (`:root` is the light look, `.dark` the
-    // opt-in), so no class is needed for light; data-mode is the storefront's
-    // own light palette hook. One surface, one mode.
-    <html lang="en" data-mode="light">
+    // theme.css (8.0.47) is dark-FIRST: `:root` is the dark look and `.light`
+    // is the defined opt-out — the storefront is a light surface, so it opts
+    // out. data-mode is the storefront's own light palette hook. One surface,
+    // one mode. (At 8.0.39 the convention was inverted and `.light` had no
+    // rule at all; gui-css-check is what notices either way.)
+    <html lang="en" data-mode="light" className="light">
       <body>
         <Providers>
           <AnalyticsRoot>
