@@ -47,18 +47,26 @@ COPY --from=admin-build /build/app/admin/out /srv/admin
 # route resolves by directory index and a miss stays a 404 instead of answering
 # 200 with HTML (the fallback that hid a broken bundle twice already).
 #
-# PINNED TO v0.5.1, NOT v0.5.2. v0.5.2 compresses the response but frames it as
-# `Content-Type: application/x-gzip` with NO `Content-Encoding: gzip` — and the
-# same server sets `X-Content-Type-Options: nosniff`, so the browser is handed
-# what it reads as a gzip download and refuses to render it. Every HTML page it
-# serves is affected; the body is correct and only the framing is wrong, which is
-# why it survives a status check and a byte-diff of the payload.
+# PINNED TO v0.5.1 BECAUSE IT IS THE VERSION PROVEN AGAINST THIS EXPORT.
 #
-# Measured, not inferred: this export contains ZERO pre-compressed .gz files, and
-# pay.hanzo.ai on v0.5.1 answers `text/html` + `content-encoding: gzip` for the
-# identical shape. This Dockerfile had carried v0.5.2 for a while with nothing
-# ever deployed from it, so the first roll of it took commerce.hanzo.ai down
-# until the pin was reverted. Do not move this forward until v0.5.2+ is fixed.
+# Rolling the v0.5.2 image took commerce.hanzo.ai down for the length of one
+# deploy: every page came back `Content-Type: application/x-gzip` with no
+# `Content-Encoding`, and this server sets `nosniff`, so the browser was handed
+# what it read as a gzip download and refused to render it. The BODY was correct
+# — only the framing was wrong, which is why a status check and a payload diff
+# both pass while the page is blank.
+#
+# What that was NOT: a defect in the v0.5.2 commit. That tag differs from v0.5.1
+# by one CI workflow file and no Go code, yet the two IMAGES differ by 26KB of
+# binary — the published v0.5.2 image does not correspond to its own tag, so
+# reading the tag diff says nothing about what it does. Check the image.
+#
+# The upstream has moved on to v0.5.6, and compression landed correctly on main
+# after that image was cut (hanzoai/static 900bccf sets Content-Encoding, keeps
+# the real Content-Type, drops Content-Length). Moving this pin FORWARD to v0.5.6
+# is the right next step; skipping straight over the artifact that broke is the
+# point. `framing_test.go` upstream now fails if an HTML document is ever framed
+# as anything else, so the class cannot ship silently again.
 FROM ghcr.io/hanzoai/static:v0.5.1
 COPY --from=arrange /srv /srv
 EXPOSE 3000
