@@ -1,9 +1,17 @@
 /**
  * The ONE Hanzo Commerce client the admin talks to.
  *
- * Same-origin merchant API at BARE `/v1/<kind>` (singular, no hyphens, NO `/api`
- * and NO `/commerce` segment): `/v1/product` · `/v1/order` · `/v1/c/user` ·
- * `/v1/collection` · `/v1/stocklocation` · `/v1/store/current`. List responses use
+ * `api.hanzo.ai/v1/commerce/<kind>` — the commerce endpoint. Commerce is a
+ * PLUGIN of hanzoai/cloud, and api.hanzo.ai is the unified door to every Hanzo
+ * service, so the merchant surface is reached the same way as everything else.
+ *
+ * It used to call BARE `/v1/<kind>` on commerce.hanzo.ai, and nothing answered:
+ * commerce.hanzo.ai serves the admin's own static bundle, and the binary behind
+ * commerce-api never carried the resource routes. Every data view 404'd while
+ * sign-in, catalog and billing all worked, which is why it read as a UI fault.
+ *
+ * Kinds stay singular and unhyphenated (`product`, `stocklocation`), because
+ * that is what the resource binder names them. List responses use
  * the envelope `{ page, display, count, models[] }`. The org is resolved from the
  * bearer; `X-Org-Id` scopes it.
  *
@@ -13,7 +21,10 @@
  */
 import type { CommerceList } from '@hanzo/ui/product'
 
-const API_BASE = process.env.NEXT_PUBLIC_COMMERCE_API_URL || 'https://commerce.hanzo.ai'
+const API_BASE = process.env.NEXT_PUBLIC_COMMERCE_API_URL || 'https://api.hanzo.ai'
+
+/** Every merchant resource hangs off the commerce plugin's one prefix. */
+const V1 = '/v1/commerce'
 
 /** A `/v1` failure carrying its status — the shape `classifyBackend` reads. */
 export class CommerceError extends Error {
@@ -49,16 +60,16 @@ async function call<T>(path: string, org: string | null, init?: RequestInit): Pr
 
 /** One page of a resource. Tolerates the envelope or a bare array. */
 export async function list<T>(kind: string, org: string | null, display = 50): Promise<CommerceList<T>> {
-  const body = await call<{ count?: number; models?: T[] } | T[]>(`/v1/${kind}?page=1&display=${display}`, org)
+  const body = await call<{ count?: number; models?: T[] } | T[]>(`${V1}/${kind}?page=1&display=${display}`, org)
   if (Array.isArray(body)) return { rows: body, count: body.length }
   return { rows: body.models ?? [], count: body.count ?? body.models?.length ?? 0 }
 }
 
 export const create = <T>(kind: string, data: Partial<T>, org: string | null): Promise<T> =>
-  call<T>(`/v1/${kind}`, org, { method: 'POST', body: JSON.stringify(data) })
+  call<T>(`${V1}/${kind}`, org, { method: 'POST', body: JSON.stringify(data) })
 
 export const remove = (kind: string, id: string, org: string | null): Promise<void> =>
-  call<void>(`/v1/${kind}/${id}`, org, { method: 'DELETE' })
+  call<void>(`${V1}/${kind}/${id}`, org, { method: 'DELETE' })
 
 /** The caller-org's store, or `null` when it has none yet (a 404 is not a failure). */
 export async function currentStore(org: string | null): Promise<Store | null> {
