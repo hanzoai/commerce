@@ -1,6 +1,8 @@
 package billing
 
 import (
+	"context"
+	"os"
 	"strings"
 
 	"github.com/zap-proto/zip"
@@ -9,7 +11,9 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/secrets"
 	"github.com/hanzoai/commerce/thirdparty/kms"
+	"github.com/hanzoai/commerce/types/integration"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -60,6 +64,13 @@ func GetWireInstructions(c *zip.Ctx) error {
 	}
 
 	w := recv.Wire
+	// Per-org KMS hydration only runs under KMS_ENABLED, which the co-resident
+	// deployment does not set — so the org row is empty there and the rail 503s
+	// however carefully the details were stored. Ask the HOST instead: it holds
+	// an in-process KMS handle already. A per-org row still wins when present.
+	if w.AccountNumber == "" && w.IBAN == "" {
+		w = wireFromHost(c.Context())
+	}
 	if w.AccountNumber == "" && w.IBAN == "" {
 		return jsonhttp.Fail(c, 503, "Wire transfer not configured", nil)
 	}
@@ -72,8 +83,14 @@ func GetWireInstructions(c *zip.Ctx) error {
 		SwiftCode:     w.SWIFT,
 		IBAN:          w.IBAN,
 		AccountName:   w.AccountHolder,
-		Memo:          w.Reference,
-		Reference:     wireReference(payer),
+		// BOTH carry the payer reference, and that is the point: banks label the
+		// field differently (memo / reference / "message to beneficiary"), and a
+		// customer types the value into whichever box their bank shows. Memo used
+		// to carry the ORG's static WIRE_REFERENCE, which is unset — so the field
+		// that links the money to an account rendered EMPTY, and an arriving wire
+		// would have to be reconciled by hand from the amount and the sender name.
+		Memo:      wireReference(payer),
+		Reference: wireReference(payer),
 	})
 }
 
@@ -93,4 +110,35 @@ func wireReference(payer string) string {
 		}
 	}
 	return b.String()
+}
+
+// wireFromHost reads the receiving-bank details from the HOST'S SECRET PLANE —
+// in-process, by reference, no env and no HTTP.
+//
+// This replaced an env fan-out (KMS -> a k8s Secret -> WIRE_* on the pod ->
+// os.Getenv). That chain worked, and it was three places for one value to go
+// stale plus a pod restart to pick up a rotation, for a value the host already
+// held. Every other plugin asks its host; so does this.
+//
+// The refs are the same coordinates the per-org hydrator uses, so one bank
+// lives at one address whichever path reads it. os.Getenv survives ONLY as the
+// last fallback for a standalone commerce with no host to ask.
+func wireFromHost(ctx context.Context) integration.WireTransfer {
+	get := func(name string) string {
+		if v := secrets.String(ctx, "/tenants/hanzo/wire/"+name); v != "" {
+			return v
+		}
+		return strings.TrimSpace(os.Getenv(name))
+	}
+	return integration.WireTransfer{
+		BankName:      get("WIRE_BANK_NAME"),
+		AccountHolder: get("WIRE_ACCOUNT_HOLDER"),
+		AccountNumber: get("WIRE_ACCOUNT_NUMBER"),
+		RoutingNumber: get("WIRE_ROUTING_NUMBER"),
+		SWIFT:         get("WIRE_SWIFT"),
+		IBAN:          get("WIRE_IBAN"),
+		BankAddress:   get("WIRE_BANK_ADDRESS"),
+		Reference:     get("WIRE_REFERENCE"),
+		Instructions:  get("WIRE_INSTRUCTIONS"),
+	}
 }

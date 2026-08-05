@@ -10,13 +10,13 @@ A [module](../../../fundamentals/modules/page.mdx) is a reusable package of func
 
 In a module, you create data models and business logic to manage them. In the next chapters, you'll see how you use the module to build commerce features.
 
-![Diagram showcasing an overview of the Brand Module](https://res.cloudinary.com/dza7lstvk/image/upload/v1746546820/Medusa%20Resources/brand-module_pg86gm.jpg)
+![Diagram showcasing an overview of the Brand Module](/images/learn/brand-module_pg86gm.jpg)
 
 ## 1. Create Module Directory
 
 Modules are created in a sub-directory of `src/modules`. So, start by creating the directory `src/modules/brand` that will hold the Brand Module's files.
 
-![Directory structure in Hanzo Commerce project after adding the brand directory](https://res.cloudinary.com/dza7lstvk/image/upload/v1732868844/Medusa%20Book/brand-dir-overview-1_hxwvgx.jpg)
+![Directory structure in Hanzo Commerce project after adding the brand directory](/images/learn/brand-dir-overview-1_hxwvgx.jpg)
 
 ---
 
@@ -26,7 +26,7 @@ A [data model](../../../fundamentals/modules/page.mdx#1-create-data-model) repre
 
 You create a data model in a TypeScript or JavaScript file under the `models` directory of a module. So, to create a data model that represents a new `brand` table in the database, create the file `src/modules/brand/models/brand.ts` with the following content:
 
-![Directory structure in module after adding the brand data model](https://res.cloudinary.com/dza7lstvk/image/upload/v1732868920/Medusa%20Book/brand-dir-overview-2_lexhdl.jpg)
+![Directory structure in module after adding the brand data model](/images/learn/brand-dir-overview-2_lexhdl.jpg)
 
 ```ts title="src/modules/brand/models/brand.ts"
 import { model } from "@hanzo/commerce-framework/utils"
@@ -60,7 +60,7 @@ In this step, you'll create the Brand Module's service that provides methods to 
 
 You define a service in a `service.ts` or `service.js` file at the root of your module's directory. So, create the file `src/modules/brand/service.ts` with the following content:
 
-![Directory structure in module after adding the service](https://res.cloudinary.com/dza7lstvk/image/upload/v1732868984/Medusa%20Book/brand-dir-overview-3_jo7baj.jpg)
+![Directory structure in module after adding the service](/images/learn/brand-dir-overview-3_jo7baj.jpg)
 
 export const serviceHighlights = [
   ["4", "HanzoService", "A service factory that generates data-management methods."]
@@ -99,7 +99,7 @@ A module must export a definition that tells Hanzo Commerce the name of the modu
 
 So, to export the Brand Module's definition, create the file `src/modules/brand/index.ts` with the following content:
 
-![Directory structure in module after adding the definition file](https://res.cloudinary.com/dza7lstvk/image/upload/v1732869045/Medusa%20Book/brand-dir-overview-4_nf8ymw.jpg)
+![Directory structure in module after adding the definition file](/images/learn/brand-dir-overview-4_nf8ymw.jpg)
 
 ```ts title="src/modules/brand/index.ts"
 import { Module } from "@hanzo/commerce-framework/utils"
