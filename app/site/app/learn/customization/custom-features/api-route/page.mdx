@@ -33,7 +33,7 @@ Learn more about API routes [in this guide](../../../fundamentals/api-routes/pag
 
 The route's path is the path of `route.{ts,js}` relative to `src/api`. So, to create the API route at `/admin/brands`, create the file `src/api/admin/brands/route.ts` with the following content:
 
-![Directory structure of the Hanzo Commerce application after adding the route](https://res.cloudinary.com/dza7lstvk/image/upload/v1732869882/Medusa%20Book/brand-route-dir-overview-2_hjqlnf.jpg)
+![Directory structure of the Hanzo Commerce application after adding the route](/images/learn/brand-route-dir-overview-2_hjqlnf.jpg)
 
 ```ts title="src/api/admin/brands/route.ts"
 import {
@@ -91,7 +91,7 @@ Learn more about API route validation in [this chapter](../../../fundamentals/ap
 
 You create a validation schema in a TypeScript or JavaScript file under a sub-directory of the `src/api` directory. So, create the file `src/api/admin/brands/validators.ts` with the following content:
 
-![Directory structure of Hanzo Commerce application after adding validators file](https://res.cloudinary.com/dza7lstvk/image/upload/v1732869806/Medusa%20Book/brand-route-dir-overview-1_yfyjss.jpg)
+![Directory structure of Hanzo Commerce application after adding validators file](/images/learn/brand-route-dir-overview-1_yfyjss.jpg)
 
 ```ts title="src/api/admin/brands/validators.ts"
 import { z } from "@hanzo/commerce-framework/zod"
@@ -131,7 +131,7 @@ Hanzo Commerce provides a `validateAndTransformBody` middleware that accepts a Z
 
 Middlewares are defined in the special file `src/api/middlewares.ts`. So, to add the validation middleware on the API route you created in the previous step, create the file `src/api/middlewares.ts` with the following content:
 
-![Directory structure of the Hanzo Commerce application after adding the middleware](https://res.cloudinary.com/dza7lstvk/image/upload/v1732869977/Medusa%20Book/brand-route-dir-overview-3_kcx511.jpg)
+![Directory structure of the Hanzo Commerce application after adding the middleware](/images/learn/brand-route-dir-overview-3_kcx511.jpg)
 
 ```ts title="src/api/middlewares.ts"
 import { 
