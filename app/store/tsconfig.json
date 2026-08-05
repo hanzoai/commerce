@@ -23,6 +23,9 @@
       ],
       "@pages/*": [
         "./src/pages/*"
+      ],
+      "types/*": [
+        "./src/types/*"
       ]
     },
     "plugins": [

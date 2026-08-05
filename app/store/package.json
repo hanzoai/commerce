@@ -12,6 +12,7 @@
     "build": "next build",
     "start": "next start -p 8000",
     "lint": "next lint",
+    "typecheck": "../node_modules/typescript/bin/tsc --noEmit",
     "analyze": "ANALYZE=true next build"
   },
   "dependencies": {

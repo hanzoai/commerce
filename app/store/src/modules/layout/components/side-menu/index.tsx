@@ -1,7 +1,8 @@
 "use client"
 
 import { ArrowRightMini, XMark } from "@hanzo/commerce-icons"
-import { Text, clx, useToggleState } from "@hanzo/commerce-ui"
+import { Text, clx } from "@hanzo/commerce-ui"
+import useToggleState from "@lib/hooks/use-toggle-state"
 import { useEffect } from "react"
 
 import LocalizedClientLink from "@modules/common/components/localized-client-link"

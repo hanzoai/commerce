@@ -40,7 +40,7 @@ export { FetchError, Client } from "./client"
 export { Admin } from "./admin"
 export { Auth } from "./auth"
 export { Store } from "./store"
-export {
+export type {
   Config,
   ClientHeaders,
   ClientFetch,

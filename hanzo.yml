@@ -110,7 +110,9 @@ test:
       pnpm install --frozen-lockfile
       node_modules/.bin/turbo run typecheck \
         --filter=@hanzo/commerce-dashboard \
-        --filter=@hanzo/commerce-site
+        --filter=@hanzo/commerce-site \
+        --filter=@hanzo/commerce-ui \
+        --filter=hanzo-commerce-storefront
 
 # NO deploy: block by design. commerce is an operator-MANAGED system service —
 # `services.hanzo.ai/commerce` (+ -admin/-site) owns `.spec.image.tag`, and the
