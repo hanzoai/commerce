@@ -30,7 +30,7 @@ RUN pnpm install --frozen-lockfile
 
 # Prod defaults baked into the client bundle (Next inlines NEXT_PUBLIC_*), same
 # values the root Dockerfile bakes: one bundle, whichever server ships it.
-ENV NEXT_PUBLIC_COMMERCE_API_URL=https://commerce.hanzo.ai \
+ENV NEXT_PUBLIC_COMMERCE_API_URL=https://api.hanzo.ai \
     NEXT_PUBLIC_IAM_SERVER_URL=https://hanzo.id \
     NEXT_PUBLIC_IAM_CLIENT_ID=hanzo-commerce \
     NEXT_PUBLIC_HANZO_AI_URL=https://api.hanzo.ai/v1/chat/completions \

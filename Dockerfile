@@ -28,7 +28,7 @@ RUN pnpm install --frozen-lockfile
 # commerce.hanzo.ai is same-origin for the API (bare /v1/*); hanzo.id is the OIDC
 # issuer; client_id hanzo-commerce is the PKCE client; the AI dock calls the
 # api.hanzo.ai chat-completions gateway.
-ENV NEXT_PUBLIC_COMMERCE_API_URL=https://commerce.hanzo.ai \
+ENV NEXT_PUBLIC_COMMERCE_API_URL=https://api.hanzo.ai \
     NEXT_PUBLIC_IAM_SERVER_URL=https://hanzo.id \
     NEXT_PUBLIC_IAM_CLIENT_ID=hanzo-commerce \
     NEXT_PUBLIC_HANZO_AI_URL=https://api.hanzo.ai/v1/chat/completions \
