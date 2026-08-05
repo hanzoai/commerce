@@ -436,6 +436,7 @@ func pickSignatureHeader(h http.Header, providerHint string) string {
 		"X-Adyen-Signature",
 		"X-Paypal-Auth-Algo",
 		"X-CC-Webhook-Signature", // Coinbase Commerce
+		"X-Webhook-Signature",    // Hanzo MPC (hex HMAC-SHA256 over the raw body)
 		"X-Signature",
 	}
 	if providerHint != "" {
@@ -455,6 +456,10 @@ func pickSignatureHeader(h http.Header, providerHint string) string {
 			}
 		case "coinbase":
 			if v := h.Get("X-CC-Webhook-Signature"); v != "" {
+				return v
+			}
+		case "mpc":
+			if v := h.Get("X-Webhook-Signature"); v != "" {
 				return v
 			}
 		}
