@@ -4,6 +4,7 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/api/resources"
+	"github.com/hanzoai/commerce/models/site"
 	"github.com/hanzoai/commerce/billing/paywall"
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/middleware"
@@ -122,6 +123,13 @@ func Route(api zip.Router) {
 	// plugin can mount the same set at /v1/commerce/<kind> without importing
 	// this package's checkout, subscription and thirdparty tree.
 	resources.Route(api, tokenRequired, adminRequired, requireAccess, publishProductEvents)
+
+	// Site stays HERE, not in the leaf. models/site carries a Netlify deploy
+	// client, so a leaf importing it would drag netlify-go into every consumer —
+	// the exact weight that kept the merchant table out of the cloud embed. A Site
+	// is a standalone publishing surface rather than merchant CRUD, and this
+	// package already carries that dependency.
+	rest.New(site.Site{}).Route(api, tokenRequired)
 
 	paymentApi := rest.New(payment.Payment{})
 	paymentApi.POST("/:paymentid/refund", checkoutApi.Refund)

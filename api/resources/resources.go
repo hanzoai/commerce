@@ -17,6 +17,12 @@
 //
 // Every gate arrives as a parameter rather than being rebuilt here, so the two
 // shapes cannot come to disagree about who may write a product.
+//
+// SITE IS NOT HERE, and that is what makes the leaf a leaf. models/site carries
+// a Netlify deploy client, so importing it would drag netlify-go into every
+// consumer — the exact weight that kept this table out of the embed. A Site is a
+// standalone publishing surface rather than merchant CRUD, so it stays behind
+// api.Route where the dependency already lives.
 package resources
 
 import (
@@ -32,7 +38,6 @@ import (
 	"github.com/hanzoai/commerce/models/note"
 	"github.com/hanzoai/commerce/models/product"
 	"github.com/hanzoai/commerce/models/saleschannel"
-	"github.com/hanzoai/commerce/models/site"
 	"github.com/hanzoai/commerce/models/stocklocation"
 	"github.com/hanzoai/commerce/models/submission"
 	"github.com/hanzoai/commerce/models/subscriber"
@@ -62,7 +67,6 @@ func Route(api zip.Router, tokenRequired, adminRequired, requireAccess, productE
 	rest.New(note.Note{}).Route(api, tokenRequired)
 	rest.New(product.Product{}).Route(api, productMW...)
 	rest.New(return_.Return{}).Route(api, tokenRequired)
-	rest.New(site.Site{}).Route(api, tokenRequired)
 	rest.New(submission.Submission{}).Route(api, tokenRequired)
 	rest.New(subscriber.Subscriber{}).Route(api, tokenRequired)
 	// Transfer is the PAYMENT ANNOTATION on a payable, so writing one settles
