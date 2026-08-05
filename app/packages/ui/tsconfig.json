@@ -1,45 +1,15 @@
 {
   "compilerOptions": {
-    "target": "ES2018",
+    "target": "ES2022",
     "lib": ["DOM", "ESNext", "DOM.Iterable"],
-    "jsx": "react",
-    "module": "ES2020",
+    "jsx": "react-jsx",
+    "module": "ES2022",
     "moduleResolution": "bundler",
-    "sourceMap": true,
-    "inlineSources": true,
-    "declarationMap": true,
-    "declaration": true,
-    "outDir": "./dist",
-    "importHelpers": true,
+    "strict": true,
+    "skipLibCheck": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "alwaysStrict": true,
-    "skipLibCheck": true,
-    "paths": {
-      "@hanzo/commerce-ui": ["./src/index.tsx"],
-      "@/components/*": ["./src/components/*"],
-      "@/providers/*": ["./src/providers/*"],
-      "@/hooks/*": ["./src/hooks/*"],
-      "@/utils/*": ["./src/utils/*"],
-      "@/types": ["./src/types"],
-      "@/blocks/*": ["./src/blocks/*"]
-    }
+    "noEmit": true
   },
-  "include": ["src", ".eslintrc.js"],
-  // Typecheck what the package SHIPS. The stories and specs import Storybook,
-  // Testing Library and faker, none of which are dependencies of this package or
-  // installed anywhere in the workspace — so they have never compiled and have
-  // never run, and 188 errors from them drowned out any real one. tsup builds
-  // from src/index.tsx and never reads them either.
-  "exclude": [
-    "storybook-static",
-    "node_modules",
-    "dist",
-    "build",
-    "src/**/*.stories.tsx",
-    "src/**/*.spec.tsx",
-    "src/**/*.test.tsx",
-    "src/**/__tests__/**"
-  ]
+  "include": ["src"]
 }

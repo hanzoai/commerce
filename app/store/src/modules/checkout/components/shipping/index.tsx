@@ -1,12 +1,11 @@
 "use client"
 
-import { Radio, RadioGroup } from "@headlessui/react"
 import { setShippingMethod } from "@lib/data/cart"
 import { calculatePriceForShippingOption } from "@lib/data/fulfillment"
 import { convertToLocale } from "@lib/util/money"
 import { CheckCircleSolid, Loader } from "@hanzo/commerce-icons"
 import { HttpTypes } from "@hanzo/commerce-types"
-import { Button, clx, Heading, Text } from "@hanzo/commerce-ui"
+import { Button, clx, Heading, RadioGroup, Text } from "@hanzo/commerce-ui"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import Divider from "@modules/common/components/divider"
 import CommerceRadio from "@modules/common/components/radio"
@@ -197,7 +196,7 @@ const Shipping: React.FC<ShippingProps> = ({
                 {hasPickupOptions && (
                   <RadioGroup
                     value={showPickupOptions}
-                    onChange={(value) => {
+                    onValueChange={(value) => {
                       const id = _pickupMethods.find(
                         (option) => !option.insufficient_inventory
                       )?.id
@@ -207,7 +206,7 @@ const Shipping: React.FC<ShippingProps> = ({
                       }
                     }}
                   >
-                    <Radio
+                    <RadioGroup.Option
                       value={PICKUP_OPTION_ON}
                       data-testid="delivery-option-radio"
                       className={clx(
@@ -229,12 +228,12 @@ const Shipping: React.FC<ShippingProps> = ({
                       <span className="justify-self-end text-ui-fg-base">
                         -
                       </span>
-                    </Radio>
+                    </RadioGroup.Option>
                   </RadioGroup>
                 )}
                 <RadioGroup
                   value={shippingMethodId}
-                  onChange={(v) => {
+                  onValueChange={(v) => {
                     if (v) {
                       return handleSetShippingMethod(v, "shipping")
                     }
@@ -247,7 +246,7 @@ const Shipping: React.FC<ShippingProps> = ({
                       typeof calculatedPricesMap[option.id] !== "number"
 
                     return (
-                      <Radio
+                      <RadioGroup.Option
                         key={option.id}
                         value={option.id}
                         data-testid="delivery-option-radio"
@@ -287,7 +286,7 @@ const Shipping: React.FC<ShippingProps> = ({
                             "-"
                           )}
                         </span>
-                      </Radio>
+                      </RadioGroup.Option>
                     )
                   })}
                 </RadioGroup>
@@ -309,7 +308,7 @@ const Shipping: React.FC<ShippingProps> = ({
                 <div className="pb-8 md:pt-0 pt-2">
                   <RadioGroup
                     value={shippingMethodId}
-                    onChange={(v) => {
+                    onValueChange={(v) => {
                       if (v) {
                         return handleSetShippingMethod(v, "pickup")
                       }
@@ -317,7 +316,7 @@ const Shipping: React.FC<ShippingProps> = ({
                   >
                     {_pickupMethods?.map((option) => {
                       return (
-                        <Radio
+                        <RadioGroup.Option
                           key={option.id}
                           value={option.id}
                           disabled={option.insufficient_inventory}
@@ -354,7 +353,7 @@ const Shipping: React.FC<ShippingProps> = ({
                               currency_code: cart?.currency_code,
                             })}
                           </span>
-                        </Radio>
+                        </RadioGroup.Option>
                       )
                     })}
                   </RadioGroup>

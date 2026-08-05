@@ -1,6 +1,8 @@
-import { Dialog, Transition } from "@headlessui/react"
+"use client"
+
+import { Dialog, DialogContent } from "@hanzo/ui"
 import { Button, clx } from "@hanzo/commerce-ui"
-import React, { Fragment, useMemo } from "react"
+import React, { useMemo } from "react"
 
 import useToggleState from "@lib/hooks/use-toggle-state"
 import ChevronDown from "@modules/common/icons/chevron-down"
@@ -59,15 +61,11 @@ const MobileActions: React.FC<MobileActionsProps> = ({
           "pointer-events-none": !show,
         })}
       >
-        <Transition
-          as={Fragment}
-          show={show}
-          enter="ease-in-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-300"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
+        <div
+          className={clx(
+            "transition-opacity duration-300",
+            show ? "opacity-100" : "opacity-0"
+          )}
         >
           <div
             className="bg-white flex flex-col gap-y-3 justify-center items-center text-large-regular p-4 h-full w-full border-t border-gray-200"
@@ -98,24 +96,28 @@ const MobileActions: React.FC<MobileActionsProps> = ({
                 <div></div>
               )}
             </div>
-            <div className={clx("grid grid-cols-2 w-full gap-x-4", {
-              "!grid-cols-1": isSimple
-            })}>
-              {!isSimple && <Button
-                onClick={open}
-                variant="secondary"
-                className="w-full"
-                data-testid="mobile-actions-button"
-              >
-                <div className="flex items-center justify-between w-full">
-                  <span>
-                    {variant
-                      ? Object.values(options).join(" / ")
-                      : "Select Options"}
-                  </span>
-                  <ChevronDown />
-                </div>
-              </Button>}
+            <div
+              className={clx("grid grid-cols-2 w-full gap-x-4", {
+                "!grid-cols-1": isSimple,
+              })}
+            >
+              {!isSimple && (
+                <Button
+                  onClick={open}
+                  variant="secondary"
+                  className="w-full"
+                  data-testid="mobile-actions-button"
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <span>
+                      {variant
+                        ? Object.values(options).join(" / ")
+                        : "Select Options"}
+                    </span>
+                    <ChevronDown />
+                  </div>
+                </Button>
+              )}
               <Button
                 onClick={handleAddToCart}
                 disabled={!inStock || !variant}
@@ -131,71 +133,58 @@ const MobileActions: React.FC<MobileActionsProps> = ({
               </Button>
             </div>
           </div>
-        </Transition>
+        </div>
       </div>
-      <Transition appear show={state} as={Fragment}>
-        <Dialog as="div" className="relative z-[75]" onClose={close}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-gray-700 bg-opacity-75 backdrop-blur-sm" />
-          </Transition.Child>
-
-          <div className="fixed bottom-0 inset-x-0">
-            <div className="flex min-h-full h-full items-center justify-center text-center">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0"
-                enterTo="opacity-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100"
-                leaveTo="opacity-0"
-              >
-                <Dialog.Panel
-                  className="w-full h-full transform overflow-hidden text-left flex flex-col gap-y-3"
-                  data-testid="mobile-actions-modal"
-                >
-                  <div className="w-full flex justify-end pr-6">
-                    <button
-                      onClick={close}
-                      className="bg-white w-12 h-12 rounded-full text-ui-fg-base flex justify-center items-center"
-                      data-testid="close-modal-button"
-                    >
-                      <X />
-                    </button>
-                  </div>
-                  <div className="bg-white px-6 py-12">
-                    {(product.variants?.length ?? 0) > 1 && (
-                      <div className="flex flex-col gap-y-6">
-                        {(product.options || []).map((option) => {
-                          return (
-                            <div key={option.id}>
-                              <OptionSelect
-                                option={option}
-                                current={options[option.id]}
-                                updateOption={updateOptions}
-                                title={option.title ?? ""}
-                                disabled={optionsDisabled}
-                              />
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </Dialog.Panel>
-              </Transition.Child>
-            </div>
+      <Dialog open={state} onOpenChange={(o: boolean) => !o && close()}>
+        <DialogContent
+          showCloseButton={false}
+          data-testid="mobile-actions-modal"
+          className="flex flex-col gap-y-3 overflow-hidden text-left"
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            top: "auto",
+            transform: "none",
+            width: "100%",
+            maxWidth: "100%",
+            padding: 0,
+            background: "transparent",
+            borderWidth: 0,
+            boxShadow: "none",
+          }}
+        >
+          <div className="w-full flex justify-end pr-6">
+            <button
+              onClick={close}
+              className="bg-white w-12 h-12 rounded-full text-ui-fg-base flex justify-center items-center"
+              data-testid="close-modal-button"
+            >
+              <X />
+            </button>
           </div>
-        </Dialog>
-      </Transition>
+          <div className="bg-white px-6 py-12">
+            {(product.variants?.length ?? 0) > 1 && (
+              <div className="flex flex-col gap-y-6">
+                {(product.options || []).map((option) => {
+                  return (
+                    <div key={option.id}>
+                      <OptionSelect
+                        option={option}
+                        current={options[option.id]}
+                        updateOption={updateOptions}
+                        title={option.title ?? ""}
+                        disabled={optionsDisabled}
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

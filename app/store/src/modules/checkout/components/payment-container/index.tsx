@@ -1,5 +1,4 @@
-import { Radio as RadioGroupOption } from "@headlessui/react"
-import { Text, clx } from "@hanzo/commerce-ui"
+import { RadioGroup, Text, clx } from "@hanzo/commerce-ui"
 import React, { useContext, useMemo, type JSX } from "react"
 
 import Radio from "@modules/common/components/radio"
@@ -29,7 +28,7 @@ const PaymentContainer: React.FC<PaymentContainerProps> = ({
   const isDevelopment = process.env.NODE_ENV === "development"
 
   return (
-    <RadioGroupOption
+    <RadioGroup.Option
       key={paymentProviderId}
       value={paymentProviderId}
       disabled={disabled}
@@ -59,7 +58,7 @@ const PaymentContainer: React.FC<PaymentContainerProps> = ({
         <PaymentTest className="small:hidden text-[10px]" />
       )}
       {children}
-    </RadioGroupOption>
+    </RadioGroup.Option>
   )
 }
 
