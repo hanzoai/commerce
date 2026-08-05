@@ -3,31 +3,16 @@ package api
 import (
 	"github.com/zap-proto/zip"
 
+	"github.com/hanzoai/commerce/api/resources"
 	"github.com/hanzoai/commerce/billing/paywall"
 	"github.com/hanzoai/commerce/config"
-	"github.com/hanzoai/commerce/demo/disclosure"
-	"github.com/hanzoai/commerce/demo/tokentransaction"
 	"github.com/hanzoai/commerce/middleware"
-	"github.com/hanzoai/commerce/models/collection"
-	"github.com/hanzoai/commerce/models/discount"
-	"github.com/hanzoai/commerce/models/movie"
-	"github.com/hanzoai/commerce/models/note"
 	"github.com/hanzoai/commerce/models/payment"
-	"github.com/hanzoai/commerce/models/product"
-	"github.com/hanzoai/commerce/models/return"
-	"github.com/hanzoai/commerce/models/saleschannel"
-	"github.com/hanzoai/commerce/models/site"
-	"github.com/hanzoai/commerce/models/stocklocation"
-	"github.com/hanzoai/commerce/models/submission"
-	"github.com/hanzoai/commerce/models/subscriber"
 	"github.com/hanzoai/commerce/models/token"
+
 	// "github.com/hanzoai/commerce/models/transaction"
-	"github.com/hanzoai/commerce/models/transfer"
+
 	"github.com/hanzoai/commerce/models/user"
-	"github.com/hanzoai/commerce/models/variant"
-	"github.com/hanzoai/commerce/models/wallet"
-	"github.com/hanzoai/commerce/models/watchlist"
-	"github.com/hanzoai/commerce/models/webhook"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/rest"
 	"github.com/hanzoai/commerce/util/router"
@@ -43,12 +28,12 @@ import (
 	catalogApi "github.com/hanzoai/commerce/api/catalog"
 	cdnApi "github.com/hanzoai/commerce/api/cdn"
 	checkoutApi "github.com/hanzoai/commerce/api/checkout"
+	claimApi "github.com/hanzoai/commerce/api/claim"
 	costsApi "github.com/hanzoai/commerce/api/costs"
 	counterApi "github.com/hanzoai/commerce/api/counter"
 	couponApi "github.com/hanzoai/commerce/api/coupon"
 	currencyApi "github.com/hanzoai/commerce/api/currency"
 	customergroupApi "github.com/hanzoai/commerce/api/customergroup"
-	claimApi "github.com/hanzoai/commerce/api/claim"
 	dataApi "github.com/hanzoai/commerce/api/data"
 	deployApi "github.com/hanzoai/commerce/api/deploy"
 	draftorderApi "github.com/hanzoai/commerce/api/draftorder"
@@ -133,30 +118,10 @@ func Route(api zip.Router) {
 
 	subscriptionApi.Route(api)
 
-	// Models with public RESTful API
-	rest.New(collection.Collection{}).Route(api, tokenRequired, requireAccess)
-	rest.New(discount.Discount{}).Route(api, tokenRequired, requireAccess)
-	rest.New(movie.Movie{}).Route(api, tokenRequired)
-	rest.New(note.Note{}).Route(api, tokenRequired)
-	rest.New(product.Product{}).Route(api, tokenRequired, requireAccess, publishProductEvents)
-	rest.New(return_.Return{}).Route(api, tokenRequired)
-	rest.New(site.Site{}).Route(api, tokenRequired)
-	rest.New(submission.Submission{}).Route(api, tokenRequired)
-	rest.New(subscriber.Subscriber{}).Route(api, tokenRequired)
-	// rest.New(transaction.Transaction{}).Route(api, tokenRequired)
-	// Transfer is the PAYMENT ANNOTATION on a payable (api/payables), so writing
-	// one settles money we owe. Admin-gated, not any token holder.
-	rest.New(transfer.Transfer{}).Route(api, adminRequired)
-	rest.New(variant.Variant{}).Route(api, tokenRequired, requireAccess)
-	rest.New(wallet.Wallet{}).Route(api, adminRequired)
-	rest.New(watchlist.Watchlist{}).Route(api, tokenRequired)
-	rest.New(webhook.Webhook{}).Route(api, adminRequired)
-
-	rest.New(saleschannel.SalesChannel{}).Route(api, tokenRequired, requireAccess)
-	rest.New(stocklocation.StockLocation{}).Route(api, tokenRequired, requireAccess)
-
-	rest.New(disclosure.Disclosure{}).Route(api, tokenRequired)
-	rest.New(tokentransaction.Transaction{}).Route(api, tokenRequired)
+	// The merchant resources. ONE table, in its own leaf package so the cloud
+	// plugin can mount the same set at /v1/commerce/<kind> without importing
+	// this package's checkout, subscription and thirdparty tree.
+	resources.Route(api, tokenRequired, adminRequired, requireAccess, publishProductEvents)
 
 	paymentApi := rest.New(payment.Payment{})
 	paymentApi.POST("/:paymentid/refund", checkoutApi.Refund)
@@ -200,14 +165,14 @@ func Route(api zip.Router) {
 	customergroupApi.Route(api, tokenRequired)
 	apikeyApi.Route(api, tokenRequired) // publishable API keys, roles, api permissions
 	notificationApi.Route(api, tokenRequired)
-	giftcardApi.Route(api, adminRequired, requireAccess) // gift cards + idempotent redeem/void (money — admin only)
-	b2bApi.Route(api, tokenRequired, requireAccess)      // B2B: companies, employees, quotes, approvals
-	exchangeApi.Route(api, tokenRequired)                         // order exchanges (return + replacement)
-	currencyApi.Route(api, adminRequired)                         // currency reference table CRUD (global default-ns; public list on commerce group)
-	claimApi.Route(api, tokenRequired)                            // order claims (damaged/wrong/missing → refund or replacement)
-	draftorderApi.Route(api, tokenRequired, requireAccess)        // admin order builder: draft orders + line items → complete into a real order
-	producttaxonomyApi.Route(api, tokenRequired)                  // product options/values, categories, tags, types, return/refund reasons
-	catalogApi.AdminRoute(api, adminRequired)                     // platform product catalog CMS (global-admin gated inside)
+	giftcardApi.Route(api, adminRequired, requireAccess)   // gift cards + idempotent redeem/void (money — admin only)
+	b2bApi.Route(api, tokenRequired, requireAccess)        // B2B: companies, employees, quotes, approvals
+	exchangeApi.Route(api, tokenRequired)                  // order exchanges (return + replacement)
+	currencyApi.Route(api, adminRequired)                  // currency reference table CRUD (global default-ns; public list on commerce group)
+	claimApi.Route(api, tokenRequired)                     // order claims (damaged/wrong/missing → refund or replacement)
+	draftorderApi.Route(api, tokenRequired, requireAccess) // admin order builder: draft orders + line items → complete into a real order
+	producttaxonomyApi.Route(api, tokenRequired)           // product options/values, categories, tags, types, return/refund reasons
+	catalogApi.AdminRoute(api, adminRequired)              // platform product catalog CMS (global-admin gated inside)
 	// Public catalog projection GET /v1/commerce/catalog is wired on the
 	// commerce public group (commerce.go) so it serves that exact path.
 
