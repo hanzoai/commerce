@@ -113,8 +113,9 @@ func TestTopupBounds(t *testing.T) {
 	// Bad / non-positive override → fail safe to the default bound.
 	t.Setenv("COMMERCE_TOPUP_MIN_CENTS", "-5")
 	t.Setenv("COMMERCE_TOPUP_MAX_CENTS", "garbage")
-	if mn, mx := topupBounds(); mn != 100 || mx != 500000 {
-		t.Fatalf("bad-override topupBounds() = (%d,%d), want defaults (100,500000)", mn, mx)
+	if mn, mx := topupBounds(); mn != defaultTopupMinCents || mx != defaultTopupMaxCents {
+		t.Fatalf("bad-override topupBounds() = (%d,%d), want defaults (%d,%d)",
+			mn, mx, defaultTopupMinCents, defaultTopupMaxCents)
 	}
 }
 

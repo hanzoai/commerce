@@ -1,6 +1,8 @@
 package test
 
 import (
+	nethttp "net/http"
+
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 	. "github.com/hanzoai/commerce/util/test/zipclient"
 )
@@ -656,10 +658,26 @@ var _ = Describe("billing", Ordered, func() {
 				"tags":     "test",
 			}
 			res := &map[string]interface{}{}
-			cl.Post("/billing/deposit", req, res)
+			// Money in names the event that caused it: the credit rides the
+			// settlement id, so a retried webhook is the SAME request and can
+			// not fund the wallet twice.
+			withIdem := cl.WithHeaders(nethttp.Header{"X-Idempotency-Key": {"settlement-test-deposit-1"}})
+			withIdem.Post("/billing/deposit", req, res)
 
 			Expect((*res)["transactionId"]).NotTo(BeEmpty())
 			Expect((*res)["type"]).To(Equal("deposit"))
+		})
+
+		It("Should refuse a deposit that names no cause", func() {
+			// The guard above is the whole reason a credit is safe to retry, so
+			// the suite asserts it directly rather than trusting the happy path.
+			req := map[string]interface{}{
+				"user":     "hanzo/bob",
+				"currency": "usd",
+				"amount":   int64(1000),
+			}
+			w := cl.PostJSON("/billing/deposit", req)
+			Expect(w.Code).To(Equal(400))
 		})
 
 		It("Should append an org credit grant (the ONE mint-gated primitive)", func() {
