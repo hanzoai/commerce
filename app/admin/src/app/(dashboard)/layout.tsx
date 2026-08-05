@@ -11,7 +11,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Text, XStack, YStack } from '@hanzo/gui'
-import { OrgProjectSwitcher, useIam, useOrganizations } from '@hanzo/iam/react'
+import { UserMenu, useIam, useOrganizations } from '@hanzo/iam/react'
 import { HanzoMark, ThemeToggle } from '@hanzo/ui/product'
 import {
   Boxes,
@@ -32,7 +32,6 @@ import {
   Warehouse,
 } from '@hanzogui/lucide-icons-2'
 
-import { Account } from '@/components/account'
 import { Palette } from '@/components/palette'
 import { setAccessToken } from '@/lib/commerce'
 import { RESOURCES } from '@/lib/resources'
@@ -124,16 +123,23 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           borderBottomWidth={1}
           borderColor="$borderColor"
         >
-          {/* THE STORE YOU ARE EDITING IS A CHOICE, NOT A LABEL. This printed
-              `currentOrgId` as a bare string, so the one control a merchant
-              needs on every screen could not be operated — and the sidebar's
-              own store picker was an empty native <select> beside it.
-              `OrgProjectSwitcher` is published by @hanzo/iam/react and takes
-              exactly what `useOrganizations()` returns; writing a second one
-              here is how two products come to disagree about what an org is. */}
-          <OrgProjectSwitcher {...orgs} />
+          {/* ONE CONTROL: who you are AND which store you are editing.
+              `UserMenu` is published by @hanzo/iam/react and takes the org state
+              directly, so identity and the switcher are the same menu on every
+              Hanzo surface. This was three things — a bare `currentOrgId`
+              string that could not be operated, an empty native <select> in the
+              sidebar, and no way to sign out at all — and then briefly two, when
+              I paired the switcher with an account menu written here. A second
+              account menu is a second answer to "who is signed in"; deleting it
+              is the fix, not maintaining it.
+
+              It also needs the CURRENT @hanzo/iam: on the 0.13 line the org hook
+              synthesised at most ONE org from the `owner` claim, and the switcher
+              hides itself at one org, so it could never list anything. 0.21 reads
+              the signed `orgs` membership set — home first — which is the same
+              set cloud enforces when it honours an X-Org-Id. */}
           <ThemeToggle />
-          <Account />
+          <UserMenu orgState={orgs} align="down" />
         </XStack>
         <YStack flex={1} p="$5" gap="$4">
           {children}
