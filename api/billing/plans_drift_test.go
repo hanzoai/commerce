@@ -26,6 +26,10 @@ var versionDigests = map[string]struct{ subscription, dns string }{
 		subscription: "7affa8d6d75bf28fed1f014e96bffe25f08b6c0df008cdc24d375a3d3107b38d",
 		dns:          "de7da2ab600268bdf5528b9ec1fd037bdbe8f9112f3755d80b5f93a4cbf1cd87",
 	},
+	"1.4.13": {
+		subscription: "c511dfb34552d6adbff33a25aa72cf2ef68eec7bca7fbed41ab17057f58540b1",
+		dns:          "de7da2ab600268bdf5528b9ec1fd037bdbe8f9112f3755d80b5f93a4cbf1cd87",
+	},
 }
 
 func digest(t *testing.T, fs interface {
