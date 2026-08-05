@@ -44,6 +44,23 @@ type Client struct {
 	app          *zip.App
 	defaultsFn   defaultsFunc
 	ignoreErrors bool
+	headers      http.Header
+}
+
+// WithHeaders returns a copy of the client that sends hdr on every request.
+//
+// Some endpoints are defined by a header rather than by a body — POST
+// /billing/deposit refuses any credit that does not name the settlement that
+// caused it, and the name travels in X-Idempotency-Key. Without a way to send
+// one, a suite can only assert the refusal, never the success, and the money
+// path itself goes untested.
+//
+// The copy is deliberate: a header set for one request must not leak into the
+// rest of a suite that shares the client.
+func (cl *Client) WithHeaders(hdr http.Header) *Client {
+	next := *cl
+	next.headers = hdr.Clone()
+	return &next
 }
 
 // newApp builds the zip.App backing a Client, seeding every request with the
@@ -115,6 +132,15 @@ func (cl *Client) NewRequest(method, uri string, reader io.Reader) *http.Request
 
 	// Run any sort of setup code necessary
 	cl.defaultsFn(r)
+
+	// Caller-supplied headers win over the defaults: they are the reason this
+	// request differs from every other one the suite sends.
+	for k, vs := range cl.headers {
+		r.Header.Del(k)
+		for _, v := range vs {
+			r.Header.Add(k, v)
+		}
+	}
 
 	return r
 }

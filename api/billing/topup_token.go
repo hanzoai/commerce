@@ -21,6 +21,17 @@ type topupTokenRequest struct {
 	Currency    string `json:"currency,omitempty"`
 }
 
+// The default top-up floor and ceiling, in cents. They are named constants and
+// not literals because the test asserts them twice — once as the boundary a
+// caller may charge, once as the value a bad override falls back to — and those
+// two spellings drifted: the floor moved to $5 while the fallback assertion
+// still read $1, so the suite contradicted itself and failed. One name, one
+// value, and no way for the two readings to disagree again.
+const (
+	defaultTopupMinCents int64 = 500    // $5 — the pay-as-you-go floor, owner directive 2026-08
+	defaultTopupMaxCents int64 = 500000 // $5,000
+)
+
 // topupBounds returns the inclusive [min,max] card top-up amount in cents. A
 // server-side bound is the authoritative enforcement of the console's own
 // MIN_TOPUP_CENTS/MAX_TOPUP_CENTS policy (a client cap is advisory — a scripted
@@ -28,7 +39,7 @@ type topupTokenRequest struct {
 // directive 2026-08 — max 500000 ($5,000). Override per-deploy for risk tuning
 // with COMMERCE_TOPUP_MIN_CENTS / COMMERCE_TOPUP_MAX_CENTS.
 func topupBounds() (int64, int64) {
-	return envCents("COMMERCE_TOPUP_MIN_CENTS", 500), envCents("COMMERCE_TOPUP_MAX_CENTS", 500000)
+	return envCents("COMMERCE_TOPUP_MIN_CENTS", defaultTopupMinCents), envCents("COMMERCE_TOPUP_MAX_CENTS", defaultTopupMaxCents)
 }
 
 // envCents reads a positive-int-cents override from the environment, falling
