@@ -1,0 +1,52 @@
+# syntax=docker/dockerfile:1
+# commerce-admin — THE Commerce admin (app/admin, @hanzo/commerce-dashboard) as
+# PRODUCTION serves it: the static export behind the canonical hanzoai/static
+# plugin on :3000.
+#
+# Why this exists next to the binary's own //go:embed copy: production's commerce
+# API is the hanzoai/cloud unified binary (the standalone commerce pods are
+# retired — see universe infra/k8s/commerce/kustomization.yaml), and a library
+# consumer CANNOT serve this export. ui/dist is gitignored build output, so the
+# Go module zip cloud resolves carries .gitkeep and nothing else. "The binary
+# that owns /v1 owns /admin" holds for the standalone binary (devnet, local dev);
+# in the cluster the export needs a server of its own, and that server is the
+# static plugin — never nginx, never a node runtime.
+#
+# ONE producer, ONE URL contract: the export is built by the same
+# `turbo run typecheck build --filter=@hanzo/commerce-dashboard` the root
+# Dockerfile's admin-build stage runs, and it is BUILT for /admin
+# (next.config.ts basePath) — so it is laid out under /srv/admin here and the
+# chunk URLs it emits (/admin/_next/*) resolve byte-for-byte the same way they do
+# on the binary's /admin mount. A second Dockerfile rather than a second target
+# of the first because hanzo.yml's image list has no `target:` key.
+
+# ── Stage 1: build the admin export from source ───────────────────────────────
+FROM node:20-slim AS admin-build
+RUN npm install -g pnpm@9.15.9
+WORKDIR /build
+COPY app/ ./app/
+WORKDIR /build/app
+RUN pnpm install --frozen-lockfile
+
+# Prod defaults baked into the client bundle (Next inlines NEXT_PUBLIC_*), same
+# values the root Dockerfile bakes: one bundle, whichever server ships it.
+ENV NEXT_PUBLIC_COMMERCE_API_URL=https://commerce.hanzo.ai \
+    NEXT_PUBLIC_IAM_SERVER_URL=https://hanzo.id \
+    NEXT_PUBLIC_IAM_CLIENT_ID=hanzo-commerce \
+    NEXT_PUBLIC_HANZO_AI_URL=https://api.hanzo.ai/v1/chat/completions \
+    NEXT_PUBLIC_HANZO_AI_MODEL=best
+
+RUN node_modules/.bin/turbo run typecheck build --filter=@hanzo/commerce-dashboard
+
+# ── Stage 2: serve it (hanzoai/static has no shell to arrange files with) ─────
+FROM busybox:1.36 AS arrange
+COPY --from=admin-build /build/app/admin/out /srv/admin
+
+# ── Stage 3: the canonical Hanzo static plugin ────────────────────────────────
+# No --spa: `trailingSlash: true` gives every route its own index.html, so a real
+# route resolves by directory index and a miss stays a 404 instead of answering
+# 200 with HTML (the fallback that hid a broken bundle twice already).
+FROM ghcr.io/hanzoai/static:v0.5.2
+COPY --from=arrange /srv /srv
+EXPOSE 3000
+ENTRYPOINT ["/static", "--root=/srv", "--port=3000", "--404=admin/404.html"]

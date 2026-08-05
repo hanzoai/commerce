@@ -1,0 +1,107 @@
+package form
+
+import (
+	"time"
+
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/email"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/form"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/subscriber"
+	"github.com/hanzoai/commerce/models/types/client"
+	"github.com/hanzoai/commerce/thirdparty/mailchimp"
+	"github.com/hanzoai/commerce/util/counter"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
+)
+
+var subscriberEndpoint = config.UrlFor("api", "/subscriber/")
+
+func subscribe(c *zip.Ctx, db *datastore.Datastore, org *organization.Organization, f *form.Form) error {
+	ctx := db.Context
+
+	// Make sure Subscriber is created with the right context
+	s := subscriber.New(db)
+
+	// Decode response body for subscriber
+	if err := json.DecodeBytes(c.Body(), s); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
+	}
+
+	// Store metadata about client
+	s.Client = client.New(c)
+
+	// Save subscriber to mailing list
+	if err := f.AddSubscriber(s); err != nil {
+		if err == form.SubscriberAlreadyExists {
+			return http.Fail(c, 409, "Subscriber already exists", nil)
+		}
+		return http.Fail(c, 500, "Failed to save subscriber to mailing list", err)
+	}
+
+	// Increment subscribers
+	counter.IncrSubscriber(ctx, time.Now())
+
+	if err := counter.IncrSubscribers(ctx, org, f.Id(), time.Now()); err != nil {
+		log.Error("IncrSubscriber Error: %v", err, c)
+	}
+
+	if f.EmailList.Enabled {
+		email.Subscribe(ctx, f, s, org)
+	}
+
+	// Send welcome email
+	if f.SendWelcome {
+		email.SendSubscriberWelcome(ctx, org, s, f)
+	}
+
+	// Save user as customer in Mailchimp if configured
+	if f.Mailchimp.APIKey != "" {
+		// Create new mailchimp client
+		client := mailchimp.New(ctx, org.Mailchimp)
+
+		log.Info("Mailchimp Subscribe Metadata %v", s.Metadata, c)
+
+		mf := s.Metadata["firstName"]
+		firstName := ""
+		if mf != nil {
+			firstName = mf.(string)
+		}
+		if firstName == "" {
+			mf = s.Metadata["FNAME"]
+			if mf != nil {
+				firstName = mf.(string)
+			}
+		}
+
+		ml := s.Metadata["lastName"]
+
+		lastName := ""
+		if ml != nil {
+			lastName = ml.(string)
+		}
+		if lastName == "" {
+			ml = s.Metadata["LNAME"]
+			if ml != nil {
+				lastName = ml.(string)
+			}
+		}
+
+		if err := client.SubscribeForm(f.Mailchimp.ListId, s.Email, firstName, lastName); err != nil {
+			log.Error("Mailchimp Subscribe Error: %v", err, c)
+		}
+	}
+
+	// Forward subscriber (if enabled)
+	if f.Forward.Enabled {
+		forward(ctx, org, f, s)
+	}
+
+	// Success!
+	c.SetHeader("Location", subscriberEndpoint+s.Id())
+	return http.Render(c, 201, s)
+}

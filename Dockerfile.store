@@ -1,0 +1,21 @@
+FROM node:20-alpine AS base
+RUN corepack enable && corepack prepare pnpm@10.8.0 --activate
+WORKDIR /app
+
+FROM base AS builder
+COPY app/ ./
+RUN pnpm install --frozen-lockfile
+# The publishable store key is resolved per-tenant at RUNTIME (not a build constant),
+# so skip the build-time env gate (check-env-variables.js) — else `next build` exits 1.
+ENV SKIP_ENV_VALIDATION=1
+RUN pnpm turbo run build --filter=hanzo-commerce-storefront
+
+FROM base AS runner
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=builder /app/store/.next/standalone ./
+COPY --from=builder /app/store/.next/node_modules ./.next/node_modules
+COPY --from=builder /app/store/.next/static ./.next/static
+COPY --from=builder /app/store/public ./public
+EXPOSE 3000
+CMD ["node", "server.js"]

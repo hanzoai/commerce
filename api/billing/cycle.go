@@ -1,0 +1,217 @@
+package billing
+
+import (
+	"time"
+
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/billing/engine"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/subscription"
+	"github.com/hanzoai/commerce/util/json/http"
+)
+
+type cycleUserRequest struct {
+	UserId string `json:"userId"`
+}
+
+type cycleResult struct {
+	UserId         string `json:"userId"`
+	SubscriptionId string `json:"subscriptionId"`
+	InvoiceId      string `json:"invoiceId"`
+	Success        bool   `json:"success"`
+	Error          string `json:"error,omitempty"`
+}
+
+// RunBillingCycle processes all subscriptions whose current period has ended
+// for the request's organization. It generates invoices and attempts collection
+// for each due subscription.
+//
+//	POST /v1/billing/cycle/run
+func RunBillingCycle(c *zip.Ctx) error {
+	org := middleware.GetOrganization(c)
+	hydratePaymentCreds(c, org)
+	db := datastore.New(org.Namespaced(c.Context()))
+
+	results := renewDueSubscriptions(c, db, chargeProviderForOrg(org))
+
+	// Top up each active subscriber's included monthly allotment for the
+	// current period (idempotent per user+month).
+	allotGranted, allotSkipped, _ := grantOrgAllotments(c, db, time.Now(), !org.TestMode())
+
+	return c.JSON(200, map[string]any{
+		"processed": len(results),
+		"results":   results,
+		"allotments": map[string]any{
+			"granted": allotGranted,
+			"skipped": allotSkipped,
+		},
+	})
+}
+
+// RunBillingCycleUser processes due subscriptions for a single user within the
+// request's organization.
+//
+//	POST /v1/billing/cycle/run-user
+func RunBillingCycleUser(c *zip.Ctx) error {
+	org := middleware.GetOrganization(c)
+	hydratePaymentCreds(c, org)
+	db := datastore.New(org.Namespaced(c.Context()))
+
+	var req cycleUserRequest
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
+	}
+
+	if req.UserId == "" {
+		return http.Fail(c, 400, "userId is required", nil)
+	}
+
+	results := renewDueSubscriptionsForUser(c, db, req.UserId, chargeProviderForOrg(org))
+
+	return c.JSON(200, map[string]any{
+		"user":      req.UserId,
+		"processed": len(results),
+		"results":   results,
+	})
+}
+
+// RunBillingCycleAllOrgs iterates every organization and processes due
+// subscriptions across all of them. This is intended for the platform
+// scheduler to invoke on a recurring basis.
+//
+//	POST /v1/billing/cycle/run-all
+func RunBillingCycleAllOrgs(c *zip.Ctx) error {
+	rootDb := datastore.New(c.Context())
+
+	orgs := make([]*organization.Organization, 0)
+	if _, err := organization.Query(rootDb).GetAll(&orgs); err != nil {
+		log.Error("Failed to list organizations for billing cycle: %v", err, c)
+		return http.Fail(c, 500, "failed to list organizations", err)
+	}
+
+	type orgResult struct {
+		OrgId     string        `json:"orgId"`
+		OrgName   string        `json:"orgName"`
+		Processed int           `json:"processed"`
+		Results   []cycleResult `json:"results"`
+	}
+
+	allResults := make([]orgResult, 0, len(orgs))
+	totalProcessed := 0
+
+	now := time.Now()
+	for _, org := range orgs {
+		// Hydrate each org's payment creds so a due renewal can re-charge its
+		// subscribers' vaulted cards via that org's own Square processor.
+		hydratePaymentCreds(c, org)
+		db := datastore.New(org.Namespaced(c.Context()))
+		results := renewDueSubscriptions(c, db, chargeProviderForOrg(org))
+		totalProcessed += len(results)
+
+		// Grant included monthly allotment for active subscribers (idempotent).
+		grantOrgAllotments(c, db, now, !org.TestMode())
+
+		if len(results) > 0 {
+			allResults = append(allResults, orgResult{
+				OrgId:     org.Id(),
+				OrgName:   org.Name,
+				Processed: len(results),
+				Results:   results,
+			})
+		}
+	}
+
+	return c.JSON(200, map[string]any{
+		"orgs":           len(allResults),
+		"totalProcessed": totalProcessed,
+		"results":        allResults,
+	})
+}
+
+// renewDueSubscriptions finds all active or past-due subscriptions whose
+// current period has ended and renews each one. Returns a result per
+// subscription processed.
+func renewDueSubscriptions(c *zip.Ctx, db *datastore.Datastore, chargeProvider engine.ProviderCharger) []cycleResult {
+	now := time.Now()
+	rootKey := db.NewKey("synckey", "", 1, nil)
+
+	subs := make([]*subscription.Subscription, 0)
+	q := subscription.Query(db).Ancestor(rootKey)
+
+	if _, err := q.GetAll(&subs); err != nil {
+		log.Error("Failed to query subscriptions for billing cycle: %v", err, c)
+		return nil
+	}
+
+	results := make([]cycleResult, 0)
+	for _, sub := range subs {
+		if !engine.IsDue(sub, now) {
+			continue
+		}
+		results = append(results, renewOne(c, db, sub, chargeProvider))
+	}
+
+	return results
+}
+
+// renewDueSubscriptionsForUser is the same as renewDueSubscriptions but
+// scoped to a single user.
+func renewDueSubscriptionsForUser(c *zip.Ctx, db *datastore.Datastore, userId string, chargeProvider engine.ProviderCharger) []cycleResult {
+	now := time.Now()
+	rootKey := db.NewKey("synckey", "", 1, nil)
+
+	subs := make([]*subscription.Subscription, 0)
+	q := subscription.Query(db).Ancestor(rootKey).Filter("UserId=", userId)
+
+	if _, err := q.GetAll(&subs); err != nil {
+		log.Error("Failed to query subscriptions for user %s: %v", userId, err, c)
+		return nil
+	}
+
+	results := make([]cycleResult, 0)
+	for _, sub := range subs {
+		if !engine.IsDue(sub, now) {
+			continue
+		}
+		results = append(results, renewOne(c, db, sub, chargeProvider))
+	}
+
+	return results
+}
+
+// renewOne generates an invoice and attempts collection for a single
+// subscription, then persists the updated subscription state.
+func renewOne(c *zip.Ctx, db *datastore.Datastore, sub *subscription.Subscription, chargeProvider engine.ProviderCharger) cycleResult {
+	inv, result, err := engine.RenewSubscription(c.Context(), db, sub, BurnCredits, chargeProvider)
+	if err != nil {
+		log.Error("Billing cycle: failed to renew subscription %s: %v", sub.Id(), err, c)
+		return cycleResult{
+			UserId:         sub.UserId,
+			SubscriptionId: sub.Id(),
+			Success:        false,
+			Error:          err.Error(),
+		}
+	}
+
+	if err := sub.Update(); err != nil {
+		log.Error("Billing cycle: failed to update subscription %s after renewal: %v", sub.Id(), err, c)
+		return cycleResult{
+			UserId:         sub.UserId,
+			SubscriptionId: sub.Id(),
+			InvoiceId:      inv.Id(),
+			Success:        false,
+			Error:          err.Error(),
+		}
+	}
+
+	return cycleResult{
+		UserId:         sub.UserId,
+		SubscriptionId: sub.Id(),
+		InvoiceId:      inv.Id(),
+		Success:        result.Success,
+	}
+}

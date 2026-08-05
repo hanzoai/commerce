@@ -1,0 +1,30 @@
+package migrations
+
+import (
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/payment"
+
+	ds "github.com/hanzoai/commerce/datastore"
+)
+
+var _ = New("dedupe-payments",
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "kanoa")
+		return NoArgs
+	},
+	func(db *ds.Datastore, pay *payment.Payment) {
+		// Bail out if we've been previously deleted
+		if pay.Deleted {
+			return
+		}
+
+		// See if we have a valid order
+		ord := order.New(db)
+		if err := ord.GetById(pay.OrderId); err != nil {
+			// Not a good payment, no matching order
+			deletePayment(db.Context, pay)
+		}
+	},
+)

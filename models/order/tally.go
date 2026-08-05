@@ -1,0 +1,194 @@
+package order
+
+import (
+	"errors"
+	"fmt"
+
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/store"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/money"
+)
+
+// Calculates order totals
+func (o *Order) TallyWithoutSubscriptions() {
+	o.TallySubtotalWithoutSubscriptions()
+	o.TallyTotalWithoutSubscriptions()
+}
+
+func (o *Order) TallySubtotalWithoutSubscriptions() {
+	// Contributions do not have items
+	if o.Mode == DepositMode || o.Mode == ContributionMode || o.TokenSaleId != "" {
+		// Contributions just take subtotal into account
+		o.TaxableLineTotal = o.Subtotal
+		return
+	}
+
+	log.Debug("Tallying up order subtotal")
+
+	// Update total
+	lineTotal := 0
+	taxableLineTotal := 0
+	for _, item := range o.Items {
+		// Skip subscribeables
+		if item.Product != nil && item.Product.IsSubscribeable {
+			continue
+		}
+
+		if item.Taxable {
+			taxableLineTotal += item.Quantity * int(item.Price)
+		}
+
+		lineTotal += item.Quantity * int(item.Price)
+	}
+	o.LineTotal = currency.Cents(lineTotal)
+	o.TaxableLineTotal = currency.Cents(taxableLineTotal)
+	o.Subtotal = o.LineTotal - o.Discount
+}
+
+func (o *Order) TallyTotalWithoutSubscriptions() {
+	log.Debug("Tallying up order total")
+	o.Total = o.Subtotal + o.Tax + o.Shipping
+}
+
+func (o *Order) SyncItems(stor *store.Store) {
+	ctx := o.Context()
+
+	log.Info("Order Before Updating Entities: '%v'", json.Encode(o.Items), ctx)
+
+	// Update against store listings
+	log.Debug("Updating items against store listing")
+	if stor != nil {
+		o.UpdateEntitiesFromStore(stor)
+	}
+
+	log.Info("Order Before Updating From Entities: '%v'", json.Encode(o.Items), ctx)
+
+	// Update line items using that information
+	log.Debug("Updating line items")
+	o.UpdateItemsFromEntities()
+
+	log.Info("Order After Updating From Entities: '%v'", json.Encode(o.Items), ctx)
+}
+
+// Update order with information from datastore and tally
+func (o *Order) UpdateAndTally(stor *store.Store) error {
+	ctx := o.Context()
+
+	// Taxless
+	useFallback := false
+	if stor == nil {
+		useFallback = true
+		log.Warn("Fallback: Using client tax and shipping values.", ctx)
+	}
+
+	// Get coupons from datastore
+	log.Debug("Getting coupons for order")
+	if err := o.GetCoupons(); err != nil {
+		log.Error(err, ctx)
+		return errors.New("Failed to get coupons")
+	}
+
+	log.Debug("Checking for redeemed coupons")
+	for _, coup := range o.Coupons {
+		if !coup.Redeemable() {
+			return errors.New(fmt.Sprintf("Coupon %v limit reached", coup.Code()))
+		}
+	}
+
+	// Update the list of free coupon items
+	log.Debug("Add free items from coupons")
+	o.UpdateCouponItems()
+
+	log.Info("Order Mode: '%v'\nTokenSaleId: '%s'", o.Mode, o.TokenSaleId, ctx)
+	// Tokensales and contributions have no items
+	if o.Mode != DepositMode && o.Mode != ContributionMode && o.TokenSaleId == "" {
+		// Get underlying product/variant entities
+		log.Debug("Fetching underlying line items")
+		if err := o.GetItemEntities(); err != nil {
+			log.Error(err, ctx)
+			return errors.New("Failed to get all underlying line items")
+		}
+	}
+
+	// Update lineitems with current product info
+	o.SyncItems(stor)
+
+	// Calculate applicable discount from discount rules
+	log.Debug("Calculating discount from discount rules")
+	discount, err := o.CalcRuleDiscount()
+	if err != nil {
+		log.Warn("Failed to calculate discount from discount rules: %v", err, ctx)
+		return err
+	}
+
+	// Add applicable coupon discount
+	log.Debug("Calculating discount from coupons")
+	discount += o.CalcCouponDiscount()
+
+	// Update order total discount
+	o.Discount = discount
+
+	// Tally up order again
+	o.TallySubtotalWithoutSubscriptions()
+
+	// Reduce TaxableLineTotal for item-specific coupon discounts.
+	// Order-wide coupons do not reduce the taxable base.
+	if taxableReduce := o.CalcItemCouponTaxableDiscount(); taxableReduce > 0 {
+		if o.TaxableLineTotal > taxableReduce {
+			o.TaxableLineTotal -= taxableReduce
+		} else {
+			o.TaxableLineTotal = 0
+		}
+	}
+
+	// If not using fallback mode, skip taxes
+	if !useFallback {
+		if stor.Currency != "" {
+			o.Currency = stor.Currency
+		}
+
+		o.Shipping = 0
+
+		// Tax may depend on shipping so calcualte that first
+		if srs, err := stor.GetShippingRates(); srs == nil {
+			log.Warn("Failed to get shippingrates for discount rules: %v", err, ctx)
+		} else if match, _, _ := srs.Match(o.ShippingAddress.Country, o.ShippingAddress.State, o.ShippingAddress.City, o.ShippingAddress.PostalCode, o.Subtotal); match != nil {
+			// The stored rate is a float64, so it becomes an exact rate before it touches
+			// money, and the part-cent rounds rather than being dropped — the same rule
+			// the discount on this very order already uses.
+			rate, err := money.RateFromFloat(match.Percent)
+			if err != nil {
+				return err
+			}
+			o.Shipping = match.Cost + o.Subtotal.Scale(rate)
+		}
+
+		o.Tax = 0
+
+		if trs, err := stor.GetTaxRates(); trs == nil {
+			log.Warn("Failed to get taxrates for discount rules: %v", err, ctx)
+		} else if match, _, _ := trs.Match(o.ShippingAddress.Country, o.ShippingAddress.State, o.ShippingAddress.City, o.ShippingAddress.PostalCode, o.Subtotal); match != nil {
+			// Whether shipping is taxable changes the BASE, not the arithmetic, so the
+			// rate is applied once. Rounded, not truncated: tax is computed on our own
+			// configured rate rather than handed to us by a provider, so the part-cent is
+			// ours to get right, and truncating it under-collected on every order that
+			// had one — money we still owe the jurisdiction.
+			base := o.TaxableLineTotal
+			if match.TaxShipping {
+				base += o.Shipping
+			}
+
+			rate, err := money.RateFromFloat(match.Percent)
+			if err != nil {
+				return err
+			}
+			o.Tax = match.Cost + base.Scale(rate)
+		}
+	}
+
+	o.TallyTotalWithoutSubscriptions()
+
+	return nil
+}

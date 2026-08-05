@@ -1,0 +1,21 @@
+package migrations
+
+import (
+	"github.com/zap-proto/zip"
+
+	ds "github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/payment"
+)
+
+var _ = New("mark-nil-payments-for-deletion",
+	func(c *zip.Ctx) []interface{} {
+		return NoArgs
+	},
+	func(db *ds.Datastore, pay *payment.Payment) {
+		if pay.Account.ChargeId == "" && pay.OrderId == "" && pay.Buyer.UserId == "" {
+			pay.Deleted = true
+			pay.Put()
+			log.Warn("Nil payment found", db.Context)
+		}
+	})

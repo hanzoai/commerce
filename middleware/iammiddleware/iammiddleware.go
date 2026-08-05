@@ -1,0 +1,458 @@
+// Copyright (c) 2014-present Hanzo AI, Inc.
+// Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
+
+// Package iammiddleware is the gateway-trust shim for legacy call
+// sites. It used to do JWKS fetch + JWT validation in-binary (293
+// LOC). That trust boundary is now hanzoai/gateway: gateway validates
+// the JWT, populates X-Org-Id / X-User-Id / X-User-Email, and only
+// gateway-routed traffic reaches commerced.
+//
+// This file preserves the public API the rest of commerce depends on
+// (Init, Client, IAMTokenRequired, IsIAMAuthenticated,
+// GetIAMClaims, GetIAMTier) so the 13 call sites compile, but every
+// function reads identity from the gateway-supplied headers via
+// pkg/auth.
+//
+// Deletion target: once all call sites migrate to pkg/auth + pkg/org,
+// this file can be removed wholesale.
+package iammiddleware
+
+import (
+	"context"
+	"net/http"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/auth"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/organization"
+	pkgAuth "github.com/hanzoai/commerce/pkg/auth"
+	"github.com/hanzoai/commerce/pkg/org"
+	"github.com/hanzoai/commerce/util/bit"
+	jsonhttp "github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/util/permission"
+)
+
+// orgAdminGrant is the org-SCOPED merchant-management authority a gateway-verified
+// ORG admin (X-User-IsAdmin=="true") carries for its OWN org — the catalog
+// primitives self-serve onboarding needs (create a store, then its products,
+// collections and variants). IAMTokenRequired ORs it into the request permissions
+// ONLY for the caller's resolved namespace (X-Org-Id), so it never crosses tenants.
+//
+// It EXCLUDES permission.Admin by design: Admin is the money/platform authority
+// (credit-mint, card-charge and cross-org billing gates key on it — see
+// edgeauth.permsHeader), reserved for the service token and platform super-admins.
+// An org owner managing its own store must never gain it.
+var orgAdminGrant = bit.Field(
+	permission.Store | permission.ReadStore | permission.WriteStore |
+		permission.Product | permission.ReadProduct | permission.WriteProduct |
+		permission.Collection | permission.ReadCollection | permission.WriteCollection |
+		permission.Variant | permission.ReadVariant | permission.WriteVariant,
+)
+
+// isOrgAdmin reports whether the identity edge marked this request's caller an
+// ORG-level admin via a trusted (stripped-then-reminted on ingress) header. The
+// in-process host (cloud SanitizeIdentity) mints X-User-IsOrgAdmin for an org admin
+// and X-User-IsAdmin only for a SUPERADMIN — so a real merchant admin carries the
+// FORMER, not the latter; reading only X-User-IsAdmin here (the gateway-era name)
+// left every non-superadmin org admin without WriteStore → self-serve create-store
+// 403'd. Accept EITHER: X-User-IsOrgAdmin (the org admin) OR X-User-IsAdmin (a
+// superadmin, who administers their own org too). Both are authority headers,
+// stripped+re-minted on ingress, so neither is client-forgeable. Only "true"
+// (case-insensitive) counts; absent/any other value fails closed. The caller's
+// call site additionally binds the grant to home==effective (orgAdminHomeMatches).
+func isOrgAdmin(c *zip.Ctx) bool {
+	return strings.EqualFold(strings.TrimSpace(c.Header(HeaderUserIsOrgAdmin)), "true") ||
+		strings.EqualFold(strings.TrimSpace(c.Header(HeaderUserIsAdmin)), "true")
+}
+
+// orgAdminHomeMatches reports whether the caller's HOME org (X-User-Owner) equals
+// the EFFECTIVE org this request acts in (effectiveOrg == the resolved X-Org-Id).
+// The org-admin grant is authority over one's OWN org; this is the tenant check that
+// keeps an org-switched principal (home != effective) from inheriting merchant
+// authority over a foreign org. Fail closed: a missing/blank home org never matches
+// a non-empty effective org. Both are gateway-minted + stripped-on-ingress, so
+// neither is client-forgeable; this enforces their coupling rather than assuming it.
+func orgAdminHomeMatches(c *zip.Ctx, effectiveOrg string) bool {
+	home := strings.TrimSpace(c.Header(HeaderUserOwner))
+	eff := strings.TrimSpace(effectiveOrg)
+	if home == "" || eff == "" {
+		return false
+	}
+	return strings.EqualFold(home, eff)
+}
+
+var (
+	mu          sync.RWMutex
+	initialized bool
+	iamClient   *auth.IAMClient
+)
+
+// Init builds the IAM client used by the directly-exposed commerce-api
+// edge — the surfaces that face a raw user Bearer JWT instead of
+// gateway-minted headers: EdgeAuth (middleware/edgeauth.go) and the
+// /admin/billing UI gate (billing/handler.go). It verifies tokens
+// against the IAM JWKS. The gateway-trust middleware chain
+// (IAMTokenRequired) is unchanged — it still reads validated headers.
+//
+// A nil config or a build error leaves the client nil, so those edge
+// surfaces fail closed (every request treated as unauthorized).
+func Init(cfg *auth.IAMConfig) error {
+	mu.Lock()
+	defer mu.Unlock()
+	initialized = true
+	if cfg == nil {
+		iamClient = nil
+		return nil
+	}
+	cl, err := auth.NewIAMClient(cfg)
+	if err != nil {
+		iamClient = nil
+		return err
+	}
+	iamClient = cl
+	return nil
+}
+
+// Client returns the initialized IAM client, or nil if IAM is disabled or
+// Init() has not been called. Consumers outside the middleware chain (e.g.
+// SPA handlers with their own auth gate) use this to validate bearer tokens
+// against the same JWKS the /v1 middleware uses. Fail-closed: a nil return
+// means "treat every request as unauthenticated".
+//
+// Returns the client built by Init from the IAM config, or nil when IAM
+// is disabled / misconfigured (fail-closed at the call site). This is the
+// non-gateway entry point hook: commerce-api.hanzo.ai is exposed directly
+// (not behind hanzoai/gateway), so its edge surfaces verify the JWT here.
+func Client() *auth.IAMClient {
+	mu.RLock()
+	defer mu.RUnlock()
+	return iamClient
+}
+
+// IAMTokenRequired returns a zip middleware that:
+//  1. Reads the gateway-supplied X-Org-Id / X-User-Id / X-User-Email
+//     headers (already JWT-validated upstream).
+//  2. Resolves the Organization via pkg/org.Resolve (cached).
+//  3. Sets the legacy context keys downstream handlers expect:
+//     iam_authenticated, iam_org, iam_user_id, iam_email,
+//     organization, active-organization, permissions.
+//
+// Missing headers: falls through (handler chain may use a legacy
+// org-token instead). The gateway is the trust boundary; commerced is
+// only reachable via the gateway in production, where COMMERCED_REQUIRE_IDENTITY
+// rejects header-less requests at the edge of the binary.
+func IAMTokenRequired() zip.Handler {
+	return func(c *zip.Ctx) error {
+		// pkg/auth has already attached headers to ctx; read from there.
+		// If pkg/auth wasn't installed, fall back to direct header reads
+		// so this middleware still works in legacy mounts.
+		ctx := c.Context()
+		ownerID := pkgAuth.OrgID(ctx)
+		userID := pkgAuth.UserID(ctx)
+		email := pkgAuth.UserEmail(ctx)
+		if ownerID == "" {
+			ownerID = c.Header(pkgAuth.HeaderOrgID)
+		}
+		if userID == "" {
+			userID = c.Header(pkgAuth.HeaderUserID)
+		}
+		if email == "" {
+			email = c.Header(pkgAuth.HeaderUserEmail)
+		}
+
+		// A VALIDATED PRINCIPAL, not merely an org selector.
+		//
+		// This used to admit on ownerID alone, so the mere PRESENCE of X-Org-Id
+		// authenticated the request. That is the forge: cloud's identity boundary
+		// deliberately RESTORES a client's raw X-Org-Id on the bearer-less Phase-1
+		// data path (middleware_identity.go, "PHASE-1 RESIDUAL") while leaving
+		// X-User-Id empty, so an off-gateway caller could send `X-Org-Id: victim`
+		// with no credential at all and be treated as authenticated. Proven live
+		// against api.hanzo.ai: GET /v1/store/current and /v1/store/access answered
+		// 401 with no headers and 200 with `X-Org-Id: hanzo` and no token — another
+		// org's store record and entitlement status, read anonymously.
+		//
+		// The permission bits were already safe (they come only from
+		// X-User-Permissions and fail closed at zero), which is why masked routes
+		// held. The hole was the no-mask reads, which need only iam_authenticated.
+		//
+		// X-User-Id is the right predicate because it is the ONE thing a client
+		// cannot supply: every authority header is stripped on ingress and X-User-Id
+		// is re-injected ONLY from a verified credential, never restored from client
+		// input. This is exactly cloud's own gate — clients/principal.Validated is
+		// `c.User() != ""`, described there as "the ONE predicate that separates a
+		// gateway-minted identity from a client-forged X-Org-Id on the bearer-less
+		// path" — and cloud's whole data plane already enforces it. Commerce was the
+		// outlier, so this removes a divergence rather than adding a rule.
+		//
+		// Nothing legitimate loses access, because this branch was never how the
+		// credentialed callers authenticate:
+		//   - the internal service token is checked FIRST, ahead of the IAM branch
+		//     (middleware/accesstoken.go) — its comment even notes that an S2S call
+		//     "carries no X-User-Permissions" yet IAMTokenRequired stamped it
+		//     authenticated anyway, which is this bug seen from the other side;
+		//   - a legacy per-org access token is verified in its own later branch;
+		//   - a real user always carries X-User-Id, minted from their validated JWT.
+		// What is refused is precisely the credential-less org selector.
+		//
+		// Falling through (rather than 401 here) keeps this middleware additive:
+		// TokenRequired still gets to authenticate a service or per-org token, and
+		// only a caller with no credential at all reaches its 401.
+		if ownerID == "" || userID == "" {
+			// No validated principal — fall through to legacy auth.
+			return c.Next()
+		}
+
+		// Bound DB context — request ctx may be canceled by a navigation.
+		dbCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		o, err := org.Resolve(dbCtx, ownerID)
+		if err != nil {
+			log.Warn("iammiddleware: org resolve failed for %q: %v", ownerID, err)
+			return jsonhttp.Fail(c, http.StatusServiceUnavailable,
+				"Unable to resolve organization: "+err.Error(), err)
+		}
+
+		// Gateway-trusted identity counts as live by default. An explicit
+		// gateway-propagated X-Hanzo-Test: true opts the request into TEST
+		// mode (org.Live=false) so charges hit sandbox processors and write
+		// the test ledger — the same Live=false semantics a test access
+		// token carries (see middleware/accesstoken.go). The gateway is the
+		// trust boundary: it only forwards this header for test orgs. The
+		// flag is additive and never widens scope (test is strictly less
+		// privileged than live).
+		o.Live = liveFromHeaders(c)
+
+		// Permissions are derived strictly from gateway-supplied headers,
+		// never granted by mere presence of identity. The gateway MUST
+		// mint X-User-Permissions from the validated JWT (see
+		// hanzoai/gateway/auth_middleware.go and HEADERS.md). If the
+		// header is absent we fail closed: zero permissions, no Admin,
+		// no Live. The gateway is the trust boundary; this binary
+		// trusts the bits it provides and nothing else.
+		perms := parsePermissionsHeader(c.Header(HeaderUserPermissions))
+
+		// An ORG-level admin (gateway/EdgeAuth-minted X-User-IsAdmin=="true", e.g.
+		// an org owner like maxpower) additionally carries org-SCOPED merchant
+		// authority for its OWN org, so self-serve onboarding works: create a store,
+		// then its catalog (products/collections/variants). It deliberately EXCLUDES
+		// permission.Admin — the money/platform authority (credit-mint, card-charge,
+		// cross-org billing gates key on it; see edgeauth.permsHeader) reserved for
+		// the service token and platform super-admins.
+		//
+		// Bind the grant to HOME==EFFECTIVE: the org-admin flag authorizes the caller's
+		// HOME org (X-User-Owner) only. Applying it when the effective namespace
+		// (X-Org-Id, resolved into ownerID) differs would let an org-switched principal
+		// gain merchant authority over a FOREIGN org. Enforced HERE (defense in depth),
+		// not merely trusted from the gateway by comment — a money/multi-tenant boundary
+		// must not delegate its own tenant check.
+		if isOrgAdmin(c) && orgAdminHomeMatches(c, ownerID) {
+			perms |= orgAdminGrant
+		}
+
+		// Mirror onto request locals for legacy handlers.
+		c.Locals("iam_authenticated", true)
+		c.Locals("iam_user_id", userID)
+		c.Locals("iam_email", email)
+		c.Locals("iam_org", ownerID)
+		c.Locals("organization", o)
+		c.Locals("active-organization", o.Id())
+		c.Locals("permissions", perms)
+
+		return c.Next()
+	}
+}
+
+// HeaderTest is the gateway-propagated test-mode signal. When the
+// gateway forwards "true" (only for test orgs), the request runs in
+// TEST mode: org.Live=false, charges hit sandbox processors, ledger
+// rows are flagged Test. Absent/any-other value ⇒ live. Mirrors the
+// X-Hanzo-Test semantics in middleware/accesstoken.go. The gateway is
+// the trust boundary; commerced trusts the bit it forwards.
+const HeaderTest = "X-Hanzo-Test"
+
+// liveFromHeaders reports whether a gateway-trusted request is live.
+// It is live unless the gateway forwarded HeaderTest == "true". This
+// is the single place that turns the gateway test signal into the
+// org.Live authority that payment.ProcessorsForOrg keys sandbox-vs-
+// production off of (see payment/orgsetup.go SquareConfig(!org.Live)).
+// Forwards-only: never widen test → live based on identity presence.
+func liveFromHeaders(c *zip.Ctx) bool {
+	return !strings.EqualFold(strings.TrimSpace(c.Header(HeaderTest)), "true")
+}
+
+// HeaderUserPermissions is the canonical gateway-minted permission
+// header. It carries the bit.Field value as a base-10 int64 string
+// (e.g. "3" for Live|Test). The gateway MUST set it from the
+// validated JWT roles/claims; commerced reads it as-is. Missing or
+// malformed values fail closed (zero permissions). Documented in
+// HEADERS.md.
+const HeaderUserPermissions = "X-User-Permissions"
+
+// parsePermissionsHeader converts the gateway-minted X-User-Permissions
+// value into a bit.Field. Empty or invalid input fails closed (zero
+// permissions). This is the only path that turns gateway intent into
+// commerced permissions; do not introduce defaults that grant rights
+// based on identity presence alone.
+func parsePermissionsHeader(v string) bit.Field {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return bit.Field(0)
+	}
+	n, err := strconv.ParseInt(v, 10, 64)
+	if err != nil || n < 0 {
+		return bit.Field(0)
+	}
+	return bit.Field(n)
+}
+
+// IsIAMAuthenticated reports whether a VALIDATED IAM identity is attached to the
+// request — i.e. IAMTokenRequired resolved the org from the trusted (gateway- or
+// EdgeAuth-minted, post-strip) X-Org-Id and set iam_authenticated. It does NOT
+// fall back to the raw X-Org-Id header: trusting mere header presence let an
+// unvalidated opaque bearer + a client X-Org-Id impersonate any org (the checkout
+// money-surface bypass). IAMTokenRequired runs on every /v1, /v1/commerce and
+// /_/commerce group, so the local-key check covers every legitimate IAM caller; an
+// opaque service token authorizes through TokenRequired's service-token branch
+// instead, never here.
+func IsIAMAuthenticated(c *zip.Ctx) bool {
+	if v := c.Locals("iam_authenticated"); v != nil {
+		if b, ok := v.(bool); ok && b {
+			return true
+		}
+	}
+	return false
+}
+
+// GetIAMClaims returns a non-nil *auth.IAMClaims populated from the
+// gateway-minted identity headers. The gateway validated the JWT and
+// stamped X-Org-Id, X-User-Id, X-User-Email, X-User-IsAdmin, X-Roles
+// (see hanzoai/gateway/auth_middleware.go). commerced trusts those
+// bits and reflects them into a claims struct so call sites can read
+// IsAdmin / Owner / Subject / Roles uniformly.
+//
+// Fail-closed contract: missing headers map to zero-valued fields. In
+// particular, missing X-User-IsAdmin yields IsAdmin=false (not "unknown").
+// Call sites MUST NOT nil-guard the return — it is always non-nil.
+//
+// The legacy in-test path stores a *auth.IAMClaims under the
+// "iam_claims" local; that wins when present so tests can inject
+// arbitrary claim shapes without going through HTTP.
+func GetIAMClaims(c *zip.Ctx) *auth.IAMClaims {
+	if c == nil {
+		return &auth.IAMClaims{}
+	}
+	if v := c.Locals("iam_claims"); v != nil {
+		if claims, ok := v.(*auth.IAMClaims); ok && claims != nil {
+			return claims
+		}
+	}
+	owner := strings.TrimSpace(c.Header(pkgAuth.HeaderOrgID))
+	user := strings.TrimSpace(c.Header(pkgAuth.HeaderUserID))
+	email := strings.TrimSpace(c.Header(pkgAuth.HeaderUserEmail))
+	isAdmin := strings.EqualFold(strings.TrimSpace(c.Header(HeaderUserIsAdmin)), "true")
+	// HOME org — the identity + platform-sudo anchor (the gateway/EdgeAuth
+	// X-User-Owner header, the validated JWT `owner`). DISTINCT from Owner (==
+	// X-Org-Id, the EFFECTIVE org a SuperAdmin may switch to another tenant):
+	// IsSuperAdmin gates on this, so owner=="admin" survives an org-switch. Absent
+	// (pre-rollout) → homeOrg() falls back to Owner, which equals home for a
+	// non-switching caller. No spoofable isGlobalAdmin boolean is read — the org
+	// IS the signal.
+	homeOrg := strings.TrimSpace(c.Header(HeaderUserOwner))
+	roles := parseRolesHeader(c.Header(HeaderRoles))
+
+	claims := &auth.IAMClaims{
+		Owner:   owner,
+		HomeOrg: homeOrg,
+		Name:    user,
+		Email:   email,
+		IsAdmin: isAdmin,
+		Roles:   roles,
+	}
+	// Subject is the canonical user id field IAMClaims callers read;
+	// the gateway puts the JWT sub into X-User-Id.
+	claims.Subject = user
+	return claims
+}
+
+// HeaderUserIsAdmin is the gateway-minted "true"/"" ORG-level admin flag
+// (set for an org owner). Only "true" (case-insensitive) is treated as admin;
+// any other value (including absent) fails closed to false. It is org-scoped
+// only — NEVER gate cross-org/superadmin actions on it; use IsSuperAdmin().
+const HeaderUserIsAdmin = "X-User-IsAdmin"
+
+// HeaderUserIsOrgAdmin is the identity edge's ORG-level admin flag. cloud's
+// SanitizeIdentity (commerce's in-process host) mints THIS for an org admin
+// (claims.IsAdmin) and reserves X-User-IsAdmin for a SUPERADMIN — so a real merchant
+// admin carries X-User-IsOrgAdmin, not X-User-IsAdmin. It is an authority header,
+// stripped-then-reminted on ingress (unforgeable). isOrgAdmin reads it (OR
+// X-User-IsAdmin) so a non-superadmin org admin gets the self-serve store grant.
+const HeaderUserIsOrgAdmin = "X-User-IsOrgAdmin"
+
+// HeaderUserOwner is the gateway/EdgeAuth-minted HOME-org header — the validated
+// JWT `owner`, the identity + platform-sudo anchor. DISTINCT from X-Org-Id (the
+// EFFECTIVE org a SuperAdmin can switch to another tenant): IsSuperAdmin gates on
+// this so owner=="admin" survives an org-switch. Replaces the removed
+// X-User-IsGlobalAdmin boolean — the org IS the signal, not a spoofable flag.
+const HeaderUserOwner = "X-User-Owner"
+
+// HeaderRoles is the canonical comma-joined role-name header set by
+// the gateway from the JWT roles claim. Empty value -> no roles.
+const HeaderRoles = "X-Roles"
+
+// parseRolesHeader splits the X-Roles comma list into a FlexRoles
+// slice, trimming whitespace and dropping empties.
+func parseRolesHeader(v string) auth.FlexRoles {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return nil
+	}
+	parts := strings.Split(v, ",")
+	out := make(auth.FlexRoles, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// HeaderTier is the optional gateway-minted tier override. When the gateway
+// resolves a caller's tier from the validated JWT it MAY stamp X-Tier; commerced
+// honors it as authoritative. Absent (the norm today) → "" so the tier is derived
+// server-side from the caller's subscription (api/billing.deriveTier).
+const HeaderTier = "X-Tier"
+
+// GetIAMTier returns the gateway-minted X-Tier override, or "" when absent. Empty
+// is the normal case: the tier is then derived from the subscription store, so a
+// direct GET /v1/billing/tier?user=<subject> resolves the caller's REAL tier with
+// no upstream header. Fail-open to "" on a nil ctx.
+func GetIAMTier(c *zip.Ctx) string {
+	if c == nil {
+		return ""
+	}
+	return strings.TrimSpace(c.Header(HeaderTier))
+}
+
+// orgFromContext is exported for tests that want to assert the legacy
+// "organization" local was populated correctly.
+func orgFromContext(c *zip.Ctx) *organization.Organization {
+	if v := c.Locals("organization"); v != nil {
+		if o, ok := v.(*organization.Organization); ok {
+			return o
+		}
+	}
+	return nil
+}
+
+var _ = orgFromContext // referenced in tests

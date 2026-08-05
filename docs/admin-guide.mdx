@@ -1,0 +1,137 @@
+---
+title: Merchant Admin Guide
+description: End-to-end guide for merchants running a store on commerce.hanzo.ai — onboarding, products, orders, customers, tax and regions, billing self-service, team, and API keys.
+---
+
+# Merchant Admin Guide
+
+This guide walks a merchant through running a store on **commerce.hanzo.ai** — the
+Hanzo Commerce admin console. Everything here happens in the browser dashboard; the
+console talks to the commerce backend over the platform `/v1` API and scopes every
+action to your **active organization** (your store's tenant).
+
+Sign in with your Hanzo identity (native IAM PKCE via `hanzo.id`). The **org
+switcher** in the top bar is your tenant selector — every product, order, and
+setting you see belongs to the selected organization.
+
+## 1. Onboard — create a store
+
+1. Sign in and pick (or create) your organization from the org switcher.
+2. Follow the onboarding flow to name your store, set its primary domain(s), and
+   choose currency and region defaults.
+3. The **dashboard checklist** tracks setup completion. It derives progress from
+   live data — store details, first product, an enabled integration, a published
+   listing — so it advances as you actually configure the store, not from a
+   checkbox you tick.
+
+Each store is one tenant: its own organization, its own scoped data. Invited
+members share the store's entitlement (see [Team](#8-team)).
+
+> **Store access is $20/month** on the `pro` plan. Every store carries one
+> store-bound subscription and an idempotent 7-day trial. See
+> [Billing](#6-billing-self-service).
+
+## 2. Products (+ AI catalog)
+
+Products live on the bare `/v1/product` resource.
+
+- **Add a product** — open **Products → New**, fill in name, description, price,
+  media, and options/variants (e.g. size, color), then save. Prices are stored in
+  the smallest currency unit.
+- **Variants** — define product options and the matrix of variants (SKU, price,
+  inventory) for each combination.
+- **Collections** — group products into merchandising collections for your
+  storefront (see [Collections](#4-collections--inventory)).
+- **AI catalog builder** — the AI dock can create products for you. The
+  `create_product` command and the manual Products form call the **same** create
+  path, so an AI-generated product is a first-class product you can immediately
+  edit. Describe what you sell and let the assistant draft the catalog, then
+  review and publish.
+
+## 3. Orders & customers
+
+- **Orders** — view, search, and manage orders as they come in. Open an order to
+  see its line items, totals, payment status, and customer. Fulfillment actions
+  (ship, cancel) and exchanges (return + replacement) are available per order.
+- **Customers** — every buyer is a customer record with their order history and
+  contact details.
+- **Customer groups** — segment customers into groups (e.g. wholesale, VIP) for
+  targeted pricing, promotions, or sales-channel access.
+
+## 4. Collections & inventory
+
+- **Collections** — curate products into named collections that your storefront
+  renders as browsable groups.
+- **Inventory** — track stock levels per variant. Inventory is authoritative on
+  the backend; the storefront and checkout read the current level so you don't
+  oversell.
+
+## 5. Tax, regions & sales channels
+
+- **Regions** — a region bundles a set of countries with a currency and its tax
+  behavior. Create a region per market you sell into.
+- **Tax** — configure tax regions and tax rates; the platform calculates tax at
+  checkout from the buyer's region. You can define rate rules and, where enabled,
+  a tax provider.
+- **Sales channels** — a sales channel is a storefront surface (web store, a
+  marketplace, a point of sale). Assign products and publishable API keys to a
+  channel so each surface sees only its own catalog.
+
+## 6. Billing (self-service)
+
+Manage your store's own subscription and wallet from **Billing**. All of these are
+your-org-scoped and self-service:
+
+- **Subscribe / change plan** — start or change your store subscription. Store
+  access is the `$20/month` `pro` plan; an idempotent **7-day trial** is available
+  once per store.
+- **Payment methods** — add, update, or remove a card on file. Payment provider
+  credentials never touch the browser — they are held in KMS.
+- **Invoices** — view and download your billing history.
+- **Top-up** — add prepaid balance to your wallet. Your balance is split honestly
+  into **credits** (granted, non-cash) and **prepaid** (real money you topped up);
+  the dashboard shows the two distinctly. Non-metered usage draws credits first,
+  then prepaid; metered/GPU usage draws prepaid only and requires a card on file.
+
+> Billing is strictly per-org: you can only ever view and change **your own**
+> store's billing. (A platform admin can retarget a billing view across orgs; a
+> merchant never can.)
+
+## 7. Integrations
+
+Open **Integrations** to connect payment and service providers.
+
+- Providers read and toggle through `/v1/c/:org/integrations`.
+- **Secrets never enter the browser** or your organization's data rows. A provider
+  becomes toggleable only after its credentials exist in KMS.
+- **Square** is built in and resolves its public browser configuration through the
+  billing payment-config endpoint. Stripe connects via OAuth.
+
+## 8. Team
+
+Invite teammates to help run the store. Invited members share the store's
+subscription entitlement — they don't each need their own store subscription.
+Roles determine what a member can do; an **org admin** can manage store settings,
+while ordinary members are scoped to their granted permissions.
+
+## 9. API keys
+
+Issue keys for programmatic and storefront access under **API keys**:
+
+- **Publishable keys** — safe for the browser/storefront; scoped to a sales
+  channel, they authorize the public storefront read + the public form-create
+  path. They cannot perform admin actions.
+- **Storefront token** — mint a per-org **Published** storefront token
+  (`POST /v1/store/storefront-token`) for your storefront's server-side BFF to
+  drive checkout. The storefront BFF (holding this token or the service token) is
+  the one legitimate checkout entry point — a browser must never mint checkout
+  directly with a client-chosen org.
+
+Keep secret keys server-side only; publishable keys are the sole browser-safe
+credential.
+
+---
+
+For the API surface behind every screen, see the canonical OpenAPI spec at
+`api/openapi.yaml`. For how commerce runs in production, see
+[Architecture](./architecture.mdx).

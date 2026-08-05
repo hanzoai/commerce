@@ -1,0 +1,173 @@
+---
+title: Architecture
+description: How Hanzo Commerce runs in production — in-process inside the cloud binary (commerceinproc, HIP-0106), the /v1 REST surface, the identity edge, the paywall, and the two-part deploy.
+---
+
+# Architecture
+
+This is the operator/architecture reference for Hanzo Commerce: how the service is
+composed, how identity and money flow, and how it ships. For the merchant-facing
+walkthrough see [Merchant Admin Guide](./admin-guide.mdx).
+
+Commerce is a multi-tenant e-commerce backend: a Go binary with embedded
+per-tenant SQLite, no Google App Engine dependencies, running natively on
+zap-proto/zip (no gin, no net/http in the serving path). It is the source of truth
+for orders, products, subscriptions, invoices, and per-org billing.
+
+## Runs in-process in the cloud binary (`commerceinproc`, HIP-0106)
+
+Commerce is one of the reference implementations of the **HIP-0106 unified cloud
+binary** Mount contract. In production it does **not** run as a standalone pod that
+the rest of the platform reaches over a socket. Instead the single cloud binary
+imports commerce and calls its `Mount(*zip.App, cloud.Deps)` to register every
+commerce route **on the host's own router** — one router, one specificity space.
+
+Because it is co-resident, the cloud host reaches commerce's metering / billing
+handlers by a **direct Go call** over the `commerceinproc` transport — not a
+network hop to `commerce.hanzo.svc:8001`. The metering gate that bills every AI
+call debits the in-process commerce handler directly; the base URL is a placeholder
+because there is no socket. When commerce is *not* co-resident (standalone
+deployments, CI), the same client speaks HTTP to the commerce API — the code path
+is identical, only the transport differs.
+
+```
+                         ┌──────────────────────────────────────────┐
+   client ── gateway ──▶ │            cloud binary (one process)     │
+                         │                                            │
+                         │   SanitizeIdentity (identity edge)         │
+                         │            │  mints X-Org-Id / X-User-*     │
+                         │            ▼                               │
+                         │   commerce.Mount(host zip.App)             │
+                         │     /v1/product  /v1/billing  /v1/commerce │
+                         │            ▲                               │
+                         │  AI metering gate ──commerceinproc──┘      │
+                         │            (direct Go call, no socket)     │
+                         └──────────────────────────────────────────┘
+                                     │
+                        per-tenant SQLite (data/orgs/{org}/data.db)
+```
+
+Co-residence contract (`EmbedConfig.App *zip.App` / `Config.SharedApp`): commerce
+registers its routes on the host app; standalone-only surfaces (healthz, the legacy
+admin SPA, the checkout SPA catch-all, `Listen`/TLS) are skipped when embedded.
+
+## The `/v1` REST surface
+
+Commerce exposes the platform-standard **`/v1`** REST surface — no `/api/` prefix.
+Two distinct route families:
+
+- **`/v1/*` model bundle** (`api/api.go`, mounted at `/v1`) — the native Go
+  Medusa-parity admin domains: `product`, `order`, `customer`, `collection`,
+  `inventory`, `fulfillment`, `tax`, region, sales-channel, `customergroup`,
+  `apikey`, gift-card, B2B (company/employee/quote/approval), exchange, and the
+  `/v1/billing/*` money surface.
+- **`/v1/commerce/*` and `/_/commerce/*`** — the separate checkout / tenant /
+  catalog surface (checkout sessions, tenant provisioning, the public
+  `/v1/commerce/catalog`).
+
+> **Deploy nuance:** in the cloud mount, `/v1/billing/*` is served by cloud's own
+> `clients/billing` + `clients/account`, not by commerce's `/v1/billing` routes.
+> Do not re-prefix the backend bundle to "fix" this — byte-identical route patterns
+> merge silently and equal-specificity params with different names panic at
+> registration. Console reaches the model bundle through a same-origin `/commerce`
+> BFF proxy or an ingress rewrite, never by re-prefixing the backend.
+
+Monetary amounts on the `/v1/billing` surface are in the smallest currency unit
+(cents). Requests are scoped to the authenticated org namespace.
+
+> **Canonical OpenAPI spec: `api/openapi.yaml`.** The repo previously carried two
+> near-duplicate specs (`openapi.yaml` at the root and `api/openapi.yaml`). The
+> root file is now a symlink to `api/openapi.yaml` so there is exactly one source
+> of truth — edit `api/openapi.yaml` only.
+
+## The identity edge (`SanitizeIdentity`)
+
+Commerce does **not** validate JWTs in-binary. The trust boundary is upstream — the
+`hanzoai/gateway`, or, when co-resident, the cloud host's **`SanitizeIdentity`**
+edge. That edge is the sole minter of the trusted identity headers, which it
+**strips unconditionally on ingress** (so a client can never spoof them) and
+re-mints from the validated principal:
+
+| Header | Meaning |
+|--------|---------|
+| `X-Org-Id` | Effective org — namespace + tenant scope (a superadmin may switch it) |
+| `X-User-Id` | User identity (JWT `sub`) |
+| `X-User-Email` | Email — audit + notifications |
+| `X-User-IsOrgAdmin` | ORG-level admin (a real merchant/org admin) |
+| `X-User-IsAdmin` | Reserved by the cloud edge for a **superadmin** |
+| `X-User-Owner` | Home org — the identity + platform-sudo + billing anchor |
+| `X-Roles` | Comma-joined role names |
+
+Commerce reads these via `pkg/auth.OrgID(ctx)` / `UserID(ctx)` and
+`iammiddleware.GetIAMClaims(c)`. The contract fails **closed**: a missing authority
+header resolves to `false`/empty, never to admin.
+
+Note the org-admin vs superadmin split. `SanitizeIdentity` mints
+`X-User-IsOrgAdmin` for a normal org admin and reserves `X-User-IsAdmin` for a
+superadmin — the opposite emphasis of the bare gateway, which sets `X-User-IsAdmin`
+for an org owner. `iammiddleware.isOrgAdmin` accepts **either** so a non-superadmin
+org admin still gets self-serve grants; cross-org/superadmin actions gate strictly
+on the superadmin signal (`owner=="admin"` / `IsSuperAdmin`), never on an
+org-mintable role name.
+
+For directly-exposed standalone edges (`COMMERCE_EDGE_AUTH=true`), commerce strips
+and re-mints identity itself via `middleware.EdgeAuth`, installed in `Bootstrap`
+before any route group so it covers the whole surface. It never 401s opaque service
+tokens (the cloud→commerce per-org billing money path uses them) and pins each
+`/billing/` request to the caller's own org unless the caller is a global admin.
+
+## The paywall
+
+Store access is a **$20/month** entitlement on the `pro` plan. The rules:
+
+- Each store has exactly **one** store-bound subscription, plus an idempotent
+  **7-day trial** (`billing/trial`).
+- Invited members **share** that store entitlement — a second store cannot unlock
+  it.
+- The admin UI and the merchant API routes call the **same** `api/store.HasAccess`
+  rule, so the paywall is enforced in exactly one place, identically for both.
+
+Credit into an org ledger has one gated door: `POST /v1/billing/credit`, which is
+mint-gated (internal service token or a global admin only). Self-service callers
+can top up prepaid balance and subscribe, but cannot mint credit.
+
+## The two-part deploy
+
+Shipping a commerce change to production is **two coordinated steps**, because the
+backend runs inside the cloud binary:
+
+1. **Cut a commerce tag.** The binary version equals the git tag. Push a `v*` tag
+   (`git tag -a vX.Y.Z && git push origin vX.Y.Z`); CI injects the tag as
+   `-ldflags -X …commerce.Version=X.Y.Z` and builds
+   `ghcr.io/hanzoai/commerce:X.Y.Z`. Never ship named tags (`:X.Y.Z-foo`) for prod
+   — they reintroduce tag/binary drift. Bump the patch, never leap a major.
+2. **Bump the cloud dependency.** Cloud imports
+   `github.com/hanzoai/commerce`; update cloud's `go.mod` pin to the new commerce
+   tag and let cloud's release lane build + deploy the cloud binary. The
+   in-process commerce comes along with the cloud image.
+
+The standalone `commerce.hanzo.ai` container (and the marketing/admin static
+tiers) still build and deploy from this repo; the *in-cloud* commerce ships only
+when the cloud dep-bump lands. Verify `sha-<gitsha>` maps to your merge before
+deploying, and confirm `/healthz` reports the expected version.
+
+### Edge tiers around commerce
+
+- **API** — `commerce.hanzo.svc:8001` (standalone) or in-process in cloud.
+- **Admin console** — the Next `output: 'export'` static export
+  (`app/admin`, `Dockerfile.commerce-admin`) served by `ghcr.io/hanzoai/static`
+  (never nginx). See the admin [README](../app/admin/README.md).
+- **Marketing site** — `commerce.hanzo.ai` SPA via `ghcr.io/hanzoai/static`
+  (`Dockerfile.site`). Ingress (hanzoai/ingress file provider) sends `/v1`, `/api`,
+  `/healthz` to the API and everything else to the SPA.
+
+## Storage
+
+- Per-tenant embedded SQLite: `data/orgs/{orgName}/data.db` (+ `sqlite-vec`),
+  system data in `orgs/system/data.db`. PostgreSQL (pgvector) is the multi-instance
+  alternative — never the local-dev default.
+- The PVC is ReadWriteOnce, so the deployment uses the `Recreate` strategy.
+- At-rest encryption (SQLCipher via `hanzoai/sqlite`) is built and staged but not
+  enabled by default (key unset ⇒ plaintext for dev/CI).
+- ClickHouse (via `hanzoai/datastore-go`) backs analytics; the chain (Hanzo EVM)
+  is the eventual source of truth for the HUSD-backed credit ledger.

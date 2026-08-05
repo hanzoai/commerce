@@ -1,0 +1,99 @@
+[
+  {
+    "slug": "enso",
+    "name": "Enso",
+    "description": "Hanzo's proprietary frontier model — Opus-class reasoning at a 1M context window.",
+    "published": true,
+    "order": 1,
+    "spec": {
+      "family": "enso",
+      "serves": "enso",
+      "modality": "chat",
+      "contextWindow": 1000000,
+      "minTier": "trial",
+      "enabled": true
+    },
+    "rates": [
+      { "key": "in", "unit": "mtok", "cost": "1.392", "price": "4.00" },
+      { "key": "out", "unit": "mtok", "cost": "2.784", "price": "20.00" }
+    ]
+  },
+  {
+    "slug": "enso-flash",
+    "name": "Enso Flash",
+    "description": "Fast, economical Enso tier for high-volume, low-latency everyday work.",
+    "published": true,
+    "order": 2,
+    "spec": {
+      "family": "enso",
+      "serves": "enso",
+      "modality": "chat",
+      "contextWindow": 262144,
+      "enabled": true
+    },
+    "rates": [
+      { "key": "in", "unit": "mtok", "cost": "0.112", "price": "2.00" },
+      { "key": "out", "unit": "mtok", "cost": "0.224", "price": "4.00" }
+    ]
+  },
+  {
+    "slug": "enso-ultra",
+    "name": "Enso Ultra",
+    "description": "Adaptive fan-out — probes a task-appropriate model, escalates to a top-K panel only when needed, then verifies-then-selects the best answer.",
+    "published": true,
+    "order": 3,
+    "spec": {
+      "family": "enso",
+      "serves": "enso",
+      "modality": "chat",
+      "contextWindow": 1000000,
+      "minTier": "paid",
+      "enabled": true
+    },
+    "rates": [
+      { "key": "in", "unit": "mtok", "cost": "1.392", "price": "5.00" },
+      { "key": "out", "unit": "mtok", "cost": "2.784", "price": "25.00" }
+    ]
+  },
+  {
+    "slug": "enso-vl",
+    "name": "Enso VL",
+    "description": "Internal vision engine — reached only through the family's vision fallback, never as a selectable SKU.",
+    "published": false,
+    "order": 4,
+    "spec": {
+      "family": "enso",
+      "serves": "enso",
+      "modality": "chat",
+      "contextWindow": 262144,
+      "capabilities": ["vision"],
+      "enabled": false,
+      "unavailable": "internal vision engine — resolved by vision fallback, not directly callable"
+    },
+    "rates": [
+      { "key": "in", "unit": "mtok", "cost": "0.76", "price": "2.28" },
+      { "key": "out", "unit": "mtok", "cost": "3.20", "price": "9.60" }
+    ]
+  },
+  {
+    "slug": "enso-vl-pro",
+    "name": "Enso VL Pro",
+    "description": "Internal prepaid vision engine for paid callers — reached only through the family's vision fallback, never as a selectable SKU.",
+    "published": false,
+    "order": 5,
+    "spec": {
+      "family": "enso",
+      "serves": "enso",
+      "modality": "chat",
+      "contextWindow": 1048576,
+      "capabilities": ["vision"],
+      "minTier": "paid",
+      "enabled": false,
+      "unavailable": "internal vision engine — resolved by vision fallback, not directly callable"
+    },
+    "rates": [
+      { "key": "in", "unit": "mtok", "cost": "3.00", "price": "9.00" },
+      { "key": "out", "unit": "mtok", "cost": "15.00", "price": "45.00" }
+    ]
+  }
+]

@@ -1,0 +1,33 @@
+{
+  "name": "@hanzo/commerce-dashboard",
+  "version": "0.3.0",
+  "private": true,
+  "license": "MIT OR Apache-2.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hanzo/gui": "7.3.0",
+    "@hanzo/iam": "^0.13.1",
+    "@hanzo/ui": "^8.0.12",
+    "@hanzogui/config": "7.3.0",
+    "@hanzogui/core": "7.3.0",
+    "@hanzogui/lucide-icons-2": "7.3.0",
+    "@hanzogui/next-theme": "7.3.0",
+    "@hanzogui/web": "7.3.0",
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-native-web": "^0.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.7.2",
+    "react-native": "0.86.2"
+  }
+}

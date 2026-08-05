@@ -1,0 +1,22 @@
+package migrations
+
+import (
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/order"
+
+	ds "github.com/hanzoai/commerce/datastore"
+)
+
+// Legacy migration: Stripe refund calls removed.
+// This migration is historical and will no-op.
+var _ = New("kanoa-batch2-refund",
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "kanoa")
+		return NoArgs
+	},
+	func(db *ds.Datastore, ord *order.Order) {
+		log.Debug("kanoa-batch2-refund: skipped (legacy Stripe migration) for order %s", ord.Id(), db.Context)
+	},
+)

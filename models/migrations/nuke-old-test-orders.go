@@ -1,0 +1,31 @@
+package migrations
+
+import (
+	"time"
+
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/payment"
+
+	ds "github.com/hanzoai/commerce/datastore"
+)
+
+var oldestDate = time.Date(2015, time.April, 30, 0, 0, 0, 0, time.UTC)
+
+var _ = New("nuke-old-test-orders",
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "cycliq")
+		return NoArgs
+	},
+	func(db *ds.Datastore, ord *order.Order) {
+		if ord.CreatedAt.Before(oldestDate) {
+			ord.Delete()
+		}
+	},
+	func(db *ds.Datastore, pay *payment.Payment) {
+		if pay.CreatedAt.Before(oldestDate) {
+			pay.Delete()
+		}
+	},
+)

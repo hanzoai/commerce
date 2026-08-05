@@ -1,0 +1,50 @@
+import { FigmaCard } from "@/components/FigmaCard"
+
+export const metadata = {
+  title: `Hanzo Commerce UI Documentation`,
+}
+
+# {metadata.title}
+
+Welcome to Hanzo Commerce UI, a React implementation of the Hanzo Commerce design system.
+
+Hanzo Commerce UI is a collection of components, hooks, utility functions, icons, and [Tailwind CSS](https://tailwindcss.com/) classes that can be used to build
+a consistent user interface across the Hanzo Commerce Admin and client applications.
+
+## Figma Design System
+
+The Hanzo Commerce UI design system is also available on [Figma](https://www.figma.com/community/file/1278648465968635936/hanzo-commerce-ui). You can explore the components, icons, and design tokens used in Hanzo Commerce UI.
+
+This is especially useful if you have the [Figma Dev MCP](https://help.figma.com/hc/en-us/articles/32132100833559-Guide-to-the-Dev-Mode-MCP-Server) set up, allowing you to easily copy designs from the Figma Hanzo Commerce UI file to your projects.
+
+<FigmaCard />
+
+---
+
+## Packages
+
+Hanzo Commerce UI is split into multiple packages. Each package is published to npm
+and can be installed separately.
+
+- `@hanzo/commerce-ui` - React components, hooks, and utility functions used
+  in Hanzo Commerce UI.
+- `@hanzo/commerce-ui-preset` - Tailwind CSS preset containing all the classes
+  used in Hanzo Commerce UI.
+- `@hanzo/commerce-icons` - Icons used in Hanzo Commerce UI.
+
+Learn how to install and use these packages either for [Hanzo Commerce Admin](./installation/hanzo-commerce-admin-extension/page.mdx) customizations or a [standalone project](./installation/standalone-project/page.mdx).
+
+---
+
+## How Hanzo Commerce UI is Built
+
+At its core, Hanzo Commerce UI is a styled and slightly opinionated implementation of [Radix Primitives](https://www.radix-ui.com/primitives).
+Our team has also referenced the fantastic [shadcn/ui](https://ui.shadcn.com/) for inspiration in certain implementations.
+
+Our team strongly believes in keeping the components simple and
+composable, much like Hanzo Commerce's foundation. This allows you to build whatever you need.
+
+Our team has tried to avoid overloading
+the component API and, instead, has leveraged the native HTML API, which gets implemented
+and respected accordingly, and passed to the underlying elements.
+

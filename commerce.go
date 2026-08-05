@@ -1,0 +1,1261 @@
+// Package commerce provides the main application framework for Hanzo Commerce.
+//
+// Commerce is a multi-tenant e-commerce platform that runs as a standalone
+// binary with embedded SQLite for per-user/org data and optional analytics
+// via ClickHouse.
+//
+// Architecture:
+//
+//	┌─────────────────────────────────────────────────────────────┐
+//	│                     Commerce App                            │
+//	├─────────────────────────────────────────────────────────────┤
+//	│  HTTP Server (Gin)  │  Hooks System  │  Background Tasks    │
+//	├─────────────────────────────────────────────────────────────┤
+//	│  User SQLite        │  Org SQLite    │  Analytics (CH)      │
+//	│  + sqlite-vec       │  + sqlite-vec  │  (parallel queries)  │
+//	└─────────────────────────────────────────────────────────────┘
+package commerce
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/spf13/cobra"
+	fiber "github.com/zap-proto/fiber/v3"
+	"github.com/zap-proto/zip"
+	zipmw "github.com/zap-proto/zip/middleware"
+
+	billingPkg "github.com/hanzoai/commerce/api/billing"
+	catalogapi "github.com/hanzoai/commerce/api/catalog"
+	currencyapi "github.com/hanzoai/commerce/api/currency"
+	uploadApi "github.com/hanzoai/commerce/api/upload"
+	"github.com/hanzoai/commerce/auth"
+	billingUI "github.com/hanzoai/commerce/billing"
+	"github.com/hanzoai/commerce/billing/husdledger"
+	"github.com/hanzoai/commerce/checkout"
+	commerceDatastore "github.com/hanzoai/commerce/datastore"
+	commerceQuery "github.com/hanzoai/commerce/datastore/query"
+	"github.com/hanzoai/commerce/db"
+	"github.com/hanzoai/commerce/delay"
+	"github.com/hanzoai/commerce/events"
+	"github.com/hanzoai/commerce/hooks"
+	"github.com/hanzoai/commerce/infra"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/middleware/iammiddleware"
+	"github.com/hanzoai/commerce/models/catalogentry"
+	currencymodel "github.com/hanzoai/commerce/models/currency"
+	orgModel "github.com/hanzoai/commerce/models/organization"
+	planModel "github.com/hanzoai/commerce/models/plan"
+	"github.com/hanzoai/commerce/models/sbomrecord"
+	"github.com/hanzoai/commerce/models/types/currency"
+	commercestore "github.com/hanzoai/commerce/store"
+	"github.com/hanzoai/commerce/thirdparty/kms"
+	"github.com/hanzoai/commerce/treasury"
+	"github.com/hanzoai/commerce/types"
+	"github.com/hanzoai/commerce/ui"
+	"github.com/hanzoai/commerce/util/husd"
+)
+
+// Version, GitCommit, and BuildTime are set via -ldflags at build time.
+// Version's default is the source-of-record release; CI overrides it with
+// the immutable image tag (-X github.com/hanzoai/commerce.Version=<tag>) so
+// the running binary's /healthz version always equals its deployed tag.
+var (
+	Version   = "1.49.43"
+	GitCommit = "dev"
+	BuildTime = "unknown"
+)
+
+// Config holds application configuration
+type Config struct {
+	// DataDir is the base directory for all data
+	DataDir string
+
+	// MasterKey is the 32-byte at-rest encryption master key supplied by an
+	// EMBEDDER (EmbedConfig.MasterKey). nil ⇒ COMMERCE_KMS_MASTER_KEY decides,
+	// which is the standalone path.
+	MasterKey []byte
+
+	// Dev enables development mode
+	Dev bool
+
+	// RequireIdentity makes the identity boundary (auth.Gin) reject any
+	// request that arrives without X-Org-Id/X-User-Id. Sourced from
+	// COMMERCED_REQUIRE_IDENTITY. It is OFF by default and MUST stay off
+	// wherever the cloud-api -> commerce per-org billing path runs: that
+	// path authenticates with a Bearer service token + X-Org-Id and
+	// carries NO X-Org-Id, so a require-identity gate would 401 the money
+	// path. The anti-spoofing boundary is EdgeAuth (always mounted), not
+	// this gate.
+	RequireIdentity bool
+
+	// Secret for encryption and sessions
+	Secret string
+
+	// HTTP server address
+	HTTPAddr string
+
+	// HTTPS server address (optional)
+	HTTPSAddr string
+
+	// TLS certificate paths
+	TLSCert string
+	TLSKey  string
+
+	// CORS allowed origins
+	AllowedOrigins []string
+
+	// SharedApp, when non-nil, is the host binary's zip app — the NATIVE
+	// co-residence contract (HIP-0106): Bootstrap registers commerce's routes
+	// directly on it (one router, one specificity space) and setupRoutes
+	// skips the standalone-only surfaces (/healthz, legacy /admin SPA, the
+	// checkout SPA catch-all). Serve refuses — the host listens.
+	SharedApp *zip.App
+
+	// Database configuration
+	Database db.Config
+
+	// Analytics collector endpoint (optional)
+	AnalyticsEndpoint string
+
+	// Analytics DSN (optional, for direct ClickHouse queries)
+	DatastoreDSN string
+
+	// Infrastructure configuration
+	Infra infra.Config
+
+	// Query timeout
+	QueryTimeout time.Duration
+
+	// KMS configuration for secret management
+	KMS kms.Config
+
+	// IAM configuration for hanzo.id JWT validation
+	IAM struct {
+		Enabled           bool     `json:"enabled"`
+		Issuer            string   `json:"issuer"`
+		ClientID          string   `json:"clientId"`
+		ClientSecret      string   `json:"clientSecret"`
+		AcceptedAudiences []string `json:"acceptedAudiences"`
+		AcceptedIssuers   []string `json:"acceptedIssuers"`
+		JwksURI           string   `json:"jwksUri"`
+	} `json:"iam"`
+}
+
+// DefaultConfig returns the default configuration
+func DefaultConfig() *Config {
+	cfg := &Config{
+		DataDir:           getEnv("COMMERCE_DIR", "./commerce_data"),
+		Dev:               getEnv("COMMERCE_DEV", "false") == "true",
+		RequireIdentity:   getEnv("COMMERCED_REQUIRE_IDENTITY", "false") == "true",
+		Secret:            getEnv("COMMERCE_SECRET", "change-me-in-production"),
+		HTTPAddr:          getEnv("COMMERCE_HTTP", "127.0.0.1:8090"),
+		AllowedOrigins:    []string{"*"},
+		AnalyticsEndpoint: getEnv("ANALYTICS_ENDPOINT", ""),
+		DatastoreDSN:      getEnv("DATASTORE_URL", ""),
+		Infra:             *infraConfigFromEnv(),
+		QueryTimeout:      30 * time.Second,
+	}
+
+	cfg.KMS.Enabled = getEnv("KMS_ENABLED", "false") == "true"
+	cfg.KMS.URL = getEnv("KMS_URL", "")
+	cfg.KMS.ClientID = getEnv("KMS_CLIENT_ID", "")
+	cfg.KMS.ClientSecret = getEnv("KMS_CLIENT_SECRET", "")
+	cfg.KMS.ProjectID = getEnv("KMS_PROJECT_ID", "")
+	cfg.KMS.Org = getEnv("KMS_ORG", "hanzo")
+	cfg.KMS.Environment = getEnv("KMS_ENVIRONMENT", "prod")
+
+	cfg.IAM.Enabled = getEnv("IAM_ENABLED", "true") == "true"
+	cfg.IAM.Issuer = getEnv("IAM_ISSUER", "https://hanzo.id")
+	cfg.IAM.ClientID = getEnv("IAM_CLIENT_ID", "")
+	cfg.IAM.ClientSecret = getEnv("IAM_CLIENT_SECRET", "")
+	if accepted := getEnv("IAM_ACCEPTED_AUDIENCES", ""); accepted != "" {
+		cfg.IAM.AcceptedAudiences = strings.Split(accepted, ",")
+	}
+	if issuers := getEnv("IAM_ACCEPTED_ISSUERS", ""); issuers != "" {
+		cfg.IAM.AcceptedIssuers = strings.Split(issuers, ",")
+	}
+	cfg.IAM.JwksURI = getEnv("IAM_JWKS_URI", "")
+
+	return cfg
+}
+
+// infraConfigFromEnv loads infrastructure config from environment.
+//
+// Env vars (generic, no implementation leakage):
+//
+//	KV_PREFIX     = optional key namespace (cache is hanzo/base, embedded)
+//	S3_URL        = s3://key:secret@host:9000/bucket
+//	S3_ENDPOINT   = host:9000  (with S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET)
+//	DATASTORE_URL = clickhouse://host:9000/db
+//	SQL_URL       = postgresql://user:pass@host:5432/db
+//	VECTOR_URL    = qdrant://host:6333
+//	SEARCH_URL    = http://host:7700
+//	PUBSUB_URL    = nats://host:4222
+//	TASKS_URL     = temporal://host:7233/namespace
+func infraConfigFromEnv() *infra.Config {
+	cfg := infra.DefaultConfig()
+
+	// KV (hanzo/base, per-org/user SQLite). The cache is always available —
+	// base is an embedded store, not an external service. DataDir/DataDSN are
+	// resolved against the commerce store at bootstrap (commerce.go wires the
+	// shared store), so env wiring here only sets an optional key namespace.
+	cfg.KV.Enabled = true
+	cfg.KV.KeyPrefix = getEnv("KV_PREFIX", "")
+
+	// Vector (Qdrant)
+	if vectorURL := getEnv("VECTOR_URL", ""); vectorURL != "" {
+		if parsed, err := url.Parse(vectorURL); err == nil {
+			cfg.Vector.Enabled = true
+			host := parsed.Hostname()
+			cfg.Vector.Host = host
+			if p := parsed.Port(); p != "" {
+				if port, err := strconv.Atoi(p); err == nil {
+					cfg.Vector.Port = port
+				}
+			}
+			if parsed.User != nil {
+				cfg.Vector.APIKey = parsed.User.Username()
+			}
+		}
+	}
+
+	// Storage (S3-compatible)
+	if s3URL := getEnv("S3_URL", ""); s3URL != "" {
+		if parsed, err := url.Parse(s3URL); err == nil {
+			cfg.Storage.Enabled = true
+			cfg.Storage.Endpoint = parsed.Host
+			if parsed.User != nil {
+				cfg.Storage.AccessKey = parsed.User.Username()
+				if pwd, ok := parsed.User.Password(); ok {
+					cfg.Storage.SecretKey = pwd
+				}
+			}
+			if bucket := strings.TrimPrefix(parsed.Path, "/"); bucket != "" {
+				cfg.Storage.Bucket = bucket
+			}
+			cfg.Storage.UseSSL = parsed.Scheme == "s3s" || parsed.Query().Get("ssl") == "true"
+			cfg.Storage.PublicBaseURL = getEnv("S3_PUBLIC_URL", "")
+		}
+	} else if endpoint := getEnv("S3_ENDPOINT", ""); endpoint != "" {
+		cfg.Storage.Enabled = true
+		cfg.Storage.Endpoint = endpoint
+		cfg.Storage.AccessKey = getEnv("S3_ACCESS_KEY", "")
+		cfg.Storage.SecretKey = getEnv("S3_SECRET_KEY", "")
+		cfg.Storage.Bucket = getEnv("S3_BUCKET", "commerce")
+		cfg.Storage.UseSSL = getEnv("S3_USE_SSL", "false") == "true"
+		cfg.Storage.PublicBaseURL = getEnv("S3_PUBLIC_URL", "")
+	}
+
+	// Search (Meilisearch)
+	if searchURL := getEnv("SEARCH_URL", ""); searchURL != "" {
+		cfg.Search.Enabled = true
+		cfg.Search.Host = searchURL
+		if parsed, err := url.Parse(searchURL); err == nil {
+			if parsed.User != nil {
+				cfg.Search.APIKey = parsed.User.Username()
+			}
+		}
+	}
+
+	// PubSub (NATS)
+	if pubsubURL := getEnv("PUBSUB_URL", ""); pubsubURL != "" {
+		cfg.PubSub.Enabled = true
+		cfg.PubSub.URL = pubsubURL
+		if parsed, err := url.Parse(pubsubURL); err == nil {
+			if parsed.User != nil {
+				cfg.PubSub.Token = parsed.User.Username()
+			}
+		}
+		cfg.PubSub.EnableJetStream = getEnv("PUBSUB_JETSTREAM", "true") == "true"
+	}
+
+	// Tasks
+	if tasksURL := getEnv("TASKS_URL", ""); tasksURL != "" {
+		if parsed, err := url.Parse(tasksURL); err == nil {
+			cfg.Tasks.Enabled = true
+			cfg.Tasks.Address = parsed.Host
+			if ns := strings.TrimPrefix(parsed.Path, "/"); ns != "" {
+				cfg.Tasks.Namespace = ns
+			}
+		}
+	}
+
+	return cfg
+}
+
+// App is the main Commerce application
+type App struct {
+	config *Config
+
+	// Root command
+	RootCmd *cobra.Command
+
+	// Database manager
+	DB *db.Manager
+
+	// Infrastructure manager
+	Infra *infra.Manager
+
+	// Hook system
+	Hooks *hooks.Registry
+
+	// Events client (sends to analytics-collector via HTTP)
+	Events *events.Client
+
+	// Publisher sends commerce events to NATS/JetStream
+	Publisher *events.Publisher
+
+	// KMS client for secret management
+	KMS *kms.CachedClient
+
+	// ZAP node for inter-service vector operations
+	ZAP *infra.ZAPNode
+
+	// HTTP router — the native zip app (zap-proto/fiber underneath).
+	Router *zip.App
+
+	// CommerceStore is the hanzo/base-backed persistence seam. When set it
+	// provides the authoritative tenants + hostname-claims collections;
+	// handlers that have migrated off the legacy resolver use this directly.
+	// Initialized in Bootstrap from COMMERCE_DATA_DIR / COMMERCE_BASE_URL.
+	CommerceStore *commercestore.Store
+
+	// Shutdown handling
+	shutdownOnce sync.Once
+	shutdownCh   chan struct{}
+
+	// State
+	bootstrapped bool
+	mu           sync.RWMutex
+}
+
+// New creates a new Commerce application with default configuration
+func New() *App {
+	return NewWithConfig(DefaultConfig())
+}
+
+// NewWithConfig creates a new Commerce application with the given configuration
+func NewWithConfig(config *Config) *App {
+	app := &App{
+		config:     config,
+		Hooks:      hooks.NewRegistry(),
+		shutdownCh: make(chan struct{}),
+	}
+
+	// Set Gin mode
+
+	// Initialize CLI
+	app.initCLI()
+
+	return app
+}
+
+// initCLI sets up the cobra command structure
+func (app *App) initCLI() {
+	app.RootCmd = &cobra.Command{
+		Use:     "commerce",
+		Short:   "Hanzo Commerce - Multi-tenant e-commerce platform",
+		Version: Version,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// Skip bootstrap for help/version
+			if cmd.Name() == "help" || cmd.Name() == "version" {
+				return nil
+			}
+			return app.Bootstrap()
+		},
+	}
+
+	// Global flags
+	app.RootCmd.PersistentFlags().StringVar(&app.config.DataDir, "dir", app.config.DataDir, "Data directory")
+	app.RootCmd.PersistentFlags().BoolVar(&app.config.Dev, "dev", app.config.Dev, "Enable development mode")
+	app.RootCmd.PersistentFlags().StringVar(&app.config.Secret, "secret", app.config.Secret, "Encryption secret")
+
+	// Add commands
+	app.RootCmd.AddCommand(app.newServeCmd())
+	app.RootCmd.AddCommand(app.newAdminCmd())
+	app.RootCmd.AddCommand(app.newSeedCmd())
+}
+
+// newServeCmd creates the serve command
+func (app *App) newServeCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "serve [address]",
+		Short: "Start the Commerce server",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				app.config.HTTPAddr = args[0]
+			}
+			return app.Serve()
+		},
+	}
+
+	cmd.Flags().StringSliceVar(&app.config.AllowedOrigins, "origins", app.config.AllowedOrigins, "CORS allowed origins")
+	cmd.Flags().StringVar(&app.config.HTTPSAddr, "https", "", "HTTPS address")
+	cmd.Flags().StringVar(&app.config.TLSCert, "cert", "", "TLS certificate path")
+	cmd.Flags().StringVar(&app.config.TLSKey, "key", "", "TLS key path")
+
+	return cmd
+}
+
+// newAdminCmd creates the admin command
+func (app *App) newAdminCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "admin",
+		Short: "Admin user management",
+	}
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "create [email]",
+		Short: "Create an admin user",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			email := args[0]
+			fmt.Printf("Creating admin user: %s\n", email)
+			// TODO: Implement admin creation
+			return nil
+		},
+	})
+
+	return cmd
+}
+
+// newSeedCmd creates the seed command for bootstrapping organizations and plans
+func (app *App) newSeedCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "seed [org-name]",
+		Short: "Seed organization and plans for a service",
+		Long:  "Bootstrap an organization with API tokens and subscription plans.\nDefault org: bootnode",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			orgName := "bootnode"
+			if len(args) > 0 {
+				orgName = args[0]
+			}
+			return app.seedOrganization(orgName)
+		},
+	}
+	return cmd
+}
+
+func (app *App) seedOrganization(orgName string) error {
+	ctx := context.Background()
+	ds := commerceDatastore.New(ctx)
+
+	// Create or get organization
+	org := orgModel.New(ds)
+	org.Name = orgName
+	org.GetOrCreate("Name=", org.Name)
+	org.FullName = orgName + " Platform"
+	org.Enabled = true
+	org.AddDefaultTokens()
+
+	org.MustPut()
+
+	// Write payment credentials to KMS (if enabled)
+	if app.KMS != nil {
+		client := app.KMS.Client()
+		squarePath := "/tenants/" + orgName + "/square"
+
+		seedSecrets := []struct{ path, name, envVar string }{
+			// Square — Production
+			{squarePath, "SQUARE_PRODUCTION_APPLICATION_ID", "SQUARE_APPLICATION_ID"},
+			{squarePath, "SQUARE_PRODUCTION_ACCESS_TOKEN", "SQUARE_ACCESS_TOKEN"},
+			{squarePath, "SQUARE_PRODUCTION_LOCATION_ID", "SQUARE_LOCATION_ID"},
+			// Square — Sandbox
+			{squarePath, "SQUARE_SANDBOX_APPLICATION_ID", "SQUARE_SANDBOX_APPLICATION_ID"},
+			{squarePath, "SQUARE_SANDBOX_ACCESS_TOKEN", "SQUARE_SANDBOX_ACCESS_TOKEN"},
+			{squarePath, "SQUARE_SANDBOX_LOCATION_ID", "SQUARE_SANDBOX_LOCATION_ID"},
+			// Square — Webhook
+			{squarePath, "SQUARE_WEBHOOK_SIGNATURE_KEY", "SQUARE_WEBHOOK_SIGNATURE_KEY"},
+		}
+
+		for _, s := range seedSecrets {
+			if v := os.Getenv(s.envVar); v != "" {
+				if err := client.SetSecret(s.path, s.name, v); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to write %s to KMS: %v\n", s.name, err)
+				} else {
+					fmt.Printf("KMS: wrote %s to %s\n", s.name, s.path)
+				}
+			}
+		}
+	}
+
+	// Get the test-secret-key token for API access
+	tok, err := org.GetTokenByName("test-secret-key")
+	if err != nil {
+		return fmt.Errorf("failed to get API token: %w", err)
+	}
+
+	fmt.Printf("Organization: %s (ID: %s)\n", org.Name, org.Id())
+	fmt.Printf("API Key (test): %s\n", tok.String)
+
+	liveTok, err := org.GetTokenByName("live-secret-key")
+	if err == nil {
+		fmt.Printf("API Key (live): %s\n", liveTok.String)
+	}
+
+	// Create plans in the org's namespace
+	nsDs := commerceDatastore.New(ctx)
+	nsDs.SetNamespace(org.Namespace())
+
+	plans := []struct {
+		slug        string
+		name        string
+		price       int64
+		interval    string
+		description string
+	}{
+		{"bootnode-free", "Bootnode Free", 0, "month", "Free tier: 30M CU/mo, 25 req/s"},
+		{"bootnode-payg", "Bootnode Pay-As-You-Go", 0, "month", "PAYG: $0.40/M CU, 300 req/s"},
+		{"bootnode-growth", "Bootnode Growth", 4900, "month", "Growth: 100M CU included, $0.35/M overage, 500 req/s"},
+		{"bootnode-enterprise", "Bootnode Enterprise", 0, "month", "Enterprise: custom pricing, 1000+ req/s"},
+	}
+
+	for _, p := range plans {
+		pln := planModel.New(nsDs)
+		pln.Slug = p.slug
+		pln.GetOrCreate("Slug=", pln.Slug)
+		pln.Name = p.name
+		pln.Price = currency.Cents(p.price)
+		pln.Currency = currency.USD
+		pln.Interval = types.Monthly
+		pln.IntervalCount = 1
+		pln.Description = p.description
+		pln.MustPut()
+		fmt.Printf("Plan: %s (%s) - $%.2f/mo\n", pln.Name, pln.Slug, float64(pln.Price)/100)
+	}
+
+	fmt.Println("\nSeed complete.")
+	return nil
+}
+
+// Start runs the application
+func (app *App) Start() error {
+	return app.RootCmd.Execute()
+}
+
+// Bootstrap initializes the application
+func (app *App) Bootstrap() error {
+	app.mu.Lock()
+	defer app.mu.Unlock()
+
+	if app.bootstrapped {
+		return nil
+	}
+
+	// Trigger OnBootstrap hooks
+	if err := app.Hooks.TriggerBootstrap(app); err != nil {
+		return fmt.Errorf("bootstrap hook error: %w", err)
+	}
+
+	// Ensure data directory exists
+	if err := os.MkdirAll(app.config.DataDir, 0755); err != nil {
+		return fmt.Errorf("failed to create data directory: %w", err)
+	}
+
+	// Initialize database manager. Start from db.DefaultConfig() so the per-org
+	// SQLite stores inherit the concurrency-safe SQLite settings (WAL journal +
+	// 10s busy_timeout + bounded conn pools). The previous literal omitted
+	// .SQLite entirely, leaving BusyTimeout=0 / JournalMode="" — which made any
+	// concurrent write (deposit credit, usage debit, periodic DB tasks) fail
+	// immediately with "database is locked" on the SQLite fallback path.
+	dbConfig := db.DefaultConfig()
+	dbConfig.DataDir = app.config.DataDir
+	dbConfig.DatastoreDSN = app.config.DatastoreDSN
+	dbConfig.EnableDatastore = app.config.DatastoreDSN != ""
+	dbConfig.VectorDimensions = 1536
+	dbConfig.IsDev = app.config.Dev
+	dbConfig.MasterKey = app.config.MasterKey
+
+	var err error
+	app.DB, err = db.NewManager(dbConfig)
+	if err != nil {
+		return fmt.Errorf("failed to initialize database: %w", err)
+	}
+
+	// Wire the primary data store. Prefer PostgreSQL (SQL_URL) in production;
+	// fall back to per-org SQLite for local/dev environments.
+	var systemDB db.DB
+	if sqlURL := getEnv("SQL_URL", ""); sqlURL != "" {
+		pdb, pgErr := db.NewPostgresDB(&db.PostgresDBConfig{
+			DSN:                sqlURL,
+			MaxOpenConns:       4,
+			MaxIdleConns:       2,
+			ConnMaxLifetime:    30 * time.Minute,
+			ConnMaxIdleTime:    5 * time.Minute,
+			QueryTimeout:       30 * time.Second,
+			TenantID:           "system",
+			TenantType:         "org",
+			EnableVectorSearch: true,
+			VectorDimensions:   1536,
+		})
+		if pgErr != nil {
+			return fmt.Errorf("failed to connect to PostgreSQL (SQL_URL): %w", pgErr)
+		}
+		systemDB = pdb
+		fmt.Println("Commerce: using PostgreSQL as primary data store")
+	} else {
+		// Dev/local fallback: per-org SQLite in DataDir.
+		fmt.Fprintln(os.Stderr, "Commerce: SQL_URL not set, falling back to SQLite (not for production)")
+		var dbErr error
+		systemDB, dbErr = app.DB.Org("system")
+		if dbErr != nil {
+			return fmt.Errorf("failed to initialize system database: %w", dbErr)
+		}
+	}
+	commerceDatastore.SetDefaultDB(systemDB)
+	commerceQuery.SetDefaultDB(systemDB)
+
+	// Route the generic REST merchant datastore (product/order/store/customer/
+	// collection/discount/variant/…) to per-org SQLite via db.Manager.Org(<caller
+	// org>). systemDB above remains the store for global kinds (organization/user/
+	// token, which are DefaultNamespace) and for the billing/checkout subsystems
+	// that call datastore.New directly. Merchant models are thus physically
+	// isolated per org — no request can read/list/mutate another org's merchant
+	// data on the /v1 REST surface, regardless of whether systemDB is Postgres or
+	// SQLite. Decomplects the single-tenant Postgres out of the merchant path.
+	if app.DB == nil {
+		return fmt.Errorf("commerce: database manager not initialized — cannot install the per-org money resolver")
+	}
+	commerceDatastore.SetOrgDBResolver(app.DB.Org)
+
+	// Fail closed: a production binary must NOT run a money path without the
+	// per-org resolver installed. Without it every NewNamespaced money handler
+	// (gift cards, orders, checkout, transactions, wire, b2b) would silently fall
+	// back to the shared systemDB and cross tenants (Red CRIT-2). Assert here at
+	// Bootstrap rather than degrade on the hot path.
+	if !commerceDatastore.HasOrgDBResolver() {
+		return fmt.Errorf("commerce: per-org DB resolver not installed after SetOrgDBResolver — refusing to start (money paths would use the shared store)")
+	}
+
+	// Chain-backed credit ledger (HUSD on the Hanzo EVM). Build the mint+index
+	// service from the KMS-injected HUSD config + the org-derivation master seed
+	// (all in-memory only). The SEED is the ledger's sole intent signal: with a
+	// seed AND token+key the ledger is ENABLED; without a seed the service is
+	// DISABLED and the billing money-in handlers keep their existing DB-mint
+	// behavior — so a deploy with HUSD token+key but no seed (e.g. the shared
+	// config the OSS contributor payout path uses) is a no-op for the ledger, and
+	// the migration (Step 6) flips it on deliberately by provisioning the seed.
+	// Wired AFTER the DB resolver so its per-org + system stores resolve. Fail
+	// closed ONLY on an incoherent ledger config (seed set but token/key missing)
+	// — see husdledger.ValidateConfig.
+	husdCfg := husd.Config{}
+	husdCfg.LoadFromEnv()
+	var husdSeed []byte
+	if raw := os.Getenv("HUSD_ORG_DERIVATION_SEED"); raw != "" {
+		s, seedErr := treasury.SeedFromHex(raw)
+		if seedErr != nil {
+			return fmt.Errorf("commerce: invalid HUSD_ORG_DERIVATION_SEED: %w", seedErr)
+		}
+		husdSeed = s
+	}
+	if err := husdledger.ValidateConfig(husdCfg, husdSeed); err != nil {
+		return fmt.Errorf("commerce: %w", err)
+	}
+	husdSvc := husdledger.New(husdCfg, husdSeed)
+	husdledger.SetDefault(husdSvc)
+	if husdSvc.Enabled() {
+		fmt.Fprintf(os.Stderr, "Commerce: chain-backed credit ledger ENABLED (HUSD chainId=%d token=%s)\n", husdCfg.ChainID, husdCfg.TokenAddress)
+	} else {
+		fmt.Fprintln(os.Stderr, "Commerce: chain-backed credit ledger disabled (HUSD not configured — using DB credit path)")
+	}
+
+	// Hanzo/base-backed commerce store. Hosts the authoritative tenant
+	// record + commerce_tenant_hostnames claim table — the source of truth
+	// for the /v1/commerce/tenant public JSON and /_/commerce/tenants
+	// superadmin CRUD — AND the commerce_kv cache collection that replaced
+	// the former Redis/Valkey KV. Built before the infra manager so its KV
+	// store can be attached to the manager (no second base app on the same
+	// SQLite files). Bootstrap is idempotent; a failure here is fatal because
+	// the public endpoint would otherwise 404 every tenant request.
+	storeCfg := commercestore.FromEnv()
+	if storeCfg.DataDir == "" || storeCfg.DataDir == "./commerce_data" {
+		// Align with the app-level DataDir so all commerce persistence lives
+		// under one tree.
+		storeCfg.DataDir = filepath.Join(app.config.DataDir, "base")
+	}
+	cStore, storeErr := commercestore.New(storeCfg)
+	if storeErr != nil {
+		return fmt.Errorf("failed to initialize commerce store: %w", storeErr)
+	}
+	app.CommerceStore = cStore
+
+	// Initialize infrastructure manager. Attach the base-backed KV client
+	// (sharing the commerce store) before Connect so Connect reuses it.
+	app.Infra = infra.New(&app.config.Infra)
+	if app.config.Infra.KV.Enabled {
+		// KV_URL selects an external Hanzo KV instance (the on-demand add-on);
+		// unset ⇒ the Base-backed commerce_kv (default — no external datastore).
+		// A malformed KV_URL fails closed rather than silently splitting cache +
+		// lock state across two backends.
+		var kvc *infra.KVClient
+		if kvURL := getEnv("KV_URL", ""); kvURL != "" {
+			c, kvErr := infra.NewKVClientFromURL(&app.config.Infra.KV, kvURL)
+			if kvErr != nil {
+				return fmt.Errorf("commerce: invalid KV_URL: %w", kvErr)
+			}
+			kvc = c
+			fmt.Fprintln(os.Stderr, "Commerce: using external Hanzo KV (KV_URL) for cache + locks")
+		} else {
+			kvc = infra.NewKVClientFromStore(&app.config.Infra.KV, cStore)
+		}
+		app.Infra.SetKV(kvc)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), app.config.Infra.ConnectTimeout)
+	defer cancel()
+
+	if err := app.Infra.Connect(ctx); err != nil {
+		// Log but don't fail - infrastructure services are optional
+		fmt.Fprintf(os.Stderr, "Warning: some infrastructure services unavailable: %v\n", err)
+	}
+
+	// Wire the object store into the admin upload surface (POST /v1/upload).
+	// Absent S3 config ⇒ storage nil ⇒ uploads 503 (never a silent drop).
+	if storageClient, err := app.Infra.Storage(); err == nil {
+		uploadApi.SetStorage(storageClient)
+	}
+
+	// Initialize ZAP node for inter-service vector operations
+	if vector, err := app.Infra.Vector(); err == nil {
+		zapPort := 9090
+		if p := getEnv("COMMERCE_ZAP_PORT", ""); p != "" {
+			if parsed, convErr := strconv.Atoi(p); convErr == nil {
+				zapPort = parsed
+			}
+		}
+		zapCfg := &infra.ZAPConfig{
+			Enabled: true,
+			NodeID:  getEnv("COMMERCE_ZAP_NODE_ID", "commerce-0"),
+			Port:    zapPort,
+		}
+		zapNode, zapErr := infra.NewZAPNode(zapCfg, vector, slog.Default())
+		if zapErr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: ZAP node failed to start: %v\n", zapErr)
+		} else {
+			app.ZAP = zapNode
+			// Wire the ZAP-native SBOM ingest path (0x20). Stores via the SAME
+			// sbomrecord.Ingest used by the HTTP handler, in the global "system"
+			// namespace where SBOMs + OSS accruals live.
+			zapNode.RegisterSBOMIngest(func(ctx context.Context, p infra.SBOMIngestPayload) error {
+				db := commerceDatastore.New(ctx)
+				db.SetNamespace("system")
+				comps := make([]sbomrecord.Component, 0, len(p.Components))
+				for _, comp := range p.Components {
+					scope := comp.Scope
+					if scope != "direct" {
+						scope = "transitive"
+					}
+					comps = append(comps, sbomrecord.Component{
+						PURL: comp.PURL, Name: comp.Name, Ecosystem: comp.Ecosystem,
+						Version: comp.Version, Scope: scope,
+					})
+				}
+				in := sbomrecord.New(db)
+				in.ImageRef = p.ImageRef
+				in.ImageDigest = p.ImageDigest
+				in.Service = p.Service
+				in.Format = p.Format
+				in.Tool = p.Tool
+				in.Components = comps
+				_, err := sbomrecord.Ingest(db, in)
+				return err
+			})
+			fmt.Printf("ZAP node started on :%d (vector ops: 0x10=upsert, 0x11=search, 0x12=delete; sbom: 0x20=ingest)\n", zapPort)
+		}
+	}
+
+	// Initialize KMS client for secret management
+	if app.config.KMS.Enabled && app.config.KMS.URL != "" {
+		kmsClient := kms.NewClient(&app.config.KMS)
+		app.KMS = kms.NewCachedClient(kmsClient)
+		fmt.Println("KMS client initialized")
+	}
+
+	// Initialize analytics client (sends events to analytics-collector via HTTP)
+	if app.config.AnalyticsEndpoint != "" {
+		app.Events = events.NewClient(app.config.AnalyticsEndpoint)
+	}
+
+	// Initialize NATS/JetStream publisher for commerce events
+	if pubsub, err := app.Infra.PubSub(); err == nil {
+		if err := events.Bootstrap(ctx, pubsub); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to bootstrap commerce stream: %v\n", err)
+		}
+		app.Publisher = events.NewPublisher(pubsub)
+		fmt.Println("Commerce event publisher initialized (NATS/JetStream)")
+	}
+
+	// Initialize router — native zip (zap-proto/fiber): zero net/http
+	// adaptation. Co-resident mode registers on the host's shared app; the
+	// host owns Recover/logging for its whole surface.
+	if app.config.SharedApp != nil {
+		app.Router = app.config.SharedApp
+	} else {
+		app.Router = zip.New(zip.Config{AppName: "commerce", DisableStartupMessage: true})
+		app.Router.Use(zipmw.Recover())
+		if app.config.Dev {
+			app.Router.Use(middleware.Logger())
+		}
+	}
+
+	// Initialize IAM middleware for hanzo.id JWT validation
+	if app.config.IAM.Enabled && app.config.IAM.Issuer != "" && app.config.IAM.ClientID != "" {
+		iamCfg := &auth.IAMConfig{
+			Issuer:            app.config.IAM.Issuer,
+			ClientID:          app.config.IAM.ClientID,
+			ClientSecret:      app.config.IAM.ClientSecret,
+			AcceptedAudiences: app.config.IAM.AcceptedAudiences,
+			AcceptedIssuers:   app.config.IAM.AcceptedIssuers,
+			JwksURI:           app.config.IAM.JwksURI,
+		}
+		if err := iammiddleware.Init(iamCfg); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: IAM middleware initialization failed: %v\n", err)
+			app.config.IAM.Enabled = false
+		}
+	} else if app.config.IAM.ClientID == "" {
+		app.config.IAM.Enabled = false
+	}
+
+	// Platform product catalog seed — populate the CMS source-of-truth for
+	// Hanzo's own products (the list docs/console/pricing derive from) on first
+	// boot. SeedIfEmpty is a cheap count-gated no-op once populated, so CMS
+	// edits are authoritative thereafter. Set COMMERCE_CATALOG_SEED=false to skip.
+	if getEnv("COMMERCE_CATALOG_SEED", "true") != "false" {
+		app.runCatalogSeed()
+		app.runInfraCatalogSeed()
+		app.runEnsoCatalogSeed()
+	}
+
+	// Currency reference seed — populate the global (default-namespace) currency
+	// table the store/settings + product/price pickers read. SeedIfEmpty is a
+	// cheap count-gated no-op once populated, so admin edits stay authoritative.
+	// COMMERCE_CURRENCY_SEED=false to skip.
+	if getEnv("COMMERCE_CURRENCY_SEED", "true") != "false" {
+		app.runCurrencySeed()
+	}
+
+	// Subscription/DNS plan authority seed — reconcile models/plan (the editable
+	// pricing source of truth that GET /v1/billing/plans and resolveSubscriptionPlan
+	// read) to the embedded @hanzo/plans catalog on EVERY boot.
+	//
+	// THIS CAN CHANGE WHAT A PLAN CHARGES. That is the point, and it is a reversal
+	// of what this comment used to claim ("seed values EQUAL the embed, so it
+	// changes NO charge"), which stopped being true the moment the seed could
+	// correct rows it had written itself. Shipping a new @hanzo/plans reprices the
+	// live catalog on the next boot, and retires what the catalog stopped
+	// publishing by archiving it. An admin edit (plan.AdminEdited) is never
+	// touched, and no row is ever deleted.
+	//
+	// So a catalog change is a DEPLOY, with the same review a deploy gets — not a
+	// script someone runs against production holding a SuperAdmin bearer.
+	// COMMERCE_PLANS_SEED=false to skip.
+	if getEnv("COMMERCE_PLANS_SEED", "true") != "false" {
+		app.runPlansSeed()
+	}
+
+	// Anti-spoofing boundary — MUST be installed before any route group so it
+	// wraps EVERY route. zip applies Use() middleware only to routes
+	// registered AFTER the Use() call, so this runs ahead of setupRoutes (and
+	// ahead of the /v1 api.Route() bundle the cmd/* binaries register
+	// post-Bootstrap). EdgeAuth strips client-supplied identity and re-mints it
+	// from a verified IAM JWT. See server.go installEdgeAuth.
+	installEdgeAuth(app)
+
+	// Bind the analytics events client into every request's locals ROOT-WIDE, so
+	// the post-Bootstrap /v1 api.Route bundle (billing, checkout, usage) inherits
+	// it — not just the /v1/commerce group. This is what lets the
+	// customer-activity spine (subscription/invoice/usage) actually reach the
+	// collector (commerce.events). Best-effort; no-op without a collector.
+	installEventsLocal(app)
+
+	// Setup routes (registers /healthz + the /v1/commerce, /_/commerce groups).
+	app.setupRoutes()
+
+	// Require-identity gate (auth.Gin) — mounted AFTER setupRoutes so /healthz
+	// (k8s probes) and the setupRoutes groups keep their existing exemption,
+	// while the admin SPA and the post-Bootstrap /v1 bundle inherit it exactly
+	// as before. See server.go installRequireGate.
+	installRequireGate(app, app.config.RequireIdentity)
+
+	app.bootstrapped = true
+	return nil
+}
+
+func (app *App) runCatalogSeed() {
+	db := catalogentry.SystemDB(context.Background())
+	created, err := catalogentry.SeedIfEmpty(db)
+	if err != nil {
+		slog.Error("catalog seed failed", "err", err)
+		return
+	}
+	if created > 0 {
+		slog.Info("catalog seeded", "products", created)
+	}
+}
+
+// runInfraCatalogSeed populates the infra-tier catalog rows (cloud/gpu/datastore
+// pricing tiers) on first boot from the embedded snapshot. Gated SEPARATELY from
+// runCatalogSeed (SeedInfraIfEmpty counts only infra-category rows), so the tiers
+// seed independently of the hanzo product snapshot. Cheap count-gated no-op once
+// populated; failures are logged, never fatal.
+func (app *App) runInfraCatalogSeed() {
+	db := catalogentry.SystemDB(context.Background())
+	created, err := catalogentry.SeedInfraIfEmpty(db)
+	if err != nil {
+		slog.Error("infra catalog seed failed", "err", err)
+		return
+	}
+	if created > 0 {
+		slog.Info("infra catalog seeded", "tiers", created)
+	}
+}
+
+// runEnsoCatalogSeed populates the Enso family's model rows on first boot from
+// the embedded snapshot, at the retail the enso service already bills. Gated
+// SEPARATELY (SeedEnsoModelsIfEmpty counts only enso-category rows) so the family
+// seeds independently of the product and infra snapshots — per-family isolation,
+// the same rule sync.go applies so one family's failure cannot touch another's.
+// Cheap count-gated no-op once populated; failures are logged, never fatal.
+func (app *App) runEnsoCatalogSeed() {
+	db := catalogentry.SystemDB(context.Background())
+	created, err := catalogentry.SeedEnsoModelsIfEmpty(db)
+	if err != nil {
+		slog.Error("enso catalog seed failed", "err", err)
+		return
+	}
+	if created > 0 {
+		slog.Info("enso catalog seeded", "models", created)
+	}
+}
+
+// runCurrencySeed populates the global currency reference table (DEFAULT
+// namespace, like token/user/organization) on first boot from the embedded
+// common-currency list. Cheap count-gated no-op once populated; failures are
+// logged, never fatal — the currency list simply returns empty until seeded.
+func (app *App) runCurrencySeed() {
+	db := commerceDatastore.New(context.Background())
+	created, err := currencymodel.SeedIfEmpty(db)
+	if err != nil {
+		slog.Error("currency seed failed", "err", err)
+		return
+	}
+	if created > 0 {
+		slog.Info("currency seeded", "currencies", created)
+	}
+}
+
+// runPlansSeed reconciles the subscription/DNS plan authority (models/plan,
+// "system" ns) to the embedded @hanzo/plans catalog on EVERY boot. It logs the
+// counts because a boot that silently reprices the catalog is a boot nobody can
+// audit afterwards — the SAME
+func (app *App) runPlansSeed() {
+	created, corrected, err := billingPkg.SeedPlans(context.Background())
+	if err != nil {
+		slog.Error("plan authority seed failed", "err", err)
+		return
+	}
+	if created > 0 || corrected > 0 {
+		slog.Info("plan authority seeded", "created", created, "corrected", corrected)
+	}
+}
+
+// setupRoutes configures HTTP routes
+func (app *App) setupRoutes() {
+	// Health check
+	embedded := app.config.SharedApp != nil
+	if !embedded {
+		app.Router.Get("/healthz", func(c *zip.Ctx) error {
+			return c.JSON(http.StatusOK, map[string]any{
+				"status":  "ok",
+				"service": "commerce",
+				"version": Version,
+				"commit":  GitCommit,
+				"built":   BuildTime,
+			})
+		})
+	}
+
+	// Embedded admin surface — two go:embed'd bundles sharing /admin/*:
+	//   /admin/billing/*  → hanzoai/billing bundle (IAM-gated inside the handler:
+	//                       admin/billing_admin/owner/superadmin; 404 otherwise)
+	//   /admin/*          → commerce admin SPA (ui.FS; auth enforced by the app
+	//                       itself via IAM redirect)
+	// The old manual dispatch is gone: zip routes by SPECIFICITY, so the
+	// /admin/billing subtree wins over /admin/* declaratively.
+	if !embedded {
+		billingUIMount := "/admin/billing"
+		app.Router.Get(billingUIMount+"/*", billingUI.UIHandler(billingUIMount, iammiddleware.Client()))
+		adminSPA := zip.Static(ui.FS(), zip.WithIndex("index.html"), zip.WithFallback("index.html"))
+		app.Router.Get("/admin", adminSPA)
+		app.Router.Get("/admin/*", adminSPA)
+	}
+
+	// API routes
+	api := app.Router.Group("/v1/commerce")
+	{
+		// Core middleware required by Commerce API handlers
+		api.Use(middleware.AddHost())
+		api.Use(middleware.RequestContext())
+		api.Use(middleware.DetectOverrides())
+		api.Use(middleware.ErrorHandlerJSON())
+		api.Use(middleware.AccessControl("*"))
+
+		// IAM JWT validation middleware (falls through to legacy auth if not IAM token).
+		// EdgeAuth (strip client identity + mint from verified JWT) is installed by
+		// Bootstrap (server.go installIdentityBoundary) BEFORE this group is
+		// registered, so it already covers this group.
+		if app.config.IAM.Enabled {
+			api.Use(iammiddleware.IAMTokenRequired())
+		}
+
+		// Default cache policy: private, no-store for all API routes.
+		// Individual route groups or handlers may override with CachePublic().
+		api.Use(middleware.CachePrivate())
+
+		// Inject KMS, Events, Publisher, and KV into request locals for handlers.
+		api.Use(zip.H(func(c *zip.Ctx) error {
+			if app.KMS != nil {
+				c.Locals("kms", app.KMS)
+			}
+			if app.Events != nil {
+				c.Locals("events", app.Events)
+			}
+			if app.Publisher != nil {
+				c.Locals("publisher", app.Publisher)
+			}
+			if kv, err := app.Infra.KV(); err == nil {
+				c.Locals("kv", kv)
+			}
+			return c.Next()
+		}))
+
+		// Trigger OnRouteSetup hooks to let extensions add routes
+		app.Hooks.TriggerRouteSetup(api)
+
+		// Owner=="admin" margin projection: GET /v1/commerce/admin/catalog. On the
+		// IAM-gated api group so claims are present; the handler ALSO enforces
+		// IsSuperAdmin(), so cost + margin never reach an org-level admin.
+		catalogapi.AdminCatalogRoute(api)
+	}
+
+	// Hosted multi-tenant checkout. Mounts:
+	//   GET  /v1/commerce/tenant   — public tenant JSON (branding + enabled methods)
+	//   POST /v1/commerce/deposits — proxied to tenant Backend.URL (e.g. a broker-dealer backend)
+	//   GET  /*                    — embedded Vite SPA with SPA fallback
+	//
+	// Must be registered LAST: the SPA handler is the least-specific catch-all,
+	// and everything above this line owns its own route prefix.
+	// Org-as-tenant resolution (ONE way): the IAM org IS the tenant. host→brand→
+	// org slug (checkout.OrgResolver) is the single source of truth for
+	// /v1/commerce/tenant, deposits, and webhooks — no separate commerce-tenant
+	// registry to seed or drift. The public tenant JSON carries the org's public
+	// Square config (resolved by the same authority as the charge path), so the
+	// pay SPA's card iframe initializes with the exact application commerce will
+	// charge — no build-time VITE_* env, no per-host seed row, no 404.
+	//
+	// The Square public config is resolved from the org ROW, because live-vs-sandbox
+	// is org state (TestMode() == !Live) and nothing else can answer it. With the
+	// nil loader this used to be a synthetic org, which is never Live, so the public
+	// tenant JSON advertised the SANDBOX application permanently — flipping the org
+	// live changed the record and nothing else (measured 2026-07-30:
+	// POST /v1/billing/mode returned {"live":true,"testMode":false} while the
+	// tenant kept serving sandbox-sq0idb-…). The card iframe then tokenizes against
+	// sandbox while the charge path uses the live org, and a sandbox nonce cannot be
+	// charged by a production account — checkout fails closed and nobody can pay.
+	//
+	// The read is wrapped in the two properties checkout.OrgLoader REQUIRES, since
+	// this is a PUBLIC, unauthenticated endpoint the pay SPA hits on every boot and
+	// an unbounded per-request query is what exhausted the pool at 1.42.44:
+	// a 60s cache (so a boot storm costs one read, and a flip still lands within a
+	// minute with no restart) and a 2s deadline (so a wedged datastore costs one
+	// request, not the pool). Every failure path returns a MISS, which degrades to
+	// exactly the previous synthetic-org behavior — sandbox. An outage can never
+	// promote a tenant onto production rails.
+	orgResolver := checkout.NewOrgResolver(checkout.NewCachedOrgLoader(
+		func(ctx context.Context, slug string) (*orgModel.Organization, error) {
+			org := orgModel.New(commerceDatastore.New(ctx))
+			if _, err := org.Query().Filter("Name=", slug).Get(); err != nil {
+				return nil, err
+			}
+			return org, nil
+		},
+		60*time.Second, 2*time.Second,
+	).Load)
+
+	// forwardedHostMiddleware lifts the original customer-facing host from
+	// X-Forwarded-Host (set by a trusted upstream) since the ingress overwrites
+	// req.Host. brandForHost is exact-suffix, so a spoofed host still only maps
+	// to a real brand's org.
+	public := app.Router.Group("/v1/commerce")
+	public.Use(forwardedHostMiddleware())
+	public.Get("/tenant", checkout.TenantJSON(orgResolver))
+	// Public platform product catalog projection (the CMS SOT other surfaces —
+	// docs, console sidebar, pricing — consume). Public + brand-scoped (?brand).
+	public.Get("/catalog", catalogapi.Public)
+	// Public currency reference list (the store/settings + product/price pickers
+	// read this instead of a hardcoded array). Global default-namespace set.
+	currencyapi.PublicRoute(public)
+	public.Post("/deposits", checkout.Deposits(orgResolver, checkout.NewHTTPForwarder()))
+	public.Post("/deposits/:id/confirm", checkout.DepositConfirm(orgResolver, checkout.NewHTTPForwarder()))
+	public.Get("/deposits/:id/status", checkout.DepositStatus(orgResolver, checkout.NewHTTPForwarder()))
+	public.Post("/webhooks/:provider", checkout.WebhookIntake(orgResolver))
+
+	// Superadmin tenant CRUD over the base-backed store stays available for
+	// per-org overrides, but it no longer DRIVES resolution. Gated by IAM +
+	// handler claim checks; under /_ so the ingress blocks it publicly.
+	if app.CommerceStore != nil {
+		adminGroup := app.Router.Group("/_/commerce")
+		if app.config.IAM.Enabled {
+			adminGroup.Use(iammiddleware.IAMTokenRequired())
+		}
+		checkout.MountTenantAdmin(adminGroup, app.CommerceStore)
+	}
+
+	// SPA fallback — the least-specific catch-all; standalone only. A host
+	// binary owns its own root surface.
+	if !embedded {
+		checkout.MountSPA(app.Router)
+	}
+}
+
+// Serve starts the HTTP listener(s) — zip.Listen on the native transport
+// (zero net/http). The legacy standalone-TLS path uses the documented fiber
+// escape hatch; production terminates TLS at the gateway.
+func (app *App) Serve() error {
+	if app.config.SharedApp != nil {
+		return fmt.Errorf("commerce: co-resident (SharedApp set) — the host binary listens")
+	}
+	// Trigger OnServe hooks
+	if err := app.Hooks.TriggerServe(app); err != nil {
+		return fmt.Errorf("serve hook error: %w", err)
+	}
+
+	fmt.Printf("Commerce %s starting on %s\n", Version, app.config.HTTPAddr)
+	if app.config.Dev {
+		fmt.Println("Running in DEVELOPMENT mode")
+	}
+
+	if app.config.HTTPSAddr != "" && app.config.TLSCert != "" && app.config.TLSKey != "" {
+		go func() {
+			if err := app.Router.Fiber().Listen(app.config.HTTPSAddr, fiber.ListenConfig{
+				CertFile:              app.config.TLSCert,
+				CertKeyFile:           app.config.TLSKey,
+				DisableStartupMessage: true,
+			}); err != nil {
+				fmt.Fprintf(os.Stderr, "HTTPS error: %v\n", err)
+			}
+		}()
+	}
+
+	return app.Router.Listen("http://" + app.config.HTTPAddr)
+}
+
+// Shutdown gracefully shuts down the application
+func (app *App) Shutdown() error {
+	var err error
+	app.shutdownOnce.Do(func() {
+		close(app.shutdownCh)
+
+		// Trigger OnTerminate hooks
+		if hookErr := app.Hooks.TriggerTerminate(app); hookErr != nil {
+			err = hookErr
+		}
+
+		// Shutdown HTTP server (drains in-flight requests, runs zip teardown hooks)
+		if app.Router != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if shutdownErr := app.Router.ShutdownWithContext(ctx); shutdownErr != nil {
+				err = shutdownErr
+			}
+		}
+
+		// Drain the background queue. The listener is down, so nothing new is
+		// being queued; what is left are the webhook emits and counter shards
+		// the last requests spawned, and they read the database. Waiting for
+		// them here is what makes closing it below safe — otherwise they come
+		// back to "db: namespaces closed".
+		drain, cancelDrain := context.WithTimeout(context.Background(), 30*time.Second)
+		if drainErr := delay.Drain(drain); drainErr != nil {
+			slog.Warn("background tasks still running at shutdown", "err", drainErr)
+		}
+		cancelDrain()
+
+		// Stop ZAP node
+		if app.ZAP != nil {
+			app.ZAP.Stop()
+		}
+
+		// Close events emitter (flush remaining events)
+		if app.Events != nil {
+			if eventsErr := app.Events.Close(); eventsErr != nil {
+				err = eventsErr
+			}
+		}
+
+		// Close infrastructure
+		if app.Infra != nil {
+			if infraErr := app.Infra.Close(); infraErr != nil {
+				err = infraErr
+			}
+		}
+
+		// Close database
+		if app.DB != nil {
+			if dbErr := app.DB.Close(); dbErr != nil {
+				err = dbErr
+			}
+		}
+	})
+
+	return err
+}
+
+// Config returns the current configuration
+func (app *App) Config() *Config {
+	return app.config
+}
+
+// DataPath returns the full path within the data directory
+func (app *App) DataPath(subpath string) string {
+	return filepath.Join(app.config.DataDir, subpath)
+}
+
+// IsDev returns true if running in development mode
+func (app *App) IsDev() bool {
+	return app.config.Dev
+}
+
+// getEnv returns environment variable or default
+func getEnv(key, defaultVal string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return defaultVal
+}
+
+// forwardedHostMiddleware lifts the X-Forwarded-Host header into
+// req.Host so downstream tenant resolution sees the original customer
+// hostname (e.g. world.hanzo.ai) instead of the ingress hostname
+// (e.g. commerce-api.hanzo.ai). Tenant resolution is exact-match, so a
+// spoofed header still must point at an existing tenant row to do
+// anything — there is no probe oracle. Empty header is a no-op.
+func forwardedHostMiddleware() zip.Handler {
+	return func(c *zip.Ctx) error {
+		if xfh := c.Header("X-Forwarded-Host"); xfh != "" {
+			c.Fiber().Request().Header.SetHost(xfh)
+		}
+		return c.Next()
+	}
+}

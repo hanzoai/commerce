@@ -1,0 +1,332 @@
+package order
+
+import (
+	"strings"
+
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/types/country"
+	"github.com/hanzoai/commerce/util/searchpartial"
+)
+
+type Document struct {
+	mixin.DocumentSaveLoad `datastore:"-" json:"-"`
+
+	// Special Kind Option
+	Kind string `search:",facet"`
+
+	Id_           string
+	Number        float64
+	Email         string
+	EmailPartials string
+	UserId        string
+	StoreId       string
+	CampaignId    string
+	CartId        string
+	ReferrerId    string
+
+	ProductNames string
+	ProductIds   string
+	ProductSlugs string
+
+	BillingAddressName        string
+	BillingAddressLine1       string
+	BillingAddressLine2       string
+	BillingAddressCity        string
+	BillingAddressStateCode   string
+	BillingAddressState       string
+	BillingAddressCountryCode string
+	BillingAddressCountry     string
+	BillingAddressPostalCode  string
+
+	ShippingAddressName        string
+	ShippingAddressLine1       string
+	ShippingAddressLine2       string
+	ShippingAddressCity        string
+	ShippingAddressStateCode   string
+	ShippingAddressState       string
+	ShippingAddressCountryCode string
+	ShippingAddressCountry     string
+	ShippingAddressPostalCode  string
+
+	Discount   float64
+	Subtotal   float64
+	Shipping   float64
+	Tax        float64
+	Adjustment float64
+	Total      float64
+	Paid       float64
+	Refunded   float64
+
+	Type string
+
+	CouponCodes string
+
+	Status            string
+	PaymentStatus     string
+	FulfillmentStatus string
+
+	FulfillmentTracking   string
+	FulfillmentExternalId string
+	FulfillmentService    string
+	FulfillmentCarrier    string
+
+	CreatedAt float64
+	UpdatedAt float64
+
+	Test string
+
+	// Facets
+	ProductNameOption0 string `search:"productName,facet"`
+	ProductNameOption1 string `search:"productName,facet"`
+	ProductNameOption2 string `search:"productName,facet"`
+	ProductNameOption3 string `search:"productName,facet"`
+	ProductNameOption4 string `search:"productName,facet"`
+	ProductNameOption5 string `search:"productName,facet"`
+	ProductNameOption6 string `search:"productName,facet"`
+	ProductNameOption7 string `search:"productName,facet"`
+	ProductNameOption8 string `search:"productName,facet"`
+	ProductNameOption9 string `search:"productName,facet"`
+
+	BillingAddressCityOption       string `search:"billingAddressCity,facet"`
+	BillingAddressStateOption      string `search:"billingAddressState,facet"`
+	BillingAddressPostalCodeOption string `search:"billingAddressPostalCode,facet"`
+	BillingAddressCountryOption    string `search:"billingAddressCountry,facet"`
+
+	ShippingAddressCityOption       string `search:"shippingAddressCity,facet"`
+	ShippingAddressStateOption      string `search:"shippingAddressState,facet"`
+	ShippingAddressPostalCodeOption string `search:"shippingAddressPostalCode,facet"`
+	ShippingAddressCountryOption    string `search:"shippingAddressCountry,facet"`
+
+	DiscountOption   float64 `search:"discount,facet"`
+	SubtotalOption   float64 `search:"subtotal,facet"`
+	ShippingOption   float64 `search:"shipping,facet"`
+	TaxOption        float64 `search:"tax,facet"`
+	AdjustmentOption float64 `search:"adjustment,facet"`
+	TotalOption      float64 `search:"total,facet"`
+	PaidOption       float64 `search:"paid,facet"`
+	RefundedOption   float64 `search:"refunded,facet"`
+
+	TypeOption        string `search:"type,facet"`
+	CouponCodeOption0 string `search:"couponCode,facet"`
+
+	StatusOption            string `search:"status,facet"`
+	PaymentStatusOption     string `search:"paymentStatus,facet"`
+	FulfillmentStatusOption string `search:"fulfillmentStatus,facet"`
+	PreorderOption          string `search:"preorder,facet"`
+	ConfirmedOption         string `search:"confirmed,facet"`
+
+	FulfillmentTrackingOption0 string `search:"fulfillmentTracking,facet"`
+	FulfillmentTrackingOption1 string `search:"fulfillmentTracking,facet"`
+	FulfillmentTrackingOption2 string `search:"fulfillmentTracking,facet"`
+}
+
+func (d *Document) Id() string {
+	return d.Id_
+}
+
+func (d *Document) Init() {
+	d.SetDocument(d)
+}
+
+func (o Order) Document() mixin.Document {
+	emailUser := strings.Split(o.Email, "@")[0]
+
+	productIds := make([]string, 0)
+	productSlugs := make([]string, 0)
+	productNames := make([]string, 0)
+	for _, item := range o.Items {
+		productIds = append(productIds, item.ProductId)
+		productSlugs = append(productIds, item.ProductSlug)
+		productNames = append(productIds, item.ProductName)
+	}
+	trackings := make([]string, 0)
+	for _, tracking := range o.Fulfillment.Trackings {
+		trackings = append(trackings, tracking.Number)
+	}
+
+	doc := &Document{}
+	doc.Init()
+	doc.Kind = kind
+	doc.Id_ = o.Id()
+	doc.Number = float64(o.NumberFromId())
+	doc.Email = o.Email
+	doc.EmailPartials = searchpartial.Partials(emailUser) + " " + emailUser
+	doc.UserId = o.UserId
+	doc.StoreId = o.StoreId
+	doc.CampaignId = o.CampaignId
+	doc.CartId = o.CartId
+	doc.ReferrerId = o.ReferrerId
+
+	doc.ProductNames = strings.Join(productNames, " ")
+	doc.ProductIds = strings.Join(productIds, " ")
+	doc.ProductSlugs = strings.Join(productSlugs, " ")
+
+	doc.BillingAddressName = o.BillingAddress.Name
+	doc.BillingAddressLine1 = o.BillingAddress.Line1
+	doc.BillingAddressLine2 = o.BillingAddress.Line2
+	doc.BillingAddressCity = o.BillingAddress.City
+	doc.BillingAddressStateCode = o.BillingAddress.State
+	doc.BillingAddressCountryCode = o.BillingAddress.Country
+	if o.BillingAddress.Country != "" {
+		if c, err := country.FindByISO3166_2(o.BillingAddress.Country); err == nil {
+			doc.BillingAddressCountry = c.Name.Common
+
+			if o.BillingAddress.State != "" {
+				if sd, err := c.FindSubDivision(o.BillingAddress.State); err == nil {
+					doc.BillingAddressState = sd.Name
+				} else {
+					log.Error("BillingAddress State Code '%s' caused an error: %s ", o.BillingAddress.State, err, o.Context())
+				}
+			}
+		} else {
+			log.Error("BillingAddress Country Code '%s' caused an error: %s", o.BillingAddress.Country, err, o.Context())
+		}
+	}
+	doc.BillingAddressPostalCode = o.BillingAddress.PostalCode
+
+	doc.ShippingAddressName = o.ShippingAddress.Name
+	doc.ShippingAddressLine1 = o.ShippingAddress.Line1
+	doc.ShippingAddressLine2 = o.ShippingAddress.Line2
+	doc.ShippingAddressCity = o.ShippingAddress.City
+	doc.ShippingAddressStateCode = o.ShippingAddress.State
+	doc.ShippingAddressCountryCode = o.ShippingAddress.Country
+	if o.ShippingAddress.Country != "" {
+		if c, err := country.FindByISO3166_2(o.ShippingAddress.Country); err == nil {
+			doc.ShippingAddressCountry = c.Name.Common
+
+			if o.ShippingAddress.State != "" {
+				if sd, err := c.FindSubDivision(o.ShippingAddress.State); err == nil {
+					doc.ShippingAddressState = sd.Name
+				} else {
+					log.Error("ShippingAddress State Code '%s' caused an error: %s ", o.ShippingAddress.State, err, o.Context())
+				}
+			}
+		} else {
+			log.Error("ShippingAddress Country Code '%s' caused an error: %s", o.ShippingAddress.Country, err, o.Context())
+		}
+	}
+	doc.ShippingAddressPostalCode = o.ShippingAddress.PostalCode
+
+	// A search document is a projection, not a record. The index sorts and
+	// range-filters on these fields, which is what a number buys us, so they
+	// are float64 here and AsMajorUnits is spelled out at each one to make the
+	// crossing visible. The order itself keeps integer cents — nothing reads
+	// money back out of the index.
+	doc.Discount = o.Currency.Amount(o.Discount).AsMajorUnits()
+	doc.Subtotal = o.Currency.Amount(o.Subtotal).AsMajorUnits()
+	doc.Shipping = o.Currency.Amount(o.Shipping).AsMajorUnits()
+	doc.Tax = o.Currency.Amount(o.Tax).AsMajorUnits()
+	doc.Adjustment = o.Currency.Amount(o.Adjustment).AsMajorUnits()
+	doc.Total = o.Currency.Amount(o.Total).AsMajorUnits()
+	doc.Paid = o.Currency.Amount(o.Paid).AsMajorUnits()
+	doc.Refunded = o.Currency.Amount(o.Refunded).AsMajorUnits()
+
+	doc.Type = string(o.Type)
+
+	doc.CreatedAt = float64(o.CreatedAt.Unix())
+	doc.UpdatedAt = float64(o.UpdatedAt.Unix())
+
+	doc.CouponCodes = strings.Join(o.CouponCodes, " ")
+	doc.ReferrerId = o.ReferrerId
+
+	doc.Status = string(o.Status)
+	doc.PaymentStatus = string(o.PaymentStatus)
+	doc.FulfillmentStatus = string(o.Fulfillment.Status)
+	doc.FulfillmentTracking = strings.Join(trackings, " ")
+	doc.FulfillmentExternalId = o.Fulfillment.ExternalId
+	doc.FulfillmentService = o.Fulfillment.Service
+	doc.FulfillmentCarrier = o.Fulfillment.Carrier
+
+	nItems := len(o.Items)
+	if nItems > 0 {
+		doc.ProductNameOption0 = o.Items[0].ProductName
+	}
+	if nItems > 1 {
+		doc.ProductNameOption1 = o.Items[1].ProductName
+	}
+	if nItems > 2 {
+		doc.ProductNameOption2 = o.Items[2].ProductName
+	}
+	if nItems > 3 {
+		doc.ProductNameOption3 = o.Items[3].ProductName
+	}
+	if nItems > 4 {
+		doc.ProductNameOption4 = o.Items[4].ProductName
+	}
+	if nItems > 5 {
+		doc.ProductNameOption5 = o.Items[5].ProductName
+	}
+	if nItems > 6 {
+		doc.ProductNameOption6 = o.Items[6].ProductName
+	}
+	if nItems > 7 {
+		doc.ProductNameOption7 = o.Items[7].ProductName
+	}
+	if nItems > 8 {
+		doc.ProductNameOption8 = o.Items[8].ProductName
+	}
+	if nItems > 9 {
+		doc.ProductNameOption9 = o.Items[9].ProductName
+	}
+
+	doc.BillingAddressCityOption = doc.BillingAddressCity
+	doc.BillingAddressStateOption = doc.BillingAddressState
+	doc.BillingAddressPostalCodeOption = doc.BillingAddressPostalCode
+	doc.BillingAddressCountryOption = doc.BillingAddressCountry
+
+	doc.ShippingAddressCityOption = doc.ShippingAddressCity
+	doc.ShippingAddressStateOption = doc.ShippingAddressState
+	doc.ShippingAddressPostalCodeOption = doc.ShippingAddressPostalCode
+	doc.ShippingAddressCountryOption = doc.ShippingAddressCountry
+
+	// The same amounts as above, at the same scale. These used to be their own
+	// switch: /1e9 for ETH/BTC/XBT and raw minor units for everything else. Both
+	// arms were wrong — a satoshi is 1e-8 and a wei is 1e-18, and the fiat arm
+	// indexed cents as if they were dollars — and they disagreed with the block
+	// above in this same file. The currency's own scale is the only answer.
+	doc.DiscountOption = doc.Discount
+	doc.SubtotalOption = doc.Subtotal
+	doc.ShippingOption = doc.Shipping
+	doc.TaxOption = doc.Tax
+	doc.AdjustmentOption = doc.Adjustment
+	doc.TotalOption = doc.Total
+	doc.PaidOption = doc.Paid
+	doc.RefundedOption = doc.Refunded
+
+	doc.TypeOption = string(o.Type)
+
+	nCoupons := len(o.CouponCodes)
+	if nCoupons > 0 {
+		doc.CouponCodeOption0 = o.CouponCodes[0]
+	}
+
+	doc.StatusOption = doc.Status
+	doc.PaymentStatusOption = doc.PaymentStatus
+	doc.FulfillmentStatusOption = doc.FulfillmentStatus
+	if o.Preorder {
+		doc.PreorderOption = "preorder"
+	}
+	if !o.Unconfirmed {
+		doc.ConfirmedOption = "confirmed"
+	}
+
+	nTrackings := len(o.Fulfillment.Trackings)
+	if nTrackings > 0 {
+		doc.FulfillmentTrackingOption0 = o.Fulfillment.Trackings[0].Number
+	}
+	if nTrackings > 1 {
+		doc.FulfillmentTrackingOption1 = o.Fulfillment.Trackings[1].Number
+	}
+	if nTrackings > 2 {
+		doc.FulfillmentTrackingOption2 = o.Fulfillment.Trackings[2].Number
+	}
+
+	if o.Test {
+		doc.Test = "true"
+	} else {
+		doc.Test = "false"
+	}
+
+	return doc
+}

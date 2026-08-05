@@ -1,0 +1,61 @@
+package migrations
+
+import (
+	"strconv"
+
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/datastore/parallel"
+	"github.com/hanzoai/commerce/delay"
+	"github.com/hanzoai/commerce/util/task"
+)
+
+type Row parallel.BigQueryRow
+
+type SetupFn func(*zip.Ctx) []interface{}
+
+var NoArgs = []interface{}{}
+
+func NoSetup(c *zip.Ctx) []interface{} {
+	return NoArgs
+}
+
+func New(name string, setupFn SetupFn, fns ...interface{}) *delay.Function {
+	name = "migration-" + name
+
+	tasks := make([]*parallel.ParallelFn, len(fns))
+	for i, fn := range fns {
+		tasks[i] = parallel.New(name+"-task-"+strconv.Itoa(i), fn)
+	}
+
+	return task.Func(name, func(c *zip.Ctx) error {
+		// Call setup fn
+		args := setupFn(c)
+
+		for i, _ := range fns {
+			// Run task fn
+			tasks[i].Run(c, 10, args...)
+		}
+		return nil
+	})
+}
+
+func NewBigQuery(name string, setupFn SetupFn, fns ...interface{}) *delay.Function {
+	name = "migration-" + name
+
+	tasks := make([]*parallel.ParallelFn, len(fns))
+	for i, fn := range fns {
+		tasks[i] = parallel.NewBigQuery(name+"-task-"+strconv.Itoa(i), fn)
+	}
+
+	return task.Func(name, func(c *zip.Ctx) error {
+		// Call setup fn
+		args := setupFn(c)
+
+		for i, _ := range fns {
+			// Run task fn
+			tasks[i].Run(c, 10, args...)
+		}
+		return nil
+	})
+}

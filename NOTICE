@@ -1,0 +1,34 @@
+Hanzo Commerce
+Copyright (c) 2014-present Hanzo AI, Inc.
+
+Hanzo Commerce is original software developed by Hanzo AI, Inc. It bundles the
+following vendored third-party components, whose copyright notices are retained
+in their respective source files:
+
+This product includes software from btcd/btcec (https://github.com/btcsuite/btcd), licensed under ISC:
+
+    Copyright (c) 2013-2022 The btcsuite developers
+    Copyright (c) 2015-2022 The Decred developers
+    Copyright (c) 2011 ThePiachu. All rights reserved.
+    Copyright (c) 2013-2016 Dave Collins
+
+This product includes software from the Go standard library (https://github.com/golang/go), licensed under the BSD 3-Clause License:
+
+    Copyright (c) 2010 The Go Authors. All rights reserved.
+
+This product includes software from Medusa (https://github.com/medusajs/medusa), licensed under the MIT License:
+
+    Copyright (c) 2021 Medusajs
+
+The TypeScript frontend under app/ is vendored from Medusa and rebranded to the
+@hanzo/commerce-* namespace: app/admin (@medusajs/dashboard), app/site (the
+Medusa Book documentation), and app/packages/{admin-shared,admin-vite-plugin,
+docs-ui,docs-utils,icons,sdk,types,ui,ui-preset} (the corresponding @medusajs
+packages). app/store derives from the Medusa Next.js starter
+(https://github.com/medusajs/nextjs-starter-medusa), also MIT:
+
+    Copyright (c) 2022 Medusa
+
+Medusa ships no NOTICE file; there are no further attributions to propagate.
+The Go backend is not a Medusa fork -- it is an independent native
+implementation that reaches API parity with Medusa v2's admin domains.
