@@ -128,9 +128,8 @@ export class Product {
       const form = new FormData()
       form.append("files", body.file)
 
-      const localUploadResponse = await this.client.fetch<{
-        files: HttpTypes.AdminUploadFile
-      }>("admin/uploads", {
+      const localUploadResponse =
+        await this.client.fetch<HttpTypes.AdminFileListResponse>("admin/uploads", {
         method: "POST",
         headers: {
           ...headers,

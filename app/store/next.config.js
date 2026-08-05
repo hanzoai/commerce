@@ -72,9 +72,6 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   transpilePackages: guiPackages(),
   webpack(config) {
     config.resolve.alias = {

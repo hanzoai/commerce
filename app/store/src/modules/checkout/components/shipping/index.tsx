@@ -17,10 +17,23 @@ const PICKUP_OPTION_OFF = "__PICKUP_OFF"
 
 type ShippingProps = {
   cart: HttpTypes.StoreCart
-  availableShippingMethods: HttpTypes.StoreCartShippingOption[] | null
+  availableShippingMethods:
+    | HttpTypes.StoreCartShippingOptionWithServiceZone[]
+    | null
 }
 
-function formatAddress(address: HttpTypes.StoreCartAddress) {
+// Takes exactly the fields it reads, so cart addresses and fulfillment-location
+// addresses (whose empties are null, not undefined) both fit structurally.
+type FormattableAddress = {
+  [K in
+    | "address_1"
+    | "address_2"
+    | "postal_code"
+    | "city"
+    | "country_code"]?: string | null
+}
+
+function formatAddress(address?: FormattableAddress | null) {
   if (!address) {
     return ""
   }
