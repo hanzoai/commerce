@@ -11,7 +11,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Text, XStack, YStack } from '@hanzo/gui'
-import { useIam, useOrganizations } from '@hanzo/iam/react'
+import { OrgProjectSwitcher, useIam, useOrganizations } from '@hanzo/iam/react'
 import { HanzoMark, ThemeToggle } from '@hanzo/ui/product'
 import {
   Boxes,
@@ -32,6 +32,8 @@ import {
   Warehouse,
 } from '@hanzogui/lucide-icons-2'
 
+import { Account } from '@/components/account'
+import { Palette } from '@/components/palette'
 import { setAccessToken } from '@/lib/commerce'
 import { RESOURCES } from '@/lib/resources'
 
@@ -63,7 +65,7 @@ const NAV = [{ slug: 'overview', label: 'Overview' }, ...RESOURCES.map((r) => ({
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading, accessToken } = useIam()
-  const { currentOrgId } = useOrganizations()
+  const orgs = useOrganizations()
   const router = useRouter()
   const pathname = usePathname() ?? ''
 
@@ -77,6 +79,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   return (
     <XStack minH="100vh" bg="$background">
+      <Palette surfaces={NAV} />
       <YStack width={232} borderRightWidth={1} borderColor="$borderColor" p="$3" gap="$1">
         <XStack items="center" gap="$2" px="$2" py="$3">
           <HanzoMark size={20} />
@@ -121,12 +124,16 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           borderBottomWidth={1}
           borderColor="$borderColor"
         >
-          {currentOrgId ? (
-            <Text fontSize="$2" color="$color10" numberOfLines={1}>
-              {currentOrgId}
-            </Text>
-          ) : null}
+          {/* THE STORE YOU ARE EDITING IS A CHOICE, NOT A LABEL. This printed
+              `currentOrgId` as a bare string, so the one control a merchant
+              needs on every screen could not be operated — and the sidebar's
+              own store picker was an empty native <select> beside it.
+              `OrgProjectSwitcher` is published by @hanzo/iam/react and takes
+              exactly what `useOrganizations()` returns; writing a second one
+              here is how two products come to disagree about what an org is. */}
+          <OrgProjectSwitcher {...orgs} />
           <ThemeToggle />
+          <Account />
         </XStack>
         <YStack flex={1} p="$5" gap="$4">
           {children}
