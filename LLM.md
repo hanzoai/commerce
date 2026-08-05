@@ -60,7 +60,7 @@ The other three spellings are gone: the Vite SPA at `frontend/` (deleted — its
 - IAM is native PKCE through `@hanzo/iam`; the active organization scopes every
   read and is the sole tenant selector.
 - **`@hanzo/ui` comes from the registry at the range the console pins**
-  (`^8.0.12`) so the admin and the console cannot drift, and so a developer's
+  (`^8.0.39`) so the admin and the console cannot drift, and so a developer's
   build and an image build resolve the identical package. It was a `link:` to a
   sibling checkout that every image rewrote to the registry range before
   installing — an image built what nobody had built locally, which is how a
@@ -78,8 +78,9 @@ The other three spellings are gone: the Vite SPA at `frontend/` (deleted — its
 - **The build is a real gate**: `turbo run typecheck build --filter=@hanzo/commerce-dashboard`.
   `next.config.ts` no longer sets `ignoreBuildErrors`, and `hanzo.yml` runs the
   typecheck in CI.
-- `@hanzo/commerce-ui` (`app/packages/ui`, the vendored Medusa design system) is now
-  a STOREFRONT-only dependency — `store/` still renders it. The admin is fully off it.
+- `@hanzo/commerce-ui` (`app/packages/ui`) is a STOREFRONT-only dependency and no
+  longer the vendored Medusa design system: it is the 16-name kit on `@hanzo/ui`
+  + `kit.css` (see *8.x convergence*). The admin never touches it.
 - The embedded copy in the Go binary is the SAME export: `scripts/sync-admin-ui.sh`
   copies `app/admin/out` into `ui/dist` for `//go:embed`, served at the `/admin/*`
   mount. `ui/dist` is BUILD OUTPUT — gitignored but for `.gitkeep`, and that sync is
@@ -798,30 +799,79 @@ State, by surface:
 | --- | --- | --- |
 | `app/admin` | `@hanzo/ui/product` on `@hanzo/gui` | none |
 | `app/site` | `components/docs` + `components/shell` on `@hanzo/gui`; prose is plain CSS on `@hanzo/ui/theme.css` tokens | none |
-| `app/store` | Tailwind + `@hanzo/commerce-ui` | **both, still** |
-| `app/packages/ui` | Radix + `tailwind-merge`, consumed ONLY by `app/store` | **both, still** |
-| `app/packages/ui-preset` | the Tailwind preset `app/store` and `packages/ui` share | **tailwind, still** |
+| `app/store` | `@hanzo/commerce-ui` kit + `@hanzo/ui` on `@hanzo/gui`; its OWN classNames still Tailwind | **tailwind only** |
+| `app/packages/ui` | 16 names: `@hanzo/ui` components + plain elements on `kit.css` theme tokens | none |
+| `app/packages/ui-preset` | the Tailwind preset behind the storefront's classNames | **tailwind, still** |
 
 Deleted with the docs fork: `packages/docs-ui` (458 files, its own Tailwind
 preset and grey scale), `packages/docs-utils`, `packages/admin-shared` and
 `packages/admin-vite-plugin` (the Vite admin's build plugin — the admin is Next).
 
-**The remaining three move together or not at all.** `app/store` is 205 files and
-1038 `className` sites; it takes 16 names from `@hanzo/commerce-ui` (Badge,
-Button, Checkbox, clx, Container, Heading, IconBadge, IconButton, Input, Label,
-RadioGroup, Table, Text, toast, Toaster, useToggleState) plus `@headlessui/react`
-in 11 files. `packages/ui` is 195 files, 23 of them on Radix, and has no other
-consumer. `packages/ui-preset` is what makes the storefront's `grey-*` and
-`text-xsmall-regular` classes mean anything. Retiring `packages/ui` therefore
-requires converting the storefront in the SAME change — dropping the preset
-without the classes leaves an unstyled store.
+**Radix, headlessui and the vendored Medusa system are GONE** (grep the
+lockfile: zero `radix`, zero `headlessui`, zero sonner/cva/react-aria/dnd-kit).
+`packages/ui` was the 195-file Medusa fork; it is now ONE seam exporting the 16
+names the storefront renders (Badge, Button, Checkbox, clx, Container, Heading,
+IconBadge, IconButton, Input, Label, RadioGroup, Table, Text, toast, Toaster,
+useToggleState):
+
+- **Interactive pieces are `@hanzo/ui` on `@hanzo/gui`** (`src/client.tsx`,
+  `"use client"`): Button/IconButton translate Medusa's variant vocabulary
+  (primary→default, transparent→ghost, danger→destructive; isLoading is native),
+  Checkbox/Toaster/toast re-export. The store wires the gui runtime exactly as
+  the admin and site do: `GuiProvider` on `@hanzo/ui/gui-config`
+  (`src/app/providers.tsx`), the SINGLETONS webpack aliases, the
+  `@hanzogui/config/v5` packageEntry pin, `gui.d.ts` — all in
+  `store/next.config.js`.
+- **Server-rendered pieces are plain elements on `kit.css`** (`src/server.tsx`,
+  no directive): Text/Heading/Container/Label/Input/Badge/IconBadge/Table, drawn
+  by authored classes on `@hanzo/ui/theme.css` custom properties at the Medusa
+  metrics (txt-medium = 0.875rem/1.4rem etc., copied from the preset before the
+  fork died). Table MUST stay server-safe: a client reference has no properties
+  of its own, so a `"use client"` compound would crash every RSC `Table.Cell`.
+- **RadioGroup is the one primitive the shared layer lacks**: a group context
+  over native radio inputs, with two item faces — `Item` (Medusa's hidden-input
+  shape, `filter-radio-group`) and `Option` (the selectable card the checkout's
+  payment/shipping/pickup lists render, replacing headlessui's `Radio`).
+- **CSS order in `store/src/app/layout.tsx` is load-bearing**: theme.css
+  (tokens) → kit.css (kit defaults) → globals.css (Tailwind), so a caller's
+  utility className can still override a kit default while Tailwind exists.
+  `<html className="light">` opts the dark-first theme.css tokens into the
+  storefront's light mode alongside its own `data-mode="light"`.
+- headlessui's other faces became: common `Modal` → `@hanzo/ui` Dialog (same
+  compound API for its consumers), mobile-actions bottom sheet → Dialog with
+  bottom-anchored style, cart-dropdown/side-menu Popover + country/language/
+  address Listbox + account-info Disclosure → plain conditional panels with
+  the roles and keyboard handling written out (they were all externally-driven
+  hover/state panels; the library contributed only structure).
+
+**What remains is Tailwind alone, and it is ONE move**: `app/store`'s ~1050
+`className` sites (130 files) onto Gui style props / plain CSS — at which point
+`packages/ui-preset`, `tailwindcss`, `postcss`, `autoprefixer` and the
+`tailwind-merge` half of `clx` all drop in the same change. Dropping the preset
+without converting the classes leaves an unstyled store; that is why the strip
+did not ship half-done. The kit itself evaporates file-by-file as call sites
+move to direct `@hanzo/ui` imports during that conversion.
+
+Verifying the swap needed a browser, not just the build (Gui drops unknown
+props silently): serve the built store against a 60-line `/store/*` JSON stub
+(`HANZO_COMMERCE_API_URL`), then Playwright — zero page errors, kit classes and
+`is_Button`/`t_light` in the SSR HTML, one styled render. The middleware 307s
+to set `_hanzo_cache_id` before it passes a request through, so curl needs a
+cookie jar.
 
 ### Gui drops what it does not recognise — the typecheck is the only gate
 
 An unrecognised style prop is DISCARDED: no error, no warning, an unstyled
 element. `hanzo.yml`'s `frontend-typecheck` runs `turbo run typecheck` over every
-surface that draws with Gui, and the registered `GuiCustomConfig` (`gui.d.ts`) is
-what makes the token types real. Any new Gui surface belongs in that filter.
+surface that draws with Gui — the admin, the site, the kit AND the storefront —
+and the registered `GuiCustomConfig` (`gui.d.ts`) is what makes the token types
+real. Any new Gui surface belongs in that filter. The store's `next build` also
+typechecks for itself now (`ignoreBuildErrors` is gone); paying its type debt
+under TS7 is what that cost: `types/*` in `paths` (TS7 removed `baseUrl`), a
+`*.css` side-effect-module declaration (`css.d.ts`), undefined-money guards in
+the line-item components, and the canonical
+`StoreCartShippingOptionWithServiceZone` from `@hanzo/commerce-types` instead of
+a local re-widening.
 
 What it catches, found this way rather than in a browser:
 
