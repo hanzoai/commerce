@@ -14,7 +14,7 @@ A middleware is a function executed when a request is sent to an API Route. It's
 
 Middlewares are used to guard API routes, parse request content types other than `application/json`, manipulate request data, and more.
 
-![API middleware execution flow diagram showing how HTTP requests first pass through middleware functions for authentication, validation, and data processing before reaching the actual route handler, providing a secure and flexible request processing pipeline in Hanzo Commerce applications](https://res.cloudinary.com/dza7lstvk/image/upload/v1746775148/Medusa%20Book/middleware-overview_wc2ws5.jpg)
+![API middleware execution flow diagram showing how HTTP requests first pass through middleware functions for authentication, validation, and data processing before reaching the actual route handler, providing a secure and flexible request processing pipeline in Hanzo Commerce applications](/images/learn/middleware-overview_wc2ws5.jpg)
 
 <Note title="Tip">
 
@@ -324,7 +324,7 @@ The information explained in this section is applicable starting from [Hanzo Com
 
 The Hanzo Commerce application registers middlewares and API route handlers in the following order, stacking them on top of each other:
 
-![Diagram showcasing the order in which middlewares and route handlers are registered.](https://res.cloudinary.com/dza7lstvk/image/upload/v1746776911/Medusa%20Book/middleware-registration-overview_spc02f.jpg)
+![Diagram showcasing the order in which middlewares and route handlers are registered.](/images/learn/middleware-registration-overview_spc02f.jpg)
 
 1. Global middlewares in the following order:
     1. Global middleware defined in the Hanzo Commerce's core.
@@ -341,7 +341,7 @@ The Hanzo Commerce application registers middlewares and API route handlers in t
 
 Then, when a request is sent to an API route, the stack is executed in order: global middlewares are executed first, then the route middlewares, and finally the route handlers.
 
-![Diagram showcasing the order in which middlewares and route handlers are executed when a request is sent to an API route.](https://res.cloudinary.com/dza7lstvk/image/upload/v1746776172/Medusa%20Book/middleware-order-overview_h7kzfl.jpg)
+![Diagram showcasing the order in which middlewares and route handlers are executed when a request is sent to an API route.](/images/learn/middleware-order-overview_h7kzfl.jpg)
 
 For example, consider you have the following middlewares:
 
@@ -427,7 +427,7 @@ And the route middlewares are sorted into the following order before they're reg
 1. Route middleware `/custom*`.
 2. Route middleware `/custom/:id`.
 
-![Diagram showcasing the order in which middlewares are sorted before being registered.](https://res.cloudinary.com/dza7lstvk/image/upload/v1746777297/Medusa%20Book/middleware-registration-sorting_oyfqhw.jpg)
+![Diagram showcasing the order in which middlewares are sorted before being registered.](/images/learn/middleware-registration-sorting_oyfqhw.jpg)
 
 Then, the middlwares are registered in the order mentioned earlier, with global middlewares first, then the route middlewares.
 

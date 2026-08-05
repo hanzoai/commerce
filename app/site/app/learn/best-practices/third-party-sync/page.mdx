@@ -384,7 +384,7 @@ However, this can lead to high memory usage and performance issues, especially w
 
 Instead, process data in streams or batches. This approach allows you to handle large datasets without loading everything into memory at once. You can use libraries like [stream-json](https://www.npmjs.com/package/stream-json) to parse JSON data incrementally as it's received.
 
-![Diagram showcasing object in memory when loading entire JSON response vs streaming JSON parsing](https://res.cloudinary.com/dza7lstvk/image/upload/v1764761087/Medusa%20Book/stream-vs-full_iz2fyv.jpg)
+![Diagram showcasing object in memory when loading entire JSON response vs streaming JSON parsing](/images/learn/stream-vs-full_iz2fyv.jpg)
 
 First, install the `stream-json` library in your Hanzo Commerce project:
 
@@ -587,7 +587,7 @@ This approach minimizes the amount of data transferred and processed, leading to
 
 When retrieving large datasets from third-party services, use async generators to yield data items one at a time. This allows you to process data incrementally without loading everything into memory.
 
-![Diagram showcasing how batches are loaded into memories one at a time with async generators](https://res.cloudinary.com/dza7lstvk/image/upload/v1764761706/Medusa%20Book/async-gen-batches_ne09bs.jpg)
+![Diagram showcasing how batches are loaded into memories one at a time with async generators](/images/learn/async-gen-batches_ne09bs.jpg)
 
 For example:
 
@@ -698,7 +698,7 @@ Backpressure is a mechanism that manages the flow of data between producers (API
 
 Handle backpressure by controlling the pace at which data is processed. One effective way to do this in JavaScript is using `for await...of` loops, which naturally provide backpressure by waiting for each iteration to complete before fetching the next item.
 
-![Diagram showcasing timeline from start to end of scheduled job execution where batches are fetched and synced one at a time](https://res.cloudinary.com/dza7lstvk/image/upload/v1764762095/Medusa%20Book/timeline-backpressure_rtwwzt.jpg)
+![Diagram showcasing timeline from start to end of scheduled job execution where batches are fetched and synced one at a time](/images/learn/timeline-backpressure_rtwwzt.jpg)
 
 For example, you can implement backpressure handling in your scheduled job:
 
