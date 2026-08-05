@@ -178,6 +178,22 @@ func CreatePaymentMethod(c *zip.Ctx) error {
 		}
 	}
 
+	// A CARD with nothing to charge is not a payment method — it is a row that
+	// looks like one. Without a providerRef there is no nonce to vault and no
+	// card-on-file id to store, so what lands is a `type:"card"` record with no
+	// brand, no last4 and no way to bill it: it shows up in the customer's saved
+	// cards, and any renewal that picks it fails on a method that was never real.
+	// Measured on the live portal route the moment it opened — a POST carrying
+	// only {"type":"card"} answered 201 and created exactly that.
+	//
+	// Refuse it here rather than at the edge, because every caller reaches this
+	// one constructor. Other method types (bank/wire/paypal/crypto) legitimately
+	// carry their details in the body instead, so the rule is scoped to cards.
+	if strings.EqualFold(strings.TrimSpace(req.Type), "card") &&
+		strings.TrimSpace(req.ProviderRef) == "" && req.Card == nil {
+		return http.Fail(c, 400, "a card payment method requires a tokenized card (providerRef)", nil)
+	}
+
 	pm := paymentmethod.New(db)
 	pm.CustomerId = req.CustomerId
 	pm.UserId = req.CustomerId
