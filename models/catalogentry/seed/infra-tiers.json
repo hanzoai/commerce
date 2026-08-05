@@ -1,32 +1,5 @@
 [
   {
-    "slug": "cloud-starter",
-    "name": "Starter",
-    "category": "cloud",
-    "description": "Get started for free. Perfect for side projects, bots, and learning.",
-    "priceCents": 500,
-    "currency": "usd",
-    "order": 0,
-    "metadata": {
-      "id": "starter",
-      "vcpus": 1,
-      "memoryGB": 1,
-      "diskGB": 20,
-      "cpuType": "shared",
-      "maxVMs": 1,
-      "priceMonthly": 5,
-      "features": [
-        "1 VM",
-        "1 vCPU",
-        "1 GB RAM",
-        "20 GB SSD",
-        "500 GB transfer",
-        "Free $5 credit"
-      ],
-      "freeTier": true
-    }
-  },
-  {
     "slug": "cloud-builder",
     "name": "Builder",
     "category": "cloud",

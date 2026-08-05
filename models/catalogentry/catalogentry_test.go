@@ -160,7 +160,7 @@ func asFloat(t *testing.T, v interface{}) float64 {
 }
 
 // TestSeedInfra_IdempotentAndComplete proves the infra-tier seed creates exactly
-// the embedded rows (11 cloud + 3 gpu + 3 datastore), is idempotent, and that the
+// the embedded rows (10 cloud + 3 gpu + 3 datastore), is idempotent, and that the
 // count-gated SeedInfraIfEmpty seeds once then no-ops.
 func TestSeedInfra_IdempotentAndComplete(t *testing.T) {
 	c := ae.NewContext()
@@ -171,8 +171,20 @@ func TestSeedInfra_IdempotentAndComplete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("infra seed rows: %v", err)
 	}
-	if len(rows) != 17 {
-		t.Fatalf("embedded infra snapshot has %d rows, want 17 (11 cloud + 3 gpu + 3 datastore)", len(rows))
+	if len(rows) != 16 {
+		t.Fatalf("embedded infra snapshot has %d rows, want 16 (10 cloud + 3 gpu + 3 datastore)", len(rows))
+	}
+
+	// The catalog sells no free tier. "starter" was a phantom rung — advertised
+	// on the public price list, freeTier:true, and never sellable (no Stripe
+	// price ref anywhere in the ladder). It is gone; this keeps it gone.
+	for _, r := range rows {
+		if r.Slug == "cloud-starter" {
+			t.Fatalf("cloud-starter is a phantom plan and must not be seeded")
+		}
+		if r.Metadata["freeTier"] == true {
+			t.Fatalf("%s: no infra tier is a free tier", r.Slug)
+		}
 	}
 
 	// The gate seeds every row when the infra scope is empty (this test's db
@@ -213,8 +225,8 @@ func TestSeedInfra_ProjectionAndValues(t *testing.T) {
 	if len(cat.Categories) != 3 {
 		t.Fatalf("infra categories = %d, want 3", len(cat.Categories))
 	}
-	if len(cat.Products) != 17 {
-		t.Fatalf("infra products = %d, want 17", len(cat.Products))
+	if len(cat.Products) != 16 {
+		t.Fatalf("infra products = %d, want 16", len(cat.Products))
 	}
 
 	bySlug := map[string]Item{}
@@ -229,21 +241,22 @@ func TestSeedInfra_ProjectionAndValues(t *testing.T) {
 			t.Fatalf("%s: Metadata must project the structured spec, got nil", p.Slug)
 		}
 	}
-	if counts["cloud"] != 11 || counts["gpu"] != 3 || counts["datastore"] != 3 {
-		t.Fatalf("category counts = %v, want cloud:11 gpu:3 datastore:3", counts)
+	if counts["cloud"] != 10 || counts["gpu"] != 3 || counts["datastore"] != 3 {
+		t.Fatalf("category counts = %v, want cloud:10 gpu:3 datastore:3", counts)
 	}
 
 	// Cloud: display price = monthly * 100; Metadata carries the VM spec verbatim.
-	starter := bySlug["cloud-starter"]
-	if starter.Category != "cloud" || starter.PriceCents != 500 {
-		t.Fatalf("cloud-starter = {cat:%s cents:%d}, want {cloud 500}", starter.Category, starter.PriceCents)
+	// builder is the entry rung — the catalog starts at a plan we actually sell.
+	if _, ok := bySlug["cloud-starter"]; ok {
+		t.Fatalf("cloud-starter is a phantom plan and must not project")
 	}
-	if asFloat(t, starter.Metadata["priceMonthly"]) != 5 || asFloat(t, starter.Metadata["vcpus"]) != 1 ||
-		asFloat(t, starter.Metadata["maxVMs"]) != 1 || starter.Metadata["cpuType"] != "shared" {
-		t.Fatalf("cloud-starter metadata spec wrong: %#v", starter.Metadata)
+	builder := bySlug["cloud-builder"]
+	if builder.Category != "cloud" || builder.PriceCents != 1000 {
+		t.Fatalf("cloud-builder = {cat:%s cents:%d}, want {cloud 1000}", builder.Category, builder.PriceCents)
 	}
-	if starter.Metadata["freeTier"] != true {
-		t.Fatalf("cloud-starter should carry freeTier=true, got %#v", starter.Metadata["freeTier"])
+	if asFloat(t, builder.Metadata["priceMonthly"]) != 10 || asFloat(t, builder.Metadata["vcpus"]) != 2 ||
+		asFloat(t, builder.Metadata["maxVMs"]) != 5 || builder.Metadata["cpuType"] != "shared" {
+		t.Fatalf("cloud-builder metadata spec wrong: %#v", builder.Metadata)
 	}
 
 	// GPU: display price = hourly * 100; Metadata carries gpu/vram/price.
