@@ -799,9 +799,12 @@ State, by surface:
 | --- | --- | --- |
 | `app/admin` | `@hanzo/ui/product` on `@hanzo/gui` | none |
 | `app/site` | `components/docs` + `components/shell` on `@hanzo/gui`; prose is plain CSS on `@hanzo/ui/theme.css` tokens | none |
-| `app/store` | `@hanzo/commerce-ui` kit + `@hanzo/ui` on `@hanzo/gui`; its OWN classNames still Tailwind | **tailwind only** |
+| `app/store` | `@hanzo/commerce-ui` kit + `@hanzo/ui` on `@hanzo/gui`; its classNames drawn by the FROZEN sheet (`src/styles/globals.css`, plain CSS) | none |
 | `app/packages/ui` | 16 names: `@hanzo/ui` components + plain elements on `kit.css` theme tokens | none |
-| `app/packages/ui-preset` | the Tailwind preset behind the storefront's classNames | **tailwind, still** |
+
+`packages/ui-preset` is deleted. The whole `@hanzo/gui` line rides the
+published patch (`8.0.2`, `@hanzogui/lucide-icons-2` `8.0.2`) — dep-line
+identical to `8.0.1`, and `8.0.2` is what ships the `gui-css-check` bin.
 
 Deleted with the docs fork: `packages/docs-ui` (458 files, its own Tailwind
 preset and grey scale), `packages/docs-utils`, `packages/admin-shared` and
@@ -833,10 +836,12 @@ useToggleState):
   shape, `filter-radio-group`) and `Option` (the selectable card the checkout's
   payment/shipping/pickup lists render, replacing headlessui's `Radio`).
 - **CSS order in `store/src/app/layout.tsx` is load-bearing**: theme.css
-  (tokens) → kit.css (kit defaults) → globals.css (Tailwind), so a caller's
-  utility className can still override a kit default while Tailwind exists.
-  `<html className="light">` opts the dark-first theme.css tokens into the
-  storefront's light mode alongside its own `data-mode="light"`.
+  (tokens) → kit.css (kit defaults) → globals.css (the frozen utility sheet),
+  so a caller's utility className still overrides a kit default. theme.css at
+  `8.0.46` is light-FIRST (`:root` is the light look, `.dark` the opt-in), so
+  the html element carries only `data-mode="light"` — the old
+  `className="light"` was a class no sheet defines, and the css-check reads
+  exactly that as a miss.
 - headlessui's other faces became: common `Modal` → `@hanzo/ui` Dialog (same
   compound API for its consumers), mobile-actions bottom sheet → Dialog with
   bottom-anchored style, cart-dropdown/side-menu Popover + country/language/
@@ -844,20 +849,50 @@ useToggleState):
   the roles and keyboard handling written out (they were all externally-driven
   hover/state panels; the library contributed only structure).
 
-**What remains is Tailwind alone, and it is ONE move**: `app/store`'s ~1050
-`className` sites (130 files) onto Gui style props / plain CSS — at which point
-`packages/ui-preset`, `tailwindcss`, `postcss`, `autoprefixer` and the
-`tailwind-merge` half of `clx` all drop in the same change. Dropping the preset
-without converting the classes leaves an unstyled store; that is why the strip
-did not ship half-done. The kit itself evaporates file-by-file as call sites
-move to direct `@hanzo/ui` imports during that conversion.
+**The Tailwind toolchain is GONE, and the store draws exactly as before.**
+"Convert 1050 classNames, then drop the compiler" was never one safe move — so
+the dependency and the vocabulary were cut apart. The compiler ran ONE final
+time (tailwindcss 3.4.17 + the preset + this app's content globs, input =
+the old globals.css itself so the custom `@layer` blocks land at their real
+cascade positions) and its output IS `store/src/styles/globals.css` now: a
+frozen plain-CSS sheet the repo owns. `tailwind.config.js`,
+`postcss.config.js`, `tailwindcss`, `postcss`, `autoprefixer` and
+`packages/ui-preset` are deleted; the lockfile greps zero for all of them.
+Parity is proven, not assumed: the emitted `.next` sheet before vs after
+differs ONLY in vendor prefixes (Next's default postcss chain vs the old
+explicit autoprefixer — `-moz-column-gap` out, `-webkit-` backdrop/sticky in,
+`flex:1 1`≡`flex:1 1 0%`), and the SSG pages' class sets are byte-identical.
 
-Verifying the swap needed a browser, not just the build (Gui drops unknown
-props silently): serve the built store against a 60-line `/store/*` JSON stub
-(`HANZO_COMMERCE_API_URL`), then Playwright — zero page errors, kit classes and
-`is_Button`/`t_light` in the SSR HTML, one styled render. The middleware 307s
+What remains is the VOCABULARY: ~1040 `className` sites (130 files) whose
+classes the frozen sheet defines. The forward conversion is unchanged — call
+sites move to Gui style props / kit css, the sheet and the kit shrink
+file-by-file — but it no longer gates anything and can never silently unstyle
+(see the css gate below). `tailwind-merge` inside `clx` stays until the LAST
+utility className goes: it still resolves caller-vs-kit utility conflicts by
+call-site order, which a static sheet cannot.
+
+The final compile also surfaced what Tailwind had been silently NOT emitting —
+classes with no rule that had never rendered: three root-level demo pages
+(`/`, `/cart`, `/products`, hanzo.ai-palette `surface-*`/`btn-primary`; the
+middleware 307s every bare path to `/{countryCode}`, so they were unreachable
+anyway) are deleted; the footer's `txt-ui-fg-base` typo is `text-ui-fg-base`;
+an orphaned `peer` marker and the dead `product-page-constraint` are dropped.
+
+### The css gate — a build cannot see a class with no rule
+
+`gui-css-check` (a `@hanzo/gui` 8.0.2 bin) reads rendered pages and fails when
+markup uses a class no delivered sheet defines — the exact failure mode a
+frozen sheet makes possible and a green build cannot see. The storefront's
+gate is END TO END and owns its world: `store/e2e/css-check.mjs` boots the
+60-line `/store/*` JSON stub (`e2e/stub.mjs`), BUILDS the store against it
+(generateStaticParams needs a live backend; a page prerendered without one
+cannot SSR later — `DYNAMIC_SERVER_USAGE`), serves it, and drives
+`gui-css-check --render` over home, shop-all, product and cart:
+**254/254 classes covered, 100.0%**, zero page errors, every `.flex`
+computing `display:flex`, one styled render (screenshot-verified). `pnpm run
+e2e:css` locally; `store-css-check` in `hanzo.yml` in CI. The middleware 307s
 to set `_hanzo_cache_id` before it passes a request through, so curl needs a
-cookie jar.
+cookie jar; Playwright does not.
 
 ### Gui drops what it does not recognise — the typecheck is the only gate
 

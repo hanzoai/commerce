@@ -114,6 +114,23 @@ test:
         --filter=@hanzo/commerce-ui \
         --filter=hanzo-commerce-storefront
 
+  # Storefront class coverage — the typecheck cannot see the OTHER silent
+  # failure: a className with no rule in any delivered sheet renders as
+  # nothing, and `next build` stays green. The storefront's stylesheet is a
+  # frozen plain-CSS sheet (src/styles/globals.css — the Tailwind toolchain is
+  # gone), so every class the markup uses must have a rule THERE or in
+  # theme.css/kit.css/Gui's SSR styles. `gui-css-check --render` (a @hanzo/gui
+  # bin) proves it against the running app: stub backend, built store, four
+  # shopper-facing routes, 100% or fail.
+  - name: store-css-check
+    run: |
+      set -e
+      cd app
+      pnpm install --frozen-lockfile
+      cd store
+      npx playwright install chromium
+      pnpm run e2e:css
+
 # NO deploy: block by design. commerce is an operator-MANAGED system service —
 # `services.hanzo.ai/commerce` (+ -admin/-site) owns `.spec.image.tag`, and the
 # hanzo operator reconciles the Deployment from it. A `kubectl set image` on the
