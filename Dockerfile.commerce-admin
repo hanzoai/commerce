@@ -46,7 +46,20 @@ COPY --from=admin-build /build/app/admin/out /srv/admin
 # No --spa: `trailingSlash: true` gives every route its own index.html, so a real
 # route resolves by directory index and a miss stays a 404 instead of answering
 # 200 with HTML (the fallback that hid a broken bundle twice already).
-FROM ghcr.io/hanzoai/static:v0.5.2
+#
+# PINNED TO v0.5.1, NOT v0.5.2. v0.5.2 compresses the response but frames it as
+# `Content-Type: application/x-gzip` with NO `Content-Encoding: gzip` — and the
+# same server sets `X-Content-Type-Options: nosniff`, so the browser is handed
+# what it reads as a gzip download and refuses to render it. Every HTML page it
+# serves is affected; the body is correct and only the framing is wrong, which is
+# why it survives a status check and a byte-diff of the payload.
+#
+# Measured, not inferred: this export contains ZERO pre-compressed .gz files, and
+# pay.hanzo.ai on v0.5.1 answers `text/html` + `content-encoding: gzip` for the
+# identical shape. This Dockerfile had carried v0.5.2 for a while with nothing
+# ever deployed from it, so the first roll of it took commerce.hanzo.ai down
+# until the pin was reverted. Do not move this forward until v0.5.2+ is fixed.
+FROM ghcr.io/hanzoai/static:v0.5.1
 COPY --from=arrange /srv /srv
 EXPOSE 3000
 ENTRYPOINT ["/static", "--root=/srv", "--port=3000", "--404=admin/404.html"]
