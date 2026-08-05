@@ -1,9 +1,15 @@
 /* Canonical Hanzo faces — Geist Sans (UI/body/headings) + Geist Mono (data), the
    same two the console loads, so the shared @hanzo/ui/product components typeset
    identically in both admins. The component classes themselves (hz-mono, hz-tnum,
-   hz-paper, hz-skeleton, …) travel with the package. */
-@import url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/style.css');
-@import url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-mono/style.css');
+   hz-paper, hz-skeleton, …) travel with the package.
+   
+   SELF-HOSTED, from @hanzo/design — the same import billing uses. These were two
+   `@import url(https://cdn.jsdelivr.net/...)` lines, and this estate BLOCKS
+   third-party CDNs: the request fails, nothing errors, and the admin silently
+   typesets in system-ui while every local build looks perfect. A font that only
+   loads on the machine that wrote it is the kind of defect a screenshot cannot
+   show you. */
+@import '@hanzo/design/tokens/fonts.css';
 @import '@hanzo/ui/styles/motion.css';
 
 html,
