@@ -68,8 +68,11 @@ func GetWireInstructions(c *zip.Ctx) error {
 	// deployment does not set — so the org row is empty there and the rail 503s
 	// however carefully the details were stored. Ask the HOST instead: it holds
 	// an in-process KMS handle already. A per-org row still wins when present.
+	//
+	// The BRAND decides whose bank this is, so it decides which org's secrets to
+	// read — the same slug that selected the receiving org row above.
 	if w.AccountNumber == "" && w.IBAN == "" {
-		w = wireFromHost(c.Context())
+		w = wireFromHost(c.Context(), slug)
 	}
 	if w.AccountNumber == "" && w.IBAN == "" {
 		return jsonhttp.Fail(c, 503, "Wire transfer not configured", nil)
@@ -120,13 +123,31 @@ func wireReference(payer string) string {
 // stale plus a pod restart to pick up a rotation, for a value the host already
 // held. Every other plugin asks its host; so does this.
 //
-// The refs are the same coordinates the per-org hydrator uses, so one bank
-// lives at one address whichever path reads it. os.Getenv survives ONLY as the
-// last fallback for a standalone commerce with no host to ask.
-func wireFromHost(ctx context.Context) integration.WireTransfer {
+// THE ADDRESS IS `/orgs/<org>/wire/<NAME>`, which is the host's own convention
+// and not a spelling invented here. cloud writes and reads every in-process KMS
+// secret under `/orgs/{org}/…` — apps/destinations builds
+// "/orgs/"+org+"/destinations/"+platform, apps/integrations the same for
+// integrations, credz the same for service credentials — and its REST surface
+// folds every write under that prefix from the validated org claim, because the
+// org is the tenant boundary and belongs in the key.
+//
+// This read used `/tenants/hanzo/wire/<NAME>`, which nothing writes. Both doors
+// hit the same store keyed by (path, name, env), so an address only one of them
+// spells is a read that can never hit: the rail answered "Wire transfer not
+// configured" no matter how carefully the details were stored, and would have
+// gone on doing so silently. The org also stops being hardcoded — the brand
+// serving the page decides whose bank is shown, so it decides whose secrets are
+// read, and pay.lux.network resolves lux's bank rather than Hanzo's.
+//
+// os.Getenv survives ONLY as the last fallback for a standalone commerce with
+// no host to ask.
+func wireFromHost(ctx context.Context, org string) integration.WireTransfer {
+	org = strings.TrimSpace(org)
 	get := func(name string) string {
-		if v := secrets.String(ctx, "/tenants/hanzo/wire/"+name); v != "" {
-			return v
+		if org != "" {
+			if v := secrets.String(ctx, "/orgs/"+org+"/wire/"+name); v != "" {
+				return v
+			}
 		}
 		return strings.TrimSpace(os.Getenv(name))
 	}
