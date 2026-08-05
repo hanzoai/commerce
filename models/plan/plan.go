@@ -169,6 +169,12 @@ type Plan struct {
 	IncludedIn []string `json:"includedIn,omitempty" datastore:"-"`
 	Limits     *Limits  `json:"limits,omitempty" datastore:"-"`
 
+	// Licensing is what this tier LICENSES — see the type. It rides the envelope
+	// with the fields above, but it is NOT display: it decides whether a paying
+	// subscriber may run a proprietary product, so it is money-adjacent in the same
+	// way Price is.
+	Licensing *Licensing `json:"licensing,omitempty" datastore:"-"`
+
 	// Metadata carries anything else a plan needs to hold, plus the packed
 	// envelope above. Metadata_ MUST be datastore:",noindex" (persisted), NOT "-"
 	// (skipped): with "-" the whole blob Save()s but never round-trips, so a DB
@@ -205,6 +211,36 @@ const (
 // moment this ships. Only an explicit draft/archived hides a row.
 func (p *Plan) Listed() bool {
 	return p.Status == "" || p.Status == StatusActive
+}
+
+// Licensing is what a tier LICENSES: the proprietary products, app builds and
+// engine capabilities a subscription on it may run. The catalog publishes it under
+// the licensing.* entitlement keys.
+//
+// It is persisted on the ROW, rather than looked up in the catalog when the
+// question is asked, for the same reason Category and Price are. The catalog lists
+// what is ON SALE TODAY. A retired tier is not on sale, so asking the price list
+// what an archived tier licensed answers "nothing" — and answers it definitively,
+// which reads as a real refusal rather than a missing record. A subscriber who is
+// still being charged then loses the products they are paying for.
+//
+// Status already promises the row stays resolvable after retirement, so invoices
+// and renewals keep pricing themselves. Carrying the licensing block is what
+// extends that same promise to licences: retiring a tier stops new sales; it never
+// strands a subscriber.
+type Licensing struct {
+	// Products are the commerce SKUs / proprietary products this tier entitles
+	// ("engine", "engine-rocm", "team", plugin ids).
+	Products []string `json:"products,omitempty"`
+	// Apps are the engine app builds it licenses ("hanzo", "lux", "zoo").
+	Apps []string `json:"apps,omitempty"`
+	// Features are engine capability tokens granted verbatim ("inference",
+	// "training", …).
+	Features []string `json:"features,omitempty"`
+	// Seats is the number of named users/devices the licence covers; -1 is
+	// unlimited, nil is unstated. (Distinct from Limits.MaxMembers, which counts
+	// billing-org membership.)
+	Seats *int `json:"seats,omitempty"`
 }
 
 // Limits is a plan's published allowance block — rate ceilings, seat floors and
@@ -251,10 +287,11 @@ const EnvelopeKey = "envelope"
 // nothing outside this file should construct one: the typed fields on Plan are
 // the interface, and this is only how they are written down.
 type envelope struct {
-	Features   []string `json:"features,omitempty"`
-	Bundles    []string `json:"bundles,omitempty"`
-	IncludedIn []string `json:"includedIn,omitempty"`
-	Limits     *Limits  `json:"limits,omitempty"`
+	Features   []string   `json:"features,omitempty"`
+	Bundles    []string   `json:"bundles,omitempty"`
+	IncludedIn []string   `json:"includedIn,omitempty"`
+	Limits     *Limits    `json:"limits,omitempty"`
+	Licensing  *Licensing `json:"licensing,omitempty"`
 }
 
 func (p *Plan) Load(ps []datastore.Property) (err error) {
@@ -276,6 +313,7 @@ func (p *Plan) Load(ps []datastore.Property) (err error) {
 		var env envelope
 		if err := json.DecodeBytes([]byte(s), &env); err == nil {
 			p.Features, p.Bundles, p.IncludedIn, p.Limits = env.Features, env.Bundles, env.IncludedIn, env.Limits
+			p.Licensing = env.Licensing
 		}
 	}
 
@@ -289,8 +327,8 @@ func (p *Plan) Save() (ps []datastore.Property, err error) {
 	// persists: the ORM stores a row as JSON of the struct, and Metadata_ is
 	// `json:"-"`. Metadata_ is the older datastore-property path, kept because
 	// Load still honors it, but a value written only there does not survive.
-	env := envelope{Features: p.Features, Bundles: p.Bundles, IncludedIn: p.IncludedIn, Limits: p.Limits}
-	if len(env.Features) > 0 || len(env.Bundles) > 0 || len(env.IncludedIn) > 0 || env.Limits != nil {
+	env := envelope{Features: p.Features, Bundles: p.Bundles, IncludedIn: p.IncludedIn, Limits: p.Limits, Licensing: p.Licensing}
+	if len(env.Features) > 0 || len(env.Bundles) > 0 || len(env.IncludedIn) > 0 || env.Limits != nil || env.Licensing != nil {
 		if p.Metadata == nil {
 			p.Metadata = Map{}
 		}
@@ -430,7 +468,21 @@ func planEqual(a, b *Plan) bool {
 	return slices.Equal(a.Features, b.Features) &&
 		slices.Equal(a.Bundles, b.Bundles) &&
 		slices.Equal(a.IncludedIn, b.IncludedIn) &&
-		limitsEqual(a.Limits, b.Limits)
+		limitsEqual(a.Limits, b.Limits) &&
+		licensingEqual(a.Licensing, b.Licensing)
+}
+
+// licensingEqual compares two licensing blocks BY VALUE, for the same reason
+// limitsEqual exists: Seats is a *int, so struct equality would compare it by
+// address and the seed would rewrite every row on every boot.
+func licensingEqual(a, b *Licensing) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return slices.Equal(a.Products, b.Products) &&
+		slices.Equal(a.Apps, b.Apps) &&
+		slices.Equal(a.Features, b.Features) &&
+		eqInt(a.Seats, b.Seats)
 }
 
 // limitsEqual compares Limits BY VALUE.
@@ -497,4 +549,52 @@ func copyInto(dst, src *Plan) {
 	dst.Bundles = src.Bundles
 	dst.IncludedIn = src.IncludedIn
 	dst.Limits = src.Limits
+	dst.Licensing = src.Licensing
+}
+
+// Backfill writes licensing onto rows the catalog NO LONGER PUBLISHES, from the
+// record of what each tier licensed when it was last on sale. It returns how many
+// rows it filled.
+//
+// It exists because persisting the licensing block only fixes tiers retired AFTER
+// this change: the seed writes licensing from the catalog while the catalog still
+// describes the tier, and archiving then preserves it. Rows archived BEFORE this
+// change were written when Plan had no licensing field at all, so they carry none,
+// and the catalog that could have told us has already dropped them. Those are
+// exactly the subscribers who are stranded today, so a fix that skips them fixes
+// nothing that is currently broken.
+//
+// This is a MIGRATION, not a lookup: it writes the fact onto the row once, and
+// afterwards the row answers for itself. Nothing reads this map to serve a request.
+// It can never grow, either — from this change on, a tier carries its licensing
+// before it is ever archived.
+//
+// Only rows that carry NO licensing are touched, so it is idempotent and it never
+// overwrites a value the catalog or an admin has since supplied. Slugs the caller
+// does not name are left alone: a tier that licensed nothing is correctly
+// represented by no block at all.
+func Backfill(db *datastore.Datastore, licensing map[string]*Licensing) (filled int, err error) {
+	seedMu.Lock()
+	defer seedMu.Unlock()
+	for slug, lic := range licensing {
+		if slug == "" || lic == nil {
+			continue
+		}
+		// Point-query the row so it carries a datastore binding: a row read via
+		// GetAll is a VALUE, and Update on it writes nowhere and reports no error.
+		existing := New(db)
+		ok, qerr := existing.Query().Filter("Slug=", slug).Get()
+		if qerr != nil {
+			return filled, qerr
+		}
+		if !ok || existing.Licensing != nil {
+			continue
+		}
+		existing.Licensing = lic
+		if uerr := existing.Update(); uerr != nil {
+			return filled, uerr
+		}
+		filled++
+	}
+	return filled, nil
 }

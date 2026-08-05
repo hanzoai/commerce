@@ -67,8 +67,31 @@ func planFromStatic(sp *staticPlan) *plan.Plan {
 		Bundles:         sp.Bundles,
 		IncludedIn:      sp.IncludedIn,
 		Limits:          sp.Limits,
+		Licensing:       sp.Licensing,
 	}
 	return p
+}
+
+// retired records what a tier licensed WHEN IT WAS LAST ON SALE, for the rows that
+// were archived before the plan row carried a licensing block at all.
+//
+// Provenance: @hanzo/plans@1.4.4 subscription.json — the last published version
+// that still listed these tiers (1.4.5 dropped them). Those exact bytes are already
+// pinned in this package: plans_drift_test.go's versionDigests["1.4.4"].subscription
+// is their sha256, e490185e58b4e83d925eaf2dfd4778e28023655b610d0504b8058670bbdf2f79.
+// So this is not a second catalog and not a new source of truth — it is a reading
+// of the one catalog at the version that last described these tiers.
+//
+// Of the thirteen retired slugs, only these two licensed anything: plus and
+// team-max each carried licensing.product_ids ["team"]. developer, custom and the
+// world-*/social-* lines carried no licensing block in 1.4.4, so for them "no
+// block" is already the correct answer and there is nothing to restore.
+//
+// This map is closed. A tier retired from here on carries its licensing on the row
+// before it is archived, so nothing will ever need to be added.
+var retired = map[string]*plan.Licensing{
+	"plus":     {Products: []string{"team"}},
+	"team-max": {Products: []string{"team"}},
 }
 
 // staticPlanFromModel projects an authority row back onto the wire type served by
@@ -94,6 +117,7 @@ func staticPlanFromModel(p *plan.Plan) staticPlan {
 		Bundles:         p.Bundles,
 		IncludedIn:      p.IncludedIn,
 		Limits:          p.Limits,
+		Licensing:       p.Licensing,
 	}
 }
 
@@ -103,9 +127,16 @@ func staticPlanFromModel(p *plan.Plan) staticPlan {
 // expansion wrote Price=0 rows the old count-gated seed then skipped) while
 // leaving admin-edited (managed) rows authoritative. Seed values equal the embed,
 // so it changes NO charge — it only makes prices editable + repairs bad rows.
-// Returns (created, corrected).
+// Returns (created, corrected); corrected counts reconciles, archives, and the
+// licensing backfilled onto rows retired before the row carried a licensing block.
 func SeedPlans(ctx context.Context) (created, corrected int, err error) {
-	return plan.Seed(plan.AuthorityDB(ctx), SeedRows())
+	db := plan.AuthorityDB(ctx)
+	created, corrected, err = plan.Seed(db, SeedRows())
+	if err != nil {
+		return created, corrected, err
+	}
+	filled, err := plan.Backfill(db, retired)
+	return created, corrected + filled, err
 }
 
 // planAuthorityRows reads the plan authority for the read edge (ListPlans/
