@@ -49,7 +49,7 @@ The [createProductsWorkflow](!resources!/references/hanzo-workflows/createProduc
 
 To consume the `productsCreated` hook, create the file `src/workflows/hooks/created-product.ts` with the following content:
 
-![Directory structure after creating the hook's file.](https://res.cloudinary.com/dza7lstvk/image/upload/v1733384338/Medusa%20Book/brands-hook-dir-overview_ltwr5h.jpg)
+![Directory structure after creating the hook's file.](/images/learn/brands-hook-dir-overview_ltwr5h.jpg)
 
 export const hook1Highlights = [
   ["8", "productsCreated", "Access the hook in the `hooks` property."],
@@ -131,7 +131,7 @@ You resolve Link from the container. Then, you loop over the created products to
 
 Each property in the link object is the name of a module, and its value is an object having a `{model_name}_id` property, where `{model_name}` is the snake-case name of the module's data model. Its value is the ID of the record to be linked. The link object's properties must be set in the same order as the link configurations passed to `defineLink`.
 
-![Diagram showcasing how the order of defining a link affects creating the link](https://res.cloudinary.com/dza7lstvk/image/upload/v1733386156/Medusa%20Book/remote-link-brand-product-exp_fhjmg4.jpg)
+![Diagram showcasing how the order of defining a link affects creating the link](/images/learn/remote-link-brand-product-exp_fhjmg4.jpg)
 
 Finally, you return an instance of `StepResponse` returning the created links.
 
@@ -166,7 +166,7 @@ Now that you've consumed the `productsCreated` hook, you want to configure the `
 
 You configure the properties accepted in `additional_data` in the `src/api/middlewares.ts` that exports middleware configurations. So, create the file (or, if already existing, add to the file) `src/api/middlewares.ts` the following content:
 
-![Directory structure after adding the middelwares file](https://res.cloudinary.com/dza7lstvk/image/upload/v1733386868/Medusa%20Book/brands-middleware-dir-overview_uczos1.jpg)
+![Directory structure after adding the middelwares file](/images/learn/brands-middleware-dir-overview_uczos1.jpg)
 
 ```ts title="src/api/middlewares.ts"
 import { defineMiddlewares } from "@hanzo/commerce-framework/http"

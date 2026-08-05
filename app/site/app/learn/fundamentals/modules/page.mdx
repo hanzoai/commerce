@@ -44,7 +44,7 @@ A data model represents a table in the database. You create data models using Ha
 
 You create a data model in a TypeScript or JavaScript file under the `models` directory of a module. So, to create a `Post` data model in the Blog Module, create the file `src/modules/blog/models/post.ts` with the following content:
 
-![Blog module directory structure showing the organized file hierarchy with the newly created 'models' folder containing the 'post.ts' data model file, which defines the data model for blog posts using Hanzo Commerce's data modeling language](https://res.cloudinary.com/dza7lstvk/image/upload/v1732806790/Medusa%20Book/blog-dir-overview-1_jfvovj.jpg)
+![Blog module directory structure showing the organized file hierarchy with the newly created 'models' folder containing the 'post.ts' data model file, which defines the data model for blog posts using Hanzo Commerce's data modeling language](/images/learn/blog-dir-overview-1_jfvovj.jpg)
 
 ```ts title="src/modules/blog/models/post.ts"
 import { model } from "@hanzo/commerce-framework/utils"
@@ -77,7 +77,7 @@ You perform database operations on your data models in a service, which is a cla
 
 You define a service in a `service.ts` or `service.js` file at the root of your module's directory. So, to create the Blog Module's service, create the file `src/modules/blog/service.ts` with the following content:
 
-![Updated directory overview after adding the service](https://res.cloudinary.com/dza7lstvk/image/upload/v1732807230/Medusa%20Book/blog-dir-overview-2_avzb9l.jpg)
+![Updated directory overview after adding the service](/images/learn/blog-dir-overview-2_avzb9l.jpg)
 
 export const highlights = [
   ["4", "HanzoService", "The service factory function."],
@@ -116,7 +116,7 @@ The final piece to a module is its definition, which is exported in an `index.ts
 
 So, to export the definition of the Blog Module, create the file `src/modules/blog/index.ts` with the following content:
 
-![Updated directory overview after adding the module definition](https://res.cloudinary.com/dza7lstvk/image/upload/v1732808511/Medusa%20Book/blog-dir-overview-3_dcgjaa.jpg)
+![Updated directory overview after adding the module definition](/images/learn/blog-dir-overview-3_dcgjaa.jpg)
 
 export const moduleDefinitionHighlights = [
   ["4", "BLOG_MODULE", "Export the module's name to reference it in other customizations."],

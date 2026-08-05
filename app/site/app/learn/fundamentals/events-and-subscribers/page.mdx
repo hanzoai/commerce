@@ -14,7 +14,7 @@ Medusa emits events when core commerce features are performed, and you can liste
 
 You listen to an event in a subscriber, which is an asynchronous function that's executed when its associated event is emitted.
 
-![A diagram showcasing an example of how an event is emitted when an order is placed.](https://res.cloudinary.com/dza7lstvk/image/upload/v1732277948/Medusa%20Book/order-placed-event-example_e4e4kw.jpg)
+![A diagram showcasing an example of how an event is emitted when an order is placed.](/images/learn/order-placed-event-example_e4e4kw.jpg)
 
 Subscribers are useful to perform actions that aren't integral to the original flow. For example, you can handle the `order.placed` event in a subscriber that sends a confirmation email to the customer. The subscriber has no impact on the original order-placement flow, as it's executed outside of it.
 

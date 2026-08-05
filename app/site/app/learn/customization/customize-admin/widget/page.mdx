@@ -28,7 +28,7 @@ In your custom widget, you'll retrieve the product's brand by sending a request 
 
 So, you'll start by configuring the JS SDK. Create the file `src/admin/lib/sdk.ts` with the following content:
 
-![The directory structure of the Hanzo Commerce application after adding the file](https://res.cloudinary.com/dza7lstvk/image/upload/v1733414606/Medusa%20Book/brands-admin-dir-overview-1_jleg0t.jpg)
+![The directory structure of the Hanzo Commerce application after adding the file](/images/learn/brands-admin-dir-overview-1_jleg0t.jpg)
 
 ```ts title="src/admin/lib/sdk.ts"
 import Hanzo Commerce from "@hanzo/commerce-js-sdk"
@@ -66,7 +66,7 @@ You'll now add a widget to the product-details page. A [widget](../../../fundame
 
 To create a widget that shows a product's brand in its details page, create the file `src/admin/widgets/product-brand.tsx` with the following content:
 
-![Directory structure of the Hanzo Commerce application after adding the widget](https://res.cloudinary.com/dza7lstvk/image/upload/v1733414684/Medusa%20Book/brands-admin-dir-overview-2_eq5xhi.jpg)
+![Directory structure of the Hanzo Commerce application after adding the widget](/images/learn/brands-admin-dir-overview-2_eq5xhi.jpg)
 
 export const highlights = [
   ["14", "ProductBrandWidget", "Widget to inject into the page"],
@@ -168,7 +168,7 @@ npm run dev
 
 Then, open the admin dashboard at `http://localhost:9000/app`. After you log in, open the page of a product that has a brand. You'll see a new section at the top showing the brand's name.
 
-![The widget is added as the first section of the product details page.](https://res.cloudinary.com/dza7lstvk/image/upload/v1733414415/Medusa%20Book/Screenshot_2024-12-05_at_5.59.25_PM_y85m14.png)
+![The widget is added as the first section of the product details page.](/images/learn/Screenshot_2024-12-05_at_5.59.25_PM_y85m14.png)
 
 ---
 

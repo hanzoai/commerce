@@ -1,0 +1,83 @@
+package integration
+
+import (
+	"net/http"
+	"testing"
+
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/fixtures"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/store"
+	"github.com/hanzoai/commerce/models/tokensale"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/thirdparty/bitcoin"
+	"github.com/hanzoai/commerce/util/permission"
+	"github.com/hanzoai/commerce/util/test/ae"
+	"github.com/hanzoai/commerce/util/test/zipclient"
+	"github.com/hanzoai/commerce/util/zipctx"
+
+	checkoutApi "github.com/hanzoai/commerce/api/checkout"
+	storeApi "github.com/hanzoai/commerce/api/store"
+
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
+)
+
+func Test(t *testing.T) {
+	Setup("api/checkout/integration/bitcoin", t)
+}
+
+var (
+	accessToken string
+	cl          *zipclient.Client
+	ctx         ae.Context
+	db          *datastore.Datastore
+	org         *organization.Organization
+	stor        *store.Store
+	u           *user.User
+	ts          *tokensale.TokenSale
+)
+
+// Setup test context
+var _ = BeforeSuite(func() {
+	// Set BitcoinClient to Test Mode
+	bitcoin.Test(true)
+
+	adminRequired := middleware.TokenRequired(permission.Admin)
+
+	ctx = ae.NewContext()
+
+	// Mock gin context that we can use with fixtures
+	c := zipctx.New(ctx)
+	u = fixtures.User(c).(*user.User)
+	org = fixtures.Organization(c).(*organization.Organization)
+	fixtures.PlatformWallet(c)
+
+	// Save namespaced db
+	db = datastore.New(org.Namespaced(ctx))
+
+	stor = fixtures.Store(c).(*store.Store)
+	ts = tokensale.Fake(db)
+	ts.MustCreate()
+
+	// Setup client and add routes for payment API tests.
+	cl = zipclient.New(ctx)
+	cl.IgnoreErrors(true)
+	checkoutApi.Route(cl.Router, adminRequired)
+	storeApi.Route(cl.Router, adminRequired)
+
+	// Create organization for tests, accessToken
+	accessToken, _ := org.GetTokenByName("test-secret-key")
+	err := org.Put()
+	Expect(err).NotTo(HaveOccurred())
+
+	// Set authorization header for subsequent requests
+	cl.Defaults(func(r *http.Request) {
+		r.Header.Set("Authorization", accessToken.String)
+	})
+})
+
+// Tear-down test context
+var _ = AfterSuite(func() {
+	ctx.Close()
+})

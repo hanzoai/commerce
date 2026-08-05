@@ -79,7 +79,7 @@ When you generate the migrations of data models that have a one-to-one relations
 1. A column of the format `{relation_name}_id` to store the ID of the record of the related data model. For example, the `email` table will have a `user_id` column.
 2. A foreign key on the `{relation_name}_id` column to the table of the related data model.
 
-![Diagram illustrating the relation between user and email records in the database](https://res.cloudinary.com/dza7lstvk/image/upload/v1726733492/Medusa%20Book/one-to-one_cj5np3.jpg)
+![Diagram illustrating the relation between user and email records in the database](/images/learn/one-to-one_cj5np3.jpg)
 
 ### One-sided One-to-One Relationship
 
@@ -205,7 +205,7 @@ When you generate the migrations of data models that have a one-to-many relation
 1. A column of the format `{relation_name}_id` to store the ID of the record of the related data model. For example, the `product` table will have a `store_id` column.
 2. A foreign key on the `{relation_name}_id` column to the table of the related data model.
 
-![Diagram illustrating the relation between a store and product records in the database](https://res.cloudinary.com/dza7lstvk/image/upload/v1726733937/Medusa%20Book/one-to-many_d6wtcw.jpg)
+![Diagram illustrating the relation between a store and product records in the database](/images/learn/one-to-many_d6wtcw.jpg)
 
 ---
 
@@ -277,7 +277,7 @@ The pivot table has columns with foreign keys pointing to the primary key of the
 - The value of the `joinColumn` configuration for the owner table, and the `inverseJoinColumn` configuration for the owned table;
 - Or the inferred name `{table_name}_id`.
 
-![Diagram illustrating the relation between order and product records in the database](https://res.cloudinary.com/dza7lstvk/image/upload/v1726734269/Medusa%20Book/many-to-many_fzy5pq.jpg)
+![Diagram illustrating the relation between order and product records in the database](/images/learn/many-to-many_fzy5pq.jpg)
 
 ### Many-To-Many with Custom Columns
 

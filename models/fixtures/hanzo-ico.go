@@ -1,0 +1,92 @@
+package fixtures
+
+import (
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/auth/password"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/blockchains"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/models/wallet"
+	"github.com/hanzoai/commerce/types/email"
+	"github.com/hanzoai/commerce/types/website"
+	// "github.com/hanzoai/commerce/models/webhook"
+)
+
+var _ = New("hanzo-ico", func(c *zip.Ctx) *organization.Organization {
+	db := datastore.New(c.Context())
+
+	org := organization.New(db)
+	org.Name = "hanzo-ico"
+	org.GetOrCreate("Name=", org.Name)
+
+	u := user.New(db)
+	u.Email = "ico@hanzo.ai"
+	u.GetOrCreate("Email=", u.Email)
+	u.FirstName = "ICO"
+	u.LastName = "User"
+	u.Organizations = []string{org.Id()}
+	u.PasswordHash, _ = password.Hash("dWcSGthgDpT5B73p")
+	u.Put()
+
+	org.FullName = "Hanzo ICO"
+	org.Owners = []string{u.Id()}
+	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "https://ico.hanzo.ai"}}
+	org.SecretKey = []byte("XzJn6Asyd9ZVSuaCDHjxj3tuhAb6FPLnzZ5VU9Md6VwsMrnCHrkcz8ZBBxqMURJD")
+
+	org.Fees.Card.Flat = 50
+	org.Fees.Card.Percent = 0.05
+	org.Fees.Affiliate.Flat = 30
+	org.Fees.Affiliate.Percent = 0.30
+	org.Fees.Ethereum.Flat = 0 // 500000
+	org.Fees.Ethereum.Percent = 0.06
+
+	// Email configuration
+	// org.Mandrill.APIKey = ""
+
+	org.Email.Enabled = true
+	org.Email.Defaults.From = email.Email{
+		Name:    "Hanzo ICO",
+		Address: "hi@hanzo.ai",
+	}
+
+	// Save org into default namespace
+	org.MustUpdate()
+
+	w := wallet.New(db)
+	w.Id_ = "hanzo-ico-wallet"
+	w.UseStringKey = true
+	w.GetOrCreate("Id_=", "hanzo-ico-wallet")
+
+	if a, _ := w.GetAccountByName("hanzo-ico-test"); a == nil {
+		if _, err := w.CreateAccount("hanzo-ico-test", blockchains.EthereumRopstenType, []byte("G9wPCV39uaXWUW5SUSCzjTEEUA2pbzmZaX27pCYndJYarALD2pNUyNKEgkGewr3p")); err != nil {
+			panic(err)
+		}
+	}
+
+	if a, _ := w.GetAccountByName("hanzo-ico"); a == nil {
+		if _, err := w.CreateAccount("hanzo-ico", blockchains.EthereumType, []byte("G9wPCV39uaXWUW5SUSCzjTEEUA2pbzmZaX27pCYndJYarALD2pNUyNKEgkGewr3p")); err != nil {
+			panic(err)
+		}
+	}
+
+	// nsDb := datastore.New(org.Namespaced(c.Context()))
+
+	// wh := webhook.New(nsDb)
+	// wh.Name = "picatic-proxy"
+	// wh.GetOrCreate("Name=", "picatic-proxy")
+
+	// if wh.AccessToken == "" {
+	// 	wh.AccessToken = ""
+	// 	wh.Live = true
+	// 	wh.Url = "http://35.188.46.251/webhook"
+	// 	wh.Events = webhook.Events{
+	// 		"order.paid": true,
+	// 	}
+	// 	wh.Enabled = true
+	// 	wh.MustUpdate()
+	// }
+
+	return org
+})

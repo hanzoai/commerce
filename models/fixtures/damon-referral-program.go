@@ -1,0 +1,73 @@
+package fixtures
+
+import (
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/referral"
+	"github.com/hanzoai/commerce/models/referralprogram"
+	"github.com/hanzoai/commerce/models/types/currency"
+)
+
+var _ = New("damon-referral-program", func(c *zip.Ctx) *referralprogram.ReferralProgram {
+	db := datastore.New(c.Context())
+
+	org := organization.New(db)
+	org.Name = "damon"
+	org.GetOrCreate("Name=", org.Name)
+
+	nsdb := datastore.New(org.Namespaced(db.Context))
+
+	rp := referralprogram.New(nsdb)
+	rp.Name = "Damon Referral Program"
+	rp.GetOrCreate("Name=", rp.Name)
+
+	rp.Actions = []referralprogram.Action{
+		// referralprogram.Action{
+		// 	Type: referralprogram.StoreCredit,
+		// 	Name: "Sign Up Action",
+
+		// 	CreditAction: referralprogram.CreditAction{
+		// 		Currency: currency.PNT,
+		// 		Amount:   currency.Cents(10),
+		// 	},
+
+		// 	Trigger: referralprogram.Trigger{
+		// 		Event: referral.NewUser,
+		// 		Type:  referralprogram.Always,
+		// 	},
+		// },
+		referralprogram.Action{
+			Type: referralprogram.StoreCredit,
+			Name: "Sale Action",
+
+			CreditAction: referralprogram.CreditAction{
+				Currency: currency.PNT,
+				Amount:   currency.Cents(1),
+			},
+
+			Trigger: referralprogram.Trigger{
+				Event: referral.NewOrder,
+				Type:  referralprogram.Always,
+			},
+		},
+		referralprogram.Action{
+			Type: referralprogram.SendWoopra,
+			Name: "Woopra Action",
+
+			SendWoopraEvent: referralprogram.SendWoopraEvent{
+				Domain: "damon.com",
+			},
+
+			Trigger: referralprogram.Trigger{
+				Event: referral.NewOrder,
+				Type:  referralprogram.Always,
+			},
+		},
+	}
+
+	rp.MustPut()
+
+	return rp
+})
