@@ -72,7 +72,13 @@ func GetWireInstructions(c *zip.Ctx) error {
 		SwiftCode:     w.SWIFT,
 		IBAN:          w.IBAN,
 		AccountName:   w.AccountHolder,
-		Memo:          w.Reference,
+		// BOTH carry the payer reference, and that is the point: banks label the
+		// field differently (memo / reference / "message to beneficiary"), and a
+		// customer types the value into whichever box their bank shows. Memo used
+		// to carry the ORG's static WIRE_REFERENCE, which is unset — so the field
+		// that links the money to an account rendered EMPTY, and an arriving wire
+		// would have to be reconciled by hand from the amount and the sender name.
+		Memo:          wireReference(payer),
 		Reference:     wireReference(payer),
 	})
 }
