@@ -1,7 +1,8 @@
-import { Listbox, Transition } from "@headlessui/react"
+"use client"
+
 import { ChevronUpDown } from "@hanzo/commerce-icons"
-import { clx } from "@hanzo/commerce-ui"
-import { Fragment, useMemo } from "react"
+import { clx, useToggleState } from "@hanzo/commerce-ui"
+import { useMemo } from "react"
 
 import Radio from "@modules/common/components/radio"
 import compareAddresses from "@lib/util/compare-addresses"
@@ -21,11 +22,14 @@ const AddressSelect = ({
   addressInput,
   onSelect,
 }: AddressSelectProps) => {
+  const { state: open, close, toggle } = useToggleState()
+
   const handleSelect = (id: string) => {
     const savedAddress = addresses.find((a) => a.id === id)
     if (savedAddress) {
       onSelect(savedAddress as HttpTypes.StoreCartAddress)
     }
+    close()
   }
 
   const selectedAddress = useMemo(() => {
@@ -33,42 +37,49 @@ const AddressSelect = ({
   }, [addresses, addressInput])
 
   return (
-    <Listbox onChange={handleSelect} value={selectedAddress?.id}>
-      <div className="relative">
-        <Listbox.Button
-          className="relative w-full flex justify-between items-center px-4 py-[10px] text-left bg-white cursor-default focus:outline-none border rounded-rounded focus-visible:ring-2 focus-visible:ring-opacity-75 focus-visible:ring-white focus-visible:ring-offset-gray-300 focus-visible:ring-offset-2 focus-visible:border-gray-300 text-base-regular"
-          data-testid="shipping-address-select"
-        >
-          {({ open }) => (
-            <>
-              <span className="block truncate">
-                {selectedAddress
-                  ? selectedAddress.address_1
-                  : "Choose an address"}
-              </span>
-              <ChevronUpDown
-                className={clx("transition-rotate duration-200", {
-                  "transform rotate-180": open,
-                })}
-              />
-            </>
-          )}
-        </Listbox.Button>
-        <Transition
-          as={Fragment}
-          leave="transition ease-in duration-100"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <Listbox.Options
+    <div className="relative">
+      <button
+        type="button"
+        onClick={toggle}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") close()
+        }}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="relative w-full flex justify-between items-center px-4 py-[10px] text-left bg-white cursor-default focus:outline-none border rounded-rounded focus-visible:ring-2 focus-visible:ring-opacity-75 focus-visible:ring-white focus-visible:ring-offset-gray-300 focus-visible:ring-offset-2 focus-visible:border-gray-300 text-base-regular"
+        data-testid="shipping-address-select"
+      >
+        <span className="block truncate">
+          {selectedAddress ? selectedAddress.address_1 : "Choose an address"}
+        </span>
+        <ChevronUpDown
+          className={clx("transition-rotate duration-200", {
+            "transform rotate-180": open,
+          })}
+        />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={close} aria-hidden />
+          <ul
+            role="listbox"
             className="absolute z-20 w-full overflow-auto text-small-regular bg-white border border-top-0 max-h-60 focus:outline-none sm:text-sm"
             data-testid="shipping-address-options"
           >
             {addresses.map((address) => {
               return (
-                <Listbox.Option
+                <li
                   key={address.id}
-                  value={address.id}
+                  role="option"
+                  aria-selected={selectedAddress?.id === address.id}
+                  tabIndex={0}
+                  onClick={() => handleSelect(address.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      handleSelect(address.id)
+                    }
+                  }}
                   className="cursor-default select-none relative pl-6 pr-10 hover:bg-gray-50 py-4"
                   data-testid="shipping-address-option"
                 >
@@ -103,13 +114,13 @@ const AddressSelect = ({
                       </div>
                     </div>
                   </div>
-                </Listbox.Option>
+                </li>
               )
             })}
-          </Listbox.Options>
-        </Transition>
-      </div>
-    </Listbox>
+          </ul>
+        </>
+      )}
+    </div>
   )
 }
 

@@ -1,11 +1,5 @@
 "use client"
 
-import {
-  Popover,
-  PopoverButton,
-  PopoverPanel,
-  Transition,
-} from "@headlessui/react"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@hanzo/commerce-types"
 import { Button } from "@hanzo/commerce-ui"
@@ -15,7 +9,7 @@ import LineItemPrice from "@modules/common/components/line-item-price"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Thumbnail from "@modules/products/components/thumbnail"
 import { usePathname } from "next/navigation"
-import { Fragment, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 const CartDropdown = ({
   cart: cartState,
@@ -79,26 +73,16 @@ const CartDropdown = ({
       onMouseEnter={openAndCancel}
       onMouseLeave={close}
     >
-      <Popover className="relative h-full">
-        <PopoverButton className="h-full">
+      <div className="relative h-full">
+        <div className="h-full flex items-center">
           <LocalizedClientLink
             className="hover:text-ui-fg-base"
             href="/cart"
             data-testid="nav-cart-link"
           >{`Cart (${totalItems})`}</LocalizedClientLink>
-        </PopoverButton>
-        <Transition
-          show={cartDropdownOpen}
-          as={Fragment}
-          enter="transition ease-out duration-200"
-          enterFrom="opacity-0 translate-y-1"
-          enterTo="opacity-100 translate-y-0"
-          leave="transition ease-in duration-150"
-          leaveFrom="opacity-100 translate-y-0"
-          leaveTo="opacity-0 translate-y-1"
-        >
-          <PopoverPanel
-            static
+        </div>
+        {cartDropdownOpen && (
+          <div
             className="hidden small:block absolute top-[calc(100%+1px)] right-0 bg-white border-x border-b border-gray-200 w-[420px] text-ui-fg-base"
             data-testid="nav-cart-dropdown"
           >
@@ -220,9 +204,9 @@ const CartDropdown = ({
                 </div>
               </div>
             )}
-          </PopoverPanel>
-        </Transition>
-      </Popover>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

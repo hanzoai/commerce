@@ -1,13 +1,6 @@
 "use client"
 
-import {
-  Listbox,
-  ListboxButton,
-  ListboxOption,
-  ListboxOptions,
-  Transition,
-} from "@headlessui/react"
-import { Fragment, useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import ReactCountryFlag from "react-country-flag"
 
 import { StateType } from "@lib/hooks/use-toggle-state"
@@ -64,21 +57,17 @@ const CountrySelect = ({ toggleState, regions }: CountrySelectProps) => {
 
   return (
     <div>
-      <Listbox
-        as="span"
-        onChange={handleChange}
-        defaultValue={
-          countryCode
-            ? options?.find((o) => o?.country === countryCode)
-            : undefined
-        }
-      >
-        <ListboxButton className="py-1 w-full">
+      <span>
+        <button
+          type="button"
+          className="py-1 w-full"
+          aria-haspopup="listbox"
+          aria-expanded={state}
+        >
           <div className="txt-compact-small flex items-start gap-x-2">
             <span>Shipping to:</span>
             {current && (
               <span className="txt-compact-small flex items-center gap-x-2">
-                {/* @ts-ignore */}
                 <ReactCountryFlag
                   svg
                   style={{
@@ -91,27 +80,29 @@ const CountrySelect = ({ toggleState, regions }: CountrySelectProps) => {
               </span>
             )}
           </div>
-        </ListboxButton>
+        </button>
         <div className="flex relative w-full min-w-[320px]">
-          <Transition
-            show={state}
-            as={Fragment}
-            leave="transition ease-in duration-150"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <ListboxOptions
+          {state && (
+            <ul
+              role="listbox"
               className="absolute -bottom-[calc(100%-36px)] left-0 xsmall:left-auto xsmall:right-0 max-h-[442px] overflow-y-scroll z-[900] bg-white drop-shadow-md text-small-regular uppercase text-black no-scrollbar rounded-rounded w-full"
-              static
             >
               {options?.map((o, index) => {
                 return (
-                  <ListboxOption
+                  <li
                     key={index}
-                    value={o}
+                    role="option"
+                    aria-selected={o?.country === countryCode}
+                    tabIndex={0}
+                    onClick={() => o && handleChange(o as CountryOption)}
+                    onKeyDown={(e) => {
+                      if ((e.key === "Enter" || e.key === " ") && o) {
+                        e.preventDefault()
+                        handleChange(o as CountryOption)
+                      }
+                    }}
                     className="py-2 hover:bg-gray-200 px-3 cursor-pointer flex items-center gap-x-2"
                   >
-                    {/* @ts-ignore */}
                     <ReactCountryFlag
                       svg
                       style={{
@@ -121,13 +112,13 @@ const CountrySelect = ({ toggleState, regions }: CountrySelectProps) => {
                       countryCode={o?.country ?? ""}
                     />{" "}
                     {o?.label}
-                  </ListboxOption>
+                  </li>
                 )
               })}
-            </ListboxOptions>
-          </Transition>
+            </ul>
+          )}
         </div>
-      </Listbox>
+      </span>
     </div>
   )
 }

@@ -1,3 +1,5 @@
+"use client"
+
 import { Checkbox, Label } from "@hanzo/commerce-ui"
 import React from "react"
 
@@ -6,7 +8,7 @@ type CheckboxProps = {
   onChange?: () => void
   label: string
   name?: string
-  'data-testid'?: string
+  "data-testid"?: string
 }
 
 const CheckboxWithLabel: React.FC<CheckboxProps> = ({
@@ -14,18 +16,14 @@ const CheckboxWithLabel: React.FC<CheckboxProps> = ({
   onChange,
   label,
   name,
-  'data-testid': dataTestId
+  "data-testid": dataTestId,
 }) => {
   return (
     <div className="flex items-center space-x-2 ">
       <Checkbox
-        className="text-base-regular flex items-center gap-x-2"
         id="checkbox"
-        role="checkbox"
-        type="button"
         checked={checked}
-        aria-checked={checked}
-        onClick={onChange}
+        onCheckedChange={() => onChange?.()}
         name={name}
         data-testid={dataTestId}
       />

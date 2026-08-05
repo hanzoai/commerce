@@ -1,58 +1,31 @@
-// Components
-export { Alert } from "./components/alert"
-export { Avatar } from "./components/avatar"
-export { Badge } from "./components/badge"
-export { Button } from "./components/button"
-export { Calendar } from "./components/calendar"
-export { Checkbox, type CheckboxCheckedState } from "./components/checkbox"
-export { Code } from "./components/code"
-export { CodeBlock } from "./components/code-block"
-export { Command } from "./components/command"
-export { CommandBar } from "./components/command-bar"
-export { Container } from "./components/container"
-export { Copy } from "./components/copy"
-export { CurrencyInput } from "./components/currency-input"
-export { DatePicker } from "./components/date-picker"
-export { Divider } from "./components/divider"
-export { Drawer } from "./components/drawer"
-export { DropdownMenu } from "./components/dropdown-menu"
-export { FocusModal } from "./components/focus-modal"
-export { Heading } from "./components/heading"
-export { Hint } from "./components/hint"
-export { I18nProvider } from "./components/i18n-provider"
-export { IconBadge } from "./components/icon-badge"
-export { IconButton } from "./components/icon-button"
-export { InlineTip } from "./components/inline-tip"
-export { Input } from "./components/input"
-export { Kbd } from "./components/kbd"
-export { Label } from "./components/label"
-export { Popover } from "./components/popover"
-export { ProgressAccordion } from "./components/progress-accordion"
-export { ProgressTabs } from "./components/progress-tabs"
-export { Prompt } from "./components/prompt"
-export { RadioGroup } from "./components/radio-group"
-export { Select } from "./components/select"
-export { Skeleton } from "./components/skeleton"
-export { StatusBadge } from "./components/status-badge"
-export { Switch } from "./components/switch"
-export { Table } from "./components/table"
-export { Tabs } from "./components/tabs"
-export { Text } from "./components/text"
-export { Textarea } from "./components/textarea"
-export { Toast } from "./components/toast"
-export { Toaster } from "./components/toaster"
-export { Tooltip, TooltipProvider } from "./components/tooltip"
+/**
+ * @hanzo/commerce-ui — the storefront's component kit, on the 8.x stack.
+ *
+ * This was the vendored Medusa design system: 195 files on Radix, cva and the
+ * Tailwind preset. It is now the 16 names the storefront actually renders,
+ * drawn by @hanzo/ui on @hanzo/gui (interactive pieces) and by plain elements
+ * on kit.css theme tokens (server-rendered pieces). The end state is call
+ * sites importing @hanzo/ui directly as each file sheds its utility classes;
+ * this module is the storefront's one seam until then.
+ */
+export {
+  Badge,
+  Container,
+  Heading,
+  IconBadge,
+  Input,
+  Label,
+  Table,
+  Text,
+  clx,
+} from "./server"
 
-// Blocks
-export * from "./blocks/data-table"
-
-// Hooks
-export { usePrompt } from "./hooks/use-prompt"
-export { useToggleState } from "./hooks/use-toggle-state"
-
-// Utils
-export { clx } from "./utils/clx"
-export { toast } from "./utils/toast"
-
-// Types
-export * from "./types"
+export {
+  Button,
+  Checkbox,
+  IconButton,
+  RadioGroup,
+  Toaster,
+  toast,
+  useToggleState,
+} from "./client"

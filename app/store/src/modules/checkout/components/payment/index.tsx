@@ -1,10 +1,9 @@
 "use client"
 
-import { RadioGroup } from "@headlessui/react"
 import { isStripeLike, paymentInfoMap } from "@lib/constants"
 import { initiatePaymentSession } from "@lib/data/cart"
 import { CheckCircleSolid, CreditCard } from "@hanzo/commerce-icons"
-import { Button, Container, Heading, Text, clx } from "@hanzo/commerce-ui"
+import { Button, Container, Heading, Text, clx, RadioGroup } from "@hanzo/commerce-ui"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import PaymentContainer, {
   StripeCardContainer,
@@ -138,7 +137,7 @@ const Payment = ({
             <>
               <RadioGroup
                 value={selectedPaymentMethod}
-                onChange={(value: string) => setPaymentMethod(value)}
+                onValueChange={(value: string) => setPaymentMethod(value)}
               >
                 {availablePaymentMethods.map((paymentMethod) => (
                   <div key={paymentMethod.id}>
