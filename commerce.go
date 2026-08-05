@@ -1106,10 +1106,20 @@ func (app *App) setupRoutes() {
 	// Public currency reference list (the store/settings + product/price pickers
 	// read this instead of a hardcoded array). Global default-namespace set.
 	currencyapi.PublicRoute(public)
-	public.Post("/deposits", checkout.Deposits(orgResolver, checkout.NewHTTPForwarder()))
-	public.Post("/deposits/:id/confirm", checkout.DepositConfirm(orgResolver, checkout.NewHTTPForwarder()))
-	public.Get("/deposits/:id/status", checkout.DepositStatus(orgResolver, checkout.NewHTTPForwarder()))
-	public.Post("/webhooks/:provider", checkout.WebhookIntake(orgResolver))
+	// The deposit-intent proxy is GONE. It forwarded /v1/commerce/deposits to a
+	// tenant-supplied broker-dealer backend, and no tenant here runs one — so
+	// every request answered 503 "tenant backend not configured", a true
+	// sentence about tenants that reached a customer buying credit with a
+	// wallet. Deposits are commerce's own: a tokenized method charges through
+	// /v1/billing/topup/token, wire reads /v1/billing/wire, crypto mints an
+	// address at /v1/billing/crypto/deposit. A rail nobody operates is not a
+	// fallback, and leaving it as the last branch of the client meant anything
+	// unhandled by name silently went there.
+	// The provider-webhook forwarder went with it, and for the same reason: it
+	// relayed Square's callbacks to that same absent backend. The REAL receiver
+	// is commerce's own POST /v1/billing/webhooks/:provider, which verifies the
+	// signature and settles the payment — the address registered in the Square
+	// dashboard.
 
 	// Superadmin tenant CRUD over the base-backed store stays available for
 	// per-org overrides, but it no longer DRIVES resolution. Gated by IAM +

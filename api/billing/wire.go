@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"context"
 	"os"
 	"strings"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/secrets"
 	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/types/integration"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
@@ -62,14 +64,12 @@ func GetWireInstructions(c *zip.Ctx) error {
 	}
 
 	w := recv.Wire
-	// ENV FALLBACK, the same shape Square's public config already uses. Per-org
-	// KMS hydration only runs when KMS_ENABLED is set, and it is not set on the
-	// co-resident deployment — so the org row's wire fields are empty there and
-	// the rail 503s however carefully the secrets were stored. The deployment
-	// carries them as WIRE_* instead (synced from KMS into commerce-secrets, the
-	// path that demonstrably works), and a per-org row still wins when present.
+	// Per-org KMS hydration only runs under KMS_ENABLED, which the co-resident
+	// deployment does not set — so the org row is empty there and the rail 503s
+	// however carefully the details were stored. Ask the HOST instead: it holds
+	// an in-process KMS handle already. A per-org row still wins when present.
 	if w.AccountNumber == "" && w.IBAN == "" {
-		w = wireFromEnv()
+		w = wireFromHost(c.Context())
 	}
 	if w.AccountNumber == "" && w.IBAN == "" {
 		return jsonhttp.Fail(c, 503, "Wire transfer not configured", nil)
@@ -89,8 +89,8 @@ func GetWireInstructions(c *zip.Ctx) error {
 		// to carry the ORG's static WIRE_REFERENCE, which is unset — so the field
 		// that links the money to an account rendered EMPTY, and an arriving wire
 		// would have to be reconciled by hand from the amount and the sender name.
-		Memo:          wireReference(payer),
-		Reference:     wireReference(payer),
+		Memo:      wireReference(payer),
+		Reference: wireReference(payer),
 	})
 }
 
@@ -112,19 +112,33 @@ func wireReference(payer string) string {
 	return b.String()
 }
 
-// wireFromEnv reads the deployment's receiving-bank details. Every field is
-// optional except an account identifier — without one there is nowhere to send
-// money, which is the single condition the caller treats as "not configured".
-func wireFromEnv() integration.WireTransfer {
+// wireFromHost reads the receiving-bank details from the HOST'S SECRET PLANE —
+// in-process, by reference, no env and no HTTP.
+//
+// This replaced an env fan-out (KMS -> a k8s Secret -> WIRE_* on the pod ->
+// os.Getenv). That chain worked, and it was three places for one value to go
+// stale plus a pod restart to pick up a rotation, for a value the host already
+// held. Every other plugin asks its host; so does this.
+//
+// The refs are the same coordinates the per-org hydrator uses, so one bank
+// lives at one address whichever path reads it. os.Getenv survives ONLY as the
+// last fallback for a standalone commerce with no host to ask.
+func wireFromHost(ctx context.Context) integration.WireTransfer {
+	get := func(name string) string {
+		if v := secrets.String(ctx, "/tenants/hanzo/wire/"+name); v != "" {
+			return v
+		}
+		return strings.TrimSpace(os.Getenv(name))
+	}
 	return integration.WireTransfer{
-		BankName:      os.Getenv("WIRE_BANK_NAME"),
-		AccountHolder: os.Getenv("WIRE_ACCOUNT_HOLDER"),
-		AccountNumber: os.Getenv("WIRE_ACCOUNT_NUMBER"),
-		RoutingNumber: os.Getenv("WIRE_ROUTING_NUMBER"),
-		SWIFT:         os.Getenv("WIRE_SWIFT"),
-		IBAN:          os.Getenv("WIRE_IBAN"),
-		BankAddress:   os.Getenv("WIRE_BANK_ADDRESS"),
-		Reference:     os.Getenv("WIRE_REFERENCE"),
-		Instructions:  os.Getenv("WIRE_INSTRUCTIONS"),
+		BankName:      get("WIRE_BANK_NAME"),
+		AccountHolder: get("WIRE_ACCOUNT_HOLDER"),
+		AccountNumber: get("WIRE_ACCOUNT_NUMBER"),
+		RoutingNumber: get("WIRE_ROUTING_NUMBER"),
+		SWIFT:         get("WIRE_SWIFT"),
+		IBAN:          get("WIRE_IBAN"),
+		BankAddress:   get("WIRE_BANK_ADDRESS"),
+		Reference:     get("WIRE_REFERENCE"),
+		Instructions:  get("WIRE_INSTRUCTIONS"),
 	}
 }
