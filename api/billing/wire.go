@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"os"
 	"strings"
 
 	"github.com/zap-proto/zip"
@@ -10,6 +11,7 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/thirdparty/kms"
+	"github.com/hanzoai/commerce/types/integration"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -60,6 +62,15 @@ func GetWireInstructions(c *zip.Ctx) error {
 	}
 
 	w := recv.Wire
+	// ENV FALLBACK, the same shape Square's public config already uses. Per-org
+	// KMS hydration only runs when KMS_ENABLED is set, and it is not set on the
+	// co-resident deployment — so the org row's wire fields are empty there and
+	// the rail 503s however carefully the secrets were stored. The deployment
+	// carries them as WIRE_* instead (synced from KMS into commerce-secrets, the
+	// path that demonstrably works), and a per-org row still wins when present.
+	if w.AccountNumber == "" && w.IBAN == "" {
+		w = wireFromEnv()
+	}
 	if w.AccountNumber == "" && w.IBAN == "" {
 		return jsonhttp.Fail(c, 503, "Wire transfer not configured", nil)
 	}
@@ -99,4 +110,21 @@ func wireReference(payer string) string {
 		}
 	}
 	return b.String()
+}
+
+// wireFromEnv reads the deployment's receiving-bank details. Every field is
+// optional except an account identifier — without one there is nowhere to send
+// money, which is the single condition the caller treats as "not configured".
+func wireFromEnv() integration.WireTransfer {
+	return integration.WireTransfer{
+		BankName:      os.Getenv("WIRE_BANK_NAME"),
+		AccountHolder: os.Getenv("WIRE_ACCOUNT_HOLDER"),
+		AccountNumber: os.Getenv("WIRE_ACCOUNT_NUMBER"),
+		RoutingNumber: os.Getenv("WIRE_ROUTING_NUMBER"),
+		SWIFT:         os.Getenv("WIRE_SWIFT"),
+		IBAN:          os.Getenv("WIRE_IBAN"),
+		BankAddress:   os.Getenv("WIRE_BANK_ADDRESS"),
+		Reference:     os.Getenv("WIRE_REFERENCE"),
+		Instructions:  os.Getenv("WIRE_INSTRUCTIONS"),
+	}
 }
