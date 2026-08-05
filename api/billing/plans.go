@@ -63,6 +63,29 @@ type canonicalPlan struct {
 		IdleResalePercent int    `json:"idleResalePercent"`
 		Description       string `json:"description"`
 	} `json:"payouts,omitempty"`
+	// Entitlements is the catalog's typed entitlement block. Only the licensing.*
+	// keys are read here — they decide what a subscriber may RUN, so they must be
+	// persisted onto the plan row rather than re-read from the catalog at question
+	// time (see plan.Licensing). The other namespaces (ai.*, cloud.*, commerce.*)
+	// are served from the catalog by the plans vocabulary and are not row data.
+	Entitlements struct {
+		Products []string `json:"licensing.product_ids,omitempty"`
+		Apps     []string `json:"licensing.app_ids,omitempty"`
+		Features []string `json:"licensing.engine_features,omitempty"`
+		Seats    *int     `json:"licensing.seats,omitempty"`
+	} `json:"entitlements,omitempty"`
+}
+
+// licensingOf projects the catalog's licensing.* entitlement keys onto the row's
+// typed block, or nil when the tier licenses nothing. nil rather than an empty
+// struct so "licenses nothing" and "we never recorded it" stay distinguishable on
+// the row — Backfill only fills the second.
+func licensingOf(cp *canonicalPlan) *plan.Licensing {
+	e := cp.Entitlements
+	if len(e.Products) == 0 && len(e.Apps) == 0 && len(e.Features) == 0 && e.Seats == nil {
+		return nil
+	}
+	return &plan.Licensing{Products: e.Products, Apps: e.Apps, Features: e.Features, Seats: e.Seats}
 }
 
 // staticPlan is the wire type returned by GET /billing/plans.
@@ -93,6 +116,9 @@ type staticPlan struct {
 	// invoices charge Price × subscription quantity, floored at Limits.MinSeats.
 	PerSeat bool        `json:"perSeat,omitempty"`
 	Limits  *planLimits `json:"limits,omitempty"`
+	// Licensing is what the tier licenses — carried so the seed can persist it onto
+	// the row, where it survives the tier's retirement.
+	Licensing *plan.Licensing `json:"licensing,omitempty"`
 }
 
 // hanzoPlans contains all plans loaded at init from embedded JSON files.
@@ -155,6 +181,7 @@ func loadPlansFromEmbed(fs embed.FS, path string) []staticPlan {
 			sp.PerSeat = cp.PriceRef.Recurring.PerSeat
 		}
 		sp.Limits = cp.Limits
+		sp.Licensing = licensingOf(&canonical[i])
 
 		plans[i] = sp
 	}
