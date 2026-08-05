@@ -15,9 +15,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout(props: { children: React.ReactNode }) {
   return (
-    // `light` opts the @hanzo/ui tokens out of dark-first; data-mode is the
-    // storefront's own light palette switch. One surface, one mode.
-    <html lang="en" data-mode="light" className="light">
+    // theme.css is light-first (`:root` is the light look, `.dark` the
+    // opt-in), so no class is needed for light; data-mode is the storefront's
+    // own light palette hook. One surface, one mode.
+    <html lang="en" data-mode="light">
       <body>
         <Providers>
           <AnalyticsRoot>
