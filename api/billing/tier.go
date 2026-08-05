@@ -199,10 +199,10 @@ func dailyUsageCents(ctx context.Context, user string, isTest bool) int64 {
 // surfaces it as a 5xx and the caller holds its last-known tier.
 func resolveTierName(c *zip.Ctx, user string) (tier.Name, error) {
 	if iamTier := iammiddleware.GetIAMTier(c); iamTier != "" {
-		return tier.Parse(iamTier), nil
+		return tierOfName(iamTier), nil
 	}
 	if qTier := strings.TrimSpace(c.Query("tier")); qTier != "" {
-		return tier.Parse(qTier), nil
+		return tierOfName(qTier), nil
 	}
 	org, ok := middleware.GetOrganizationOK(c)
 	if !ok {
@@ -211,6 +211,43 @@ func resolveTierName(c *zip.Ctx, user string) (tier.Name, error) {
 		return tier.Free, nil
 	}
 	return deriveTier(datastore.New(org.Namespaced(c.Context())), user)
+}
+
+// tierOfName resolves a name that may be EITHER a tier or a CATALOG PLAN SLUG.
+//
+// Two vocabularies meet here and only one was being read. The registry holds tier
+// names — free, starter, pro, enterprise. The catalog SELLS go, dev, pro, max, team
+// and enterprise. `tier.Parse` knows only the first, so four of the six sold plans
+// fell through to Free, which is the most restrictive configuration there is: one
+// agent and two models. Measured live before this change:
+//
+//	?tier=go   -> Free   ?tier=dev  -> Free
+//	?tier=max  -> Free   ?tier=team -> Free      (max is $99/mo)
+//
+// A plan name is not a tier name, and the fix is not a second hardcoded list: the
+// CATALOG is the authority on what is sold, and it already carries the category
+// deriveTier keys on. Resolving through it means a plan confers the same tier
+// whether it arrives as a subscription row or as a name in a claim — and a plan
+// added to the catalog tomorrow is covered without touching this function.
+//
+// Only a string that is neither a tier nor a sold plan is Free.
+func tierOfName(raw string) tier.Name {
+	if n, ok := tier.ParseOK(raw); ok {
+		return n
+	}
+	p := lookupPlan(strings.ToLower(strings.TrimSpace(raw)))
+	if p == nil {
+		return tier.Free
+	}
+	// Same two rules deriveTier applies to a subscription, so the two paths cannot
+	// disagree about what a plan is worth.
+	if p.Category == "enterprise" || p.ContactSales {
+		return tier.Enterprise
+	}
+	if paidTier(p.Slug) {
+		return tier.Pro
+	}
+	return tier.Free
 }
 
 // deriveTier resolves a subject's REAL billing tier from their subscriptions: the

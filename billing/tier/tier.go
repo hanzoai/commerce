@@ -102,14 +102,34 @@ func All() map[Name]*Config {
 	return out
 }
 
-// Parse normalizes a raw string into a tier Name. Empty or unknown
-// strings default to Free.
-func Parse(raw string) Name {
+// ParseOK normalizes a raw string into a tier Name and reports whether it actually
+// NAMED a registered tier.
+//
+// The distinction is the whole point. Parse collapses "unknown" and "free" into one
+// answer, and the registry holds tier names (free/starter/pro/enterprise) while the
+// CATALOG sells plan slugs (go/dev/pro/max/team/enterprise). Four of the six sold
+// plans are not tier names, so they parsed to Free — the most restrictive config
+// there is (1 agent, two models). Measured live: `?tier=max`, a $99/mo plan,
+// answered displayName "Free", maxAgents 1.
+//
+// A caller that holds the catalog can now tell "this is a tier" from "this is not a
+// tier I know" and resolve the slug properly instead of downgrading silently.
+func ParseOK(raw string) (Name, bool) {
 	n := Name(raw)
 	if _, ok := registry[n]; ok {
-		return n
+		return n, true
 	}
-	return Free
+	return Free, false
+}
+
+// Parse normalizes a raw string into a tier Name. Empty or unknown
+// strings default to Free.
+//
+// Prefer ParseOK anywhere a plan slug can arrive: this signature cannot report
+// that it did not recognize the input, and "not recognized" is not "free".
+func Parse(raw string) Name {
+	n, _ := ParseOK(raw)
+	return n
 }
 
 // IsModelAllowed checks whether the given model identifier is permitted
