@@ -131,7 +131,7 @@ func (sp *SquareProcessor) Charge(ctx context.Context, req processor.PaymentRequ
 
 	paymentReq := &square.CreatePaymentRequest{
 		SourceID:       req.Token,
-		IdempotencyKey: idempotencyKey,
+		IdempotencyKey: fitKey(idempotencyKey),
 		AmountMoney: &square.Money{
 			Amount:   square.Int64(int64(req.Amount)),
 			Currency: squareCurrency(req.Currency),
@@ -211,7 +211,7 @@ func (sp *SquareProcessor) Authorize(ctx context.Context, req processor.PaymentR
 
 	paymentReq := &square.CreatePaymentRequest{
 		SourceID:       req.Token,
-		IdempotencyKey: idempotencyKey,
+		IdempotencyKey: fitKey(idempotencyKey),
 		AmountMoney: &square.Money{
 			Amount:   square.Int64(int64(req.Amount)),
 			Currency: squareCurrency(req.Currency),
@@ -286,14 +286,9 @@ func (sp *SquareProcessor) Refund(ctx context.Context, req processor.RefundReque
 	if idempotencyKey == "" {
 		idempotencyKey = uuid.New().String()
 	}
-	// Square caps the idempotency key at 45 chars; a sha256-hex derived key is
-	// 64, so truncate deterministically (still collision-safe for our scope).
-	if len(idempotencyKey) > 45 {
-		idempotencyKey = idempotencyKey[:45]
-	}
 
 	refundReq := &square.RefundPaymentRequest{
-		IdempotencyKey: idempotencyKey,
+		IdempotencyKey: fitKey(idempotencyKey),
 		PaymentID:      square.String(req.TransactionID),
 		AmountMoney: &square.Money{
 			Amount:   square.Int64(req.Amount.Minor().Int64()),
