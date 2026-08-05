@@ -52,6 +52,10 @@ func MountTenantAdmin(group zip.Router, s *store.Store) {
 	a := NewTenantAdminAPI(s)
 	group.Post("/tenants", a.CreateTenant)
 	group.Get("/providers", a.ListProviders)
+	// The write half of the same resource. Without it the provider list was
+	// readable and unchangeable, so which rails a deployment offered could only
+	// be moved by editing the database.
+	group.Put("/providers/:name", a.SetProviderEnabled)
 }
 
 // MountSPA registers the least-specific catch-all that serves the embedded
