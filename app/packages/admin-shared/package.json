@@ -1,0 +1,26 @@
+{
+  "name": "@hanzo/commerce-admin-shared",
+  "description": "Shared code for Hanzo Commerce admin packages.",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT OR Apache-2.0",
+  "types": "dist/index.d.ts",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hanzoai/commerce",
+    "directory": "app/packages/admin-shared"
+  },
+  "files": [
+    "dist",
+    "package.json"
+  ],
+  "scripts": {
+    "build": "tsup"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
+  }
+}

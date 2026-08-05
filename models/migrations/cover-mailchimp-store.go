@@ -1,0 +1,49 @@
+package migrations
+
+import (
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/store"
+	"github.com/hanzoai/commerce/thirdparty/mailchimp"
+	"github.com/hanzoai/commerce/types/integration"
+
+	ds "github.com/hanzoai/commerce/datastore"
+)
+
+var _ = New("cover-mailchimp-store",
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "cover")
+
+		db := ds.New(c.Context())
+		org := organization.New(db)
+		if _, err := org.Query().Filter("Name=", "cover").Get(); err != nil {
+			panic(err)
+		}
+		return []interface{}{org.Mailchimp.APIKey, org.DefaultStore}
+	},
+	func(db *ds.Datastore, stor *store.Store, apiKey, defaultStore string) {
+		if apiKey == "" {
+			log.Warn("No MailChimp API Key", db.Context)
+			return
+		}
+
+		mc := integration.Mailchimp{
+			APIKey: apiKey,
+		}
+		client := mailchimp.New(db.Context, mc)
+
+		// Create new store
+		if stor.Id() == defaultStore {
+			stor.Mailchimp.ListId = "95dee09328"
+		} else {
+			stor.Mailchimp.ListId = "1fa3cc7c33"
+		}
+		stor.MustUpdate()
+
+		if err := client.CreateStore(stor); err != nil {
+			log.Error("Failed to create Mailchimp store: %v", err, db.Context)
+		}
+	},
+)

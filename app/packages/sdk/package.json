@@ -1,0 +1,40 @@
+{
+  "name": "@hanzo/commerce-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SDK for the Hanzo Commerce API",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hanzoai/commerce",
+    "directory": "app/packages/sdk"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "src"
+  ],
+  "author": "Hanzo AI, Inc.",
+  "license": "MIT OR Apache-2.0",
+  "devDependencies": {
+    "@hanzo/commerce-types": "workspace:*"
+  },
+  "dependencies": {
+    "fetch-event-stream": "^0.1.5",
+    "qs": "^6.12.1"
+  },
+  "scripts": {
+    "build": "echo '@hanzo/commerce-sdk is consumed as TS source (exports -> ./src); no compile step'",
+    "test": "jest --passWithNoTests --bail --forceExit --detectOpenHandles",
+    "watch": "tsc --build --watch"
+  }
+}

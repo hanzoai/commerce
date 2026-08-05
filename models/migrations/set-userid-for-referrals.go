@@ -1,0 +1,39 @@
+package migrations
+
+import (
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/referral"
+
+	ds "github.com/hanzoai/commerce/datastore"
+)
+
+var _ = New("set-userid-for-referrals",
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "bellabeat")
+		return NoArgs
+	},
+	func(db *ds.Datastore, refl *referral.Referral) {
+		ctx := db.Context
+		orderId := refl.OrderId
+
+		// Look up order referenced by referral
+		ord := order.New(db)
+		if err := ord.GetById(orderId); err != nil {
+			log.Error("Failed to query for order: %v\n%v", orderId, err, ctx)
+			return
+		}
+
+		// Same user, just return
+		if ord.UserId == refl.UserId {
+			log.Debug("Same user")
+			return
+		}
+
+		// Update the user id on the referrer
+		refl.UserId = ord.UserId
+		refl.Put()
+	},
+)

@@ -1,0 +1,57 @@
+package migrations
+
+import (
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/product"
+
+	ds "github.com/hanzoai/commerce/datastore"
+)
+
+// Cache the products
+var products = make(map[string]string)
+
+func GetProduct(db *ds.Datastore, id string) string {
+	if slug, ok := products[id]; ok {
+		return slug
+	}
+
+	prod := product.New(db)
+	if err := prod.GetById(id); err != nil {
+		log.Error(err, db.Context)
+	}
+
+	products[prod.Id()] = prod.Slug
+
+	return prod.Slug
+}
+
+var _ = New("update-skus-on-orders",
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "bellabeat")
+
+		return NoArgs
+	},
+	func(db *ds.Datastore, ord *order.Order) {
+		items := ord.Items
+
+		update := false
+
+		for i, item := range items {
+			slug := GetProduct(db, item.ProductId)
+
+			if item.ProductSlug != slug {
+				update = true
+				items[i].ProductSlug = slug
+			}
+		}
+
+		if update {
+			if err := ord.Put(); err != nil {
+				log.Error(err, db.Context)
+			}
+		}
+	},
+)

@@ -1,0 +1,95 @@
+package accesstoken
+
+import (
+	"errors"
+
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/auth/password"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/util/permission"
+	"github.com/hanzoai/commerce/util/session"
+)
+
+func getAccessToken(c *zip.Ctx, id, email, pass string, test bool) error {
+	db := datastore.New(c.Context())
+	u := user.New(db)
+
+	// Try to get user by email
+	if err := u.GetByEmail(email); err != nil {
+		return http.Fail(c, 401, "Invalid email address.", nil)
+	}
+
+	// Check password
+	if !password.HashAndCompare(u.PasswordHash, pass) {
+		return http.Fail(c, 401, "Invalid password.", nil)
+	}
+
+	// Get organization
+	org := organization.New(db)
+	if err := org.GetById(id); err != nil {
+		return http.Fail(c, 500, "Unable to retrieve organization", err)
+	}
+
+	// Check if we have permission to create an access token
+	if !(org.IsOwner(u) || org.IsAdmin(u)) {
+		log.Warn("user (%v, %v) is not owner of (%v, %v)", u.Email, u.Id(), org.Name, org.Id())
+		return http.Fail(c, 500, "Must be owner or admin to create a new access token.", errors.New("Invalid user"))
+	}
+
+	// Get proper token
+	var accessToken string
+
+	if test {
+		org.RemoveToken("test-secret-key")
+		accessToken = org.AddToken("test-secret-key", permission.Admin|permission.Test)
+	} else {
+		org.RemoveToken("live-secret-key")
+		accessToken = org.AddToken("live-secret-key", permission.Admin|permission.Live)
+	}
+
+	// Save organization
+	org.Put()
+
+	// Save access token in cookie for ease of use during development
+	if config.IsDevelopment {
+		session.Set(c, "access-token", accessToken)
+	}
+
+	// Return access token
+	return http.Render(c, 200, map[string]any{"status": "ok", "token": accessToken})
+}
+
+func deleteAccessToken(c *zip.Ctx) error {
+	accessToken := session.GetString(c, "access-token")
+
+	// Save access token in cookie for ease of use during development
+	if config.IsDevelopment {
+		session.Delete(c, "access-token")
+	}
+
+	// Get organization for current access token
+	org := middleware.GetOrganization(c)
+
+	// Retrieve token
+	tok, err := org.GetToken(accessToken)
+	if err != nil {
+		return http.Fail(c, 500, "Invalid token", err)
+	}
+
+	// Remove token
+	org.RemoveToken(tok.Name)
+
+	if err := org.Put(); err != nil {
+		return http.Fail(c, 500, "Unable to update organization", err)
+	}
+
+	// Return access token
+	return http.Render(c, 200, map[string]any{"status": "ok"})
+}

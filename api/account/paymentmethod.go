@@ -1,0 +1,78 @@
+package account
+
+import (
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/paymentmethod"
+	"github.com/hanzoai/commerce/thirdparty/paymentmethods/plaid"
+	"github.com/hanzoai/commerce/types/integration"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
+
+	. "encoding/json"
+
+	. "github.com/hanzoai/commerce/thirdparty/paymentmethods"
+)
+
+type CreateReq struct {
+	PublicToken string     `json:"publicToken"`
+	AccountId   string     `json:"accountId"`
+	Name        string     `json:"name"`
+	Metadata    RawMessage `json:"metadata"`
+}
+
+func createPaymentMethod(c *zip.Ctx) error {
+	usr := middleware.GetUser(c)
+	org := middleware.GetOrganization(c)
+
+	req := &CreateReq{}
+
+	// Decode response body to create new user
+	if err := json.DecodeBytes(c.Body(), req); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
+	}
+
+	var (
+		pm             PaymentMethod
+		externalUserId string
+	)
+
+	t := c.Param("paymentmethodtype")
+	switch t {
+	case "plaid":
+		in := org.Integrations.FindByType(integration.PlaidType)
+		if in == nil {
+			return http.Fail(c, 500, "Missing plaid credentials: "+t, ErrorMissingCredentials)
+		}
+		// TODO: We need to redo the customer id/account object stuff
+		externalUserId = usr.Accounts.StripeAccount.CustomerId
+		pm = plaid.New(org.Context(), in.Plaid.ClientId, in.Plaid.Secret, in.Plaid.PublicKey, plaid.SandboxEnvironment)
+	default:
+		return http.Fail(c, 500, "Invalid payment type: "+t, ErrorInvalidPaymentMethod)
+	}
+
+	out, err := pm.GetPayToken(PaymentMethodParams{
+		VerifierToken:  req.PublicToken,
+		VerifierId:     req.AccountId,
+		ExternalUserId: externalUserId,
+		Metadata:       req.Metadata,
+	})
+	if err != nil {
+		return http.Fail(c, 500, "Error while creating paykey for: "+t, err)
+	}
+
+	p := paymentmethod.New(usr.Datastore())
+	p.UserId = usr.Id()
+	p.CustomerId = usr.Id()
+	p.Name = req.Name
+	p.ProviderRef = out.PayToken
+	p.ProviderType = string(out.Type)
+	p.Type = string(out.Type)
+
+	if err := p.Create(); err != nil {
+		return http.Fail(c, 400, "Failed to add payment method", err)
+	}
+
+	return http.Render(c, 201, p)
+}

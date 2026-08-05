@@ -1,0 +1,127 @@
+# Canonical CI/CD config for hanzoai/commerce — read by both the hanzoai/ci
+# reusable workflow (.github/workflows/cicd.yml) and platform.hanzo.ai
+# (webhook → BuildScheduler → in-cluster BuildKit → operator rollout).
+#
+# The ONE way commerce builds. Before this file, only the frontend apps had CI
+# (frontend-build.yml) and the Go BACKEND image (ghcr.io/hanzoai/commerce) had
+# none — it was built by hand-applied BuildKit Jobs, so a merged fix (e.g. the
+# $5 starter-credit change, PR #63) shipped no image. This closes that gap:
+# every push/tag now builds the backend + the deployed frontends automatically.
+#
+# Private hanzoai/* Go modules: the backend Dockerfile authenticates
+# `go mod tidy` with the `gh_token` BuildKit secret (supplied by BOTH build
+# paths) + GOPRIVATE — see the Dockerfile's builder stage.
+images:
+  # Go backend — the API/billing service (StarterCreditCents lives here) AND the
+  # admin. ./Dockerfile's admin-build stage typechecks and builds app/admin
+  # (@hanzo/commerce-dashboard, on @hanzo/ui/product), syncs the export into
+  # ui/dist, and //go:embed bakes it into the binary, which serves it at /admin.
+  # ONE Dockerfile: .platform.yml (the webhook build that actually ships this
+  # image) has always built ./Dockerfile, so a second "production" one only ever
+  # fixed a file nothing deployed — that is how the deployed image came to carry
+  # no admin at all.
+  - name: commerce
+    context: .
+    dockerfile: Dockerfile
+    repo: ghcr.io/hanzoai/commerce
+  # The same export, served in the cluster. Production's commerce API is the
+  # cloud unified binary, and a library consumer cannot serve a gitignored
+  # go:embed dir — so commerce.hanzo.ai/admin is the export behind hanzoai/static.
+  # One producer (app/admin), one URL contract (/admin, next.config.ts basePath),
+  # two servers only because prod and standalone are different deployments.
+  - name: commerce-admin
+    context: .
+    dockerfile: Dockerfile.commerce-admin
+    repo: ghcr.io/hanzoai/commerce-admin
+  # Marketing/storefront site (deployed as commerce-site, hanzoai/static plugin).
+  - name: commerce-site
+    context: .
+    dockerfile: Dockerfile.site
+    repo: ghcr.io/hanzoai/commerce-site
+  # Storefront (deployed as commerce-store, commerce-store.hanzo.ai). Its only
+  # builder used to be .github/workflows/frontend-build.yml, which re-pushed a
+  # FIXED semver (:v1.0.6, :latest) on every main push — a mutable tag under a
+  # semver name. Built here it gets the one tag shape: sha-<sha7>-amd64 per push,
+  # the bare semver only on a v* release tag.
+  - name: commerce-store
+    context: .
+    dockerfile: Dockerfile.store
+    repo: ghcr.io/hanzoai/commerce-store
+
+# CI gates run by the hanzoai/ci reusable workflow (`bash -c` per entry).
+# Mirrors the proven test.yml: @hanzo/plans is fetched first (api/billing embeds
+# plans/*.json via go:embed), GOPRIVATE + GOWORK=off resolve private hanzoai/*
+# modules via direct authenticated git (same contract the image build uses).
+test:
+  - name: go-vet
+    run: |
+      set -e
+      # base v1.5.11+ REFUSES to compile under cgo without this tag:
+      #   base/core/sqlite_math_required.go:30:6: undefined: cgoBuildNeedsSQLiteMathFunctions
+      # That is deliberate, not a broken dep. Base's search layer emits SQL calling
+      # acos/cos/sin/radians/sqrt; the pure-Go backend always has them, the cgo one
+      # only behind csqlite's sqlite_math_functions tag. The guard turns a runtime
+      # "no such function: acos" into a compile error. Carried via GOFLAGS so it
+      # reaches go vet, go test AND ginkgo identically.
+      export GOPRIVATE='github.com/hanzoai/*' GOWORK=off CGO_ENABLED=1 GOFLAGS=-tags=sqlite_math_functions
+      sh scripts/fetch-plans.sh
+      go vet ./...
+  - name: go-unit
+    run: |
+      set -e
+      export GOPRIVATE='github.com/hanzoai/*' GOWORK=off CGO_ENABLED=1 GOFLAGS=-tags=sqlite_math_functions
+      sh scripts/fetch-plans.sh
+      go test -count=1 -timeout=10m \
+        ./billing/... \
+        ./delay/... \
+        ./models/creditgrant/... \
+        ./models/pricingrule/... \
+        ./models/cryptobalance/... \
+        ./models/cryptopaymentintent/... \
+        ./models/networktoken/... \
+        ./models/product/... \
+        ./payment/...
+  # API suites (test/), the gate .github/workflows/test.yml used to own alone.
+  # All 49 green. It was red on arrival for two unrelated reasons, both since
+  # fixed at the cause rather than skipped: four suites got 402
+  # subscription_required because they seeded an organization and nothing else,
+  # which is billing/paywall working (they now seed fixtures.ProSubscription);
+  # and api/checkout died on `panic: db: namespaces closed` because delay ran
+  # its tasks in untracked goroutines that outlived the test database (the queue
+  # now drains before the datastore closes — see delay/drain.go).
+  - name: go-api-suites
+    run: |
+      set -e
+      export GOPRIVATE='github.com/hanzoai/*' GOWORK=off CGO_ENABLED=1 GOFLAGS=-tags=sqlite_math_functions
+      sh scripts/fetch-plans.sh
+      go run github.com/onsi/ginkgo/v2/ginkgo -r --randomize-all --fail-fast --trace \
+        --skip-package=test-integration \
+        test/
+
+  # Admin typecheck — the admin renders @hanzo/ui/product from source, so a drift
+  # in the shared component set fails HERE rather than in a browser, and faster
+  # than the image build (Dockerfile runs the same command to produce
+  # the embedded export). `next build` no longer sets ignoreBuildErrors, so this
+  # gate is real.
+  - name: admin-typecheck
+    run: |
+      set -e
+      cd app
+      pnpm install --frozen-lockfile
+      node_modules/.bin/turbo run typecheck --filter=@hanzo/commerce-dashboard
+
+# NO deploy: block by design. commerce is an operator-MANAGED system service —
+# `services.hanzo.ai/commerce` (+ -admin/-site) owns `.spec.image.tag`, and the
+# hanzo operator reconciles the Deployment from it. A `kubectl set image` on the
+# Deployment (what the reusable's deploy step does) would drift from the CR and
+# be reverted on the next reconcile. So CI's job is build + test; the rollout is
+# the operator Service CR patch (kubectl patch services.hanzo.ai/commerce
+# --type=merge -p '{"spec":{"image":{"tag":"<ver>"}}}'), the canonical
+# system-service deploy path — owned by platform.hanzo.ai / the operator, not GHA.
+
+# KMS (kms.hanzo.ai, Universal Auth) supplies the cross-org private-module read
+# token (buildx `gh_token`) at run time. Only KMS_CLIENT_ID / KMS_CLIENT_SECRET
+# live in GitHub (org secrets); KMS_WORKSPACE is a repo/org var.
+kms:
+  path: /deploy
+  environment: prod

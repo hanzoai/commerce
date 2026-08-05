@@ -1,0 +1,42 @@
+package migrations
+
+import (
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/demo/tokentransaction"
+	"github.com/hanzoai/commerce/models/cart"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/user"
+
+	ds "github.com/hanzoai/commerce/datastore"
+)
+
+var _ = New("rebuild-search-documents",
+	func(c *zip.Ctx) []interface{} {
+		db := ds.New(c.Context())
+
+		c.Locals("namespace", "damon")
+		db.SetNamespace("damon")
+
+		// Search functionality removed
+		// Document operations now handled by individual model PutDocument() calls
+
+		return NoArgs
+	},
+	func(db *ds.Datastore, c *cart.Cart) {
+		c.PutDocument()
+	},
+	func(db *ds.Datastore, u *user.User) {
+		u.PutDocument()
+	},
+	func(db *ds.Datastore, t *tokentransaction.Transaction) {
+		t.PutDocument()
+	},
+	func(db *ds.Datastore, o *order.Order) {
+		o.PutDocument()
+	},
+	func(db *ds.Datastore, p *product.Product) {
+		p.PutDocument()
+	},
+)

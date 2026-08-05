@@ -1,0 +1,148 @@
+package billing
+
+import (
+	"strings"
+
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/pricingrule"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/util/json/http"
+)
+
+type createPricingRuleRequest struct {
+	MeterId   string             `json:"meterId"`
+	PlanId    string             `json:"planId"`
+	Model     string             `json:"model"`
+	Currency  string             `json:"currency"`
+	UnitPrice int64              `json:"unitPrice"`
+	Tiers     []pricingrule.Tier `json:"tiers"`
+}
+
+// CreatePricingRule creates a new pricing rule for a meter.
+//
+//	POST /v1/billing/pricing-rules
+func CreatePricingRule(c *zip.Ctx) error {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c.Context()))
+
+	var req createPricingRuleRequest
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
+	}
+
+	if req.MeterId == "" {
+		return http.Fail(c, 400, "meterId is required", nil)
+	}
+
+	model := pricingrule.PricingModel(strings.ToLower(req.Model))
+	if model == "" {
+		model = pricingrule.PerUnit
+	}
+
+	cur := currency.Type(strings.ToLower(req.Currency))
+	if cur == "" {
+		cur = "usd"
+	}
+
+	rule := pricingrule.New(db)
+	rule.MeterId = req.MeterId
+	rule.PlanId = req.PlanId
+	rule.PricingType = model
+	rule.Currency = cur
+	rule.UnitPrice = req.UnitPrice
+	rule.Tiers = req.Tiers
+
+	if err := rule.Create(); err != nil {
+		log.Error("Failed to create pricing rule: %v", err, c)
+		return http.Fail(c, 500, "failed to create pricing rule", err)
+	}
+
+	return c.JSON(201, map[string]any{
+		"id":        rule.Id(),
+		"meterId":   rule.MeterId,
+		"planId":    rule.PlanId,
+		"model":     rule.PricingType,
+		"currency":  rule.Currency,
+		"unitPrice": rule.UnitPrice,
+		"tiers":     rule.Tiers,
+		"createdAt": rule.CreatedAt,
+	})
+}
+
+// ListPricingRules lists pricing rules, optionally filtered by meter or plan.
+//
+//	GET /v1/billing/pricing-rules?meterId=...&planId=...
+func ListPricingRules(c *zip.Ctx) error {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c.Context()))
+
+	rootKey := db.NewKey("synckey", "", 1, nil)
+	rules := make([]*pricingrule.PricingRule, 0)
+	q := pricingrule.Query(db).Ancestor(rootKey)
+
+	meterId := strings.TrimSpace(c.Query("meterId"))
+	if meterId != "" {
+		q = q.Filter("MeterId=", meterId)
+	}
+
+	planId := strings.TrimSpace(c.Query("planId"))
+	if planId != "" {
+		q = q.Filter("PlanId=", planId)
+	}
+
+	if _, err := q.GetAll(&rules); err != nil {
+		log.Error("Failed to list pricing rules: %v", err, c)
+		return http.Fail(c, 500, "failed to list pricing rules", err)
+	}
+
+	items := make([]map[string]any, 0, len(rules))
+	for _, r := range rules {
+		items = append(items, map[string]any{
+			"id":        r.Id(),
+			"meterId":   r.MeterId,
+			"planId":    r.PlanId,
+			"currency":  r.Currency,
+			"unitPrice": r.UnitPrice,
+			"tiers":     r.Tiers,
+			"createdAt": r.CreatedAt,
+			"updatedAt": r.UpdatedAt,
+		})
+	}
+
+	return c.JSON(200, map[string]any{
+		"rules": items,
+		"count": len(items),
+	})
+}
+
+// DeletePricingRule removes a pricing rule by ID.
+//
+//	DELETE /v1/billing/pricing-rules/:id
+func DeletePricingRule(c *zip.Ctx) error {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c.Context()))
+
+	id := c.Param("id")
+	if id == "" {
+		return http.Fail(c, 400, "pricing rule id is required", nil)
+	}
+
+	rule := pricingrule.New(db)
+	if err := rule.GetById(id); err != nil {
+		return http.Fail(c, 404, "pricing rule not found", err)
+	}
+
+	if err := rule.Delete(); err != nil {
+		log.Error("Failed to delete pricing rule: %v", err, c)
+		return http.Fail(c, 500, "failed to delete pricing rule", err)
+	}
+
+	return c.JSON(200, map[string]any{
+		"id":      id,
+		"deleted": true,
+	})
+}

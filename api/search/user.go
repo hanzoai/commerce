@@ -1,0 +1,57 @@
+package search
+
+import (
+	"fmt"
+
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/datastore/iface"
+	"github.com/hanzoai/commerce/datastore/key"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/util/hashid"
+	"github.com/hanzoai/commerce/util/json/http"
+	searchutil "github.com/hanzoai/commerce/util/search"
+)
+
+func searchUser(c *zip.Ctx) error {
+	q := c.Query("q")
+
+	u := user.User{}
+	index, err := searchutil.Open(mixin.DefaultIndex)
+	if err != nil {
+		return http.Fail(c, 404, fmt.Sprintf("Failed to find index 'user'"), err)
+	}
+
+	db := datastore.New(middleware.GetNamespace(c))
+	keys := make([]iface.Key, 0)
+	for t := index.Search(db.Context, q, &searchutil.SearchOptions{
+		Refinements: []searchutil.Facet{
+			{
+				Name:  "kind",
+				Value: u.Kind(),
+			},
+		},
+	}); ; {
+		var doc user.Document
+		_, err := t.Next(&doc) // We use the int id stored on the doc rather than the key
+		if err == searchutil.Done {
+			break
+		}
+		if err != nil {
+			return http.Fail(c, 404, fmt.Sprintf("Failed to search index 'user' %v", err), err)
+		}
+
+		keys = append(keys, key.FromDBKey(hashid.MustDecodeKey(db.Context, doc.Id())))
+	}
+
+	users := make([]user.User, len(keys))
+	if err := db.GetMulti(keys, users); err != nil {
+		// http.Fail(c, 500, fmt.Sprintf("Failed to get users %v", err), err)
+		// return
+	}
+
+	return http.Render(c, 200, users)
+}
