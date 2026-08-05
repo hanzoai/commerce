@@ -3,6 +3,9 @@ package mpc
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/hanzoai/money"
@@ -20,10 +23,11 @@ import (
 // using Hanzo KMS (control plane) + MPC Signer (signing backend).
 type MPCProcessor struct {
 	*processor.BaseProcessor
-	kmsEndpoint string
-	mpcEndpoint string
-	apiKey      string
-	httpClient  *http.Client
+	kmsEndpoint   string
+	mpcEndpoint   string
+	apiKey        string
+	webhookSecret string
+	httpClient    *http.Client
 }
 
 // Config holds MPC processor configuration.
@@ -31,6 +35,11 @@ type Config struct {
 	KMSEndpoint string // Hanzo KMS API endpoint
 	MPCEndpoint string // Hanzo MPC Signer endpoint
 	APIKey      string // API key for authentication
+	// WebhookSecret is the per-subscription secret the MPC service signs
+	// deliveries with. It is a DIFFERENT value from APIKey: APIKey authenticates
+	// our outbound calls, WebhookSecret authenticates the service's inbound
+	// notifications, and the two are provisioned independently.
+	WebhookSecret string
 }
 
 // DefaultConfig reads configuration from environment variables.
@@ -44,9 +53,10 @@ func DefaultConfig() Config {
 		kmsURL = "http://localhost:8082"
 	}
 	return Config{
-		KMSEndpoint: strings.TrimRight(kmsURL, "/"),
-		MPCEndpoint: strings.TrimRight(mpcURL, "/"),
-		APIKey:      os.Getenv("MPC_API_KEY"),
+		KMSEndpoint:   strings.TrimRight(kmsURL, "/"),
+		MPCEndpoint:   strings.TrimRight(mpcURL, "/"),
+		APIKey:        os.Getenv("MPC_API_KEY"),
+		WebhookSecret: os.Getenv("MPC_WEBHOOK_SECRET"),
 	}
 }
 
@@ -57,16 +67,26 @@ func NewProcessor(cfg Config) *MPCProcessor {
 		kmsEndpoint:   strings.TrimRight(cfg.KMSEndpoint, "/"),
 		mpcEndpoint:   strings.TrimRight(cfg.MPCEndpoint, "/"),
 		apiKey:        cfg.APIKey,
+		webhookSecret: cfg.WebhookSecret,
 		httpClient: &http.Client{
 			Timeout: 120 * time.Second,
 		},
 	}
 
-	if cfg.KMSEndpoint != "" && cfg.MPCEndpoint != "" {
+	if mp.configured() {
 		mp.SetConfigured(true)
 	}
 
 	return mp
+}
+
+// configured reports whether the rail has the endpoints it needs to exist at
+// all. This is the pure half of availability — it answers "is this rail turned
+// on" with no I/O, which is what a request-triggered path needs: IsAvailable
+// also probes the remote, and an unauthenticated caller must never be able to
+// make us dial out just by posting.
+func (mp *MPCProcessor) configured() bool {
+	return mp.kmsEndpoint != "" && mp.mpcEndpoint != ""
 }
 
 // MPCSupportedCurrencies returns cryptocurrencies supported by MPC.
@@ -474,13 +494,56 @@ func (mp *MPCProcessor) GetTransaction(ctx context.Context, txID string) (*proce
 }
 
 // ValidateWebhook validates an incoming blockchain event notification.
-// The MPC service sends webhook events for transaction confirmations.
+//
+// The MPC service signs every delivery as
+//
+//	hex(HMAC-SHA256(webhookSecret, rawBody))
+//
+// over the exact bytes it POSTed, and sends the digest in the
+// X-Webhook-Signature header (lux/mpc pkg/api/webhook_sender.go). The digest is
+// recomputed here over the raw payload for that reason: a re-marshal of the
+// parsed event is a different byte string and would never reproduce it.
+//
+// This ingress is unauthenticated, so the signature is the whole trust anchor
+// for an event that credits a balance — HIP-18 states it plainly: "Commerce
+// verifies webhook signature (HMAC-SHA256)". Every path that cannot COMPLETE
+// that comparison therefore refuses: an off rail, an unset secret, an absent
+// signature and a malformed digest are all rejections. In particular an unset
+// secret refuses rather than accepting, because "no key configured" is the one
+// state in which nothing at all is being verified.
+//
+// The body is authenticated BEFORE it is parsed, so unverified attacker bytes
+// never reach the decoder.
 func (mp *MPCProcessor) ValidateWebhook(ctx context.Context, payload []byte, signature string) (*processor.WebhookEvent, error) {
-	if len(payload) == 0 {
+	// A rail that is turned off settles nothing, and whatever secret happens to
+	// be left in its environment is not evidence that it should.
+	if !mp.configured() {
+		return nil, fmt.Errorf("%w: mpc rail is not configured", processor.ErrWebhookValidationFailed)
+	}
+	if mp.webhookSecret == "" {
+		return nil, fmt.Errorf("%w: mpc webhook secret is not configured", processor.ErrWebhookValidationFailed)
+	}
+	if len(payload) == 0 || signature == "" {
 		return nil, processor.ErrWebhookValidationFailed
 	}
 
-	// Parse the webhook payload from the MPC service
+	mac := hmac.New(sha256.New, []byte(mp.webhookSecret))
+	mac.Write(payload)
+	expected := mac.Sum(nil)
+
+	// The sender hex-encodes the digest. Decode it and compare raw bytes with
+	// hmac.Equal so the comparison is constant-time and cannot be walked byte
+	// by byte with a timing oracle.
+	provided, err := hex.DecodeString(strings.TrimSpace(signature))
+	if err != nil {
+		return nil, processor.ErrWebhookValidationFailed
+	}
+	if !hmac.Equal(provided, expected) {
+		return nil, processor.ErrWebhookValidationFailed
+	}
+
+	// Parse the webhook payload from the MPC service, now that it is known to
+	// have come from the MPC service.
 	var event struct {
 		ID        string                 `json:"id"`
 		Type      string                 `json:"type"`
@@ -490,12 +553,6 @@ func (mp *MPCProcessor) ValidateWebhook(ctx context.Context, payload []byte, sig
 	}
 	if err := json.Unmarshal(payload, &event); err != nil {
 		return nil, processor.NewPaymentError(processor.MPC, "WEBHOOK_PARSE_FAILED", "failed to parse webhook payload", err)
-	}
-
-	// Verify the webhook signature against the API key.
-	// The MPC service signs webhooks with HMAC-SHA256 using the API key.
-	if mp.apiKey != "" && signature == "" {
-		return nil, processor.ErrWebhookValidationFailed
 	}
 
 	return &processor.WebhookEvent{
@@ -509,7 +566,7 @@ func (mp *MPCProcessor) ValidateWebhook(ctx context.Context, payload []byte, sig
 
 // IsAvailable checks if the MPC and KMS services are reachable.
 func (mp *MPCProcessor) IsAvailable(ctx context.Context) bool {
-	if mp.kmsEndpoint == "" || mp.mpcEndpoint == "" {
+	if !mp.configured() {
 		return false
 	}
 
