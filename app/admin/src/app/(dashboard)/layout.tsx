@@ -10,7 +10,7 @@
  */
 import { useEffect, type ReactNode } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Text, XStack, YStack } from '@hanzo/gui'
+import { Text, XStack, YStack, useMedia } from '@hanzo/gui'
 import { UserMenu, useIam, useOrganizations } from '@hanzo/iam/react'
 import { HanzoMark, ThemeToggle } from '@hanzo/ui/product'
 import {
@@ -32,7 +32,7 @@ import {
   Warehouse,
 } from '@hanzogui/lucide-icons-2'
 
-import { Palette } from '@/components/palette'
+import { Palette, openPalette } from '@/components/palette'
 import { setAccessToken } from '@/lib/commerce'
 import { RESOURCES } from '@/lib/resources'
 
@@ -65,6 +65,7 @@ const NAV = [{ slug: 'overview', label: 'Overview' }, ...RESOURCES.map((r) => ({
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading, accessToken } = useIam()
   const orgs = useOrganizations()
+  const media = useMedia()
   const router = useRouter()
   const pathname = usePathname() ?? ''
 
@@ -79,6 +80,22 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <XStack minH="100vh" bg="$background">
       <Palette surfaces={NAV} />
+      {/* 232px OF A 390px VIEWPORT IS NOT A SIDEBAR, IT IS THE PAGE. Measured:
+          it took 59.5% of the width, left 158px for content, and pushed the
+          document 66px wider than the screen — and because it is in flow rather
+          than fixed, scrolling right to read the content clipped the nav labels
+          it was crowding them with ("Overview" -> "verview"). You lost the nav to
+          see content and the content to see the nav.
+
+          It steps aside below the breakpoint rather than growing a drawer,
+          because the drawer already exists: the palette lists every surface in
+          the same catalog this sidebar renders, so there is one navigation, not
+          two that can disagree. What it lacked was a door reachable without a
+          keyboard — that is the button in the top bar. */}
+      {/* `sm` is minWidth:640 in the v5 config — TRUE above the breakpoint, so
+          390px is false and 1440px is true. (`gtSm` is the v4 vocabulary and is
+          not declared on v5's UseMediaState; the typechecker caught it.) */}
+      {media.sm ? (
       <YStack width={232} borderRightWidth={1} borderColor="$borderColor" p="$3" gap="$1">
         <XStack items="center" gap="$2" px="$2" py="$3">
           <HanzoMark size={20} />
@@ -111,6 +128,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           )
         })}
       </YStack>
+      ) : null}
 
       <YStack flex={1} minW={0}>
         <XStack
@@ -138,6 +156,26 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               hides itself at one org, so it could never list anything. 0.21 reads
               the signed `orgs` membership set — home first — which is the same
               set cloud enforces when it honours an X-Org-Id. */}
+          {!media.sm ? (
+            <XStack
+              items="center"
+              gap="$2"
+              px="$2.5"
+              py="$1.5"
+              rounded="$3"
+              cursor="pointer"
+              borderWidth={1}
+              borderColor="$borderColor"
+              onPress={openPalette}
+              accessibilityLabel="Go to"
+              accessibilityRole="button"
+            >
+              <LayoutDashboard size={15} color="$color11" />
+              <Text fontSize="$2" color="$color11">
+                Go to…
+              </Text>
+            </XStack>
+          ) : null}
           <ThemeToggle />
           <UserMenu orgState={orgs} align="down" />
         </XStack>

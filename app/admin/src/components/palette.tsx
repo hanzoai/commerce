@@ -30,12 +30,33 @@ function matches(haystack: string, needle: string): boolean {
   return false
 }
 
+/**
+ * Open the palette from anywhere.
+ *
+ * On a narrow screen the palette IS the navigation — the sidebar is 232px of a
+ * 390px viewport, so it steps aside and this takes over. A keystroke cannot be
+ * typed on a touch device, so the palette needs a door that is not ⌘K; this is
+ * that door, and it stays a plain event so nothing has to thread a setter down
+ * through the shell.
+ */
+const OPEN = 'hanzo.admin.palette.open'
+
+export function openPalette() {
+  window.dispatchEvent(new Event(OPEN))
+}
+
 export function Palette({ surfaces }: { surfaces: Surface[] }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [cursor, setCursor] = useState(0)
   const input = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const show = () => setOpen(true)
+    window.addEventListener(OPEN, show)
+    return () => window.removeEventListener(OPEN, show)
+  }, [])
 
   const hits = useMemo(() => {
     const q = query.trim().toLowerCase()
