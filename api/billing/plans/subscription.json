@@ -9,7 +9,7 @@
     "features": [
       "Hanzo Bot Gateway — host local agents across WhatsApp, Telegram, Discord and Slack",
       "Hanzo Chat & UI — desktop app layout with instant global model context",
-      "$5 of foundational API gateway credits included"
+      "$5 of credit each month, spendable on compute or AI"
     ],
     "limits": {
       "requestsPerMinute": 60,
@@ -67,7 +67,7 @@
       "Hanzo Dev — full terminal-native pair programmer inside your local repo shell",
       "Medium reasoning dial — balanced latency-to-depth for standard code generation",
       "Unlimited local context — codebase indexing via the native desktop client",
-      "250 compute/API credits per month"
+      "$19 of credit each month, spendable on compute or AI"
     ],
     "payouts": {
       "idleResalePercent": 20,
@@ -139,7 +139,7 @@
       "Auto Review — background watcher running changes in hidden git worktrees to suggest fixes silently",
       "High and XHigh reasoning dials — maximum context processing depth",
       "Headless browser CDP — the agent tests and screenshots its own front-end work",
-      "1,000 compute/API credits per month"
+      "$49 of credit each month, spendable on compute or AI"
     ],
     "payouts": {
       "idleResalePercent": 20,
@@ -209,7 +209,7 @@
       "Enso orchestration — dedicated routing through Hanzo's foundational framework model",
       "Unlimited managed agents — continuous background scheduling to unified team dashboards",
       "Shared team workspaces — RBAC, KMS-backed credentials, centralized billing",
-      "2,500 compute/API credits per month",
+      "$99 of credit each month, spendable on compute or AI",
       "Priority GPU inference queues"
     ],
     "payouts": {
