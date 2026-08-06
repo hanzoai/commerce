@@ -1082,9 +1082,27 @@ The comment at `mount.go` claiming it wires "the full Commerce API surface
 (/v1/billing, …)" is false for every prefix except `/v1/commerce`. In cloud,
 `/v1/billing/*` is served by cloud's own `clients/billing` + `clients/account`
 wildcard, NOT by commerce. Do not "fix" the prefix casually: exposing 140 routes
-into cloud's fiber tree collides with those (byte-identical patterns MERGE
-silently, first wins; equal-specificity params with different names PANIC at
-registration).
+into cloud's tree collides with those, and a collision is a BOOT PANIC.
+
+**ONE ADDRESS, ONE DECLARATION.** This paragraph used to say byte-identical
+patterns "MERGE silently, first wins". Measured 2026-08-06, they do not — zip
+refuses the whole program and names every conflicting pair:
+
+```
+zip: this program does not compose, so it has no projection:
+zip: GET /v1/commerce/collection: declared by "/collection" at rest/rest.go:133
+  (via root → /v1/commerce → /collection) and by "/collection" at rest/rest.go:133
+```
+
+Where it lands depends on the zip in the graph, and **a check that only
+REGISTERS measures nothing**: this repo pins v1.24.2, which refuses inside
+`rest.Route()`; cloud resolves v1.25.1, which accepts the second call and
+refuses at COMPOSITION (`GetRoutes()`, serve). Ask for the composition.
+
+The live consequence: `api/resources` is also called by `api.Route` (api.go:125),
+so a kind added to that leaf while api.go still registers it **panics this
+binary at boot** — and the change that caused it may have been made in cloud.
+Moving a kind onto the leaf is a move, never an add.
 
 ### schema/commerce.zap — dialect and the real compiler
 
