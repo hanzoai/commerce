@@ -117,7 +117,13 @@ func MPCSupportedCurrencies() []currency.Type {
 		currency.Type("usdt"),
 		currency.Type("matic"),
 		currency.Type("avax"),
-		currency.Type("lux"),
+		// The brand chains. Both are EVM, so a deposit address on either IS the
+		// secp256k1 address the fleet already derives — GenerateAddress falls to
+		// the EVM default for every chain that is not bitcoin or solana. That is
+		// why these cost nothing to accept and why SOL, which needs a different
+		// curve entirely, could not simply be listed beside them.
+		currency.LUX,
+		currency.ZOO,
 		currency.Type("arb"),
 		currency.Type("op"),
 		currency.Type("base"),
@@ -138,6 +144,7 @@ func (mp *MPCProcessor) SupportedChains() []string {
 		// custody fleet derives no Ed25519 key, so a Solana deposit address
 		// cannot be minted and the chain would 503 after the buyer picked it.
 		"lux",
+		"zoo",
 		"bsc",
 	}
 }
