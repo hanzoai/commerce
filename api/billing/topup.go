@@ -267,10 +267,23 @@ func Topup(c *zip.Ctx) error {
 		cur = "usd"
 	}
 
-	// Load the payment method.
+	// Load the payment method. It must be the PAYING SUBJECT's own instrument:
+	// paymentMethodId is an unpinned body field that can name another subject's
+	// card inside the org, and the credit lands on the caller — charging someone
+	// else's card to fund your own balance is the exact cross-subject move this
+	// refuses. 404, so method ids can't be probed. Stricter on purpose than the
+	// read-side callerMayReachBillingSubject: a charge binds to the RESOLVED
+	// paying subject, so an org member's fine <org>/<user> subject can never
+	// spend the org owner's shared card.
 	pm := paymentmethod.New(db)
 	if err := pm.GetById(req.PaymentMethodID); err != nil {
 		return jsonhttp.Fail(c, 404, "payment method not found", err)
+	}
+	if pm.CustomerId != subject && pm.UserId != subject {
+		return jsonhttp.Fail(c, 404, "payment method not found", nil)
+	}
+	if strings.TrimSpace(pm.ProviderRef) == "" {
+		return jsonhttp.Fail(c, 422, "saved payment method has no chargeable card — add the card again", nil)
 	}
 
 	// Stable across a retry: the saved card, the amount and the currency, in a

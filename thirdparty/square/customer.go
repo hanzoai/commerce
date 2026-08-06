@@ -116,19 +116,87 @@ func (sp *SquareProcessor) DeleteCustomer(ctx context.Context, customerID string
 }
 
 // AddPaymentMethod attaches a card nonce (token) to an existing Square customer.
-// Returns the card-on-file ID.
+// Returns the card-on-file ID. It is Vault reduced to the id — one vault call
+// underneath, so the two can never disagree about what was saved.
 func (sp *SquareProcessor) AddPaymentMethod(ctx context.Context, customerID, token string) (string, error) {
+	card, err := sp.Vault(ctx, customerID, token)
+	if err != nil {
+		return "", err
+	}
+	return card.ID, nil
+}
+
+// Vault attaches a card nonce to a Square customer and returns the card as
+// Square reports it — the durable id plus brand/last4/expiry (what a customer
+// recognizes a card by) and the fingerprint (what identifies the card NUMBER
+// across vaults, the dedupe key). Vaulting also validates the card, so a
+// declined card errors here and nothing is saved.
+func (sp *SquareProcessor) Vault(ctx context.Context, customerID, token string) (processor.Card, error) {
 	resp, err := sp.customersClient.Cards.Create(ctx, &customers.CreateCustomerCardRequest{
 		CustomerID: customerID,
 		CardNonce:  token,
 	})
 	if err != nil {
-		return "", fmt.Errorf("square add payment method: %w", err)
+		return processor.Card{}, fmt.Errorf("square add payment method: %w", err)
 	}
 	if resp.Card == nil || resp.Card.ID == nil {
-		return "", fmt.Errorf("square add payment method: empty response")
+		return processor.Card{}, fmt.Errorf("square add payment method: empty response")
 	}
-	return *resp.Card.ID, nil
+	card := cardOf(resp.Card)
+	if card.CustomerID == "" {
+		card.CustomerID = customerID
+	}
+	return card, nil
+}
+
+// Cards lists the cards vaulted for a Square customer (first page — Square caps
+// at 25 per page and a billing customer holds a handful). Used to heal stored
+// payment-method rows that predate Vault returning card details.
+func (sp *SquareProcessor) Cards(ctx context.Context, customerID string) ([]processor.Card, error) {
+	page, err := sp.cardsClient.List(ctx, &square.ListCardsRequest{
+		CustomerID: square.String(customerID),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("square list cards: %w", err)
+	}
+	out := make([]processor.Card, 0, len(page.Results))
+	for _, c := range page.Results {
+		if c == nil || c.ID == nil {
+			continue
+		}
+		out = append(out, cardOf(c))
+	}
+	return out, nil
+}
+
+// cardOf maps Square's wire Card onto the processor's value. One mapping, used
+// by Vault and Cards, so a vaulted card and a listed card read identically.
+func cardOf(c *square.Card) processor.Card {
+	card := processor.Card{ID: safeStr(c.ID), Last4: safeStr(c.Last4), Fingerprint: safeStr(c.Fingerprint), CustomerID: safeStr(c.CustomerID)}
+	if c.CardBrand != nil {
+		card.Brand = brandName(string(*c.CardBrand))
+	}
+	if c.ExpMonth != nil {
+		card.ExpMonth = int(*c.ExpMonth)
+	}
+	if c.ExpYear != nil {
+		card.ExpYear = int(*c.ExpYear)
+	}
+	return card
+}
+
+// brandName renders Square's SCREAMING_SNAKE brand enum ("VISA",
+// "AMERICAN_EXPRESS") as the display name a receipt prints ("Visa",
+// "American Express").
+func brandName(b string) string {
+	words := strings.Split(strings.ToLower(b), "_")
+	for i, w := range words {
+		if w == "" {
+			continue
+		}
+		words[i] = strings.ToUpper(w[:1]) + w[1:]
+	}
+	return strings.Join(words, " ")
 }
 
 // RemovePaymentMethod disables (deletes) a card on file from a Square customer.

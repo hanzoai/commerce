@@ -15,6 +15,8 @@ import (
 // topupTokenRequest is the wire body. There is deliberately NO userId field: the
 // credited subject is resolved from the caller's own identity (topupDestination),
 // never from the request, so a body value can not steer where the money lands.
+// This door takes a FRESH nonce only; a card the subject already saved goes
+// through POST /v1/billing/topup (paymentMethodId), the one saved-card door.
 type topupTokenRequest struct {
 	SourceID    string `json:"sourceId"` // Square Web Payments SDK nonce
 	AmountCents int64  `json:"amountCents"`

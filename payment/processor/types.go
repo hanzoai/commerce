@@ -55,6 +55,20 @@ type PaymentRequest struct {
 	Chain   string `json:"chain,omitempty"`
 }
 
+// Card is a vaulted card as the processor reports it: the durable token plus
+// the display facts a customer needs to recognize it, and the Fingerprint —
+// the processor's identifier for the underlying card NUMBER, stable across
+// re-vaults — which is what makes saving the same card twice detectable.
+type Card struct {
+	ID          string `json:"id"`
+	Brand       string `json:"brand,omitempty"`
+	Last4       string `json:"last4,omitempty"`
+	ExpMonth    int    `json:"expMonth,omitempty"`
+	ExpYear     int    `json:"expYear,omitempty"`
+	Fingerprint string `json:"fingerprint,omitempty"`
+	CustomerID  string `json:"customerId,omitempty"`
+}
+
 // PaymentResult represents the outcome of a payment
 type PaymentResult struct {
 	Success       bool                   `json:"success"`

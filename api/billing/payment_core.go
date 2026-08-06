@@ -65,7 +65,9 @@ import (
 type TakePaymentIn struct {
 	// SourceID is the single-use payment token: a Square Web Payments SDK nonce
 	// from the browser, or a Square sandbox test nonce. It is the ONLY thing that
-	// stands in for a card here — the PAN never reaches this process.
+	// stands in for a card here — the PAN never reaches this process. A card the
+	// subject already SAVED is charged by the other door (Topup → chargeAndCredit),
+	// never through this core.
 	SourceID string
 	// AmountCents is the charge in whole cents. Bounded server-side by
 	// topupBounds; an out-of-range amount is refused before any money moves.

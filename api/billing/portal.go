@@ -139,6 +139,8 @@ func PortalPaymentMethods(c *zip.Ctx) error {
 		Order("-Created")
 	_, _ = q.GetAll(&methods)
 
+	healPaymentMethods(c, org, methods)
+
 	results := make([]map[string]interface{}, len(methods))
 	for i, pm := range methods {
 		results[i] = paymentMethodResponse(pm)
