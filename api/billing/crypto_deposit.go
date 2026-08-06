@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/zap-proto/zip"
 
+	"github.com/hanzoai/commerce/billing/depositledger"
+	"github.com/hanzoai/commerce/billing/depositwatch"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
@@ -68,25 +71,68 @@ func cryptoProcessor(ctx context.Context) (processor.CryptoProcessor, error) {
 	return cp, nil
 }
 
-// GetCryptoOptions lists the chains and tokens the custody rail accepts,
-// straight from the live processor — the pay SPA renders its asset picker
-// from this, never from a hardcoded list.
+// GetCryptoOptions lists the assets the rail accepts — which is the set a
+// deposit watcher can CREDIT, not the set the MPC signer can mint an address
+// for. Those are different questions and only the second one was ever asked
+// here.
+//
+// The processor answers "can I derive an address on this chain?", and it says
+// yes to nine of them. Nothing followed a single one of those addresses to the
+// customer's balance, so the picker walked buyers toward assets the system
+// could receive and never credit — the same defect that stopped this rail, one
+// endpoint upstream of it.
+//
+// Deriving the list from the watcher's configured assets makes that
+// unrepresentable: an asset appears here only because something is watching it,
+// and it stops appearing the moment that stops being true. An unconfigured
+// watcher therefore offers nothing rather than everything, which is the safe
+// direction for a list whose entries invite people to send money.
 //
 //	GET /v1/billing/crypto/options
 func GetCryptoOptions(c *zip.Ctx) error {
-	cp, err := cryptoProcessor(c.Context())
-	if err != nil {
+	// The custody signer must still be reachable — an asset nobody can mint an
+	// address for is no more useful than one nobody can credit.
+	if _, err := cryptoProcessor(c.Context()); err != nil {
 		return jsonhttp.Fail(c, 503, "Crypto deposits not configured", err)
 	}
-	currencies := cp.SupportedCurrencies()
-	tokens := make([]string, 0, len(currencies))
-	for _, cur := range currencies {
-		tokens = append(tokens, strings.ToLower(string(cur)))
+
+	var watched []depositwatch.Asset
+	if w := depositledger.Default(); w.Enabled() {
+		watched = w.Assets()
 	}
-	return c.JSON(200, map[string]any{
-		"chains": cp.SupportedChains(),
-		"tokens": tokens,
-	})
+	chains, tokens := offeredFrom(watched)
+	return c.JSON(200, map[string]any{"chains": chains, "tokens": tokens})
+}
+
+// offeredFrom projects the watched assets onto the two lists the picker renders.
+//
+// It is a pure function of the assets and not a method on the watcher because
+// that is what makes the rule testable: NO assets must yield NO offer, and the
+// only way to be sure of that is to be able to ask it directly. Reading the
+// process-wide watcher inside the handler would leave the question answerable
+// only by whatever the environment happened to configure.
+//
+// Both lists are deduplicated and sorted, so the picker's order is a property of
+// the assets rather than of map iteration.
+func offeredFrom(assets []depositwatch.Asset) (chains, tokens []string) {
+	cset, tset := map[string]bool{}, map[string]bool{}
+	for _, a := range assets {
+		cset[strings.ToLower(a.Chain)] = true
+		tset[strings.ToLower(a.Token)] = true
+	}
+	return sortedKeys(cset), sortedKeys(tset)
+}
+
+// sortedKeys returns the set's members in order, and NEVER nil — a nil slice
+// marshals to `null`, and a picker handed `null` where it expects a list is a
+// client-side crash rather than an empty menu.
+func sortedKeys(m map[string]bool) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // cryptoDepositsCanBeCredited gates the rail on the ONE property that makes
