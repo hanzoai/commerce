@@ -38,11 +38,17 @@ ENV NEXT_PUBLIC_COMMERCE_API_URL=https://api.hanzo.ai \
 # drift in the shared component set fails HERE, not in a browser.
 RUN node_modules/.bin/turbo run typecheck build --filter=@hanzo/commerce-dashboard
 
-# ── Stage 2: Build pay UI (Vite SPA from hanzoai/pay) ────────────────────
-# Canonical source lives at github.com/hanzoai/pay. Forks override PAY_REPO
+# ── Stage 2: Build pay UI (Vite SPA from hanzo-inc/pay) ──────────────────
+# Canonical source lives at github.com/hanzo-inc/pay. Forks override PAY_REPO
 # and PAY_VERSION via --build-arg; default tracks the latest tagged release.
+#
+# NAMED CANONICALLY, not through the redirect. This said `hanzoai/pay`, which
+# GitHub still resolves — the repo moved orgs — and a redirect is only honoured
+# until somebody creates a repo at the old name. On that day this clone would
+# start pulling a DIFFERENT repository into a production image, silently and
+# with no error. A build must name what it actually fetches.
 FROM node:22-alpine AS pay-build
-ARG PAY_REPO=https://github.com/hanzoai/pay.git
+ARG PAY_REPO=https://github.com/hanzo-inc/pay.git
 ARG PAY_VERSION=v0.1.2
 WORKDIR /pay
 RUN apk add --no-cache git && corepack enable pnpm
@@ -72,7 +78,9 @@ RUN pnpm install --frozen-lockfile && pnpm build
 # back to 9.x keeps the schema validator on the right side of the
 # v10 break.
 FROM node:22-alpine AS billing-build
-ARG BILLING_REPO=https://github.com/hanzoai/billing.git
+# Canonical name, not the redirect — see the note on PAY_REPO above; this repo
+# moved orgs too.
+ARG BILLING_REPO=https://github.com/hanzo-inc/billing.git
 ARG BILLING_VERSION=v0.1.2
 WORKDIR /billing
 # python3/make/g++ needed for node-gyp on arm64 where bufferutil/utf-8-validate
