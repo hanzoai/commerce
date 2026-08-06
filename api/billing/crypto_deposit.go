@@ -89,6 +89,17 @@ func GetCryptoOptions(c *zip.Ctx) error {
 	})
 }
 
+// cryptoDepositsCanBeCredited gates the rail on the ONE property that makes
+// taking crypto legitimate: that a deposit can reach the customer's balance.
+// It is false because no component advances a CryptoPaymentIntent past Pending
+// and no watcher observes DepositAddress — so a deposit would be money received
+// and never credited.
+//
+// It is a constant rather than config on purpose: an operator must not be able
+// to turn this on from the outside. The thing that makes it safe is code that
+// does not exist yet, so only code may flip it.
+const cryptoDepositsCanBeCredited = false
+
 // CreateCryptoDeposit answers a custody deposit address for the caller. An
 // open PENDING intent for the same (payer, chain, token) is reused — one
 // payer, one live address per asset — so refreshing the page cannot spray
@@ -96,6 +107,40 @@ func GetCryptoOptions(c *zip.Ctx) error {
 //
 //	POST /v1/billing/crypto/deposit   { chain?, token?, amountCents? }
 func CreateCryptoDeposit(c *zip.Ctx) error {
+	// STOPPED: handing out an address here takes money we cannot credit.
+	//
+	// The rail mints a real custody address and records an intent as Pending —
+	// and nothing in this codebase ever moves it off Pending. MarkConfirming and
+	// MarkSucceeded (models/cryptopaymentintent) have NO production callers; the
+	// only writer of Status is the Pending set below. There is no chain watcher:
+	// husdindex scans one ERC-20 on one chain against seed-derived treasury
+	// addresses, never DepositAddress, and it is not scheduled. The pay SPA's
+	// "I sent the crypto" is a GET that re-reads the same Pending row. The
+	// ledger primitives that could credit (POST /billing/credit, /billing/deposit)
+	// are mint-gated and unreachable from here.
+	//
+	// Worse, GenerateAddress DISCARDS the keygen response's wallet_id and returns
+	// only the address string, so we do not even retain a handle to the MPC wallet
+	// holding the coins — recovering a stranded deposit means reconciling against
+	// the node's own wallet records.
+	//
+	// Three comments in this tree assert "the chain watcher credits on real
+	// confirmations". No such component exists. That sentence is why this shipped.
+	//
+	// So the rail refuses to take money it cannot credit. This is deliberately at
+	// the TOP of the handler, before any keygen: an address that is never minted
+	// is an address nobody can send to. Reads (GetCryptoDeposit, GetCryptoOptions)
+	// are untouched so an existing intent can still be inspected.
+	//
+	// TO LIFT THIS: a per-chain deposit watcher that observes DepositAddress,
+	// advances the intent, and credits through the ledger exactly once — plus
+	// persisting wallet_id so a deposit is recoverable. Flip the constant in the
+	// same commit that makes the credit path real, never before.
+	if !cryptoDepositsCanBeCredited {
+		return jsonhttp.Fail(c, 503,
+			"Crypto deposits are paused. Funds sent to a crypto address cannot be credited yet, so we will not issue one. Use a card, bank transfer or wire.", nil)
+	}
+
 	payer := userBillingKey(c)
 	if payer == "" {
 		return jsonhttp.Fail(c, 401, "Authentication required", nil)
