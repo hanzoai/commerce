@@ -25,7 +25,7 @@ func TestOfferedFrom(t *testing.T) {
 	t.Run("no assets offers nothing", func(t *testing.T) {
 		// The whole point. An unconfigured watcher must yield an empty menu,
 		// never the full one — advertising is what invites money.
-		chains, tokens := offeredFrom(nil)
+		chains, tokens := offeredFrom(nil, allChains)
 		if len(chains) != 0 || len(tokens) != 0 {
 			t.Fatalf("nothing is watched, yet the picker offers chains=%v tokens=%v", chains, tokens)
 		}
@@ -36,7 +36,7 @@ func TestOfferedFrom(t *testing.T) {
 			{Chain: "ethereum", Token: "usdc"},
 			{Chain: "base", Token: "usdc"}, // same token, second chain
 			{Chain: "base", Token: "usdt"}, // same chain, second token
-		})
+		}, allChains)
 		if got, want := chains, []string{"base", "ethereum"}; !eq(got, want) {
 			t.Fatalf("chains = %v, want %v", got, want)
 		}
@@ -49,7 +49,7 @@ func TestOfferedFrom(t *testing.T) {
 		chains, tokens := offeredFrom([]depositwatch.Asset{
 			{Chain: "Base", Token: "USDC"},
 			{Chain: "base", Token: "usdc"},
-		})
+		}, allChains)
 		if len(chains) != 1 || len(tokens) != 1 {
 			t.Fatalf("case variants split one asset in two: chains=%v tokens=%v", chains, tokens)
 		}
@@ -58,7 +58,7 @@ func TestOfferedFrom(t *testing.T) {
 	t.Run("empty marshals to a list, never null", func(t *testing.T) {
 		// A picker handed `null` where it expects an array is a client-side
 		// crash, which is a worse failure than an empty menu.
-		chains, tokens := offeredFrom(nil)
+		chains, tokens := offeredFrom(nil, allChains)
 		b, err := json.Marshal(map[string]any{"chains": chains, "tokens": tokens})
 		if err != nil {
 			t.Fatal(err)
@@ -79,4 +79,50 @@ func eq(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+// allChains is a custody signer that can mint anywhere, so the tests above
+// isolate the watched-assets half of the rule.
+var allChains = []string{"ethereum", "base", "polygon", "arbitrum", "optimism", "avalanche", "bsc", "lux", "zoo", "solana", "bitcoin"}
+
+// The other half of the rule, and the one this rail can hit TODAY.
+//
+// Solana became creditable the moment the watcher learned to read SPL transfers
+// — but the custody fleet derives no Ed25519 key, so thirdparty/mpc omits
+// "solana" from SupportedChains and CreateCryptoDeposit answers 400 for it.
+// Offering it would put a Solana button in front of a buyer that dead-ends after
+// they have chosen an amount, which is the ORIGINAL defect of this endpoint
+// wearing the opposite mask.
+func TestOfferedFrom_OnlyChainsAnAddressCanBeMintedOn(t *testing.T) {
+	watched := []depositwatch.Asset{
+		{Chain: "base", Token: "usdc"},
+		{Chain: "solana", Token: "usdc"},
+	}
+	// The real MPC chain list: every EVM chain, and deliberately not solana.
+	mintable := []string{"bitcoin", "ethereum", "polygon", "arbitrum", "optimism", "base", "avalanche", "lux", "zoo", "bsc"}
+
+	chains, tokens := offeredFrom(watched, mintable)
+	if got, want := chains, []string{"base"}; !eq(got, want) {
+		t.Fatalf("chains = %v, want %v — a chain with no mintable address must not be offered", got, want)
+	}
+	if got, want := tokens, []string{"usdc"}; !eq(got, want) {
+		t.Fatalf("tokens = %v, want %v", got, want)
+	}
+
+	// And a token that ONLY exists on an unmintable chain disappears with it,
+	// rather than lingering in the picker with nowhere to send it.
+	only := []depositwatch.Asset{{Chain: "solana", Token: "usdt"}}
+	chains, tokens = offeredFrom(only, mintable)
+	if len(chains) != 0 || len(tokens) != 0 {
+		t.Fatalf("an unmintable chain still offers chains=%v tokens=%v", chains, tokens)
+	}
+}
+
+// A signer that can mint nowhere offers nothing, exactly as a watcher that
+// watches nothing does. Both inputs fail closed.
+func TestOfferedFrom_NoMintableChainsOffersNothing(t *testing.T) {
+	chains, tokens := offeredFrom([]depositwatch.Asset{{Chain: "base", Token: "usdc"}}, nil)
+	if len(chains) != 0 || len(tokens) != 0 {
+		t.Fatalf("a signer that can mint nowhere still offers chains=%v tokens=%v", chains, tokens)
+	}
 }

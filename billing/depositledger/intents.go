@@ -212,11 +212,16 @@ func (intentStore) Credit(_ context.Context, c depositwatch.Credit) (bool, error
 		trans.Test = c.Test
 		trans.Notes = fmt.Sprintf("Crypto deposit: %s %s on %s (%s)", c.Units, strings.ToUpper(c.Token), c.Chain, c.TxHash)
 		trans.Metadata = types.Map{
-			"source":        "crypto-deposit",
-			"chain":         c.Chain,
-			"token":         c.Token,
-			"txHash":        c.TxHash,
-			"logIndex":      c.LogIndex,
+			"source": "crypto-deposit",
+			"chain":  c.Chain,
+			"token":  c.Token,
+			"txHash": c.TxHash,
+			// The event's position within its transaction, read per chain: a log
+			// index on the EVM, a token-balance record on Solana. Named for the
+			// concept and not for the EVM's spelling of it, because the ledger row
+			// is the permanent record and a field called logIndex holding a Solana
+			// account index is a lie a future reader cannot detect.
+			"eventIndex":    c.EventIndex,
 			"blockNumber":   c.Block,
 			"confirmations": c.Confirmations,
 			"units":         c.Units,

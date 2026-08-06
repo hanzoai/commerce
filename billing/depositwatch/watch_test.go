@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hanzoai/commerce/billing/husdindex"
 	"github.com/hanzoai/commerce/models/cryptopaymentintent"
 )
 
@@ -16,7 +15,7 @@ import (
 
 type fakeReader struct {
 	head      uint64
-	transfers []husdindex.Transfer
+	transfers []Transfer
 	decimals  int
 	symbol    string
 
@@ -39,7 +38,7 @@ func (r *fakeReader) Symbol(context.Context) (string, error) {
 	return r.symbol, nil
 }
 
-func (r *fakeReader) TransfersTo(_ context.Context, addrs []string, from, to uint64) ([]husdindex.Transfer, error) {
+func (r *fakeReader) TransfersTo(_ context.Context, addrs []string, from, to uint64) ([]Transfer, error) {
 	r.calls++
 	if len(addrs) > r.maxAddrsSeen {
 		r.maxAddrsSeen = len(addrs)
@@ -54,7 +53,7 @@ func (r *fakeReader) TransfersTo(_ context.Context, addrs []string, from, to uin
 	for _, a := range addrs {
 		want[strings.ToLower(a)] = true
 	}
-	var out []husdindex.Transfer
+	var out []Transfer
 	for _, t := range r.transfers {
 		if t.Block >= from && t.Block <= to && want[strings.ToLower(t.To)] {
 			out = append(out, t)
@@ -167,7 +166,7 @@ func usdcAsset() Asset {
 	return Asset{Chain: "ethereum", Token: "usdc", Contract: usdcContract, RPCURL: "http://rpc.test"}
 }
 
-func usdcReader(head uint64, transfers ...husdindex.Transfer) *fakeReader {
+func usdcReader(head uint64, transfers ...Transfer) *fakeReader {
 	return &fakeReader{head: head, transfers: transfers, decimals: 6, symbol: "USDC"}
 }
 
@@ -179,13 +178,13 @@ func pendingIntent() Watched {
 }
 
 // usdc returns a Transfer of n whole USDC (6 decimals).
-func usdc(n int64, block uint64, txHash string, logIndex uint64) husdindex.Transfer {
-	return husdindex.Transfer{
-		To:       depositAddrLower,
-		ValueWei: new(big.Int).Mul(big.NewInt(n), big.NewInt(1_000_000)),
-		TxHash:   txHash,
-		LogIndex: logIndex,
-		Block:    block,
+func usdc(n int64, block uint64, txHash string, eventIndex uint64) Transfer {
+	return Transfer{
+		To:         depositAddrLower,
+		Units:      new(big.Int).Mul(big.NewInt(n), big.NewInt(1_000_000)),
+		TxHash:     txHash,
+		EventIndex: eventIndex,
+		Block:      block,
 	}
 }
 
@@ -266,13 +265,47 @@ func TestSync_ConcurrentReplicasProduceTheSameLedgerRow(t *testing.T) {
 // deposits, not one. (A pre-EIP-155 transaction really can be replayed across
 // EVM chains with an identical hash.)
 func TestDedupKey_IsChainScoped(t *testing.T) {
-	tr := husdindex.Transfer{TxHash: "0xfeed", LogIndex: 1}
-	eth, base := dedupKey("ethereum", tr), dedupKey("base", tr)
+	tr := Transfer{TxHash: "0xfeed", EventIndex: 1}
+	ethAsset := &asset{Asset: Asset{Chain: "ethereum", Token: "usdc"}}
+	baseAsset := &asset{Asset: Asset{Chain: "base", Token: "usdc"}}
+	eth, base := ethAsset.dedupKey(tr), baseAsset.dedupKey(tr)
 	if eth == base {
 		t.Fatalf("dedup key ignores the chain: %q == %q — one of two genuine deposits would be swallowed", eth, base)
 	}
 	if eth != "ethereum:0xfeed:1" {
 		t.Fatalf("dedup key = %q, want ethereum:0xfeed:1", eth)
+	}
+}
+
+// The dedup key names the EVENT, not the transaction: two value movements in
+// one transaction are two deposits. On the EVM that is two Transfer logs to one
+// address; on Solana it is one transaction crediting two watched accounts.
+// Collapsing them would swallow the second — money received, never credited.
+func TestDedupKey_IsEventScoped(t *testing.T) {
+	a := &asset{Asset: Asset{Chain: "solana", Token: "usdc"}}
+	first := a.dedupKey(Transfer{TxHash: "5vbwcZ", EventIndex: 1})
+	second := a.dedupKey(Transfer{TxHash: "5vbwcZ", EventIndex: 2})
+	if first == second {
+		t.Fatalf("dedup key ignores the event index: %q == %q — a second deposit in the same transaction is swallowed", first, second)
+	}
+	if first != "solana:5vbwcZ:1" {
+		t.Fatalf("dedup key = %q, want solana:5vbwcZ:1", first)
+	}
+}
+
+// A Solana signature is base58 and CASE-SIGNIFICANT. Folding it — as the EVM
+// path folds a hex hash — would let two distinct signatures produce one dedup
+// key, and one of the two deposits would be swallowed as a duplicate.
+func TestDedupKey_DoesNotFoldSolanaCase(t *testing.T) {
+	sol := &asset{Asset: Asset{Chain: "solana", Token: "usdc"}}
+	if got := sol.dedupKey(Transfer{TxHash: "AbC", EventIndex: 0}); got != "solana:AbC:0" {
+		t.Fatalf("solana dedup key = %q, want solana:AbC:0 — a base58 signature was case-folded", got)
+	}
+	// The EVM keeps its fold, because there a checksummed and a lowercase hash
+	// are the same transaction.
+	eth := &asset{Asset: Asset{Chain: "ethereum", Token: "usdc"}}
+	if got := eth.dedupKey(Transfer{TxHash: "0xAbC", EventIndex: 0}); got != "ethereum:0xabc:0" {
+		t.Fatalf("ethereum dedup key = %q, want ethereum:0xabc:0", got)
 	}
 }
 
@@ -432,7 +465,7 @@ func TestSync_ReorgThatMovesTheBlockStillCreditsOnce(t *testing.T) {
 
 	// Re-mined two blocks earlier, and the chain has since moved on past the
 	// confirmation depth.
-	reader.transfers = []husdindex.Transfer{usdc(9, head-3, "0xmoved", 0)}
+	reader.transfers = []Transfer{usdc(9, head-3, "0xmoved", 0)}
 	reader.head = head + 20
 
 	if _, err := w.Sync(context.Background()); err != nil {
@@ -553,9 +586,9 @@ func TestAmountCents_WrongDecimalsIsCatastrophic(t *testing.T) {
 
 func TestSync_DustIsNotCredited(t *testing.T) {
 	head := uint64(1000)
-	dust := husdindex.Transfer{
-		To: depositAddrLower, ValueWei: big.NewInt(999), // 0.000999 USDC
-		TxHash: "0xdust", LogIndex: 0, Block: head - 20,
+	dust := Transfer{
+		To: depositAddrLower, Units: big.NewInt(999), // 0.000999 USDC
+		TxHash: "0xdust", EventIndex: 0, Block: head - 20,
 	}
 	store := &fakeStore{watched: []Watched{pendingIntent()}}
 	w := newWatcher(usdcAsset(), usdcReader(head, dust), store, running(head))
@@ -651,9 +684,9 @@ func TestSync_MatchesChecksummedAddressAgainstLowercaseLogs(t *testing.T) {
 // Money sent to an address we never minted credits nobody.
 func TestSync_UnknownAddressIsNotCredited(t *testing.T) {
 	head := uint64(1000)
-	stranger := husdindex.Transfer{
-		To: "0x000000000000000000000000000000000000dead", ValueWei: big.NewInt(5_000_000),
-		TxHash: "0xstranger", LogIndex: 0, Block: head - 30,
+	stranger := Transfer{
+		To: "0x000000000000000000000000000000000000dead", Units: big.NewInt(5_000_000),
+		TxHash: "0xstranger", EventIndex: 0, Block: head - 30,
 	}
 	store := &fakeStore{watched: []Watched{pendingIntent()}}
 	w := newWatcher(usdcAsset(), usdcReader(head, stranger), store, running(head))
@@ -704,7 +737,7 @@ func TestSync_CreditsTheIntentsOwnPayer(t *testing.T) {
 	if c.Org != "globex" || c.Subject != "globex/carol" || !c.Test {
 		t.Fatalf("credit addressed to %+v, want org=globex subject=globex/carol test=true", c)
 	}
-	if c.IntentID != "cpi_1" || c.TxHash != "0xa" || c.LogIndex != 2 || c.Chain != "ethereum" || c.Token != "usdc" {
+	if c.IntentID != "cpi_1" || c.TxHash != "0xa" || c.EventIndex != 2 || c.Chain != "ethereum" || c.Token != "usdc" {
 		t.Fatalf("credit lost its provenance: %+v", c)
 	}
 	if c.Units != "8000000" || c.PegRate != "1.00" {
@@ -741,9 +774,9 @@ func TestSync_ChunksAddressesAndBlockRanges(t *testing.T) {
 	}
 	// The deposit we must still find, on the LAST address, in an early block.
 	paid := watched[len(watched)-1]
-	tr := husdindex.Transfer{
-		To: strings.ToLower(paid.Address), ValueWei: big.NewInt(3_000_000),
-		TxHash: "0xchunked", LogIndex: 0, Block: 6_000,
+	tr := Transfer{
+		To: strings.ToLower(paid.Address), Units: big.NewInt(3_000_000),
+		TxHash: "0xchunked", EventIndex: 0, Block: 6_000,
 	}
 	store := &fakeStore{watched: watched}
 	reader := usdcReader(head, tr)
@@ -857,5 +890,127 @@ func TestSync_ColdStartScansTheConfirmationWindowOnly(t *testing.T) {
 	got, _ := cursor.Last(context.Background(), "ethereum:usdc")
 	if want := head - ethConfirmations; got != want {
 		t.Fatalf("cold start committed %d, want %d — it must not commit a block it never scanned", got, want)
+	}
+}
+
+// ── Solana ──────────────────────────────────────────────────────────────────
+//
+// Solana is an IMPLEMENTATION of Reader, not a second policy. These tests prove
+// exactly that: the same watcher, the same confirmation rule, the same dedup
+// key, driven by a chain whose addresses and transaction ids are base58.
+
+const (
+	solMint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+	// solDeposit is an owner address the rail would mint and show a customer.
+	// The watcher never sees the token account it derives to — that translation
+	// belongs entirely to the reader.
+	solDeposit = "8meoEbDNDAogUcAm88F5coEASwyLbqcAMr47WwhpukUx"
+	// solConfirmations must track cryptopaymentintent.RequiredConfirmationsForChain.
+	solConfirmations = 32
+)
+
+func solanaAsset() Asset {
+	return Asset{Chain: "solana", Token: "usdc", Contract: solMint, RPCURL: "http://rpc.test"}
+}
+
+func solanaIntent() Watched {
+	return Watched{
+		Org: "acme", Test: false, IntentID: "cpi_sol", Subject: "acme/alice",
+		Address: solDeposit, Status: cryptopaymentintent.Pending,
+	}
+}
+
+// solTransfer is n whole USDC arriving at the Solana deposit address.
+func solTransfer(n int64, slot uint64, sig string, eventIndex uint64) Transfer {
+	return Transfer{
+		To:         solDeposit,
+		Units:      new(big.Int).Mul(big.NewInt(n), big.NewInt(1_000_000)),
+		TxHash:     sig,
+		EventIndex: eventIndex,
+		Block:      slot,
+	}
+}
+
+func TestSync_SolanaDepositCreditsExactlyOnce(t *testing.T) {
+	head := uint64(437_671_790)
+	sig := "2KQnbgfr7iQ6TR9CBygALZ5mjunDzA9bB9Uq4fcKV93asZLTfWZbyX8jFGqeMnegggMFQLnjyAZVBfKFPKBzKTFU"
+	tx := solTransfer(15, head-solConfirmations+1, sig, 2)
+
+	store := &fakeStore{watched: []Watched{solanaIntent()}}
+	reader := &fakeReader{head: head, transfers: []Transfer{tx}, decimals: 6, symbol: "USDC"}
+	w := newWatcher(solanaAsset(), reader, store, running(head, "solana:usdc"))
+
+	n, err := w.Sync(context.Background())
+	if err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if n != 1 {
+		t.Fatalf("credited %d deposits, want 1", n)
+	}
+	if got := store.totalCents(); got != 1500 {
+		t.Fatalf("credited %d cents, want 1500 ($15 of 6-decimal USDC)", got)
+	}
+	// The dedup key carries the signature UNFOLDED and the event index — the
+	// two things that make a Solana deposit nameable.
+	want := "solana:" + sig + ":2"
+	if _, ok := store.distinctCredits()[want]; !ok {
+		t.Fatalf("dedup key %q not produced; got %v", want, keysOf(store.distinctCredits()))
+	}
+	for pass := 2; pass <= 4; pass++ {
+		again, err := w.Sync(context.Background())
+		if err != nil {
+			t.Fatalf("pass %d: %v", pass, err)
+		}
+		if again != 0 {
+			t.Fatalf("pass %d credited %d again", pass, again)
+		}
+	}
+	if got := store.totalCents(); got != 1500 {
+		t.Fatalf("after 4 passes the customer has %d cents, want 1500", got)
+	}
+}
+
+// Solana's confirmation rule is the model's, applied by the same code as every
+// other chain — 32 slots, no exception, no early credit.
+func TestSync_SolanaHonoursTheConfirmationDepth(t *testing.T) {
+	if got := cryptopaymentintent.RequiredConfirmationsForChain(cryptopaymentintent.Solana); got != solConfirmations {
+		t.Fatalf("the model requires %d confirmations on solana, this suite assumes %d", got, solConfirmations)
+	}
+	head := uint64(437_671_790)
+	shallow := solTransfer(15, head-solConfirmations+2, "sigShallow", 0) // depth 31
+
+	store := &fakeStore{watched: []Watched{solanaIntent()}}
+	reader := &fakeReader{head: head, transfers: []Transfer{shallow}, decimals: 6, symbol: "USDC"}
+	w := newWatcher(solanaAsset(), reader, store, running(head, "solana:usdc"))
+
+	if _, err := w.Sync(context.Background()); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if got := len(store.credits); got != 0 {
+		t.Fatalf("credited a deposit %d slots deep, one short of the required %d", solConfirmations-1, solConfirmations)
+	}
+	if len(store.sights) != 1 || store.sights[0].Confirmations != solConfirmations-1 {
+		t.Fatalf("a shallow deposit must still be SIGHTED so the customer sees it confirming; got %+v", store.sights)
+	}
+}
+
+// Base58 is case-significant, so an address that differs only in case is a
+// DIFFERENT account. Matching it would credit one customer for another's money.
+func TestSync_SolanaAddressesAreMatchedCaseSensitively(t *testing.T) {
+	head := uint64(437_671_790)
+	// Same characters, one case flipped: a different Solana account entirely.
+	other := "8MeoEbDNDAogUcAm88F5coEASwyLbqcAMr47WwhpukUx"
+	tx := solTransfer(15, head-solConfirmations, "sigOther", 0)
+	tx.To = other
+
+	store := &fakeStore{watched: []Watched{solanaIntent()}}
+	reader := &fakeReader{head: head, transfers: []Transfer{tx}, decimals: 6, symbol: "USDC"}
+	w := newWatcher(solanaAsset(), reader, store, running(head, "solana:usdc"))
+
+	if _, err := w.Sync(context.Background()); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if len(store.credits) != 0 {
+		t.Fatalf("a transfer to %s was credited to the intent holding %s — base58 case was folded away", other, solDeposit)
 	}
 }

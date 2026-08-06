@@ -52,6 +52,7 @@ require (
 )
 
 require (
+	filippo.io/edwards25519 v1.2.0
 	github.com/hanzo-ds/go v1.0.1
 	github.com/hanzoai/account v0.2.0
 	github.com/hanzoai/decimal v0.1.2
@@ -65,7 +66,6 @@ require (
 )
 
 require (
-	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/ALTree/bigfloat v0.2.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
@@ -176,7 +176,7 @@ require (
 	github.com/miekg/dns v1.1.72 // indirect
 	github.com/minio/crc64nvme v1.1.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
-	github.com/mr-tron/base58 v1.3.0 // indirect
+	github.com/mr-tron/base58 v1.3.0
 	github.com/nats-io/nkeys v0.4.15 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/paulmach/orb v0.13.0 // indirect

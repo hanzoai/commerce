@@ -9,7 +9,6 @@ import (
 
 	"github.com/hanzoai/commerce/billing/bucket"
 	"github.com/hanzoai/commerce/billing/depositwatch"
-	"github.com/hanzoai/commerce/billing/husdindex"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/cryptopaymentintent"
 	"github.com/hanzoai/commerce/models/organization"
@@ -40,18 +39,18 @@ func testEnv() []string {
 // fakeChain is a chain that serves a fixed set of transfers.
 type fakeChain struct {
 	head      uint64
-	transfers []husdindex.Transfer
+	transfers []depositwatch.Transfer
 }
 
 func (f *fakeChain) BlockNumber(context.Context) (uint64, error) { return f.head, nil }
 func (f *fakeChain) Decimals(context.Context) (int, error)       { return 6, nil }
 func (f *fakeChain) Symbol(context.Context) (string, error)      { return "USDC", nil }
-func (f *fakeChain) TransfersTo(_ context.Context, addrs []string, from, to uint64) ([]husdindex.Transfer, error) {
+func (f *fakeChain) TransfersTo(_ context.Context, addrs []string, from, to uint64) ([]depositwatch.Transfer, error) {
 	want := map[string]bool{}
 	for _, a := range addrs {
 		want[strings.ToLower(a)] = true
 	}
-	var out []husdindex.Transfer
+	var out []depositwatch.Transfer
 	for _, t := range f.transfers {
 		if t.Block >= from && t.Block <= to && want[strings.ToLower(t.To)] {
 			out = append(out, t)
@@ -62,7 +61,7 @@ func (f *fakeChain) TransfersTo(_ context.Context, addrs []string, from, to uint
 
 func serviceOver(t *testing.T, chain *fakeChain) *Service {
 	t.Helper()
-	svc, err := New(testEnv(), WithReader(func(depositwatch.Asset) depositwatch.Reader { return chain }))
+	svc, err := New(testEnv(), WithReader(func(depositwatch.Asset) (depositwatch.Reader, error) { return chain, nil }))
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -116,14 +115,13 @@ func balance(t *testing.T, org, subject string) bucket.Split {
 }
 
 // usdcTransfer is n cents' worth of 6-decimal USDC.
-func usdcTransfer(cents int64, block uint64, txHash string, logIndex uint64) husdindex.Transfer {
-	return husdindex.Transfer{
-		From:     "0x1111111111111111111111111111111111111111",
-		To:       testAddrLower,
-		ValueWei: new(big.Int).Mul(big.NewInt(cents), big.NewInt(10_000)), // 1 cent = 10^4 base units
-		TxHash:   txHash,
-		LogIndex: logIndex,
-		Block:    block,
+func usdcTransfer(cents int64, block uint64, txHash string, eventIndex uint64) depositwatch.Transfer {
+	return depositwatch.Transfer{
+		To:         testAddrLower,
+		Units:      new(big.Int).Mul(big.NewInt(cents), big.NewInt(10_000)), // 1 cent = 10^4 base units
+		TxHash:     txHash,
+		EventIndex: eventIndex,
+		Block:      block,
 	}
 }
 
@@ -138,7 +136,7 @@ func TestCreditsAConfirmedDepositExactlyOnce(t *testing.T) {
 	intent := seedIntent(t, org, subject, testAddr)
 
 	head := uint64(1000)
-	chain := &fakeChain{head: head, transfers: []husdindex.Transfer{
+	chain := &fakeChain{head: head, transfers: []depositwatch.Transfer{
 		usdcTransfer(2550, head-20, "0xfeedface", 4), // $25.50, 21 blocks deep
 	}}
 	svc := serviceOver(t, chain)
@@ -229,7 +227,7 @@ func TestUnconfirmedDepositMovesNoMoney(t *testing.T) {
 	seedIntent(t, org, subject, testAddr)
 
 	head := uint64(2000)
-	chain := &fakeChain{head: head, transfers: []husdindex.Transfer{
+	chain := &fakeChain{head: head, transfers: []depositwatch.Transfer{
 		usdcTransfer(10_000, head-1, "0xshallow", 0), // 2 blocks deep; ethereum needs 12
 	}}
 	svc := serviceOver(t, chain)
@@ -275,7 +273,7 @@ func TestReorgedSightingIsRolledBack(t *testing.T) {
 	seedIntent(t, org, subject, testAddr)
 
 	head := uint64(3000)
-	chain := &fakeChain{head: head, transfers: []husdindex.Transfer{
+	chain := &fakeChain{head: head, transfers: []depositwatch.Transfer{
 		usdcTransfer(5000, head-3, "0xdoomed", 0),
 	}}
 	svc := serviceOver(t, chain)
@@ -328,7 +326,7 @@ func TestUnknownAddressCreditsNobody(t *testing.T) {
 	head := uint64(4000)
 	stray := usdcTransfer(999_999, head-30, "0xstray", 0)
 	stray.To = "0x000000000000000000000000000000000000dead"
-	chain := &fakeChain{head: head, transfers: []husdindex.Transfer{stray}}
+	chain := &fakeChain{head: head, transfers: []depositwatch.Transfer{stray}}
 	svc := serviceOver(t, chain)
 	if err := (cursorStore{}).Save(context.Background(), "ethereum:usdc", head-100); err != nil {
 		t.Fatalf("seed cursor: %v", err)
@@ -428,11 +426,11 @@ func TestStart_CreditsWithoutAnyCaller(t *testing.T) {
 	seedIntent(t, org, subject, testAddr)
 
 	head := uint64(6000)
-	chain := &fakeChain{head: head, transfers: []husdindex.Transfer{
+	chain := &fakeChain{head: head, transfers: []depositwatch.Transfer{
 		usdcTransfer(1234, head-30, "0xscheduled", 0),
 	}}
 	svc, err := New(testEnv(),
-		WithReader(func(depositwatch.Asset) depositwatch.Reader { return chain }),
+		WithReader(func(depositwatch.Asset) (depositwatch.Reader, error) { return chain, nil }),
 		WithInterval(5*time.Millisecond))
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -461,7 +459,7 @@ func TestStopIsIdempotent(t *testing.T) {
 	defer c.Close()
 
 	svc, err := New(testEnv(),
-		WithReader(func(depositwatch.Asset) depositwatch.Reader { return &fakeChain{head: 10} }),
+		WithReader(func(depositwatch.Asset) (depositwatch.Reader, error) { return &fakeChain{head: 10}, nil }),
 		WithInterval(time.Millisecond))
 	if err != nil {
 		t.Fatalf("New: %v", err)

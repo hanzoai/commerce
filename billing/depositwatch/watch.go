@@ -4,22 +4,68 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"sort"
 	"strings"
 	"sync"
 
-	"github.com/hanzoai/commerce/billing/husdindex"
 	"github.com/hanzoai/commerce/models/cryptopaymentintent"
 )
 
-// Reader reads ONE asset's chain state. *husdindex.Client satisfies it; the
-// tests inject a fake so every crediting decision below is proven without a
-// chain.
+// Reader reads ONE asset's chain state. billing/solanarpc.Client satisfies it
+// directly and *husdindex.Client through a two-line adapter (the EVM client
+// predates this interface and serves the HUSD indexer too); the tests inject a
+// fake so every crediting decision below is proven without a chain.
+//
+// Nothing in it is EVM-shaped. "Block" is whatever position that chain counts
+// monotonically — a block on the EVM, a slot on Solana — and the only property
+// relied on is that it increases and that depth beneath the head means age.
 type Reader interface {
 	BlockNumber(ctx context.Context) (uint64, error)
-	TransfersTo(ctx context.Context, addrs []string, fromBlock, toBlock uint64) ([]husdindex.Transfer, error)
+	TransfersTo(ctx context.Context, addrs []string, fromBlock, toBlock uint64) ([]Transfer, error)
 	Decimals(ctx context.Context) (int, error)
 	Symbol(ctx context.Context) (string, error)
+}
+
+// Transfer is one value-moving event that landed in a watched address.
+//
+// It is deliberately NOT husdindex.Transfer. That type is an ERC-20 Transfer
+// LOG — a thing with topics and a block-scoped log index — and describing a
+// Solana balance change with it would mean writing an instruction position into
+// a field called LogIndex and hoping every later reader understood. The two
+// concepts are kept apart so the per-chain reading of each field can be stated
+// once, here, and never guessed at:
+//
+//	field       EVM                        Solana
+//	─────────── ────────────────────────── ─────────────────────────────────
+//	To          recipient address          the OWNER address we minted, not
+//	                                       the token account it landed in
+//	Units       raw ERC-20 amount          post − pre balance, base units
+//	TxHash      transaction hash           transaction signature
+//	EventIndex  log index                  index of the token-balance record
+//	Block       block number               slot
+type Transfer struct {
+	To     string
+	Units  *big.Int
+	TxHash string
+
+	// EventIndex is the position of this event WITHIN its transaction, under
+	// that chain's own definition of position.
+	//
+	// It exists because exactly-once is a property of the dedup key, and one
+	// transaction can credit the same address twice — an EVM transaction can
+	// emit two Transfer logs to one address, a Solana transaction can move
+	// tokens into two watched accounts. The pair (TxHash, EventIndex) must
+	// therefore name the EVENT, and it must be a function of the chain's own
+	// record of it: a re-scan, a crash retry and a second replica all recompute
+	// it from the same bytes and land on the same ledger row.
+	//
+	// What it is NOT: a counter over the results of this scan, or a position in
+	// a slice. Either would renumber when the window moved, and renumbering a
+	// dedup key is a double credit.
+	EventIndex uint64
+
+	Block uint64
 }
 
 // Watched is one minted deposit address the watcher must observe, together with
@@ -31,7 +77,7 @@ type Watched struct {
 	Test     bool
 	IntentID string
 	Subject  string
-	Address  string // lowercased 0x — case is never trusted, see indexByAddress
+	Address  string // as minted; normalised for comparison by Asset.Fold
 	Status   cryptopaymentintent.Status
 	TxHash   string // the sighting currently recorded on the intent
 	Block    uint64
@@ -53,7 +99,7 @@ type Sighting struct {
 // DedupKey is the whole exactly-once story: it names the on-chain event, not
 // this run, so the ledger row it produces is the same row no matter how many
 // times it is computed — by a re-scan, by a second replica, by a restart
-// mid-pass. See depositledger.creditKey.
+// mid-pass. See dedupKey below and depositledger.creditKey.
 type Credit struct {
 	Org           string
 	Subject       string
@@ -64,11 +110,11 @@ type Credit struct {
 	Units         string // raw token base units, decimal (audit trail)
 	PegRate       string // USD per whole token at the peg used ("1.00")
 	TxHash        string
-	LogIndex      uint64
+	EventIndex    uint64 // see Transfer.EventIndex
 	Block         uint64
 	Confirmations int
 	Test          bool
-	DedupKey      string // chain:txHash:logIndex
+	DedupKey      string // chain:txHash:eventIndex
 }
 
 // Store is the intent + ledger side of the world.
@@ -234,7 +280,7 @@ func (w *Watcher) syncAsset(ctx context.Context, a *asset) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	byAddr, ambiguous := indexByAddress(watched)
+	byAddr, ambiguous := indexByAddress(watched, a.Fold)
 	if len(ambiguous) > 0 {
 		// Two intents claiming one address means we cannot say WHO a deposit
 		// belongs to. Crediting either is a guess with someone's money, so the
@@ -261,40 +307,40 @@ func (w *Watcher) syncAsset(ctx context.Context, a *asset) (int, error) {
 	credited := 0
 	observed := make(map[string]bool, len(transfers))
 	for _, t := range transfers {
-		to := strings.ToLower(t.To)
-		wt, ok := byAddr[to]
+		wt, ok := byAddr[a.Fold(t.To)]
 		if !ok {
-			continue // not one of ours (the topic filter should already prevent this)
+			continue // not one of ours (the reader's filter should already prevent this)
 		}
 		if t.Block > head {
 			continue // a reader that answered outside the window it was asked for
 		}
-		observed[seenKey(wt.IntentID, t.TxHash)] = true
+		txHash := a.Fold(t.TxHash)
+		observed[seenKey(wt.IntentID, a.Fold, txHash)] = true
 
 		depth := int(head - t.Block + 1)
 		if uint64(depth) < required {
 			if err := w.store.Sight(ctx, Sighting{
 				Org: wt.Org, IntentID: wt.IntentID,
-				TxHash: strings.ToLower(t.TxHash), Block: t.Block, Confirmations: depth,
+				TxHash: txHash, Block: t.Block, Confirmations: depth,
 			}); err != nil {
 				return credited, err
 			}
 			continue
 		}
 
-		cents, err := AmountCents(t.ValueWei, a.decimals, a.PegCents())
+		cents, err := AmountCents(t.Units, a.decimals, a.PegCents())
 		if errors.Is(err, ErrDust) {
 			continue // a real transfer worth less than a cent: nothing to credit
 		}
 		if err != nil {
-			return credited, fmt.Errorf("%s: %w", dedupKey(a.Chain, t), err)
+			return credited, fmt.Errorf("%s: %w", a.dedupKey(t), err)
 		}
 		written, err := w.store.Credit(ctx, Credit{
 			Org: wt.Org, Subject: wt.Subject, IntentID: wt.IntentID,
 			Chain: a.Chain, Token: a.Token,
-			AmountCents: cents, Units: t.ValueWei.String(), PegRate: a.PegRate(),
-			TxHash: strings.ToLower(t.TxHash), LogIndex: t.LogIndex, Block: t.Block,
-			Confirmations: depth, Test: wt.Test, DedupKey: dedupKey(a.Chain, t),
+			AmountCents: cents, Units: t.Units.String(), PegRate: a.PegRate(),
+			TxHash: txHash, EventIndex: t.EventIndex, Block: t.Block,
+			Confirmations: depth, Test: wt.Test, DedupKey: a.dedupKey(t),
 		})
 		if err != nil {
 			return credited, err
@@ -304,7 +350,7 @@ func (w *Watcher) syncAsset(ctx context.Context, a *asset) (int, error) {
 		}
 	}
 
-	if err := w.correctReorgs(ctx, watched, observed, from, head); err != nil {
+	if err := w.correctReorgs(ctx, a, watched, observed, from, head); err != nil {
 		return credited, err
 	}
 	return credited, w.commit(ctx, a.Key(), head, required, last)
@@ -312,8 +358,8 @@ func (w *Watcher) syncAsset(ctx context.Context, a *asset) (int, error) {
 
 // scan reads the transfers into the watched addresses over [from, head],
 // chunked by block range AND by address, and returns them in chain order.
-func (w *Watcher) scan(ctx context.Context, a *asset, addrs []string, from, head uint64) ([]husdindex.Transfer, error) {
-	var out []husdindex.Transfer
+func (w *Watcher) scan(ctx context.Context, a *asset, addrs []string, from, head uint64) ([]Transfer, error) {
+	var out []Transfer
 	for start := from; start <= head; start += w.maxRange {
 		end := start + w.maxRange - 1
 		if end > head || end < start {
@@ -327,13 +373,13 @@ func (w *Watcher) scan(ctx context.Context, a *asset, addrs []string, from, head
 			out = append(out, got...)
 		}
 	}
-	// Deterministic order: block, then log index. Two replicas processing the
+	// Deterministic order: block, then event index. Two replicas processing the
 	// same window therefore do the same work in the same order.
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Block != out[j].Block {
 			return out[i].Block < out[j].Block
 		}
-		return out[i].LogIndex < out[j].LogIndex
+		return out[i].EventIndex < out[j].EventIndex
 	})
 	return out, nil
 }
@@ -348,7 +394,7 @@ func (w *Watcher) scan(ctx context.Context, a *asset, addrs []string, from, head
 // means the transaction is gone, not that we failed to look. Blocks outside the
 // scanned range are left alone — we did not look there and must not conclude
 // anything from silence.
-func (w *Watcher) correctReorgs(ctx context.Context, watched []Watched, observed map[string]bool, from, head uint64) error {
+func (w *Watcher) correctReorgs(ctx context.Context, a *asset, watched []Watched, observed map[string]bool, from, head uint64) error {
 	for _, wt := range watched {
 		if wt.Status != cryptopaymentintent.Confirming || wt.TxHash == "" {
 			continue
@@ -356,12 +402,12 @@ func (w *Watcher) correctReorgs(ctx context.Context, watched []Watched, observed
 		if wt.Block < from || wt.Block > head {
 			continue
 		}
-		if observed[seenKey(wt.IntentID, wt.TxHash)] {
+		if observed[seenKey(wt.IntentID, a.Fold, wt.TxHash)] {
 			continue
 		}
 		if err := w.store.Unsight(ctx, Sighting{
 			Org: wt.Org, IntentID: wt.IntentID,
-			TxHash: strings.ToLower(wt.TxHash), Block: wt.Block,
+			TxHash: a.Fold(wt.TxHash), Block: wt.Block,
 		}); err != nil {
 			return err
 		}
@@ -383,48 +429,57 @@ func (w *Watcher) commit(ctx context.Context, key string, head, required, last u
 	return w.cursor.Save(ctx, key, to)
 }
 
-// verify asserts, once, that the configured contract IS the token it claims to
-// be, and takes its decimals from the chain rather than from config.
+// verify asserts, once, that the account the asset is configured with IS the
+// token it claims to be, and takes its decimals from the chain rather than from
+// config.
 //
 // This is the boundary check that makes the amount arithmetic trustworthy. A
-// mistyped contract address is otherwise undetectable from inside this process
-// and would price some unrelated token at a dollar; a wrong decimals constant is
-// a 10^12 error in the credit. Both become "this asset is refused" instead.
+// mistyped token address is otherwise undetectable from inside this process and
+// would price some unrelated token at a dollar; a wrong decimals constant is a
+// 10^12 error in the credit. Both become "this asset is refused" instead.
 // Failure is not cached, so a transient RPC error retries on the next pass.
+//
+// Both reads are the CHAIN's answer, not ours, in whatever form that chain
+// offers it — an ERC-20 answers symbol() and decimals() itself, an SPL mint
+// carries its decimals and is named by a separate metadata account. What each
+// answer is worth is documented at the reader; what this function requires is
+// the same either way: identify the token, or credit nothing.
 func (a *asset) verify(ctx context.Context) error {
 	if a.decimals != 0 {
 		return nil
 	}
 	sym, err := a.reader.Symbol(ctx)
 	if err != nil {
-		return fmt.Errorf("cannot read symbol() of %s: %w", a.Contract, err)
+		return fmt.Errorf("cannot read the symbol of %s: %w", a.Contract, err)
 	}
 	if !strings.EqualFold(strings.TrimSpace(sym), a.Token) {
-		return fmt.Errorf("contract %s reports symbol %q, but it is configured as %q — refusing to credit deposits of a token we cannot identify",
+		return fmt.Errorf("token account %s reports symbol %q, but it is configured as %q — refusing to credit deposits of a token we cannot identify",
 			a.Contract, strings.TrimSpace(sym), a.Token)
 	}
 	d, err := a.reader.Decimals(ctx)
 	if err != nil {
-		return fmt.Errorf("cannot read decimals() of %s: %w", a.Contract, err)
+		return fmt.Errorf("cannot read the decimals of %s: %w", a.Contract, err)
 	}
 	if d < 2 || d > 36 {
-		return fmt.Errorf("contract %s reports %d decimals, which cannot express a cent", a.Contract, d)
+		return fmt.Errorf("token account %s reports %d decimals, which cannot express a cent", a.Contract, d)
 	}
 	a.decimals = d
 	return nil
 }
 
-// indexByAddress maps lowercased address → the intent that owns it, and reports
-// any address claimed by more than one intent.
+// indexByAddress maps folded address → the intent that owns it, and reports any
+// address claimed by more than one intent.
 //
-// Case is normalised on BOTH sides and never compared raw: the custody service
-// returns EIP-55 checksummed addresses while chain logs are lowercase hex, so
-// comparing what we stored against what we read would miss every deposit.
-func indexByAddress(watched []Watched) (map[string]Watched, []string) {
+// Both sides go through the SAME per-chain fold and are never compared raw. On
+// the EVM that is a case fold, because the custody service returns EIP-55
+// checksummed addresses while chain logs are lowercase hex and comparing them
+// literally would miss every deposit. On Solana it is not, because base58 is
+// case-sensitive and folding it would merge distinct accounts. See Asset.Fold.
+func indexByAddress(watched []Watched, fold func(string) string) (map[string]Watched, []string) {
 	byAddr := make(map[string]Watched, len(watched))
 	claims := make(map[string]int, len(watched))
 	for _, wt := range watched {
-		addr := strings.ToLower(strings.TrimSpace(wt.Address))
+		addr := fold(wt.Address)
 		if addr == "" {
 			continue
 		}
@@ -442,16 +497,33 @@ func indexByAddress(watched []Watched) (map[string]Watched, []string) {
 	return byAddr, ambiguous
 }
 
-// dedupKey names the on-chain event a credit came from. The CHAIN is part of it:
-// EVM chains share an address space and a pre-EIP-155 transaction can be
-// replayed onto another chain with an identical hash, so two genuine deposits
-// could otherwise collapse into one credit.
-func dedupKey(chain string, t husdindex.Transfer) string {
-	return fmt.Sprintf("%s:%s:%d", chain, strings.ToLower(t.TxHash), t.LogIndex)
+// dedupKey names the on-chain event a credit came from: chain, transaction,
+// position within that transaction.
+//
+// All three parts are load-bearing.
+//
+//	chain       EVM chains share an address space, and a pre-EIP-155
+//	            transaction can be replayed onto another chain with an
+//	            identical hash. Without it, two genuine deposits on two chains
+//	            collapse into one credit — the customer pays twice and is
+//	            credited once.
+//	transaction the chain's own identifier for the transaction (a hash on the
+//	            EVM, a signature on Solana), folded the way that chain's
+//	            identifiers compare.
+//	eventIndex  which value movement WITHIN that transaction, since one
+//	            transaction can credit the same address more than once and can
+//	            credit two different addresses. Without it, the second one is
+//	            silently swallowed as a duplicate of the first.
+//
+// It is a function of the EVENT and of nothing else — not of this pass, not of
+// the scan window, not of the reader — which is exactly why a re-scan, a crash
+// retry and N replicas all produce the same ledger row.
+func (a *asset) dedupKey(t Transfer) string {
+	return fmt.Sprintf("%s:%s:%d", a.Chain, a.Fold(t.TxHash), t.EventIndex)
 }
 
-func seenKey(intentID, txHash string) string {
-	return intentID + "|" + strings.ToLower(txHash)
+func seenKey(intentID string, fold func(string) string, txHash string) string {
+	return intentID + "|" + fold(txHash)
 }
 
 // chunkStrings splits s into runs of at most n.
