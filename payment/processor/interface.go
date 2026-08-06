@@ -46,8 +46,15 @@ type PaymentProcessor interface {
 type CryptoProcessor interface {
 	PaymentProcessor
 
-	// GenerateAddress creates a new payment address for a customer
-	GenerateAddress(ctx context.Context, customerID string, chain string) (string, error)
+	// GenerateAddress mints a custody destination for a customer.
+	//
+	// It returns a Wallet rather than a bare address because an address alone
+	// is only half a custody record: it says where funds land, not which wallet
+	// the signer must be asked to spend from. Returning one value made losing
+	// the other the DEFAULT — the MPC processor parsed wallet_id off the keygen
+	// response and dropped it on the floor, so deposits could be credited and
+	// never swept.
+	GenerateAddress(ctx context.Context, customerID string, chain string) (Wallet, error)
 
 	// GetBalance returns the balance for an address
 	GetBalance(ctx context.Context, address string, chain string) (*Balance, error)

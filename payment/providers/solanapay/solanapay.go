@@ -238,14 +238,17 @@ func (p *Provider) ValidateWebhook(ctx context.Context, payload []byte, signatur
 
 // GenerateAddress returns the recipient address. Solana Pay uses a single
 // recipient with unique reference keys to distinguish payments.
-func (p *Provider) GenerateAddress(ctx context.Context, customerID string, chain string) (string, error) {
+func (p *Provider) GenerateAddress(ctx context.Context, customerID string, chain string) (processor.Wallet, error) {
 	if chain != "solana" {
-		return "", processor.NewPaymentError(processor.SolanaPay, "UNSUPPORTED_CHAIN", fmt.Sprintf("chain %s not supported, use solana", chain), nil)
+		return processor.Wallet{}, processor.NewPaymentError(processor.SolanaPay, "UNSUPPORTED_CHAIN", fmt.Sprintf("chain %s not supported, use solana", chain), nil)
 	}
 	if p.recipientAddress == "" {
-		return "", processor.NewPaymentError(processor.SolanaPay, "NO_RECIPIENT", "recipient address not configured", nil)
+		return processor.Wallet{}, processor.NewPaymentError(processor.SolanaPay, "NO_RECIPIENT", "recipient address not configured", nil)
 	}
-	return p.recipientAddress, nil
+	// No wallet id: this is ONE configured recipient, and payments are told
+	// apart by reference key rather than by wallet. An empty ID is the honest
+	// answer here, not a dropped value.
+	return processor.Wallet{Address: p.recipientAddress}, nil
 }
 
 // GetBalance queries the SOL or SPL token balance for an address.

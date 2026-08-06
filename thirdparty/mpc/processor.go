@@ -262,7 +262,7 @@ type mpcKeygenResp struct {
 // does exactly that), so a fresh wallet per call is correct, never wasteful.
 // Keygen needs ALL peers and can take tens of seconds — the caller's ctx
 // bounds the wait.
-func (mp *MPCProcessor) GenerateAddress(ctx context.Context, customerID string, chain string) (string, error) {
+func (mp *MPCProcessor) GenerateAddress(ctx context.Context, customerID string, chain string) (processor.Wallet, error) {
 	// org_id scopes the wallet on the MPC side; the payer key is "<org>" or
 	// "<org>/<user>", so the org is everything before the first slash.
 	orgID := customerID
@@ -274,29 +274,29 @@ func (mp *MPCProcessor) GenerateAddress(ctx context.Context, customerID string, 
 	err := mp.doJSON(ctx, http.MethodPost, mp.mpcEndpoint+"/keygen",
 		map[string]string{"org_id": orgID}, &resp)
 	if err != nil {
-		return "", processor.NewPaymentError(processor.MPC, "KEYGEN_FAILED", "failed to generate MPC wallet", err)
+		return processor.Wallet{}, processor.NewPaymentError(processor.MPC, "KEYGEN_FAILED", "failed to generate MPC wallet", err)
 	}
 	if resp.Error != "" {
-		return "", processor.NewPaymentError(processor.MPC, "KEYGEN_FAILED", resp.Error, nil)
+		return processor.Wallet{}, processor.NewPaymentError(processor.MPC, "KEYGEN_FAILED", resp.Error, nil)
 	}
 
+	// resp.WalletID rides along with every address below. It was parsed here and
+	// then dropped for want of somewhere to put it, which is how a rail came to
+	// mint custody addresses it held no handle to.
+	var addr string
 	switch chain {
 	case "bitcoin":
-		if resp.BTCAddress != "" {
-			return resp.BTCAddress, nil
-		}
+		addr = resp.BTCAddress
 	case "solana":
-		if resp.SOLAddress != "" {
-			return resp.SOLAddress, nil
-		}
+		addr = resp.SOLAddress
 	default:
 		// EVM chains all share the secp256k1-derived Ethereum address.
-		if resp.EVMAddress != "" {
-			return resp.EVMAddress, nil
-		}
+		addr = resp.EVMAddress
 	}
-
-	return "", processor.NewPaymentError(processor.MPC, "NO_ADDRESS", fmt.Sprintf("MPC keygen did not return address for chain %s", chain), nil)
+	if addr == "" {
+		return processor.Wallet{}, processor.NewPaymentError(processor.MPC, "NO_ADDRESS", fmt.Sprintf("MPC keygen did not return address for chain %s", chain), nil)
+	}
+	return processor.Wallet{Address: addr, ID: resp.WalletID}, nil
 }
 
 // GetBalance retrieves the balance for an address on a given chain.
