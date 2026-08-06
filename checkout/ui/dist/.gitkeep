@@ -1,2 +1,4 @@
-dist/ is populated by the Vite build in Dockerfile stage `checkout-build`. Local
-development just needs this directory to exist so go:embed does not fail.
+Embed target for the pay SPA (Vite build).
+The pay repo builds it and publishes it as ghcr.io/hanzoai/pay; the Dockerfile
+copies /srv out of that image here before the Go build. Local development just
+needs this directory to exist so go:embed does not fail.
