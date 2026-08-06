@@ -27,11 +27,16 @@ const (
 type Chain string
 
 const (
-	Ethereum Chain = "ethereum"
-	Solana   Chain = "solana"
-	Base     Chain = "base"
-	Polygon  Chain = "polygon"
-	Arbitrum Chain = "arbitrum"
+	Ethereum  Chain = "ethereum"
+	Solana    Chain = "solana"
+	Base      Chain = "base"
+	Polygon   Chain = "polygon"
+	Arbitrum  Chain = "arbitrum"
+	Optimism  Chain = "optimism"
+	Avalanche Chain = "avalanche"
+	BSC       Chain = "bsc"
+	Lux       Chain = "lux"
+	Zoo       Chain = "zoo"
 )
 
 func init() { orm.Register[CryptoPaymentIntent]("crypto-payment-intent") }
@@ -118,6 +123,26 @@ func (cpi *CryptoPaymentIntent) MarkConfirming(txHash string, blockNumber int64)
 	return nil
 }
 
+// ClearSighting returns a confirming intent to pending because the transaction
+// it was confirming is no longer on the canonical chain. It is the reorg
+// counterpart of MarkConfirming, and it exists so that "a deposit vanished" is a
+// transition on this state machine rather than a watcher reaching in and setting
+// fields.
+//
+// It is reachable ONLY from Confirming, which is the safety property: a
+// succeeded intent has already been credited, and a reorg deep enough to undo a
+// fully-confirmed deposit is not something to silently paper over here.
+func (cpi *CryptoPaymentIntent) ClearSighting() error {
+	if cpi.Status != Confirming {
+		return fmt.Errorf("cannot clear sighting: current status %s", cpi.Status)
+	}
+	cpi.Status = Pending
+	cpi.TxHash = ""
+	cpi.BlockNumber = 0
+	cpi.Confirmations = 0
+	return nil
+}
+
 // AddConfirmation records a new block confirmation.
 func (cpi *CryptoPaymentIntent) AddConfirmation() {
 	cpi.Confirmations++
@@ -165,13 +190,32 @@ func (cpi *CryptoPaymentIntent) IsExpired() bool {
 	return !cpi.ExpiresAt.IsZero() && time.Now().After(cpi.ExpiresAt)
 }
 
-// RequiredConfirmationsForChain returns the default confirmation count.
+// RequiredConfirmationsForChain returns how deep a deposit must be buried before
+// it may be credited. It is the ONE confirmation policy in this codebase — the
+// deposit watcher (billing/depositwatch) asks this and nothing else, so the
+// depth a customer's money is judged by lives beside the state machine that
+// spends it rather than in a scanner's private table.
+//
+// Every chain we accept is named explicitly. The default exists for a chain that
+// is added to the address rail before it is added here, and it is the STRICTEST
+// value, not a shrug: an unknown chain gets Ethereum's depth rather than a
+// guess biased toward crediting sooner.
 func RequiredConfirmationsForChain(chain Chain) int {
 	switch chain {
 	case Ethereum:
 		return 12
-	case Base, Polygon, Arbitrum:
+	case Base, Polygon, Arbitrum, Optimism:
+		// Rollups and Polygon PoS: cheap blocks, so depth costs the customer
+		// seconds, and Polygon PoS in particular has reorged tens of blocks.
 		return 20
+	case BSC:
+		// BSC has produced multi-block reorgs; 15 is the depth its own
+		// documentation and the major exchanges settle on.
+		return 15
+	case Avalanche, Lux, Zoo:
+		// Sub-second, single-slot finality (Snowman / Quasar). 12 is far past
+		// final and costs ~25s — margin we take rather than argue about.
+		return 12
 	case Solana:
 		return 32
 	default:

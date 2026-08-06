@@ -17,6 +17,7 @@ package husdindex
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -33,6 +34,17 @@ const TransferTopic0 = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a
 
 // balanceOfSelector is the 4-byte selector for ERC-20 balanceOf(address).
 const balanceOfSelector = "0x70a08231"
+
+// decimalsSelector and symbolSelector are the ERC-20 metadata reads. They exist
+// so a CONFIGURED token address is SELF-VERIFYING: the chain is asked what the
+// contract at that address actually is, instead of a constant in our source
+// being trusted. Getting decimals wrong by 12 credits 10^12 times too much, and
+// a mistyped address is a token we would price at par — neither is survivable on
+// a money path, and neither is detectable by reading our own config back.
+const (
+	decimalsSelector = "0x313ce567"
+	symbolSelector   = "0x95d89b41"
+)
 
 // Client reads HUSD state over JSON-RPC. It is safe for concurrent use.
 type Client struct {
@@ -110,6 +122,80 @@ func (c *Client) BalanceOf(ctx context.Context, addr string) (*big.Int, error) {
 		return nil, err
 	}
 	return hexToBig(rawString(raw))
+}
+
+// Decimals returns the token contract's own decimals(). An empty return is an
+// ERROR, never zero: a contract with no decimals() (a wrong address, a
+// self-destructed contract, a proxy pointing nowhere) answers "0x", and reading
+// that as 0 decimals would value one base unit as one whole token — the single
+// most expensive way to be wrong on this path.
+func (c *Client) Decimals(ctx context.Context) (int, error) {
+	raw, err := c.call(ctx, "eth_call", []any{
+		map[string]string{"to": c.tokenAddr, "data": decimalsSelector}, "latest",
+	})
+	if err != nil {
+		return 0, err
+	}
+	s := strings.TrimPrefix(strings.TrimPrefix(rawString(raw), "0x"), "0X")
+	if s == "" {
+		return 0, fmt.Errorf("husdindex: %s returned no data for decimals() — not an ERC-20 token", c.tokenAddr)
+	}
+	n, err := hexToBig(s)
+	if err != nil {
+		return 0, err
+	}
+	// decimals is a uint8 in the ABI; anything outside that is a contract we do
+	// not understand well enough to price.
+	if !n.IsInt64() || n.Int64() < 0 || n.Int64() > 255 {
+		return 0, fmt.Errorf("husdindex: %s reported implausible decimals %s", c.tokenAddr, n)
+	}
+	return int(n.Int64()), nil
+}
+
+// Symbol returns the token contract's own symbol(), so a caller can assert the
+// address it was configured with holds the token it believes it holds.
+func (c *Client) Symbol(ctx context.Context) (string, error) {
+	raw, err := c.call(ctx, "eth_call", []any{
+		map[string]string{"to": c.tokenAddr, "data": symbolSelector}, "latest",
+	})
+	if err != nil {
+		return "", err
+	}
+	sym, err := decodeABIString(rawString(raw))
+	if err != nil {
+		return "", fmt.Errorf("husdindex: %s symbol(): %w", c.tokenAddr, err)
+	}
+	return sym, nil
+}
+
+// decodeABIString decodes an eth_call return holding a token symbol. Two shapes
+// exist in the wild and both are accepted: the ABI dynamic string
+// (offset,length,bytes — USDC, USDT, and every modern token) and a raw bytes32
+// (a handful of pre-standard tokens). Any other shape is an error — an
+// undecodable symbol means the caller cannot verify the contract, which is
+// exactly when it must refuse rather than assume.
+func decodeABIString(hexData string) (string, error) {
+	h := strings.TrimPrefix(strings.TrimPrefix(hexData, "0x"), "0X")
+	b, err := hex.DecodeString(h)
+	if err != nil {
+		return "", fmt.Errorf("undecodable return data: %w", err)
+	}
+	switch {
+	case len(b) == 32: // bytes32, NUL-padded
+		return strings.TrimRight(string(b), "\x00"), nil
+	case len(b) >= 64: // dynamic string: [offset][length][bytes...]
+		off := new(big.Int).SetBytes(b[:32])
+		if !off.IsUint64() || off.Uint64()+32 > uint64(len(b)) {
+			return "", fmt.Errorf("string offset %s out of range (%d bytes)", off, len(b))
+		}
+		o := off.Uint64()
+		length := new(big.Int).SetBytes(b[o : o+32])
+		if !length.IsUint64() || o+32+length.Uint64() > uint64(len(b)) {
+			return "", fmt.Errorf("string length %s out of range (%d bytes)", length, len(b))
+		}
+		return string(b[o+32 : o+32+length.Uint64()]), nil
+	}
+	return "", fmt.Errorf("return data is %d bytes, not a string", len(b))
 }
 
 // rawLog is one eth_getLogs entry.

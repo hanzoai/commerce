@@ -146,3 +146,113 @@ func TestPadAndTopic(t *testing.T) {
 		t.Error("topicToAddr wrong")
 	}
 }
+
+// The ERC-20 metadata selectors MUST equal keccak256 of their signatures. A
+// typo here would read some other function on the token contract and answer
+// confident nonsense — which the deposit watcher then prices money with.
+func TestERC20Selectors_MatchKeccak(t *testing.T) {
+	for _, tc := range []struct{ sig, want string }{
+		{"decimals()", decimalsSelector},
+		{"symbol()", symbolSelector},
+		{"balanceOf(address)", balanceOfSelector},
+	} {
+		got := "0x" + strings.ToLower(hexBytes(luxcrypto.Keccak256([]byte(tc.sig))[:4]))
+		if got != tc.want {
+			t.Errorf("selector for %s = %s, want %s", tc.sig, tc.want, got)
+		}
+	}
+}
+
+func TestClient_Decimals(t *testing.T) {
+	srv, _ := rpcServer(t, map[string]any{
+		"eth_call": "0x0000000000000000000000000000000000000000000000000000000000000006",
+	})
+	got, err := NewClient(srv.URL, "0xtoken").Decimals(context.Background())
+	if err != nil {
+		t.Fatalf("Decimals: %v", err)
+	}
+	if got != 6 {
+		t.Fatalf("Decimals = %d, want 6", got)
+	}
+}
+
+// A contract with no decimals() answers "0x". Reading that as 0 would value one
+// base unit as a whole token, so it must be an error and not a number.
+func TestClient_Decimals_EmptyReturnIsAnError(t *testing.T) {
+	for _, empty := range []string{"0x", ""} {
+		srv, _ := rpcServer(t, map[string]any{"eth_call": empty})
+		if got, err := NewClient(srv.URL, "0xnotatoken").Decimals(context.Background()); err == nil {
+			t.Fatalf("Decimals(%q) = (%d, nil), want an error", empty, got)
+		}
+	}
+}
+
+func TestClient_Symbol(t *testing.T) {
+	// ABI dynamic string: offset=0x20, length=4, "USDC" right-padded.
+	dynamic := "0x" +
+		"0000000000000000000000000000000000000000000000000000000000000020" +
+		"0000000000000000000000000000000000000000000000000000000000000004" +
+		"5553444300000000000000000000000000000000000000000000000000000000"
+	srv, _ := rpcServer(t, map[string]any{"eth_call": dynamic})
+	got, err := NewClient(srv.URL, "0xtoken").Symbol(context.Background())
+	if err != nil {
+		t.Fatalf("Symbol: %v", err)
+	}
+	if got != "USDC" {
+		t.Fatalf("Symbol = %q, want USDC", got)
+	}
+}
+
+func TestDecodeABIString(t *testing.T) {
+	for _, tc := range []struct {
+		name, in, want string
+		wantErr        bool
+	}{
+		{
+			name: "dynamic string",
+			in: "0x" +
+				"0000000000000000000000000000000000000000000000000000000000000020" +
+				"0000000000000000000000000000000000000000000000000000000000000004" +
+				"5553445400000000000000000000000000000000000000000000000000000000",
+			want: "USDT",
+		},
+		{
+			// A handful of pre-standard tokens return a raw bytes32.
+			name: "bytes32",
+			in:   "0x4d4b520000000000000000000000000000000000000000000000000000000000",
+			want: "MKR",
+		},
+		{name: "empty", in: "0x", wantErr: true},
+		{name: "odd hex", in: "0x123", wantErr: true},
+		{
+			name: "offset past the end",
+			in: "0x" +
+				"00000000000000000000000000000000000000000000000000000000000000ff" +
+				"0000000000000000000000000000000000000000000000000000000000000004",
+			wantErr: true,
+		},
+		{
+			name: "length past the end",
+			in: "0x" +
+				"0000000000000000000000000000000000000000000000000000000000000020" +
+				"00000000000000000000000000000000000000000000000000000000000000ff",
+			wantErr: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := decodeABIString(tc.in)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("decodeABIString(%q) = %q, want an error", tc.in, got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("decodeABIString: %v", err)
+			}
+			if got != tc.want {
+				t.Fatalf("decodeABIString = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
