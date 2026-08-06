@@ -110,10 +110,12 @@ const (
 //     /husd/sync, /husd/settle and /husd/migrate stayed unseen.
 var mintPkgDirs = []string{
 	".", "../affiliate", "../transaction", "../../demo/tokentransaction", "../account",
-	"../../billing/husdledger", // chain-backed credit ledger: mint / settle / migrate
-	"../../billing/husdindex",  // on-chain transfer → ledger credit projection
-	"../../treasury",           // the treasury-signed on-chain mint
-	"../../billing/engine",     // customer-balance adjustment (the credit-direction write)
+	"../../billing/husdledger",    // chain-backed credit ledger: mint / settle / migrate
+	"../../billing/husdindex",     // on-chain transfer → ledger credit projection
+	"../../treasury",              // the treasury-signed on-chain mint
+	"../../billing/engine",        // customer-balance adjustment (the credit-direction write)
+	"../../billing/depositledger", // crypto deposit → ledger credit (the watcher's write half)
+	"../../billing/depositwatch",  // …and the policy that decides when it fires
 }
 
 // pkgPath maps a scan dir to the module-relative import path other packages name

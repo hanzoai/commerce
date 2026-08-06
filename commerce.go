@@ -40,6 +40,7 @@ import (
 	uploadApi "github.com/hanzoai/commerce/api/upload"
 	"github.com/hanzoai/commerce/auth"
 	billingUI "github.com/hanzoai/commerce/billing"
+	"github.com/hanzoai/commerce/billing/depositledger"
 	"github.com/hanzoai/commerce/billing/husdledger"
 	"github.com/hanzoai/commerce/checkout"
 	commerceDatastore "github.com/hanzoai/commerce/datastore"
@@ -671,6 +672,29 @@ func (app *App) Bootstrap() error {
 		fmt.Fprintln(os.Stderr, "Commerce: chain-backed credit ledger disabled (HUSD not configured — using DB credit path)")
 	}
 
+	// Crypto deposit watcher: the half of the crypto top-up rail that turns money
+	// arriving at a minted custody address into spendable balance. Wired here,
+	// after the DB resolver, and STARTED — in process, on a schedule — because the
+	// alternative in this repo is an admin endpoint waiting for a CronJob defined
+	// in another repository, which is exactly why the HUSD indexer has never run.
+	//
+	// Fail closed on an incoherent watch table (a token with no endpoint, a token
+	// with no USD peg): an operator who configured a deposit rail must not get a
+	// process that watches less than they asked for, because the deposits it does
+	// not watch are money received and never credited. An EMPTY table is not an
+	// error — it is the inert state, identical to before this existed.
+	depositSvc, depositErr := depositledger.New(depositledger.Env())
+	if depositErr != nil {
+		return fmt.Errorf("commerce: crypto deposit watcher: %w", depositErr)
+	}
+	depositledger.SetDefault(depositSvc)
+	if depositSvc.Enabled() {
+		depositSvc.Start()
+		fmt.Fprintf(os.Stderr, "Commerce: crypto deposit watcher ENABLED (%s)\n", depositSvc.Describe())
+	} else {
+		fmt.Fprintln(os.Stderr, "Commerce: crypto deposit watcher disabled (no CRYPTO_DEPOSIT_TOKEN_* configured)")
+	}
+
 	// Hanzo/base-backed commerce store. Hosts the authoritative tenant
 	// record + commerce_tenant_hostnames claim table — the source of truth
 	// for the /v1/commerce/tenant public JSON and /_/commerce/tenants
@@ -1201,6 +1225,11 @@ func (app *App) Shutdown() error {
 			slog.Warn("background tasks still running at shutdown", "err", drainErr)
 		}
 		cancelDrain()
+
+		// Stop the crypto deposit watcher before the database closes: a pass in
+		// flight is holding the ledger open, and a half-written credit is the one
+		// thing this rail must never produce.
+		depositledger.Default().Stop()
 
 		// Stop ZAP node
 		if app.ZAP != nil {

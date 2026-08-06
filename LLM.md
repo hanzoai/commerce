@@ -1020,6 +1020,122 @@ Config: `HUSD_TOKEN_ADDRESS`, `HUSD_CHAIN_ID`, `HUSD_RPC_URL`, `HUSD_TOKEN_DECIM
 (default 1), `HUSD_SETTLE_THRESHOLD_CENTS` (default 1). Testnet proof env: token
 `0xe7f1725e…0512`, chainId 36962, RPC `…/v1/bc/C/rpc`, treasury `0xe6dad4…a51a`.
 
+## Crypto deposit watcher — the half of the crypto rail that credits (2026-08)
+
+`POST /v1/billing/crypto/deposit` mints a per-payer MPC custody address and
+records a `CryptoPaymentIntent` as Pending. Until now NOTHING advanced it: no
+component observed `DepositAddress`, `MarkConfirming`/`MarkSucceeded` had zero
+production callers, and money sent to a minted address was received and never
+credited. That is why `cryptoDepositsCanBeCredited` (api/billing/crypto_deposit.go)
+is `false` and the handler 503s before any keygen.
+
+The watcher is now built. **The gate is still `false`** — see "before flipping".
+
+**Two packages, decomplected exactly like husdindex/husdledger:**
+
+- **`billing/depositwatch`** — pure policy over small interfaces (no datastore,
+  no HTTP): the scan window, the confirmation rule, the amount arithmetic, the
+  address→intent match. Unit-tested against fakes with no chain and no DB.
+- **`billing/depositledger`** — the I/O half: per-org intent store, the
+  idempotent ledger write, the persisted cursor (`models/depositcursor`), and
+  the schedule. Integration-tested against a real datastore (`util/test/ae`).
+
+Chain reads reuse **`husdindex.Client`** — this repo's ONE ERC-20 JSON-RPC read
+client, parameterized by `(rpcURL, tokenAddr)` and named for its first caller,
+not for a restriction. Extended with `Decimals()` / `Symbol()` (selectors pinned
+against `luxcrypto.Keccak256` in `client_test.go`).
+
+### Exactly-once = a KEY, not coordination
+
+A credit's storage id is `sha256("crypto-deposit\0" + chain:txHash:logIndex)`
+(`depositledger.creditKey`). Both backends upsert on `(id, kind, namespace)`
+(db/sqlite.go, db/postgres.go), and a balance is a SUM over rows, so every
+attempt to credit the same transfer lands on the same row: re-scan, crash retry,
+and N replicas ticking simultaneously all yield one credit. **No leader election,
+no lease, no lock** — adding replicas cannot change the answer. The chain is part
+of the key because a pre-EIP-155 tx can be replayed across EVM chains with an
+identical hash.
+
+Ordering is load-bearing: **ledger row FIRST, intent second.** The reverse would
+let a succeeded intent survive a failed ledger write, and a later pass would read
+it as done — money received, never credited.
+
+### Scan ahead, commit behind
+
+Scan `[cursor+1 … head]` every pass (so a customer sees "confirming" within a
+block); commit only `head − requiredConfirmations`. The last `required` blocks
+are therefore re-read from the canonical chain every pass, which is what makes
+reorgs harmless: a sighting that vanishes is un-sighted back to Pending
+(`CryptoPaymentIntent.ClearSighting`), a sighting that MOVES block is re-read at
+its new height. Un-sighting only fires for blocks actually inside the scanned
+range — silence about a block we never read is not evidence.
+
+Cold start (empty cursor) begins at `head − required`, so no block is ever
+committed unscanned and no public chain is scanned from genesis.
+
+Confirmation depth comes from `cryptopaymentintent.RequiredConfirmationsForChain`
+— the ONE policy, now naming every supported chain (eth 12, rollups+polygon 20,
+bsc 15, avalanche/lux/zoo 12, solana 32).
+
+### Decimals are READ, contracts are VERIFIED, tokens are PEGGED
+
+Getting decimals wrong by 12 credits 10^12 too much, so decimals are never
+configured: `verify()` reads `symbol()` and `decimals()` off the contract once
+per asset, refuses the asset if the symbol disagrees with the configured token,
+and refuses `< 2` or `> 36` decimals. A transient RPC failure is not cached.
+
+Config (KMS-injected, NO defaults — mirrors `util/husd`'s "token address has no
+default" rule):
+
+```
+CRYPTO_DEPOSIT_RPC_<CHAIN>            e.g. CRYPTO_DEPOSIT_RPC_BASE
+CRYPTO_DEPOSIT_TOKEN_<CHAIN>_<TOKEN>  e.g. CRYPTO_DEPOSIT_TOKEN_BASE_USDC=0x8335…
+```
+
+Unset ⇒ watches nothing (inert). Incoherent (token with no endpoint, unpegged
+token, malformed address) ⇒ **Bootstrap refuses to start**: an operator who
+configured a deposit rail must not get a process watching less than they asked
+for.
+
+`depositwatch.pegCents` IS the creditable set (`usdc`, `usdt` @ 100c). There is
+no price oracle in commerce and inventing one to value a customer's money would
+be guessing, so **only dollar-pegged ERC-20s are creditable**. Native coins
+(ETH/MATIC/AVAX/BNB) are doubly out: a native transfer emits no log so
+`eth_getLogs` cannot see it at all, and it cannot be priced. Known accepted risk:
+a depegged stablecoin is credited above market.
+
+### It is SCHEDULED, in process
+
+`depositledger.Service.Start()` from `Bootstrap`, stopped in `Shutdown` before
+the DB closes. Interval is a constant (30s), not config. This is the FIRST
+in-process scheduler in this repo, and deliberately so: every other periodic job
+here is an endpoint waiting for a CronJob defined in another repository, which is
+exactly why `/v1/billing/husd/sync` has never once run. Safe on every replica
+because a pass is idempotent (above).
+
+### Scaling note
+
+`Watched()` returns every minted address, in every org, with NO status filter —
+money sent to an expired or already-settled intent is still the customer's money.
+Address count therefore grows with total deposits ever taken; `eth_getLogs` calls
+are chunked at 100 addresses / 2000 blocks. If an expiry sweeper is ever added,
+"stop handing the address out" and "stop watching it" are separate decisions and
+only the first is safe.
+
+### Before flipping `cryptoDepositsCanBeCredited`
+
+1. Provision `CRYPTO_DEPOSIT_RPC_*` + `CRYPTO_DEPOSIT_TOKEN_*` in KMS and confirm
+   the boot log says `crypto deposit watcher ENABLED (…)`.
+2. Restrict the offered token set to the pegged set. `GetCryptoOptions` serves
+   the MPC processor's list (btc, eth, matic, avax, lux, zoo, arb, op, base…),
+   and **the watcher credits none of those** — a buyer picking ETH today would be
+   walked to an address whose deposits still cannot be credited.
+3. **`GenerateAddress` still DISCARDS the keygen `wallet_id`** (thirdparty/mpc/
+   processor.go), so commerce holds no handle to the MPC wallet the coins land
+   in. Crediting works without it; SWEEPING does not. Persist it before taking
+   real money, or accept crediting balances against funds that need manual
+   reconciliation against the node's own wallet records.
+
 ## zip / ZAP native — what is real, and why billing is NOT typed yet
 
 zip is the ZAP-native framework: a typed op (`zip.Get/Post[In,Out]`) is ONE value
