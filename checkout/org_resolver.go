@@ -214,7 +214,7 @@ var brandDomains = []struct {
 }
 
 var (
-	brandHanzo = brand{slug: "hanzo", displayName: "Hanzo", primaryColor: "#ffffff", iamIssuer: "https://hanzo.id", iamClientID: "hanzo-app"}
+	brandHanzo = brand{slug: "hanzo", displayName: "Hanzo", primaryColor: "#808000", iamIssuer: "https://hanzo.id", iamClientID: "hanzo-app"}
 	brandLux   = brand{slug: "lux", displayName: "Lux", primaryColor: "#ffffff", iamIssuer: "https://lux.id", iamClientID: "lux-app"}
 	brandZoo   = brand{slug: "zoo", displayName: "Zoo", primaryColor: "#ffffff", iamIssuer: "https://zoolabs.id", iamClientID: "zoo-app"}
 	brandPars  = brand{slug: "pars", displayName: "Pars", primaryColor: "#ffffff", iamIssuer: "https://pars.id", iamClientID: "pars-app"}
