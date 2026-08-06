@@ -1126,10 +1126,20 @@ only the first is safe.
 
 1. Provision `CRYPTO_DEPOSIT_RPC_*` + `CRYPTO_DEPOSIT_TOKEN_*` in KMS and confirm
    the boot log says `crypto deposit watcher ENABLED (…)`.
-2. Restrict the offered token set to the pegged set. `GetCryptoOptions` serves
-   the MPC processor's list (btc, eth, matic, avax, lux, zoo, arb, op, base…),
-   and **the watcher credits none of those** — a buyer picking ETH today would be
-   walked to an address whose deposits still cannot be credited.
+2. ~~Restrict the offered token set.~~ **CLOSED in v1.50.19.** `GetCryptoOptions`
+   used to serve the MPC processor's list (btc, eth, matic, avax, lux, zoo, arb,
+   op, base…) — which answers "can I DERIVE an address here?", never "can this be
+   credited?" — so it walked buyers toward assets the watcher credits none of.
+   It now projects the watcher's configured assets through `offeredFrom`, so the
+   menu cannot name an asset nothing is watching, and an unconfigured watcher
+   offers nothing rather than everything. Nothing to remember at flip time: the
+   list narrows and widens with the config by construction.
+
+   ⚠ `offeredFrom` is a PURE function and tested as one, deliberately. The first
+   test drove the handler end-to-end and passed against a mutant serving a
+   hardcoded list — the custody-signer probe fails in a test environment, so the
+   handler answered 503 and the assertion never ran. Mutation-test anything that
+   guards money; a green endpoint test can be measuring nothing at all.
 3. **`GenerateAddress` still DISCARDS the keygen `wallet_id`** (thirdparty/mpc/
    processor.go), so commerce holds no handle to the MPC wallet the coins land
    in. Crediting works without it; SWEEPING does not. Persist it before taking
