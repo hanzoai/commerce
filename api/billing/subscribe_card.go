@@ -51,8 +51,9 @@ func hydratePaymentCreds(c *zip.Ctx, org *organization.Organization) {
 // inOrgSubject narrows a requested billing subject to the caller's OWN org: it
 // returns the requested subject only when it is the org slug or a <org>/<user>
 // child of it, else the org slug — fail-secure, so a subject (and the money keyed
-// to it) can never be steered outside the caller's org. The ONE in-org bound,
-// shared by topupDestination (query) and subscribeSubject (body).
+// to it) can never be steered outside the caller's org. The in-org bound used by
+// subscribeSubject. (The top-up doors no longer take a requested subject at all —
+// they credit the caller's own payer identity, userBillingKey.)
 func inOrgSubject(org, requested string) string {
 	s := strings.ToLower(strings.TrimSpace(requested))
 	if s == org || strings.HasPrefix(s, org+"/") {
@@ -63,9 +64,15 @@ func inOrgSubject(org, requested string) string {
 
 // subscribeSubject resolves the billing subject a card subscription belongs to:
 // the org slug, or a finer in-org <org>/<user> subject when the requested userId
-// is provably within the caller's own org (same bound as topupDestination, but the
-// subject arrives in the request BODY, not ?user=). Returns "" when no org
-// resolves (caller 401s).
+// is provably within the caller's own org (the subject arrives in the request
+// BODY). Returns "" when no org resolves (caller 401s).
+//
+// NOTE: unlike the top-up doors (which credit the caller's own payer identity via
+// userBillingKey), a subscription still honors a body userId within the org bound.
+// A subscription is a durable object an org admin may create ON BEHALF OF a member,
+// so its owner is not necessarily the caller. If that ever needs to become the
+// signed-identity rule too, it is a deliberate change to subscription ownership,
+// not a drive-by — hence it is called out here rather than silently aligned.
 func subscribeSubject(c *zip.Ctx, requested string) string {
 	org := orgBillingKey(c)
 	if org == "" {

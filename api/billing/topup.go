@@ -43,7 +43,9 @@ type receipt struct {
 }
 
 type topupRequest struct {
-	UserID          string `json:"userId"`
+	// No userId: the credited subject is the caller's own signed identity
+	// (userBillingKey → account.Payer), never a body field, so a request can not
+	// steer where the money lands. Same rule as the token door.
 	PaymentMethodID string `json:"paymentMethodId"`
 	AmountCents     int64  `json:"amountCents"`
 	Currency        string `json:"currency,omitempty"`
@@ -253,11 +255,12 @@ func Topup(c *zip.Ctx) error {
 		return jsonhttp.Fail(c, 400, "paymentMethodId is required", nil)
 	}
 
-	// The credited subject is bounded to the caller's OWN org. The request names
-	// a userId, but an unbounded body field decides where money lands, so it is
-	// narrowed by the SAME in-org rule the token top-up and subscribe paths use:
-	// the org slug, or an <org>/<user> child of it, else the org slug. Fail-secure.
-	subject := inOrgSubject(orgBillingKey(c), req.UserID)
+	// Credit the payer resolved from the caller's signed identity (userBillingKey
+	// → account.Payer) — the ONE key the LLM gate debits and GetMyBalance reads.
+	// A request-supplied userId must NOT steer the destination; a client-set
+	// selector is exactly what split a customer's top-ups across `hanzo` and
+	// `hanzo/<user>`, stranding credit off the key their usage draws from.
+	subject := userBillingKey(c)
 	if subject == "" {
 		return jsonhttp.Fail(c, 401, "missing identity headers", nil)
 	}
