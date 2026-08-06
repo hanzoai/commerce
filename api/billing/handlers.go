@@ -253,12 +253,6 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// Top-up: charge a saved payment method and credit user balance
 	api.Post("/topup", Topup)
 
-	// GPU billing (server-enforced prepaid-only + card-required). The cloud GPU
-	// launch gate reads /gpu/eligibility before provisioning and POSTs /gpu/charge
-	// to debit; a GPU charge NEVER draws credit grants (see api/billing/gpu_charge.go).
-	api.Get("/gpu/eligibility", GPUChargeEligibility)
-	api.Post("/gpu/charge", ChargeGPU)
-
 	// ZAP protocol endpoint
 	api.Post("/zap", ZapDispatch)
 
