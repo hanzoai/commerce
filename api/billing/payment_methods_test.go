@@ -38,6 +38,12 @@ type mockSquareProcessor struct {
 	removeCustomerID    string
 	removeCardID        string
 
+	// Richer vault/list faces. vaultCard, when set, is the card facts Vault
+	// reports (its ID defaults to addedCardID); listCards is what Cards returns.
+	vaultCard processor.Card
+	listCards []processor.Card
+	listErr   error
+
 	// Charge (saved-card) behavior + call capture — used by the subscribe/card
 	// + renewal tests. Unset chargeErr => success with chargeRef (or a default).
 	// mu guards the counters so the concurrency tests can drive Charge in parallel;
@@ -164,6 +170,32 @@ func (m *mockSquareProcessor) RemovePaymentMethod(ctx context.Context, customerI
 	m.removeCustomerID = customerID
 	m.removeCardID = paymentMethodID
 	return m.removeErr
+}
+
+// Vault is the richer vault face: the same attach, reporting card facts.
+// Facts default to just the id (a processor that reports nothing), so tests
+// that never set vaultCard behave exactly as with AddPaymentMethod.
+func (m *mockSquareProcessor) Vault(ctx context.Context, customerID, token string) (processor.Card, error) {
+	id, err := m.AddPaymentMethod(ctx, customerID, token)
+	if err != nil {
+		return processor.Card{}, err
+	}
+	card := m.vaultCard
+	if card.ID == "" {
+		card.ID = id
+	}
+	if card.CustomerID == "" {
+		card.CustomerID = customerID
+	}
+	return card, nil
+}
+
+// Cards lists the vaulted cards for a customer (the heal face).
+func (m *mockSquareProcessor) Cards(ctx context.Context, customerID string) ([]processor.Card, error) {
+	if m.listErr != nil {
+		return nil, m.listErr
+	}
+	return m.listCards, nil
 }
 
 // registerMockSquare replaces the Square processor in the global registry for the duration of a test.

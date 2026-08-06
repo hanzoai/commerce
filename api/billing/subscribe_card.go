@@ -75,7 +75,13 @@ func subscribeSubject(c *zip.Ctx, requested string) string {
 }
 
 type subscribeCardRequest struct {
-	SourceID string `json:"sourceId"` // Square Web Payments SDK nonce (single-use)
+	// Exactly one of SourceID | MethodID names the card. SourceID is a fresh
+	// Square Web Payments SDK nonce (single-use, vaulted before charging);
+	// MethodID (wire: paymentMethodId) is a payment method the subject already
+	// saved — its vaulted card is charged directly, nothing is re-entered and
+	// no new row is created.
+	SourceID string `json:"sourceId,omitempty"`
+	MethodID string `json:"paymentMethodId,omitempty"`
 	PlanID   string `json:"planId"`
 	UserID   string `json:"userId,omitempty"`
 	StoreID  string `json:"storeId,omitempty"`
@@ -113,9 +119,10 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		return http.Fail(c, 400, "invalid request body", err)
 	}
 	req.SourceID = strings.TrimSpace(req.SourceID)
+	req.MethodID = strings.TrimSpace(req.MethodID)
 	req.PlanID = strings.TrimSpace(req.PlanID)
-	if req.SourceID == "" {
-		return http.Fail(c, 400, "sourceId is required", nil)
+	if (req.SourceID == "") == (req.MethodID == "") {
+		return http.Fail(c, 400, "send exactly one of sourceId (a new card) or paymentMethodId (a saved card)", nil)
 	}
 	if req.PlanID == "" {
 		return http.Fail(c, 400, "planId is required", nil)
@@ -237,59 +244,68 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		}
 	}
 
-	// Vault the single-use nonce as a reusable card-on-file (one Square customer per
-	// org). Creating the card on file ALSO validates the card, so this verifies AND
-	// saves in the single nonce use — we then charge the card-on-file id, never the
-	// spent nonce (never both with one nonce).
+	// Resolve the card to charge. A fresh nonce is vaulted through saveCard (the
+	// ONE constructor — validates by vaulting, stamps brand/last4, and returns
+	// the existing row instead of stacking a duplicate); a paymentMethodId names
+	// a card the subject already saved, charged directly with nothing re-entered.
 	reg := processorsForOrg(org)
 	cp, ok := squareCustomerProcessorFrom(reg)
 	if !ok {
 		abandon()
 		return http.Fail(c, 422, "no card-on-file payment processor available for this organization", nil)
 	}
-	iamEmail, _ := c.Locals("iam_email").(string)
-	cof, err := attachSquareCardOnFile(c.Context(), cp, existingSquareCustomerID(db, subject), strings.TrimSpace(iamEmail), subject, req.SourceID)
-	if err != nil {
-		abandon()
-		return http.Fail(c, 402, parseCardDeclineReason(&processor.PaymentResult{ErrorMessage: err.Error()}, err), nil)
+	var pm *paymentmethod.PaymentMethod
+	fresh := false // whether THIS request vaulted a new card (decline cleanup)
+	if req.MethodID != "" {
+		pm = paymentmethod.New(db)
+		if err := pm.GetById(req.MethodID); err != nil {
+			abandon()
+			return http.Fail(c, 404, "payment method not found", err)
+		}
+		// The subject is the pinned caller (PinBillingSubject); another subject's
+		// method inside the org is unreachable — 404, no existence oracle.
+		if pm.CustomerId != subject && pm.UserId != subject {
+			abandon()
+			return http.Fail(c, 404, "payment method not found", nil)
+		}
+		if strings.TrimSpace(pm.ProviderRef) == "" || squareCustomerIDOf(pm) == "" {
+			abandon()
+			return http.Fail(c, 422, "saved payment method has no chargeable card — add the card again", nil)
+		}
+	} else {
+		iamEmail, _ := c.Locals("iam_email").(string)
+		var err error
+		pm, fresh, err = saveCard(c.Context(), db, cp, subject, strings.TrimSpace(iamEmail), req.SourceID)
+		if err != nil {
+			abandon()
+			return http.Fail(c, 402, parseCardDeclineReason(&processor.PaymentResult{ErrorMessage: err.Error()}, err), nil)
+		}
 	}
 
 	// Charge the SAVED card (card-on-file id + Square customer id) for the first
 	// period at the server-authoritative price × seats, with the stable Square
 	// idempotency key. All-or-nothing: on a decline no subscription is created.
-	res, err := chargeSavedCard(c.Context(), reg, cof.CardID, cof.CustomerID, chargeCents, cur, squareKey,
+	res, err := chargeSavedCard(c.Context(), reg, pm.ProviderRef, squareCustomerIDOf(pm), chargeCents, cur, squareKey,
 		fmt.Sprintf("Subscription %s — first period", p.Name))
 	if err != nil || res == nil || !res.Success {
-		// The charge failed AFTER vaulting — delete the just-vaulted card-on-file so
-		// a declined attempt leaves NO orphaned Square card (best-effort).
-		_ = cp.RemovePaymentMethod(c.Context(), cof.CustomerID, cof.CardID)
+		// A card vaulted BY THIS REQUEST is removed again so a declined attempt
+		// leaves no orphan — but a card the customer already had on file (saved
+		// earlier, or the dedupe match) is theirs and stays.
+		if fresh {
+			_ = cp.RemovePaymentMethod(c.Context(), squareCustomerIDOf(pm), pm.ProviderRef)
+			_ = pm.Delete()
+		}
 		abandon()
 		log.Error("saved-card charge failed for subscribe (subject=%s): %v", subject, err, c)
 		return http.Fail(c, 402, parseCardDeclineReason(res, err), nil)
 	}
 
-	// Persist the vaulted card as a payment method (ProviderRef = card-on-file id,
-	// Metadata.squareCustomerId = Square customer) so renewals can re-charge it —
-	// the SAME convention as CreatePaymentMethod.
-	pm := paymentmethod.New(db)
-	pm.CustomerId = subject
-	pm.UserId = subject
-	pm.Type = "card"
-	pm.ProviderRef = cof.CardID
-	pm.ProviderType = string(processor.Square)
-	pm.IsDefault = true
-	pm.Metadata = map[string]interface{}{
-		"squareCustomerId": cof.CustomerID,
-		"squareCardId":     cof.CardID,
-		"squareVerified":   true,
-	}
-	if err := pm.Create(); err != nil {
-		// The card was charged but persisting the reusable method failed — the first
-		// period is paid, yet renewals can't re-charge. Leave the guard STARTED (a
-		// same-key retry replays / 409s, never re-charges) and log for reconciliation.
-		log.Error("RECONCILE: subscribe charge succeeded (ref=%s) but payment-method persist failed for subject %s: %v",
-			res.ProcessorRef, subject, err, c)
-		return http.Fail(c, 500, "charge succeeded but saving the card failed; contact support", err)
+	// The charged card is the subscription's default from here on.
+	if !pm.IsDefault {
+		pm.IsDefault = true
+		if err := pm.Update(); err != nil {
+			log.Error("subscribe: failed to mark method %s default (subject=%s): %v", pm.Id(), subject, err, c)
+		}
 	}
 
 	// Create the subscription server-side, authorized because the payment settled
@@ -341,12 +357,13 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		invoiceID = inv.Id()
 	}
 	resp := map[string]any{
-		"subscriptionId": sub.Id(),
-		"invoiceId":      invoiceID,
-		"planId":         req.PlanID,
-		"amountCents":    chargeCents,
-		"currency":       cur,
-		"status":         "ok",
+		"subscriptionId":  sub.Id(),
+		"invoiceId":       invoiceID,
+		"planId":          req.PlanID,
+		"paymentMethodId": pm.Id(),
+		"amountCents":     chargeCents,
+		"currency":        cur,
+		"status":          "ok",
 	}
 	// Seal the idempotency guard with the exact success body so a retry replays it
 	// verbatim (no second vault/charge/subscribe, identical response).

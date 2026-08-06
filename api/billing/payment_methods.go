@@ -10,6 +10,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment"
@@ -152,25 +153,40 @@ func CreatePaymentMethod(c *zip.Ctx) error {
 	}
 
 	// When a Square nonce/sourceId is provided, vault it as a reusable
-	// card-on-file so the saved method can be charged later (top-ups and
-	// auto-recharge). Creating the card on file also validates the card with
-	// Square, so it replaces the one-shot $1 pre-auth — the nonce is single-use,
-	// and a pre-auth would consume it and make the vaulting step fail. Use the
-	// per-org registry so the Square processor carries the org's credentials.
-	var cardOnFile squareCardOnFile
-	vaulted := false
+	// card-on-file so the saved method can be charged later (top-ups, plan
+	// checkout, auto-recharge). saveCard is the ONE constructor: it validates
+	// by vaulting (the nonce is single-use — a separate pre-auth would consume
+	// it), stamps the card's brand/last4/expiry on the row, and returns the
+	// EXISTING row instead of stacking a duplicate when the same card is saved
+	// again. Use the per-org registry so Square carries the org's credentials.
 	if req.ProviderRef != "" {
 		reg := payment.ProcessorsForOrg(org)
 		if cp, ok := squareCustomerProcessorFrom(reg); ok {
-			existing := existingSquareCustomerID(db, req.CustomerId)
 			iamEmail, _ := c.Locals("iam_email").(string)
-			email := strings.TrimSpace(iamEmail)
-			cof, err := attachSquareCardOnFile(c.Context(), cp, existing, email, req.CustomerId, req.ProviderRef)
+			pm, created, err := saveCard(c.Context(), db, cp, req.CustomerId, strings.TrimSpace(iamEmail), req.ProviderRef)
 			if err != nil {
 				return http.Fail(c, 402, parseCardDeclineReason(&processor.PaymentResult{ErrorMessage: err.Error()}, err), nil)
 			}
-			cardOnFile = cof
-			vaulted = true
+			// Caller-supplied extras land on whichever row answered.
+			if req.BillingAddress != nil {
+				pm.BillingAddress = req.BillingAddress
+			}
+			for k, v := range req.Metadata {
+				if pm.Metadata == nil {
+					pm.Metadata = map[string]interface{}{}
+				}
+				pm.Metadata[k] = v
+			}
+			if err := pm.Update(); err != nil {
+				log.Error("Failed to update payment method extras: %v", err, c)
+			}
+			status := 201
+			if !created {
+				// The same card was already on file: the answer is that row, and
+				// 200 states "nothing new was created" honestly.
+				status = 200
+			}
+			return c.JSON(status, paymentMethodResponse(pm))
 		} else if err := verifyCardWithPreAuth(c.Context(), reg, req.ProviderRef, req.CustomerId); err != nil {
 			// Square not available as a customer processor — fall back to the
 			// legacy verify-only flow (the saved card is NOT reusable).
@@ -206,12 +222,7 @@ func CreatePaymentMethod(c *zip.Ctx) error {
 	pm.Wire = req.Wire
 	pm.PayPal = req.PayPal
 	pm.BillingAddress = req.BillingAddress
-	// Store the reusable card-on-file id (not the spent one-time nonce) when
-	// vaulting succeeded, so saved-card charges can reuse it.
 	pm.ProviderRef = req.ProviderRef
-	if vaulted {
-		pm.ProviderRef = cardOnFile.CardID
-	}
 	pm.ProviderType = req.ProviderType
 
 	switch {
@@ -241,10 +252,6 @@ func CreatePaymentMethod(c *zip.Ctx) error {
 	}
 	if req.ProviderRef != "" {
 		meta["squareVerified"] = true
-	}
-	if vaulted {
-		meta["squareCustomerId"] = cardOnFile.CustomerID
-		meta["squareCardId"] = cardOnFile.CardID
 	}
 	pm.Metadata = meta
 
@@ -323,11 +330,30 @@ func ListPaymentMethods(c *zip.Ctx) error {
 		methods = append(methods, pm)
 	}
 
+	healPaymentMethods(c, org, methods)
+
 	results := make([]map[string]interface{}, len(methods))
 	for i, pm := range methods {
 		results[i] = paymentMethodResponse(pm)
 	}
 	return c.JSON(200, results)
+}
+
+// healPaymentMethods backfills brand/last4/expiry onto vaulted rows that were
+// saved before the vault reported card facts, so a customer can tell their
+// saved cards apart. KMS-hydrated per-org processor, best-effort — see heal.
+func healPaymentMethods(c *zip.Ctx, org *organization.Organization, methods []*paymentmethod.PaymentMethod) {
+	if len(methods) == 0 {
+		return
+	}
+	if v := c.Locals("kms"); v != nil {
+		if kmsClient, ok := v.(*kms.CachedClient); ok {
+			if err := kms.Hydrate(kmsClient, org); err != nil {
+				log.Error("KMS hydration failed for org %q: %v", org.Name, err, c)
+			}
+		}
+	}
+	heal(c.Context(), payment.ProcessorsForOrg(org), methods)
 }
 
 type updatePaymentMethodRequest struct {

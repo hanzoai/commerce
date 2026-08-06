@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	square "github.com/square/square-go-sdk/v3"
+	"github.com/square/square-go-sdk/v3/cards"
 	"github.com/square/square-go-sdk/v3/core"
 	"github.com/square/square-go-sdk/v3/customers/client"
 	"github.com/square/square-go-sdk/v3/option"
@@ -45,6 +46,7 @@ type SquareProcessor struct {
 	paymentsClient  *payments.Client
 	refundsClient   *refunds.Client
 	customersClient *client.Client
+	cardsClient     *cards.Client
 }
 
 // Config holds Square processor configuration
@@ -92,6 +94,7 @@ func (sp *SquareProcessor) initClient() {
 	sp.paymentsClient = payments.NewClient(reqOpts)
 	sp.refundsClient = refunds.NewClient(reqOpts)
 	sp.customersClient = client.NewClient(reqOpts)
+	sp.cardsClient = cards.NewClient(reqOpts)
 }
 
 // SquareSupportedCurrencies returns currencies Square supports
