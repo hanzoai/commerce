@@ -1,11 +1,11 @@
 // Pinning tests for the embedded billing admin SPA. These test the contract
 // between hanzoai/billing (SPA source) and hanzoai/commerce (embedding host):
-// the Dockerfile's billing-build stage MUST produce an index.html and a
+// the Dockerfile's billing-dist stage MUST produce an index.html and a
 // Next.js _next/ tree, and the go:embed directive MUST resolve them.
 //
 // When run on a fresh clone with only .gitkeep in billing/ui/dist, these
 // tests are skipped — the real build hasn't happened yet. Once the
-// billing-build stage runs (Docker) or a developer overlays dist/ locally,
+// billing-dist stage runs (Docker) or a developer overlays dist/ locally,
 // the tests enforce shape.
 package billing
 
@@ -36,7 +36,7 @@ func TestEmbeddedBillingUI_HasIndex(t *testing.T) {
 	f := UISub()
 	file, err := f.Open("index.html")
 	if err != nil {
-		t.Skipf("no embedded index.html — run billing-build stage first: %v", err)
+		t.Skipf("no embedded index.html — run billing-dist stage first: %v", err)
 	}
 	defer file.Close()
 	st, err := file.Stat()
@@ -50,11 +50,11 @@ func TestEmbeddedBillingUI_HasIndex(t *testing.T) {
 
 // TestEmbeddedBillingUI_HasNextBundle confirms the Next.js build output is
 // present. Skipped when the placeholder is still in place (fresh clone,
-// billing-build stage not yet run).
+// billing-dist stage not yet run).
 func TestEmbeddedBillingUI_HasNextBundle(t *testing.T) {
 	f := UISub()
 	if _, err := fs.Stat(f, "_next"); err != nil {
-		t.Skipf("no _next/ tree — run billing-build stage first: %v", err)
+		t.Skipf("no _next/ tree — run billing-dist stage first: %v", err)
 	}
 	var jsCount int
 	_ = fs.WalkDir(f, "_next", func(path string, d fs.DirEntry, err error) error {

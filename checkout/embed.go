@@ -1,7 +1,7 @@
-// Package checkout: this file embeds the Vite-built SPA into the commerce
-// binary. The source lives under ui/ and builds into ui/dist via the
-// checkout-build Dockerfile stage. Local Go test runs only need the
-// .gitkeep in ui/dist/ so the go:embed directive resolves.
+// Package checkout: this file embeds the Vite-built pay SPA into the commerce
+// binary. The pay repo builds it and publishes it as ghcr.io/hanzoai/pay; the
+// Dockerfile copies /srv out of that image into ui/dist. Local Go test runs
+// only need the .gitkeep in ui/dist/ so the go:embed directive resolves.
 package checkout
 
 import (

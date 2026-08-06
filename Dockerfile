@@ -2,6 +2,12 @@
 # Hanzo Commerce - E-commerce Platform
 # Multi-stage build for minimal production image
 
+# The two sibling UIs this binary embeds, named as the ARTIFACTS their own
+# repos publish. A `FROM` in the first stage needs the ARG in global scope, so
+# they live here; override either with --build-arg (or hanzo.yml `args:`).
+ARG PAY_IMAGE=ghcr.io/hanzoai/pay:0.1.6
+ARG BILLING_IMAGE=ghcr.io/hanzoai/billing:1.0.25
+
 # ── Stage 1: THE Commerce admin, built from source ───────────────────────────
 # app/admin (@hanzo/commerce-dashboard, Next.js `output: export`) on @hanzo/ui +
 # @hanzo/gui — the same component set the cloud console renders. This stage IS
@@ -38,61 +44,32 @@ ENV NEXT_PUBLIC_COMMERCE_API_URL=https://api.hanzo.ai \
 # drift in the shared component set fails HERE, not in a browser.
 RUN node_modules/.bin/turbo run typecheck build --filter=@hanzo/commerce-dashboard
 
-# ── Stage 2: Build pay UI (Vite SPA from hanzo-inc/pay) ──────────────────
-# Canonical source lives at github.com/hanzo-inc/pay. Forks override PAY_REPO
-# and PAY_VERSION via --build-arg; default tracks the latest tagged release.
+# ── Stage 2+3: the pay and billing UIs, TAKEN not REBUILT ────────────────────
+# Both stages used to `git clone` their repo and run `pnpm build` — commerce
+# rebuilding two other repos from source inside its own image. That needs a git
+# credential for two PRIVATE repos in an org this build cannot see, and it
+# didn't have one: the buildx `gh_token` secret is a real, working GitHub token
+# (KMS hanzo /deploy GITHUB_TOKEN, user hanzo-dev), and hanzo-dev is not a
+# member of hanzo-inc, so an AUTHENTICATED clone still got `Repository not
+# found` — GitHub's 404 for "exists, not yours". No token that reaches this
+# build can fix that; only a membership change could.
 #
-# NAMED CANONICALLY, not through the redirect. This said `hanzoai/pay`, which
-# GitHub still resolves — the repo moved orgs — and a redirect is only honoured
-# until somebody creates a repo at the old name. On that day this clone would
-# start pulling a DIFFERENT repository into a production image, silently and
-# with no error. A build must name what it actually fetches.
-FROM node:22-alpine AS pay-build
-ARG PAY_REPO=https://github.com/hanzo-inc/pay.git
-ARG PAY_VERSION=v0.1.2
-WORKDIR /pay
-RUN apk add --no-cache git && corepack enable pnpm
-# hanzoai/pay is private. The credential arrives as the `gh_token` build secret
-# -- the id the CI reusable actually passes (`--secret id=gh_token,env=GIT_TOKEN`).
-# It used to mount `id=netrc`, which nothing supplies, so /root/.netrc never
-# existed and git fell through to prompting:
-#   fatal: could not read Username for 'https://github.com': No such device or address
-# The secret is scoped to this RUN and never lands in a layer.
-RUN --mount=type=secret,id=gh_token \
-    if [ -s /run/secrets/gh_token ]; then \
-      git config --global url."https://x-access-token:$(cat /run/secrets/gh_token)@github.com/".insteadOf "https://github.com/"; \
-    fi; \
-    git clone --depth=1 --branch=${PAY_VERSION} ${PAY_REPO} /pay
-RUN pnpm install --frozen-lockfile && pnpm build
-
-# ── Stage 3: Build billing admin UI (Next.js export from hanzoai/billing) ─
-# Canonical source lives at github.com/hanzoai/billing. Forks override
-# BILLING_REPO + BILLING_VERSION via --build-arg; default tracks the latest
-# tagged release. The Next config emits a static bundle under out/ with
-# basePath=/admin/billing, which commerce serves under the same prefix from
-# billing/ui/dist (go:embed target).
+# But nothing here ever wanted pay's SOURCE. It wanted pay's dist/. And pay
+# already builds and publishes that, on every push, through the same
+# hanzoai/ci lane this repo uses — as does billing. So take the artifact.
+# One producer per artifact, consumed where it is published:
+#   ghcr.io/hanzoai/pay      /srv     ← the Vite SPA (was /pay/dist)
+#   ghcr.io/hanzoai/billing  /public  ← the Next export (was /billing/out)
+# Byte-identical to what the clone-and-build produced, minus two node
+# toolchains and a pnpm install. The registry credential is one this build
+# already holds — it is the same login that pushes ghcr.io/hanzoai/commerce a
+# few minutes later — so this removes a credential requirement rather than
+# adding one.
 #
-# pnpm pinned to 9.15.4 (matches billing's own Dockerfile + lockfile
-# config schema). corepack's default pnpm 11.5.2 rejects v9-shaped
-# `overrides` blocks with ERR_PNPM_LOCKFILE_CONFIG_MISMATCH; pinning
-# back to 9.x keeps the schema validator on the right side of the
-# v10 break.
-FROM node:22-alpine AS billing-build
-# Canonical name, not the redirect — see the note on PAY_REPO above; this repo
-# moved orgs too.
-ARG BILLING_REPO=https://github.com/hanzo-inc/billing.git
-ARG BILLING_VERSION=v0.1.2
-WORKDIR /billing
-# python3/make/g++ needed for node-gyp on arm64 where bufferutil/utf-8-validate
-# have no prebuilt aarch64 binary and fall back to source compile.
-RUN apk add --no-cache git python3 make g++ && corepack enable && corepack prepare pnpm@9.15.4 --activate
-# hanzoai/billing is private — same `gh_token` build secret as the pay stage.
-RUN --mount=type=secret,id=gh_token \
-    if [ -s /run/secrets/gh_token ]; then \
-      git config --global url."https://x-access-token:$(cat /run/secrets/gh_token)@github.com/".insteadOf "https://github.com/"; \
-    fi; \
-    git clone --depth=1 --branch=${BILLING_VERSION} ${BILLING_REPO} /billing
-RUN pnpm install --frozen-lockfile && pnpm build
+# Pinned to an immutable published semver, never `latest`: a mutable tag under
+# a version name is how a rebuild silently changes what a release contains.
+FROM ${PAY_IMAGE} AS pay-dist
+FROM ${BILLING_IMAGE} AS billing-dist
 
 # ── Stage 4: Build Go binary (with embedded admin + pay + billing SPAs) ──
 FROM golang:1.26.5-alpine AS builder
@@ -155,15 +132,15 @@ RUN apk add --no-cache curl && sh scripts/fetch-plans.sh
 COPY --from=admin-build /build/app/admin/out ./app/admin/out
 RUN apk add --no-cache bash rsync && bash scripts/sync-admin-ui.sh
 
-# Overlay the pay UI build into checkout/ui/dist so go:embed in
-# checkout/embed.go picks up the real SPA bundle.
+# Overlay the pay UI into checkout/ui/dist so go:embed in checkout/embed.go
+# picks up the real SPA bundle.
 RUN rm -rf checkout/ui/dist && mkdir -p checkout/ui/dist
-COPY --from=pay-build /pay/dist/ checkout/ui/dist/
+COPY --from=pay-dist /srv/ checkout/ui/dist/
 
-# Overlay the billing admin UI build into billing/ui/dist so go:embed in
+# Overlay the billing admin UI into billing/ui/dist so go:embed in
 # billing/embed.go picks up the real Next.js export.
 RUN rm -rf billing/ui/dist && mkdir -p billing/ui/dist
-COPY --from=billing-build /billing/out/ billing/ui/dist/
+COPY --from=billing-dist /public/ billing/ui/dist/
 
 # Build the binary with CGO for SQLite support.
 #

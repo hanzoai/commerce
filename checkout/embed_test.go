@@ -1,10 +1,10 @@
 // Pinning tests for the embedded pay UI bundle. These test the contract
 // between hanzoai/pay (SPA source) and hanzoai/commerce (embedding host):
-// the Dockerfile's pay-build stage MUST produce an index.html and at
+// the Dockerfile's pay-dist stage MUST produce an index.html and at
 // least one hashed asset, and the go:embed directive MUST resolve them.
 //
 // When run on a fresh clone with only .gitkeep in checkout/ui/dist, these
-// tests are skipped — the build hasn't happened yet. Once the pay-build
+// tests are skipped — the build hasn't happened yet. Once the pay-dist
 // stage runs (Docker) or a developer overlays dist/ locally, the tests
 // enforce the shape.
 package checkout
@@ -32,7 +32,7 @@ func TestEmbeddedPayUI_HasIndex(t *testing.T) {
 	f := UISub()
 	file, err := f.Open("index.html")
 	if err != nil {
-		t.Skipf("no embedded index.html — run pay-build stage first: %v", err)
+		t.Skipf("no embedded index.html — run pay-dist stage first: %v", err)
 	}
 	defer file.Close()
 	st, err := file.Stat()

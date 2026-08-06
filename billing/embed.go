@@ -1,9 +1,8 @@
 // Package billing embeds the Next.js-built billing admin SPA into the
-// commerce binary. Source lives at github.com/hanzoai/billing and builds
-// into out/ via `pnpm build`. The Dockerfile billing-build stage clones
-// the repo and copies out/ into ui/dist, which is then go:embed'd here.
-// Local Go test runs only need .gitkeep in ui/dist/ so the directive
-// resolves.
+// commerce binary. The billing repo builds it and publishes it as
+// ghcr.io/hanzoai/billing; the Dockerfile copies /public out of that image
+// into ui/dist, which is then go:embed'd here. Local Go test runs only need
+// .gitkeep in ui/dist/ so the directive resolves.
 //
 // Mirrors the admin/embed.go + checkout/embed.go pattern. All three SPAs
 // (commerce admin, pay, billing) ship in a single commerce binary.

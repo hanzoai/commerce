@@ -1,6 +1,6 @@
 // Billing admin SPA HTTP handler.
 //
-// The embedded SPA (ui/dist, populated by the Dockerfile billing-build stage
+// The embedded SPA (ui/dist, populated by the Dockerfile billing-dist stage
 // from github.com/hanzoai/billing) is served at /admin/billing/*. Access is
 // gated on IAM roles: admin, billing_admin, owner, or superadmin — and the
 // legacy IsAdmin claim. Non-admin callers (including unauthenticated) get a

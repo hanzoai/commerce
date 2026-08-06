@@ -1,6 +1,6 @@
 // Package checkout is the hosted multi-tenant checkout SPA embedded into
 // commerce. The Vite build lives under ui/ and ships into ui/dist via the
-// Dockerfile's checkout-build stage; embed.go exposes it to the Go binary.
+// Dockerfile's pay-dist stage; embed.go exposes it to the Go binary.
 //
 // Security posture:
 //   - Tenant resolution is exact-match on the Host header after port/case
