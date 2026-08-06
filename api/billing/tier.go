@@ -198,11 +198,35 @@ func dailyUsageCents(ctx context.Context, user string, isTest bool) int64 {
 // transient store error can never strip a paid subscriber's tier — the handler
 // surfaces it as a 5xx and the caller holds its last-known tier.
 func resolveTierName(c *zip.Ctx, user string) (tier.Name, error) {
-	if iamTier := iammiddleware.GetIAMTier(c); iamTier != "" {
-		return tierOfName(iamTier), nil
-	}
-	if qTier := strings.TrimSpace(c.Query("tier")); qTier != "" {
-		return tierOfName(qTier), nil
+	// AN OVERRIDE IS A MINT, AND ONLY A MINTER MAY USE ONE.
+	//
+	// Both of these are CLIENT INPUT. `?tier=` is obviously so; X-Tier is too —
+	// the gateway neither mints it (iamauth.MintedIdentityHeaders) nor strips it
+	// (StripIdentityHeaderNames), so despite the comment calling it authoritative
+	// it arrives from whoever sent the request. Honouring either unconditionally
+	// let any caller name its own tier: measured live, `X-Tier: enterprise` on a
+	// free subject returned enterprise with unlimitedAgents, and `?tier=max`
+	// returned Pro with allowedModels ["*"].
+	//
+	// A tier decides which models a caller may invoke and how many agents it may
+	// run, so granting one is minting. The clamp is the SAME predicate the sibling
+	// resolver already applies to the same class of client string —
+	// planForGrant (allotment.go) honours an explicit plan only for
+	// middleware.MayMintMoney — so there is one rule for "may this caller name its
+	// own entitlement", in one place, rather than three resolvers disagreeing.
+	//
+	// An unprivileged override is IGNORED, not refused, exactly as planForGrant
+	// ignores one: the caller falls through to the tier its subscriptions actually
+	// confer. Refusing would break readers that pass a hint they are not entitled
+	// to, for no gain — the answer they get is simply the true one.
+	//
+	// The S2S readers are unaffected: ai's rate limiter and apps/metering send
+	// ?user= and a service token, never ?tier=, and a service token satisfies
+	// MayMintMoney anyway.
+	if override := firstOverride(iammiddleware.GetIAMTier(c), c.Query("tier")); override != "" {
+		if middleware.MayMintMoney(c) {
+			return tierOfName(override), nil
+		}
 	}
 	org, ok := middleware.GetOrganizationOK(c)
 	if !ok {
@@ -211,6 +235,17 @@ func resolveTierName(c *zip.Ctx, user string) (tier.Name, error) {
 		return tier.Free, nil
 	}
 	return deriveTier(datastore.New(org.Namespaced(c.Context())), user)
+}
+
+// firstOverride returns the first non-empty, trimmed tier override. Both sources
+// are client input; which one arrived does not change how much it is trusted.
+func firstOverride(vals ...string) string {
+	for _, v := range vals {
+		if t := strings.TrimSpace(v); t != "" {
+			return t
+		}
+	}
+	return ""
 }
 
 // tierOfName resolves a name that may be EITHER a tier or a CATALOG PLAN SLUG.
