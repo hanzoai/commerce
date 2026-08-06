@@ -30,17 +30,24 @@ import (
 //	org A top-up can NEVER touch org B      (per-org isolation, no cross leak)
 //	a retry / double-submit credits ONCE    (idempotent, no double-charge)
 
-// topupTestApp backs the synthetic *Ctx handed to topupDestination below.
+// topupTestApp backs the synthetic *Ctx handed to userBillingKey below.
 var topupTestApp = zip.New(zip.Config{DisableStartupMessage: true})
 
-// ctxWithOrg builds a *Ctx exactly as the edge/proxy hands it to
-// TopupWithToken: an "organization" in the request locals + a `?user=` query
-// (which console2's server proxy sets from the validated session, overwriting
-// any client value).
-func ctxWithOrg(orgName, userQuery string) *zip.Ctx {
+// ctxWithIdentity builds a *Ctx as the gateway hands it to TopupWithToken: an
+// "organization" in the request locals plus the server-minted, unforgeable
+// X-User-Id / X-Billing-Account-Id identity headers. userQuery is a MISLEADING
+// ?user= — the fix must IGNORE it. A direct (non-console2) caller like
+// pay.hanzo.ai could set that query; steering the destination by it is the bug.
+func ctxWithIdentity(orgName, xUserID, xBillingAccount, userQuery string) *zip.Ctx {
 	c := topupTestApp.TestCtx("POST", "/v1/billing/topup/token")
 	if userQuery != "" {
 		c.Fiber().Request().URI().SetQueryString("user=" + url.QueryEscape(userQuery))
+	}
+	if xUserID != "" {
+		c.Fiber().Request().Header.Set("X-User-Id", xUserID)
+	}
+	if xBillingAccount != "" {
+		c.Fiber().Request().Header.Set("X-Billing-Account-Id", xBillingAccount)
 	}
 	if orgName != "" {
 		org := &organization.Organization{}
@@ -50,26 +57,29 @@ func ctxWithOrg(orgName, userQuery string) *zip.Ctx {
 	return c
 }
 
-// TestTopupDestination_SubjectResolution proves the top-up credits the SAME
-// subject the gateway reads/debits, and can NEVER be steered outside the
-// caller's own org (fail-secure bound).
-func TestTopupDestination_SubjectResolution(t *testing.T) {
+// TestTopupSubject_FollowsSignedIdentity_NotQuery is the regression guard for the
+// split-subject money bug: a customer's card top-ups landing on `hanzo` on one
+// charge and `hanzo/<user>` on the next, so the balance read (one key) under-
+// reported what they paid. Both top-up doors now credit userBillingKey(c) — the
+// payer resolved from the signed identity, the SAME account.Payer rule the LLM
+// gate debits and GetMyBalance reads — and a ?user= query can never steer it.
+func TestTopupSubject_FollowsSignedIdentity_NotQuery(t *testing.T) {
 	cases := []struct {
-		name, org, userQuery, want string
+		name, org, xUserID, xAccount, misleadingQuery, want string
 	}{
-		{"dedicated org, no subject → org slug", "acme", "", "acme"},
-		{"dedicated org, subject == org → org slug", "acme", "acme", "acme"},
-		{"personal-billing member → in-org <org>/<name>", "hanzo", "hanzo/alice", "hanzo/alice"},
-		{"subject case-normalized to org slug", "Acme", "ACME/Bob", "acme/bob"},
-		{"out-of-org subject → fallback to org slug (no cross-org)", "acme", "victim", "acme"},
-		{"prefix-but-not-boundary → fallback (acme-evil is not acme/*)", "acme", "acme-evil", "acme"},
-		{"another org's user → fallback (never credits foreign org)", "acme", "victim/root", "acme"},
+		{"personal-billing org → <org>/<user>, query ignored", "hanzo", "alice", "", "hanzo/attacker", "hanzo/alice"},
+		{"personal org, NO query still resolves the user", "hanzo", "aworring98@gmail.com", "", "", "hanzo/aworring98@gmail.com"},
+		{"dedicated org, no claim → org pool, query ignored", "acme", "bob", "", "acme/whatever", "acme"},
+		{"org-account claim → org pool even for a personal org", "hanzo", "alice", "org:hanzo", "hanzo/alice", "hanzo"},
+		{"person claim inside a dedicated org → <org>/<user>", "acme", "bob", "person:acme/bob", "acme", "acme/bob"},
+		{"identity is case-normalized, query still ignored", "HANZO", "Alice", "", "hanzo/attacker", "hanzo/alice"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := topupDestination(ctxWithOrg(tc.org, tc.userQuery))
+			got := userBillingKey(ctxWithIdentity(tc.org, tc.xUserID, tc.xAccount, tc.misleadingQuery))
 			if got != tc.want {
-				t.Fatalf("topupDestination(org=%q, ?user=%q) = %q, want %q", tc.org, tc.userQuery, got, tc.want)
+				t.Fatalf("userBillingKey(org=%q, X-User-Id=%q, X-Billing-Account-Id=%q, ?user=%q) = %q, want %q",
+					tc.org, tc.xUserID, tc.xAccount, tc.misleadingQuery, got, tc.want)
 			}
 		})
 	}
@@ -176,9 +186,10 @@ func TestTopup_CanonicalLedger_PerOrgIsolation(t *testing.T) {
 		t.Fatalf("org B sees A's subject balance = %d, want 0 — namespace isolation broken", got)
 	}
 
-	// Subject isolation WITHIN an org: ?user=<org>/<name> credits the sub-user and
-	// leaves the org-slug wallet alone.
-	if r := invokeTopupTokenAs(orgA, ctx, "acme-iso/alice", `{"sourceId":"cnon:iso2","amountCents":500}`, nil); r.StatusCode != http.StatusOK {
+	// Subject isolation WITHIN an org: a sub-user paying under their OWN signed
+	// identity (<org>/<name>) credits the sub-user and leaves the org-slug wallet
+	// alone. The destination is the payer's identity, never a ?user= query.
+	if r := invokeTopupTokenAsSubject(orgA, ctx, "acme-iso/alice", `{"sourceId":"cnon:iso2","amountCents":500}`, nil); r.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(r.Body)
 		t.Fatalf("sub-user top-up status=%d body=%s, want 200", r.StatusCode, string(b))
 	}
@@ -245,11 +256,18 @@ func invokeTopupToken(org *organization.Organization, ctx context.Context, body 
 	}, "/v1/billing/topup/token", req, TopupWithToken)
 }
 
-// invokeTopupTokenAs drives the handler with an explicit ?user= subject — what
-// console2's billing proxy sets from the validated session.
-func invokeTopupTokenAs(org *organization.Organization, ctx context.Context, subject, body string, headers map[string]string) *http.Response {
-	req := httptest.NewRequest(http.MethodPost, "/v1/billing/topup/token?user="+url.QueryEscape(subject), bytes.NewBufferString(body))
+// invokeTopupTokenAsSubject drives the handler AS `subject` — via the
+// gateway-minted identity headers that account.Payer resolves to that subject
+// (a person claim for an <org>/<user> key), NOT a ?user= query. This is how a
+// sub-user pays for their own balance: the destination follows the signed
+// identity, the same key the gate debits, so it can never be steered by a query.
+func invokeTopupTokenAsSubject(org *organization.Organization, ctx context.Context, subject, body string, headers map[string]string) *http.Response {
+	req := httptest.NewRequest(http.MethodPost, "/v1/billing/topup/token", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Billing-Account-Id", "person:"+subject)
+	if i := strings.IndexByte(subject, '/'); i >= 0 {
+		req.Header.Set("X-User-Id", subject[i+1:])
+	}
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}

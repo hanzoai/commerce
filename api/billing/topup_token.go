@@ -13,10 +13,11 @@ import (
 )
 
 // topupTokenRequest is the wire body. There is deliberately NO userId field: the
-// credited subject is resolved from the caller's own identity (topupDestination),
-// never from the request, so a body value can not steer where the money lands.
-// This door takes a FRESH nonce only; a card the subject already saved goes
-// through POST /v1/billing/topup (paymentMethodId), the one saved-card door.
+// credited subject is resolved from the caller's own signed identity
+// (userBillingKey → account.Payer), never from the request, so a body value can
+// not steer where the money lands. This door takes a FRESH nonce only; a card the
+// subject already saved goes through POST /v1/billing/topup (paymentMethodId), the
+// one saved-card door.
 type topupTokenRequest struct {
 	SourceID    string `json:"sourceId"` // Square Web Payments SDK nonce
 	AmountCents int64  `json:"amountCents"`
@@ -56,28 +57,6 @@ func envCents(key string, def int64) int64 {
 	return def
 }
 
-// topupDestination resolves the billing subject a top-up must credit: the SAME
-// key the gateway reads (GetBalance ?user=) and debits (usage SourceId=), so a
-// customer tops up exactly the account that gates their AI usage — the ONE
-// canonical ledger. It defaults to the org slug (per-org billing: dedicated
-// orgs, the paying model) and honors a finer in-org subject (e.g. the
-// per-user `<org>/<name>` of the shared personal-billing catch-all) ONLY when
-// it is provably within the caller's own org.
-//
-// The subject arrives as ?user=, which console2's server-side billing proxy
-// sets from the validated session (overwriting any client value) and EdgeAuth
-// locks to the caller's org. The in-org bound here is defense-in-depth: even if
-// both were bypassed, a credit can never land outside the caller's own org —
-// `s == org || s startsWith org+"/"`. Anything else falls back to the org slug,
-// fail-secure. Returns "" only when no org is resolved (caller 401s).
-func topupDestination(c *zip.Ctx) string {
-	org := orgBillingKey(c)
-	if org == "" {
-		return ""
-	}
-	return inOrgSubject(org, c.Query("user"))
-}
-
 // TopupWithToken charges a Square Web Payments SDK nonce and credits the org's
 // canonical balance. Use this for one-time card top-ups without saving a payment
 // method first — the cold-customer "add credits" path.
@@ -107,15 +86,17 @@ func TopupWithToken(c *zip.Ctx) error {
 		return jsonhttp.Fail(c, 400, "invalid request body", err)
 	}
 
-	// Billing is per-org: credit the org's canonical balance, keyed by the SAME
-	// subject the LLM gate reads and usage debits (see topupDestination). A
-	// request-supplied userId/email must NOT become the destination key, or the
-	// customer tops up one key and reads another. One identity, one key.
+	// Credit the SAME account the LLM gate reads out of and debits — the payer
+	// resolved from the caller's signed identity (userBillingKey → account.Payer),
+	// the ONE rule shared with GetMyBalance and the ai gate. Never ?user= and never
+	// a request-supplied userId: a client- or proxy-set selector is what let the
+	// same customer top up `hanzo` on one charge and `hanzo/<user>` on the next,
+	// stranding the credit off the key their usage draws from. One identity, one key.
 	in := TakePaymentIn{
 		SourceID:       req.SourceID,
 		AmountCents:    req.AmountCents,
 		Currency:       req.Currency,
-		Subject:        topupDestination(c),
+		Subject:        userBillingKey(c),
 		IdempotencyKey: strings.TrimSpace(c.Header("X-Idempotency-Key")),
 	}
 	if v := c.Locals("kms"); v != nil {
