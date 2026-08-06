@@ -1140,11 +1140,28 @@ only the first is safe.
    hardcoded list — the custody-signer probe fails in a test environment, so the
    handler answered 503 and the assertion never ran. Mutation-test anything that
    guards money; a green endpoint test can be measuring nothing at all.
-3. **`GenerateAddress` still DISCARDS the keygen `wallet_id`** (thirdparty/mpc/
-   processor.go), so commerce holds no handle to the MPC wallet the coins land
-   in. Crediting works without it; SWEEPING does not. Persist it before taking
-   real money, or accept crediting balances against funds that need manual
-   reconciliation against the node's own wallet records.
+3. ~~`GenerateAddress` DISCARDS the keygen `wallet_id`.~~ **CLOSED in v1.50.20.**
+   It returned a bare string, so the id was parsed off the keygen response and
+   dropped — commerce minted custody addresses it held no handle to, and a
+   credited deposit could not be SWEPT without reconciling against the node's own
+   records. `GenerateAddress` returns a `processor.Wallet{Address, ID}` and
+   `CryptoPaymentIntent.WalletID` records it at mint time, the only moment the
+   signer offers it. The existing method was WIDENED rather than joined by a
+   second one: two ways to mint an address is how the halves drift apart again.
+
+4. **Still open — the creditable set is dollar-pegged ERC-20s only.** Native
+   coins (ETH/LUX/ZOO/MATIC…) emit NO log on a bare transfer, so `eth_getLogs`
+   cannot see them, and commerce has no oracle to value one. Same two blockers
+   for XRP, and additionally XRPL's 10 XRP base reserve is non-refundable, so it
+   wants ONE pooled r-address with per-intent destination tags rather than an
+   address per payer. ⚠ "needs no new cryptography" describes address derivation
+   and says nothing about whether a deposit can be credited.
+
+5. **Still open — SOL and TON have no signable key.** `frost.KeygenTaproot` is
+   BIP-340 **secp256k1**; its 32-byte output passes mpcd's `len(EDDSAPubKey)==32`
+   gate and base58-encodes into a real-looking Solana address the ring can never
+   sign for. The empty `eddsa_pub_key` is the system failing closed — leave it
+   until a genuine RFC 8032 ciphersuite exists in `luxfi/threshold`.
 
 ## zip / ZAP native — what is real, and why billing is NOT typed yet
 
