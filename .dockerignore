@@ -4,7 +4,31 @@
 .dockerignore
 *.md
 LICENSE
-node_modules
-app/*/node_modules
+# Installed dependencies and build output are things the image PRODUCES, never
+# things it consumes. At every depth — `node_modules` alone matches only the
+# root, and `app/*/node_modules` only the workspace packages, which left
+# `app/node_modules` (the pnpm workspace root, where .pnpm and .modules.yaml
+# actually live) copied into every build.
+#
+# That was not merely wasteful, it was silent corruption. The hanzo.yml
+# `admin-typecheck` gate runs `cd app && pnpm install` ON THE RUNNER, and the
+# Test step runs before the Build step, so by the time the context was packed
+# the runner had already created app/node_modules. COPY carried the workspace
+# store in while excluding each package's link farm, and pnpm inside the image
+# found a modules dir it could not reconcile:
+#
+#   Scope: all 14 workspace projects
+#   ? The modules directories will be removed and reinstalled from scratch.
+#     Proceed? (Y/n)
+#   DONE 4.1s
+#
+# No TTY, so the prompt read EOF and pnpm exited ZERO having installed
+# nothing. `next` was then not on PATH and the admin build died with
+# "Local package.json exists, but node_modules missing". The install that
+# reported success is the bug; the context is where it came from. 1.44GB of
+# it, measured on the wire.
+**/node_modules
+**/.next
+**/.turbo
 deploy/
 sdk/
