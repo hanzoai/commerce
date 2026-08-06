@@ -91,10 +91,28 @@ func (mp *MPCProcessor) configured() bool {
 
 // MPCSupportedCurrencies returns cryptocurrencies supported by MPC.
 func MPCSupportedCurrencies() []currency.Type {
+	// SOL IS NOT HERE, and its absence is the honest state rather than an
+	// oversight. A Solana address is an Ed25519 (EdDSA) key, and the custody
+	// fleet only ever runs the secp256k1 ceremony: the mpc:generate consumer
+	// dispatches handleKeyGenEventCGGMP21 and nothing else, so EDDSAPubKey comes
+	// back empty and mpcd never emits sol_address (it is gated on a 32-byte
+	// EdDSA key). GenerateAddress then finds nothing for chain "solana" and
+	// answers NO_ADDRESS, which the rail renders as 503 "the custody service is
+	// not accepting new addresses".
+	//
+	// Advertising it anyway is the worst of the options: the asset picker is
+	// rendered FROM THIS LIST, so listing sol puts a button in front of a buyer
+	// that walks them to a dead end after they have chosen an amount. A rail is
+	// offered only when it can be finished.
+	//
+	// Restoring sol needs a FROST/Ed25519 ceremony beside the CGGMP21 one and
+	// the two results combined per wallet — keygen_session.go already speaks of
+	// "the combined result with both ECDSA and EdDSA keys", so the result shape
+	// is ready and the consumer is what is missing. That is protocol work on a
+	// live custody service, not a list edit.
 	return []currency.Type{
 		currency.BTC,
 		currency.ETH,
-		currency.Type("sol"),
 		currency.Type("usdc"),
 		currency.Type("usdt"),
 		currency.Type("matic"),
@@ -116,7 +134,9 @@ func (mp *MPCProcessor) SupportedChains() []string {
 		"optimism",
 		"base",
 		"avalanche",
-		"solana",
+		// "solana" is omitted for the same reason sol is absent above: the
+		// custody fleet derives no Ed25519 key, so a Solana deposit address
+		// cannot be minted and the chain would 503 after the buyer picked it.
 		"lux",
 		"bsc",
 	}
