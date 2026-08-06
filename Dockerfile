@@ -87,20 +87,31 @@ WORKDIR /build
 # no nested-module go.mod/go.sum to COPY.
 COPY go.mod go.sum ./
 
-# Private hanzoai Go modules (cloud, zip, base, tasks, …) need git auth to
-# resolve. Mount the netrc build secret so git over HTTPS authenticates for
-# private fetches; GOPRIVATE skips the public proxy + sumdb for hanzoai/* so
-# those go straight to git. Public modules still flow through the proxy with
-# normal sum verification. GOTOOLCHAIN=local pins the builder's own
-# golang:1.26.5 toolchain so go does NOT try to download+verify a toolchain
-# module (which fails as a sumdb "SECURITY ERROR"). The netrc is mounted only
-# for the duration of the step and never lands in a layer.
+# NO GOPRIVATE. It used to say `github.com/hanzoai/*`, which routes every
+# hanzoai module past the proxy and the checksum database, straight to git —
+# and git is where three of them stopped existing. goauthorizenet, gochimp3
+# and sendgrid-go moved to the same org pay and billing did, and now 404 on
+# github.com for everyone, signed in or not. The other eighteen are plain
+# public repos that never needed the exemption.
+#
+# All twenty-one are on proxy.golang.org at the exact version go.mod pins, and
+# sum.golang.org returns the same h1: hashes go.sum already commits — so the
+# proxy is not the loose path here, it is the VERIFIED one, and it holds an
+# immutable copy of code whose repository is gone. `,direct` is still the
+# fallback, still authenticated by the gh_token below.
+#
+# This build did not fail on it only because BuildKit's /go/pkg/mod cache
+# mount was warm. That is the worst kind of green: the fleet scaled 10 → 20
+# runners today, and every new one has a cold cache.
+#
+# GOTOOLCHAIN=local pins the builder's own golang:1.26.5 toolchain so go does
+# NOT try to download+verify a toolchain module (which fails as a sumdb
+# "SECURITY ERROR").
 # GOWORK=off is critical: the repo commits a go.work (use . ./metering).
 # Without disabling it, `go mod download` runs in workspace mode, reads the
 # stale committed go.work.sum, and fails sum verification ("SECURITY ERROR").
 # The image builds the single root module, so force module mode.
-ENV GOPRIVATE=github.com/hanzoai/* \
-    GOTOOLCHAIN=local \
+ENV GOTOOLCHAIN=local \
     GOWORK=off
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=secret,id=gh_token \
