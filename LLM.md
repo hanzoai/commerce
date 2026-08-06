@@ -1040,21 +1040,60 @@ The watcher is now built. **The gate is still `false`** — see "before flipping
   idempotent ledger write, the persisted cursor (`models/depositcursor`), and
   the schedule. Integration-tested against a real datastore (`util/test/ae`).
 
-Chain reads reuse **`husdindex.Client`** — this repo's ONE ERC-20 JSON-RPC read
-client, parameterized by `(rpcURL, tokenAddr)` and named for its first caller,
-not for a restriction. Extended with `Decimals()` / `Symbol()` (selectors pinned
-against `luxcrypto.Keccak256` in `client_test.go`).
+Nothing in `depositwatch` is EVM-shaped. "Block" is whatever position a chain
+counts monotonically (a block, or a Solana slot) and the only property relied on
+is that it increases. Adding a chain adds a `Reader`; the policy does not move.
+
+**Live read-path probes** (`billing/depositledger/livechain*_test.go`) are
+opt-in, skipped unless `CRYPTO_DEPOSIT_RPC_*` is set, so CI never depends on a
+public RPC. ⚠ **`-count=1` is not optional**: Go caches a PASS even though every
+input came from the environment, so a second run against a DIFFERENT contract
+replays the first one's result and reports the old address as live evidence.
+
+Chain reads come from ONE read client per chain family, both satisfying
+`depositwatch.Reader`:
+
+- **EVM** — `husdindex.Client`, this repo's one ERC-20 JSON-RPC read client,
+  parameterized by `(rpcURL, tokenAddr)` and named for its first caller, not for
+  a restriction. `Decimals()` / `Symbol()` selectors are pinned against
+  `luxcrypto.Keccak256` in `client_test.go`. Adapted to the watcher's event type
+  by `depositledger.evmReader` (2 lines) because `husdindex.Transfer` is an
+  ERC-20 *log* and predates this rail.
+- **Solana** — `billing/solanarpc.Client` (2026-08), which implements `Reader`
+  directly. See "Solana" below.
+
+`depositledger.newReader` is the ONE place a chain becomes a client, dispatched
+on `Asset.IsSolana()`. It is exhaustive, not defaulted: `AssetsFromEnv` refuses
+any chain absent from `depositwatch.chainFamily`, so an unknown chain can never
+be silently handed the EVM client.
 
 ### Exactly-once = a KEY, not coordination
 
-A credit's storage id is `sha256("crypto-deposit\0" + chain:txHash:logIndex)`
+A credit's storage id is `sha256("crypto-deposit\0" + chain:txHash:eventIndex)`
 (`depositledger.creditKey`). Both backends upsert on `(id, kind, namespace)`
 (db/sqlite.go, db/postgres.go), and a balance is a SUM over rows, so every
 attempt to credit the same transfer lands on the same row: re-scan, crash retry,
 and N replicas ticking simultaneously all yield one credit. **No leader election,
-no lease, no lock** — adding replicas cannot change the answer. The chain is part
-of the key because a pre-EIP-155 tx can be replayed across EVM chains with an
-identical hash.
+no lease, no lock** — adding replicas cannot change the answer.
+
+All three parts of the key are load-bearing:
+
+- **chain** — a pre-EIP-155 tx can be replayed across EVM chains with an
+  identical hash, so without it two genuine deposits collapse into one credit.
+- **txHash** — the chain's own transaction id, folded the way that chain's
+  identifiers compare (`Asset.Fold`; see "Per-chain facts" below).
+- **eventIndex** — WHICH value movement inside that transaction. It was
+  `logIndex` until 2026-08 and is now a per-chain concept
+  (`depositwatch.Transfer.EventIndex`): an ERC-20 log index on the EVM, the
+  index of the token-BALANCE record on Solana, and it would be the vout on
+  Bitcoin. One transaction can credit the same address twice or two watched
+  addresses at once; collapsing them swallows the second as a duplicate. The
+  ledger metadata key is `eventIndex`, not `logIndex` — a Solana account index
+  stored under a field named `logIndex` is a lie a later reader cannot detect.
+
+⚠ It must be a function of the EVENT and of nothing else — never a counter over
+the scan's results. A key that renumbers when the window moves is a double
+credit. (Mutation-tested: numbering by scan position is caught.)
 
 Ordering is load-bearing: **ledger row FIRST, intent second.** The reverse would
 let a succeeded intent survive a failed ledger write, and a later pass would read
@@ -1077,12 +1116,28 @@ Confirmation depth comes from `cryptopaymentintent.RequiredConfirmationsForChain
 — the ONE policy, now naming every supported chain (eth 12, rollups+polygon 20,
 bsc 15, avalanche/lux/zoo 12, solana 32).
 
-### Decimals are READ, contracts are VERIFIED, tokens are PEGGED
+### Decimals are READ, tokens are VERIFIED and PEGGED
 
 Getting decimals wrong by 12 credits 10^12 too much, so decimals are never
-configured: `verify()` reads `symbol()` and `decimals()` off the contract once
-per asset, refuses the asset if the symbol disagrees with the configured token,
-and refuses `< 2` or `> 36` decimals. A transient RPC failure is not cached.
+configured: `verify()` asks the CHAIN, once per asset, refuses if the reported
+symbol disagrees with the configured token, and refuses `< 2` or `> 36`
+decimals. A transient RPC failure is not cached. What each answer is worth
+differs by chain and the difference is stated, not blurred:
+
+| | EVM | Solana |
+|---|---|---|
+| decimals | `decimals()` on the ERC-20 | byte 44 of the SPL **mint account** |
+| symbol | `symbol()` on the ERC-20 — mandated by the standard | Metaplex Token Metadata, a SEPARATE account owned by a third-party program and mutable by its update authority |
+
+So on Solana the symbol check catches a **mistyped mint**, which is the failure
+that actually happens; it cannot prove an adversary's mint is not USDC. The
+decimals check is the strong one and it holds on both chains. A mint with no
+metadata account is REFUSED rather than accepted unnamed.
+
+⚠ An SPL token *account* is 165 bytes and owned by the same program as an
+82-byte mint, so `parseMint` pins the length EXACTLY (`== 82`, or Token-2022
+tagged at offset 165). "Owned by the Token program and ≥ 82 bytes" would accept
+a token account and read a byte of somebody's pubkey as the decimals.
 
 Config (KMS-injected, NO defaults — mirrors `util/husd`'s "token address has no
 default" rule):
@@ -1090,19 +1145,93 @@ default" rule):
 ```
 CRYPTO_DEPOSIT_RPC_<CHAIN>            e.g. CRYPTO_DEPOSIT_RPC_BASE
 CRYPTO_DEPOSIT_TOKEN_<CHAIN>_<TOKEN>  e.g. CRYPTO_DEPOSIT_TOKEN_BASE_USDC=0x8335…
+                                      or  CRYPTO_DEPOSIT_TOKEN_SOLANA_USDC=EPjFWdd5…
 ```
 
 Unset ⇒ watches nothing (inert). Incoherent (token with no endpoint, unpegged
-token, malformed address) ⇒ **Bootstrap refuses to start**: an operator who
-configured a deposit rail must not get a process watching less than they asked
-for.
+token, unreadable chain, address written for the wrong chain) ⇒ **Bootstrap
+refuses to start**: an operator who configured a deposit rail must not get a
+process watching less than they asked for.
 
 `depositwatch.pegCents` IS the creditable set (`usdc`, `usdt` @ 100c). There is
 no price oracle in commerce and inventing one to value a customer's money would
-be guessing, so **only dollar-pegged ERC-20s are creditable**. Native coins
-(ETH/MATIC/AVAX/BNB) are doubly out: a native transfer emits no log so
-`eth_getLogs` cannot see it at all, and it cannot be priced. Known accepted risk:
-a depegged stablecoin is credited above market.
+be guessing, so **only dollar-pegged tokens are creditable** — which is also why
+Solana was the right chain to extend to first: SPL USDC needs no oracle, exactly
+like ERC-20 USDC. So do jetton USDT on TON and issued USDC/RLUSD on XRPL; only
+BTC and native coins genuinely need a price feed. **Do not add one.** Native
+coins (ETH/MATIC/AVAX/BNB/SOL) are out on price alone, and on the EVM doubly so:
+a native transfer emits no log, so `eth_getLogs` cannot see it. Known accepted
+risk: a depegged stablecoin is credited above market.
+
+### Per-chain facts live in exactly one place each
+
+Adding a chain must not scatter `if chain == …` through the policy. There are
+exactly four per-chain facts, each with one home:
+
+| fact | home |
+|---|---|
+| how it is READ | `depositledger.newReader` → a `Reader` implementation |
+| how deep is deep enough | `cryptopaymentintent.RequiredConfirmationsForChain` |
+| how an address is WRITTEN (hex vs base58) | `depositwatch.chainFamily` + `Asset.validateContract` |
+| whether its identifiers are case-significant | `depositwatch.Asset.Fold` |
+
+`Fold` is ONE function for addresses and transaction ids alike, because it
+encodes one fact. EVM hex folds to lowercase (custody returns EIP-55, logs are
+lowercase — comparing literally misses every deposit). **base58 does NOT fold**:
+`aB…` and `Ab…` are different Solana accounts and different signatures. An
+unclassified chain gets the EVM fold, which is the safe default direction —
+folding too much makes two addresses ambiguous and fails the pass CLOSED, while
+folding too little makes a real deposit invisible.
+
+### Solana (`billing/solanarpc`, 2026-08)
+
+Three Solana facts have no EVM equivalent, and each is a way to lose money
+silently:
+
+1. **An SPL transfer never lands at the address the customer is shown.** It
+   lands in the Associated Token Account derived from
+   `(owner, tokenProgram, mint)`. The owner is NOT in the account list of a plain
+   transfer, so `getSignaturesForAddress(owner)` returns nothing forever while
+   the money sits one derivation away. The client derives and watches the ATA and
+   reports the OWNER back, so the watcher matches the address it minted and never
+   learns an ATA exists. The derivation is `find_program_address` — a real
+   off-curve bump search, verified live at bumps 255/254/253.
+   ⚠ `tokenProgram` is a SEED: a Token-2022 mint derives elsewhere, so the mint's
+   owning program is read before anything is derived.
+2. **Finality is a commitment level, not a block depth.** Every read is at
+   `finalized` — the point past which reverting means breaking the protocol's
+   safety assumption, versus `confirmed`, which is one vote round short and can
+   still be dropped. So a transaction the client can SEE is already final, and
+   the 32-slot confirmation rule the watcher applies on top is pure margin inside
+   already-final territory. That keeps ONE confirmation policy for every chain
+   instead of a Solana-shaped exception, and makes "credited then reorged away"
+   unreachable rather than unlikely. (Slots also skip, so slot depth ≥ block
+   depth — conservative in the safe direction.)
+3. **Amounts come from the transaction's own token BALANCE records**
+   (`post − pre`), not from decoding a transfer instruction. The delta is what
+   actually arrived: it survives two transfers into one account in one
+   transaction, a transfer in and out again, and a Token-2022 transfer fee that
+   makes the amount received smaller than the amount sent. An account absent from
+   `preTokenBalances` started at ZERO — the normal shape of a FIRST deposit,
+   where the sender creates the ATA in the same transaction.
+
+Three cross-checks guard every account before it is credited: the balance record
+must name our mint, be owned by the watched address, and report the same decimals
+as the mint account. An `accountIndex` past the end of the account list is an
+ERROR, never a skip — guessing there is how a deposit becomes invisible.
+
+⚠ **`isOnCurve` does NOT reduce y before decoding, and that is a CHECKED
+assumption.** Solana's own check goes through curve25519-dalek, which reduces;
+`edwards25519` happens to accept the same non-canonical encodings, so the two
+agree. `TestIsOnCurveAcceptsNonCanonicalYAsSolanaDoes` pins it (12 of the 19
+`y ≥ p` encodings decode). If that ever changes, the bump search diverges from
+Solana's for ~1 candidate in 2^250 and derives an address no deposit can reach.
+Defensive reduction code was written first and then DELETED: no test could
+distinguish it from its absence, which is exactly what a surviving mutant means.
+
+Known limitation: only the CANONICAL ATA is watched. Funds sent to a
+non-canonical token account owned by the deposit address are not credited (they
+are still recoverable — the MPC key owns them). No wallet does this.
 
 ### It is SCHEDULED, in process
 
@@ -1117,10 +1246,25 @@ because a pass is idempotent (above).
 
 `Watched()` returns every minted address, in every org, with NO status filter —
 money sent to an expired or already-settled intent is still the customer's money.
-Address count therefore grows with total deposits ever taken; `eth_getLogs` calls
-are chunked at 100 addresses / 2000 blocks. If an expiry sweeper is ever added,
-"stop handing the address out" and "stop watching it" are separate decisions and
-only the first is safe.
+Address count therefore grows with total deposits ever taken. If an expiry
+sweeper is ever added, "stop handing the address out" and "stop watching it" are
+separate decisions and only the first is safe.
+
+Cost per pass is NOT the same shape on both chains, and this is a real
+operational difference:
+
+- **EVM** — `eth_getLogs` filters server-side over an address SET, chunked at
+  100 addresses / 2000 blocks. Cost is O(addresses / 100).
+- **Solana** — there is no `eth_getLogs`. Deposits are found with
+  `getSignaturesForAddress`, which takes ONE address, so cost is O(addresses)
+  plus one `getTransaction` per transaction found. Deposit addresses see a
+  handful of transactions in their lifetime so this is affordable, but it needs a
+  DEDICATED endpoint: the live probe hit HTTP 429 on
+  `api.mainnet-beta.solana.com` merely by scanning a busy wallet over 300 slots.
+
+A history longer than 25 pages × 1000 signatures for ONE address is an ERROR,
+not a truncation: truncating drops the oldest signatures in the window and the
+cursor then advances past them, losing a deposit permanently and silently.
 
 ### Before flipping `cryptoDepositsCanBeCredited`
 
@@ -1149,19 +1293,35 @@ only the first is safe.
    signer offers it. The existing method was WIDENED rather than joined by a
    second one: two ways to mint an address is how the halves drift apart again.
 
-4. **Still open — the creditable set is dollar-pegged ERC-20s only.** Native
-   coins (ETH/LUX/ZOO/MATIC…) emit NO log on a bare transfer, so `eth_getLogs`
-   cannot see them, and commerce has no oracle to value one. Same two blockers
-   for XRP, and additionally XRPL's 10 XRP base reserve is non-refundable, so it
-   wants ONE pooled r-address with per-intent destination tags rather than an
-   address per payer. ⚠ "needs no new cryptography" describes address derivation
-   and says nothing about whether a deposit can be credited.
+4. **Still open — the creditable set is dollar-pegged tokens only.** Native coins
+   (ETH/LUX/ZOO/MATIC/SOL…) cannot be priced without an oracle, and on the EVM
+   they emit NO log on a bare transfer so `eth_getLogs` cannot see them either.
+   Same for XRP, and additionally XRPL's 10 XRP base reserve is non-refundable,
+   so it wants ONE pooled r-address with per-intent destination tags rather than
+   an address per payer. ⚠ "needs no new cryptography" describes address
+   derivation and says nothing about whether a deposit can be credited.
 
-5. **Still open — SOL and TON have no signable key.** `frost.KeygenTaproot` is
-   BIP-340 **secp256k1**; its 32-byte output passes mpcd's `len(EDDSAPubKey)==32`
-   gate and base58-encodes into a real-looking Solana address the ring can never
-   sign for. The empty `eddsa_pub_key` is the system failing closed — leave it
-   until a genuine RFC 8032 ciphersuite exists in `luxfi/threshold`.
+5. **Still open — SOL/SPL and TON have no signable key. THIS is what blocks
+   Solana, not the watcher.** As of 2026-08 the watcher CAN credit SPL USDC:
+   `billing/solanarpc` reads it, and the read path is proven against mainnet. The
+   minting half is not there. `frost.KeygenTaproot` is BIP-340 **secp256k1**; its
+   32-byte output passes mpcd's `len(EDDSAPubKey)==32` gate and base58-encodes
+   into a real-looking Solana address the ring can never sign for. The empty
+   `eddsa_pub_key` is the system failing closed — leave it until a genuine RFC
+   8032 ciphersuite exists in `luxfi/threshold`.
+
+   The two halves are gated INDEPENDENTLY and both must be satisfied:
+   `thirdparty/mpc.SupportedChains()` omits `solana` (so `CreateCryptoDeposit`
+   400s), and `depositwatch.chainFamily` now includes it (so the watcher can
+   credit one). Configuring `CRYPTO_DEPOSIT_TOKEN_SOLANA_USDC` today is inert and
+   safe: nothing can mint a Solana address to send to.
+
+   ⚠ That independence created a NEW way to build a dead end, closed in the same
+   change: `GetCryptoOptions` derived its menu from the WATCHER alone, so
+   configuring Solana would have put a Solana button in front of a buyer that
+   400s after they chose an amount — the endpoint's original defect wearing the
+   opposite mask. `offeredFrom(assets, mintable)` now intersects both, so an
+   asset is offered only when it can be RECEIVED and CREDITED.
 
 ## zip / ZAP native — what is real, and why billing is NOT typed yet
 

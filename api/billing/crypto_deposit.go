@@ -92,7 +92,8 @@ func cryptoProcessor(ctx context.Context) (processor.CryptoProcessor, error) {
 func GetCryptoOptions(c *zip.Ctx) error {
 	// The custody signer must still be reachable — an asset nobody can mint an
 	// address for is no more useful than one nobody can credit.
-	if _, err := cryptoProcessor(c.Context()); err != nil {
+	cp, err := cryptoProcessor(c.Context())
+	if err != nil {
 		return jsonhttp.Fail(c, 503, "Crypto deposits not configured", err)
 	}
 
@@ -100,24 +101,46 @@ func GetCryptoOptions(c *zip.Ctx) error {
 	if w := depositledger.Default(); w.Enabled() {
 		watched = w.Assets()
 	}
-	chains, tokens := offeredFrom(watched)
+	chains, tokens := offeredFrom(watched, cp.SupportedChains())
 	return c.JSON(200, map[string]any{"chains": chains, "tokens": tokens})
 }
 
-// offeredFrom projects the watched assets onto the two lists the picker renders.
+// offeredFrom projects the watched assets onto the two lists the picker renders,
+// keeping only the chains an address can actually be MINTED on.
 //
-// It is a pure function of the assets and not a method on the watcher because
-// that is what makes the rule testable: NO assets must yield NO offer, and the
-// only way to be sure of that is to be able to ask it directly. Reading the
-// process-wide watcher inside the handler would leave the question answerable
-// only by whatever the environment happened to configure.
+// Both halves are required, and each one alone has already shipped a dead end.
+// This endpoint originally answered from the custody signer — "can I derive an
+// address here?" — and so offered nine chains the watcher credited none of.
+// Answering from the watcher alone inverts the same defect: Solana is creditable
+// the moment it is configured, but the custody fleet derives no Ed25519 key and
+// `CreateCryptoDeposit` refuses the chain, so the picker would walk a buyer to a
+// 400 after they had chosen an amount. An asset is offered when it can be
+// received AND credited, which is the only combination that ends with a
+// customer's balance going up.
+//
+// It is a pure function of its two inputs and not a method on the watcher
+// because that is what makes the rule testable: NO assets must yield NO offer,
+// and the only way to be sure of that is to be able to ask it directly. Reading
+// the process-wide watcher inside the handler would leave the question
+// answerable only by whatever the environment happened to configure.
 //
 // Both lists are deduplicated and sorted, so the picker's order is a property of
-// the assets rather than of map iteration.
-func offeredFrom(assets []depositwatch.Asset) (chains, tokens []string) {
+// the inputs rather than of map iteration.
+func offeredFrom(assets []depositwatch.Asset, mintable []string) (chains, tokens []string) {
+	canMint := make(map[string]bool, len(mintable))
+	for _, ch := range mintable {
+		canMint[strings.ToLower(strings.TrimSpace(ch))] = true
+	}
 	cset, tset := map[string]bool{}, map[string]bool{}
 	for _, a := range assets {
-		cset[strings.ToLower(a.Chain)] = true
+		chain := strings.ToLower(a.Chain)
+		if !canMint[chain] {
+			continue
+		}
+		cset[chain] = true
+		// A token is named only because some OFFERED chain carries it. Listing
+		// it from an unofferable chain would put it in the picker with nowhere
+		// to send it.
 		tset[strings.ToLower(a.Token)] = true
 	}
 	return sortedKeys(cset), sortedKeys(tset)

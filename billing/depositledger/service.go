@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/hanzoai/commerce/billing/depositwatch"
-	"github.com/hanzoai/commerce/billing/husdindex"
 	"github.com/hanzoai/commerce/log"
 )
 
@@ -43,7 +42,7 @@ type Option func(*builder)
 type builder struct {
 	store    depositwatch.Store
 	cursor   depositwatch.Cursor
-	reader   func(depositwatch.Asset) depositwatch.Reader
+	reader   func(depositwatch.Asset) (depositwatch.Reader, error)
 	interval time.Duration
 }
 
@@ -55,7 +54,7 @@ func WithCursor(c depositwatch.Cursor) Option { return func(b *builder) { b.curs
 
 // WithReader overrides how an asset's chain reader is built (tests inject a fake
 // chain so the schedule is proven without an RPC endpoint).
-func WithReader(fn func(depositwatch.Asset) depositwatch.Reader) Option {
+func WithReader(fn func(depositwatch.Asset) (depositwatch.Reader, error)) Option {
 	return func(b *builder) { b.reader = fn }
 }
 
@@ -74,12 +73,7 @@ func New(environ []string, opts ...Option) (*Service, error) {
 		store:    intentStore{},
 		cursor:   cursorStore{},
 		interval: defaultInterval,
-		reader: func(a depositwatch.Asset) depositwatch.Reader {
-			// husdindex.Client is this repo's one ERC-20 JSON-RPC read client; it
-			// is parameterized by (rpcURL, tokenAddr) and is named for its first
-			// caller, not for a restriction.
-			return husdindex.NewClient(a.RPCURL, a.Contract)
-		},
+		reader:   newReader,
 	}
 	for _, o := range opts {
 		o(b)
@@ -95,7 +89,11 @@ func New(environ []string, opts ...Option) (*Service, error) {
 	}
 	bound := make([]depositwatch.Bound, 0, len(assets))
 	for _, a := range assets {
-		bound = append(bound, depositwatch.Bound{Asset: a, Reader: b.reader(a)})
+		r, err := b.reader(a)
+		if err != nil {
+			return nil, err
+		}
+		bound = append(bound, depositwatch.Bound{Asset: a, Reader: r})
 	}
 	s.watcher = depositwatch.New(bound, b.store, b.cursor)
 	return s, nil
