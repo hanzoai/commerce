@@ -251,9 +251,9 @@ func (p *Provider) ValidateWebhook(ctx context.Context, payload []byte, signatur
 // ---------------------------------------------------------------------------
 
 // GenerateAddress creates a new deposit address on a specified chain.
-func (p *Provider) GenerateAddress(ctx context.Context, customerID string, chain string) (string, error) {
+func (p *Provider) GenerateAddress(ctx context.Context, customerID string, chain string) (processor.Wallet, error) {
 	if !isSupportedChain(chain) {
-		return "", processor.NewPaymentError(processor.Circle, "UNSUPPORTED_CHAIN", fmt.Sprintf("chain %s not supported", chain), nil)
+		return processor.Wallet{}, processor.NewPaymentError(processor.Circle, "UNSUPPORTED_CHAIN", fmt.Sprintf("chain %s not supported", chain), nil)
 	}
 
 	idempotencyKey := uuid.New().String()
@@ -268,10 +268,12 @@ func (p *Provider) GenerateAddress(ctx context.Context, customerID string, chain
 	// a wallet per customer.
 	var resp circleAddress
 	if err := p.post(ctx, "/wallets/1/addresses", body, &resp); err != nil {
-		return "", err
+		return processor.Wallet{}, err
 	}
 
-	return resp.Address, nil
+	// The wallet is the master wallet named in the path above, so the id is
+	// known statically rather than returned per address.
+	return processor.Wallet{Address: resp.Address, ID: "1"}, nil
 }
 
 // GetBalance retrieves the balance for a Circle wallet.

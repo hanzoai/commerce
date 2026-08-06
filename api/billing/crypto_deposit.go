@@ -229,7 +229,7 @@ func CreateCryptoDeposit(c *zip.Ctx) error {
 		return c.JSON(200, toCryptoDepositResponse(existing))
 	}
 
-	address, err := cp.GenerateAddress(c.Context(), payer, chain)
+	wallet, err := cp.GenerateAddress(c.Context(), payer, chain)
 	if err != nil {
 		log.Error("crypto deposit address generation failed for %q on %s: %v", payer, chain, err, c)
 		// 503, NOT 502 — and the difference is what the customer reads.
@@ -248,7 +248,10 @@ func CreateCryptoDeposit(c *zip.Ctx) error {
 	intent.Currency = "usd"
 	intent.Chain = cryptopaymentintent.Chain(chain)
 	intent.Token = token
-	intent.DepositAddress = address
+	intent.DepositAddress = wallet.Address
+	// Recorded at mint time because this is the only moment the signer offers
+	// it. Without it a deposit can be credited and never swept.
+	intent.WalletID = wallet.ID
 	intent.CustomerRef = payer
 	intent.Status = cryptopaymentintent.Pending
 	// A top-up address is a standing destination, not a checkout hold — give it

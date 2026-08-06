@@ -125,6 +125,23 @@ type Transaction struct {
 	UpdatedAt    int64                  `json:"updatedAt"`
 }
 
+// Wallet is a custody destination: where funds land, and the handle the signer
+// knows that destination by.
+//
+// The two travel together because they are only useful together. An address
+// with no handle can RECEIVE money the signer cannot later be asked to spend —
+// recoverable only by reconciling against the custody node's own records — and
+// a handle with no address has nowhere to send anything.
+type Wallet struct {
+	// Address is the on-chain destination shown to the payer.
+	Address string `json:"address"`
+
+	// ID is the custody service's own identifier for the wallet behind Address.
+	// Empty where a provider has no such concept and addresses wallets by their
+	// address; that is a real answer, not a missing one.
+	ID string `json:"id,omitempty"`
+}
+
 // Balance represents a wallet balance
 type Balance struct {
 	Available currency.Cents `json:"available"`
