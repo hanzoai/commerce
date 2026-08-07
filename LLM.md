@@ -1061,11 +1061,18 @@ Chain reads come from ONE read client per chain family, both satisfying
   ERC-20 *log* and predates this rail.
 - **Solana** — `billing/solanarpc.Client` (2026-08), which implements `Reader`
   directly. See "Solana" below.
+- **TON** — `billing/tonrpc.Client` (2026-08), over the TON Index (toncenter v3)
+  HTTP API rather than a node: TON's node RPC has no per-account transaction
+  index. See "TON" below.
+- **XRPL** — `billing/xrplrpc.Client` (2026-08), over XRPL JSON-RPC. See "XRPL"
+  below.
 
 `depositledger.newReader` is the ONE place a chain becomes a client, dispatched
-on `Asset.IsSolana()`. It is exhaustive, not defaulted: `AssetsFromEnv` refuses
-any chain absent from `depositwatch.chainFamily`, so an unknown chain can never
-be silently handed the EVM client.
+on `Asset.Family()` (`FamilyEVM|FamilySolana|FamilyTON|FamilyXRPL`). It is
+exhaustive, not defaulted: `AssetsFromEnv` refuses any chain absent from
+`depositwatch.chainFamily`, so an unknown chain can never be silently handed the
+EVM client. `Family()` replaced `IsSolana()` in 2026-08 — one enum beats N
+`IsX()` predicates, and it keeps the chain→family table the single source.
 
 ### Exactly-once = a KEY, not coordination
 
@@ -1086,10 +1093,20 @@ All three parts of the key are load-bearing:
   `logIndex` until 2026-08 and is now a per-chain concept
   (`depositwatch.Transfer.EventIndex`): an ERC-20 log index on the EVM, the
   index of the token-BALANCE record on Solana, and it would be the vout on
-  Bitcoin. One transaction can credit the same address twice or two watched
-  addresses at once; collapsing them swallows the second as a duplicate. The
-  ledger metadata key is `eventIndex`, not `logIndex` — a Solana account index
-  stored under a field named `logIndex` is a lie a later reader cannot detect.
+  Bitcoin. It is **0 on TON and XRPL**, and there it is a FACT rather than a
+  placeholder — a TON transaction has at most one inbound message (`in_msg` is
+  singular), and an XRPL `Payment` delivers to exactly one destination, so the
+  transaction id names the event by itself. Admitting a second kind of value
+  delivery on either (XRPL `CheckCash`, `EscrowFinish`) would require a real
+  index. One transaction can otherwise credit the same address twice or two
+  watched addresses at once; collapsing them swallows the second as a duplicate.
+  The ledger metadata key is `eventIndex`, not `logIndex` — a Solana account
+  index stored under a field named `logIndex` is a lie a later reader cannot
+  detect.
+
+The routing TAG is deliberately NOT in the key: the key names the on-chain
+event, and which intent it was routed to is a separate question answered by
+`Asset.Identity`.
 
 ⚠ It must be a function of the EVENT and of nothing else — never a counter over
 the scan's results. A key that renumbers when the window moves is a double
@@ -1153,7 +1170,8 @@ token, unreadable chain, address written for the wrong chain) ⇒ **Bootstrap
 refuses to start**: an operator who configured a deposit rail must not get a
 process watching less than they asked for.
 
-`depositwatch.pegCents` IS the creditable set (`usdc`, `usdt` @ 100c). There is
+`depositwatch.pegCents` IS the creditable set (`usdc`, `usdt`, `rlusd` @ 100c;
+`rlusd` added 2026-08 with XRPL). There is
 no price oracle in commerce and inventing one to value a customer's money would
 be guessing, so **only dollar-pegged tokens are creditable** — which is also why
 Solana was the right chain to extend to first: SPL USDC needs no oracle, exactly
@@ -1166,22 +1184,34 @@ risk: a depegged stablecoin is credited above market.
 ### Per-chain facts live in exactly one place each
 
 Adding a chain must not scatter `if chain == …` through the policy. There are
-exactly four per-chain facts, each with one home:
+exactly five per-chain facts, each with one home:
 
 | fact | home |
 |---|---|
 | how it is READ | `depositledger.newReader` → a `Reader` implementation |
 | how deep is deep enough | `cryptopaymentintent.RequiredConfirmationsForChain` |
-| how an address is WRITTEN (hex vs base58) | `depositwatch.chainFamily` + `Asset.validateContract` |
+| how an address is WRITTEN (hex vs base58 vs base64url vs `<CUR>.<ISSUER>`) | `depositwatch.chainFamily` + `Asset.validateContract` |
 | whether its identifiers are case-significant | `depositwatch.Asset.Fold` |
+| **what IDENTIFIES the intent** (address, or address + tag) | `depositwatch.Asset.Identity` + `Asset.Pooled` |
 
 `Fold` is ONE function for addresses and transaction ids alike, because it
 encodes one fact. EVM hex folds to lowercase (custody returns EIP-55, logs are
-lowercase — comparing literally misses every deposit). **base58 does NOT fold**:
-`aB…` and `Ab…` are different Solana accounts and different signatures. An
-unclassified chain gets the EVM fold, which is the safe default direction —
-folding too much makes two addresses ambiguous and fails the pass CLOSED, while
-folding too little makes a real deposit invisible.
+lowercase — comparing literally misses every deposit). **base58/base64url do NOT
+fold**: `aB…` and `Ab…` are different Solana accounts and different signatures,
+and the same holds for TON and XRPL. That is only safe because those READERS
+canonicalise before returning — `tonrpc` and `xrplrpc` both render a transaction
+id as lowercase hex whatever the endpoint answered, and both echo back the
+CALLER's spelling of a watched address rather than the node's, so the dedup key
+never depends on an endpoint's rendering. An unclassified chain gets the EVM
+fold, which is the safe default direction — folding too much makes two addresses
+ambiguous and fails the pass CLOSED, while folding too little makes a real
+deposit invisible.
+
+The fifth fact was added in 2026-08 for XRPL and is the only one that changed
+the policy half's SHAPE. `indexByAddress` became `indexWatched`, which returns
+two different sets — identity→intent for matching, and the distinct ADDRESSES to
+ask the chain about. On every per-payer chain those sets coincide; on XRPL ten
+thousand identities share one address.
 
 ### Solana (`billing/solanarpc`, 2026-08)
 
@@ -1232,6 +1262,105 @@ distinguish it from its absence, which is exactly what a surviving mutant means.
 Known limitation: only the CANONICAL ATA is watched. Funds sent to a
 non-canonical token account owned by the deposit address are not credited (they
 are still recoverable — the MPC key owns them). No wallet does this.
+
+### TON (`billing/tonrpc`, 2026-08)
+
+1. **There is no global block height.** The basechain is SHARDED and splits and
+   merges under load, so a shard seqno is neither global nor comparable across
+   shards; logical time (`lt`) is a Lamport clock whose differences measure
+   causality, not age, so `head − lt` is not a depth. The scan window is the
+   **masterchain seqno**: a single global sequence that every transaction enters
+   exactly once and never leaves (TON finalises a shard block by REFERENCING it
+   from a masterchain block), which is exactly the property `Reader` documents.
+   `mc_block_seqno` is per-transaction on `/api/v3/transactions`. Masterchain
+   blocks are FAST — measured at **0.39 s** — hence 80 confirmations ≈ 30 s.
+2. **The index's jetton-transfer view is the SENDER's side.** A
+   `/api/v3/jetton/transfers` record's `transaction_hash` is a transaction on the
+   *source* wallet (opcode `0x0f8a7ea5`, `transfer`) — verified by resolving one
+   and finding `account == source_wallet`. It means tokens were SENT, not that
+   they arrived; a jetton transfer can still fail at the destination and bounce.
+   This client credits the RECEIVING side only: a transaction on OUR jetton
+   wallet whose `in_msg.opcode` is `0x178d4519` (`internal_transfer`) and whose
+   compute+action phases succeeded. The jetton wallet contract validates its
+   sender before crediting, so a forged credit FAILS on chain — the success check
+   is what carries that consensus-enforced validation into this process.
+3. **Several query parameters are SILENTLY IGNORED, not rejected.** Measured:
+   `mc_seqno` on `/jetton/transfers` (an ancient seqno returns live rows) and
+   `jetton_master` on `/jetton/wallets` (spelled `jetton_address` there). They
+   return HTTP 200 with UNFILTERED data, which reads as success. So this client
+   **verifies every response against what it asked for** — account, owner, jetton
+   — rather than trusting any filter. Never adopt a new parameter here without a
+   bogus-value test first.
+4. **Decimals are read from the master's ON-CHAIN TEP-64 content dict** (USDT: 6).
+   A jetton publishing decimals only in the off-chain JSON its `uri` points at is
+   REFUSED: the scale of a credit must not come from a web server the issuer
+   controls.
+5. 🔴 **USDT on TON cannot currently be armed, deliberately.** Its on-chain
+   content carries only `decimals` and `uri` — no symbol — and the off-chain
+   document calls it `USD₮` (U+20AE), which is not `usdt` under any honest
+   comparison. Fetching the URI would make token identity an assertion of the
+   issuer's web server; a homoglyph table would be a rule with no principle.
+   `Symbol()` therefore refuses, and the whole watcher refuses with it. Arming
+   TON needs either a jetton that states its symbol on chain, or a second
+   deliberately-pinned on-chain fact — not a weakening of the identity check.
+
+Addresses: one TON account has SEVERAL correct spellings (EQ…/UQ…/raw), so
+`ParseAddress` decodes all of them to `(workchain, hash)` and verifies the
+user-friendly form's CRC-16 (a typo fails at boot, not at the first deposit).
+The workchain byte is SIGNED — read unsigned, masterchain (−1) becomes 255.
+Testnet-flagged addresses are refused. Two watched addresses that decode to one
+account are refused as ambiguous.
+
+### XRPL (`billing/xrplrpc`, 2026-08)
+
+1. 🔴 **The deposit model is POOLED, and it inverts address→payer matching.**
+   XRPL charges a NON-REFUNDABLE base reserve per funded account, so a fresh
+   address per payer strands that reserve on every deposit forever. The
+   production model — every exchange's — is ONE custody account plus a per-deposit
+   **destination tag**. Hence `Asset.Pooled`/`Asset.Identity`,
+   `Watched.Tag`/`Transfer.Tag`, and `CryptoPaymentIntent.AddressTag`. An empty
+   tag means the payment carried NONE and is NOT the tag `"0"` — 0 is a legal tag
+   somebody may hold, and collapsing the two credits a stranger's payment to its
+   holder.
+2. **An untagged or unknown-tagged payment is RECORDED, not credited and not
+   dropped.** `Store.RecordUnattributed` →
+   `models/unattributeddeposit` (system namespace, id
+   `unattributed:<chain>:<txHash>:<eventIndex>`, idempotent). Crediting it means
+   guessing with someone's money; dropping it loses a real deposit the moment the
+   window moves. It is deliberately NOT fatal to the pass — the pooled address is
+   published, so anyone can send one drop with no tag, and wedging on that would
+   be a denial of service against every other customer. A failed *record* IS
+   fatal, because advancing past it destroys the only evidence.
+3. **Ledgers are FINAL on validation**, not buried under N ledgers — closer to
+   Solana's `finalized` than to EVM depth. This client reads only
+   `ledger_index: "validated"` and asserts `validated: true` per entry, so what it
+   can SEE is already final; the 8-confirmation depth (~30 s at a measured
+   **3.81 s/ledger**) is pure margin kept so there is one confirmation policy
+   across chains.
+4. 🔴 **Amounts are DECIMAL STRINGS, not integer base units** — an issued
+   currency has no base unit, so there is NO decimals to read. The scale is fixed
+   at `xrplrpc.Scale = 15` (XRPL's own significant-digit limit) and the safety
+   property is different in kind but not weaker: **the same function that parses
+   the ledger's number reports the scale it parsed at**, so no second source can
+   drift from the parse. `TestParseValue_RoundTripsAtDecimals` pins
+   `units / 10^Scale == the stated value` using `big.Rat` (a `big.Float`
+   comparison fails on a correct parser and can pass on a wrong one). Truncation
+   is toward zero always.
+5. 🔴 **`meta.delivered_amount`, NEVER `tx.Amount`.** With `tfPartialPayment`,
+   `Amount` is the maximum the sender offered and the ledger may deliver an
+   arbitrarily smaller fraction — the classic exploit that has drained exchanges.
+   `"unavailable"` is refused, not treated as zero.
+6. **The token is the PAIR (currency, issuer).** A currency code is a name
+   anybody may issue, so both halves are compared on every delivery. Identity
+   comes from `gateway_balances` on the issuer — a pair the issuer does not
+   actually issue is refused. Only `Payment` is ever a deposit (it is what
+   carries a tag and delivers to exactly one destination); XRP is skipped as
+   unpriceable.
+7. **Errors ride INSIDE `result`** (`{"result":{"status":"error", …}}`) with HTTP
+   200 and no top-level error member. A client checking only HTTP status reads a
+   failed `account_tx` as an empty one — "nothing arrived" when the truth is "we
+   could not look". `api_version: 1` is pinned so the response shape cannot
+   silently become v2's `tx_json`.
 
 ### It is SCHEDULED, in process
 

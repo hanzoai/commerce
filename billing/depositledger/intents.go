@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hanzoai/commerce/billing/depositwatch"
 	"github.com/hanzoai/commerce/datastore"
@@ -16,6 +17,7 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/unattributeddeposit"
 	"github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/util/nscontext"
 )
@@ -88,9 +90,13 @@ func (intentStore) Watched(_ context.Context, chain, token string) ([]depositwat
 				IntentID: db.EncodeKey(keys[i]),
 				Subject:  in.CustomerRef,
 				Address:  in.DepositAddress,
-				Status:   in.Status,
-				TxHash:   in.TxHash,
-				Block:    uint64(in.BlockNumber),
+				// Empty on every chain that mints one address per payer; the
+				// destination tag on XRPL, where the address is shared and this
+				// is the only thing that says whose deposit it is.
+				Tag:    in.AddressTag,
+				Status: in.Status,
+				TxHash: in.TxHash,
+				Block:  uint64(in.BlockNumber),
 			})
 		}
 	}
@@ -175,6 +181,15 @@ func creditKey(db *datastore.Datastore, dedup string) datastore.Key {
 	return db.NewKey("transaction", "cdep_"+hex.EncodeToString(sum[:16]), 0, root)
 }
 
+// unattributedID is the DETERMINISTIC storage id of an unattributed deposit: a
+// pure function of the same on-chain event a credit would have keyed on.
+//
+// It is left READABLE rather than hashed, unlike creditKey above, because the
+// two records are read by different readers. A ledger row is summed by code; an
+// unattributed deposit is read by a human deciding whether to refund it, and
+// "unattributed:xrpl:<hash>:0" tells them which payment it is without a lookup.
+func unattributedID(dedup string) string { return "unattributed:" + dedup }
+
 // Credit writes the idempotent ledger row and THEN advances the intent.
 //
 // The order is load-bearing. If the intent advanced first and the ledger write
@@ -252,6 +267,48 @@ func (intentStore) Credit(_ context.Context, c depositwatch.Credit) (bool, error
 		log.Warn("depositledger: credit %s written, intent %s not advanced: %v", c.DedupKey, c.IntentID, err)
 	}
 	return written, nil
+}
+
+// RecordUnattributed durably records a deposit that named nobody, so it cannot
+// be silently lost when the scan window moves past it.
+//
+// The record is keyed by the SAME deterministic function a credit uses, so the
+// twentieth pass over the same reorg window rewrites one row rather than
+// appending twenty, and two replicas racing write the same row. It writes no
+// money and touches no balance: this is a note that says "this arrived and we
+// do not know whose it is", nothing more.
+//
+// Unlike Sight, an error here IS returned. A failed sighting costs a display
+// update the next pass redoes; a failed record here would let the cursor advance
+// past the only evidence a customer's money exists.
+func (intentStore) RecordUnattributed(_ context.Context, u depositwatch.Unattributed) error {
+	db := systemDB()
+	rec := unattributeddeposit.New(db)
+	id := unattributedID(u.DedupKey)
+
+	switch err := rec.Get(db.NewKey(rec.Kind(), id, 0, nil)); {
+	case err == nil:
+		return nil // already recorded; FirstSeenAt stays the FIRST sighting
+	case errors.Is(err, datastore.ErrNoSuchEntity):
+	default:
+		// Cannot tell a first sighting from a repeat: refuse rather than risk
+		// overwriting the record's own history or losing the deposit.
+		return fmt.Errorf("depositledger: check unattributed deposit %s: %w", u.DedupKey, err)
+	}
+
+	rec = unattributeddeposit.New(db)
+	rec.SetId(id)
+	rec.Chain, rec.Token = u.Chain, u.Token
+	rec.Address, rec.Tag = u.Address, u.Tag
+	rec.Units, rec.TxHash = u.Units, u.TxHash
+	rec.EventIndex, rec.BlockNumber = u.EventIndex, u.Block
+	rec.FirstSeenAt = time.Now().UTC()
+	if err := rec.Put(); err != nil {
+		return fmt.Errorf("depositledger: record unattributed deposit %s: %w", u.DedupKey, err)
+	}
+	log.Warn("depositledger: UNATTRIBUTED deposit %s — %s %s units arrived at %s with tag %q, which names no intent; credited to nobody",
+		u.DedupKey, u.Units, strings.ToUpper(u.Token), u.Address, u.Tag)
+	return nil
 }
 
 // advanceIntent moves the intent to succeeded now that its deposit is credited.

@@ -18,8 +18,9 @@ import (
 // fake so every crediting decision below is proven without a chain.
 //
 // Nothing in it is EVM-shaped. "Block" is whatever position that chain counts
-// monotonically — a block on the EVM, a slot on Solana — and the only property
-// relied on is that it increases and that depth beneath the head means age.
+// monotonically — a block on the EVM, a slot on Solana, a masterchain seqno on
+// TON, a ledger index on XRPL — and the only property relied on is that it
+// increases and that depth beneath the head means age.
 type Reader interface {
 	BlockNumber(ctx context.Context) (uint64, error)
 	TransfersTo(ctx context.Context, addrs []string, fromBlock, toBlock uint64) ([]Transfer, error)
@@ -36,17 +37,34 @@ type Reader interface {
 // concepts are kept apart so the per-chain reading of each field can be stated
 // once, here, and never guessed at:
 //
-//	field       EVM                        Solana
-//	─────────── ────────────────────────── ─────────────────────────────────
-//	To          recipient address          the OWNER address we minted, not
-//	                                       the token account it landed in
-//	Units       raw ERC-20 amount          post − pre balance, base units
-//	TxHash      transaction hash           transaction signature
-//	EventIndex  log index                  index of the token-balance record
-//	Block       block number               slot
+//	field       EVM                    Solana                 TON                     XRPL
+//	─────────── ────────────────────── ────────────────────── ─────────────────────── ──────────────────────
+//	To          recipient address      the OWNER address we   the OWNER address we    the POOLED custody
+//	                                   minted, not the token  minted, not the jetton  account — shared by
+//	                                   account it landed in   wallet it landed in     every payer
+//	Tag         (none)                 (none)                 (none)                  destination tag
+//	Units       raw ERC-20 amount      post − pre balance     transferred amount,     delivered_amount,
+//	                                                          jetton base units       rendered at xrplrpc.Scale
+//	TxHash      transaction hash       transaction signature  the RECEIVING wallet's  transaction hash
+//	                                                          transaction hash
+//	EventIndex  log index              index of the token-    0 — a jetton wallet     0 — a Payment delivers
+//	                                   balance record         transaction receives    to exactly one tagged
+//	                                                          exactly one transfer    destination
+//	Block       block number           slot                   masterchain seqno       ledger index
 type Transfer struct {
-	To     string
-	Units  *big.Int
+	To    string
+	Units *big.Int
+
+	// Tag is the chain-native discriminator that, WITH To, says which intent
+	// this transfer belongs to. It is empty on every chain that mints one
+	// address per payer, and it is the destination tag on XRPL, where every
+	// payer shares one address and the tag is the only thing that says whose
+	// money arrived. See Asset.Identity and Asset.Pooled.
+	//
+	// An empty Tag on a pooled chain is NOT "tag zero" — it means the payment
+	// carried no tag at all, which names nobody. See Unattributed.
+	Tag string
+
 	TxHash string
 
 	// EventIndex is the position of this event WITHIN its transaction, under
@@ -78,9 +96,14 @@ type Watched struct {
 	IntentID string
 	Subject  string
 	Address  string // as minted; normalised for comparison by Asset.Fold
-	Status   cryptopaymentintent.Status
-	TxHash   string // the sighting currently recorded on the intent
-	Block    uint64
+	// Tag is the routing tag this intent was issued, on a chain where the
+	// address is shared. Empty everywhere else. Address and Tag are never
+	// compared separately — Asset.Identity combines them, once, for both the
+	// minted side and the observed side.
+	Tag    string
+	Status cryptopaymentintent.Status
+	TxHash string // the sighting currently recorded on the intent
+	Block  uint64
 }
 
 // Sighting is a deposit seen on chain but not yet deep enough to credit. It
@@ -117,6 +140,45 @@ type Credit struct {
 	DedupKey      string // chain:txHash:eventIndex
 }
 
+// Unattributed is money that arrived at a custody address we own and named
+// NOBODY.
+//
+// It exists only on a pooled chain (Asset.Pooled), because only there can a
+// payment reach a destination we control without saying whose it is: an XRPL
+// payment to the shared account with no destination tag, or with a tag matching
+// no intent we ever issued. On every other chain the address IS the answer, so
+// this is unreachable by construction.
+//
+// The two obvious things to do with it are both wrong:
+//
+//	credit it   to whom? Guessing is spending one customer's deposit on another
+//	            customer's balance.
+//	drop it     it is somebody's real money. Silently discarding it is the exact
+//	            class of failure this whole package exists to end, and it would
+//	            be INVISIBLE — the scan window moves on and the payment is never
+//	            looked at again.
+//
+// So it is neither. It is recorded, durably and idempotently on the same
+// DedupKey a credit would have used, and it credits nothing. That leaves a
+// permanent, reconcilable record an operator can refund from or attribute by
+// hand, and it deliberately does NOT stop the pass: a stranger can send one drop
+// to a published custody address, and a rail that wedged on that would be a
+// denial of service anyone could trigger against every other customer's
+// deposit.
+type Unattributed struct {
+	Chain   string
+	Token   string
+	Address string // the pooled custody address it landed in
+	Tag     string // the tag it carried; EMPTY means it carried none at all
+	Units   string // raw base units, decimal (audit trail)
+	TxHash  string
+	// EventIndex and Block are the same chain facts a Credit carries; see
+	// Transfer.
+	EventIndex uint64
+	Block      uint64
+	DedupKey   string // chain:txHash:eventIndex
+}
+
 // Store is the intent + ledger side of the world.
 //
 // Credit MUST be idempotent on Credit.DedupKey, and MUST write the ledger row
@@ -147,6 +209,15 @@ type Store interface {
 	// the re-scan window — is counted and logged as the no-op it is. A counter
 	// that ticked up each time would read exactly like a double-credit.
 	Credit(ctx context.Context, c Credit) (written bool, err error)
+	// RecordUnattributed durably records money that arrived and named nobody.
+	// Idempotent on Unattributed.DedupKey.
+	//
+	// Unlike Sight, a failure here IS fatal to the pass, and the asymmetry is
+	// the point: a failed sighting loses a display update that the next pass
+	// redoes, while a failed record here would let the cursor advance past the
+	// only evidence that a customer's money exists. Refusing parks the cursor
+	// and retries — the block is still inside the re-scan window.
+	RecordUnattributed(ctx context.Context, u Unattributed) error
 }
 
 // Cursor persists the last block fully committed per asset, so a restart
@@ -280,20 +351,24 @@ func (w *Watcher) syncAsset(ctx context.Context, a *asset) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	byAddr, ambiguous := indexByAddress(watched, a.Fold)
+	byID, addrs, ambiguous := indexWatched(watched, a)
 	if len(ambiguous) > 0 {
-		// Two intents claiming one address means we cannot say WHO a deposit
+		// Two intents claiming one identity means we cannot say WHO a deposit
 		// belongs to. Crediting either is a guess with someone's money, so the
 		// asset stops here — no scan, no cursor advance — and resumes the moment
-		// the collision is resolved. MPC mints a fresh wallet per keygen, so this
-		// is a fail-closed assertion, not an expected state.
-		return 0, fmt.Errorf("deposit address(es) claimed by more than one intent: %s", strings.Join(ambiguous, ", "))
+		// the collision is resolved. MPC mints a fresh wallet per keygen and a
+		// fresh tag per pooled intent, so this is a fail-closed assertion, not an
+		// expected state.
+		return 0, fmt.Errorf("deposit identit(ies) claimed by more than one intent: %s", strings.Join(ambiguous, ", "))
 	}
-	addrs := make([]string, 0, len(byAddr))
-	for addr := range byAddr {
-		addrs = append(addrs, addr)
+	// The set of addresses we OWN, which is not the set of identities: on a
+	// pooled chain thousands of identities share one address. Money landing at
+	// an owned address that names no identity is unattributed (below); money
+	// landing anywhere else is a reader that answered outside its filter.
+	owned := make(map[string]bool, len(addrs))
+	for _, addr := range addrs {
+		owned[addr] = true
 	}
-	sort.Strings(addrs) // deterministic chunking
 
 	if len(addrs) == 0 || from > head {
 		return 0, w.commit(ctx, a.Key(), head, required, last)
@@ -307,17 +382,40 @@ func (w *Watcher) syncAsset(ctx context.Context, a *asset) (int, error) {
 	credited := 0
 	observed := make(map[string]bool, len(transfers))
 	for _, t := range transfers {
-		wt, ok := byAddr[a.Fold(t.To)]
-		if !ok {
-			continue // not one of ours (the reader's filter should already prevent this)
-		}
 		if t.Block > head {
 			continue // a reader that answered outside the window it was asked for
+		}
+		depth := int(head - t.Block + 1)
+		wt, ok := byID[a.Identity(t.To, t.Tag)]
+		if !ok {
+			if !owned[a.Fold(t.To)] {
+				continue // not one of ours (the reader's filter should already prevent this)
+			}
+			// Money at an address we own that names NO intent: on a pooled chain,
+			// a payment with no routing tag or a tag we never issued. It cannot be
+			// credited — to whom? — and it must not vanish. Recorded, not credited,
+			// and not fatal. See Unattributed.
+			//
+			// Recorded only once it is as deep as a CREDIT would need to be, so
+			// the record describes the canonical chain and not a transaction that
+			// may still be reorganised out from under it.
+			if uint64(depth) < required {
+				continue
+			}
+			if err := w.store.RecordUnattributed(ctx, Unattributed{
+				Chain: a.Chain, Token: a.Token,
+				Address: a.Fold(t.To), Tag: strings.TrimSpace(t.Tag),
+				Units: t.Units.String(), TxHash: a.Fold(t.TxHash),
+				EventIndex: t.EventIndex, Block: t.Block,
+				DedupKey: a.dedupKey(t),
+			}); err != nil {
+				return credited, err
+			}
+			continue
 		}
 		txHash := a.Fold(t.TxHash)
 		observed[seenKey(wt.IntentID, a.Fold, txHash)] = true
 
-		depth := int(head - t.Block + 1)
 		if uint64(depth) < required {
 			if err := w.store.Sight(ctx, Sighting{
 				Org: wt.Org, IntentID: wt.IntentID,
@@ -440,10 +538,22 @@ func (w *Watcher) commit(ctx context.Context, key string, head, required, last u
 // Failure is not cached, so a transient RPC error retries on the next pass.
 //
 // Both reads are the CHAIN's answer, not ours, in whatever form that chain
-// offers it — an ERC-20 answers symbol() and decimals() itself, an SPL mint
-// carries its decimals and is named by a separate metadata account. What each
-// answer is worth is documented at the reader; what this function requires is
-// the same either way: identify the token, or credit nothing.
+// offers it:
+//
+//	EVM     the ERC-20 answers symbol() and decimals() itself.
+//	Solana  the SPL mint carries its decimals; the name lives in a separate
+//	        Metaplex account.
+//	TON     the jetton master's ON-CHAIN TEP-64 content dictionary carries the
+//	        decimals — and, for some jettons, nothing else. One that publishes no
+//	        on-chain symbol is refused here rather than identified from the
+//	        off-chain document its content points at.
+//	XRPL    an issued currency has no decimals to read AT ALL, because it has no
+//	        base unit: the ledger states a decimal number. The reader renders it
+//	        at a scale it reports itself, so the parse and the scale cannot
+//	        disagree; identity comes from asking the issuer what it issues.
+//
+// What each answer is worth is documented at the reader; what this function
+// requires is the same in every case: identify the token, or credit nothing.
 func (a *asset) verify(ctx context.Context) error {
 	if a.decimals != 0 {
 		return nil
@@ -467,34 +577,55 @@ func (a *asset) verify(ctx context.Context) error {
 	return nil
 }
 
-// indexByAddress maps folded address → the intent that owns it, and reports any
-// address claimed by more than one intent.
+// indexWatched maps deposit IDENTITY → the intent that owns it, lists the
+// distinct addresses to ask the chain about, and reports any identity claimed by
+// more than one intent.
 //
-// Both sides go through the SAME per-chain fold and are never compared raw. On
-// the EVM that is a case fold, because the custody service returns EIP-55
-// checksummed addresses while chain logs are lowercase hex and comparing them
-// literally would miss every deposit. On Solana it is not, because base58 is
-// case-sensitive and folding it would merge distinct accounts. See Asset.Fold.
-func indexByAddress(watched []Watched, fold func(string) string) (map[string]Watched, []string) {
-	byAddr := make(map[string]Watched, len(watched))
+// The identity and the address are separated on purpose, because on a pooled
+// chain they are not the same thing and conflating them is a mis-credit:
+//
+//	EVM / Solana / TON  one address per payer, so identity == address and the
+//	                    two outputs are the same set.
+//	XRPL                ten thousand identities over ONE address. The chain is
+//	                    asked about one address; the tag decides whose money it
+//	                    was.
+//
+// Both sides of every comparison go through the SAME per-chain functions and
+// are never compared raw. On the EVM that means a case fold, because the custody
+// service returns EIP-55 checksummed addresses while chain logs are lowercase
+// hex and comparing them literally would miss every deposit; on the non-EVM
+// chains it means leaving case alone, because their encodings are
+// case-significant. See Asset.Fold and Asset.Identity.
+func indexWatched(watched []Watched, a *asset) (byID map[string]Watched, addrs []string, ambiguous []string) {
+	byID = make(map[string]Watched, len(watched))
 	claims := make(map[string]int, len(watched))
+	addrSet := make(map[string]bool, len(watched))
 	for _, wt := range watched {
-		addr := fold(wt.Address)
+		addr := a.Fold(wt.Address)
 		if addr == "" {
 			continue
 		}
-		claims[addr]++
-		byAddr[addr] = wt
+		// The address is watched even if its identity turns out to be ambiguous:
+		// dropping it would stop the chain being asked about an address we own,
+		// which is how money arrives unseen. An ambiguous identity fails the pass
+		// below anyway.
+		addrSet[addr] = true
+		id := a.Identity(wt.Address, wt.Tag)
+		claims[id]++
+		byID[id] = wt
 	}
-	var ambiguous []string
-	for addr, n := range claims {
+	for id, n := range claims {
 		if n > 1 {
-			ambiguous = append(ambiguous, addr)
-			delete(byAddr, addr)
+			ambiguous = append(ambiguous, id)
+			delete(byID, id)
 		}
 	}
+	for addr := range addrSet {
+		addrs = append(addrs, addr)
+	}
+	sort.Strings(addrs) // deterministic chunking
 	sort.Strings(ambiguous)
-	return byAddr, ambiguous
+	return byID, addrs, ambiguous
 }
 
 // dedupKey names the on-chain event a credit came from: chain, transaction,
@@ -508,12 +639,22 @@ func indexByAddress(watched []Watched, fold func(string) string) (map[string]Wat
 //	            collapse into one credit — the customer pays twice and is
 //	            credited once.
 //	transaction the chain's own identifier for the transaction (a hash on the
-//	            EVM, a signature on Solana), folded the way that chain's
+//	            EVM, a signature on Solana, a hash rendered canonically as
+//	            lowercase hex on TON and XRPL), folded the way that chain's
 //	            identifiers compare.
 //	eventIndex  which value movement WITHIN that transaction, since one
 //	            transaction can credit the same address more than once and can
 //	            credit two different addresses. Without it, the second one is
-//	            silently swallowed as a duplicate of the first.
+//	            silently swallowed as a duplicate of the first. It is 0 on TON
+//	            and XRPL, where it is not a placeholder but a fact about the
+//	            chain: a TON transaction has at most one inbound message and an
+//	            XRPL Payment has exactly one destination, so the transaction
+//	            names the event by itself.
+//
+// The routing TAG is deliberately absent. The key names the on-chain event, and
+// which intent that event was routed to is a different question, answered by
+// Asset.Identity. Putting the tag in here would make one payment produce two
+// ledger rows if it were ever re-read against a corrected tag.
 //
 // It is a function of the EVENT and of nothing else — not of this pass, not of
 // the scan window, not of the reader — which is exactly why a re-scan, a crash

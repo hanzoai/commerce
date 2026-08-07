@@ -68,11 +68,13 @@ func (r *fakeReader) TransfersTo(_ context.Context, addrs []string, from, to uin
 // credit shows up as a second element, and the tests assert on the dedup KEYS —
 // the thing production actually dedupes on.
 type fakeStore struct {
-	watched   []Watched
-	credits   []Credit
-	sights    []Sighting
-	unsights  []Sighting
-	creditErr error
+	watched      []Watched
+	credits      []Credit
+	sights       []Sighting
+	unsights     []Sighting
+	unattributed []Unattributed
+	creditErr    error
+	unattribErr  error
 }
 
 func (s *fakeStore) Watched(context.Context, string, string) ([]Watched, error) {
@@ -96,6 +98,17 @@ func (s *fakeStore) Credit(_ context.Context, c Credit) (bool, error) {
 	_, seen := s.distinctCredits()[c.DedupKey]
 	s.credits = append(s.credits, c)
 	return !seen, nil
+}
+
+// RecordUnattributed APPENDS, without deduping, for the same reason Credit
+// does: production dedupes on the key, and a fake that collapsed duplicates
+// would hide a record written twice under two different keys.
+func (s *fakeStore) RecordUnattributed(_ context.Context, u Unattributed) error {
+	if s.unattribErr != nil {
+		return s.unattribErr
+	}
+	s.unattributed = append(s.unattributed, u)
+	return nil
 }
 
 // distinctCredits collapses the append-only credit log the way the production
