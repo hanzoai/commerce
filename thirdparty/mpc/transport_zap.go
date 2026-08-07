@@ -48,9 +48,21 @@ type zapKeygenReq struct {
 // The address is the whole configuration, and it also selects the medium:
 // luxfi/zap's Network() reads a filesystem path (or an "@" abstract name) as a
 // unix socket and anything else as host:port, and the dialler and the listener
-// share that one rule. "ZAP over TCP" and "ZAP over a unix socket" are
-// therefore not two modes here — they are one dialler and two values, and the
-// day mpcd serves a socket this transport reaches it with no code change.
+// share that one rule. "ZAP over TCP" and "ZAP over a unix socket" are therefore
+// not two modes here — they are one dialler and two values.
+//
+// ⚠ FOR THIS HOP THE VALUE IS ALWAYS host:port, and that is a security property
+// rather than a deployment accident. mpcd is a THRESHOLD ring: its whole worth
+// is that no single host compromise yields a spendable key, which requires the
+// nodes to sit on different machines — they do (mpc-node-0/1/2 are on three
+// separate workers). A unix socket is same-netns only, so it cannot reach a
+// fleet that is deliberately spread, and anything that COULD reach all three
+// over a socket would be a host holding the whole ring, which is the thing the
+// threshold scheme exists to prevent.
+//
+// So do not "fix" this to UDS later. The socket path is supported because the
+// dialler is one line either way, not because this caller will ever use it. A
+// co-resident socket is right for a sidecar; it is wrong for a quorum.
 type zapTransport struct {
 	addr   string
 	nodeID string
