@@ -60,6 +60,29 @@ type Asset struct {
 	// Normalising it any other way would break the comparison it exists for.
 	Contract string
 	RPCURL   string // JSON-RPC endpoint for Chain
+
+	// PooledAddress is the ONE custody account this chain's deposits all land
+	// in, for a chain where deposits are POOLED (see Pooled). Empty everywhere
+	// else, and it must stay empty there: on a per-payer chain the address is
+	// minted per deposit by the custody signer, and a configured one would hand
+	// every payer the same address.
+	//
+	// It is CONFIGURED (CRYPTO_DEPOSIT_ADDRESS_<CHAIN>) rather than minted, and
+	// that is the point rather than a shortcut. Asking the custody signer for an
+	// XRPL address per deposit is precisely the thing the pooled model exists to
+	// avoid — every one of those accounts would strand a non-refundable base
+	// reserve — and this repo's signer would not even answer the question: it
+	// derives no XRPL key and its GenerateAddress falls through to the EVM
+	// default, so a "minted" XRPL address would be an 0x string nobody can pay.
+	//
+	// It is per-CHAIN and not per-token, because the account is: one r-address
+	// holds every issued currency sent to it. Two assets on a pooled chain
+	// therefore carry the same string here, read from the same variable.
+	//
+	// AssetsFromEnv refuses a pooled chain that has no address, so an asset that
+	// EXISTS is an asset that can be paid to. That is what lets the mint path
+	// treat a missing address as impossible rather than as a case to handle.
+	PooledAddress string
 }
 
 // Key identifies an asset for cursors and maps.
@@ -124,7 +147,24 @@ func (a Asset) Family() Family { return chainFamily[cryptopaymentintent.Chain(a.
 // Everywhere else an address is per-payer and free to mint (an EVM address
 // costs nothing to derive, a Solana ATA is created by the first deposit itself,
 // a TON jetton wallet likewise), so there is nothing to pool and no tag.
-func (a Asset) Pooled() bool { return a.Family() == FamilyXRPL }
+func (a Asset) Pooled() bool { return Pooled(a.Chain) }
+
+// Pooled reports whether CHAIN shares one deposit address across payers.
+//
+// It takes a chain rather than an asset because the MINT side must ask before
+// it has one: the question "is this chain's address configured or minted?"
+// decides which door a deposit request goes through, and at that moment there
+// is a chain and a token and no Asset yet. The pooling fact is per-chain
+// anyway — the account is shared by every currency sent to it — so this is the
+// primitive and Asset.Pooled is the convenience.
+//
+// Keeping both on one line of one function is deliberate: the read side and the
+// write side must never be able to disagree about which chains are pooled,
+// because a chain the writer thinks is per-payer and the reader thinks is
+// pooled is a deposit matched against an identity nobody issued.
+func Pooled(chain string) bool {
+	return chainFamily[cryptopaymentintent.Chain(strings.ToLower(strings.TrimSpace(chain)))] == FamilyXRPL
+}
 
 // Fold normalises a chain-native identifier — a deposit address, a transaction
 // id — for comparison and for keying.
@@ -255,9 +295,18 @@ func (a Asset) PegRate() string {
 // an address, and a token's address is per-chain anyway (USDC on BSC is a
 // different contract with different decimals than USDC on Ethereum), so a
 // built-in table would be a list of constants nobody can verify from here.
+// A third key configures the POOLED custody account, for the chains that have
+// one:
+//
+//	CRYPTO_DEPOSIT_ADDRESS_<CHAIN>  the one account every payer sends to
+//
+// e.g. CRYPTO_DEPOSIT_ADDRESS_XRPL=rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De. It has
+// no default and no fallback for the same reason a token address does not: an
+// address is where money goes, and inventing one is inventing a destination.
 const (
-	envRPCPrefix   = "CRYPTO_DEPOSIT_RPC_"
-	envTokenPrefix = "CRYPTO_DEPOSIT_TOKEN_"
+	envRPCPrefix     = "CRYPTO_DEPOSIT_RPC_"
+	envTokenPrefix   = "CRYPTO_DEPOSIT_TOKEN_"
+	envAddressPrefix = "CRYPTO_DEPOSIT_ADDRESS_"
 )
 
 // AssetsFromEnv builds the watch table from environ (as returned by os.Environ:
@@ -270,6 +319,7 @@ const (
 // the failure this whole package exists to end.
 func AssetsFromEnv(environ []string) ([]Asset, error) {
 	rpc := map[string]string{}
+	pooledAddr := map[string]string{}
 	type tok struct{ chain, token, contract string }
 	var toks []tok
 
@@ -299,8 +349,28 @@ func AssetsFromEnv(environ []string) ([]Asset, error) {
 				token:    strings.ToLower(rest[us+1:]),
 				contract: val,
 			})
+		case strings.HasPrefix(key, envAddressPrefix):
+			// NOT lowercased: an r-address is base58 and case-significant. It is
+			// normalised, like a token address, by the chain's own fold below.
+			pooledAddr[strings.ToLower(key[len(envAddressPrefix):])] = val
 		case strings.HasPrefix(key, envRPCPrefix):
 			rpc[strings.ToLower(key[len(envRPCPrefix):])] = val
+		}
+	}
+
+	// A pooled address on a chain that mints per payer is a misunderstanding
+	// with a very bad ending — every payer handed the same address on a chain
+	// where the address is the ONLY thing that says whose money it is — so it
+	// is refused here rather than ignored. Refusing an unknown chain too keeps
+	// a typo'd variable from silently configuring nothing.
+	for chain := range pooledAddr {
+		if _, ok := chainFamily[cryptopaymentintent.Chain(chain)]; !ok {
+			return nil, fmt.Errorf("depositwatch: %s%s configures chain %q, which this rail has no reader for; the readable chains are %s",
+				envAddressPrefix, strings.ToUpper(chain), chain, strings.Join(readableChains(), ", "))
+		}
+		if !Pooled(chain) {
+			return nil, fmt.Errorf("depositwatch: %s%s sets a shared deposit address on chain %q, which mints one address per payer — a shared address there would hand every payer the same destination and lose track of whose money is whose",
+				envAddressPrefix, strings.ToUpper(chain), chain)
 		}
 	}
 
@@ -327,6 +397,22 @@ func AssetsFromEnv(environ []string) ([]Asset, error) {
 				t.token, t.chain, envRPCPrefix, strings.ToUpper(t.chain))
 		}
 		a.RPCURL = url
+		// A pooled chain with no configured account is money with nowhere to
+		// go: the mint side has no address to hand out and no way to invent
+		// one. That is an incoherent table exactly like a token with no
+		// endpoint, so it fails the same way — at boot, loudly — rather than
+		// at the first customer who picks XRPL.
+		if a.Pooled() {
+			addr, ok := pooledAddr[t.chain]
+			if !ok {
+				return nil, fmt.Errorf("depositwatch: token %s is configured on chain %q, which shares ONE deposit account across payers, but %s%s is unset — there is no address to hand out and none may be invented",
+					t.token, t.chain, envAddressPrefix, strings.ToUpper(t.chain))
+			}
+			a.PooledAddress = a.Fold(addr)
+			if err := a.validatePooledAddress(); err != nil {
+				return nil, fmt.Errorf("depositwatch: %s%s %w", envAddressPrefix, strings.ToUpper(t.chain), err)
+			}
+		}
 		if seen[a.Key()] {
 			continue
 		}
@@ -367,6 +453,29 @@ func (a Asset) validateContract() error {
 		if !isHexAddress(a.Contract) {
 			return fmt.Errorf("is not a 20-byte hex address: %q", a.Contract)
 		}
+	}
+	return nil
+}
+
+// validatePooledAddress checks the configured custody account is written the
+// way its chain writes an ACCOUNT — which is not how it writes a token.
+//
+// The same SHAPE-check reasoning as validateContract, and the same limit: this
+// cannot tell our account from anyone else's. What it stops is the paste that
+// would otherwise be discovered by a customer — the issuer half of a
+// <CURRENCY>.<ISSUER> pair, an EVM address, an empty string — landing in the
+// slot that decides where money is sent.
+func (a Asset) validatePooledAddress() error {
+	switch a.Family() {
+	case FamilyXRPL:
+		if !isXRPLAddress(a.PooledAddress) {
+			return fmt.Errorf("is not an XRPL account address — expected the classic r-address form, e.g. rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De: %q", a.PooledAddress)
+		}
+	default:
+		// Unreachable: only pooled chains get here, and XRPL is the only one.
+		// It is a refusal rather than a nil so that pooling a second chain
+		// fails here instead of accepting whatever that chain calls an address.
+		return fmt.Errorf("chain %q is pooled but has no address form defined here", a.Chain)
 	}
 	return nil
 }
@@ -466,10 +575,21 @@ func isXRPLIssued(s string) bool {
 	if cur == "" || len(cur) > 40 || (len(cur) > 20 && !(len(cur) == 40 && isHex(cur))) {
 		return false
 	}
-	if len(issuer) < 25 || len(issuer) > 35 || issuer[0] != 'r' {
+	return isXRPLAddress(issuer)
+}
+
+// isXRPLAddress reports whether s could be an XRPL classic account address: an
+// r-prefixed base58 string in XRPL's own alphabet, 25–35 characters.
+//
+// It is ONE function because an XRPL account is an XRPL account whether it
+// appears as a token's issuer or as the custody account deposits are sent to.
+// Two copies of this rule would be two chances for the issuer half of a token
+// to be accepted somewhere the account half is not.
+func isXRPLAddress(s string) bool {
+	if len(s) < 25 || len(s) > 35 || s[0] != 'r' {
 		return false
 	}
-	for _, r := range issuer {
+	for _, r := range s {
 		if !strings.ContainsRune(rippleAlphabet, r) {
 			return false
 		}

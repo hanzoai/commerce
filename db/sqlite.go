@@ -187,6 +187,8 @@ var baseSchemaDDL = []string{
 	`CREATE INDEX IF NOT EXISTS idx_entities_ns ON _entities(namespace)`,
 	`CREATE INDEX IF NOT EXISTS idx_entities_parent ON _entities(parent_id)`,
 	`CREATE INDEX IF NOT EXISTS idx_entities_deleted ON _entities(deleted)`,
+	// The named-counter table. See db.Sequencer.
+	sequenceDDL,
 }
 
 // initSchema creates the base tables.
@@ -715,6 +717,41 @@ func (ns tenantKeys) AllocateIDs(kind string, parent Key, n int) ([]Key, error) 
 		}
 	}
 	return keys, nil
+}
+
+// NextSequence atomically increments the named counter and returns its new
+// value, starting at 0. See db.Sequencer for why this primitive exists.
+//
+// It is ONE statement, and that is the whole guarantee: the upsert either
+// inserts the row at 0 or increments the row that is already there, and SQLite
+// applies it indivisibly. Two callers cannot both read N and both write N+1,
+// because neither ever reads a value into Go at all. Across processes sharing
+// the file, SQLite's single-writer lock serialises the statement; within one
+// process, writeMu does — the same lock every other write here takes.
+func (db *SQLiteDB) NextSequence(ctx context.Context, name string) (uint64, error) {
+	if name == "" {
+		return 0, fmt.Errorf("db: sequence name is empty")
+	}
+
+	db.writeMu.Lock()
+	defer db.writeMu.Unlock()
+
+	var value int64
+	err := db.writeDB.QueryRowContext(ctx, `
+		INSERT INTO _sequences (name, value) VALUES (?, 0)
+		ON CONFLICT(name) DO UPDATE SET value = _sequences.value + 1
+		RETURNING value
+	`, name).Scan(&value)
+	if err != nil {
+		return 0, fmt.Errorf("db: allocate from sequence %q: %w", name, err)
+	}
+	if value < 0 {
+		// int64 wrapped, which is 9.2e18 allocations away. Refusing keeps the
+		// contract ("strictly increasing") true rather than silently restarting
+		// the sequence at a value already handed out.
+		return 0, fmt.Errorf("db: sequence %q overflowed", name)
+	}
+	return uint64(value), nil
 }
 
 // RunInTransaction executes a function within a transaction

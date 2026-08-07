@@ -28,7 +28,13 @@ import (
 //
 //	CRYPTO_DEPOSIT_RPC_XRPL=https://xrplcluster.com/ \
 //	CRYPTO_DEPOSIT_TOKEN_XRPL_RLUSD=RLUSD.rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De \
+//	CRYPTO_DEPOSIT_ADDRESS_XRPL=rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De \
 //	go test -count=1 -run TestLiveXRPL -v ./billing/depositledger/
+//
+// The ADDRESS is required even though this probe only READS: XRPL pools every
+// payer onto one custody account, and AssetsFromEnv refuses to build a pooled
+// asset that has no account to be paid to. Any r-address will do here — the
+// read path never sends anything to it.
 //
 // ⚠ -count=1 is not optional, for the same reason it is not optional on the EVM
 // and Solana probes: Go caches a PASS even though every input came from the
