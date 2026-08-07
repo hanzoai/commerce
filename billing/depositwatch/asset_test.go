@@ -124,6 +124,13 @@ func TestPegTable_OnlyDollarPeggedTokens(t *testing.T) {
 
 const solUSDCMint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 
+// Real mainnet identifiers, so a shape check that quietly stopped checking
+// would be caught by a value an operator would actually paste.
+const (
+	tonUSDTMaster = "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs"
+	xrplRLUSD     = "RLUSD.rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De"
+)
+
 // A Solana asset configures exactly like an EVM one — same two variables, same
 // failure modes — and the ONE thing that must differ does: its mint address is
 // base58 and survives configuration byte for byte.
@@ -148,7 +155,7 @@ func TestAssetsFromEnv_Solana(t *testing.T) {
 	if a.Contract != solUSDCMint {
 		t.Fatalf("mint was normalised to %q, want %q — base58 is case-significant", a.Contract, solUSDCMint)
 	}
-	if !a.IsSolana() {
+	if a.Family() != FamilySolana {
 		t.Fatal("a solana asset is not reported as one; it would be handed an EVM reader")
 	}
 	if a.PegCents() != 100 {
@@ -183,13 +190,34 @@ func TestAssetsFromEnv_RefusesAnAddressFromTheWrongChain(t *testing.T) {
 		{
 			// A chain with no Reader would otherwise be handed the EVM client on
 			// the assumption that everything is an EVM — it would error every 30
-			// seconds and watch nothing while looking configured.
+			// seconds and watch nothing while looking configured. Bitcoin is the
+			// standing example and is not a placeholder: it is genuinely absent
+			// because crediting it needs a PRICE ORACLE, which this rail
+			// deliberately does not have (see pegCents).
 			name: "a chain this rail cannot read",
 			environ: []string{
-				"CRYPTO_DEPOSIT_RPC_TON=https://ton.rpc",
-				"CRYPTO_DEPOSIT_TOKEN_TON_USDT=EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs",
+				"CRYPTO_DEPOSIT_RPC_BITCOIN=https://btc.rpc",
+				"CRYPTO_DEPOSIT_TOKEN_BITCOIN_USDC=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
 			},
 			wantIn: "no reader for",
+		},
+		{
+			// A TON jetton master pasted into an XRPL slot, and the reverse. Both
+			// are refused on SHAPE at boot, before an endpoint is ever dialled.
+			name: "a TON master configured on XRPL",
+			environ: []string{
+				"CRYPTO_DEPOSIT_RPC_XRPL=https://xrpl.rpc",
+				"CRYPTO_DEPOSIT_TOKEN_XRPL_USDC=" + tonUSDTMaster,
+			},
+			wantIn: "<CURRENCY>.<ISSUER>",
+		},
+		{
+			name: "an XRPL issued token configured on TON",
+			environ: []string{
+				"CRYPTO_DEPOSIT_RPC_TON=https://ton.index",
+				"CRYPTO_DEPOSIT_TOKEN_TON_RLUSD=" + xrplRLUSD,
+			},
+			wantIn: "user-friendly form",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

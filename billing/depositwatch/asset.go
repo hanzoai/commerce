@@ -19,9 +19,10 @@
 //
 // The chain READS come from one read client per chain family:
 // billing/husdindex.Client for the EVM (this repo's one ERC-20 JSON-RPC read
-// client, named for its first caller and not for a restriction) and
-// billing/solanarpc.Client for Solana. Both satisfy Reader, so adding a chain
-// adds a reader and touches none of the policy here.
+// client, named for its first caller and not for a restriction),
+// billing/solanarpc.Client for Solana, billing/tonrpc.Client for TON and
+// billing/xrplrpc.Client for XRPL. All satisfy Reader, so adding a chain adds a
+// reader and touches none of the policy here.
 //
 // SCOPE: dollar-pegged tokens on chains this package can read. Everything
 // outside that is refused rather than approximated — see pegCents,
@@ -44,13 +45,19 @@ import (
 // constant is a number no code can check and a wrong one credits 10^12 times
 // too much.
 type Asset struct {
-	Chain string // "ethereum", "base", "solana" (lowercase; matches the intent's Chain)
-	Token string // "usdc", "usdt" (lowercase; matches the intent's Token)
-	// Contract is the account that DEFINES the token on its chain: an ERC-20
-	// contract on the EVM, an SPL mint account on Solana. It is written the way
-	// its chain writes an address — lowercased 0x hex, or base58 left exactly as
-	// given — and normalising it any other way would break the comparison it
-	// exists for.
+	Chain string // "ethereum", "base", "solana", "ton", "xrpl" (lowercase; matches the intent's Chain)
+	Token string // "usdc", "usdt", "rlusd" (lowercase; matches the intent's Token)
+	// Contract is what DEFINES the token on its chain, written the way that
+	// chain writes it:
+	//
+	//	EVM     the ERC-20 contract address, lowercased hex
+	//	Solana  the SPL mint account, base58 exactly as given
+	//	TON     the jetton master address, base64url exactly as given
+	//	XRPL    <CURRENCY>.<ISSUER> — because on XRPL neither half is a token on
+	//	        its own: an issuer issues many currencies, and a currency code is
+	//	        a name anybody may issue
+	//
+	// Normalising it any other way would break the comparison it exists for.
 	Contract string
 	RPCURL   string // JSON-RPC endpoint for Chain
 }
@@ -58,15 +65,23 @@ type Asset struct {
 // Key identifies an asset for cursors and maps.
 func (a Asset) Key() string { return a.Chain + ":" + a.Token }
 
-// family is HOW a chain is read and how it writes an address. It is the one
-// place a per-chain difference is allowed to live in this package; everything
-// downstream — the confirmation rule, the amount arithmetic, the dedup key —
-// is written once and applies to every family.
-type family int
+// Family is HOW a chain is read, how it writes an address, and whether one
+// address belongs to one payer. It is the one place a per-chain difference is
+// allowed to live in this package; everything downstream — the confirmation
+// rule, the amount arithmetic, the dedup key — is written once and applies to
+// every family.
+//
+// It is ONE enum rather than a set of IsX() predicates so that every question a
+// caller asks about a chain is answered from the same table, and so that adding
+// a family makes the switch that builds readers fail to compile rather than
+// fall to an EVM default.
+type Family int
 
 const (
-	familyEVM family = iota
-	familySolana
+	FamilyEVM Family = iota
+	FamilySolana
+	FamilyTON
+	FamilyXRPL
 )
 
 // chainFamily is the set of chains this rail can READ, keyed by the intent
@@ -76,26 +91,40 @@ const (
 // an EVM reader on the assumption that everything is an EVM. That assumption is
 // how a Solana endpoint gets asked for eth_getLogs, answers an error every 30
 // seconds, and watches nothing while looking configured.
-var chainFamily = map[cryptopaymentintent.Chain]family{
-	cryptopaymentintent.Ethereum:  familyEVM,
-	cryptopaymentintent.Base:      familyEVM,
-	cryptopaymentintent.Polygon:   familyEVM,
-	cryptopaymentintent.Arbitrum:  familyEVM,
-	cryptopaymentintent.Optimism:  familyEVM,
-	cryptopaymentintent.Avalanche: familyEVM,
-	cryptopaymentintent.BSC:       familyEVM,
-	cryptopaymentintent.Lux:       familyEVM,
-	cryptopaymentintent.Zoo:       familyEVM,
-	cryptopaymentintent.Solana:    familySolana,
+var chainFamily = map[cryptopaymentintent.Chain]Family{
+	cryptopaymentintent.Ethereum:  FamilyEVM,
+	cryptopaymentintent.Base:      FamilyEVM,
+	cryptopaymentintent.Polygon:   FamilyEVM,
+	cryptopaymentintent.Arbitrum:  FamilyEVM,
+	cryptopaymentintent.Optimism:  FamilyEVM,
+	cryptopaymentintent.Avalanche: FamilyEVM,
+	cryptopaymentintent.BSC:       FamilyEVM,
+	cryptopaymentintent.Lux:       FamilyEVM,
+	cryptopaymentintent.Zoo:       FamilyEVM,
+	cryptopaymentintent.Solana:    FamilySolana,
+	cryptopaymentintent.TON:       FamilyTON,
+	cryptopaymentintent.XRPL:      FamilyXRPL,
 }
 
-// family reports how this asset's chain is read and written.
-func (a Asset) family() family { return chainFamily[cryptopaymentintent.Chain(a.Chain)] }
+// Family reports how this asset's chain is read and written. It is the one
+// question the I/O half must ask to build the right reader, and asking it here
+// keeps the chain→family table in a single place.
+func (a Asset) Family() Family { return chainFamily[cryptopaymentintent.Chain(a.Chain)] }
 
-// IsSolana reports whether this asset is read over Solana JSON-RPC. It is the
-// one question the I/O half must ask to build the right reader, and asking it
-// here keeps the chain→family table in a single place.
-func (a Asset) IsSolana() bool { return a.family() == familySolana }
+// Pooled reports whether this chain shares ONE deposit address across payers,
+// so that the address alone cannot say whose money arrived.
+//
+// It is true for XRPL and false everywhere else, and the reason is economic
+// rather than technical: XRPL charges a NON-REFUNDABLE base reserve in XRP for
+// every funded account, so minting a fresh address per payer would strand that
+// reserve on every deposit, forever. The model the whole ledger uses instead is
+// one custody account plus a per-deposit DESTINATION TAG — which is why the
+// thing that identifies an intent here is Identity and not Address.
+//
+// Everywhere else an address is per-payer and free to mint (an EVM address
+// costs nothing to derive, a Solana ATA is created by the first deposit itself,
+// a TON jetton wallet likewise), so there is nothing to pool and no tag.
+func (a Asset) Pooled() bool { return a.Family() == FamilyXRPL }
 
 // Fold normalises a chain-native identifier — a deposit address, a transaction
 // id — for comparison and for keying.
@@ -111,6 +140,17 @@ func (a Asset) IsSolana() bool { return a.family() == familySolana }
 //	        merge distinct addresses into one map entry — and while the collision
 //	        is vanishingly unlikely, "unlikely" is not a property to hang a
 //	        custody address on when exactness is free.
+//	TON     base64url, case-SIGNIFICANT. Same reasoning as Solana.
+//	XRPL    base58 (a DIFFERENT alphabet from Solana's, same property) and, for
+//	        a currency code, case-significant too: XRPL compares codes as 160-bit
+//	        values, so "usd" and "USD" are two tokens.
+//
+// The non-EVM families all leave identifiers alone, which is only safe because
+// their READERS canonicalise before returning: tonrpc and xrplrpc both render a
+// transaction id as lowercase hex whatever the endpoint answered, and both echo
+// back the caller's own spelling of a watched address rather than the node's.
+// That keeps the dedup key a function of the EVENT and not of an endpoint's
+// rendering choice.
 //
 // A chain added to chainFamily without a considered answer here gets the EVM
 // fold, which is the safe default in the only direction that matters: folding
@@ -118,10 +158,35 @@ func (a Asset) IsSolana() bool { return a.family() == familySolana }
 // folding too little makes a real deposit invisible.
 func (a Asset) Fold(s string) string {
 	s = strings.TrimSpace(s)
-	if a.family() == familySolana {
+	switch a.Family() {
+	case FamilySolana, FamilyTON, FamilyXRPL:
 		return s
+	default:
+		return strings.ToLower(s)
 	}
-	return strings.ToLower(s)
+}
+
+// Identity is WHAT NAMES THE INTENT a transfer belongs to on this chain.
+//
+// It exists because "the deposit address" is not that thing everywhere, and
+// bending the address field until it was would have been the bug: on XRPL every
+// payer shares ONE custody account (see Pooled) and only the destination tag
+// says whose money arrived, so matching on the address alone would credit ten
+// thousand customers' deposits to whichever intent the map happened to keep.
+//
+//	EVM / Solana / TON  the folded address. One payer, one address.
+//	XRPL                the folded address AND the destination tag.
+//
+// Both sides of every comparison — the minted intent and the observed transfer
+// — go through this one function, so the two halves of the match cannot drift.
+// The separator cannot occur in any chain's address or tag encoding, so no
+// (address, tag) pair can be spelled two ways or collide with another.
+func (a Asset) Identity(address, tag string) string {
+	addr := a.Fold(address)
+	if !a.Pooled() {
+		return addr
+	}
+	return addr + "#" + strings.TrimSpace(tag)
 }
 
 // PegCents is what one whole token of this asset is worth in USD cents.
@@ -138,10 +203,15 @@ func (a Asset) PegCents() int64 { return pegCents[a.Token] }
 //	ETH / MATIC / AVAX / BNB / SOL — a native coin cannot be priced, and on the
 //	  EVM it cannot even be OBSERVED here (a native transfer emits no log, so
 //	  eth_getLogs cannot see it). Not watched at all.
-//	BTC — needs a price feed. Not this rail.
-//	Anything else pegged — add it here WITH its peg, deliberately. Dollar-pegged
-//	  tokens exist on chains beyond the EVM and Solana (jetton USDT on TON,
-//	  issued USDC on XRPL); each needs a Reader, not a price oracle.
+//	BTC — needs a price feed. Not this rail. It is the chain that genuinely
+//	  cannot be added without an oracle, and adding one to credit it would put
+//	  a guess about a customer's money on this path.
+//	XRP / TON — native coins, same problem as ETH: unpriceable here.
+//	Anything else pegged — add it here WITH its peg, deliberately.
+//
+// Reaching a new chain therefore needs a Reader and NOT a price oracle, which
+// is precisely why TON and XRPL could be added: TON carries jetton USDT and
+// XRPL carries issued USDC and RLUSD, all at a dollar.
 //
 // The known, bounded, deliberate risk this accepts: a depegged stablecoin is
 // credited above its market value. That is the standard bargain every payment
@@ -150,6 +220,9 @@ func (a Asset) PegCents() int64 { return pegCents[a.Token] }
 var pegCents = map[string]int64{
 	"usdc": 100,
 	"usdt": 100,
+	// Ripple USD, the XRPL-native dollar-pegged stablecoin. Added with its peg
+	// deliberately, exactly as the paragraph above requires.
+	"rlusd": 100,
 }
 
 // PegRate renders an asset's peg the way the intent records an exchange rate
@@ -162,12 +235,20 @@ func (a Asset) PegRate() string {
 // envRPCPrefix and envTokenPrefix are the environment (KMS-injected) keys the
 // watch table is read from:
 //
-//	CRYPTO_DEPOSIT_RPC_<CHAIN>            JSON-RPC endpoint for that chain
-//	CRYPTO_DEPOSIT_TOKEN_<CHAIN>_<TOKEN>  the account defining that token there
-//	                                      (ERC-20 contract, or SPL mint)
+//	CRYPTO_DEPOSIT_RPC_<CHAIN>            read endpoint for that chain
+//	CRYPTO_DEPOSIT_TOKEN_<CHAIN>_<TOKEN>  what defines that token there — an
+//	                                      ERC-20 contract, an SPL mint, a jetton
+//	                                      master, or <CURRENCY>.<ISSUER>
 //
-// e.g. CRYPTO_DEPOSIT_RPC_BASE + CRYPTO_DEPOSIT_TOKEN_BASE_USDC, or
-// CRYPTO_DEPOSIT_RPC_SOLANA + CRYPTO_DEPOSIT_TOKEN_SOLANA_USDC.
+// e.g. CRYPTO_DEPOSIT_RPC_BASE + CRYPTO_DEPOSIT_TOKEN_BASE_USDC,
+// CRYPTO_DEPOSIT_RPC_SOLANA + CRYPTO_DEPOSIT_TOKEN_SOLANA_USDC,
+// CRYPTO_DEPOSIT_RPC_TON + CRYPTO_DEPOSIT_TOKEN_TON_USDT, or
+// CRYPTO_DEPOSIT_RPC_XRPL + CRYPTO_DEPOSIT_TOKEN_XRPL_RLUSD.
+//
+// "Endpoint" is deliberately looser than "JSON-RPC URL": the EVM, Solana and
+// XRPL are read over JSON-RPC, while TON is read over the TON Index HTTP API,
+// because TON has no per-account transaction index in its node RPC at all. One
+// key per chain either way.
 //
 // This mirrors util/husd exactly, including the part that matters: a token
 // address has NO DEFAULT. An unset deploy watches nothing instead of guessing at
@@ -266,10 +347,21 @@ func AssetsFromEnv(environ []string) ([]Asset, error) {
 // exists so an address pasted from the wrong chain entirely fails at boot,
 // loudly, instead of at the first deposit.
 func (a Asset) validateContract() error {
-	switch a.family() {
-	case familySolana:
+	switch a.Family() {
+	case FamilySolana:
 		if !isBase58Account(a.Contract) {
 			return fmt.Errorf("is not a base58 32-byte SPL mint address: %q", a.Contract)
+		}
+	case FamilyTON:
+		if !isTONAddress(a.Contract) {
+			return fmt.Errorf("is not a TON jetton master address — expected the 48-character user-friendly form (EQ…/UQ…) or raw <workchain>:<64 hex>: %q", a.Contract)
+		}
+	case FamilyXRPL:
+		// The full parse lives in billing/xrplrpc, which also checksums the
+		// issuer; this is the cheap boundary check that keeps a bare address or
+		// a bare currency code out of a slot that needs both.
+		if !isXRPLIssued(a.Contract) {
+			return fmt.Errorf("is not an XRPL issued token — expected <CURRENCY>.<ISSUER>, e.g. RLUSD.rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De: %q", a.Contract)
 		}
 	default:
 		if !isHexAddress(a.Contract) {
@@ -333,6 +425,79 @@ func isBase58Account(s string) bool {
 		}
 	}
 	return true
+}
+
+// isTONAddress reports whether s could be a TON account address, in either of
+// the two forms TON publishes: the 48-character user-friendly base64url form
+// (36 bytes: flags, workchain, 32-byte hash, CRC-16) that every explorer and
+// token page shows, or the raw <workchain>:<64 hex> form the indexer answers
+// in. Both are accepted because both are pasted, and billing/tonrpc parses both
+// with the same function — including the CRC that catches a typo.
+func isTONAddress(s string) bool {
+	if wc, hash, ok := strings.Cut(s, ":"); ok {
+		if wc == "" || len(hash) != 64 {
+			return false
+		}
+		if wc[0] == '-' {
+			wc = wc[1:]
+		}
+		return wc != "" && allASCIIDigits(wc) && isHex(hash)
+	}
+	if len(s) != 48 {
+		return false
+	}
+	for _, r := range s {
+		if !(r >= '0' && r <= '9' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r == '-' || r == '_' || r == '+' || r == '/' || r == '=') {
+			return false
+		}
+	}
+	return true
+}
+
+// isXRPLIssued reports whether s could be an XRPL <CURRENCY>.<ISSUER> pair: a
+// 3-character or 40-hex currency code, and a classic r-address.
+func isXRPLIssued(s string) bool {
+	cur, issuer, ok := strings.Cut(s, ".")
+	if !ok {
+		return false
+	}
+	// A currency code is 3 ASCII characters, a ticker of up to 20, or the raw
+	// 40-hex form. billing/xrplrpc turns all three into the same 160 bits.
+	if cur == "" || len(cur) > 40 || (len(cur) > 20 && !(len(cur) == 40 && isHex(cur))) {
+		return false
+	}
+	if len(issuer) < 25 || len(issuer) > 35 || issuer[0] != 'r' {
+		return false
+	}
+	for _, r := range issuer {
+		if !strings.ContainsRune(rippleAlphabet, r) {
+			return false
+		}
+	}
+	return true
+}
+
+// rippleAlphabet is XRPL's base58 alphabet — the same 58 characters as
+// Bitcoin's in a DIFFERENT order, which is why an XRPL address must never be
+// checked against base58Alphabet above.
+const rippleAlphabet = "rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz"
+
+func isHex(s string) bool {
+	for _, r := range s {
+		if !(r >= '0' && r <= '9' || r >= 'a' && r <= 'f' || r >= 'A' && r <= 'F') {
+			return false
+		}
+	}
+	return len(s) > 0
+}
+
+func allASCIIDigits(s string) bool {
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return len(s) > 0
 }
 
 // ErrDust is returned by AmountCents for a transfer worth less than one cent.

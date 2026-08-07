@@ -43,7 +43,7 @@ func TestLiveSolanaReadPath(t *testing.T) {
 	}
 	var asset depositwatch.Asset
 	for _, a := range assets {
-		if a.IsSolana() {
+		if a.Family() == depositwatch.FamilySolana {
 			asset = a
 		}
 	}
