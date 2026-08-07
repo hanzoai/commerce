@@ -22,7 +22,7 @@ require (
 	github.com/google/uuid v1.6.1-0.20241114170450-2d3c2a9cc518
 	github.com/gorilla/schema v1.4.1
 	github.com/gorilla/sessions v1.4.0
-	github.com/hanzoai/base v1.5.11
+	github.com/hanzoai/base v1.5.17
 	github.com/hanzoai/goauthorizenet v0.0.0-20180920213706-626992b83568
 	github.com/hanzoai/gochimp3 v0.0.0-20241127054040-6051f77e24f1
 	github.com/hanzoai/orm v0.6.16
@@ -57,7 +57,7 @@ require (
 	github.com/hanzoai/account v0.2.0
 	github.com/hanzoai/decimal v0.1.2
 	github.com/hanzoai/money v0.2.5
-	github.com/hanzoai/sqlite v0.5.0
+	github.com/hanzoai/sqlite v0.5.2
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/luxfi/trace v1.3.0
 	github.com/luxfi/zap v1.2.7
@@ -66,6 +66,7 @@ require (
 )
 
 require (
+	filippo.io/hpke v0.4.0 // indirect
 	github.com/ALTree/bigfloat v0.2.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
@@ -84,20 +85,23 @@ require (
 	github.com/hanzo-ds/native v0.71.0 // indirect
 	github.com/hanzoai/authz v1.10.29 // indirect
 	github.com/hanzoai/builder v0.3.13 // indirect
-	github.com/hanzoai/csqlite v0.1.0 // indirect
+	github.com/hanzoai/csqlite v0.1.2 // indirect
 	github.com/hanzoai/sqlcipher v0.1.1 // indirect
 	github.com/hanzoai/xorm v1.4.4 // indirect
 	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/luxfi/accel v1.2.4 // indirect
+	github.com/luxfi/age v1.6.0 // indirect
 	github.com/luxfi/consensus v1.36.11 // indirect
 	github.com/luxfi/constants v1.6.2 // indirect
 	github.com/luxfi/corona v0.10.4 // indirect
 	github.com/luxfi/dkg v0.3.5 // indirect
+	github.com/luxfi/fhe v1.8.2 // indirect
 	github.com/luxfi/geth v1.20.1 // indirect
 	github.com/luxfi/lattice/v7 v7.1.4 // indirect
 	github.com/luxfi/lens v0.2.1 // indirect
 	github.com/luxfi/magnetar v1.2.3 // indirect
 	github.com/luxfi/mlwe v0.3.0 // indirect
+	github.com/luxfi/pq v1.1.0 // indirect
 	github.com/luxfi/pulsar v1.9.2 // indirect
 	github.com/luxfi/sampler v1.1.0 // indirect
 	github.com/luxfi/threshold v1.12.3 // indirect
@@ -150,7 +154,7 @@ require (
 	github.com/gorilla/rpc v1.2.1 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/grandcat/zeroconf v1.0.0 // indirect
-	github.com/hanzoai/cek v0.2.1
+	github.com/hanzoai/cek v0.2.3
 	github.com/hanzoai/dbx v1.17.2 // indirect
 	github.com/hanzoai/namespace v1.2.0
 	github.com/hanzos3/go v1.0.0
