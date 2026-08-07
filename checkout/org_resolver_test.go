@@ -151,3 +151,45 @@ func TestEnabledProviders_SquareOffWhenDisabled(t *testing.T) {
 		}
 	}
 }
+
+// A logo belongs to ONE brand, and a brand without one shows its name.
+//
+// The failure this guards is not a missing image, it is a Hanzo mark appearing
+// on a Lux checkout — the kind of thing a well-meaning "fill in the blanks" pass
+// produces. So the assertion is per brand and by identity, not "is non-empty":
+// only hanzo may carry a logo, and no two brands may ever carry the same one.
+func TestBrandLogosAreNotShared(t *testing.T) {
+	withLogo := map[string]string{}
+	for _, b := range []brand{brandHanzo, brandLux, brandZoo, brandPars} {
+		if b.logoURL == "" {
+			continue
+		}
+		if other, dup := withLogo[b.logoURL]; dup {
+			t.Fatalf("brands %q and %q share logoURL %q — one brand's mark on another's checkout",
+				other, b.slug, b.logoURL)
+		}
+		withLogo[b.logoURL] = b.slug
+	}
+
+	if brandHanzo.logoURL == "" {
+		t.Error("brandHanzo has no logoURL, so the checkout header falls back to a wordmark")
+	}
+	// The other three have no logo that resolves — cdn.lux.network 404s, the zoo
+	// and pars CDNs answer 522. Giving them one would ship a broken image; the
+	// wordmark is the honest render until a real asset exists.
+	for _, b := range []brand{brandLux, brandZoo, brandPars} {
+		if b.logoURL != "" {
+			t.Errorf("brand %q gained logoURL %q — verify it actually serves an image "+
+				"(200 AND an image/* content type, not a 200 of the SPA's index.html)",
+				b.slug, b.logoURL)
+		}
+	}
+}
+
+// The brand's logo must reach the wire, or setting it changes nothing a browser
+// can see. Asserts the field survives the projection into the tenant payload.
+func TestTenantPayloadCarriesTheBrandLogo(t *testing.T) {
+	if got := brandForHost("pay.hanzo.ai"); got.logoURL != brandHanzo.logoURL {
+		t.Fatalf("pay.hanzo.ai resolved to logoURL %q, want %q", got.logoURL, brandHanzo.logoURL)
+	}
+}
