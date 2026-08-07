@@ -13,6 +13,7 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/idempotencykey"
+	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	orgpkg "github.com/hanzoai/commerce/pkg/org"
@@ -96,12 +97,28 @@ func Credit(c *zip.Ctx) error {
 		expiresAt = t
 	}
 
+	// WHICH BOOKS, resolved BEFORE the two paths split, because both of them need it
+	// and only one of them used to ask.
+	//
+	// The datastore fallback has always stamped its grant with the target org's
+	// test-ness; the ledger path stated none, so its CreditInput carried the zero
+	// value and a test-mode org's grant was posted into LIVE books — money the gate
+	// happily spends on real inference, minted by a sandbox tenant. The two paths are
+	// the same door and disagreed about the one fact that decides where the money
+	// goes, so the fact is resolved once, here, off the org itself.
+	targetOrg, oerr := creditTargetOrg(c, org)
+	if oerr != nil {
+		return http.Fail(c, 400, "invalid org", oerr)
+	}
+	test := targetOrg.TestMode()
+
 	// Injected double-entry ledger (embedded-in-cloud path): the ONE ledger the AI
 	// gate reads. Org-keyed; the impl handles idempotency + the balanced posting.
 	if led := creditledger.Get(); led != nil {
 		in := creditledger.CreditInput{
 			Org: org, Currency: cur, Reason: reason, Tag: tag,
 			IdempotencyKey: strings.TrimSpace(req.IdempotencyKey), AmountCents: req.AmountCents,
+			Test: test,
 		}
 		if !expiresAt.IsZero() {
 			in.ExpiresAt = &expiresAt
@@ -116,7 +133,27 @@ func Credit(c *zip.Ctx) error {
 		return c.JSON(201, resp)
 	}
 
-	return creditToDatastore(c, org, cur, reason, tag, req.AmountCents, expiresAt, strings.TrimSpace(req.IdempotencyKey))
+	return creditToDatastore(c, targetOrg, org, cur, reason, tag, req.AmountCents, expiresAt, strings.TrimSpace(req.IdempotencyKey))
+}
+
+// creditTargetOrg resolves the TARGET org named in the body — the org whose books
+// this grant lands in, and therefore the authority on whether they are the sandbox
+// ones.
+//
+// It prefers the request-scoped org (X-Org-Id) when it names the same tenant, because
+// that value carries the per-request Live/Test view the balance read uses; otherwise
+// it resolves the named org, which is how a platform admin credits any org without
+// sending X-Org-Id.
+//
+// It is a function rather than two lines inside the datastore path because the LEDGER
+// path needs the same answer, and asking it in only one of them is exactly how the two
+// came to disagree.
+func creditTargetOrg(c *zip.Ctx, org string) (*organization.Organization, error) {
+	if scoped, ok := middleware.GetOrganizationOK(c); ok && scoped != nil &&
+		strings.EqualFold(strings.TrimSpace(scoped.Name), org) {
+		return scoped, nil
+	}
+	return orgpkg.Resolve(c.Context(), org)
 }
 
 // creditToDatastore is the standalone fallback: append the credit as a tagged
@@ -124,20 +161,7 @@ func Credit(c *zip.Ctx) error {
 // reads). Used only when no host ledger is injected. The write is authorized by the
 // PlatformOnly gate alone (no handler self-authorization) — the mintauth sink fails
 // closed if the gate is ever dropped.
-func creditToDatastore(c *zip.Ctx, org, cur, reason, tag string, amountCents int64, expiresAt time.Time, idemKey string) error {
-	// Resolve the TARGET org named in the body. Prefer the request-scoped org
-	// (X-Org-Id) when it matches — it carries the per-request Live/Test view the
-	// balance read uses; else resolve the named org (a global admin may credit any
-	// org without X-Org-Id).
-	targetOrg, ok := middleware.GetOrganizationOK(c)
-	if !ok || targetOrg == nil || !strings.EqualFold(strings.TrimSpace(targetOrg.Name), org) {
-		resolved, rerr := orgpkg.Resolve(c.Context(), org)
-		if rerr != nil {
-			return http.Fail(c, 400, "invalid org", rerr)
-		}
-		targetOrg = resolved
-	}
-
+func creditToDatastore(c *zip.Ctx, targetOrg *organization.Organization, org, cur, reason, tag string, amountCents int64, expiresAt time.Time, idemKey string) error {
 	db := datastore.New(targetOrg.Namespaced(c.Context()))
 	subject := strings.ToLower(strings.TrimSpace(targetOrg.Name)) // org-pooled billing key (== namespace slug)
 

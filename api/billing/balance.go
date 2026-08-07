@@ -33,11 +33,19 @@ func GetBalance(c *zip.Ctx) error {
 	}
 
 	// Injected double-entry ledger (embedded-in-cloud path): the balance is
-	// authoritative from the SAME org account POST /billing/credit writes and the
-	// AI gate reads — one ledger by construction. Org-keyed: the `user` param is the
-	// org-pool account key.
+	// authoritative from the SAME account POST /billing/credit writes and the AI gate
+	// reads — one ledger by construction.
+	//
+	// THE ORG AND THE SUBJECT ARE TWO VALUES, and passing one for both is what this
+	// fixes. `user` is a SUBJECT — the org's pool key, or the finer "<org>/<user>" of
+	// a member who spends from their own wallet, which is exactly what the datastore
+	// path below hands bucketedSplit and what this door's own example documents. It
+	// was being passed as the LEDGER, so a person-scoped subject opened a namespace
+	// named after the person: a different ledger, holding nothing, reported as a real
+	// zero to a customer with money. The org is the request's own, the same one the
+	// datastore path reads, and the subject is the subject.
 	if led := creditledger.Get(); led != nil {
-		avail, err := led.Balance(c.Context(), user, string(cur))
+		avail, err := led.Balance(c.Context(), strings.ToLower(strings.TrimSpace(org.Name)), user, string(cur), org.TestMode())
 		if err != nil {
 			return http.Fail(c, 500, "failed to query balance", err)
 		}

@@ -183,6 +183,11 @@ func chargeAndCredit(c *zip.Ctx, org *organization.Organization, db *datastore.D
 	trans.Amount = currency.Cents(amountCents)
 	trans.Notes = fmt.Sprintf("Top-up via %s (ref: %s)", proc.Type(), result.ProcessorRef)
 	trans.Tags = "topup"
+	// The processor's own reference for this charge, so the provider's later callback
+	// recognises a payment this door already took — the same stamp the token door
+	// writes, for the same reason (payment_core.go).
+	trans.SourceKind = chargeSourceKind(proc.Type())
+	trans.SourceId = result.ProcessorRef
 	// Ledger test-ness MUST follow the charge environment (org.TestMode), not
 	// org.Live alone — otherwise a Square sandbox charge could credit the live
 	// (spendable) balance. test==credit-bucket==read-bucket==charge-env.

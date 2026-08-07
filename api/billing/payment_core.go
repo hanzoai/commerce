@@ -264,6 +264,18 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 	trans.Notes = fmt.Sprintf("Top-up via %s (ref: %s)", proc.Type(), result.ProcessorRef)
 	trans.Tags = "topup"
 
+	// THE PROCESSOR'S OWN REFERENCE FOR THIS CHARGE, stamped on the row the charge
+	// wrote. It is what lets the provider's later callback recognise a payment this
+	// door already took, and it is the difference between crediting a top-up once and
+	// crediting it twice.
+	//
+	// The callback settles asynchronously for the payments that have no door
+	// (webhooks.go), and it identifies the ones that DO by looking this pair up. The
+	// pair was never written here, so the lookup matched nothing on every in-session
+	// charge, and the callback read its own door's payment as one nobody had handled.
+	trans.SourceKind = chargeSourceKind(proc.Type())
+	trans.SourceId = result.ProcessorRef
+
 	// Ledger test-ness MUST follow the charge environment (org.TestMode): a Square
 	// sandbox charge credits the TEST bucket, never the live spendable one.
 	// test == credit-bucket == read-bucket == charge-env.
