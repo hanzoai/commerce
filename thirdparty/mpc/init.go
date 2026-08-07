@@ -1,30 +1,13 @@
 package mpc
 
 import (
-	"os"
-	"strings"
-
 	"github.com/hanzoai/commerce/payment/processor"
 )
 
+// The rail registers itself from the environment, through the one function that
+// reads it. Nothing is assembled here: a second place that built a Config would
+// be a second place a setting could be forgotten, which is how MPC_ZAP_ADDR
+// could have been added to the config type and still done nothing.
 func init() {
-	kmsEndpoint := strings.TrimSpace(os.Getenv("MPC_KMS_ENDPOINT"))
-	if kmsEndpoint == "" {
-		kmsEndpoint = "https://kms.hanzo.ai"
-	}
-	mpcEndpoint := strings.TrimSpace(os.Getenv("MPC_ENDPOINT"))
-	apiKey := strings.TrimSpace(os.Getenv("MPC_API_KEY"))
-
-	// The secret the MPC service signs its deliveries with, separate from the
-	// API key we authenticate outbound calls with. Unset means inbound webhooks
-	// are refused, so turning the rail on means provisioning both.
-	webhookSecret := strings.TrimSpace(os.Getenv("MPC_WEBHOOK_SECRET"))
-
-	p := NewProcessor(Config{
-		KMSEndpoint:   kmsEndpoint,
-		MPCEndpoint:   mpcEndpoint,
-		APIKey:        apiKey,
-		WebhookSecret: webhookSecret,
-	})
-	processor.Register(p)
+	processor.Register(NewProcessor(DefaultConfig()))
 }

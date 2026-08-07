@@ -1,19 +1,18 @@
 package mpc
 
 import (
-	"bytes"
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/hanzoai/money"
-	"io"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/hanzoai/money"
 
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
@@ -25,9 +24,19 @@ type MPCProcessor struct {
 	*processor.BaseProcessor
 	kmsEndpoint   string
 	mpcEndpoint   string
-	apiKey        string
 	webhookSecret string
-	httpClient    *http.Client
+
+	// transport carries keygen and health, and which wire it is came from
+	// configuration at construction. Nothing below this field ever asks: that
+	// is what makes the wire a deployment fact rather than a call site's
+	// business.
+	transport Transport
+
+	// http carries the transactional calls, which have no wire but this one —
+	// mpcd's ZAP surface registers no opcode for creating, approving,
+	// refunding or querying a transaction. When no ZAP address is configured
+	// this is also the Transport above, so the HTTP plumbing exists once.
+	http *httpTransport
 }
 
 // Config holds MPC processor configuration.
@@ -40,37 +49,68 @@ type Config struct {
 	// our outbound calls, WebhookSecret authenticates the service's inbound
 	// notifications, and the two are provisioned independently.
 	WebhookSecret string
+
+	// ZAPAddress is where mpcd's ZAP surface listens, and naming it is what
+	// selects that wire for keygen and health. Empty — the default everywhere
+	// no one has said otherwise — keeps the HTTP wire, so a standalone
+	// commerce needs no configuration to keep behaving as it always has.
+	//
+	// The value also chooses the medium, because luxfi/zap derives the network
+	// from the address: a host:port is TCP, and a filesystem path (or an "@"
+	// abstract name) is a unix socket. One setting, rather than a flag and an
+	// address that can disagree with it.
+	//
+	// There is no port to put here yet. mpcd defines an MPC-API ZAP surface but
+	// never starts it — pkg/api StartZAP has no callers — so nothing listens
+	// for these opcodes on any port or socket in the fleet today.
+	ZAPAddress string
 }
 
-// DefaultConfig reads configuration from environment variables.
+// DefaultConfig reads the rail's configuration from the environment.
+//
+// It is the ONE place a variable becomes configuration — init registers the
+// processor from it — so a variable that is not read here is a variable that
+// does nothing. That was not a hypothetical: this function previously read a
+// set of names (MPC_API_URL, KMS_API_URL, defaulting to localhost) that nothing
+// called it with, while registration built its own Config from a DIFFERENT set,
+// so the two could not agree and the dead one silently claimed the good name.
 func DefaultConfig() Config {
-	mpcURL := os.Getenv("MPC_API_URL")
-	if mpcURL == "" {
-		mpcURL = "http://localhost:8081"
+	kmsEndpoint := strings.TrimSpace(os.Getenv("MPC_KMS_ENDPOINT"))
+	if kmsEndpoint == "" {
+		kmsEndpoint = "https://kms.hanzo.ai"
 	}
-	kmsURL := os.Getenv("KMS_API_URL")
-	if kmsURL == "" {
-		kmsURL = "http://localhost:8082"
-	}
+
 	return Config{
-		KMSEndpoint:   strings.TrimRight(kmsURL, "/"),
-		MPCEndpoint:   strings.TrimRight(mpcURL, "/"),
-		APIKey:        os.Getenv("MPC_API_KEY"),
-		WebhookSecret: os.Getenv("MPC_WEBHOOK_SECRET"),
+		KMSEndpoint: kmsEndpoint,
+		MPCEndpoint: strings.TrimSpace(os.Getenv("MPC_ENDPOINT")),
+		APIKey:      strings.TrimSpace(os.Getenv("MPC_API_KEY")),
+
+		// The secret the MPC service signs its deliveries with, separate from
+		// the API key we authenticate outbound calls with. Unset means inbound
+		// webhooks are refused, so turning the rail on means provisioning both.
+		WebhookSecret: strings.TrimSpace(os.Getenv("MPC_WEBHOOK_SECRET")),
+
+		// Where mpcd's ZAP surface listens, and naming it is what moves keygen
+		// and health onto that wire. Unset — every deployment until one says
+		// otherwise — leaves the rail on HTTP exactly as before.
+		ZAPAddress: strings.TrimSpace(os.Getenv("MPC_ZAP_ADDR")),
 	}
 }
 
 // NewProcessor creates a new MPC processor.
 func NewProcessor(cfg Config) *MPCProcessor {
+	h := &httpTransport{
+		endpoint: strings.TrimRight(cfg.MPCEndpoint, "/"),
+		apiKey:   cfg.APIKey,
+		client:   &http.Client{Timeout: keygenTimeout},
+	}
 	mp := &MPCProcessor{
 		BaseProcessor: processor.NewBaseProcessor(processor.MPC, MPCSupportedCurrencies()),
 		kmsEndpoint:   strings.TrimRight(cfg.KMSEndpoint, "/"),
-		mpcEndpoint:   strings.TrimRight(cfg.MPCEndpoint, "/"),
-		apiKey:        cfg.APIKey,
+		mpcEndpoint:   h.endpoint,
 		webhookSecret: cfg.WebhookSecret,
-		httpClient: &http.Client{
-			Timeout: 120 * time.Second,
-		},
+		transport:     newTransport(cfg, h),
+		http:          h,
 	}
 
 	if mp.configured() {
@@ -85,6 +125,11 @@ func NewProcessor(cfg Config) *MPCProcessor {
 // on" with no I/O, which is what a request-triggered path needs: IsAvailable
 // also probes the remote, and an unauthenticated caller must never be able to
 // make us dial out just by posting.
+//
+// A ZAP address does not substitute for the HTTP endpoint and is deliberately
+// not consulted here. Selecting ZAP moves keygen and health onto that wire; the
+// transactional calls have no ZAP opcode to move to, so a rail without an HTTP
+// endpoint is still a rail that cannot finish a payment.
 func (mp *MPCProcessor) configured() bool {
 	return mp.kmsEndpoint != "" && mp.mpcEndpoint != ""
 }
@@ -154,59 +199,6 @@ func (mp *MPCProcessor) Type() processor.ProcessorType {
 	return processor.MPC
 }
 
-// --- HTTP helpers ---
-
-func (mp *MPCProcessor) doRequest(ctx context.Context, method, url string, body interface{}) (*http.Response, error) {
-	var bodyReader io.Reader
-	if body != nil {
-		data, err := json.Marshal(body)
-		if err != nil {
-			return nil, fmt.Errorf("mpc: marshal request body: %w", err)
-		}
-		bodyReader = bytes.NewReader(data)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, method, url, bodyReader)
-	if err != nil {
-		return nil, fmt.Errorf("mpc: build request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	if mp.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+mp.apiKey)
-	}
-
-	resp, err := mp.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("mpc: request to %s failed: %w", url, err)
-	}
-	return resp, nil
-}
-
-func readBody(resp *http.Response) ([]byte, error) {
-	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
-}
-
-func (mp *MPCProcessor) doJSON(ctx context.Context, method, url string, reqBody, respBody interface{}) error {
-	resp, err := mp.doRequest(ctx, method, url, reqBody)
-	if err != nil {
-		return err
-	}
-	body, err := readBody(resp)
-	if err != nil {
-		return fmt.Errorf("mpc: read response: %w", err)
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("mpc: %s %s returned %d: %s", method, url, resp.StatusCode, string(body))
-	}
-	if respBody != nil {
-		if err := json.Unmarshal(body, respBody); err != nil {
-			return fmt.Errorf("mpc: decode response: %w", err)
-		}
-	}
-	return nil
-}
-
 // --- MPC API types (matching lux/mpc/pkg/api) ---
 
 type mpcCreateTxReq struct {
@@ -249,19 +241,23 @@ type mpcKeygenResp struct {
 }
 
 // GenerateAddress runs a threshold keygen on the MPC signer fleet and returns
-// the requested chain's address. Live wire contract (lux/mpc cmd/mpcd
-// /keygen, bearer = MPC internal API key):
+// the requested chain's address. The signer's reply is the same JSON on every
+// wire:
 //
-//	req:  POST {endpoint}/keygen  {"org_id": "..."}     (wallet_id minted by the node)
-//	resp: {wallet_id, result_type, evm_address, btc_address, sol_address, ...}
+//	{wallet_id, result_type, evm_address, btc_address, sol_address, ...}
 //
-// The wallet id is deliberately LEFT TO THE NODE: a deterministic client id
-// replayed into /keygen would re-key an existing wallet — silently moving the
-// address that funds may already be in flight to. Callers that want address
+// HOW that reply was fetched — JSON over HTTP to mpcd's REST surface, or a ZAP
+// opcode over TCP or a unix socket — is settled once at construction and is
+// deliberately not visible from here. Everything below the transport call is
+// policy and is written exactly once, so the chain switch, the wallet-id
+// capture and the refusal of an empty address are the same rules no matter
+// which wire carried the bytes; the transports are tested against these very
+// assertions to keep it that way.
+//
+// A fresh wallet per call is correct, never wasteful: callers that want address
 // reuse hold on to the intent they recorded (the billing crypto-deposit rail
-// does exactly that), so a fresh wallet per call is correct, never wasteful.
-// Keygen needs ALL peers and can take tens of seconds — the caller's ctx
-// bounds the wait.
+// does exactly that). Keygen needs ALL peers and can take tens of seconds — the
+// caller's ctx bounds the wait, under a transport-wide ceiling.
 func (mp *MPCProcessor) GenerateAddress(ctx context.Context, customerID string, chain string) (processor.Wallet, error) {
 	// org_id scopes the wallet on the MPC side; the payer key is "<org>" or
 	// "<org>/<user>", so the org is everything before the first slash.
@@ -270,11 +266,13 @@ func (mp *MPCProcessor) GenerateAddress(ctx context.Context, customerID string, 
 		orgID = orgID[:i]
 	}
 
-	var resp mpcKeygenResp
-	err := mp.doJSON(ctx, http.MethodPost, mp.mpcEndpoint+"/keygen",
-		map[string]string{"org_id": orgID}, &resp)
+	raw, err := mp.transport.Keygen(ctx, orgID)
 	if err != nil {
 		return processor.Wallet{}, processor.NewPaymentError(processor.MPC, "KEYGEN_FAILED", "failed to generate MPC wallet", err)
+	}
+	var resp mpcKeygenResp
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		return processor.Wallet{}, processor.NewPaymentError(processor.MPC, "KEYGEN_FAILED", "failed to decode MPC keygen result", err)
 	}
 	if resp.Error != "" {
 		return processor.Wallet{}, processor.NewPaymentError(processor.MPC, "KEYGEN_FAILED", resp.Error, nil)
@@ -305,7 +303,7 @@ func (mp *MPCProcessor) GetBalance(ctx context.Context, address string, chain st
 	reqURL := fmt.Sprintf("%s/api/v1/wallets/%s/addresses", mp.mpcEndpoint, address)
 
 	var addresses map[string]string
-	err := mp.doJSON(ctx, http.MethodGet, reqURL, nil, &addresses)
+	err := mp.http.doJSON(ctx, http.MethodGet, reqURL, nil, &addresses)
 	if err != nil {
 		return &processor.Balance{
 			Available: currency.Cents(0),
@@ -366,7 +364,7 @@ func (mp *MPCProcessor) Charge(ctx context.Context, req processor.PaymentRequest
 	txReqURL := fmt.Sprintf("%s/api/v1/transactions", mp.mpcEndpoint)
 
 	var txResp mpcTxResp
-	err := mp.doJSON(ctx, http.MethodPost, txReqURL, &mpcCreateTxReq{
+	err := mp.http.doJSON(ctx, http.MethodPost, txReqURL, &mpcCreateTxReq{
 		WalletID:  req.CustomerID,
 		TxType:    "transfer",
 		Chain:     chain,
@@ -409,7 +407,7 @@ func (mp *MPCProcessor) Authorize(ctx context.Context, req processor.PaymentRequ
 	txReqURL := fmt.Sprintf("%s/api/v1/transactions", mp.mpcEndpoint)
 
 	var txResp mpcTxResp
-	err := mp.doJSON(ctx, http.MethodPost, txReqURL, &mpcCreateTxReq{
+	err := mp.http.doJSON(ctx, http.MethodPost, txReqURL, &mpcCreateTxReq{
 		WalletID:  req.CustomerID,
 		TxType:    "transfer",
 		Chain:     chain,
@@ -439,7 +437,7 @@ func (mp *MPCProcessor) Capture(ctx context.Context, transactionID string, amoun
 	approveURL := fmt.Sprintf("%s/api/v1/transactions/%s/approve", mp.mpcEndpoint, transactionID)
 
 	var txResp mpcTxResp
-	err := mp.doJSON(ctx, http.MethodPost, approveURL, nil, &txResp)
+	err := mp.http.doJSON(ctx, http.MethodPost, approveURL, nil, &txResp)
 	if err != nil {
 		return nil, processor.NewPaymentError(processor.MPC, "TX_CAPTURE_FAILED", "failed to approve MPC transaction", err)
 	}
@@ -475,7 +473,7 @@ func (mp *MPCProcessor) Refund(ctx context.Context, req processor.RefundRequest)
 	txReqURL := fmt.Sprintf("%s/api/v1/transactions", mp.mpcEndpoint)
 
 	var txResp mpcTxResp
-	err = mp.doJSON(ctx, http.MethodPost, txReqURL, &mpcCreateTxReq{
+	err = mp.http.doJSON(ctx, http.MethodPost, txReqURL, &mpcCreateTxReq{
 		WalletID:  req.TransactionID,
 		TxType:    "refund",
 		Chain:     chain,
@@ -498,7 +496,7 @@ func (mp *MPCProcessor) GetTransaction(ctx context.Context, txID string) (*proce
 	reqURL := fmt.Sprintf("%s/api/v1/transactions/%s", mp.mpcEndpoint, txID)
 
 	var txResp mpcTxResp
-	err := mp.doJSON(ctx, http.MethodGet, reqURL, nil, &txResp)
+	err := mp.http.doJSON(ctx, http.MethodGet, reqURL, nil, &txResp)
 	if err != nil {
 		return nil, processor.NewPaymentError(processor.MPC, "TX_QUERY_FAILED", "failed to query MPC transaction", err)
 	}
@@ -592,21 +590,19 @@ func (mp *MPCProcessor) ValidateWebhook(ctx context.Context, payload []byte, sig
 }
 
 // IsAvailable checks if the MPC and KMS services are reachable.
+//
+// The probe rides the SAME wire keygen does, which is the point: a rail that
+// health-checked HTTP while minting over ZAP would report a signer it does not
+// actually use, and would answer "available" for a wire that is down.
 func (mp *MPCProcessor) IsAvailable(ctx context.Context) bool {
 	if !mp.configured() {
 		return false
 	}
 
-	// Health check the MPC service
 	healthCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	resp, err := mp.doRequest(healthCtx, http.MethodGet, mp.mpcEndpoint+"/healthz", nil)
-	if err != nil {
-		return false
-	}
-	resp.Body.Close()
-	return resp.StatusCode == http.StatusOK
+	return mp.transport.Health(healthCtx) == nil
 }
 
 // chainForCurrency maps a currency type to its primary chain.
