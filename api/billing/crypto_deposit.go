@@ -47,7 +47,19 @@ type cryptoDepositResponse struct {
 	Chain          string `json:"chain"`
 	Token          string `json:"token"`
 	DepositAddress string `json:"depositAddress"`
-	ExpiresAt      string `json:"expiresAt,omitempty"`
+
+	// AddressTag is the routing tag the payer MUST send with the payment on a
+	// chain where the address is shared (XRPL's destination tag). Absent on
+	// every chain that mints one address per payer.
+	//
+	// omitempty is safe and load-bearing here: the tag is rendered decimal, so
+	// the first tag ever issued is the string "0", which is not empty and is
+	// therefore sent. A payment to a pooled address with no tag names nobody
+	// and is credited to nobody, so dropping "0" on the wire would strand the
+	// deposit of whoever holds it.
+	AddressTag string `json:"addressTag,omitempty"`
+
+	ExpiresAt string `json:"expiresAt,omitempty"`
 }
 
 // cryptoProcessor resolves the ONE crypto custody processor (default MPC,
@@ -97,12 +109,38 @@ func GetCryptoOptions(c *zip.Ctx) error {
 		return jsonhttp.Fail(c, 503, "Crypto deposits not configured", err)
 	}
 
-	var watched []depositwatch.Asset
-	if w := depositledger.Default(); w.Enabled() {
-		watched = w.Assets()
-	}
-	chains, tokens := offeredFrom(watched, cp.SupportedChains())
+	chains, tokens := offeredFrom(watchedAssets(), cp.SupportedChains())
 	return c.JSON(200, map[string]any{"chains": chains, "tokens": tokens})
+}
+
+// watchedAssets is the set of assets something is actually watching — the ONE
+// question both the picker and the mint path ask, so they cannot disagree about
+// what is on offer. An unconfigured or disabled watcher yields none, which is
+// what makes "offered" and "creditable" the same set.
+func watchedAssets() []depositwatch.Asset {
+	if w := depositledger.Default(); w.Enabled() {
+		return w.Assets()
+	}
+	return nil
+}
+
+// pooledAddressFor returns the ONE custody account (chain, token) is deposited
+// to, for a chain whose deposits are pooled. Empty when nothing watches that
+// asset — which is the only reason it can be empty, since AssetsFromEnv refuses
+// to build a pooled asset with no configured account.
+//
+// It is looked up per (chain, TOKEN), not per chain, and that is the check it
+// exists for: handing out the pooled address for a token nothing watches would
+// invite a deposit that no scan will ever see. The address itself is per-chain
+// — one account holds every currency sent to it — so every token on a pooled
+// chain answers the same string.
+func pooledAddressFor(assets []depositwatch.Asset, chain, token string) string {
+	for _, a := range assets {
+		if strings.EqualFold(a.Chain, chain) && strings.EqualFold(a.Token, token) {
+			return a.PooledAddress
+		}
+	}
+	return ""
 }
 
 // offeredFrom projects the watched assets onto the two lists the picker renders,
@@ -134,7 +172,16 @@ func offeredFrom(assets []depositwatch.Asset, mintable []string) (chains, tokens
 	cset, tset := map[string]bool{}, map[string]bool{}
 	for _, a := range assets {
 		chain := strings.ToLower(a.Chain)
-		if !canMint[chain] {
+		// The custody signer is asked only about chains it would actually have
+		// to mint on. A POOLED chain's address is CONFIGURED, not derived, so
+		// the signer's opinion of it is not just unnecessary but wrong: this
+		// signer answers "no" for XRPL (it derives no XRPL key, and its chain
+		// switch falls through to the EVM address), and deferring to that would
+		// hide a chain the rail can both receive and credit. What makes a
+		// pooled chain offerable is that its account is configured — and
+		// AssetsFromEnv refuses to build the asset otherwise, so being watched
+		// already IS that.
+		if !a.Pooled() && !canMint[chain] {
 			continue
 		}
 		cset[chain] = true
@@ -168,6 +215,61 @@ func sortedKeys(m map[string]bool) []string {
 // to turn this on from the outside. The thing that makes it safe is code that
 // does not exist yet, so only code may flip it.
 const cryptoDepositsCanBeCredited = false
+
+// openIntentFor returns the payer's live deposit intent for this asset, if
+// there is one to reuse.
+//
+// One payer, one live destination per asset. Reuse is what stops a refreshed
+// page from spraying MPC keygens and stranding funds across addresses — and on
+// a POOLED chain it is what stops it spraying destination TAGS, which matters
+// more: a tag is drawn from a finite space that is never reclaimed, and every
+// intent ever minted stays watched forever (depositledger.Watched filters on
+// the asset and deliberately not on status). Reuse allocates nothing, so the
+// second request through this door costs the sequence nothing.
+//
+// A reused intent is returned whole rather than as an address, so its tag
+// travels with it and the two halves of its identity cannot come from different
+// places.
+//
+// Three conditions, each of which has to hold:
+//
+//	found + PENDING   a settled or failed intent is history, not a destination
+//	not expired       expiry governs whether we hand the address out AGAIN; it
+//	                  never governs whether we honour what arrives at it
+//	has an address    an intent that never got one is nothing to reuse
+//
+// Get reports a miss as (false, nil), so the caller must check found and not
+// merely err.
+func openIntentFor(db *datastore.Datastore, payer, chain, token string) (*cryptopaymentintent.CryptoPaymentIntent, bool) {
+	existing := cryptopaymentintent.New(db)
+	found, err := existing.Query().
+		Filter("CustomerRef=", payer).
+		Filter("Chain=", chain).
+		Filter("Token=", token).
+		Filter("Status=", string(cryptopaymentintent.Pending)).
+		Get()
+	if err != nil || !found || existing.IsExpired() || existing.DepositAddress == "" {
+		return nil, false
+	}
+	return existing, true
+}
+
+// destinationIsComplete reports whether an intent records a destination a payer
+// can actually be sent to — BOTH halves of it, on a chain that has two.
+//
+// It reads the chain off the INTENT rather than off the request, because the
+// stored row is the thing being handed back and it is the row that has to be
+// coherent. On every per-payer chain it is trivially true, so nothing about
+// those paths changes: the address is the whole destination there.
+//
+// It exists for one state that this handler cannot produce — a pooled intent
+// with no tag, since the tag is allocated and written in the same record as the
+// address — but which a hand-edited row, a restore, or an older binary could.
+// Such a row is not merely incomplete, it is a trap: the address is real and
+// ours, so a payment to it ARRIVES and is credited to nobody.
+func destinationIsComplete(in *cryptopaymentintent.CryptoPaymentIntent) bool {
+	return !depositwatch.Pooled(string(in.Chain)) || in.AddressTag != ""
+}
 
 // CreateCryptoDeposit answers a custody deposit address for the caller. An
 // open PENDING intent for the same (payer, chain, token) is reused — one
@@ -232,46 +334,124 @@ func CreateCryptoDeposit(c *zip.Ctx) error {
 		token = "usdc"
 	}
 
-	cp, err := cryptoProcessor(c.Context())
-	if err != nil {
-		return jsonhttp.Fail(c, 503, "Crypto deposits not configured", err)
-	}
-	if !supportedChain(cp, chain) {
-		return jsonhttp.Fail(c, 400, fmt.Sprintf("unsupported chain %q", chain), nil)
+	// A POOLED chain does not mint anything, so it asks the custody signer
+	// nothing. Its account is configured (depositwatch.Asset.PooledAddress) and
+	// what distinguishes one payer's deposit from another's is a tag allocated
+	// below — so probing the signer here would only add a way for a working
+	// rail to refuse, and asking it whether it "supports xrpl" would answer no
+	// and close a chain that works. Every per-payer chain keeps the path it
+	// had, in the order it had it.
+	pooled := depositwatch.Pooled(chain)
+	var cp processor.CryptoProcessor
+	if !pooled {
+		var err error
+		cp, err = cryptoProcessor(c.Context())
+		if err != nil {
+			return jsonhttp.Fail(c, 503, "Crypto deposits not configured", err)
+		}
+		if !supportedChain(cp, chain) {
+			return jsonhttp.Fail(c, 400, fmt.Sprintf("unsupported chain %q", chain), nil)
+		}
 	}
 
 	// Reuse the payer's open intent for this asset before minting a new one.
-	// Get reports a miss as (false, nil) — check found, not just err.
-	existing := cryptopaymentintent.New(db)
-	if found, err := existing.Query().
-		Filter("CustomerRef=", payer).
-		Filter("Chain=", chain).
-		Filter("Token=", token).
-		Filter("Status=", string(cryptopaymentintent.Pending)).
-		Get(); err == nil && found && !existing.IsExpired() && existing.DepositAddress != "" {
+	if existing, ok := openIntentFor(db, payer, chain, token); ok {
+		// A pooled destination missing its tag names NOBODY: the payment would
+		// arrive at an address we own and be credited to no one (recorded as
+		// unattributed, refundable only by hand). It cannot arise from this
+		// handler — the tag is allocated and written in the same record as the
+		// address — so a row like it is corruption, and the two tempting
+		// repairs are both worse than refusing. Handing it over takes money we
+		// cannot route; minting a replacement leaves the untagged row live and
+		// sprays the tag space on every refresh.
+		if !destinationIsComplete(existing) {
+			log.Error("crypto deposit intent %s on %s has no destination tag; refusing to reuse it", existing.Id(), chain, c)
+			return jsonhttp.Fail(c, 503, "Crypto deposits are temporarily unavailable — this deposit reference is incomplete. Contact support or choose another way to pay.", nil)
+		}
 		return c.JSON(200, toCryptoDepositResponse(existing))
 	}
 
-	wallet, err := cp.GenerateAddress(c.Context(), payer, chain)
-	if err != nil {
-		log.Error("crypto deposit address generation failed for %q on %s: %v", payer, chain, err, c)
-		// 503, NOT 502 — and the difference is what the customer reads.
-		// Cloudflare REPLACES an origin 502 with its own "Bad gateway"
-		// interstitial, so the JSON below never reaches the browser: measured on
-		// pay.hanzo.ai, the deposit call returned a text/html CF error page while
-		// the identical call to the origin returned this message. 503 passes
-		// through untouched (the wire rail's own "not configured" 503 proves it),
-		// which is also the honest code: the custody signer is unavailable, we
-		// are not a broken gateway.
-		return jsonhttp.Fail(c, 503, "Crypto deposits are temporarily unavailable — the custody service is not accepting new addresses. Try again shortly or choose another way to pay.", err)
+	// WHERE the payer sends, and WHAT names them when they arrive. This is the
+	// only thing the two kinds of chain answer differently; everything after it
+	// is one path, so a field can never be recorded on one kind of chain and
+	// quietly forgotten on the other.
+	var wallet processor.Wallet
+	var tag string
+	if pooled {
+		// The account is configured, never invented — and never asked of the
+		// custody signer, which would mint a fresh wallet per deposit and
+		// strand a non-refundable reserve on each one. If nothing is
+		// configured, nothing is handed out.
+		addr := pooledAddressFor(watchedAssets(), chain, token)
+		if addr == "" {
+			return jsonhttp.Fail(c, 503, fmt.Sprintf("Crypto deposits on %s are not configured — no custody account is set for %s.", chain, strings.ToUpper(token)), nil)
+		}
+		// The tag is allocated BY THE DATABASE and never chosen here — see
+		// depositledger.NextTag for what makes it unique across replicas, and
+		// why a random tag with a uniqueness check would not be. Allocating one
+		// and not using it costs nothing, since the sequence simply moves on;
+		// issuing one twice halts the asset for every customer. So this refuses
+		// rather than falls back.
+		var err error
+		if tag, err = depositledger.NextTag(c.Context(), chain); err != nil {
+			log.Error("crypto deposit tag allocation failed for %q on %s: %v", payer, chain, err, c)
+			return jsonhttp.Fail(c, 503, "Crypto deposits are temporarily unavailable — a deposit reference could not be issued. Try again shortly or choose another way to pay.", err)
+		}
+		// No wallet ID. The custody signer holds no per-deposit wallet here —
+		// the pooled account IS the wallet, and it is the operator's rather
+		// than this intent's. Empty is the honest answer, not a missing one.
+		wallet = processor.Wallet{Address: addr}
+	} else {
+		var err error
+		if wallet, err = cp.GenerateAddress(c.Context(), payer, chain); err != nil {
+			log.Error("crypto deposit address generation failed for %q on %s: %v", payer, chain, err, c)
+			// 503, NOT 502 — and the difference is what the customer reads.
+			// Cloudflare REPLACES an origin 502 with its own "Bad gateway"
+			// interstitial, so the JSON below never reaches the browser: measured on
+			// pay.hanzo.ai, the deposit call returned a text/html CF error page while
+			// the identical call to the origin returned this message. 503 passes
+			// through untouched (the wire rail's own "not configured" 503 proves it),
+			// which is also the honest code: the custody signer is unavailable, we
+			// are not a broken gateway.
+			return jsonhttp.Fail(c, 503, "Crypto deposits are temporarily unavailable — the custody service is not accepting new addresses. Try again shortly or choose another way to pay.", err)
+		}
 	}
 
+	intent, err := recordIntent(db, payer, chain, token, req.AmountCents, wallet, tag)
+	if err != nil {
+		return jsonhttp.Fail(c, 500, "failed to record deposit intent", err)
+	}
+
+	return c.JSON(200, toCryptoDepositResponse(intent))
+}
+
+// recordIntent turns a resolved destination into the durable row the watcher
+// will later match deposits against.
+//
+// It is a function and not four lines in the handler for a reason that is not
+// tidiness: CreateCryptoDeposit is gated shut (cryptoDepositsCanBeCredited), so
+// anything written inside it is UNTESTABLE — a mutant that recorded the pooled
+// address and dropped the tag passed the entire suite, because no test can
+// reach the statement. Money-carrying assignments do not belong behind a gate
+// no test can open.
+//
+// It REFUSES to write an incomplete destination. That is the same invariant
+// destinationIsComplete states on the way out, enforced here on the way IN, so
+// a row that traps a payment cannot be created rather than merely being caught
+// later: on a pooled chain the address is real and ours, so a payment to it
+// arrives whether or not we recorded who it belongs to.
+func recordIntent(db *datastore.Datastore, payer, chain, token string, amountCents int64, wallet processor.Wallet, tag string) (*cryptopaymentintent.CryptoPaymentIntent, error) {
 	intent := cryptopaymentintent.New(db)
-	intent.Amount = req.AmountCents
+	intent.Amount = amountCents
 	intent.Currency = "usd"
 	intent.Chain = cryptopaymentintent.Chain(chain)
 	intent.Token = token
 	intent.DepositAddress = wallet.Address
+	// The other half of the destination on a pooled chain, and empty on every
+	// chain where the address is the whole answer. Written in the SAME record
+	// as the address, because an intent holding one without the other names an
+	// identity the watcher can never match.
+	intent.AddressTag = tag
 	// Recorded at mint time because this is the only moment the signer offers
 	// it. Without it a deposit can be credited and never swept.
 	intent.WalletID = wallet.ID
@@ -281,11 +461,17 @@ func CreateCryptoDeposit(c *zip.Ctx) error {
 	// a day rather than the model's 30-minute checkout default.
 	intent.ExpiresAt = time.Now().Add(24 * time.Hour)
 	intent.Defaults()
-	if err := intent.Create(); err != nil {
-		return jsonhttp.Fail(c, 500, "failed to record deposit intent", err)
-	}
 
-	return c.JSON(200, toCryptoDepositResponse(intent))
+	if intent.DepositAddress == "" {
+		return nil, fmt.Errorf("refusing to record a %s/%s deposit intent with no address", chain, token)
+	}
+	if !destinationIsComplete(intent) {
+		return nil, fmt.Errorf("refusing to record a %s/%s deposit intent with an address but no destination tag — a payment to it would arrive and be credited to nobody", chain, token)
+	}
+	if err := intent.Create(); err != nil {
+		return nil, err
+	}
+	return intent, nil
 }
 
 // GetCryptoDeposit reports an intent's state (pending → confirming →
@@ -317,6 +503,7 @@ func toCryptoDepositResponse(i *cryptopaymentintent.CryptoPaymentIntent) cryptoD
 		Chain:          string(i.Chain),
 		Token:          i.Token,
 		DepositAddress: i.DepositAddress,
+		AddressTag:     i.AddressTag,
 		ExpiresAt:      i.ExpiresAt.UTC().Format(time.RFC3339),
 	}
 }

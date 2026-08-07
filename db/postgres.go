@@ -244,6 +244,17 @@ func (db *PostgresDB) initSchema() error {
 		return err
 	}
 
+	// The named-counter table. See db.Sequencer.
+	//
+	// It is deliberately NOT keyed by tenant_id, unlike _entities. A counter's
+	// scope is whatever its NAME says it is, and the one this was built for —
+	// the destination tag on a pooled XRPL custody account — is shared by every
+	// org, because the account is. Adding tenant_id to the key would silently
+	// hand two orgs the same tag for the same address.
+	if _, err = db.db.Exec(sequenceDDL); err != nil {
+		return err
+	}
+
 	// The credential guard travels with the table it protects — see guard.go.
 	for _, stmt := range postgresGuardDDL() {
 		if _, err := db.db.Exec(stmt); err != nil {
@@ -252,6 +263,39 @@ func (db *PostgresDB) initSchema() error {
 	}
 
 	return nil
+}
+
+// NextSequence atomically increments the named counter and returns its new
+// value, starting at 0. See db.Sequencer for why this primitive exists.
+//
+// It is ONE statement, and that is the whole guarantee. The upsert either
+// inserts the row at 0 or increments the row already there; on conflict
+// Postgres takes a row lock and re-evaluates DO UPDATE against the newest
+// committed version, so concurrent executions queue on that row and each
+// returns a distinct value. No value is ever read into Go and written back, so
+// there is no window in which two callers can both see N.
+//
+// That holds at READ COMMITTED, which is what this pool runs — it does NOT
+// depend on an isolation level nobody sets, and it holds across replicas
+// because they share the row.
+func (db *PostgresDB) NextSequence(ctx context.Context, name string) (uint64, error) {
+	if name == "" {
+		return 0, fmt.Errorf("db: sequence name is empty")
+	}
+
+	var value int64
+	err := db.db.QueryRowContext(ctx, `
+		INSERT INTO _sequences (name, value) VALUES ($1, 0)
+		ON CONFLICT (name) DO UPDATE SET value = _sequences.value + 1
+		RETURNING value
+	`, name).Scan(&value)
+	if err != nil {
+		return 0, fmt.Errorf("db: allocate from sequence %q: %w", name, err)
+	}
+	if value < 0 {
+		return 0, fmt.Errorf("db: sequence %q overflowed", name)
+	}
+	return uint64(value), nil
 }
 
 // initVectorSearch initializes pgvector extension

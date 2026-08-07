@@ -472,6 +472,47 @@ type DB interface {
 	TenantType() string
 }
 
+// Sequencer is a backend that can hand out a durable, strictly increasing
+// number under a name — ATOMICALLY, so that two concurrent callers, in two
+// goroutines or in two replicas, can never receive the same one.
+//
+// It exists because nothing else in this store can allocate a unique number.
+// Put is a blind upsert (ON CONFLICT … DO UPDATE), so a second writer
+// OVERWRITES rather than being refused; datastore.RunInTransaction is a no-op
+// that opens no transaction at all; and DB.RunInTransaction, while real, runs
+// at the Postgres default isolation (READ COMMITTED), where read-modify-write
+// on a counter row lets two transactions both read N and both commit N+1. So
+// every "unique" identifier in this codebase above the storage layer is either
+// a deterministic hash (which makes duplicates COLLAPSE onto one row rather
+// than allocate) or a check-then-write with a TOCTOU window.
+//
+// That is fine for idempotent dedup, where collapsing is the goal. It is not
+// fine for allocation, where two callers must walk away with two DIFFERENT
+// numbers. Where the number identifies whose money is whose — an XRPL
+// destination tag on a pooled custody account — a check-then-write is not a
+// guarantee, and this is the primitive that makes it one.
+//
+// It is deliberately NOT part of the DB interface. Allocation is a capability,
+// not a requirement: a backend that cannot do it atomically must fail to
+// satisfy this rather than offer a racy imitation, so callers type-assert and
+// REFUSE when the assertion fails, instead of degrading to a check-then-write.
+//
+// The counter starts at 0 and 0 IS a value it hands out — the first call
+// returns 0, not 1. Callers that treat 0 as "unset" must say so with a
+// separate presence flag, never by skipping it.
+type Sequencer interface {
+	// NextSequence atomically increments the named counter and returns its new
+	// value. The first call for a name returns 0.
+	NextSequence(ctx context.Context, name string) (uint64, error)
+}
+
+// sequenceDDL is the ONE definition of the counter table, identical in shape on
+// both backends: a name, and the last value handed out under it.
+const sequenceDDL = `CREATE TABLE IF NOT EXISTS _sequences (
+		name TEXT PRIMARY KEY,
+		value BIGINT NOT NULL DEFAULT 0
+	)`
+
 // Datastore is the interface for Hanzo Datastore (ClickHouse) analytics queries
 type Datastore interface {
 	// Query executes datastore queries

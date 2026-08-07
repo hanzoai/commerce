@@ -1163,12 +1163,22 @@ default" rule):
 CRYPTO_DEPOSIT_RPC_<CHAIN>            e.g. CRYPTO_DEPOSIT_RPC_BASE
 CRYPTO_DEPOSIT_TOKEN_<CHAIN>_<TOKEN>  e.g. CRYPTO_DEPOSIT_TOKEN_BASE_USDC=0x8335…
                                       or  CRYPTO_DEPOSIT_TOKEN_SOLANA_USDC=EPjFWdd5…
+CRYPTO_DEPOSIT_ADDRESS_<CHAIN>        POOLED chains only (XRPL). The one custody
+                                      account every payer sends to, e.g.
+                                      CRYPTO_DEPOSIT_ADDRESS_XRPL=rMxCKbED…
 ```
 
 Unset ⇒ watches nothing (inert). Incoherent (token with no endpoint, unpegged
 token, unreadable chain, address written for the wrong chain) ⇒ **Bootstrap
 refuses to start**: an operator who configured a deposit rail must not get a
 process watching less than they asked for.
+
+`CRYPTO_DEPOSIT_ADDRESS_*` is required on a pooled chain and **refused on every
+other one** — a shared address on a per-payer chain would hand every payer the
+same destination on a chain where the address is the only thing that says whose
+money it is. The invariant the mint path is built on: **a pooled asset that
+exists has an account to be paid to**, so `pooledAddressFor` returning "" means
+"nothing watches this token", never "watched but unconfigured".
 
 `depositwatch.pegCents` IS the creditable set (`usdc`, `usdt`, `rlusd` @ 100c;
 `rlusd` added 2026-08 with XRPL). There is
@@ -1322,6 +1332,54 @@ account are refused as ambiguous.
    tag means the payment carried NONE and is NOT the tag `"0"` — 0 is a legal tag
    somebody may hold, and collapsing the two credits a stranger's payment to its
    holder.
+1a. 🔴 **The WRITE side: the tag is allocated BY THE DATABASE, and that is the
+   only reason it is unique** (2026-08, `billing/depositledger.NextTag` +
+   `api/billing.CreateCryptoDeposit`'s pooled branch). A duplicate `(address,
+   tag)` does not mis-credit — `indexWatched` refuses an identity claimed by two
+   intents — it **HALTS the asset for every customer**, so uniqueness had to be
+   structural rather than likely.
+
+   **What guarantees it:** `db.Sequencer.NextSequence` is ONE statement,
+   `INSERT … ON CONFLICT DO UPDATE … RETURNING`, against one row. No value is
+   ever read into Go and written back, so there is no window in which two
+   callers see N. Postgres row-locks on conflict and re-evaluates `DO UPDATE`
+   against the newest committed version; SQLite applies the upsert indivisibly.
+   Holds across goroutines, requests and **replicas** (they share the row), with
+   no lock, lease or leader election — the same "property of the storage, not of
+   coordination" argument that makes `creditKey` idempotent.
+
+   ⚠ **`datastore.RunInTransaction` IS A NO-OP** (`datastore/datastore.go` —
+   "For now, just run the function directly"). It opens no transaction, ignores
+   `opts`, and several call sites carry comments claiming protection it does not
+   provide. `db.DB.RunInTransaction` is real but opens `BeginTx(ctx, nil)` =
+   **READ COMMITTED**, where read-modify-write on a counter lets two
+   transactions both read N and both commit N+1. *Measured, not assumed*: the
+   mutant that wraps a read-modify-write in an explicit transaction still
+   produced duplicate tags against a real Postgres. `Put` is a blind upsert, so
+   a losing writer OVERWRITES rather than being refused. **There is no other
+   atomic allocator reachable from the model layer** — every other "unique"
+   number in this repo is a deterministic hash (which collapses duplicates,
+   which is right for dedup and useless for allocation) or a check-then-write.
+   `orm.CreateIfAbsent` exists in the interface and `models/mixin/orm_adapter.go`
+   explicitly refuses it for this reason.
+
+   **The tag is COMMERCE's, not custody's.** It is a routing fact — which intent
+   does this payment belong to — not a key fact. `GenerateAddress` mints a FRESH
+   MPC wallet per call by design, which on XRPL strands a reserve on every
+   deposit, and the fleet derives no XRPL key at all (its chain switch falls
+   through to the EVM address, so a "minted" XRPL address would be an `0x`
+   string nobody can pay). So the pooled account comes from config and the mint
+   path calls neither `cryptoProcessor` nor `GenerateAddress` — and
+   `offeredFrom` offers a pooled chain on its CONFIGURATION rather than on
+   `SupportedChains()`, which answers "no" for xrpl and would otherwise hide a
+   chain the rail can both receive and credit.
+
+   Tags are **dense from 0** and per-CHAIN (`crypto-deposit-tag:<chain>`), not
+   per-asset: one account holds every currency sent to it. Density is the
+   requirement, not an implementation detail — 32 bits is 77k tags to a
+   coin-flip collision if drawn randomly, and 4.29e9 if counted. Exhaustion
+   REFUSES rather than wraps: intents are watched forever (`Watched` filters on
+   the asset, never on status), so a wrapped tag would collide with a live one.
 2. **An untagged or unknown-tagged payment is RECORDED, not credited and not
    dropped.** `Store.RecordUnattributed` →
    `models/unattributeddeposit` (system namespace, id

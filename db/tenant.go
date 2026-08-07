@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 
 	ormdb "github.com/hanzoai/orm/db"
 )
@@ -106,6 +107,30 @@ func (d tenantDB) PutVector(ctx context.Context, kind string, id string, vector 
 
 func (d tenantDB) RunInTransaction(ctx context.Context, fn func(tx Transaction) error, opts *TransactionOptions) error {
 	return d.do(ctx, func(db DB) error { return db.RunInTransaction(ctx, fn, opts) })
+}
+
+// NextSequence forwards the allocation to the tenant's own store, so a
+// tenantDB satisfies Sequencer exactly when the store behind it does.
+//
+// The single borrow is enough, and this is the one place in this file where
+// that is worth stating: the guarantee is a property of ONE statement (see
+// SQLiteDB.NextSequence), not of holding a handle across several, so it does
+// not need the borrow to span calls any more than a Put does.
+func (d tenantDB) NextSequence(ctx context.Context, name string) (uint64, error) {
+	var out uint64
+	err := d.do(ctx, func(db DB) error {
+		s, ok := db.(Sequencer)
+		if !ok {
+			// Refuse rather than imitate. A caller that needs an allocated
+			// number needs it to be unique, and there is no safe fallback to
+			// offer here — see the Sequencer doc.
+			return fmt.Errorf("db: tenant store %T cannot allocate sequences", db)
+		}
+		var err error
+		out, err = s.NextSequence(ctx, name)
+		return err
+	})
+	return out, err
 }
 
 func (d tenantDB) Query(kind string) Query { return tenantQuery{d: d, kind: kind} }
