@@ -13,6 +13,8 @@ import (
 	"log/slog"
 
 	"github.com/luxfi/zap"
+
+	"github.com/hanzoai/commerce/util/zapwire"
 )
 
 // ZAP opcodes for vector operations.
@@ -22,11 +24,12 @@ const (
 	OpVectorDelete uint16 = 0x12
 )
 
-// ZAP message field offsets.
-// Layout: [status(1)][reserved(7)][payload...]
+// ZAP message field offsets. The framing itself — layout, object size, and the
+// opcode<<8 flags rule — lives in util/zapwire, which is where any other
+// commerce package speaking ZAP gets it from too.
 const (
-	zapFieldStatus  = 0 // uint8: 0=ok, 1=error
-	zapFieldPayload = 8 // bytes: JSON payload
+	zapFieldStatus  = zapwire.FieldStatus
+	zapFieldPayload = zapwire.FieldPayload
 )
 
 // ZAPConfig configures the ZAP transport node.
@@ -171,38 +174,13 @@ func (z *ZAPNode) handleDelete(_ context.Context, _ string, msg *zap.Message) (*
 // --- ZAP message builders ---
 
 // zapOK builds a success response. payload may be nil.
-func zapOK(payload []byte) *zap.Message {
-	return buildZAPResponse(0, payload)
-}
+func zapOK(payload []byte) *zap.Message { return zapwire.OK(payload) }
 
 // zapError builds an error response with the error string as payload.
-func zapError(errMsg string) *zap.Message {
-	return buildZAPResponse(1, []byte(errMsg))
-}
+func zapError(errMsg string) *zap.Message { return zapwire.Error(errMsg) }
 
-func buildZAPResponse(status uint8, payload []byte) *zap.Message {
-	b := zap.NewBuilder(zap.HeaderSize + 16 + len(payload))
-	obj := b.StartObject(16)
-	obj.SetUint8(zapFieldStatus, status)
-	if len(payload) > 0 {
-		obj.SetBytes(zapFieldPayload, payload)
-	}
-	obj.FinishAsRoot()
-	msg, _ := zap.Parse(b.Finish())
-	return msg
-}
-
-// BuildZAPRequest builds a ZAP request message with the given payload.
-// The caller sets flags to encode the opcode: flags = opcode << 8.
+// BuildZAPRequest builds a ZAP request message with the given payload,
+// encoding the opcode into the message flags.
 func BuildZAPRequest(opcode uint16, payload []byte) *zap.Message {
-	b := zap.NewBuilder(zap.HeaderSize + 16 + len(payload))
-	obj := b.StartObject(16)
-	obj.SetUint8(zapFieldStatus, 0)
-	if len(payload) > 0 {
-		obj.SetBytes(zapFieldPayload, payload)
-	}
-	obj.FinishAsRoot()
-	flags := opcode << 8
-	msg, _ := zap.Parse(b.FinishWithFlags(flags))
-	return msg
+	return zapwire.BuildRequest(opcode, payload)
 }
