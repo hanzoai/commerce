@@ -26,6 +26,8 @@
 package allotment
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -36,6 +38,37 @@ import (
 
 	. "github.com/hanzoai/commerce/types"
 )
+
+// grantKey is the DETERMINISTIC storage key for one (user, period, mode) grant,
+// and it is what actually makes this package's promised idempotence true.
+//
+// THE BUG IT FIXES. Grant read "has this user been granted for this period?" and
+// then wrote a transaction whose id came from the generator — a fresh id every
+// call. Two concurrent runs both read "no" and both created a row, so the user
+// received the monthly credit TWICE. The package doc above claimed idempotence,
+// and the call site claimed "the check-and-create runs inside a datastore
+// transaction so concurrent schedulers cannot double-grant" — but
+// datastore.RunInTransaction is a no-op stub ("For now, just run the function
+// directly"), so there was no transaction and no atomicity anywhere on the path.
+// The comments were the only thing holding the invariant up.
+//
+// Both storage backends upsert on (id, kind, namespace), and a balance is a SUM
+// over rows, so deriving the id from (user, period, mode) makes concurrent
+// grants land on ONE row. Exactly-once becomes a property of the KEY rather than
+// of coordination — the same argument that already makes depositledger.creditKey
+// safe, and it needs no lock, lease or leader election.
+//
+// `mode` is in the hash because a test-mode grant and a live grant for the same
+// user and month are different money and must not collide.
+func grantKey(db *datastore.Datastore, user, tag string, test bool) datastore.Key {
+	mode := "live"
+	if test {
+		mode = "test"
+	}
+	sum := sha256.Sum256([]byte("allotment\x00" + user + "\x00" + tag + "\x00" + mode))
+	root := db.NewKey("synckey", "", 1, nil)
+	return db.NewKey("transaction", "algr_"+hex.EncodeToString(sum[:16]), 0, root)
+}
 
 // TagPrefix is the stable prefix for monthly-allotment deposit tags. The full
 // tag is TagPrefix + ":" + period (e.g. "included-credit:2026-06").
@@ -94,9 +127,17 @@ func Grant(db *datastore.Datastore, user, plan string, cents int64, at time.Time
 	err := db.RunInTransaction(func(txDb *datastore.Datastore) error {
 		rootKey := txDb.NewKey("synckey", "", 1, nil)
 
-		// Already granted for this (user, period)? — no-op.
+		// Already granted for this (user, period, mode)? — no-op.
+		//
+		// Test= is part of the question and was missing. GrantedCents filters on
+		// it, so the two disagreed: a LIVE grant made this query find a row and
+		// return early for a TEST grant of the same user and month, so the test
+		// grant was silently never created while reporting "already_granted".
+		// Test and live are different money and neither can stand in for the
+		// other — the same reason `mode` is in grantKey's hash.
 		existing := make([]*transaction.Transaction, 0)
 		q := transaction.Query(txDb).Ancestor(rootKey).
+			Filter("Test=", test).
 			Filter("DestinationId=", user).
 			Filter("Tags=", tag)
 		if _, err := q.Limit(1).GetAll(&existing); err == nil && len(existing) > 0 {
@@ -122,6 +163,15 @@ func Grant(db *datastore.Datastore, user, plan string, cents int64, at time.Time
 			"period":     period,
 		}
 		trans.Test = test
+
+		// The deterministic key is what makes the read above advisory rather than
+		// load-bearing. That query still saves a pointless write in the common
+		// case, but it CANNOT be the thing that prevents a double grant: two
+		// callers can both read "not granted" before either writes. This key
+		// means both writes are the same row.
+		if err := trans.SetKey(grantKey(txDb, user, tag, test)); err != nil {
+			return err
+		}
 
 		// The granted amount is subscription-clamped by the caller (planForGrant /
 		// grantOrgAllotments derive `cents` from the user's REAL plan, never a
