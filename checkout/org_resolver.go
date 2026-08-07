@@ -213,8 +213,19 @@ var brandDomains = []struct {
 	{"pars.vote", brandPars},
 }
 
+// A brand carries a logoURL only when it HAS one. The checkout header already
+// renders the displayName as a wordmark when this is empty, so a brand without
+// a mark reads as itself rather than as a broken image — and, more to the point,
+// never as somebody else. Filling these in by pattern would be the way a Hanzo
+// logo ends up on a Lux page.
+//
+// Each was fetched before it was written here. Only Hanzo answered with an
+// actual image (200, image/svg+xml); cdn.lux.network 404s and the zoo and pars
+// CDNs answer 522. lux.network/logo-white.svg looks like a hit at 200 until you
+// read the type — it is 112KB of text/html, the SPA's catch-all serving
+// index.html, which the browser would take for an image and fail to draw.
 var (
-	brandHanzo = brand{slug: "hanzo", displayName: "Hanzo", primaryColor: "#808000", iamIssuer: "https://hanzo.id", iamClientID: "hanzo-app"}
+	brandHanzo = brand{slug: "hanzo", displayName: "Hanzo", logoURL: "https://cdn.hanzo.ai/img/logo-white.svg", primaryColor: "#808000", iamIssuer: "https://hanzo.id", iamClientID: "hanzo-app"}
 	brandLux   = brand{slug: "lux", displayName: "Lux", primaryColor: "#ffffff", iamIssuer: "https://lux.id", iamClientID: "lux-app"}
 	brandZoo   = brand{slug: "zoo", displayName: "Zoo", primaryColor: "#ffffff", iamIssuer: "https://zoolabs.id", iamClientID: "zoo-app"}
 	brandPars  = brand{slug: "pars", displayName: "Pars", primaryColor: "#ffffff", iamIssuer: "https://pars.id", iamClientID: "pars-app"}
