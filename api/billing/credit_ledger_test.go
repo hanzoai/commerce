@@ -19,12 +19,18 @@ import (
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
-// fakeLedger is an in-memory CreditLedger: org|currency → balance, idempotent on
-// IdempotencyKey. It records the LAST CreditInput so a test can assert the handler
-// passed exactly the right fields.
+// fakeLedger is an in-memory CreditLedger keyed by the WHOLE address a credit names
+// — (org, subject, currency, test) — because that is how the real one is keyed and a
+// fake that folded any of them away would pass a test the ledger fails. The host
+// holds sandbox money in a separate ledger per org and dedups an idempotency key
+// WITHIN one ledger, so `test` is part of the address AND part of the dedup scope.
+//
+// It records the LAST CreditInput and every credit it took, so a test can assert the
+// handler passed exactly the right fields and nothing credited twice.
 type fakeLedger struct {
 	mu     sync.Mutex
 	lastIn creditledger.CreditInput
+	posted []creditledger.CreditInput
 	calls  int
 	bal    map[string]int64
 	seen   map[string]string
@@ -35,32 +41,55 @@ func newFakeLedger() *fakeLedger {
 	return &fakeLedger{bal: map[string]int64{}, seen: map[string]string{}}
 }
 
-func (f *fakeLedger) key(org, cur string) string { return org + "|" + cur }
+// account is the address a credit lands at / a balance is read from. An empty
+// subject is the org's pool, the SAME default both halves of the real seam apply.
+func (f *fakeLedger) account(org, subject, cur string, test bool) string {
+	if subject == "" {
+		subject = org
+	}
+	return fmt.Sprintf("%s|%s|%s|%t", org, subject, cur, test)
+}
+
+// scope is where an idempotency key is unique: one ledger, which is one (org, test)
+// pair. The same key in two different ledgers is two credits — the property that
+// makes an unresolved payer dangerous rather than merely wrong.
+func (f *fakeLedger) scope(org string, test bool, key string) string {
+	return fmt.Sprintf("%s|%t|%s", org, test, key)
+}
 
 func (f *fakeLedger) Credit(_ context.Context, in creditledger.CreditInput) (string, int64, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.lastIn = in
 	f.calls++
-	k := f.key(in.Org, in.Currency)
+	k := f.account(in.Org, in.Subject, in.Currency, in.Test)
 	if in.IdempotencyKey != "" {
-		if id, ok := f.seen[in.IdempotencyKey]; ok {
+		if id, ok := f.seen[f.scope(in.Org, in.Test, in.IdempotencyKey)]; ok {
 			return id, f.bal[k], nil // idempotent replay: no second credit
 		}
 	}
 	f.nextID++
 	id := fmt.Sprintf("post_%d", f.nextID)
 	f.bal[k] += in.AmountCents
+	f.posted = append(f.posted, in)
 	if in.IdempotencyKey != "" {
-		f.seen[in.IdempotencyKey] = id
+		f.seen[f.scope(in.Org, in.Test, in.IdempotencyKey)] = id
 	}
 	return id, f.bal[k], nil
 }
 
-func (f *fakeLedger) Balance(_ context.Context, org, cur string) (int64, error) {
+func (f *fakeLedger) Balance(_ context.Context, org, subject, cur string, test bool) (int64, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.bal[f.key(org, cur)], nil
+	return f.bal[f.account(org, subject, cur, test)], nil
+}
+
+// credits returns the credits actually POSTED (replays excluded), for the tests that
+// care about how many times money moved rather than how many calls were made.
+func (f *fakeLedger) credits() []creditledger.CreditInput {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]creditledger.CreditInput(nil), f.posted...)
 }
 
 // injectLedger installs a ledger for the test and clears it afterward so it never

@@ -159,41 +159,53 @@ func TestWebhookSettlement_ApprovedDoesNotCredit(t *testing.T) {
 	}
 }
 
-// The same payment, once actually captured, does credit — so refusing APPROVED
-// delays the credit to capture rather than dropping a real payment.
+// A COMPLETED capture whose payer this process CAN name credits that payer.
+//
+// It is driven through a subscription because that is the only shape of settled
+// payment a callback can attribute: the payment object itself names no wallet in our
+// books. This test used to pass a subject in `reference_id` and assert it was
+// credited, which is what let the handler treat an ORDER id — the only thing
+// production ever puts there — as a spendable wallet.
 func TestWebhookSettlement_CompletedCredits(t *testing.T) {
 	const secret = "whsec_completed"
 	registerSquare(t, secret)
 	ctx := ae.NewContext()
 	defer ctx.Close()
-	org := moneyOrg("wh-completed")
+	org := webhookOrg(t, ctx, "wh-completed", true)
+	seedProviderSubscription(t, org, ctx, "sub_done", "wh-completed/alice")
 
-	body := settlementEvent("evt_done", "pay_done", "COMPLETED", "wh-completed", 5000)
+	body := renewalEvent("evt_done", "inv_done", "sub_done", 5000)
 	if r := deliverWebhook(ctx, "wh-completed", secret, body, ""); r.StatusCode != http.StatusOK {
 		t.Fatalf("status=%d, want 200", r.StatusCode)
 	}
-	if got := balanceOf(t, ctx, org, "wh-completed"); got != 5000 {
-		t.Fatalf("balance=%d after a COMPLETED capture, want 5000 — a real settlement was dropped", got)
+	if got := balanceOf(t, ctx, org, "wh-completed/alice"); got != 5000 {
+		t.Fatalf("balance=%d after a settled renewal, want 5000 — a real settlement was dropped", got)
 	}
 }
 
 // Square retries a delivery for up to 72h until it gets a 2xx, so the same
 // settled payment arrives repeatedly. It must credit exactly once.
+//
+// Each delivery carries a FRESH event id, because the event-id guard would otherwise
+// answer first and prove nothing about the settlement path underneath it. What has to
+// hold is that the SETTLEMENT is credited once, keyed on the payment, however many
+// distinct deliveries announce it.
 func TestWebhookSettlement_Replay_CreditsOnce(t *testing.T) {
 	const secret = "whsec_replay_credit"
 	registerSquare(t, secret)
 	ctx := ae.NewContext()
 	defer ctx.Close()
-	org := moneyOrg("wh-replay")
+	org := webhookOrg(t, ctx, "wh-replay", true)
+	seedProviderSubscription(t, org, ctx, "sub_rep", "wh-replay/alice")
 
-	body := settlementEvent("evt_rep", "pay_rep", "COMPLETED", "wh-replay", 2500)
 	for i := 0; i < 3; i++ {
+		body := renewalEvent(fmt.Sprintf("evt_rep_%d", i), "inv_rep", "sub_rep", 2500)
 		if r := deliverWebhook(ctx, "wh-replay", secret, body, ""); r.StatusCode != http.StatusOK {
 			t.Fatalf("delivery %d status=%d, want 200", i+1, r.StatusCode)
 		}
 	}
-	if got := balanceOf(t, ctx, org, "wh-replay"); got != 2500 {
-		t.Fatalf("balance=%d after 3 identical deliveries, want 2500 — provider retries double-credited", got)
+	if got := balanceOf(t, ctx, org, "wh-replay/alice"); got != 2500 {
+		t.Fatalf("balance=%d after 3 deliveries of one settlement, want 2500 — provider retries double-credited", got)
 	}
 }
 

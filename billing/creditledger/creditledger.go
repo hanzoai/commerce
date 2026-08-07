@@ -31,6 +31,21 @@ import (
 // money that is neither lost nor spendable. A host that resolves per-member accounts
 // names one here, from the SAME rule its gate resolves the payer with, so a credit
 // and the spend it funds address one wallet by construction.
+//
+// Test names WHICH BOOKS the credit lands in, and it is the third component of the
+// address rather than a mode: the host keeps sandbox money in a ledger of its own, so
+// (Org, Subject, Test) is the whole answer to "where". It exists because a seam that
+// could not say it forced every sandbox settlement to choose between two wrong
+// answers — post it through here and unspendable sandbox money lands in the LIVE
+// books, or bypass the seam entirely and there are two credit paths to keep in step.
+// The zero value is live money, which is what every caller that never thought about
+// it meant.
+//
+// It is also what makes the idempotency key honest. The host dedups on the key WITHIN
+// one ledger, so two callers who resolve the same payment to different books both
+// credit it — no error, no duplicate detected, the money simply lands twice. The key
+// is only exactly-once if everyone who can credit one payment addresses one ledger,
+// and Test is a component of that address.
 type CreditInput struct {
 	Org            string
 	Subject        string
@@ -39,22 +54,31 @@ type CreditInput struct {
 	Tag            string
 	IdempotencyKey string
 	AmountCents    int64
+	Test           bool
 	ExpiresAt      *time.Time
 }
 
 // CreditLedger is the ONE way credit enters an org ledger when commerce is
-// embedded. Both methods MUST resolve the account the SAME way — Balance answers
-// for the pool, and Credit for the pool whenever CreditInput.Subject is empty — so
-// a Credit is immediately visible to Balance and to the cloud AI gate that reads
-// the same ledger account.
+// embedded. Both methods MUST resolve the account the SAME way — an empty Subject is
+// the org's pool on either side — so a Credit is immediately visible to Balance and
+// to the cloud AI gate that reads the same ledger account.
+//
+// THEY TAKE THE SAME ADDRESS, and that is the point of the shapes below. A credit
+// lands at (Org, Subject, Test); a read that named fewer components than that could
+// not name the account the credit went to, and the one it named instead was a
+// different account that answers without complaining. Both halves spell the whole
+// address or neither does.
 type CreditLedger interface {
 	// Credit appends a BALANCED double-entry credit to the org's account and
 	// returns the posting/tx id and the account's new available balance.
 	// Idempotent on IdempotencyKey: the same key credits AT MOST once and returns
 	// the original posting's id + balance (never a second grant).
 	Credit(ctx context.Context, in CreditInput) (txID string, balanceCents int64, err error)
-	// Balance returns the org account's available balance in cents for currency.
-	Balance(ctx context.Context, org, currency string) (availableCents int64, err error)
+	// Balance returns the available balance in cents held at (org, subject) in
+	// currency, from the sandbox books when test and the live ones otherwise —
+	// byte-for-byte the address CreditInput names. An empty subject is the org's
+	// pool, the same default Credit applies.
+	Balance(ctx context.Context, org, subject, currency string, test bool) (availableCents int64, err error)
 }
 
 var (
