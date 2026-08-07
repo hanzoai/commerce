@@ -205,16 +205,40 @@ func sortedKeys(m map[string]bool) []string {
 	return out
 }
 
-// cryptoDepositsCanBeCredited gates the rail on the ONE property that makes
-// taking crypto legitimate: that a deposit can reach the customer's balance.
-// It is false because no component advances a CryptoPaymentIntent past Pending
-// and no watcher observes DepositAddress — so a deposit would be money received
-// and never credited.
+// creditable reports whether a deposit of this asset can actually reach the
+// customer's balance — which is the ONE property that makes taking crypto
+// legitimate, and the question a blanket flag could never answer.
 //
-// It is a constant rather than config on purpose: an operator must not be able
-// to turn this on from the outside. The thing that makes it safe is code that
-// does not exist yet, so only code may flip it.
-const cryptoDepositsCanBeCredited = false
+// This replaces `const cryptoDepositsCanBeCredited = false`. That constant was
+// right for what it knew: when it was written NOTHING advanced an intent past
+// Pending and no watcher observed DepositAddress, so no asset was creditable and
+// one `false` covered every case. All four of its stated lift conditions are now
+// met — a watcher observes the address, advances the intent, credits exactly
+// once through the ledger, and wallet_id persists so a credit can also be swept.
+//
+// But flipping that constant to `true` would have reintroduced the ORIGINAL BUG
+// for every asset the watcher is not configured for. "Crediting exists" is not
+// "crediting exists FOR THIS CHAIN": the watcher is configured per asset from
+// CRYPTO_DEPOSIT_*, so an unconfigured chain still mints a real custody address
+// that nothing on earth will ever look at. A global boolean cannot express a
+// per-asset fact, and the gap between them is exactly where money was lost.
+//
+// So the gate is now the invariant itself, asked per request: this asset is
+// offered only if something is watching it. An operator cannot turn it on from
+// outside — configuring the watcher IS turning it on, and that is the same act
+// rather than a second one that has to be remembered. Nothing is watched by
+// default, so the rail is closed until an asset is deliberately armed.
+// It reads watchedAssets(), the SAME accessor GetCryptoOptions projects the
+// picker from, so "offered" and "mintable" cannot drift apart: a buyer can only
+// be shown an asset this will hand out an address for, and vice versa.
+func creditable(assets []depositwatch.Asset, chain, token string) bool {
+	for _, a := range assets {
+		if strings.EqualFold(a.Chain, chain) && strings.EqualFold(a.Token, token) {
+			return true
+		}
+	}
+	return false
+}
 
 // openIntentFor returns the payer's live deposit intent for this asset, if
 // there is one to reuse.
@@ -278,40 +302,26 @@ func destinationIsComplete(in *cryptopaymentintent.CryptoPaymentIntent) bool {
 //
 //	POST /v1/billing/crypto/deposit   { chain?, token?, amountCents? }
 func CreateCryptoDeposit(c *zip.Ctx) error {
-	// STOPPED: handing out an address here takes money we cannot credit.
+	// The rail refuses to hand out an address for an asset nothing is watching.
 	//
-	// The rail mints a real custody address and records an intent as Pending —
-	// and nothing in this codebase ever moves it off Pending. MarkConfirming and
-	// MarkSucceeded (models/cryptopaymentintent) have NO production callers; the
-	// only writer of Status is the Pending set below. There is no chain watcher:
-	// husdindex scans one ERC-20 on one chain against seed-derived treasury
-	// addresses, never DepositAddress, and it is not scheduled. The pay SPA's
-	// "I sent the crypto" is a GET that re-reads the same Pending row. The
-	// ledger primitives that could credit (POST /billing/credit, /billing/deposit)
-	// are mint-gated and unreachable from here.
+	// This used to be a blanket `if !cryptoDepositsCanBeCredited` — correct when
+	// written, because NOTHING credited any chain: no component moved an intent off
+	// Pending, no watcher observed DepositAddress, and the keygen wallet_id was
+	// discarded so we held no handle to the wallet the coins landed in. Three
+	// comments in this tree asserted "the chain watcher credits on real
+	// confirmations" and no such component existed. That sentence is why this
+	// shipped, and why the stop was a constant rather than config.
 	//
-	// Worse, GenerateAddress DISCARDS the keygen response's wallet_id and returns
-	// only the address string, so we do not even retain a handle to the MPC wallet
-	// holding the coins — recovering a stranded deposit means reconciling against
-	// the node's own wallet records.
+	// All of that is built now. But "crediting exists" is not "crediting exists FOR
+	// THIS CHAIN", and flipping one boolean would have re-created the original bug
+	// for every unconfigured asset — a real custody address, minted, that nothing
+	// will ever look at. So the question is asked per ASSET, against the watcher
+	// itself, and arming an asset is one act (configure CRYPTO_DEPOSIT_*) rather
+	// than two that must be remembered in the right order.
 	//
-	// Three comments in this tree assert "the chain watcher credits on real
-	// confirmations". No such component exists. That sentence is why this shipped.
-	//
-	// So the rail refuses to take money it cannot credit. This is deliberately at
-	// the TOP of the handler, before any keygen: an address that is never minted
-	// is an address nobody can send to. Reads (GetCryptoDeposit, GetCryptoOptions)
-	// are untouched so an existing intent can still be inspected.
-	//
-	// TO LIFT THIS: a per-chain deposit watcher that observes DepositAddress,
-	// advances the intent, and credits through the ledger exactly once — plus
-	// persisting wallet_id so a deposit is recoverable. Flip the constant in the
-	// same commit that makes the credit path real, never before.
-	if !cryptoDepositsCanBeCredited {
-		return jsonhttp.Fail(c, 503,
-			"Crypto deposits are paused. Funds sent to a crypto address cannot be credited yet, so we will not issue one. Use a card, bank transfer or wire.", nil)
-	}
-
+	// Deliberately at the TOP, before any keygen: an address that is never minted is
+	// an address nobody can send to. Reads (GetCryptoDeposit, GetCryptoOptions) are
+	// untouched so an existing intent can still be inspected.
 	payer := userBillingKey(c)
 	if payer == "" {
 		return jsonhttp.Fail(c, 401, "Authentication required", nil)
@@ -332,6 +342,22 @@ func CreateCryptoDeposit(c *zip.Ctx) error {
 	token := strings.ToLower(strings.TrimSpace(req.Token))
 	if token == "" {
 		token = "usdc"
+	}
+
+	// THE GATE, and it is the whole reason this rail may take money at all: an
+	// address is handed out only for an asset something is watching. Asked before
+	// any keygen, because an address that is never minted is one nobody can send
+	// to — and asked from the SAME accessor the picker projects from, so a buyer
+	// can never be offered an asset this would refuse.
+	//
+	// Nothing is watched until CRYPTO_DEPOSIT_* names it, so the rail is closed by
+	// default and arming an asset is one deliberate act rather than two that must
+	// be done in the right order.
+	watched := watchedAssets()
+	if !creditable(watched, chain, token) {
+		return jsonhttp.Fail(c, 503, fmt.Sprintf(
+			"%s on %s is not accepted yet — nothing is watching that address, so a deposit could not be credited. Use a card, bank transfer or wire.",
+			strings.ToUpper(token), chain), nil)
 	}
 
 	// A POOLED chain does not mint anything, so it asks the custody signer
@@ -382,7 +408,7 @@ func CreateCryptoDeposit(c *zip.Ctx) error {
 		// custody signer, which would mint a fresh wallet per deposit and
 		// strand a non-refundable reserve on each one. If nothing is
 		// configured, nothing is handed out.
-		addr := pooledAddressFor(watchedAssets(), chain, token)
+		addr := pooledAddressFor(watched, chain, token)
 		if addr == "" {
 			return jsonhttp.Fail(c, 503, fmt.Sprintf("Crypto deposits on %s are not configured — no custody account is set for %s.", chain, strings.ToUpper(token)), nil)
 		}
