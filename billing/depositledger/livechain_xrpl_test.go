@@ -159,7 +159,7 @@ func TestLiveXRPLReadPath(t *testing.T) {
 	if !svc.Enabled() {
 		t.Fatal("watcher disabled despite configured assets")
 	}
-	t.Logf("watching: %s", svc.Describe())
+	t.Logf("watching: %+v", svc.Status(context.Background()).Assets)
 }
 
 // findLiveXRPLPayment asks the ISSUER's own transaction history for a recent
