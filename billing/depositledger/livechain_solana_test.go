@@ -176,7 +176,7 @@ func TestLiveSolanaReadPath(t *testing.T) {
 	if !svc.Enabled() {
 		t.Fatal("watcher disabled despite configured assets")
 	}
-	t.Logf("watching: %s", svc.Describe())
+	t.Logf("watching: %+v", svc.Status(context.Background()).Assets)
 }
 
 // probeOwners are real mainnet wallets that hold USDC. They are used only to

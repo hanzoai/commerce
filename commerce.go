@@ -673,10 +673,26 @@ func (app *App) Bootstrap() error {
 	}
 
 	// Crypto deposit watcher: the half of the crypto top-up rail that turns money
-	// arriving at a minted custody address into spendable balance. Wired here,
-	// after the DB resolver, and STARTED — in process, on a schedule — because the
-	// alternative in this repo is an admin endpoint waiting for a CronJob defined
-	// in another repository, which is exactly why the HUSD indexer has never run.
+	// arriving at a minted custody address into spendable balance. CONSTRUCTED
+	// here, after the DB resolver — and deliberately NOT started.
+	//
+	// Bootstrap builds the app; it does not run it. This was the one background
+	// schedule that broke that rule, and the breakage was not academic: every
+	// caller of Bootstrap got a chain scanner that writes ledger credits, whether
+	// or not it was ever going to serve a request. cmd/grant and
+	// cmd/backfill-events are one-shot tools that call Bootstrap for the DB
+	// wiring, never call Shutdown, and so started a money-moving pass and exited
+	// in the middle of it. Starting is the serving lifecycle's job — see Serve
+	// and Embed, which are the two entry points that mean "commerce is now
+	// answering requests".
+	//
+	// Nothing is lost by moving it: the in-process schedule is still the point
+	// (the alternative in this repo is an admin endpoint waiting for a CronJob
+	// defined in another repository, which is exactly why the HUSD indexer has
+	// never run), and forgetting to start it can no longer take money — the mint
+	// gate consults Running, not Enabled, so a serving process with a dead
+	// schedule refuses to hand out addresses rather than handing out addresses
+	// nothing watches.
 	//
 	// Fail closed on an incoherent watch table (a token with no endpoint, a token
 	// with no USD peg): an operator who configured a deposit rail must not get a
@@ -688,12 +704,6 @@ func (app *App) Bootstrap() error {
 		return fmt.Errorf("commerce: crypto deposit watcher: %w", depositErr)
 	}
 	depositledger.SetDefault(depositSvc)
-	if depositSvc.Enabled() {
-		depositSvc.Start()
-		fmt.Fprintf(os.Stderr, "Commerce: crypto deposit watcher ENABLED (%s)\n", depositSvc.Describe())
-	} else {
-		fmt.Fprintln(os.Stderr, "Commerce: crypto deposit watcher disabled (no CRYPTO_DEPOSIT_TOKEN_* configured)")
-	}
 
 	// Hanzo/base-backed commerce store. Hosts the authoritative tenant
 	// record + commerce_tenant_hostnames claim table — the source of truth
@@ -1154,6 +1164,11 @@ func (app *App) setupRoutes() {
 			adminGroup.Use(iammiddleware.IAMTokenRequired())
 		}
 		checkout.MountTenantAdmin(adminGroup, app.CommerceStore)
+		// The crypto deposit rail's runtime state, on the group that already
+		// carries the operator surface and its guard. Read-only and superadmin
+		// only — see api/billing.DepositWatcherStatus for why arming an asset
+		// stays a CRYPTO_DEPOSIT_* act and never a button.
+		adminGroup.Get("/deposits", billingPkg.DepositWatcherStatus)
 	}
 
 	// SPA fallback — the least-specific catch-all; standalone only. A host
@@ -1170,6 +1185,12 @@ func (app *App) Serve() error {
 	if app.config.SharedApp != nil {
 		return fmt.Errorf("commerce: co-resident (SharedApp set) — the host binary listens")
 	}
+	// The crypto deposit schedule starts HERE and in Embed — the two entry points
+	// that mean "commerce is now answering requests" — and not in Bootstrap,
+	// which the one-shot cmd/ tools also call. Idempotent, and a no-op when no
+	// asset is configured. Shutdown stops it.
+	depositledger.Default().Start()
+
 	// Trigger OnServe hooks
 	if err := app.Hooks.TriggerServe(app); err != nil {
 		return fmt.Errorf("serve hook error: %w", err)

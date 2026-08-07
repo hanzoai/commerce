@@ -44,7 +44,7 @@ func TestLiveChainReadPath(t *testing.T) {
 	if !svc.Enabled() {
 		t.Fatal("watcher disabled despite configured assets")
 	}
-	t.Logf("watching: %s", svc.Describe())
+	t.Logf("watching: %+v", svc.Status(context.Background()).Assets)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()

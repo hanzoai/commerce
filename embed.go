@@ -22,6 +22,7 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/creditledger"
+	"github.com/hanzoai/commerce/billing/depositledger"
 )
 
 // EmbedConfig configures the in-process Commerce server. Empty values
@@ -148,12 +149,30 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 		return nil, fmt.Errorf("commerce.Embed: bootstrap: %w", err)
 	}
 
+	// Start the crypto deposit schedule. This is the PRODUCTION door — no
+	// standalone commerce backend is deployed, so Embed is the only path by
+	// which the rail ever runs — and it is the right owner because this is the
+	// call that produces the handle whose Stop() stops it. Start and stop now
+	// sit on the same object; before, Bootstrap started it and only Shutdown
+	// stopped it, so a caller that took the handle never had the pair.
+	//
+	// A no-op when no CRYPTO_DEPOSIT_* asset is configured, which is why the
+	// tests that Embed a bare commerce spin up nothing.
+	depositWatcher := depositledger.Default()
+	depositWatcher.Start()
+
 	cfg.Logger.Info("commerce.Embed ready",
 		"http", appCfg.HTTPAddr,
 		"data", appCfg.DataDir,
 		"dev", appCfg.Dev,
 		"require_identity", cfg.RequireIdentity,
 		"version", Version,
+		// The boot fact that used to go to stderr and could not be read back off
+		// a running pod. It is here because a structured log line is greppable,
+		// and — the part that matters — it is also served live at
+		// GET /_/commerce/deposits, so the answer does not depend on catching it.
+		"deposit_watcher", depositWatcher.Running(),
+		"deposit_assets", len(depositWatcher.Assets()),
 	)
 
 	return &Embedded{cfg: cfg, app: app}, nil

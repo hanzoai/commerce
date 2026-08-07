@@ -115,10 +115,25 @@ func GetCryptoOptions(c *zip.Ctx) error {
 
 // watchedAssets is the set of assets something is actually watching — the ONE
 // question both the picker and the mint path ask, so they cannot disagree about
-// what is on offer. An unconfigured or disabled watcher yields none, which is
-// what makes "offered" and "creditable" the same set.
+// what is on offer. An unconfigured, disabled or STOPPED watcher yields none,
+// which is what makes "offered" and "creditable" the same set.
+//
+// It asks Running, not Enabled, and the difference is the whole safety property.
+// Enabled means "an asset was configured"; Running means "something is reading
+// the chain for it". Only the second one implies a deposit reaches a balance.
+// Gating on the first would re-create the original bug in a new place: a process
+// that constructed the watcher and never started its schedule would hand out
+// real custody addresses that nothing on earth will ever look at — which is
+// precisely the shape of the failure this rail exists to end, and it would look
+// healthy from outside.
+//
+// That makes the gate self-enforcing rather than ceremonial. Bootstrap no longer
+// starts the schedule (it builds the app; it does not run it), so the start now
+// lives in the two serving entry points — and a third one added later that
+// forgets cannot take money, it can only refuse. Fail closed, by construction,
+// with no second thing to remember.
 func watchedAssets() []depositwatch.Asset {
-	if w := depositledger.Default(); w.Enabled() {
+	if w := depositledger.Default(); w.Running() {
 		return w.Assets()
 	}
 	return nil
