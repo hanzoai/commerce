@@ -294,8 +294,8 @@ func (c Client) Authorize(pay *payment.Payment) (*payment.Payment, error) {
 			log.Warn("Not Approved")
 			log.Debug("Authorize: Authorize.Net API did not approve transaction")
 			log.Debug("Authorize: Authorize.Net payment amount: %v", pay.Amount)
-			log.Debug("Authorize: Authorize.Net card number: %v", pay.Account.Number)
-			log.Debug("Authorize: Authorize.Net card expiration: %v", ToStringExpirationDate(pay.Account.Month, pay.Account.Year))
+			// The amount and the provider's error are what diagnose a decline. The card
+			// is not: this printed a raw PAN and its expiry on every refusal.
 			log.Debug("Authorize: Authorize.Net returned error: %v", err, c.ctx)
 			return pay, AuthorizeNotApprovedError
 		}
