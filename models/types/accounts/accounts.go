@@ -1,7 +1,6 @@
 package accounts
 
 import (
-	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/blockchains"
 	"github.com/hanzoai/commerce/models/types/currency"
 )
@@ -59,10 +58,23 @@ type PayPalAccount struct {
 }
 
 type StripeAccount struct {
-	// Very important to never store these!
+	// A PAN and a CVV, and they must never leave this process in EITHER direction.
+	//
+	// `datastore:"-"` already kept them out of storage, and the comment above them
+	// said so — but with a json tag they were still promoted to the top level of any
+	// serialized account, because StripeAccount is embedded ANONYMOUSLY into Account,
+	// which is a field of payment.Payment. So `number` and `cvc` were one marshal away
+	// from a response body or a log line, and two sites marshalled the whole struct.
+	//
+	// `json:"-"` closes both directions, and closing the INPUT direction is the point
+	// rather than a cost: the shipped card boundary is SAQ-A — Square hosted fields
+	// return a single-use nonce and a PAN never touches our code — so a field that
+	// accepts one over JSON contradicts the architecture it sits in. Nothing depends
+	// on the round trip: these are never stored, and the only Go reader is the
+	// Authorize.Net client, which no mounted route reaches.
 	Name   string `json:"name,omitempty" datastore:"-"`
-	Number string `json:"number,omitempty" datastore:"-"`
-	CVC    string `json:"cvc,omitempty" datastore:"-"`
+	Number string `json:"-" datastore:"-"`
+	CVC    string `json:"-" datastore:"-"`
 
 	BalanceTransactionId string `json:"balanceTransactionId,omitempty"`
 	CardId               string `json:"cardId,omitempty"`
@@ -78,23 +90,6 @@ type StripeAccount struct {
 	Country     string `json:"country,omitempty"`
 
 	CVCCheck string `json:"cvcCheck,omitempty"`
-}
-
-func (sa StripeAccount) CardMatches(acct Account) bool {
-	log.Debug("Checking for match")
-	log.Debug("Old card: %v", sa)
-	log.Debug("New card: %v", acct)
-
-	if sa.Month != acct.Month {
-		return false
-	}
-	if sa.Year != acct.Year {
-		return false
-	}
-	if len(sa.LastFour) == 4 && sa.LastFour != acct.LastFour {
-		return false
-	}
-	return true
 }
 
 // type PlaidAccount struct {

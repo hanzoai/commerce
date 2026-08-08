@@ -48,8 +48,6 @@ func decodeAuthorization(c *zip.Ctx, ord *order.Order) (*user.User, *payment.Pay
 		return nil, nil, nil, FailedToDecodeRequestBody
 	}
 
-	log.JSON("Authorization:", a)
-
 	// Copy request order into order used everywhere
 	if a.Order != nil {
 		reflect.Copy(a.Order, ord)
