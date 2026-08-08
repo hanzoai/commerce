@@ -205,9 +205,18 @@ var brandDomains = []struct {
 	{"lux.network", brandLux},
 	{"lux.id", brandLux},
 	{"lux.finance", brandLux},
+	// lux.cloud and zoo.cloud are where those brands TAKE MONEY (pay.lux.cloud,
+	// pay.zoo.cloud). Absent from this table they fell through to
+	// defaultBrand() — hanzo — so a Lux customer on a Lux host was served the
+	// Hanzo brand, the Hanzo IAM app and Hanzo's Square application id, and a
+	// card entered there would have tokenized against Hanzo's merchant account.
+	// The fallback is correct for an unknown host; the bug was that these two
+	// were unknown.
+	{"lux.cloud", brandLux},
 	{"zoo.ngo", brandZoo},
 	{"zoo.network", brandZoo},
 	{"zoo.id", brandZoo},
+	{"zoo.cloud", brandZoo},
 	{"pars.network", brandPars},
 	{"pars.id", brandPars},
 	{"pars.vote", brandPars},

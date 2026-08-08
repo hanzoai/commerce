@@ -16,6 +16,15 @@ func TestBrandForHost(t *testing.T) {
 		{"hanzo.ai", "hanzo"},
 		{"pay.lux.network", "lux"},
 		{"lux.network", "lux"},
+		// The MONEY hosts. These were absent from brandDomains and therefore
+		// resolved to the deployment default — hanzo — so a Lux customer on a
+		// Lux payment page got the Hanzo brand, the Hanzo IAM app and Hanzo's
+		// Square application id, and a card entered there would have tokenized
+		// against Hanzo's merchant. Nothing errored; the page looked right.
+		{"pay.lux.cloud", "lux"},
+		{"lux.cloud", "lux"},
+		{"pay.zoo.cloud", "zoo"},
+		{"zoo.cloud", "zoo"},
 		{"pay.zoo.ngo", "zoo"},
 		{"pay.pars.network", "pars"},
 		// Unknown host → deployment default (hanzo).
@@ -24,6 +33,8 @@ func TestBrandForHost(t *testing.T) {
 		// Spoofs must NOT inherit the spoofed brand; they resolve to default.
 		{"pay.lux.network.evil.com", "hanzo"},
 		{"pay.zoo.ngo.attacker.test", "hanzo"},
+		{"pay.lux.cloud.evil.com", "hanzo"},
+		{"notlux.cloud", "hanzo"},
 		// Non-subdomain lookalikes must not hijack the brand.
 		{"notlux.network", "hanzo"},
 	}
