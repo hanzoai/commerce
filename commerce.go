@@ -1,6 +1,6 @@
 // Package commerce provides the main application framework for Hanzo Commerce.
 //
-// Commerce is a multi-tenant e-commerce platform that runs as a standalone
+// Commerce is a multi-org e-commerce platform that runs as a standalone
 // binary with embedded SQLite for per-user/org data and optional analytics
 // via ClickHouse.
 //
@@ -326,7 +326,7 @@ type App struct {
 	Router *zip.App
 
 	// CommerceStore is the hanzo/base-backed persistence seam. When set it
-	// provides the authoritative tenants + hostname-claims collections;
+	// provides the authoritative orgs + hostname-claims collections;
 	// handlers that have migrated off the legacy resolver use this directly.
 	// Initialized in Bootstrap from COMMERCE_DATA_DIR / COMMERCE_BASE_URL.
 	CommerceStore *commercestore.Store
@@ -365,7 +365,7 @@ func NewWithConfig(config *Config) *App {
 func (app *App) initCLI() {
 	app.RootCmd = &cobra.Command{
 		Use:     "commerce",
-		Short:   "Hanzo Commerce - Multi-tenant e-commerce platform",
+		Short:   "Hanzo Commerce - Multi-org e-commerce platform",
 		Version: Version,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// Skip bootstrap for help/version
@@ -466,7 +466,7 @@ func (app *App) seedOrganization(orgName string) error {
 	// Write payment credentials to KMS (if enabled)
 	if app.KMS != nil {
 		client := app.KMS.Client()
-		squarePath := "/tenants/" + orgName + "/square"
+		squarePath := "/orgs/" + orgName + "/square"
 
 		seedSecrets := []struct{ path, name, envVar string }{
 			// Square — Production
@@ -625,7 +625,7 @@ func (app *App) Bootstrap() error {
 	// that call datastore.New directly. Merchant models are thus physically
 	// isolated per org — no request can read/list/mutate another org's merchant
 	// data on the /v1 REST surface, regardless of whether systemDB is Postgres or
-	// SQLite. Decomplects the single-tenant Postgres out of the merchant path.
+	// SQLite. Decomplects the single-org Postgres out of the merchant path.
 	if app.DB == nil {
 		return fmt.Errorf("commerce: database manager not initialized — cannot install the per-org money resolver")
 	}
@@ -634,7 +634,7 @@ func (app *App) Bootstrap() error {
 	// Fail closed: a production binary must NOT run a money path without the
 	// per-org resolver installed. Without it every NewNamespaced money handler
 	// (gift cards, orders, checkout, transactions, wire, b2b) would silently fall
-	// back to the shared systemDB and cross tenants (Red CRIT-2). Assert here at
+	// back to the shared systemDB and cross orgs (Red CRIT-2). Assert here at
 	// Bootstrap rather than degrade on the hot path.
 	if !commerceDatastore.HasOrgDBResolver() {
 		return fmt.Errorf("commerce: per-org DB resolver not installed after SetOrgDBResolver — refusing to start (money paths would use the shared store)")
@@ -705,14 +705,13 @@ func (app *App) Bootstrap() error {
 	}
 	depositledger.SetDefault(depositSvc)
 
-	// Hanzo/base-backed commerce store. Hosts the authoritative tenant
-	// record + commerce_tenant_hostnames claim table — the source of truth
-	// for the /v1/commerce/tenant public JSON and /_/commerce/tenants
-	// superadmin CRUD — AND the commerce_kv cache collection that replaced
-	// the former Redis/Valkey KV. Built before the infra manager so its KV
-	// store can be attached to the manager (no second base app on the same
-	// SQLite files). Bootstrap is idempotent; a failure here is fatal because
-	// the public endpoint would otherwise 404 every tenant request.
+	// Hanzo/base-backed commerce store: the commerce_kv cache collection that
+	// replaced the former Redis/Valkey KV. The org registry that once lived
+	// here is gone — the IAM org is the org, resolved host→brand→org with no
+	// row to seed or drift. Built before the infra manager so its KV store can
+	// be attached to the manager (no second base app on the same SQLite
+	// files). Bootstrap is idempotent; a failure here is fatal because the KV
+	// cache backs live request paths.
 	storeCfg := commercestore.FromEnv()
 	if storeCfg.DataDir == "" || storeCfg.DataDir == "./commerce_data" {
 		// Align with the app-level DataDir so all commerce persistence lives
@@ -1083,17 +1082,17 @@ func (app *App) setupRoutes() {
 		catalogapi.AdminCatalogRoute(api)
 	}
 
-	// Hosted multi-tenant checkout. Mounts:
-	//   GET  /v1/commerce/tenant   — public tenant JSON (branding + enabled methods)
-	//   POST /v1/commerce/deposits — proxied to tenant Backend.URL (e.g. a broker-dealer backend)
+	// Hosted multi-org checkout. Mounts:
+	//   GET  /v1/commerce/org   — public org JSON (branding + enabled methods)
+	//   POST /v1/commerce/deposits — proxied to org Backend.URL (e.g. a broker-dealer backend)
 	//   GET  /*                    — embedded Vite SPA with SPA fallback
 	//
 	// Must be registered LAST: the SPA handler is the least-specific catch-all,
 	// and everything above this line owns its own route prefix.
-	// Org-as-tenant resolution (ONE way): the IAM org IS the tenant. host→brand→
+	// Org-as-org resolution (ONE way): the IAM org IS the org. host→brand→
 	// org slug (checkout.OrgResolver) is the single source of truth for
-	// /v1/commerce/tenant, deposits, and webhooks — no separate commerce-tenant
-	// registry to seed or drift. The public tenant JSON carries the org's public
+	// /v1/commerce/org, deposits, and webhooks — no separate commerce-org
+	// registry to seed or drift. The public org JSON carries the org's public
 	// Square config (resolved by the same authority as the charge path), so the
 	// pay SPA's card iframe initializes with the exact application commerce will
 	// charge — no build-time VITE_* env, no per-host seed row, no 404.
@@ -1101,10 +1100,10 @@ func (app *App) setupRoutes() {
 	// The Square public config is resolved from the org ROW, because live-vs-sandbox
 	// is org state (TestMode() == !Live) and nothing else can answer it. With the
 	// nil loader this used to be a synthetic org, which is never Live, so the public
-	// tenant JSON advertised the SANDBOX application permanently — flipping the org
+	// org JSON advertised the SANDBOX application permanently — flipping the org
 	// live changed the record and nothing else (measured 2026-07-30:
 	// POST /v1/billing/mode returned {"live":true,"testMode":false} while the
-	// tenant kept serving sandbox-sq0idb-…). The card iframe then tokenizes against
+	// org kept serving sandbox-sq0idb-…). The card iframe then tokenizes against
 	// sandbox while the charge path uses the live org, and a sandbox nonce cannot be
 	// charged by a production account — checkout fails closed and nobody can pay.
 	//
@@ -1115,7 +1114,7 @@ func (app *App) setupRoutes() {
 	// minute with no restart) and a 2s deadline (so a wedged datastore costs one
 	// request, not the pool). Every failure path returns a MISS, which degrades to
 	// exactly the previous synthetic-org behavior — sandbox. An outage can never
-	// promote a tenant onto production rails.
+	// promote a org onto production rails.
 	orgResolver := checkout.NewOrgResolver(checkout.NewCachedOrgLoader(
 		func(ctx context.Context, slug string) (*orgModel.Organization, error) {
 			org := orgModel.New(commerceDatastore.New(ctx))
@@ -1133,7 +1132,7 @@ func (app *App) setupRoutes() {
 	// to a real brand's org.
 	public := app.Router.Group("/v1/commerce")
 	public.Use(forwardedHostMiddleware())
-	public.Get("/tenant", checkout.TenantJSON(orgResolver))
+	public.Get("/org", checkout.OrgJSON(orgResolver))
 	// Public platform product catalog projection (the CMS SOT other surfaces —
 	// docs, console sidebar, pricing — consume). Public + brand-scoped (?brand).
 	public.Get("/catalog", catalogapi.Public)
@@ -1141,9 +1140,9 @@ func (app *App) setupRoutes() {
 	// read this instead of a hardcoded array). Global default-namespace set.
 	currencyapi.PublicRoute(public)
 	// The deposit-intent proxy is GONE. It forwarded /v1/commerce/deposits to a
-	// tenant-supplied broker-dealer backend, and no tenant here runs one — so
-	// every request answered 503 "tenant backend not configured", a true
-	// sentence about tenants that reached a customer buying credit with a
+	// org-supplied broker-dealer backend, and no org here runs one — so
+	// every request answered 503 "org backend not configured", a true
+	// sentence about orgs that reached a customer buying credit with a
 	// wallet. Deposits are commerce's own: a tokenized method charges through
 	// /v1/billing/topup/token, wire reads /v1/billing/wire, crypto mints an
 	// address at /v1/billing/crypto/deposit. A rail nobody operates is not a
@@ -1155,17 +1154,15 @@ func (app *App) setupRoutes() {
 	// signature and settles the payment — the address registered in the Square
 	// dashboard.
 
-	// Superadmin tenant CRUD over the base-backed store stays available for
-	// per-org overrides, but it no longer DRIVES resolution. Gated by IAM +
-	// handler claim checks; under /_ so the ingress blocks it publicly.
+	// Operator surface under /_ (the ingress blocks it publicly), IAM-gated.
+	// The registry CRUD that once lived here is gone — the IAM org is the
+	// org. What remains is read-only runtime state.
 	if app.CommerceStore != nil {
 		adminGroup := app.Router.Group("/_/commerce")
 		if app.config.IAM.Enabled {
 			adminGroup.Use(iammiddleware.IAMTokenRequired())
 		}
-		checkout.MountTenantAdmin(adminGroup, app.CommerceStore)
-		// The crypto deposit rail's runtime state, on the group that already
-		// carries the operator surface and its guard. Read-only and superadmin
+		// The crypto deposit rail's runtime state. Read-only and superadmin
 		// only — see api/billing.DepositWatcherStatus for why arming an asset
 		// stays a CRYPTO_DEPOSIT_* act and never a button.
 		adminGroup.Get("/deposits", billingPkg.DepositWatcherStatus)
@@ -1306,10 +1303,10 @@ func getEnv(key, defaultVal string) string {
 }
 
 // forwardedHostMiddleware lifts the X-Forwarded-Host header into
-// req.Host so downstream tenant resolution sees the original customer
+// req.Host so downstream org resolution sees the original customer
 // hostname (e.g. world.hanzo.ai) instead of the ingress hostname
-// (e.g. commerce-api.hanzo.ai). Tenant resolution is exact-match, so a
-// spoofed header still must point at an existing tenant row to do
+// (e.g. commerce-api.hanzo.ai). Org resolution is exact-match, so a
+// spoofed header still must point at an existing org row to do
 // anything — there is no probe oracle. Empty header is a no-op.
 func forwardedHostMiddleware() zip.Handler {
 	return func(c *zip.Ctx) error {

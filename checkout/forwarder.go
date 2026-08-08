@@ -9,7 +9,7 @@ import (
 
 // HTTPForwarder is the production Forwarder. It uses a shared *http.Client
 // with sane timeouts so a slow backend cannot exhaust commerce's goroutine
-// budget. TLS is enforced (tenant Backend.URL must be https://) — an http
+// budget. TLS is enforced (org Backend.URL must be https://) — an http
 // backend is a misconfiguration and requests to it will be rejected by
 // Go's transport anyway.
 type HTTPForwarder struct {
@@ -47,10 +47,10 @@ func NewHTTPForwarder() *HTTPForwarder {
 	}
 }
 
-// Forward sends req upstream. tenant is accepted so future per-tenant
+// Forward sends req upstream. org is accepted so future per-org
 // policy (custom timeouts, mTLS client certs) can be layered without
 // changing the interface.
-func (h *HTTPForwarder) Forward(req *http.Request, tenant Tenant) (*http.Response, error) {
-	_ = tenant // reserved for per-tenant policy
+func (h *HTTPForwarder) Forward(req *http.Request, org Org) (*http.Response, error) {
+	_ = org // reserved for per-org policy
 	return h.client.Do(req)
 }

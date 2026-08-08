@@ -1,13 +1,13 @@
-// Package checkout — OrgResolver is the canonical tenant resolver: the IAM org
-// IS the tenant. There is no separate commerce-tenant registry to seed or drift.
+// Package checkout — OrgResolver is the canonical org resolver: the IAM org
+// IS the org. There is no separate commerce-org registry to seed or drift.
 //
-// Resolution is host → brand → IAM org slug → Organization → public Tenant:
+// Resolution is host → brand → IAM org slug → Organization → public Org:
 //   - brandForHost maps a request host to its brand + IAM app (pay.hanzo.ai →
 //     hanzo, pay.lux.network → lux, …). Unknown hosts fall back to the
-//     deployment's default org (COMMERCE_DEFAULT_TENANT, default "hanzo").
+//     deployment's default org (COMMERCE_DEFAULT_ORG, default "hanzo").
 //   - the org's public Square config (application id + location + environment)
 //     is resolved by the SAME authority as the charge path
-//     (payment.SquarePublicConfig) and projected into the tenant JSON, so the
+//     (payment.SquarePublicConfig) and projected into the org JSON, so the
 //     pay SPA's card iframe initializes with the exact application commerce
 //     will charge — no build-time VITE_* env, no per-host seed row.
 //
@@ -29,7 +29,7 @@ import (
 // loader (or a miss) degrades to a brand-default synthetic org whose Square
 // config resolves from the deployment's per-brand env (the cloud-org path).
 //
-// WARNING: Resolve runs on /v1/commerce/tenant — a PUBLIC, unauthenticated
+// WARNING: Resolve runs on /v1/commerce/org — a PUBLIC, unauthenticated
 // endpoint the pay SPA hits on every boot. Any real loader wired here MUST be
 // cached AND deadline-bounded. A naive per-request DB query under an unbounded
 // context blocks and can exhaust the connection pool (regression at 1.42.44).
@@ -37,7 +37,7 @@ import (
 type OrgLoader func(slug string) (*organization.Organization, bool)
 
 // OrgResolver implements Resolver by mapping the Host header to an IAM org and
-// projecting that org into a public Tenant.
+// projecting that org into a public Org.
 type OrgResolver struct {
 	load OrgLoader
 }
@@ -48,13 +48,13 @@ func NewOrgResolver(load OrgLoader) *OrgResolver {
 	return &OrgResolver{load: load}
 }
 
-// Resolve maps host → brand → org and projects a public Tenant. It returns
-// ErrUnknownTenant only for a malformed Host (empty / control bytes); every
+// Resolve maps host → brand → org and projects a public Org. It returns
+// ErrUnknownOrg only for a malformed Host (empty / control bytes); every
 // well-formed host resolves (known brand or the deployment default).
-func (r *OrgResolver) Resolve(host string) (Tenant, error) {
+func (r *OrgResolver) Resolve(host string) (Org, error) {
 	h := normalizeHost(host)
 	if h == "" {
-		return Tenant{}, ErrUnknownTenant
+		return Org{}, ErrUnknownOrg
 	}
 	b := brandForHost(h)
 
@@ -72,7 +72,7 @@ func (r *OrgResolver) Resolve(host string) (Tenant, error) {
 
 	sq := payment.SquarePublicConfig(org)
 
-	return Tenant{
+	return Org{
 		Name: b.slug,
 		Brand: Brand{
 			DisplayName:  b.displayName,
@@ -102,7 +102,7 @@ func (r *OrgResolver) Resolve(host string) (Tenant, error) {
 // flow: playground.hanzo.bot → pay.hanzo.ai/onboard → back to playground).
 //
 // This is intentionally a static first-party list, not org-model data: the
-// resolver runs nil-loader on the PUBLIC /v1/commerce/tenant path (no
+// resolver runs nil-loader on the PUBLIC /v1/commerce/org path (no
 // per-request DB read — see the OrgLoader warning above), and these hosts are
 // deploy-stable. Add a host here when a new first-party app must round-trip
 // through pay.
@@ -178,7 +178,7 @@ func enabledProviders() []Provider {
 
 // ─── Brand map (ONE place) ───────────────────────────────────────────────────
 
-// brand is the per-brand tenant defaults: the IAM org slug, display branding,
+// brand is the per-brand org defaults: the IAM org slug, display branding,
 // and the IAM app the SPA signs in against. These mirror the commerce
 // deployment's IAM_ISSUER / IAM_ACCEPTED_ISSUERS / IAM_ACCEPTED_AUDIENCES.
 type brand struct {
@@ -232,7 +232,7 @@ var (
 )
 
 // brandForHost resolves a normalized host to its brand. Unknown hosts fall back
-// to the deployment default org (COMMERCE_DEFAULT_TENANT, default "hanzo") so a
+// to the deployment default org (COMMERCE_DEFAULT_ORG, default "hanzo") so a
 // same-cluster host that isn't a public brand domain still resolves to the org
 // this commerce serves.
 func brandForHost(host string) brand {
@@ -247,17 +247,17 @@ func brandForHost(host string) brand {
 // BrandSlugForHost resolves a customer-facing host to the serving brand's org
 // slug — the RECEIVING side of a deposit (whose bank account, whose KMS wire
 // path, whose custody vault). Exported for the /v1/billing wire + crypto
-// top-up surface, which shares this one host→brand table with the tenant
+// top-up surface, which shares this one host→brand table with the org
 // endpoint rather than growing a second.
 func BrandSlugForHost(host string) string {
 	return brandForHost(host).slug
 }
 
-// defaultBrand is the deployment's fallback tenant. It is brandHanzo unless
-// COMMERCE_DEFAULT_TENANT names another known brand (so a lux/zoo/pars-only
+// defaultBrand is the deployment's fallback org. It is brandHanzo unless
+// COMMERCE_DEFAULT_ORG names another known brand (so a lux/zoo/pars-only
 // commerce deploy can flip its default without code changes).
 func defaultBrand() brand {
-	switch strings.ToLower(strings.TrimSpace(os.Getenv("COMMERCE_DEFAULT_TENANT"))) {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("COMMERCE_DEFAULT_ORG"))) {
 	case "lux":
 		return brandLux
 	case "zoo":

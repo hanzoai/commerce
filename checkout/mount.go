@@ -1,11 +1,11 @@
-// Package checkout mounts the hosted multi-tenant checkout into the
+// Package checkout mounts the hosted multi-org checkout into the
 // commerce router. Public paths live under /v1/commerce/*; admin paths
 // live under /_/commerce/*; the Vite SPA is the least-specific catch-all.
 //
 // Path convention (canonical, per platform rules):
 //
-//	GET  /v1/commerce/tenant                 public tenant config (branding)
-//	POST /v1/commerce/deposits               create intent → proxy to tenant BD
+//	GET  /v1/commerce/org                 public org config (branding)
+//	POST /v1/commerce/deposits               create intent → proxy to org BD
 //	POST /v1/commerce/deposits/:id/confirm   submit provider token
 //	GET  /v1/commerce/deposits/:id/status    poll settlement
 //	POST /v1/commerce/webhooks/:provider     provider-hosted webhook intake
@@ -30,33 +30,7 @@ import (
 	"strings"
 
 	"github.com/zap-proto/zip"
-
-	"github.com/hanzoai/commerce/store"
 )
-
-// MountTenantAdmin registers the store-backed admin surface onto
-// a router group the caller has already wrapped with IAM auth +
-// admin-role checks. Only the create-tenant + list-providers handlers
-// live here today; future per-tenant config endpoints (idv, iam, etc.)
-// hang off the same TenantAdminAPI struct so they share the
-// store-backed instance and the audit-mutation log.
-//
-// The legacy provider-credentials / methods / audit endpoints stay on
-// the tenant-admin path until every deployment migrates
-// over to the store seam. Both groups can coexist on the same
-// /_/commerce prefix because their handler paths don't overlap.
-func MountTenantAdmin(group zip.Router, s *store.Store) {
-	if s == nil {
-		return
-	}
-	a := NewTenantAdminAPI(s)
-	group.Post("/tenants", a.CreateTenant)
-	group.Get("/providers", a.ListProviders)
-	// The write half of the same resource. Without it the provider list was
-	// readable and unchangeable, so which rails a deployment offered could only
-	// be moved by editing the database.
-	group.Put("/providers/:name", a.SetProviderEnabled)
-}
 
 // MountSPA registers the least-specific catch-all that serves the embedded
 // Vite SPA at /. zip routes by specificity, so every concrete API route wins
@@ -97,7 +71,7 @@ func isAPIPath(path string) bool {
 // apiPrefixes enumerates path prefixes owned by the Go API surface.
 // /admin/ is the embedded Next.js admin SPA served by the commerce
 // binary itself and its deep-links must never fall through to the
-// checkout SPA. /_/commerce/ is tenant admin (new). /v1/commerce/ is
+// checkout SPA. /_/commerce/ is org admin (new). /v1/commerce/ is
 // the canonical public API surface.
 var apiPrefixes = []string{
 	"/v1/",
