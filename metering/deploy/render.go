@@ -12,7 +12,9 @@ import (
 type Tenant struct {
 	// Org is the tenant org slug (e.g. "acme"). It scopes the CR name, the PVC,
 	// the ingress host, and — crucially — the COMMERCE_SERVICE_ORG the meter
-	// stamps as X-Hanzo-Org so usage debits the right org's prepaid balance.
+	// stamps as X-Org-Id so usage debits the right org's prepaid balance.
+	// (X-Org-Id, not X-Hanzo-Org: commerce reads the latter nowhere, so it
+	// routes nothing and a debit lands on the fallback org instead.)
 	Org string
 
 	// Namespace the CR is applied to. Empty defaults to "hanzo" (shared
