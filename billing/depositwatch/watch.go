@@ -596,9 +596,35 @@ func (a *asset) verify(ctx context.Context) error {
 // hex and comparing them literally would miss every deposit; on the non-EVM
 // chains it means leaving case alone, because their encodings are
 // case-significant. See Asset.Fold and Asset.Identity.
+// AMBIGUITY IS ABOUT WHOSE MONEY IT IS, NOT ABOUT HOW MANY INTENTS THERE ARE.
+//
+// Counting intents per identity looked like the same question and is not, and
+// the difference stopped every EVM asset dead. Two decisions upstream are each
+// right on their own:
+//
+//   - Watched() enumerates intents REGARDLESS of status, deliberately: money
+//     sent to an expired or already-settled intent is still the customer's.
+//   - CreateCryptoDeposit reuses ONE address per (payer, chain, token) — on a
+//     per-payer chain the address is derived from that payer's key, so it is the
+//     same address every time by construction, not by accident.
+//
+// Together they mean the SECOND deposit a customer ever makes leaves two intents
+// on one address, and a count-based test reads that as a collision and halts the
+// whole asset — permanently, since the old intent never goes away. Observed in
+// production as `ethereum:usdc … claimed by more than one intent`, once per pass,
+// with the cursor frozen behind it.
+//
+// But both intents name the SAME payer, so nothing is unclear: whichever one the
+// sighting is recorded against, the credit goes to the same person. A genuine
+// collision is two DIFFERENT payers on one identity — that is the case where
+// crediting either is a guess with someone's money, and it still fails closed.
+//
+// Among a payer's own intents, an open one wins so the sighting lands on the
+// intent the customer is currently looking at; ties break on IntentID so a pass
+// is reproducible.
 func indexWatched(watched []Watched, a *asset) (byID map[string]Watched, addrs []string, ambiguous []string) {
 	byID = make(map[string]Watched, len(watched))
-	claims := make(map[string]int, len(watched))
+	subjects := make(map[string]map[string]bool, len(watched))
 	addrSet := make(map[string]bool, len(watched))
 	for _, wt := range watched {
 		addr := a.Fold(wt.Address)
@@ -611,11 +637,16 @@ func indexWatched(watched []Watched, a *asset) (byID map[string]Watched, addrs [
 		// below anyway.
 		addrSet[addr] = true
 		id := a.Identity(wt.Address, wt.Tag)
-		claims[id]++
-		byID[id] = wt
+		if subjects[id] == nil {
+			subjects[id] = make(map[string]bool, 1)
+		}
+		subjects[id][wt.Subject] = true
+		if cur, seen := byID[id]; !seen || preferIntent(wt, cur) {
+			byID[id] = wt
+		}
 	}
-	for id, n := range claims {
-		if n > 1 {
+	for id, subs := range subjects {
+		if len(subs) > 1 {
 			ambiguous = append(ambiguous, id)
 			delete(byID, id)
 		}
@@ -626,6 +657,26 @@ func indexWatched(watched []Watched, a *asset) (byID map[string]Watched, addrs [
 	sort.Strings(addrs) // deterministic chunking
 	sort.Strings(ambiguous)
 	return byID, addrs, ambiguous
+}
+
+// preferIntent picks between two intents of the SAME payer on one identity.
+// Open beats terminal — that is the one the customer has on screen — and
+// otherwise the higher IntentID wins so the choice does not depend on the order
+// orgs happened to enumerate in.
+func preferIntent(candidate, current Watched) bool {
+	if co, cu := intentOpen(candidate), intentOpen(current); co != cu {
+		return co
+	}
+	return candidate.IntentID > current.IntentID
+}
+
+// intentOpen reports whether an intent is still waiting on money. Written as an
+// allow-list of the two live states rather than a deny-list of the terminal
+// ones, so a status added later is treated as terminal — which only costs a
+// preference between one payer's own intents, where a deny-list would silently
+// promote an unknown state to "the customer is looking at this".
+func intentOpen(w Watched) bool {
+	return w.Status == cryptopaymentintent.Pending || w.Status == cryptopaymentintent.Confirming
 }
 
 // dedupKey names the on-chain event a credit came from: chain, transaction,
