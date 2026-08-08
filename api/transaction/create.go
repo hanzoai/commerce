@@ -83,6 +83,13 @@ func Create(c *zip.Ctx) error {
 		trans.Test = true
 	}
 
+	// Same read-check-write as Hold, and the same reason it needs serializing:
+	// a Transfer or Withdraw decides against a balance it read a moment earlier,
+	// and datastore.RunInTransaction opens no transaction. Taken for every type
+	// rather than only the spending ones, so a Credit landing concurrently
+	// cannot move the balance out from under a check in flight.
+	defer lockFunds(trans.SourceKind, trans.SourceId, string(trans.Currency), trans.Test)()
+
 	err := db.RunInTransaction(func(db *datastore.Datastore) error {
 		if trans.Type == transaction.Transfer || trans.Type == transaction.Withdraw {
 			datas, err := util.GetTransactionsByCurrency(db.Context, trans.SourceId, trans.SourceKind, trans.Currency, !org.Live)
