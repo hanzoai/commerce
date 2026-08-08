@@ -267,6 +267,40 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		}
 	}
 
+	// ONE PAID SUBSCRIPTION PER SUBJECT — refused BEFORE the card is touched.
+	//
+	// This door only ever STARTED a subscription: it charged, then called
+	// createSubscription unconditionally, and nothing looked for one the subject
+	// already had. The idempotency guard did not help — it keys on (subject, store,
+	// plan), so a DIFFERENT plan is a different key and replays nothing. A paying
+	// Pro customer clicking Upgrade on Max was therefore charged $99 in full, got a
+	// SECOND active subscription, and kept renewing the first one. billingSubscription
+	// explains why a second row also shadows the first's allotment.
+	//
+	// Refusing is the honest answer rather than the complete one: MOVING the
+	// subscription is what the customer asked for, and doing that correctly means
+	// pricing a mid-period change (what is owed today versus at renewal), which is a
+	// policy decision this door cannot invent. PATCH /v1/billing/subscriptions/:id is
+	// where a move belongs, and it currently refuses an allotment increase without
+	// mint credentials precisely because engine.ChangePlan swaps the plan for free.
+	// Until that door can charge, a customer who wants a different tier is told so by
+	// name — which is strictly better than being billed twice for it.
+	//
+	// It sits AFTER the idempotency guard on purpose. A retry carrying the SAME key
+	// is a lost-response retry of the attempt that created the subscription, and it
+	// must replay that receipt — asking first would answer 409 to the customer whose
+	// payment actually went through.
+	if held := billingSubscription(db, subject); held != nil {
+		abandon()
+		heldSlug := held.Plan.Slug
+		if heldSlug == "" {
+			heldSlug = held.PlanId
+		}
+		return http.Fail(c, 409, fmt.Sprintf(
+			"this account already pays for the %q plan (subscription %s); change that subscription instead of buying a second one",
+			heldSlug, held.Id()), nil)
+	}
+
 	// Resolve the card to charge. A fresh nonce is vaulted through saveCard (the
 	// ONE constructor — validates by vaulting, stamps brand/last4, and returns
 	// the existing row instead of stacking a duplicate); a paymentMethodId names
