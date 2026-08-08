@@ -161,8 +161,9 @@ func chargeAndCredit(c *zip.Ctx, org *organization.Organization, db *datastore.D
 			fmt.Sprintf("topup via %s (ref: %s)", proc.Type(), result.ProcessorRef),
 			"topup:"+result.ProcessorRef)
 		if mErr != nil {
-			log.Error("RECONCILE: charge succeeded (ref=%s) but chain mint failed for user %s: %v",
-				result.ProcessorRef, userId, mErr, c)
+			uncredited(c, org.Name, userId, result.ProcessorRef,
+				"the charge settled and the chain mint failed: "+mErr.Error(),
+				int64(amountCents), false)
 			return "", 0, fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, result.ProcessorRef, mErr)
 		}
 		var balanceCents currency.Cents
@@ -198,8 +199,9 @@ func chargeAndCredit(c *zip.Ctx, org *organization.Organization, db *datastore.D
 	trans.SetContext(mintauth.WithAuthorized(trans.Context()))
 	if err := trans.Create(); err != nil {
 		// Charge succeeded but credit failed — log with full context for manual reconciliation.
-		log.Error("RECONCILE: charge succeeded (ref=%s) but deposit failed for user %s: %v",
-			result.ProcessorRef, userId, err, c)
+		uncredited(c, org.Name, userId, result.ProcessorRef,
+			"the charge settled and the deposit failed: "+err.Error(),
+			int64(amountCents), false)
 		return "", 0, fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, result.ProcessorRef, err)
 	}
 

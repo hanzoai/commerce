@@ -224,6 +224,15 @@ const (
 	EventInvoicePaid             = "invoice_paid"
 	EventInvoiceVoid             = "invoice_void"
 	EventAPIUsageDebit           = "api_usage_debit"
+
+	// EventPaymentUncredited is the money alarm: a charge SETTLED at the
+	// processor and the ledger did not move. It is the one billing event that
+	// reports a defect rather than a lifecycle step, and it exists because the
+	// six places that detect this each ended at log.Error — precise detection
+	// that reached nobody. A $99 subscription charge settled on 2026-08-06 and
+	// sat uncredited for ~21 hours; the log line naming it was written the
+	// instant it happened.
+	EventPaymentUncredited = "payment_uncredited"
 )
 
 // Subscription is a subscription-lifecycle event for the collector. Money is USD
@@ -264,6 +273,35 @@ func (c *Client) EmitSubscriptionPlanChanged(ctx context.Context, s *Subscriptio
 // EmitSubscriptionCanceled sends a subscription_canceled event to the collector.
 func (c *Client) EmitSubscriptionCanceled(ctx context.Context, s *Subscription) error {
 	return c.emitSubscription(ctx, EventSubscriptionCanceled, s)
+}
+
+// EmitPaymentUncredited reports a settled charge whose ledger effect is missing —
+// money taken, balance (or subscription) not moved.
+//
+// `terminal` separates the two classes, because the RECOVERY differs and telling
+// a customer to retry a payment that refuses forever takes their card twice: a
+// retryable one clears when the customer or the provider tries again, a terminal
+// one needs a human (grant the balance, refund the charge).
+//
+// Best-effort like every emit here — it never blocks or fails the money path,
+// which is why the log line stays beside it rather than being replaced by it.
+func (c *Client) EmitPaymentUncredited(ctx context.Context, orgID, subject, settlement, reason string, amountCents int64, terminal bool) error {
+	return c.EmitRaw(ctx, map[string]interface{}{
+		"event":           EventPaymentUncredited,
+		"distinct_id":     subject,
+		"organization_id": orgID,
+		// revenue 0: the cash moved at the PROCESSOR, and counting it here would
+		// book revenue the ledger never recorded — the exact disagreement this
+		// event exists to report.
+		"revenue": 0,
+		"properties": map[string]interface{}{
+			"settlement":   settlement,
+			"subject":      subject,
+			"amount_cents": amountCents,
+			"terminal":     terminal,
+			"reason":       reason,
+		},
+	})
 }
 
 func (c *Client) emitSubscription(ctx context.Context, event string, s *Subscription) error {
