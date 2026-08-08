@@ -67,6 +67,12 @@ func CreateHold(c *zip.Ctx) error {
 		trans.Test = true
 	}
 
+	// The balance is read, decided against, and then written to. Nothing below
+	// makes that one step — datastore.RunInTransaction is a stub that opens no
+	// transaction — so two concurrent holds for 100 against a balance of 100 both
+	// read Balance-Holds=100, both pass, and both create. See lockFunds.
+	defer lockFunds(trans.SourceKind, trans.SourceId, string(trans.Currency), trans.Test)()
+
 	err := db.RunInTransaction(func(db *datastore.Datastore) error {
 		datas, err := util.GetTransactionsByCurrency(db.Context, trans.SourceId, trans.SourceKind, trans.Currency, !org.Live)
 		if err != nil {
