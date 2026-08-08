@@ -16,7 +16,7 @@ renderer. No product reimplements billing; no second balance gate exists.
                                     | Authorize  | Record (per-org debit)
                     ┌───────────────┴────────────┴───────────────┐
                     │   metering.Client  (leaf, stdlib-only)      │   ← the core
-                    │   X-Hanzo-Org=<org>  Bearer <KMS token>     │
+                    │   X-Org-Id=<org>  Bearer <KMS token>        │
                     │   fail-closed gate · per-ORG billing key    │
                     └───────────────┬────────────┬───────────────┘
         net/http adapter            │ in-process │            non-Go adapter
@@ -32,9 +32,22 @@ renderer. No product reimplements billing; no second balance gate exists.
   `resolveBillingKey` -> `user.Owner`). `IdentityFromGatewayHeaders` sets
   `User=<org>` (billing) and `Actor=<org/sub>` (audit). Keying per-user checks
   an empty ledger and denies a funded org — the bug this design prevents.
-- **Org routing header is `X-Hanzo-Org`** (commerce's service-token path:
-  `middleware/accesstoken.go` `c.GetHeader("X-Hanzo-Org")`). NOT `X-IAM-Org-Id`
-  (commerce honors that nowhere). Wrong header -> debits the default `hanzo` ns.
+- **Org routing header is `X-Org-Id`** (commerce's service-token path:
+  `middleware/accesstoken.go` reads `c.Header("X-Org-Id")`, then falls back to
+  `COMMERCE_SERVICE_ORG`, then `"hanzo"`). NOT `X-IAM-Org-Id`, and NOT
+  `X-Hanzo-Org` — commerce reads that one NOWHERE outside tests, so it does not
+  route and it does not authorize. The CODE has always been right
+  (`metering.go` `headerOrg`); these lines were wrong, and they were the
+  instructions.
+
+  A wrong header is SILENT both ways, which is why it has to be stated exactly.
+  On a no-mask route the bearer alone still authorizes and the debit lands on the
+  FALLBACK org — a real charge against the wrong tenant. On a scoped one commerce
+  answers `401 "sign in to view billing"`, byte-identical to sending no
+  credential at all, so a caller that fails closed reads it as "no balance"
+  rather than "asked wrongly". That is exactly how hanzo.chat showed a funded
+  org no credits (2026-08-08). Assert the header where the request is BUILT — an
+  end-to-end test cannot tell a refusal from an empty ledger.
 - **Fail-closed.** Balance unknown -> deny (503); out-of-funds -> 402. Set
   `METERING_FAIL_OPEN=true` only where availability outranks revenue.
 - **Test ledger.** `METERING_TEST=true` sends `X-Hanzo-Test: true` so balances

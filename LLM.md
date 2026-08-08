@@ -148,10 +148,18 @@ bundle. Previously it was mounted from `embed.go` AFTER Bootstrap, so gin left
 the setupRoutes groups unguarded and an in-cluster pod could `POST
 /_/commerce/tenants` with forged `X-Org-Id: admin` + `X-User-IsGlobalAdmin: true`
 → 201 (platform superadmin by header forgery). The boundary NEVER 401s opaque
-service tokens (not JWTs) and does NOT strip `X-Hanzo-Org`, so the cloud-api →
-commerce per-org billing money path is untouched (`require=false`;
-`COMMERCED_REQUIRE_IDENTITY` is incompatible with the no-X-Org-Id service-token
-path). Regression: `edgeauth_standalone_test.go`, `middleware/edgeauth_test.go`.
+service tokens (not JWTs), so the cloud-api → commerce per-org billing money path
+is untouched (`require=false`; `COMMERCED_REQUIRE_IDENTITY` is incompatible with
+the service-token path). This used to read "and does NOT strip `X-Hanzo-Org`",
+which was wrong twice and in the direction that matters: `X-Hanzo-Org` is not the
+billing header (commerce reads it nowhere — see `metering/LLM.md`), and the header
+that IS, `X-Org-Id`, is stripped UNCONDITIONALLY along with every other identity
+header. What carries the org through is the private ctx key `ctxKeyClientOrg`,
+which EdgeAuth stashes and only `TokenRequired`'s service-token branch reads,
+AFTER verifying the bearer — the mechanism described further down this file. The
+conclusion held; the reason given for it did not, and a reader debugging a
+mis-billed tenant would have gone looking for the wrong header.
+Regression: `edgeauth_standalone_test.go`, `middleware/edgeauth_test.go`.
 
 | Header                | Source                  | Use                                         |
 |-----------------------|-------------------------|---------------------------------------------|
