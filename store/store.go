@@ -82,9 +82,8 @@ func FromEnv() Config {
 // collection by (a) writing a migration under store/migrations, (b) adding a
 // typed repo, (c) wiring it onto this struct.
 type Store struct {
-	App     core.App
-	Tenants *TenantRepo
-	KV      *KVStore
+	App core.App
+	KV  *KVStore
 }
 
 // New bootstraps a base app from cfg and returns a store ready to serve.
@@ -119,9 +118,8 @@ func New(cfg Config) (*Store, error) {
 	}
 
 	return &Store{
-		App:     app,
-		Tenants: NewTenantRepo(app),
-		KV:      NewKVStore(app),
+		App: app,
+		KV:  NewKVStore(app),
 	}, nil
 }
 

@@ -11,14 +11,14 @@ import (
 // CachedOrgLoader wraps a slow, fallible org read in the two properties
 // OrgLoader's contract REQUIRES of any real loader: a cache, and a deadline.
 //
-// Resolve runs on GET /v1/commerce/tenant — public, unauthenticated, and hit by
+// Resolve runs on GET /v1/commerce/org — public, unauthenticated, and hit by
 // the pay SPA on every boot. A naive per-request org query under an unbounded
 // context blocks and exhausts the DB pool; that is the 1.42.44 regression, and
 // it is why the loader defaulted to nil. nil is safe but it is not free: with no
 // loader every host resolves to a SYNTHETIC org, a synthetic org is never Live,
-// and the public tenant JSON therefore advertises the SANDBOX Square application
+// and the public org JSON therefore advertises the SANDBOX Square application
 // forever — even after the org record is flipped Live (measured 2026-07-30:
-// POST /v1/billing/mode returned {"live":true} and the tenant kept serving
+// POST /v1/billing/mode returned {"live":true} and the org kept serving
 // sandbox-sq0idb-…, so the card iframe tokenized against sandbox while the charge
 // path used the live org — a nonce the production account cannot charge).
 //
@@ -32,7 +32,7 @@ import (
 //   - a failed or timed-out read returns (nil,false), which degrades to exactly
 //     the synthetic-org behavior that shipped before — SANDBOX. The fallback on
 //     every error path is the fail-closed one, so an outage can never promote a
-//     tenant onto production rails.
+//     org onto production rails.
 //
 // Negative results are cached too, and deliberately: a brand with no org row is
 // the common case for the non-default brands, and re-querying for a row that
@@ -91,7 +91,7 @@ func (c *CachedOrgLoader) Load(slug string) (*organization.Organization, bool) {
 
 	org, err := c.read(ctx, slug)
 	if err != nil {
-		org = nil // a failed read is a MISS, never a live tenant
+		org = nil // a failed read is a MISS, never a live org
 	}
 
 	c.mu.Lock()

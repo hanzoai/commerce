@@ -1,7 +1,7 @@
 // Package store — base-backed KV cache tests.
 //
 // These exercise KVStore against a real base app booted on a throwaway SQLite
-// file (newTestStore from tenant_test.go). We do NOT fake base: TTL expiry,
+// file (newTestStore below). We do NOT fake base: TTL expiry,
 // SetNX atomicity, and concurrent-writer safety all depend on base's
 // serializable SQLite transactions, so faking would prove nothing.
 package store
@@ -9,10 +9,27 @@ package store
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 )
+
+// newTestStore constructs an isolated store under t.TempDir(). Cleanup is
+// registered via t.Cleanup so the DB pool is closed and the on-disk files
+// go away on test completion.
+func newTestStore(t *testing.T) *Store {
+	t.Helper()
+	dir := t.TempDir()
+	s, err := New(Config{DataDir: filepath.Join(dir, "commerce")})
+	if err != nil {
+		t.Fatalf("store.New: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = s.Close(nil)
+	})
+	return s
+}
 
 func TestKVSetGet(t *testing.T) {
 	kv := newTestStore(t).KV

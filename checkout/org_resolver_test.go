@@ -34,8 +34,8 @@ func TestBrandForHost(t *testing.T) {
 	}
 }
 
-// The resolver returns a usable tenant for any well-formed host — no separate
-// tenant registry, no 404. The public Square config comes from the org via the
+// The resolver returns a usable org for any well-formed host — no separate
+// org registry, no 404. The public Square config comes from the org via the
 // env credential fallback (the cloud-org path), so the pay SPA can mount its card
 // iframe.
 //
@@ -55,16 +55,16 @@ func TestOrgResolver_ResolvesOrgAsTenant(t *testing.T) {
 		t.Fatalf("Resolve(pay.hanzo.ai) err = %v, want nil", err)
 	}
 	if ten.Name != "hanzo" {
-		t.Errorf("tenant name = %q, want hanzo", ten.Name)
+		t.Errorf("org name = %q, want hanzo", ten.Name)
 	}
 	if ten.IAM.Issuer != "https://hanzo.id" || ten.IAM.ClientID != "hanzo-app" {
-		t.Errorf("tenant IAM = %+v, want hanzo.id/hanzo-app", ten.IAM)
+		t.Errorf("org IAM = %+v, want hanzo.id/hanzo-app", ten.IAM)
 	}
 	if ten.Square.ApplicationID != "sq0idp-TESTAPP" || ten.Square.LocationID != "TESTLOC" {
-		t.Errorf("tenant Square = %+v, want env app/location", ten.Square)
+		t.Errorf("org Square = %+v, want env app/location", ten.Square)
 	}
 	if ten.Square.Environment != "sandbox" {
-		t.Errorf("tenant Square env = %q, want sandbox (synthetic org is not Live ⇒ fail closed)", ten.Square.Environment)
+		t.Errorf("org Square env = %q, want sandbox (synthetic org is not Live ⇒ fail closed)", ten.Square.Environment)
 	}
 	// Square must be an enabled provider so the card method surfaces; Stripe never.
 	var hasSquare, hasStripe bool
@@ -77,10 +77,10 @@ func TestOrgResolver_ResolvesOrgAsTenant(t *testing.T) {
 		}
 	}
 	if !hasSquare {
-		t.Errorf("tenant providers %+v missing enabled square", ten.Providers)
+		t.Errorf("org providers %+v missing enabled square", ten.Providers)
 	}
 	if hasStripe {
-		t.Errorf("tenant providers %+v must not surface stripe", ten.Providers)
+		t.Errorf("org providers %+v must not surface stripe", ten.Providers)
 	}
 }
 
@@ -88,13 +88,13 @@ func TestOrgResolver_ResolvesOrgAsTenant(t *testing.T) {
 func TestOrgResolver_MalformedHostRejected(t *testing.T) {
 	r := NewOrgResolver(nil)
 	for _, h := range []string{"", "\x00bad", " ", ":"} {
-		if _, err := r.Resolve(h); err != ErrUnknownTenant {
-			t.Errorf("Resolve(%q) err = %v, want ErrUnknownTenant", h, err)
+		if _, err := r.Resolve(h); err != ErrUnknownOrg {
+			t.Errorf("Resolve(%q) err = %v, want ErrUnknownOrg", h, err)
 		}
 	}
 }
 
-// The public tenant JSON built from an org resolution must carry the Square
+// The public org JSON built from an org resolution must carry the Square
 // block and enabled square provider, and never leak a secret.
 func TestOrgResolver_PublicViewCarriesSquare(t *testing.T) {
 	t.Setenv("SQUARE_ENVIRONMENT", "production") // hostile: ignored, org decides
@@ -112,7 +112,7 @@ func TestOrgResolver_PublicViewCarriesSquare(t *testing.T) {
 	}
 }
 
-// The hanzo tenant's return allowlist must carry the first-party app hosts so
+// The hanzo org's return allowlist must carry the first-party app hosts so
 // pay can bounce ?return= back to the app that sent the user here (e.g. the
 // playground onboarding flow). An empty allowlist would reject every return and
 // strand the user on the brand default after onboarding.

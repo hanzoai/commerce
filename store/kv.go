@@ -16,7 +16,7 @@ var ErrKVNotFound = errors.New("store: kv key not found")
 
 // KVStore is the base-backed key/value cache that replaces the former
 // Redis/Valkey client. It persists into the commerce_kv collection (per-store
-// SQLite file, or Postgres when DataDSN is set), giving the same single-tenant
+// SQLite file, or Postgres when DataDSN is set), giving the same single-org
 // embedded-data backend the rest of commerce already uses.
 //
 // Semantics match the subset of the old KV interface that commerce actually

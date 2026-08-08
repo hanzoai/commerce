@@ -64,7 +64,7 @@ func AllowedCheckoutRedirect(rawURL, orgName string, websiteURLs []string, reque
 
 // brandSlugFor resolves the brand whose domains an org may redirect to. A known
 // brand org maps to its own brand; any other (custom) org inherits the brand
-// this deployment serves, via the same host→brand map the tenant resolver uses.
+// this deployment serves, via the same host→brand map the org resolver uses.
 func brandSlugFor(orgName, requestHost string) string {
 	switch strings.ToLower(strings.TrimSpace(orgName)) {
 	case "hanzo", "lux", "zoo", "pars":

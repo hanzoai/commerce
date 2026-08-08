@@ -19,9 +19,9 @@ import (
 // needs to live at a subpath. Unknown extension-less paths fall through
 // to index.html so TanStack Router can render them.
 //
-// The handler is Host-agnostic — tenant branding is fetched at runtime by
-// the SPA via GET /checkout/v1/tenant. This keeps the embed identical
-// across all tenants and the binary itself reproducible.
+// The handler is Host-agnostic — org branding is fetched at runtime by
+// the SPA via GET /checkout/v1/org. This keeps the embed identical
+// across all orgs and the binary itself reproducible.
 func SPAHandler(prefix string) zip.Handler {
 	root := UISub()
 

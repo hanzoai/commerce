@@ -1,5 +1,5 @@
 // Package commerce — integration test proving P8-H1 is fixed: the store-
-// backed /v1/commerce/tenant (public) and /_/commerce/tenants (admin) routes
+// backed /v1/commerce/org (public) route
 // are wired into the production commerce binary, not just attached inside a
 // per-test router.
 //
@@ -74,13 +74,13 @@ func probe(t *testing.T, app *App, method, path string, host string, body []byte
 }
 
 // TestRoutes_WiredInProduction proves P8-H1 is fixed: the store-backed
-// /v1/commerce/tenant and /_/commerce/tenants endpoints are wired in the
+// /v1/commerce/org endpoint is wired in the
 // booted commerce binary's router. If either returns the NoRoute 404
 // body `{"error":"not found"}` (MountSPA's isAPIPath branch) the wiring is
 // missing.
 //
 // We do NOT assert specific success semantics — authentication is disabled
-// and the tenant collection is empty — only that the router recognizes the
+// and the org collection is empty — only that the router recognizes the
 // paths and dispatches to a registered handler rather than NoRoute.
 func TestRoutes_WiredInProduction(t *testing.T) {
 	app := bootTestCommerce(t)
@@ -92,9 +92,7 @@ func TestRoutes_WiredInProduction(t *testing.T) {
 		host   string
 		body   []byte
 	}{
-		{name: "public_tenant_lookup", method: http.MethodGet, path: "/v1/commerce/tenant", host: "pay.example.test"},
-		{name: "admin_create_tenant", method: http.MethodPost, path: "/_/commerce/tenants", body: []byte(`{"name":"probe"}`)},
-		{name: "admin_list_providers", method: http.MethodGet, path: "/_/commerce/providers"},
+		{name: "public_org_lookup", method: http.MethodGet, path: "/v1/commerce/org", host: "pay.example.test"},
 	}
 
 	for _, tc := range cases {
@@ -120,49 +118,31 @@ func TestRoutes_WiredInProduction(t *testing.T) {
 	}
 }
 
-// TestRoutes_PublicTenantResolvesOrg proves GET /v1/commerce/tenant resolves
-// the tenant from the IAM org (host→brand→org), returning 200 with an
-// org-as-tenant JSON — NOT a 404 against a separate tenant registry. Even with
+// TestRoutes_PublicTenantResolvesOrg proves GET /v1/commerce/org resolves
+// the org from the IAM org (host→brand→org), returning 200 with an
+// org JSON — NOT a 404 against a separate org registry. Even with
 // no org row and no Square env in the test binary, resolution degrades to the
 // deployment default brand + env, so the pay SPA always receives a usable
-// tenant carrying `name` (the org slug) and a `square` block. This is the fix
+// org carrying `name` (the org slug) and a `square` block. This is the fix
 // for the pay.hanzo.ai "unknown tenant" 404 + dead card form.
 func TestRoutes_PublicTenantResolvesOrg(t *testing.T) {
 	app := bootTestCommerce(t)
 
-	resp := probe(t, app, http.MethodGet, "/v1/commerce/tenant", "pay.p8.test", nil)
+	resp := probe(t, app, http.MethodGet, "/v1/commerce/org", "pay.p8.test", nil)
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		t.Fatalf("status = %d, want 200 (org-as-tenant). body=%s", resp.StatusCode, string(bodyBytes))
+		t.Fatalf("status = %d, want 200 (org). body=%s", resp.StatusCode, string(bodyBytes))
 	}
 	var body map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
-		t.Fatalf("tenant JSON decode: %v", err)
+		t.Fatalf("org JSON decode: %v", err)
 	}
 	if name, _ := body["name"].(string); name == "" {
-		t.Fatalf("tenant JSON missing name (org slug): %v", body)
+		t.Fatalf("org JSON missing name (org slug): %v", body)
 	}
 	if _, ok := body["square"]; !ok {
-		t.Fatalf("tenant JSON missing square block (card form needs it): %v", body)
+		t.Fatalf("org JSON missing square block (card form needs it): %v", body)
 	}
 }
 
-// TestRoutes_AdminTenantCreatePathExists verifies the POST admin endpoint
-// exists. With IAM disabled, the handler's own claim check 401s — which is
-// a wired-handler signal, not a NoRoute miss.
-func TestRoutes_AdminTenantCreatePathExists(t *testing.T) {
-	app := bootTestCommerce(t)
-
-	resp := probe(t, app, http.MethodPost, "/_/commerce/tenants", "", []byte(`{"name":"x"}`))
-	defer resp.Body.Close()
-	bodyBytes, _ := io.ReadAll(resp.Body)
-	body := string(bodyBytes)
-
-	if body == `{"error":"not found"}` {
-		t.Fatalf("POST /_/commerce/tenants not wired — status=%d body=%s", resp.StatusCode, body)
-	}
-	if resp.StatusCode != http.StatusUnauthorized && resp.StatusCode != http.StatusForbidden {
-		t.Logf("POST /_/commerce/tenants status=%d body=%s (accepted — handler ran)", resp.StatusCode, body)
-	}
-}
