@@ -68,17 +68,44 @@ func TestBillingReads_NoOrgInContext_NoPanic(t *testing.T) {
 //
 // A door that takes a card must refuse cleanly when it cannot name the payer. Money never
 // bills a guess, and a missing org is the emptiest guess there is.
-func TestSubscribeWithCard_NoOrgInContext_NoPanic(t *testing.T) {
+func TestMoneyWrites_NoOrgInContext_NoPanic(t *testing.T) {
 	noOrg := func(c *zip.Ctx) {} // the fall-through path: nothing set the "organization" local.
 
-	req := httptest.NewRequest(http.MethodPost, "/v1/billing/subscribe/card",
-		strings.NewReader(`{"planId":"max","sourceId":"cnon:card-nonce-ok"}`))
-	req.Header.Set("Content-Type", "application/json")
-
-	w := driveSeeded(noOrg, "/v1/billing/subscribe/card", req, SubscribeWithCard)
-	if w.StatusCode != 401 {
-		b, _ := io.ReadAll(w.Body)
-		t.Fatalf("SubscribeWithCard with no org: status = %d, body = %q; want 401 — "+
-			"a panic here 500s AFTER the card is charged", w.StatusCode, string(b))
+	// Every co-resident money WRITE, each of which opened by dereferencing the org.
+	// SubscribeWithCard is the one that cost money — a $99 first period settled at
+	// Square and the panic ate the subscription — but they all sit on the same chain,
+	// and IAMTokenRequired falls through without setting the local whenever the
+	// gateway named no principal (`ownerID == "" || userID == ""`), so legacy auth
+	// still gets its turn.
+	//
+	// A door that moves money must refuse cleanly when it cannot name the payer.
+	// Money never bills a guess, and a missing org is the emptiest guess there is.
+	write := func(name, method, path, body string, h zip.Handler) {
+		t.Run(name, func(t *testing.T) {
+			req := httptest.NewRequest(method, path, strings.NewReader(body))
+			req.Header.Set("Content-Type", "application/json")
+			w := driveSeeded(noOrg, path, req, h)
+			if w.StatusCode != 401 {
+				b, _ := io.ReadAll(w.Body)
+				t.Fatalf("%s with no org: status = %d, body = %q; want 401 — "+
+					"a panic here 500s with no body, and on a charging door it does so "+
+					"AFTER the card has moved", name, w.StatusCode, string(b))
+			}
+		})
 	}
+
+	write("subscribe-card", http.MethodPost, "/v1/billing/subscribe/card",
+		`{"planId":"max","sourceId":"cnon:card-nonce-ok"}`, SubscribeWithCard)
+	write("topup", http.MethodPost, "/v1/billing/topup",
+		`{"amountCents":500}`, Topup)
+	write("topup-token", http.MethodPost, "/v1/billing/topup/token",
+		`{"amountCents":500,"sourceId":"cnon:card-nonce-ok"}`, TopupWithToken)
+	write("payment-method-create", http.MethodPost, "/v1/billing/payment-methods",
+		`{"sourceId":"cnon:card-nonce-ok"}`, CreatePaymentMethod)
+	write("payment-method-detach", http.MethodDelete, "/v1/billing/payment-methods/pm_1",
+		``, DetachPaymentMethod)
+	write("subscription-cancel", http.MethodPost, "/v1/billing/subscriptions/sub_1/cancel",
+		``, CancelBillingSubscription)
+	write("subscription-reactivate", http.MethodPost, "/v1/billing/subscriptions/sub_1/reactivate",
+		``, ReactivateBillingSubscription)
 }

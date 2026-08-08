@@ -238,7 +238,15 @@ func seal(rec *idempotencykey.IdempotencyKey, txID string, balanceCents currency
 // Body: { userId, paymentMethodId, amountCents, currency? }
 // Returns: { transactionId, balanceCents, status }
 func Topup(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
+	// The OK form: IAMTokenRequired falls through WITHOUT setting the
+	// "organization" local when the gateway named no principal, and the MustGet
+	// form panics there — a 500 with no body, after the money has moved. Refuse
+	// before touching anything. See SubscribeWithCard, where this cost a $99
+	// charge with no subscription behind it.
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		return jsonhttp.Fail(c, 401, "sign in to add funds", nil)
+	}
 
 	// Hydrate payment credentials from KMS (same pattern as checkout/subscription).
 	if v := c.Locals("kms"); v != nil {
