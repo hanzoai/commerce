@@ -790,29 +790,37 @@ func TestPayInvoice_DeclineThenRetryReCollects(t *testing.T) {
 	}
 }
 
-// TestSubscribeWithCard_DistinctKeyReSubscribes proves fix B: a genuine second
-// purchase with a DIFFERENT idempotency key is NOT replayed as the first — it creates
-// a new subscription and charges again (the guard is not a permanent per-plan lock).
-// The SPA reaches this by clearing its per-attempt sessionStorage key on success.
-func TestSubscribeWithCard_DistinctKeyReSubscribes(t *testing.T) {
+// TestSubscribeWithCard_DistinctKeyRetriesAFailedAttempt proves fix B: the
+// idempotency guard is not a permanent per-plan LOCK. A first attempt that took no
+// money must leave nothing wedged, so a fresh key genuinely subscribes.
+//
+// It used to prove that by subscribing TWICE successfully to "pro" and asserting two
+// charges and two parent subscriptions — which is the double-billing this door now
+// refuses (see TestSubscribeWithCard_SecondPaidTierRefusedBeforeCharge). The
+// property worth protecting was never "sell the same plan twice"; it was "a spent
+// key does not brick the plan". So the first attempt DECLINES here, which is the
+// case the guard actually had to survive.
+func TestSubscribeWithCard_DistinctKeyRetriesAFailedAttempt(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	org := moneyOrg("sc-resub")
 	m := squareMock("cust_rs", "ccof_rs", "sqpay_rs")
+	m.chargeErr = errors.New("CARD_DECLINED")
 	withFakeSquare(t, m)
 
 	r1 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:A","planId":"pro"}`, map[string]string{"X-Idempotency-Key": "attempt-1"})
-	if r1.StatusCode != http.StatusCreated {
-		t.Fatalf("first subscribe status=%d, want 201", r1.StatusCode)
+	if r1.StatusCode != http.StatusPaymentRequired {
+		t.Fatalf("first subscribe status=%d, want 402 (declined)", r1.StatusCode)
 	}
-	// New checkout attempt (fresh key) → a NEW subscription, not a replay.
+
+	// A real card, a new checkout attempt (fresh key) → this one must go through.
+	m.chargeErr = nil
 	r2 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:B","planId":"pro"}`, map[string]string{"X-Idempotency-Key": "attempt-2"})
 	if r2.StatusCode != http.StatusCreated {
-		t.Fatalf("re-subscribe status=%d, want 201 (a fresh key must NOT replay the first purchase)", r2.StatusCode)
+		body, _ := io.ReadAll(r2.Body)
+		t.Fatalf("re-subscribe status=%d body=%s, want 201 (a spent key must not brick the plan)", r2.StatusCode, string(body))
 	}
-	if m.chargeCalls != 2 {
-		t.Fatalf("charge calls=%d across two distinct-key subscribes, want 2", m.chargeCalls)
-	}
+
 	db := datastore.New(org.Namespaced(ctx))
 	subs := make([]*subscription.Subscription, 0)
 	if _, err := subscription.Query(db).Filter("UserId=", "sc-resub").GetAll(&subs); err != nil {
@@ -824,7 +832,7 @@ func TestSubscribeWithCard_DistinctKeyReSubscribes(t *testing.T) {
 			parents++
 		}
 	}
-	if parents != 2 {
-		t.Fatalf("distinct-key re-subscribe created %d parent subscriptions, want 2 (guard wrongly blocked the second)", parents)
+	if parents != 1 {
+		t.Fatalf("retry after a decline produced %d parent subscriptions, want 1", parents)
 	}
 }

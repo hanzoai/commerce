@@ -381,6 +381,63 @@ func hasMemberSub(db *datastore.Datastore, planSlug, member string) bool {
 	return false
 }
 
+// billingSubscription returns the subject's live, payment-backed PAID
+// subscription — the one a second paid sale would bill twice — or nil.
+//
+// ONE SUBSCRIPTION SPEAKS FOR A SUBJECT. That is not a rule invented here; it is
+// what the platform already assumes. subscriptionPlanSlug reduces every live
+// subscription a subject holds to a SINGLE governing plan by picking the newest
+// PeriodStart, with no notion of a product line — so a second concurrent
+// subscription does not merely charge twice, it SHADOWS the first: hold "max"
+// ($100/mo included) and start "dns-pro" and the newer row answers "what plan is
+// this?" with a tier whose IncludedMonthlyCents is 0. Selling a second one cannot
+// be made correct without first giving that resolver a notion of which
+// subscription governs what, so this refuses the sale instead of corrupting the
+// entitlement.
+//
+// Two exclusions, each for its own reason, and neither is the other's:
+//
+//	FREE tiers do not count. Nothing bills, so nothing double-bills, and a free
+//	row must never block the customer who is finally paying — free → paid is the
+//	main funnel.
+//	NOT-payment-backed paid rows do not count either. A zero-payment internal row
+//	collects nothing, so it cannot double-charge, and counting it would trap the
+//	holder of a forged Active row outside any door that could fix it.
+//
+// It answers a different question from subscriptionPlanSlug ("what may this
+// subject's allotment anchor on") and shares its filters by coincidence of
+// meaning, not by being the same predicate; keeping them apart is what lets FREE
+// anchor an allotment while not blocking a sale.
+func billingSubscription(db *datastore.Datastore, subject string) *subscription.Subscription {
+	subs, err := userSubscriptions(db, subject)
+	if err != nil {
+		// Fail OPEN on a read failure: refusing a legitimate first purchase because
+		// the subscription store hiccuped costs a customer, while the worst case of
+		// proceeding is the duplicate this exists to prevent — which the stable
+		// Square idempotency key and the guard still bound.
+		return nil
+	}
+	for _, s := range subs {
+		switch s.Status {
+		case subscription.Active, subscription.Trialing:
+		default:
+			continue
+		}
+		// A bundle child is an entitlement row the parent minted, not a purchase.
+		if strings.EqualFold(strings.TrimSpace(s.ProviderType), "bundle") {
+			continue
+		}
+		slug := s.Plan.Slug
+		if slug == "" {
+			slug = s.PlanId
+		}
+		if paidTier(slug) && subscriptionPaymentBacked(s) {
+			return s
+		}
+	}
+	return nil
+}
+
 // ListBillingSubscriptions lists subscriptions for a user.
 //
 //	GET /v1/billing/subscriptions?userId=...
