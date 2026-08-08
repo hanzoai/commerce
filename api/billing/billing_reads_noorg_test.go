@@ -53,3 +53,32 @@ func TestBillingReads_NoOrgInContext_NoPanic(t *testing.T) {
 		}
 	})
 }
+
+// TestSubscribeWithCard_NoOrgInContext_NoPanic is the same class on the WRITE side, and it
+// is the one that cost money. SubscribeWithCard — the paid front door — opened with the
+// unguarded `middleware.GetOrganization(c)` while every read beside it had been fixed.
+//
+// IAMTokenRequired deliberately FALLS THROUGH without setting the local when the gateway
+// named no principal (`ownerID == "" || userID == ""`), so legacy auth still gets its turn.
+// Measured in production 2026-08-06: the panic recovered as a bare 500 with no body, a $99
+// "Subscription Max — first period" settled at Square with NO subscription row behind it,
+// and `zero subscriptions exist platform-wide` was the visible symptom. That in turn
+// starves the serving plane, because ai's funding gate requires a confirmed paying
+// subscriber for any prepaid SKU and fails closed.
+//
+// A door that takes a card must refuse cleanly when it cannot name the payer. Money never
+// bills a guess, and a missing org is the emptiest guess there is.
+func TestSubscribeWithCard_NoOrgInContext_NoPanic(t *testing.T) {
+	noOrg := func(c *zip.Ctx) {} // the fall-through path: nothing set the "organization" local.
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/billing/subscribe/card",
+		strings.NewReader(`{"planId":"max","sourceId":"cnon:card-nonce-ok"}`))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := driveSeeded(noOrg, "/v1/billing/subscribe/card", req, SubscribeWithCard)
+	if w.StatusCode != 401 {
+		b, _ := io.ReadAll(w.Body)
+		t.Fatalf("SubscribeWithCard with no org: status = %d, body = %q; want 401 — "+
+			"a panic here 500s AFTER the card is charged", w.StatusCode, string(b))
+	}
+}

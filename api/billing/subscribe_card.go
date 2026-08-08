@@ -115,7 +115,23 @@ type subscribeCardRequest struct {
 // the first result.
 // Returns: { subscriptionId, invoiceId, planId, amountCents, currency, status }
 func SubscribeWithCard(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
+	// The OK form, for the reason orgBillingKey states: GetOrganization
+	// MustGet-PANICS on a missing org, and this handler is reachable without one.
+	// IAMTokenRequired deliberately FALLS THROUGH without setting the local when
+	// the gateway named no principal (`ownerID == "" || userID == ""`), so legacy
+	// auth still gets its turn — every other billing read tolerates that; this
+	// door dereferenced it and took the whole request down at line one.
+	//
+	// Measured in production 2026-08-06: the panic recovered as a bare 500 with no
+	// body, so the console could not say what went wrong, and `zero subscriptions
+	// exist platform-wide` was the visible symptom. It also starves the serving
+	// plane — ai's funding gate requires a confirmed paying subscriber for any
+	// prepaid SKU and fails closed, so with no subscription anywhere every prepaid
+	// model is refused for everyone.
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		return http.Fail(c, 401, "sign in to subscribe", nil)
+	}
 	// Hydrate the org's payment credentials so the per-org Square processor used to
 	// vault + charge the card carries real credentials.
 	hydratePaymentCreds(c, org)
