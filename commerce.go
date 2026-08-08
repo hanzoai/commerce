@@ -1132,6 +1132,24 @@ func (app *App) setupRoutes() {
 	// to a real brand's org.
 	public := app.Router.Group("/v1/commerce")
 	public.Use(forwardedHostMiddleware())
+	// Stated HERE rather than lifted from the handler, because OrgJSON is a
+	// FACTORY: it takes the resolver and returns the closure, and a doc comment
+	// on the factory is not a doc comment on the route zipdoc walks. So the
+	// handler's own prose — which is good, and stays where it is — reaches
+	// nobody, and cloud's describe gate refused the operation as saying nothing
+	// about itself. Its message names this remedy exactly. `/catalog` on the
+	// next line needs none: it registers a plain function, so the lift works.
+	//
+	// This sentence is the one the caller reads — in the spec, the MCP tool
+	// list, every generated SDK and the CLI's help — so it says what the
+	// endpoint is FOR, not how it is built.
+	zip.Describe("GET /v1/commerce/org", zip.Doc{
+		Description: "The public configuration for the org that owns this hostname: " +
+			"its branding, its checkout options and the return URLs it will accept. " +
+			"Unauthenticated and cached briefly, because a storefront asks for it " +
+			"before anyone has signed in. An unknown host is a plain 404 that does " +
+			"not echo the host back, so it cannot be used to discover which orgs exist.",
+	})
 	public.Get("/org", checkout.OrgJSON(orgResolver))
 	// Public platform product catalog projection (the CMS SOT other surfaces —
 	// docs, console sidebar, pricing — consume). Public + brand-scoped (?brand).
