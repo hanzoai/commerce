@@ -5,7 +5,7 @@
 # The two sibling UIs this binary embeds, named as the ARTIFACTS their own
 # repos publish. A `FROM` in the first stage needs the ARG in global scope, so
 # they live here; override either with --build-arg (or hanzo.yml `args:`).
-ARG PAY_IMAGE=ghcr.io/hanzoai/pay:0.1.13@sha256:b25c5b6525e7b2bd71062aa63b552357d6ad76e7b9015e8e345d30c93dd24020
+ARG PAY_IMAGE=ghcr.io/hanzoai/commerce:pay-0.1.13@sha256:b25c5b6525e7b2bd71062aa63b552357d6ad76e7b9015e8e345d30c93dd24020
 ARG BILLING_IMAGE=ghcr.io/hanzoai/billing:1.0.25
 
 # ── Stage 1: THE Commerce admin, built from source ───────────────────────────
