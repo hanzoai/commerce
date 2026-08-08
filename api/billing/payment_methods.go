@@ -129,7 +129,15 @@ type createPaymentMethodRequest struct {
 //
 //	POST /v1/billing/methods
 func CreatePaymentMethod(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
+	// The OK form: IAMTokenRequired falls through WITHOUT setting the
+	// "organization" local when the gateway named no principal, and the MustGet
+	// form panics there — a 500 with no body, after the money has moved. Refuse
+	// before touching anything. See SubscribeWithCard, where this cost a $99
+	// charge with no subscription behind it.
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		return http.Fail(c, 401, "sign in to add a payment method", nil)
+	}
 
 	// Hydrate payment credentials from KMS so the per-org Square processor
 	// used for card verification carries real credentials.
@@ -406,7 +414,15 @@ func UpdatePaymentMethod(c *zip.Ctx) error {
 //
 //	DELETE /v1/billing/methods/:id
 func DetachPaymentMethod(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
+	// The OK form: IAMTokenRequired falls through WITHOUT setting the
+	// "organization" local when the gateway named no principal, and the MustGet
+	// form panics there — a 500 with no body, after the money has moved. Refuse
+	// before touching anything. See SubscribeWithCard, where this cost a $99
+	// charge with no subscription behind it.
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		return http.Fail(c, 401, "sign in to remove a payment method", nil)
+	}
 	db := datastore.New(org.Namespaced(c.Context()))
 
 	pm := paymentmethod.New(db)
