@@ -191,7 +191,10 @@ func TestCreditsAConfirmedDepositExactlyOnce(t *testing.T) {
 	if reloaded.Status != cryptopaymentintent.Succeeded {
 		t.Fatalf("intent status = %s, want succeeded", reloaded.Status)
 	}
-	if reloaded.TxHash != "0xfeedface" || reloaded.SettlementAmount != 2550 || reloaded.ExchangeRate != "1.00" {
+	// The rate is recorded at the precision it was USED at, not rounded to cents:
+	// a dollar peg is "1.00000000" in the same format a market rate arrives in,
+	// so one field means one thing whichever way the asset was valued.
+	if reloaded.TxHash != "0xfeedface" || reloaded.SettlementAmount != 2550 || reloaded.ExchangeRate != "1.00000000" {
 		t.Fatalf("intent lost its settlement detail: tx=%s amount=%d rate=%s",
 			reloaded.TxHash, reloaded.SettlementAmount, reloaded.ExchangeRate)
 	}

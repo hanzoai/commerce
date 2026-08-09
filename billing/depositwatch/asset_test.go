@@ -74,7 +74,10 @@ func TestAssetsFromEnv_RefusesIncoherentConfig(t *testing.T) {
 				"CRYPTO_DEPOSIT_RPC_ETHEREUM=https://eth.rpc",
 				"CRYPTO_DEPOSIT_TOKEN_ETHEREUM_WETH=0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
 			},
-			wantIn: "no USD peg",
+			// The refusal names BOTH ways a token can be valued now — a fixed peg
+			// or a market rate — because "no USD peg" stopped being the whole
+			// reason the moment native coins became creditable.
+			wantIn: "cannot value",
 		},
 		{
 			name: "contract that is not an address",

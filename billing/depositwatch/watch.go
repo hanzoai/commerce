@@ -250,9 +250,49 @@ type Watcher struct {
 	// default. Nil means every org is on the default — which is the behaviour
 	// this rail had before terms existed, and the right one for a deployment
 	// that charges everybody the same.
-	terms    TermsResolver
+	terms TermsResolver
+	// rates prices the market-priced assets. Nil is fine for a deployment that
+	// watches only pegged tokens, and is REFUSED at credit time for one that does
+	// not — a market-priced asset with no oracle must not fall back to a guess.
+	rates    RateResolver
 	maxRange uint64
 	maxAddrs int
+}
+
+// WithRates gives the watcher a price oracle, which is what a market-priced
+// asset (BTC, XRP, TON) needs and a pegged one never does.
+func (w *Watcher) WithRates(r RateResolver) *Watcher {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.rates = r
+	return w
+}
+
+// rateFor is what one whole unit of this asset is worth, in micro-cents.
+//
+// ONE function so the two ways of knowing — a fixed peg and a live quote — meet
+// in exactly one place, and the credit path downstream cannot tell them apart or
+// treat them differently.
+//
+// A market-priced asset with no oracle is an ERROR, never a fallback to some
+// default. There is no sensible default price for a bitcoin, and the failure
+// this prevents is the whole reason the rail refused native coins until now.
+func (w *Watcher) rateFor(ctx context.Context, a *asset) (int64, error) {
+	if !a.MarketPriced() {
+		// A peg is stated in whole cents; the arithmetic works in micro-cents.
+		return a.PegCents() * RateScale, nil
+	}
+	if w.rates == nil {
+		return 0, fmt.Errorf("depositwatch: %s is priced at a market rate and no oracle is configured", a.Key())
+	}
+	micro, err := w.rates.MicroCents(ctx, a.PriceID())
+	if err != nil {
+		return 0, fmt.Errorf("depositwatch: price %s: %w", a.Key(), err)
+	}
+	if micro <= 0 {
+		return 0, fmt.Errorf("depositwatch: price %s answered %d", a.Key(), micro)
+	}
+	return micro, nil
 }
 
 // WithTerms makes the watcher multi-tenant about what it deducts.
@@ -450,7 +490,14 @@ func (w *Watcher) syncAsset(ctx context.Context, a *asset) (int, error) {
 		if err != nil {
 			return credited, err
 		}
-		cents, err := AmountCents(t.Units, a.decimals, a.PegCents(), terms)
+		// Priced HERE, at confirmation — this transfer has the depth the asset
+		// requires, so the money is irreversibly ours. Quoting at first sight
+		// would fix a rate for a transfer that can still be orphaned.
+		rate, err := w.rateFor(ctx, a)
+		if err != nil {
+			return credited, err
+		}
+		cents, err := AmountCents(t.Units, a.decimals, rate, terms)
 		if errors.Is(err, ErrDust) {
 			continue // a real transfer worth less than a cent: nothing to credit
 		}
@@ -472,7 +519,7 @@ func (w *Watcher) syncAsset(ctx context.Context, a *asset) (int, error) {
 		written, err := w.store.Credit(ctx, Credit{
 			Org: wt.Org, Subject: wt.Subject, IntentID: wt.IntentID,
 			Chain: a.Chain, Token: a.Token,
-			AmountCents: cents, Units: t.Units.String(), PegRate: a.PegRate(),
+			AmountCents: cents, Units: t.Units.String(), PegRate: RateString(rate),
 			TxHash: txHash, EventIndex: t.EventIndex, Block: t.Block,
 			Confirmations: depth, Test: wt.Test, DedupKey: a.dedupKey(t),
 		})
