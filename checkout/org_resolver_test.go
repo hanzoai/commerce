@@ -16,11 +16,8 @@ func TestBrandForHost(t *testing.T) {
 		{"hanzo.ai", "hanzo"},
 		{"pay.lux.network", "lux"},
 		{"lux.network", "lux"},
-		// The MONEY hosts. These were absent from brandDomains and therefore
-		// resolved to the deployment default — hanzo — so a Lux customer on a
-		// Lux payment page got the Hanzo brand, the Hanzo IAM app and Hanzo's
-		// Square application id, and a card entered there would have tokenized
-		// against Hanzo's merchant. Nothing errored; the page looked right.
+		// The MONEY hosts, which resolved to the deployment default — hanzo — so a
+		// Lux payment page carried Hanzo's brand and merchant. Nothing errored.
 		{"pay.lux.cloud", "lux"},
 		{"lux.cloud", "lux"},
 		{"pay.zoo.cloud", "zoo"},
