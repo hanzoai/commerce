@@ -54,15 +54,31 @@ type Client struct {
 
 	mu     sync.Mutex
 	symbol string // cached once read; a currency code's ticker never changes
+
+	// amount decides what a delivered_amount MEANS for this reader, and it is
+	// the only difference between reading an issued token and reading native
+	// XRP. Everything else — paging by marker, the validated-ledger checks, the
+	// tesSUCCESS rule, the destination tag — is identical and is shared rather
+	// than written twice.
+	amount func(m *txMeta, hash string) (*big.Int, bool, error)
+	// decimals is the scale THIS reader's amounts are rendered at: Scale for an
+	// issued currency, DropDecimals for native XRP.
+	decimals int
+	// native marks the reader as reading the ledger's own coin, which has no
+	// issuer to ask about and therefore no Symbol round-trip.
+	native bool
 }
 
 // NewClient builds a read client for one (endpoint, issued token).
 func NewClient(rpcURL string, token Issued) *Client {
-	return &Client{
-		rpcURL: rpcURL,
-		token:  token,
-		http:   &http.Client{Timeout: 30 * time.Second},
+	c := &Client{
+		rpcURL:   rpcURL,
+		token:    token,
+		http:     &http.Client{Timeout: 30 * time.Second},
+		decimals: Scale,
 	}
+	c.amount = c.issuedAmount
+	return c
 }
 
 var _ depositwatch.Reader = (*Client)(nil)
@@ -167,7 +183,7 @@ func (c *Client) BlockNumber(ctx context.Context) (uint64, error) {
 // Decimals returns the scale this client renders issued amounts at. See Scale —
 // the number is a property of the parse, not a reading of the ledger, because
 // an XRPL issued currency HAS no base unit to read.
-func (c *Client) Decimals(context.Context) (int, error) { return Scale, nil }
+func (c *Client) Decimals(context.Context) (int, error) { return c.decimals, nil }
 
 // Symbol asks the LEDGER what the configured issuer actually issues, and
 // returns the ticker of our configured currency code.
@@ -185,6 +201,12 @@ func (c *Client) Decimals(context.Context) (int, error) { return Scale, nil }
 // is that the (currency, issuer) pair an operator configured is a live issued
 // token on this ledger, which is the mistake that gets made.
 func (c *Client) Symbol(ctx context.Context) (string, error) {
+	// A native reader has no issuer to interrogate — XRP is the ledger's own
+	// unit — so it answers without a round-trip that would ask about a zero
+	// issuer and fail.
+	if sym, ok := c.symbolFor(ctx); ok {
+		return sym, nil
+	}
 	c.mu.Lock()
 	cached := c.symbol
 	c.mu.Unlock()
@@ -420,7 +442,14 @@ func (c *Client) delivery(e *txEntry, addr string, fromLedger, toLedger uint64) 
 // `unavailable` is refused rather than treated as zero. It appears on
 // pre-2014 ledgers where the metadata cannot answer, and "we cannot tell how
 // much arrived" must stop the pass, not silently credit nothing.
+// delivered asks this reader's own amount rule what was delivered.
 func (c *Client) delivered(m *txMeta, hash string) (*big.Int, bool, error) {
+	return c.amount(m, hash)
+}
+
+// issuedAmount reads a delivered_amount as OUR issued token, and ignores
+// everything else — including native XRP, which NewNative reads instead.
+func (c *Client) issuedAmount(m *txMeta, hash string) (*big.Int, bool, error) {
 	if len(m.DeliveredAmount) == 0 || string(m.DeliveredAmount) == "null" {
 		return nil, false, nil // not a delivering payment
 	}
