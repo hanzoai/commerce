@@ -242,12 +242,29 @@ type asset struct {
 
 // Watcher scans configured assets and credits confirmed deposits exactly once.
 type Watcher struct {
-	mu       sync.Mutex // one pass at a time within a process
-	assets   []*asset
-	store    Store
-	cursor   Cursor
+	mu     sync.Mutex // one pass at a time within a process
+	assets []*asset
+	store  Store
+	cursor Cursor
+	// terms resolves an ORG's deductions, overriding the asset's platform
+	// default. Nil means every org is on the default — which is the behaviour
+	// this rail had before terms existed, and the right one for a deployment
+	// that charges everybody the same.
+	terms    TermsResolver
 	maxRange uint64
 	maxAddrs int
+}
+
+// WithTerms makes the watcher multi-tenant about what it deducts.
+//
+// It is a separate setter rather than a constructor argument because charging
+// every org the same is a legitimate configuration, and a required argument
+// would make "nobody has negotiated anything" look like a missing dependency.
+func (w *Watcher) WithTerms(r TermsResolver) *Watcher {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.terms = r
+	return w
 }
 
 const (
@@ -426,9 +443,28 @@ func (w *Watcher) syncAsset(ctx context.Context, a *asset) (int, error) {
 			continue
 		}
 
-		cents, err := AmountCents(t.Units, a.decimals, a.PegCents())
+		// Terms are resolved PER ORG, per credit: the asset carries the platform
+		// default and this org may be on something else. Resolved here rather
+		// than once per pass because one pass credits many orgs.
+		terms, err := resolveTerms(ctx, w.terms, wt.Org, a.Chain, a.Terms)
+		if err != nil {
+			return credited, err
+		}
+		cents, err := AmountCents(t.Units, a.decimals, a.PegCents(), terms)
 		if errors.Is(err, ErrDust) {
 			continue // a real transfer worth less than a cent: nothing to credit
+		}
+		if errors.Is(err, ErrUnderFee) {
+			// Real money arrived and does not cover the cost of moving it, so
+			// there is nothing to credit — the same outcome as dust, reached for
+			// a different reason.
+			//
+			// It is NOT announced from here. This package writes no logs by
+			// design, and a log would be the wrong remedy anyway: a customer
+			// learning after the fact that their deposit bought nothing is a
+			// failure of DISCLOSURE, and disclosure belongs at the quote, before
+			// they send. The minimum is a number the picker should state.
+			continue
 		}
 		if err != nil {
 			return credited, fmt.Errorf("%s: %w", a.dedupKey(t), err)

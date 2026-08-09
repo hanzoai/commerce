@@ -102,6 +102,7 @@ require (
 	github.com/luxfi/magnetar v1.2.3 // indirect
 	github.com/luxfi/mlwe v0.3.0 // indirect
 	github.com/luxfi/pq v1.1.0 // indirect
+	github.com/luxfi/price v1.0.1 // indirect
 	github.com/luxfi/pulsar v1.9.2 // indirect
 	github.com/luxfi/sampler v1.1.0 // indirect
 	github.com/luxfi/threshold v1.12.3 // indirect
