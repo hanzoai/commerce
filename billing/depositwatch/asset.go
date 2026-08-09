@@ -275,11 +275,57 @@ var pegCents = map[string]int64{
 	"rlusd": 100,
 }
 
+// marketPriced is the OTHER way a token can be creditable: at a live rate rather
+// than a fixed peg, keyed to the asset id the price oracle knows it by.
+//
+// The paragraph above says a native coin "cannot be priced" and that reaching a
+// new chain "needs a Reader and NOT a price oracle". Both were true while there
+// was no oracle. There is one now (luxfi/price), so the sentence that still
+// holds is the narrower one: a rate must be JUSTIFIED — two independent venues
+// agreeing inside a spread — or nothing is credited. What is refused is a guess,
+// not a market.
+//
+// A token is in EXACTLY ONE of these two tables. Being in both would mean two
+// answers to what a customer's coin is worth, and no way to say which was used
+// on a receipt; AssetsFromEnv refuses that overlap rather than preferring one.
+//
+// The ids are the oracle's, not ours ("ripple", not "xrp"), because they are its
+// vocabulary and translating in two places is how a symbol map goes stale.
+var marketPriced = map[string]string{
+	"btc": "bitcoin",
+	"xrp": "ripple",
+	"ton": "the-open-network",
+}
+
+// MarketPriced reports whether this asset is credited at a live rate.
+//
+// It is the one question the credit path asks before choosing where the number
+// comes from, so the two tables cannot be consulted in different orders in
+// different places.
+func (a Asset) MarketPriced() bool { _, ok := marketPriced[a.Token]; return ok }
+
+// PriceID is the oracle's name for this asset, empty for a pegged token.
+func (a Asset) PriceID() string { return marketPriced[a.Token] }
+
 // PegRate renders an asset's peg the way the intent records an exchange rate
-// ("1.00" for a dollar-pegged token).
+// ("1.00" for a dollar-pegged token). It is meaningful only for a pegged asset;
+// a market-priced one has no peg and its rate is whatever RateString was handed
+// at credit time.
 func (a Asset) PegRate() string {
 	p := a.PegCents()
 	return fmt.Sprintf("%d.%02d", p/100, p%100)
+}
+
+// RateString renders the rate ACTUALLY USED, for the record a customer reads.
+//
+// Eight decimals always, including for a peg ("1.00000000"), because one format
+// for both is one thing to read. A market credit has to be answerable months
+// later — "what did you value my BTC at" is a question a fixed peg never has to
+// answer, and rendering 65194.99500000 as "65194.99" would throw away the digits
+// that make the arithmetic reproducible.
+func RateString(microCents int64) string {
+	const perDollar = 100 * RateScale
+	return fmt.Sprintf("%d.%08d", microCents/perDollar, microCents%perDollar)
 }
 
 // envRPCPrefix and envTokenPrefix are the environment (KMS-injected) keys the
@@ -415,9 +461,17 @@ func AssetsFromEnv(environ []string) ([]Asset, error) {
 	assets := make([]Asset, 0, len(toks))
 	seen := map[string]bool{}
 	for _, t := range toks {
-		if _, ok := pegCents[t.token]; !ok {
-			return nil, fmt.Errorf("depositwatch: %s%s_%s configures token %q, which has no USD peg — this rail credits only dollar-pegged tokens (%s); remove it or add its peg deliberately",
-				envTokenPrefix, strings.ToUpper(t.chain), strings.ToUpper(t.token), t.token, strings.Join(creditableTokens(), ", "))
+		_, pegged := pegCents[t.token]
+		_, market := marketPriced[t.token]
+		if pegged && market {
+			// Two answers to what a customer's coin is worth, and no way for a
+			// receipt to say which was used. Refused rather than preferring one.
+			return nil, fmt.Errorf("depositwatch: token %q is both pegged and market-priced — it must be exactly one", t.token)
+		}
+		if !pegged && !market {
+			return nil, fmt.Errorf("depositwatch: %s%s_%s configures token %q, which this rail cannot value — it credits dollar-pegged tokens (%s) and market-priced coins (%s); remove it or add it to one of those tables deliberately",
+				envTokenPrefix, strings.ToUpper(t.chain), strings.ToUpper(t.token), t.token,
+				strings.Join(creditableTokens(), ", "), strings.Join(marketTokens(), ", "))
 		}
 		if _, ok := chainFamily[cryptopaymentintent.Chain(t.chain)]; !ok {
 			return nil, fmt.Errorf("depositwatch: %s%s_%s configures chain %q, which this rail has no reader for — a chain nobody can read is money nobody is watching; the readable chains are %s",
@@ -438,7 +492,7 @@ func AssetsFromEnv(environ []string) ([]Asset, error) {
 		// protect against and a haircut on one is a fee wearing the word
 		// slippage. Refused rather than ignored: silently dropping it would
 		// leave an operator believing a deduction is in force that is not.
-		if a.Terms.SlippageBps > 0 {
+		if a.Terms.SlippageBps > 0 && pegged {
 			return nil, fmt.Errorf("depositwatch: %s%s sets slippage on %s, which is credited at a fixed peg — there is no market move to hedge; use %s%s if the intent is a fee",
 				envSlippagePrefix, strings.ToUpper(t.chain), t.token, envFeePrefix, strings.ToUpper(t.chain))
 		}
@@ -540,6 +594,16 @@ func (a Asset) validatePooledAddress() error {
 func creditableTokens() []string {
 	out := make([]string, 0, len(pegCents))
 	for t := range pegCents {
+		out = append(out, t)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// marketTokens lists the tokens credited at a live rate, sorted.
+func marketTokens() []string {
+	out := make([]string, 0, len(marketPriced))
+	for t := range marketPriced {
 		out = append(out, t)
 	}
 	sort.Strings(out)
@@ -721,6 +785,28 @@ type Terms struct {
 // "no deductions" rather than "0 and 0" and a receipt can omit the rows.
 func (t Terms) Deducts() bool { return t.SlippageBps > 0 || t.FeeCents > 0 }
 
+// RateResolver answers what one WHOLE unit of a market-priced asset is worth,
+// in USD cents × RateScale.
+//
+// It exists so this package stays pure: the judgement about whether a rate may
+// be believed — how many venues agreed, how far apart they were — lives in the
+// oracle, and the only thing asked here is for a number or an error. An error
+// credits NOTHING on this pass and is retried, which is the safe direction: the
+// coin is already in custody, and a deposit valued at a wrong rate is wrong
+// permanently.
+//
+// It is consulted per CREDIT rather than per pass. A rate read once and reused
+// across a long scan would price a deposit at a moment that had passed.
+type RateResolver interface {
+	MicroCents(ctx context.Context, priceID string) (int64, error)
+}
+
+// RateScale is how many micro-cents make one cent, matching the oracle's own
+// scale. Rates are carried at this precision because whole cents under-credit a
+// sub-dollar coin materially — XRP at $1.04295 becomes $1.04, which is 0.28% of
+// every deposit.
+const RateScale = 1_000_000
+
 // TermsResolver answers what ONE ORG is charged on a chain.
 //
 // Deductions are COMMERCIAL TERMS, not platform facts. An RPC endpoint and a
@@ -768,8 +854,13 @@ func resolveTerms(ctx context.Context, r TermsResolver, org, chain string, def T
 
 // AmountCents converts a raw on-chain amount into the USD cents to credit:
 //
-//	gross = units × pegCents / 10^decimals
+//	gross = units × rateMicroCents / (10^decimals × RateScale)
 //	net   = gross × (10000 - SlippageBps) / 10000  −  FeeCents
+//
+// The rate is in MICRO-CENTS so a pegged token and a market-priced one take the
+// SAME path: a dollar peg is 100 × RateScale, and the oracle's quote arrives at
+// that precision already. Whole cents would under-credit a sub-dollar coin by a
+// fixed fraction of every deposit (XRP at $1.04295 rounds to $1.04, 0.28% off).
 //
 // Truncating, always DOWN. A sub-cent remainder is dropped rather than rounded
 // up, so the rail can never credit value that was not sent; the dust stays on
@@ -789,7 +880,7 @@ func resolveTerms(ctx context.Context, r TermsResolver, org, chain string, def T
 // producing a number: a nil or negative amount, an implausible decimals, an
 // unpegged token, nonsensical terms, and a result that does not fit in the
 // ledger's int64 cents.
-func AmountCents(units *big.Int, decimals int, pegCents int64, terms Terms) (int64, error) {
+func AmountCents(units *big.Int, decimals int, rateMicroCents int64, terms Terms) (int64, error) {
 	if units == nil || units.Sign() < 0 {
 		return 0, errors.New("depositwatch: transfer amount must be non-negative")
 	}
@@ -799,8 +890,8 @@ func AmountCents(units *big.Int, decimals int, pegCents int64, terms Terms) (int
 	if decimals < 2 || decimals > 36 {
 		return 0, fmt.Errorf("depositwatch: unusable token decimals %d", decimals)
 	}
-	if pegCents <= 0 {
-		return 0, fmt.Errorf("depositwatch: token has no USD peg")
+	if rateMicroCents <= 0 {
+		return 0, fmt.Errorf("depositwatch: token has no USD rate")
 	}
 	// A haircut at or over 100% credits nothing however much was sent, and a
 	// negative one credits MORE than arrived. Both are configuration nobody meant
@@ -815,10 +906,11 @@ func AmountCents(units *big.Int, decimals int, pegCents int64, terms Terms) (int
 	// ONE division, at the end. units × peg × (10000-bps) on top, 10^decimals ×
 	// 10000 underneath, so the only rounding is the final truncation down.
 	const bpsScale = 10_000
-	num := new(big.Int).Mul(units, big.NewInt(pegCents))
+	num := new(big.Int).Mul(units, big.NewInt(rateMicroCents))
 	num.Mul(num, big.NewInt(int64(bpsScale-terms.SlippageBps)))
 	den := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)
 	den.Mul(den, big.NewInt(bpsScale))
+	den.Mul(den, big.NewInt(RateScale))
 	cents := new(big.Int).Quo(num, den)
 
 	if !cents.IsInt64() {

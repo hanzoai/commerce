@@ -19,7 +19,7 @@ func usdcUnits(whole int64) *big.Int {
 // starts quietly deducting from deposits it never deducted from before.
 func TestZeroTermsCreditTheFullGross(t *testing.T) {
 	for _, whole := range []int64{1, 7, 1000} {
-		got, err := AmountCents(usdcUnits(whole), 6, 100, Terms{})
+		got, err := AmountCents(usdcUnits(whole), 6, 100*RateScale, Terms{})
 		if err != nil {
 			t.Fatalf("%d USDC: %v", whole, err)
 		}
@@ -31,7 +31,7 @@ func TestZeroTermsCreditTheFullGross(t *testing.T) {
 
 func TestFeeIsDeductedInWholeCents(t *testing.T) {
 	// $100 in, a $2.50 sweep fee, $97.50 credited.
-	got, err := AmountCents(usdcUnits(100), 6, 100, Terms{FeeCents: 250})
+	got, err := AmountCents(usdcUnits(100), 6, 100*RateScale, Terms{FeeCents: 250})
 	if err != nil {
 		t.Fatalf("AmountCents: %v", err)
 	}
@@ -42,7 +42,7 @@ func TestFeeIsDeductedInWholeCents(t *testing.T) {
 
 func TestSlippageIsAProportion(t *testing.T) {
 	// 100 bps = 1%. $100 in, $99 credited.
-	got, err := AmountCents(usdcUnits(100), 6, 100, Terms{SlippageBps: 100})
+	got, err := AmountCents(usdcUnits(100), 6, 100*RateScale, Terms{SlippageBps: 100})
 	if err != nil {
 		t.Fatalf("AmountCents: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestSlippageThenFee(t *testing.T) {
 	// Order is load-bearing: the haircut is proportional and the fee is flat, so
 	// fee-then-haircut would also shave the fee and quietly under-charge it.
 	// $100 → 1% → $99.00 → minus $2.50 → $96.50.
-	got, err := AmountCents(usdcUnits(100), 6, 100, Terms{SlippageBps: 100, FeeCents: 250})
+	got, err := AmountCents(usdcUnits(100), 6, 100*RateScale, Terms{SlippageBps: 100, FeeCents: 250})
 	if err != nil {
 		t.Fatalf("AmountCents: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestSlippageThenFee(t *testing.T) {
 // round once rather than three times.
 func TestDeductionsTruncateDownOnce(t *testing.T) {
 	// 1 USDC at 1% is 99.00 cents exactly; 3 USDC at 33 bps is 299.01 → 299.
-	got, err := AmountCents(usdcUnits(3), 6, 100, Terms{SlippageBps: 33})
+	got, err := AmountCents(usdcUnits(3), 6, 100*RateScale, Terms{SlippageBps: 33})
 	if err != nil {
 		t.Fatalf("AmountCents: %v", err)
 	}
@@ -81,7 +81,7 @@ func TestATransferUnderTheFeeIsRefusedDistinctlyFromDust(t *testing.T) {
 	// $1 in, $2.50 fee. Real money arrived and it does not cover the cost of
 	// moving it — a different thing from dust, and it needs a different word:
 	// this customer sent something worth telling them about.
-	_, err := AmountCents(usdcUnits(1), 6, 100, Terms{FeeCents: 250})
+	_, err := AmountCents(usdcUnits(1), 6, 100*RateScale, Terms{FeeCents: 250})
 	if !errors.Is(err, ErrUnderFee) {
 		t.Fatalf("err = %v, want ErrUnderFee", err)
 	}
@@ -98,7 +98,7 @@ func TestATransferUnderTheFeeIsRefusedDistinctlyFromDust(t *testing.T) {
 func TestExactlyTheFeeCreditsNothing(t *testing.T) {
 	// Net zero is not a credit. Writing a zero-cent ledger row would record a
 	// deposit that moved no balance.
-	if _, err := AmountCents(usdcUnits(1), 6, 100, Terms{FeeCents: 100}); !errors.Is(err, ErrUnderFee) {
+	if _, err := AmountCents(usdcUnits(1), 6, 100*RateScale, Terms{FeeCents: 100}); !errors.Is(err, ErrUnderFee) {
 		t.Error("a transfer worth exactly the fee credited something")
 	}
 }

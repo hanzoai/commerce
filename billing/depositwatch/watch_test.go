@@ -547,7 +547,7 @@ func TestAmountCents(t *testing.T) {
 		{name: "overflowing amount refused", units: oneE(40), decimals: 6, peg: 100, wantErr: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := AmountCents(tc.units, tc.decimals, tc.peg, Terms{})
+			got, err := AmountCents(tc.units, tc.decimals, tc.peg*RateScale, Terms{})
 			switch {
 			case tc.wantErr:
 				if err == nil || errors.Is(err, ErrDust) {
@@ -574,17 +574,17 @@ func TestAmountCents(t *testing.T) {
 func TestAmountCents_WrongDecimalsIsCatastrophic(t *testing.T) {
 	oneUSDC := big.NewInt(1_000_000) // $1.00 of 6-decimal USDC
 
-	right, err := AmountCents(oneUSDC, 6, 100, Terms{})
+	right, err := AmountCents(oneUSDC, 6, 100*RateScale, Terms{})
 	if err != nil || right != 100 {
 		t.Fatalf("AmountCents(1 USDC, 6) = (%d, %v), want 100", right, err)
 	}
 	// Read as 18 decimals: the customer is under-credited to nothing.
-	if _, err := AmountCents(oneUSDC, 18, 100, Terms{}); !errors.Is(err, ErrDust) {
+	if _, err := AmountCents(oneUSDC, 18, 100*RateScale, Terms{}); !errors.Is(err, ErrDust) {
 		t.Fatalf("1 USDC read at 18 decimals should be dust, got %v", err)
 	}
 	// An 18-decimal amount read as 6 decimals: 10^12 times too much.
 	eighteen := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-	wrong, err := AmountCents(eighteen, 6, 100, Terms{})
+	wrong, err := AmountCents(eighteen, 6, 100*RateScale, Terms{})
 	if err != nil {
 		t.Fatalf("AmountCents: %v", err)
 	}
@@ -753,8 +753,8 @@ func TestSync_CreditsTheIntentsOwnPayer(t *testing.T) {
 	if c.IntentID != "cpi_1" || c.TxHash != "0xa" || c.EventIndex != 2 || c.Chain != "ethereum" || c.Token != "usdc" {
 		t.Fatalf("credit lost its provenance: %+v", c)
 	}
-	if c.Units != "8000000" || c.PegRate != "1.00" {
-		t.Fatalf("credit audit trail = units %q rate %q, want 8000000 / 1.00", c.Units, c.PegRate)
+	if c.Units != "8000000" || c.PegRate != "1.00000000" {
+		t.Fatalf("credit audit trail = units %q rate %q, want 8000000 / 1.00000000", c.Units, c.PegRate)
 	}
 }
 
