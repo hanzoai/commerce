@@ -69,6 +69,15 @@ type Organization struct {
 	// Fee structure for this organization
 	Fees pricing.Fees `json:"fees" datastore:",noindex"`
 
+	// What this org is charged to RECEIVE a crypto deposit, per chain, keyed by
+	// the deposit rail's chain names ("base", "ethereum", "solana", "ton",
+	// "xrpl"). Absent means no negotiated terms and the platform default applies;
+	// an entry that is PRESENT and zero means this org pays nothing, which is a
+	// different statement and must not be confused with the first.
+	//
+	// Separate from Fees above on purpose — see pricing.CryptoDeposit.
+	CryptoDeposit map[string]pricing.CryptoDeposit `json:"cryptoDeposit,omitempty" datastore:",noindex"`
+
 	// Partner fees (private, should be up to partner to disclose)
 	Partners []pricing.Partner `json:"-" datastore:",noindex"`
 
