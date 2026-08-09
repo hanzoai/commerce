@@ -30,10 +30,12 @@
 package depositwatch
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/hanzoai/commerce/models/cryptopaymentintent"
@@ -83,6 +85,14 @@ type Asset struct {
 	// EXISTS is an asset that can be paid to. That is what lets the mint path
 	// treat a missing address as impossible rather than as a case to handle.
 	PooledAddress string
+
+	// Terms is what this asset deducts before crediting. Zero — nothing deducted
+	// — is the default and is right for a dollar-pegged token on a cheap chain.
+	//
+	// It is per-ASSET rather than global because the two costs it covers are:
+	// sweeping USDC on Ethereum costs gas that sweeping it on Base does not, and
+	// a market-priced coin carries a price move that a stablecoin does not.
+	Terms Terms
 }
 
 // Key identifies an asset for cursors and maps.
@@ -307,6 +317,17 @@ const (
 	envRPCPrefix     = "CRYPTO_DEPOSIT_RPC_"
 	envTokenPrefix   = "CRYPTO_DEPOSIT_TOKEN_"
 	envAddressPrefix = "CRYPTO_DEPOSIT_ADDRESS_"
+
+	// The deductions, per CHAIN, both optional and both defaulting to nothing:
+	//
+	//	CRYPTO_DEPOSIT_FEE_<CHAIN>       whole cents, what it costs US to sweep
+	//	CRYPTO_DEPOSIT_SLIPPAGE_<CHAIN>  basis points, only for a market-priced coin
+	//
+	// Per chain and not per token because both costs are the chain's: a sweep on
+	// Ethereum costs Ethereum gas whether it is moving USDC or USDT, and the
+	// price move belongs to how long that chain takes to confirm.
+	envFeePrefix      = "CRYPTO_DEPOSIT_FEE_"
+	envSlippagePrefix = "CRYPTO_DEPOSIT_SLIPPAGE_"
 )
 
 // AssetsFromEnv builds the watch table from environ (as returned by os.Environ:
@@ -320,6 +341,8 @@ const (
 func AssetsFromEnv(environ []string) ([]Asset, error) {
 	rpc := map[string]string{}
 	pooledAddr := map[string]string{}
+	feeCents := map[string]int64{}
+	slippageBps := map[string]int32{}
 	type tok struct{ chain, token, contract string }
 	var toks []tok
 
@@ -355,6 +378,21 @@ func AssetsFromEnv(environ []string) ([]Asset, error) {
 			pooledAddr[strings.ToLower(key[len(envAddressPrefix):])] = val
 		case strings.HasPrefix(key, envRPCPrefix):
 			rpc[strings.ToLower(key[len(envRPCPrefix):])] = val
+		case strings.HasPrefix(key, envFeePrefix):
+			// Refused rather than defaulted: an unreadable fee that fell back to
+			// zero would silently make us pay every sweep, which is the exact
+			// cost this setting exists to stop paying.
+			n, err := strconv.ParseInt(val, 10, 64)
+			if err != nil || n < 0 {
+				return nil, fmt.Errorf("depositwatch: %s=%q is not a whole number of cents", key, val)
+			}
+			feeCents[strings.ToLower(key[len(envFeePrefix):])] = n
+		case strings.HasPrefix(key, envSlippagePrefix):
+			n, err := strconv.ParseInt(val, 10, 32)
+			if err != nil || n < 0 || n >= 10_000 {
+				return nil, fmt.Errorf("depositwatch: %s=%q is not a haircut in basis points (0-9999)", key, val)
+			}
+			slippageBps[strings.ToLower(key[len(envSlippagePrefix):])] = int32(n)
 		}
 	}
 
@@ -385,7 +423,25 @@ func AssetsFromEnv(environ []string) ([]Asset, error) {
 			return nil, fmt.Errorf("depositwatch: %s%s_%s configures chain %q, which this rail has no reader for — a chain nobody can read is money nobody is watching; the readable chains are %s",
 				envTokenPrefix, strings.ToUpper(t.chain), strings.ToUpper(t.token), t.chain, strings.Join(readableChains(), ", "))
 		}
-		a := Asset{Chain: t.chain, Token: t.token}
+		a := Asset{
+			Chain: t.chain,
+			Token: t.token,
+			// Absent is zero, and zero deducts nothing — so an operator who
+			// configures neither gets exactly the behaviour this rail had before
+			// these existed.
+			Terms: Terms{
+				SlippageBps: slippageBps[t.chain],
+				FeeCents:    feeCents[t.chain],
+			},
+		}
+		// A stablecoin is credited at a FIXED peg, so there is no price move to
+		// protect against and a haircut on one is a fee wearing the word
+		// slippage. Refused rather than ignored: silently dropping it would
+		// leave an operator believing a deduction is in force that is not.
+		if a.Terms.SlippageBps > 0 {
+			return nil, fmt.Errorf("depositwatch: %s%s sets slippage on %s, which is credited at a fixed peg — there is no market move to hedge; use %s%s if the intent is a fee",
+				envSlippagePrefix, strings.ToUpper(t.chain), t.token, envFeePrefix, strings.ToUpper(t.chain))
+		}
 		a.Contract = a.Fold(t.contract)
 		if err := a.validateContract(); err != nil {
 			return nil, fmt.Errorf("depositwatch: %s%s_%s %w",
@@ -624,20 +680,116 @@ func allASCIIDigits(s string) bool {
 // It is not a failure: sub-cent dust is a real transfer that credits nothing.
 var ErrDust = errors.New("depositwatch: transfer is worth less than one cent")
 
-// AmountCents converts a raw ERC-20 amount into USD cents at the asset's peg:
+// ErrUnderFee is returned when a transfer is worth something but not enough to
+// cover Terms.FeeCents. It is separate from ErrDust because the two need
+// different words for a customer: dust is "you sent almost nothing", this is
+// "you sent real money and it costs more than that to move it". Both credit
+// nothing; only one of them is worth telling somebody about before they send.
+var ErrUnderFee = errors.New("depositwatch: transfer does not cover the network fee")
+
+// Terms are what the rail deducts from a deposit's gross value before crediting.
 //
-//	cents = units × pegCents / 10^decimals
+// The zero value deducts NOTHING and is what a dollar-pegged token on a cheap
+// chain should use. Every field below has to be argued for per asset, because
+// each one takes money from a customer who already sent it.
+type Terms struct {
+	// SlippageBps is a haircut in basis points against the price MOVING between
+	// the rate a customer was shown and the rate this rail credits at.
+	//
+	// It exists only for an asset priced at a market rate. A stablecoin is
+	// credited at a fixed peg, so there is no move to protect against and this
+	// must stay 0 — charging it there would be a fee wearing the word slippage.
+	//
+	// The exposure is real: a deposit is priced at CONFIRMATION, and BTC confirms
+	// roughly an hour after it is sent. Somebody carries that hour. This is the
+	// dial that says who, and by how much.
+	SlippageBps int32
+
+	// FeeCents is a flat deduction for what it costs US to move the coin OUT of
+	// the deposit address — the sweep.
+	//
+	// NOT the customer's own send fee. They already paid that to their network
+	// and it never reaches us; deducting it again would charge them twice for one
+	// transfer. What this covers is the second transaction, the one nobody sees:
+	// on Bitcoin at a busy moment, sweeping a small deposit can cost more than
+	// the deposit is worth, and without this the rail credits the customer in
+	// full and eats the difference on every one.
+	FeeCents int64
+}
+
+// Deducts reports whether these terms take anything at all, so a caller can say
+// "no deductions" rather than "0 and 0" and a receipt can omit the rows.
+func (t Terms) Deducts() bool { return t.SlippageBps > 0 || t.FeeCents > 0 }
+
+// TermsResolver answers what ONE ORG is charged on a chain.
+//
+// Deductions are COMMERCIAL TERMS, not platform facts. An RPC endpoint and a
+// token contract are the same for everybody and belong in the deployment; what a
+// given customer is charged to sweep their deposit is a thing we agree with that
+// customer, and a rail that can only express one answer for the whole estate
+// cannot give a large customer better terms than a stranger.
+//
+// So the asset's own Terms — read from the environment, which is KMS-injected —
+// are the PLATFORM DEFAULT, and this overrides them per org. Resolution is:
+//
+//	asset.Terms (env/KMS default)  ->  TermsFor(org, chain) if it has an opinion
+//
+// Returning ok=false means "no opinion, use the default", which is different
+// from returning zero Terms — zero is a real answer meaning "this org pays
+// nothing", and an org negotiated to nothing must not be indistinguishable from
+// an org nobody has configured.
+//
+// It takes a CHAIN and not an asset because both costs are the chain's: a sweep
+// on Ethereum costs Ethereum gas whether it moves USDC or USDT.
+type TermsResolver interface {
+	TermsFor(ctx context.Context, org, chain string) (t Terms, ok bool, err error)
+}
+
+// resolveTerms applies the override to the default, failing CLOSED.
+//
+// A resolver that errors does NOT fall back to the platform default: the default
+// is usually the cheaper one, so falling back would quietly credit an org on
+// terms it is not on, and the error that caused it would be invisible. Nothing
+// is credited on this pass and the next one tries again — the coin is in custody
+// either way.
+func resolveTerms(ctx context.Context, r TermsResolver, org, chain string, def Terms) (Terms, error) {
+	if r == nil {
+		return def, nil
+	}
+	t, ok, err := r.TermsFor(ctx, org, chain)
+	if err != nil {
+		return Terms{}, fmt.Errorf("depositwatch: terms for org %q on %s: %w", org, chain, err)
+	}
+	if !ok {
+		return def, nil
+	}
+	return t, nil
+}
+
+// AmountCents converts a raw on-chain amount into the USD cents to credit:
+//
+//	gross = units × pegCents / 10^decimals
+//	net   = gross × (10000 - SlippageBps) / 10000  −  FeeCents
 //
 // Truncating, always DOWN. A sub-cent remainder is dropped rather than rounded
 // up, so the rail can never credit value that was not sent; the dust stays on
 // chain in the custody address where it can still be swept.
 //
+// THE DEDUCTIONS ARE APPLIED IN ONE DIVISION, not three. Multiplying out first
+// and dividing once keeps the truncation to a single place; taking the peg,
+// then the haircut, then the fee as three roundings would lose up to three
+// cents on every deposit and lose them silently.
+//
+// Zero Terms is the historical behaviour EXACTLY — no haircut, no fee — so a
+// dollar-pegged token on a cheap chain is unaffected by this existing at all.
+//
 // decimals comes from the token contract (Client.Decimals), never from config.
 // This is the arithmetic that turns a 6-decimal token read as 18 into a credit
 // 10^12 too large, so it refuses every input it cannot justify rather than
 // producing a number: a nil or negative amount, an implausible decimals, an
-// unpegged token, and a result that does not fit in the ledger's int64 cents.
-func AmountCents(units *big.Int, decimals int, pegCents int64) (int64, error) {
+// unpegged token, nonsensical terms, and a result that does not fit in the
+// ledger's int64 cents.
+func AmountCents(units *big.Int, decimals int, pegCents int64, terms Terms) (int64, error) {
 	if units == nil || units.Sign() < 0 {
 		return 0, errors.New("depositwatch: transfer amount must be non-negative")
 	}
@@ -650,13 +802,38 @@ func AmountCents(units *big.Int, decimals int, pegCents int64) (int64, error) {
 	if pegCents <= 0 {
 		return 0, fmt.Errorf("depositwatch: token has no USD peg")
 	}
-	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)
-	cents := new(big.Int).Quo(new(big.Int).Mul(units, big.NewInt(pegCents)), scale)
+	// A haircut at or over 100% credits nothing however much was sent, and a
+	// negative one credits MORE than arrived. Both are configuration nobody meant
+	// to write, and both are silent once the arithmetic runs.
+	if terms.SlippageBps < 0 || terms.SlippageBps >= 10_000 {
+		return 0, fmt.Errorf("depositwatch: slippage of %d bps is not a haircut", terms.SlippageBps)
+	}
+	if terms.FeeCents < 0 {
+		return 0, fmt.Errorf("depositwatch: fee of %d cents would credit more than was sent", terms.FeeCents)
+	}
+
+	// ONE division, at the end. units × peg × (10000-bps) on top, 10^decimals ×
+	// 10000 underneath, so the only rounding is the final truncation down.
+	const bpsScale = 10_000
+	num := new(big.Int).Mul(units, big.NewInt(pegCents))
+	num.Mul(num, big.NewInt(int64(bpsScale-terms.SlippageBps)))
+	den := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)
+	den.Mul(den, big.NewInt(bpsScale))
+	cents := new(big.Int).Quo(num, den)
+
 	if !cents.IsInt64() {
 		return 0, fmt.Errorf("depositwatch: %s base units is %s cents, which overflows the ledger", units, cents)
 	}
 	if cents.Sign() == 0 {
 		return 0, ErrDust
 	}
-	return cents.Int64(), nil
+	// The fee comes off LAST and in whole cents, because it is a cost we pay in
+	// dollars rather than a proportion of what arrived.
+	net := cents.Int64() - terms.FeeCents
+	if net <= 0 {
+		// Worth something, but not enough to move. Distinct from dust: this
+		// customer sent real money, and the honest thing is a different word.
+		return 0, fmt.Errorf("%w: %d cents arrived, fee is %d", ErrUnderFee, cents.Int64(), terms.FeeCents)
+	}
+	return net, nil
 }
