@@ -69,14 +69,23 @@ func (s *signer) seen() (orgs, wallets []string) {
 	return append([]string(nil), s.orgs...), append([]string(nil), s.wallets...)
 }
 
+// addrs is what a keygen reply carries. Named fields rather than positional
+// strings because a signer that mints only an EVM address should SAY that, not
+// spell it as three empty parameters — and because the next curve added here
+// must not silently shift what an existing call site means.
+type addrs struct{ evm, btc, sol, ton string }
+
 // mints builds a signer that answers with the given addresses, echoing back the
 // wallet id it served so a caller's handle can be checked against it. An empty
 // address is simply absent from the reply, which is the live shape: a fleet
 // that derives no Ed25519 key sends no sol_address at all.
-func mints(evm, btc, sol string) *signer {
+func mints(a addrs) *signer {
 	return &signer{reply: func(_, walletID string) signerReply {
 		body := map[string]string{"wallet_id": walletID, "result_type": "keygen"}
-		for k, v := range map[string]string{"evm_address": evm, "btc_address": btc, "sol_address": sol} {
+		for k, v := range map[string]string{
+			"evm_address": a.evm, "btc_address": a.btc,
+			"sol_address": a.sol, "ton_address": a.ton,
+		} {
 			if v != "" {
 				body[k] = v
 			}
@@ -258,6 +267,7 @@ func TestGenerateAddress_KeepsTheWalletHandle(t *testing.T) {
 		wantEVM = "0x1111111111111111111111111111111111111111"
 		wantBTC = "bc1qexampleexampleexampleexampleexampleex"
 		wantSOL = "So11111111111111111111111111111111111111112"
+		wantTON = "UQB6b9lZVanb-8w_sUn4NZ8clDs5dw9QghJxYeT87GTYRHye"
 	)
 
 	for _, tr := range transports {
@@ -270,9 +280,10 @@ func TestGenerateAddress_KeepsTheWalletHandle(t *testing.T) {
 				{"base", wantEVM}, // EVM chains share the secp256k1 address
 				{"bitcoin", wantBTC},
 				{"solana", wantSOL},
+				{"ton", wantTON},
 			} {
 				t.Run(tc.chain, func(t *testing.T) {
-					s := mints(wantEVM, wantBTC, wantSOL)
+					s := mints(addrs{evm: wantEVM, btc: wantBTC, sol: wantSOL, ton: wantTON})
 					mp := tr.start(t, s)
 
 					got, err := mp.GenerateAddress(context.Background(), "hanzo/z@hanzo.ai", tc.chain)
@@ -304,7 +315,7 @@ func TestGenerateAddress_RefusesAnEmptyDestination(t *testing.T) {
 		t.Run(tr.name, func(t *testing.T) {
 			// A node that knows only secp256k1 answers with no sol_address —
 			// which is the live shape while no Ed25519 ciphersuite exists.
-			mp := tr.start(t, mints("0x2222222222222222222222222222222222222222", "", ""))
+			mp := tr.start(t, mints(addrs{evm: "0x2222222222222222222222222222222222222222"}))
 
 			got, err := mp.GenerateAddress(context.Background(), "hanzo", "solana")
 			if err == nil {
@@ -336,7 +347,7 @@ func TestGenerateAddress_EVMChainsShareTheSecpAddress(t *testing.T) {
 		t.Run(tr.name, func(t *testing.T) {
 			for _, chain := range []string{"ethereum", "polygon", "arbitrum", "optimism", "base", "avalanche", "lux", "zoo", "bsc"} {
 				t.Run(chain, func(t *testing.T) {
-					mp := tr.start(t, mints(evm, "bc1qbtc", ""))
+					mp := tr.start(t, mints(addrs{evm: evm, btc: "bc1qbtc"}))
 					got, err := mp.GenerateAddress(context.Background(), "hanzo", chain)
 					if err != nil {
 						t.Fatalf("GenerateAddress(%s): %v", chain, err)
@@ -386,7 +397,7 @@ func TestGenerateAddress_SignerRefusalIsARefusal(t *testing.T) {
 func TestGenerateAddress_ScopesToTheOrg(t *testing.T) {
 	for _, tr := range transports {
 		t.Run(tr.name, func(t *testing.T) {
-			s := mints("0x4444444444444444444444444444444444444444", "", "")
+			s := mints(addrs{evm: "0x4444444444444444444444444444444444444444"})
 			mp := tr.start(t, s)
 
 			if _, err := mp.GenerateAddress(context.Background(), "hanzo/z@hanzo.ai", "ethereum"); err != nil {
@@ -411,7 +422,7 @@ func TestGenerateAddress_ScopesToTheOrg(t *testing.T) {
 func TestGenerateAddress_NeverReusesAWalletID(t *testing.T) {
 	for _, tr := range transports {
 		t.Run(tr.name, func(t *testing.T) {
-			s := mints("0x5555555555555555555555555555555555555555", "", "")
+			s := mints(addrs{evm: "0x5555555555555555555555555555555555555555"})
 			mp := tr.start(t, s)
 
 			const samePayer = "hanzo/z@hanzo.ai"
@@ -446,7 +457,7 @@ func TestGenerateAddress_NeverReusesAWalletID(t *testing.T) {
 func TestIsAvailable_ProbesTheWireInUse(t *testing.T) {
 	for _, tr := range transports {
 		t.Run(tr.name, func(t *testing.T) {
-			mp := tr.start(t, mints("0x6666666666666666666666666666666666666666", "", ""))
+			mp := tr.start(t, mints(addrs{evm: "0x6666666666666666666666666666666666666666"}))
 			if !mp.IsAvailable(context.Background()) {
 				t.Error("IsAvailable = false against a live signer")
 			}
@@ -467,7 +478,7 @@ func TestIsAvailable_ProbesTheWireInUse(t *testing.T) {
 // — lands on the reconnected wire.
 func TestZAPTransport_RecoversAfterTheSignerRestarts(t *testing.T) {
 	addr := tempSocket(t)
-	s := mints("0x7777777777777777777777777777777777777777", "", "")
+	s := mints(addrs{evm: "0x7777777777777777777777777777777777777777"})
 
 	stopFirst := serveZAP(t, s, addr)
 	mp := NewProcessor(Config{
@@ -501,4 +512,98 @@ func TestZAPTransport_RecoversAfterTheSignerRestarts(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	t.Fatalf("rail never recovered after the signer restarted: %v", err)
+}
+
+// --- a chain is paid at ITS OWN address, never at a default ---
+
+// Every chain this signer OFFERS must resolve to the address of its own curve.
+//
+// This is the one property that cannot be checked by looking at a returned
+// address, because being wrong here does not produce garbage: it produces a
+// perfectly well-formed address on a DIFFERENT network. GenerateAddress used to
+// switch on chain with `default: resp.EVMAddress`, so any chain nobody had
+// mapped was silently paid at the secp256k1 address — a buyer sending jetton
+// USDT to an 0x string loses it, and nothing anywhere reports an error.
+//
+// It is driven off SupportedChains rather than a list written here, so a chain
+// added to the table without an address mapping fails THIS test instead of
+// shipping. That is the drift the one-table design exists to make impossible.
+func TestGenerateAddress_EveryOfferedChainUsesItsOwnCurve(t *testing.T) {
+	const (
+		evm = "0x1111111111111111111111111111111111111111"
+		btc = "bc1qexampleexampleexampleexampleexampleex"
+		sol = "So11111111111111111111111111111111111111112"
+		ton = "UQB6b9lZVanb-8w_sUn4NZ8clDs5dw9QghJxYeT87GTYRHye"
+	)
+	// What each chain must NOT be paid at. Only the non-EVM chains can express
+	// the fall-through, and they are exactly the ones that lose money to it.
+	want := map[string]string{"bitcoin": btc, "solana": sol, "ton": ton}
+
+	mp := startHTTPSigner(t, mints(addrs{evm: evm, btc: btc, sol: sol, ton: ton}))
+	for _, chain := range mp.SupportedChains() {
+		t.Run(chain, func(t *testing.T) {
+			got, err := mp.GenerateAddress(context.Background(), "hanzo", chain)
+			if err != nil {
+				t.Fatalf("GenerateAddress(%s): %v — an offered chain must be mintable", chain, err)
+			}
+			expect, ok := want[chain]
+			if !ok {
+				expect = evm // the EVM chains legitimately share one address
+			}
+			if got.Address != expect {
+				t.Fatalf("%s paid at %q, want %q — a well-formed address on the wrong network is money gone",
+					chain, got.Address, expect)
+			}
+		})
+	}
+}
+
+// A chain the table does not declare is REFUSED. The old default answered every
+// unknown chain with the EVM address, so "unsupported" and "here is somewhere to
+// send money" were the same reply.
+func TestGenerateAddress_RefusesAnUndeclaredChain(t *testing.T) {
+	mp := startHTTPSigner(t, mints(addrs{evm: "0x9999999999999999999999999999999999999999"}))
+
+	for _, chain := range []string{"xrpl", "cardano", ""} {
+		t.Run("chain="+chain, func(t *testing.T) {
+			got, err := mp.GenerateAddress(context.Background(), "hanzo", chain)
+			if err == nil {
+				t.Fatalf("GenerateAddress(%q) returned %q with no error — an undeclared chain was handed a destination", chain, got.Address)
+			}
+			if got.Address != "" {
+				t.Errorf("refusal still carried address %q", got.Address)
+			}
+		})
+	}
+}
+
+// XRPL must never appear among the mintable chains. Its deposits are POOLED —
+// one configured custody account plus a per-payer destination tag — so a minted
+// XRPL address would both strand a non-refundable base reserve and, since this
+// table has no XRPL entry, be refused anyway. Offering it here would route the
+// pooled chain down the per-payer door.
+func TestSupportedChains_ExcludesPooledXRPL(t *testing.T) {
+	mp := startHTTPSigner(t, mints(addrs{evm: "0x8888888888888888888888888888888888888888"}))
+	for _, c := range mp.SupportedChains() {
+		if c == "xrpl" || c == "xrp" {
+			t.Fatalf("SupportedChains offers %q — XRPL is pooled and its address is configured, not minted", c)
+		}
+	}
+}
+
+// Solana and TON are OFFERED. Both were absent for a real reason that has since
+// been fixed (the fleet ran no Ed25519 ceremony), and the comment explaining
+// their absence outlived the fix by months — solana was being WATCHED while no
+// buyer could ever be given an address for it. This pins the corrected state.
+func TestSupportedChains_IncludesTheEd25519Chains(t *testing.T) {
+	mp := startHTTPSigner(t, mints(addrs{evm: "0x7777777777777777777777777777777777777777"}))
+	offered := map[string]bool{}
+	for _, c := range mp.SupportedChains() {
+		offered[c] = true
+	}
+	for _, c := range []string{"solana", "ton"} {
+		if !offered[c] {
+			t.Errorf("%q is not offered — the fleet derives an Ed25519 key, so an address can be minted there", c)
+		}
+	}
 }
