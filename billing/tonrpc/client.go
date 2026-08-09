@@ -444,9 +444,14 @@ type transaction struct {
 	McBlockSeqno uint64 `json:"mc_block_seqno"`
 	InMsg        *struct {
 		Source         string `json:"source"`
-		Destination    string `json:"destination"`
-		Opcode         string `json:"opcode"`
-		Bounced        bool   `json:"bounced"`
+		Destination string `json:"destination"`
+		Opcode      string `json:"opcode"`
+		Bounced     bool   `json:"bounced"`
+		// Value is the NATIVE TON attached to this message, in nanotons. Every
+		// inbound message carries one — a jetton transfer attaches gas — so it
+		// is a deposit only when the message is a plain transfer. See
+		// nativeReceipt.
+		Value          string `json:"value"`
 		MessageContent *struct {
 			Decoded map[string]any `json:"decoded"`
 		} `json:"message_content"`
@@ -475,6 +480,22 @@ type transaction struct {
 // one account, so `end_lt = lowest lt seen − 1` is a cursor that cannot skip
 // and cannot repeat, whatever arrives while we page.
 func (c *Client) receipts(ctx context.Context, wallet Address, owner string, fromSeqno, toSeqno uint64) ([]depositwatch.Transfer, error) {
+	return c.walk(ctx, wallet, fromSeqno, toSeqno, func(tx *transaction) (depositwatch.Transfer, bool, error) {
+		return receipt(tx, wallet, owner)
+	})
+}
+
+// walk pages ONE account's transactions through the window and applies parse to
+// each, newest-first.
+//
+// It is shared by the jetton reader and the native one because the CURSOR is the
+// subtle part and must not exist twice: the walk pages by `end_lt`, never by
+// `offset`, since an account's transactions grow at the head and an offset-paged
+// walk SKIPS rows whenever a new transaction lands between two pages — and a
+// skipped row is a missed deposit. Logical time is strictly increasing within one
+// account, so `end_lt = lowest lt seen − 1` cannot skip and cannot repeat.
+func (c *Client) walk(ctx context.Context, account Address, fromSeqno, toSeqno uint64, parse func(*transaction) (depositwatch.Transfer, bool, error)) ([]depositwatch.Transfer, error) {
+	wallet := account
 	var out []depositwatch.Transfer
 	endLt := uint64(0)
 
@@ -529,7 +550,7 @@ func (c *Client) receipts(ctx context.Context, wallet Address, owner string, fro
 				// one account, masterchain position rises with logical time.
 				return out, nil
 			}
-			t, ok, err := receipt(tx, wallet, owner)
+			t, ok, err := parse(tx)
 			if err != nil {
 				return nil, err
 			}
