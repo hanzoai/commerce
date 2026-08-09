@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -136,25 +137,24 @@ func (mp *MPCProcessor) configured() bool {
 
 // MPCSupportedCurrencies returns cryptocurrencies supported by MPC.
 func MPCSupportedCurrencies() []currency.Type {
-	// SOL IS NOT HERE, and its absence is the honest state rather than an
-	// oversight. A Solana address is an Ed25519 (EdDSA) key, and the custody
-	// fleet only ever runs the secp256k1 ceremony: the mpc:generate consumer
-	// dispatches handleKeyGenEventCGGMP21 and nothing else, so EDDSAPubKey comes
-	// back empty and mpcd never emits sol_address (it is gated on a 32-byte
-	// EdDSA key). GenerateAddress then finds nothing for chain "solana" and
-	// answers NO_ADDRESS, which the rail renders as 503 "the custody service is
-	// not accepting new addresses".
+	// SOL AND TON ARE NOT HERE, and the reason is no longer the one this
+	// comment carried for months. It said the custody fleet ran only the
+	// secp256k1 ceremony, so EDDSAPubKey came back empty and mpcd never emitted
+	// sol_address — and concluded that restoring sol was "protocol work, not a
+	// list edit". That ceremony now runs: a live keygen returns a 32-byte
+	// eddsa_pub_key, both sol_address and ton_address, and /sign answers a
+	// 64-byte Ed25519 signature. SupportedChains lists both today.
 	//
-	// Advertising it anyway is the worst of the options: the asset picker is
-	// rendered FROM THIS LIST, so listing sol puts a button in front of a buyer
-	// that walks them to a dead end after they have chosen an amount. A rail is
-	// offered only when it can be finished.
+	// What keeps the COINS off this list is a different limit that still holds:
+	// a native coin cannot be priced here. depositwatch credits at a fixed peg
+	// and holds no oracle, so SOL and TON have no value this rail could put on a
+	// balance — the same reason ETH is absent as a coin while ethereum is a
+	// chain. Both chains carry a dollar-pegged TOKEN (SPL USDC, jetton USDT),
+	// and that is what is credited on them.
 	//
-	// Restoring sol needs a FROST/Ed25519 ceremony beside the CGGMP21 one and
-	// the two results combined per wallet — keygen_session.go already speaks of
-	// "the combined result with both ECDSA and EdDSA keys", so the result shape
-	// is ready and the consumer is what is missing. That is protocol work on a
-	// live custody service, not a list edit.
+	// The distinction to keep: a CHAIN is offerable when an address can be
+	// minted and its deposits watched; a COIN is creditable when it can be
+	// priced. They are different questions and this list answers the second.
 	return []currency.Type{
 		currency.BTC,
 		currency.ETH,
@@ -175,23 +175,63 @@ func MPCSupportedCurrencies() []currency.Type {
 	}
 }
 
-// SupportedChains returns blockchain networks supported by MPC.
+// addrKind is WHICH of a keygen reply's addresses a chain is paid at.
+//
+// One keygen yields several addresses off two keys, and picking the wrong one
+// does not fail — it hands out a well-formed address on the wrong network, which
+// a buyer then pays into and nobody can ever spend.
+type addrKind int
+
+const (
+	addrEVM addrKind = iota // secp256k1, the one address every EVM chain shares
+	addrBTC
+	addrSOL
+	addrTON
+)
+
+// mintChains is the ONE declaration of what this signer can mint, and of where
+// each chain's address comes from.
+//
+// It is one table and not two lists because both directions have already shipped
+// a live defect. GenerateAddress used to switch on chain with an EVM DEFAULT, so
+// a chain nobody had mapped silently received the secp256k1 address: TON would
+// have been handed an 0x string no TON wallet can pay, and money sent to it is
+// gone. Meanwhile SupportedChains was a separate literal that omitted solana
+// long after the Ed25519 ceremony started working, so a chain that COULD be
+// minted and WAS being watched was never offered to anyone.
+//
+// A chain absent here is refused rather than defaulted. That is the safety
+// property: this table is the only way to offer a chain, and adding one forces
+// you to say which key its address is derived from.
+//
+// XRPL is deliberately absent and must stay absent. Its deposits are POOLED —
+// the account is configured, never minted — so the mint path does not consult
+// this signer about it at all.
+var mintChains = map[string]addrKind{
+	"bitcoin": addrBTC,
+	"solana":  addrSOL,
+	"ton":     addrTON,
+
+	"ethereum":  addrEVM,
+	"polygon":   addrEVM,
+	"arbitrum":  addrEVM,
+	"optimism":  addrEVM,
+	"base":      addrEVM,
+	"avalanche": addrEVM,
+	"bsc":       addrEVM,
+	"lux":       addrEVM,
+	"zoo":       addrEVM,
+}
+
+// SupportedChains returns blockchain networks supported by MPC, sorted so the
+// picker's order is a property of the table rather than of map iteration.
 func (mp *MPCProcessor) SupportedChains() []string {
-	return []string{
-		"bitcoin",
-		"ethereum",
-		"polygon",
-		"arbitrum",
-		"optimism",
-		"base",
-		"avalanche",
-		// "solana" is omitted for the same reason sol is absent above: the
-		// custody fleet derives no Ed25519 key, so a Solana deposit address
-		// cannot be minted and the chain would 503 after the buyer picked it.
-		"lux",
-		"zoo",
-		"bsc",
+	out := make([]string, 0, len(mintChains))
+	for c := range mintChains {
+		out = append(out, c)
 	}
+	sort.Strings(out)
+	return out
 }
 
 // Type returns the processor type.
@@ -236,8 +276,28 @@ type mpcKeygenResp struct {
 	EVMAddress string `json:"evm_address"`
 	BTCAddress string `json:"btc_address"`
 	SOLAddress string `json:"sol_address"`
+	TONAddress string `json:"ton_address"`
 	Error      string `json:"error"`
 	ErrorCode  string `json:"error_code"`
+}
+
+// address returns the one address of KIND, or "" when the reply carried none.
+//
+// Empty is a refusal and never a fallback: an address is where a customer's
+// money goes, so answering with a different chain's address would be worse than
+// answering with nothing. GenerateAddress turns "" into NO_ADDRESS.
+func (r mpcKeygenResp) address(k addrKind) string {
+	switch k {
+	case addrBTC:
+		return r.BTCAddress
+	case addrSOL:
+		return r.SOLAddress
+	case addrTON:
+		return r.TONAddress
+	case addrEVM:
+		return r.EVMAddress
+	}
+	return ""
 }
 
 // GenerateAddress runs a threshold keygen on the MPC signer fleet and returns
@@ -281,16 +341,14 @@ func (mp *MPCProcessor) GenerateAddress(ctx context.Context, customerID string, 
 	// resp.WalletID rides along with every address below. It was parsed here and
 	// then dropped for want of somewhere to put it, which is how a rail came to
 	// mint custody addresses it held no handle to.
-	var addr string
-	switch chain {
-	case "bitcoin":
-		addr = resp.BTCAddress
-	case "solana":
-		addr = resp.SOLAddress
-	default:
-		// EVM chains all share the secp256k1-derived Ethereum address.
-		addr = resp.EVMAddress
+	kind, ok := mintChains[chain]
+	if !ok {
+		// Refuse a chain this signer does not declare, rather than reaching for
+		// the EVM address that used to sit here as the default.
+		return processor.Wallet{}, processor.NewPaymentError(processor.MPC, "UNSUPPORTED_CHAIN",
+			fmt.Sprintf("MPC signer mints no address for chain %s", chain), nil)
 	}
+	addr := resp.address(kind)
 	if addr == "" {
 		return processor.Wallet{}, processor.NewPaymentError(processor.MPC, "NO_ADDRESS", fmt.Sprintf("MPC keygen did not return address for chain %s", chain), nil)
 	}
