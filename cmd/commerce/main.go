@@ -13,9 +13,6 @@
 //	                   → bootCloud(): zip.App with commerce mounted via
 //	                     the host app directly — commerce is native zip, so
 //	                     inner handler, no public route surface of its own.
-//	                     Requires a build with `-tags cloud`; without the
-//	                     tag the cloud entry returns a clear error and the
-//	                     process exits non-zero.
 //
 // Default stays legacy until cloud-mount is validated in production.
 // Phase 1 of the staged Gin → zip migration.
@@ -41,7 +38,7 @@ func main() {
 		httpAddr        = flag.String("http", envStr("COMMERCE_HTTP", "127.0.0.1:8090"), "HTTP listen address")
 		dev             = flag.Bool("dev", envBool("COMMERCE_DEV", false), "enable development mode")
 		requireIdentity = flag.Bool("require-identity", envBool("COMMERCED_REQUIRE_IDENTITY", false), "refuse requests without X-Org-Id/X-User-Id (gateway trust)")
-		cloudMode       = flag.Bool("cloud", envCloudMode(), "boot via cloud-mount (zip.App with gin sealed inside); requires -tags cloud build")
+		cloudMode       = flag.Bool("cloud", envCloudMode(), "boot via cloud-mount: commerce registered on a zip.App the way a host mounts it")
 	)
 	flag.Parse()
 

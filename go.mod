@@ -2,10 +2,7 @@ module github.com/hanzoai/commerce
 
 go 1.26.5
 
-require (
-	github.com/hanzoai/cloud v0.1.1
-	github.com/zap-proto/zip v1.24.2
-)
+require github.com/zap-proto/zip v1.24.2
 
 require (
 	github.com/Machiel/slugify v1.0.1
@@ -79,6 +76,7 @@ require (
 	github.com/fxamacker/cbor/v2 v2.9.1 // indirect
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
+	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/gofiber/schema v1.7.1 // indirect
 	github.com/gofiber/utils/v2 v2.0.4 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
@@ -107,6 +105,7 @@ require (
 	github.com/luxfi/threshold v1.12.3 // indirect
 	github.com/mimoo/StrobeGo v0.0.0-20220103164710-9a04d6ca976b // indirect
 	github.com/minio/minio-go/v7 v7.0.100 // indirect
+	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c // indirect
 	github.com/montanaflynn/stats v0.9.0 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
@@ -129,7 +128,7 @@ require (
 require (
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/andybalholm/brotli v1.2.1 // indirect
-	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0 // indirect
+	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0
 	github.com/btcsuite/btclog v1.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/corpix/uarand v0.2.0 // indirect
@@ -213,17 +212,3 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	modernc.org/sqlite v1.51.0 // indirect
 )
-
-// hanzoai/base + hanzoai/cloud are both now published as proper Go
-// modules on the public Go proxy. The sibling-checkout replaces below
-// were necessary while the seam was unreleased; the modules now
-// resolve cleanly without them so the Docker build doesn't depend on
-// the local working tree.
-
-// go-sqlite3 v2.0.3+incompatible is a mistagged release that predates the
-// maintained v1.14.x line (the bad v2 major tag sorts above v1.14 under MVS,
-// so a transitive require from hanzoai/cloud drags it in). That old code
-// fails to compile against musl libc on Alpine — it references pread64/
-// pwrite64, which musl does not expose — breaking every linux/amd64 image
-// build. Pin to the current v1.14 patch, which compiles cleanly on musl.
-replace github.com/mattn/go-sqlite3 => github.com/mattn/go-sqlite3 v1.14.47

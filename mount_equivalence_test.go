@@ -1,9 +1,6 @@
 // Copyright (c) 2014-present Hanzo AI, Inc.
 // Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
 
-//go:build cloud
-// +build cloud
-
 package commerce
 
 import (
@@ -16,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hanzoai/cloud"
 	luxlog "github.com/luxfi/log"
 
 	"github.com/zap-proto/zip"
@@ -41,6 +37,16 @@ import (
 // The /healthz asymmetry is by design (HIP-0106): cloud surfaces are scoped to
 // /v1/commerce + /_/commerce so one binary can host iam, base, kms and gateway
 // side by side without root-path collisions. Probes use /_/commerce/healthz.
+//
+// It asks that of REGISTERED routes. It used to ask it of /v1/commerce/tenant
+// and /v1/commerce/health, neither of which has been a route since org-as-tenant
+// became GET /v1/commerce/org — so both modes 404'd and the test was comparing
+// which catch-all rendered the 404, not what commerce answers. Standalone has a
+// SPA fallback and the mount deliberately has none (the host owns unmatched
+// paths, or commerce would swallow every other subsystem's misses), so those two
+// bodies can never match and the comparison could only ever fail. Status parity
+// on a miss is the invariant that survives; body parity belongs to routes that
+// exist.
 func TestMount_EquivalentToStandalone(t *testing.T) {
 	tmp := t.TempDir()
 
@@ -61,13 +67,7 @@ func TestMount_EquivalentToStandalone(t *testing.T) {
 
 	// Cloud boot — a host zip.App with commerce mounted onto it.
 	zapp := zip.New(zip.Config{Logger: luxlog.New("test")})
-	deps := cloud.Deps{
-		Logger:  luxlog.New("test"),
-		Brand:   "hanzo",
-		Domain:  "api.hanzo.ai",
-		DataDir: filepath.Join(tmp, "cloud"),
-	}
-	if err := Mount(zapp, deps); err != nil {
+	if err := Mount(zapp, filepath.Join(tmp, "cloud"), luxlog.New("test")); err != nil {
 		t.Fatalf("Mount: %v", err)
 	}
 
@@ -75,12 +75,19 @@ func TestMount_EquivalentToStandalone(t *testing.T) {
 		name string
 		path string
 		host string
+		// body says whether the two modes must agree on the bytes as well as
+		// the status. False for a path neither mode registers: the answer then
+		// comes from whoever owns unmatched paths, which is commerce standalone
+		// and the HOST when mounted — different renderers by design.
+		body bool
 	}{
-		// Not a registered handler: both modes must return the canonical
-		// not-found body, not two different ones.
-		{name: "health_unknown_path", path: "/v1/commerce/health", host: "pay.example.test"},
-		// org-as-tenant, resolved through the same host->brand->org resolver.
-		{name: "tenant_org_resolved", path: "/v1/commerce/tenant", host: "pay.example.test"},
+		// The org itself, resolved through the same host->brand->org resolver.
+		{name: "org_resolved", path: "/v1/commerce/org", host: "pay.example.test", body: true},
+		// The public catalog projection, same handler both modes.
+		{name: "catalog", path: "/v1/commerce/catalog", host: "pay.example.test", body: true},
+		// Nothing registers this. Both must still MISS — a path that resolves in
+		// one mode and not the other is the drift worth catching.
+		{name: "unregistered", path: "/v1/commerce/health", host: "pay.example.test"},
 	}
 
 	for _, tc := range cases {
@@ -105,7 +112,7 @@ func TestMount_EquivalentToStandalone(t *testing.T) {
 				t.Fatalf("status drift on %s: standalone=%d cloud=%d standaloneBody=%q cloudBody=%q",
 					tc.path, respStandalone.StatusCode, respCloud.StatusCode, string(standaloneBody), string(cloudBody))
 			}
-			if !bytes.Equal(standaloneBody, cloudBody) {
+			if tc.body && !bytes.Equal(standaloneBody, cloudBody) {
 				t.Fatalf("body drift on %s:\n  standalone: %q\n  cloud:      %q", tc.path, string(standaloneBody), string(cloudBody))
 			}
 		})
@@ -117,13 +124,7 @@ func TestMount_EquivalentToStandalone(t *testing.T) {
 // for this subsystem.
 func TestMount_ServesScopedHealthz(t *testing.T) {
 	zapp := zip.New(zip.Config{Logger: luxlog.New("test")})
-	deps := cloud.Deps{
-		Logger:  luxlog.New("test"),
-		Brand:   "hanzo",
-		Domain:  "api.hanzo.ai",
-		DataDir: t.TempDir(),
-	}
-	if err := Mount(zapp, deps); err != nil {
+	if err := Mount(zapp, t.TempDir(), luxlog.New("test")); err != nil {
 		t.Fatalf("Mount: %v", err)
 	}
 	resp, err := zapp.Test(httptest.NewRequest(http.MethodGet, "/_/commerce/healthz", nil))

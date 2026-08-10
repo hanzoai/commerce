@@ -37,13 +37,23 @@ type SecretReader interface {
 	GetSecret(ctx context.Context, ref string) ([]byte, error)
 }
 
+// Log is the host's logger as commerce needs it: two levels and key/value
+// pairs. It is an interface rather than *slog.Logger because the hosts differ —
+// the standalone boot has an *slog.Logger, the cloud binary has a
+// luxfi/log.Logger — and both already have these two methods, so neither side
+// writes a shim and commerce learns nothing about either logger's package.
+type Log interface {
+	Info(msg string, kv ...any)
+	Warn(msg string, kv ...any)
+}
+
 type EmbedConfig struct {
-	DataDir         string       // "" → COMMERCE_DIR or ./commerce_data
-	HTTPAddr        string       // "" → COMMERCE_HTTP or 127.0.0.1:8090
-	Dev             bool         // dev mode — reload-friendly logging
-	RequireIdentity bool         // gateway trust: refuse requests without X-Org-Id/X-User-Id
-	Logger          *slog.Logger // nil → slog.Default()
-	AllowedOrigins  []string     // CORS — usually ["*"] behind gateway
+	DataDir         string   // "" → COMMERCE_DIR or ./commerce_data
+	HTTPAddr        string   // "" → COMMERCE_HTTP or 127.0.0.1:8090
+	Dev             bool     // dev mode — reload-friendly logging
+	RequireIdentity bool     // gateway trust: refuse requests without X-Org-Id/X-User-Id
+	Logger          Log      // nil → slog.Default()
+	AllowedOrigins  []string // CORS — usually ["*"] behind gateway
 
 	// App is the NATIVE co-residence contract: when set, commerce registers
 	// its routes directly on this shared zip app (one router, one specificity
@@ -86,10 +96,6 @@ type EmbedConfig struct {
 type Embedded struct {
 	cfg EmbedConfig
 	app *App
-	// brand is the deployment's white-label brand, surfaced in the in-process
-	// commerce.Client's OrgConfig. Set by Mount; empty for a bare Embed
-	// (the standalone/legacy boot never serves the inter-subsystem client).
-	brand string
 }
 
 // Embed bootstraps the Commerce app and returns a handle. Call Stop
