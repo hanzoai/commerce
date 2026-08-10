@@ -115,6 +115,10 @@ const (
 	FamilySolana
 	FamilyTON
 	FamilyXRPL
+	// FamilyBitcoin is the rail's first UTXO chain. It is its own family because
+	// a deposit there is an OUTPUT rather than an account movement, and one
+	// transaction may pay us twice — see billing/bitcoinrpc.
+	FamilyBitcoin
 )
 
 // chainFamily is the set of chains this rail can READ, keyed by the intent
@@ -137,6 +141,7 @@ var chainFamily = map[cryptopaymentintent.Chain]Family{
 	cryptopaymentintent.Solana:    FamilySolana,
 	cryptopaymentintent.TON:       FamilyTON,
 	cryptopaymentintent.XRPL:      FamilyXRPL,
+	cryptopaymentintent.Bitcoin:   FamilyBitcoin,
 }
 
 // Family reports how this asset's chain is read and written. It is the one
