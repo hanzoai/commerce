@@ -302,6 +302,23 @@ var marketPriced = map[string]string{
 	"ton": "the-open-network",
 }
 
+// nativeChain is the ONE chain each market-priced coin is actually native to.
+//
+// A native coin exists on exactly one chain, and the same ticker elsewhere is a
+// WRAPPED asset: "btc on ethereum" is wBTC, a token with an issuer, a custodian
+// and a de-peg risk that bitcoin does not have. Crediting it at the bitcoin
+// price would value somebody's wBTC as if it were bitcoin — which is a different
+// bet, made on their behalf, silently.
+//
+// So this pins each coin to its chain and AssetsFromEnv refuses the rest. A
+// wrapped asset is welcome on this rail the day somebody adds it deliberately,
+// with its own peg or its own price id.
+var nativeChain = map[string]string{
+	"btc": "bitcoin",
+	"xrp": "xrpl",
+	"ton": "ton",
+}
+
 // MarketPriced reports whether this asset is credited at a live rate.
 //
 // It is the one question the credit path asks before choosing where the number
@@ -497,6 +514,11 @@ func AssetsFromEnv(environ []string) ([]Asset, error) {
 		// protect against and a haircut on one is a fee wearing the word
 		// slippage. Refused rather than ignored: silently dropping it would
 		// leave an operator believing a deduction is in force that is not.
+		if want, ok := nativeChain[t.token]; ok && want != t.chain {
+			return nil, fmt.Errorf("depositwatch: %s%s_%s configures %s on %s, but %s is native only on %s — the same ticker elsewhere is a WRAPPED asset with its own issuer and de-peg risk, and crediting it at the %s price would value it as something it is not",
+				envTokenPrefix, strings.ToUpper(t.chain), strings.ToUpper(t.token),
+				t.token, t.chain, t.token, want, t.token)
+		}
 		if a.Terms.SlippageBps > 0 && pegged {
 			return nil, fmt.Errorf("depositwatch: %s%s sets slippage on %s, which is credited at a fixed peg — there is no market move to hedge; use %s%s if the intent is a fee",
 				envSlippagePrefix, strings.ToUpper(t.chain), t.token, envFeePrefix, strings.ToUpper(t.chain))
