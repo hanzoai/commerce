@@ -96,6 +96,13 @@ type Watched struct {
 	IntentID string
 	Subject  string
 	Address  string // as minted; normalised for comparison by Asset.Fold
+	// Wallet is the signer's handle for the key behind Address — the other half
+	// of one custody record, and the half a SPEND needs. It rides here because
+	// this is the one enumeration of minted addresses there is, and a sweep that
+	// had to re-read every intent to find it would be a second one that could
+	// disagree. Nothing in this package reads it; crediting a deposit never
+	// needs to know how to move it.
+	Wallet string
 	// Tag is the routing tag this intent was issued, on a chain where the
 	// address is shared. Empty everywhere else. Address and Tag are never
 	// compared separately — Asset.Identity combines them, once, for both the
