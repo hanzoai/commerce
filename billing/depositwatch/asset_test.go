@@ -193,16 +193,32 @@ func TestAssetsFromEnv_RefusesAnAddressFromTheWrongChain(t *testing.T) {
 		{
 			// A chain with no Reader would otherwise be handed the EVM client on
 			// the assumption that everything is an EVM — it would error every 30
-			// seconds and watch nothing while looking configured. Bitcoin is the
-			// standing example and is not a placeholder: it is genuinely absent
-			// because crediting it needs a PRICE ORACLE, which this rail
-			// deliberately does not have (see pegCents).
+			// seconds and watch nothing while looking configured.
+			//
+			// The standing example USED to be Bitcoin, which is no longer true:
+			// bitcoinrpc reads it and the oracle prices it. Cardano is the
+			// example now, and it is not a placeholder either — it is genuinely
+			// absent, and the day someone writes a reader for it this case moves
+			// again, which is the point of naming a real chain rather than a
+			// made-up one.
 			name: "a chain this rail cannot read",
 			environ: []string{
-				"CRYPTO_DEPOSIT_RPC_BITCOIN=https://btc.rpc",
-				"CRYPTO_DEPOSIT_TOKEN_BITCOIN_USDC=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+				"CRYPTO_DEPOSIT_RPC_CARDANO=https://ada.rpc",
+				"CRYPTO_DEPOSIT_TOKEN_CARDANO_USDC=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
 			},
 			wantIn: "no reader for",
+		},
+		{
+			// A NATIVE coin exists on exactly ONE chain. "btc on ethereum" is
+			// wrapped BTC — a different asset with a different issuer and a
+			// different risk — and crediting it at the bitcoin price would value
+			// somebody's wBTC as if it were bitcoin.
+			name: "a native coin on a chain that is not its own",
+			environ: []string{
+				"CRYPTO_DEPOSIT_RPC_ETHEREUM=https://eth.rpc",
+				"CRYPTO_DEPOSIT_TOKEN_ETHEREUM_BTC=0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+			},
+			wantIn: "only on",
 		},
 		{
 			// A TON jetton master pasted into an XRPL slot, and the reverse. Both
