@@ -210,20 +210,32 @@ const (
 // XRPL is deliberately absent and must stay absent. Its deposits are POOLED —
 // the account is configured, never minted — so the mint path does not consult
 // this signer about it at all.
+//
+// Minting is also bounded by SIGNING, which is a different question and the one
+// that costs more to get wrong. avalanche and zoo were listed here and are gone:
+// luxfi/mpc's networkAlias (pkg/types/networks.go) has no entry for either name,
+// so ParseNetwork refuses them and no quorum will sign a spend from an address
+// minted on them. The rail would therefore have taken a deposit, credited the
+// customer, and held coins no code in either repository can move. Deriving an
+// address and spending from one are two capabilities, and offering a chain needs
+// both — TestMintChainsAreSignable holds that line.
+//
+// Both chains come back with a one-line alias upstream, where the curve table
+// lives. Nothing here should translate a name to smuggle them in: the whole
+// reason the signer chooses the curve from the network is that callers must not
+// be able to relabel a request.
 var mintChains = map[string]addrKind{
 	"bitcoin": addrBTC,
 	"solana":  addrSOL,
 	"ton":     addrTON,
 
-	"ethereum":  addrEVM,
-	"polygon":   addrEVM,
-	"arbitrum":  addrEVM,
-	"optimism":  addrEVM,
-	"base":      addrEVM,
-	"avalanche": addrEVM,
-	"bsc":       addrEVM,
-	"lux":       addrEVM,
-	"zoo":       addrEVM,
+	"ethereum": addrEVM,
+	"polygon":  addrEVM,
+	"arbitrum": addrEVM,
+	"optimism": addrEVM,
+	"base":     addrEVM,
+	"bsc":      addrEVM,
+	"lux":      addrEVM,
 }
 
 // SupportedChains returns blockchain networks supported by MPC, sorted so the
@@ -329,6 +341,16 @@ func (mp *MPCProcessor) GenerateAddress(ctx context.Context, customerID string, 
 		orgID = orgID[:i]
 	}
 
+	// Asked BEFORE the ceremony, because a keygen needs every peer and takes
+	// tens of seconds — and because the answer cannot change once it has run.
+	// Refuse a chain this signer does not declare, rather than reaching for the
+	// EVM address that used to sit here as the default.
+	kind, ok := mintChains[chain]
+	if !ok {
+		return processor.Wallet{}, processor.NewPaymentError(processor.MPC, "UNSUPPORTED_CHAIN",
+			fmt.Sprintf("MPC signer mints no address for chain %s", chain), nil)
+	}
+
 	raw, err := mp.transport.Keygen(ctx, orgID)
 	if err != nil {
 		return processor.Wallet{}, processor.NewPaymentError(processor.MPC, "KEYGEN_FAILED", "failed to generate MPC wallet", err)
@@ -341,16 +363,9 @@ func (mp *MPCProcessor) GenerateAddress(ctx context.Context, customerID string, 
 		return processor.Wallet{}, processor.NewPaymentError(processor.MPC, "KEYGEN_FAILED", resp.Error, nil)
 	}
 
-	// resp.WalletID rides along with every address below. It was parsed here and
+	// resp.WalletID rides along with the address below. It was parsed here and
 	// then dropped for want of somewhere to put it, which is how a rail came to
 	// mint custody addresses it held no handle to.
-	kind, ok := mintChains[chain]
-	if !ok {
-		// Refuse a chain this signer does not declare, rather than reaching for
-		// the EVM address that used to sit here as the default.
-		return processor.Wallet{}, processor.NewPaymentError(processor.MPC, "UNSUPPORTED_CHAIN",
-			fmt.Sprintf("MPC signer mints no address for chain %s", chain), nil)
-	}
 	addr := resp.address(kind)
 	if addr == "" {
 		return processor.Wallet{}, processor.NewPaymentError(processor.MPC, "NO_ADDRESS", fmt.Sprintf("MPC keygen did not return address for chain %s", chain), nil)
