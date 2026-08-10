@@ -2,10 +2,12 @@
 // on-chain HUSD balance the source of truth and the commerce DB a cache.
 //
 // It has two decomplected halves:
-//   - client.go: a minimal JSON-RPC READ client (net/http, encoding/json) for
-//     the Hanzo EVM — block height, ERC-20 balanceOf, and Transfer logs. No
-//     geth, no cgo: reads only, so the indexer builds and the live read-proof
-//     runs CGO-free.
+//   - client.go: the repo's one minimal EVM JSON-RPC client (net/http,
+//     encoding/json). It reads what the indexer needs — block height, ERC-20
+//     balanceOf, Transfer logs — and it carries what a spend needs on top:
+//     chain id, nonce, fees, gas estimate, and eth_sendRawTransaction. Still no
+//     geth and no cgo, because none of that requires cryptography; building and
+//     signing the bytes it carries is billing/custody/evm's job.
 //   - index.go: the Sync projector — scan Transfer events INTO org addresses and
 //     project each, idempotently, into the ledger tagged by its off-chain
 //     issuance bucket. Pure logic over small interfaces, unit-tested with fakes.
@@ -112,11 +114,24 @@ func (c *Client) BlockNumber(ctx context.Context) (uint64, error) {
 	return hexToUint64(rawString(raw))
 }
 
-// BalanceOf returns the token balance of addr in base units (wei).
+// BalanceOf returns the balance of addr in the token this client is bound to,
+// in base units.
 func (c *Client) BalanceOf(ctx context.Context, addr string) (*big.Int, error) {
-	data := balanceOfSelector + pad32(addr)
+	return c.BalanceOfToken(ctx, c.tokenAddr, addr)
+}
+
+// BalanceOfToken returns the balance of addr in an ARBITRARY token.
+//
+// The indexer is bound to one token for its whole life; a sweep is not — it
+// meets whichever token a payer chose — and a client per token would be a
+// connection pool per token. Both go through the same eth_call so there is one
+// piece of ABI encoding to get right.
+func (c *Client) BalanceOfToken(ctx context.Context, token, addr string) (*big.Int, error) {
+	if token == "" {
+		return nil, fmt.Errorf("husdindex: balanceOf needs a token address")
+	}
 	raw, err := c.call(ctx, "eth_call", []any{
-		map[string]string{"to": c.tokenAddr, "data": data}, "latest",
+		map[string]string{"to": strings.ToLower(token), "data": balanceOfSelector + pad32(addr)}, "latest",
 	})
 	if err != nil {
 		return nil, err
@@ -378,4 +393,131 @@ func topicToAddr(topic string) string {
 		t = t[len(t)-40:]
 	}
 	return "0x" + t
+}
+
+// --- The spend path -----------------------------------------------------
+//
+// Everything above reads. What follows is what a SWEEP needs on top: the state
+// that goes into an unsigned transaction (chain id, nonce, fees, gas), and the
+// one call that submits a signed one.
+//
+// They live here rather than in a second client because this is the repo's one
+// EVM JSON-RPC client, and two of those would be two places to fix a header, a
+// timeout or an error shape. The property that made this file worth keeping
+// separate is untouched: it is still net/http and encoding/json and nothing
+// else. No geth, no cgo — because none of this needs cryptography. Building and
+// signing the bytes these methods carry is billing/custody/evm's job, and that
+// is where luxfi/geth is linked.
+
+// ChainID asks the node which chain it is.
+//
+// It is asked rather than configured because the chain id is what makes a
+// signature unreplayable on any OTHER chain (EIP-155), and the failure mode of
+// getting it from a constant is that a signature valid on Base is also valid on
+// Ethereum. A node cannot be wrong about its own id; our config can.
+func (c *Client) ChainID(ctx context.Context) (*big.Int, error) {
+	raw, err := c.call(ctx, "eth_chainId", []any{})
+	if err != nil {
+		return nil, err
+	}
+	return hexToBig(rawString(raw))
+}
+
+// Nonce returns the next nonce for addr, counting transactions already in the
+// mempool ("pending") rather than only mined ones. A sweep that used "latest"
+// would reuse the nonce of a transfer it had just broadcast and replace it.
+func (c *Client) Nonce(ctx context.Context, addr string) (uint64, error) {
+	raw, err := c.call(ctx, "eth_getTransactionCount", []any{strings.ToLower(addr), "pending"})
+	if err != nil {
+		return 0, err
+	}
+	return hexToUint64(rawString(raw))
+}
+
+// NativeBalance returns addr's balance of the chain's own coin, in wei. This is
+// the gas budget: on an EVM chain a token cannot pay for its own transfer.
+func (c *Client) NativeBalance(ctx context.Context, addr string) (*big.Int, error) {
+	raw, err := c.call(ctx, "eth_getBalance", []any{strings.ToLower(addr), "latest"})
+	if err != nil {
+		return nil, err
+	}
+	return hexToBig(rawString(raw))
+}
+
+// BaseFee returns the pending block's base fee per gas.
+//
+// It reads the PENDING block, not the latest one: base fee is set per block, so
+// by the time a transaction built against the latest block is mined the real
+// base fee has already moved, by up to 12.5% per block. The pending block's
+// value is the one the transaction will actually meet.
+//
+// A chain with no EIP-1559 base fee (a pre-London network) reports none; that
+// is returned as zero, and the caller decides whether it can proceed.
+func (c *Client) BaseFee(ctx context.Context) (*big.Int, error) {
+	raw, err := c.call(ctx, "eth_getBlockByNumber", []any{"pending", false})
+	if err != nil {
+		return nil, err
+	}
+	var head struct {
+		BaseFeePerGas string `json:"baseFeePerGas"`
+	}
+	if err := json.Unmarshal(raw, &head); err != nil {
+		return nil, fmt.Errorf("husdindex: decode pending block: %w", err)
+	}
+	if head.BaseFeePerGas == "" {
+		return new(big.Int), nil
+	}
+	return hexToBig(head.BaseFeePerGas)
+}
+
+// Tip returns the node's suggested priority fee per gas — what the miner keeps.
+//
+// Not every node implements eth_maxPriorityFeePerGas, so a failure is reported
+// as such and left to the caller rather than silently defaulting to zero: a
+// zero tip is a transaction that is valid, cheap, and may never be mined, which
+// is a worse outcome for a sweep than not sending one.
+func (c *Client) Tip(ctx context.Context) (*big.Int, error) {
+	raw, err := c.call(ctx, "eth_maxPriorityFeePerGas", []any{})
+	if err != nil {
+		return nil, err
+	}
+	return hexToBig(rawString(raw))
+}
+
+// EstimateGas asks the node what the transfer will cost to execute.
+//
+// It is asked per transfer and never assumed, because "an ERC-20 transfer costs
+// 65000 gas" is false often enough to matter: the first transfer into an
+// address writes a fresh storage slot and costs far more than the second, and
+// tokens with hooks, fees or blocklists cost more again. An estimate that is
+// too low does not fail cheaply — the transaction is mined, reverts, and the
+// gas is spent anyway.
+func (c *Client) EstimateGas(ctx context.Context, from, to string, value *big.Int, data []byte) (uint64, error) {
+	arg := map[string]string{"from": strings.ToLower(from), "to": strings.ToLower(to)}
+	if value != nil && value.Sign() > 0 {
+		arg["value"] = "0x" + value.Text(16)
+	}
+	if len(data) > 0 {
+		arg["data"] = "0x" + hex.EncodeToString(data)
+	}
+	raw, err := c.call(ctx, "eth_estimateGas", []any{arg})
+	if err != nil {
+		return 0, err
+	}
+	return hexToUint64(rawString(raw))
+}
+
+// Send submits a signed transaction and returns the hash the node computed for
+// it.
+//
+// The node's hash is returned rather than one computed locally so that the two
+// are compared by the caller: if they disagree, the bytes that went out are not
+// the bytes that were built, and that is worth knowing before a sweep is
+// recorded as done.
+func (c *Client) Send(ctx context.Context, raw []byte) (string, error) {
+	res, err := c.call(ctx, "eth_sendRawTransaction", []any{"0x" + hex.EncodeToString(raw)})
+	if err != nil {
+		return "", err
+	}
+	return rawString(res), nil
 }
