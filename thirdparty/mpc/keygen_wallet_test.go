@@ -345,7 +345,7 @@ func TestGenerateAddress_EVMChainsShareTheSecpAddress(t *testing.T) {
 
 	for _, tr := range transports {
 		t.Run(tr.name, func(t *testing.T) {
-			for _, chain := range []string{"ethereum", "polygon", "arbitrum", "optimism", "base", "avalanche", "lux", "zoo", "bsc"} {
+			for _, chain := range []string{"ethereum", "polygon", "arbitrum", "optimism", "base", "lux", "bsc"} {
 				t.Run(chain, func(t *testing.T) {
 					mp := tr.start(t, mints(addrs{evm: evm, btc: "bc1qbtc"}))
 					got, err := mp.GenerateAddress(context.Background(), "hanzo", chain)

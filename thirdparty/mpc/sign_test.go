@@ -204,6 +204,28 @@ func TestSignRefusesUnknownNetworkAndMissingIdentity(t *testing.T) {
 	}
 }
 
+// TestMintChainsAreSignable is the invariant that keeps custody a two-way door.
+//
+// Minting an address and spending from one are separate capabilities behind
+// separate tables — mintChains here, custody.curves there — and for a while they
+// disagreed: avalanche and zoo could be minted, so the rail would hand a payer a
+// real custody address, watch the deposit land and credit it, while mpcd's
+// networkAlias knew neither name and would refuse every signature over those
+// coins. A deposit that can be received and never spent is worse than one that
+// is refused, and nothing in either table could see the gap.
+//
+// So the gap is asserted rather than remembered. It fails on the way IN, which
+// is the direction that costs money: a chain added to mintChains without a curve
+// breaks this test, and a chain added to custody.curves alone breaks nothing
+// because reading a curve we never mint on is harmless.
+func TestMintChainsAreSignable(t *testing.T) {
+	for chain := range mintChains {
+		if _, ok := custody.Network(chain).Curve(); !ok {
+			t.Errorf("mintChains offers %q but custody signs on no such network: an address minted there could never be swept", chain)
+		}
+	}
+}
+
 // TestIdempotencyKeyIsContentAddressed is a money-safety property, not a
 // convenience.
 //
