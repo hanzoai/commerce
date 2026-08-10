@@ -59,22 +59,24 @@ require (
 	github.com/hanzoai/money v0.2.5
 	github.com/hanzoai/sqlite v0.5.2
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/luxfi/trace v1.3.0
+	github.com/luxfi/geth v1.20.1
 	github.com/luxfi/zap v1.2.7
 	github.com/valyala/fasthttp v1.72.0
 	github.com/zap-proto/fiber/v3 v3.2.1
 )
 
 require (
-	filippo.io/hpke v0.4.0 // indirect
 	github.com/ALTree/bigfloat v0.2.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
+	github.com/bits-and-blooms/bitset v1.24.4 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
+	github.com/consensys/gnark-crypto v0.20.1 // indirect
+	github.com/crate-crypto/go-eth-kzg v1.5.0 // indirect
 	github.com/cronokirby/saferith v0.33.0 // indirect
+	github.com/ethereum/c-kzg-4844/v2 v2.1.7 // indirect
 	github.com/fatih/color v1.19.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.1 // indirect
-	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/gofiber/schema v1.7.1 // indirect
@@ -90,19 +92,16 @@ require (
 	github.com/hanzoai/xorm v1.4.4 // indirect
 	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/luxfi/accel v1.2.4 // indirect
-	github.com/luxfi/age v1.6.0 // indirect
 	github.com/luxfi/consensus v1.36.11 // indirect
 	github.com/luxfi/constants v1.6.2 // indirect
 	github.com/luxfi/corona v0.10.4 // indirect
+	github.com/luxfi/crypto/ipa v1.2.4 // indirect
 	github.com/luxfi/dkg v0.3.5 // indirect
-	github.com/luxfi/fhe v1.8.2 // indirect
-	github.com/luxfi/geth v1.20.1 // indirect
 	github.com/luxfi/lattice/v7 v7.1.4 // indirect
 	github.com/luxfi/lens v0.2.1 // indirect
 	github.com/luxfi/magnetar v1.2.3 // indirect
 	github.com/luxfi/mlwe v0.3.0 // indirect
 	github.com/luxfi/pq v1.1.0 // indirect
-	github.com/luxfi/price v1.0.1 // indirect
 	github.com/luxfi/pulsar v1.9.2 // indirect
 	github.com/luxfi/sampler v1.1.0 // indirect
 	github.com/luxfi/threshold v1.12.3 // indirect
@@ -120,9 +119,6 @@ require (
 	github.com/zap-proto/go v1.3.0 // indirect
 	github.com/zap-proto/http v0.3.1 // indirect
 	github.com/zeebo/blake3 v0.2.4 // indirect
-	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/otel/metric v1.44.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.44.0 // indirect
 	gonum.org/v1/gonum v0.17.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	modernc.org/libc v1.72.3 // indirect

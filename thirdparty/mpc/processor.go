@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -239,31 +240,31 @@ func (mp *MPCProcessor) Type() processor.ProcessorType {
 	return processor.MPC
 }
 
-// --- MPC API types (matching lux/mpc/pkg/api) ---
-
-type mpcCreateTxReq struct {
-	WalletID  string `json:"wallet_id"`
-	TxType    string `json:"tx_type"`
-	Chain     string `json:"chain"`
-	ToAddress string `json:"to_address"`
-	Amount    string `json:"amount"`
-	Token     string `json:"token,omitempty"`
-}
-
-type mpcTxResp struct {
-	ID     string `json:"id"`
-	Status string `json:"status"`
-	TxHash string `json:"txHash,omitempty"`
-	Chain  string `json:"chain,omitempty"`
-	Amount string `json:"amount,omitempty"`
-}
-
-type mpcBalanceResp struct {
-	Address  string `json:"address"`
-	Chain    string `json:"chain"`
-	Balance  string `json:"balance"`
-	Decimals int    `json:"decimals"`
-}
+// errNotAWallet is why five of this processor's methods refuse instead of
+// calling out.
+//
+// They used to POST to {mpcEndpoint}/api/v1/transactions and expect the signer
+// to build, sign and broadcast a chain transaction. mpcd serves no such route:
+// its internal surface is /healthz, /keys, /backup, /keygen and /sign, and that
+// path answers 404. Nor could it be repointed. The route on mpcd's OTHER server
+// that is spelled similarly (POST /v1/transactions on the node-0 dashboard) is
+// not a builder either — it records a row and, if policy approves, broadcasts a
+// raw_tx the CALLER already built.
+//
+// So there is nothing to point at, and there should not be: a threshold signer
+// that knew about chains, tokens and amounts would be a wallet, and the whole
+// reason custody is safe is that the component holding the key shares can only
+// ever see a digest. Building and broadcasting is commerce's job and lives in
+// billing/custody, which reads the chain with commerce's own clients and asks
+// this processor for signatures through Sign.
+//
+// These methods refuse loudly rather than being deleted because the
+// CryptoProcessor interface requires them, and rather than being stubbed
+// "successful" because a payment rail that reports success without moving money
+// is the worst of the three options.
+var errNotAWallet = errors.New(
+	"mpc: the MPC fleet is a threshold signer, not a wallet — it signs digests and does not build, submit or track chain transactions; " +
+		"spending from custody goes through billing/custody, which drafts with commerce's own chain clients and signs via MPCProcessor.Sign")
 
 // --- CryptoProcessor methods ---
 
@@ -355,26 +356,20 @@ func (mp *MPCProcessor) GenerateAddress(ctx context.Context, customerID string, 
 	return processor.Wallet{Address: addr, ID: resp.WalletID}, nil
 }
 
-// GetBalance retrieves the balance for an address on a given chain.
-// Calls MPC service for balance lookup or chain RPC.
+// GetBalance refuses, because the signer does not hold balances.
+//
+// It used to GET {mpcEndpoint}/api/v1/wallets/{address}/addresses — a route
+// that does not exist — decode the 404 into a map, discard the map, and return
+// zero. So it reported "0" for every funded address in the fleet and reported
+// it as a SUCCESS on the path where the call failed. A balance of zero is a
+// perfectly ordinary answer, which is what made the lie invisible.
+//
+// The chain is the only thing that knows a balance. billing/husdindex reads
+// ERC-20 balances over eth_call and the depositwatch readers read the rest;
+// asking the signer was never going to work.
 func (mp *MPCProcessor) GetBalance(ctx context.Context, address string, chain string) (*processor.Balance, error) {
-	reqURL := fmt.Sprintf("%s/api/v1/wallets/%s/addresses", mp.mpcEndpoint, address)
-
-	var addresses map[string]string
-	err := mp.http.doJSON(ctx, http.MethodGet, reqURL, nil, &addresses)
-	if err != nil {
-		return &processor.Balance{
-			Available: currency.Cents(0),
-			Pending:   currency.Cents(0),
-			Currency:  currency.Type(chain),
-		}, processor.NewPaymentError(processor.MPC, "BALANCE_QUERY_FAILED", "failed to query balance", err)
-	}
-
-	return &processor.Balance{
-		Available: currency.Cents(0),
-		Pending:   currency.Cents(0),
-		Currency:  currency.Type(chain),
-	}, nil
+	return nil, processor.NewPaymentError(processor.MPC, "NOT_A_WALLET",
+		"MPC signer holds no balances; read the chain", errNotAWallet)
 }
 
 // EstimateFee estimates transaction fees based on chain type.
@@ -402,178 +397,47 @@ func (mp *MPCProcessor) EstimateFee(ctx context.Context, req processor.PaymentRe
 	}
 }
 
-// Charge processes a crypto payment by creating and signing a transaction via MPC.
+// Charge refuses. Moving money out of custody is billing/custody.Sweep, which
+// drafts the transaction against the chain, asks Sign for a signature over the
+// digest, and broadcasts with commerce's own client.
 func (mp *MPCProcessor) Charge(ctx context.Context, req processor.PaymentRequest) (*processor.PaymentResult, error) {
-	if err := processor.ValidateRequest(req); err != nil {
-		return nil, err
-	}
-
-	chain := req.Chain
-	if chain == "" {
-		chain = chainForCurrency(req.Currency)
-	}
-
-	toAddress := req.Address
-	if toAddress == "" {
-		return nil, processor.NewPaymentError(processor.MPC, "NO_ADDRESS", "destination address required for crypto payment", nil)
-	}
-
-	// Create transaction via MPC API: POST /api/v1/transactions
-	txReqURL := fmt.Sprintf("%s/api/v1/transactions", mp.mpcEndpoint)
-
-	var txResp mpcTxResp
-	err := mp.http.doJSON(ctx, http.MethodPost, txReqURL, &mpcCreateTxReq{
-		WalletID:  req.CustomerID,
-		TxType:    "transfer",
-		Chain:     chain,
-		ToAddress: toAddress,
-		Amount:    fmt.Sprintf("%d", req.Amount),
-		Token:     string(req.Currency),
-	}, &txResp)
-	if err != nil {
-		return nil, processor.NewPaymentError(processor.MPC, "TX_CREATE_FAILED", "failed to create MPC transaction", err)
-	}
-
-	fee, _ := mp.EstimateFee(ctx, req)
-
-	return &processor.PaymentResult{
-		Success:       true,
-		TransactionID: txResp.ID,
-		ProcessorRef:  txResp.ID,
-		Fee:           fee,
-		Status:        txResp.Status,
-		Metadata: map[string]interface{}{
-			"chain":   chain,
-			"address": toAddress,
-			"txHash":  txResp.TxHash,
-		},
-	}, nil
+	return nil, processor.NewPaymentError(processor.MPC, "NOT_A_WALLET",
+		"MPC signer cannot build or broadcast a transaction", errNotAWallet)
 }
 
-// Authorize creates a pending transaction in the MPC policy engine for approval.
+// Authorize refuses. The policy engine that held pending transactions lives on
+// mpcd's dashboard server, is not part of the signing surface, and was never
+// reachable from the endpoint this rail is configured with.
 func (mp *MPCProcessor) Authorize(ctx context.Context, req processor.PaymentRequest) (*processor.PaymentResult, error) {
-	if err := processor.ValidateRequest(req); err != nil {
-		return nil, err
-	}
-
-	chain := req.Chain
-	if chain == "" {
-		chain = chainForCurrency(req.Currency)
-	}
-
-	// Create transaction that requires approval via MPC API
-	txReqURL := fmt.Sprintf("%s/api/v1/transactions", mp.mpcEndpoint)
-
-	var txResp mpcTxResp
-	err := mp.http.doJSON(ctx, http.MethodPost, txReqURL, &mpcCreateTxReq{
-		WalletID:  req.CustomerID,
-		TxType:    "transfer",
-		Chain:     chain,
-		ToAddress: req.Address,
-		Amount:    fmt.Sprintf("%d", req.Amount),
-		Token:     string(req.Currency),
-	}, &txResp)
-	if err != nil {
-		return nil, processor.NewPaymentError(processor.MPC, "TX_AUTHORIZE_FAILED", "failed to create pending MPC transaction", err)
-	}
-
-	return &processor.PaymentResult{
-		Success:       true,
-		TransactionID: txResp.ID,
-		ProcessorRef:  txResp.ID,
-		Status:        txResp.Status,
-		Metadata: map[string]interface{}{
-			"requires_approval": true,
-			"chain":             chain,
-		},
-	}, nil
+	return nil, processor.NewPaymentError(processor.MPC, "NOT_A_WALLET",
+		"MPC signer cannot hold a pending transaction", errNotAWallet)
 }
 
-// Capture approves and executes a previously authorized transaction.
+// Capture refuses. There is nothing to approve: Authorize creates nothing.
 func (mp *MPCProcessor) Capture(ctx context.Context, transactionID string, amount money.Amount) (*processor.PaymentResult, error) {
-	// Approve the transaction via MPC API: POST /api/v1/transactions/{id}/approve
-	approveURL := fmt.Sprintf("%s/api/v1/transactions/%s/approve", mp.mpcEndpoint, transactionID)
-
-	var txResp mpcTxResp
-	err := mp.http.doJSON(ctx, http.MethodPost, approveURL, nil, &txResp)
-	if err != nil {
-		return nil, processor.NewPaymentError(processor.MPC, "TX_CAPTURE_FAILED", "failed to approve MPC transaction", err)
-	}
-
-	return &processor.PaymentResult{
-		Success:       true,
-		TransactionID: transactionID,
-		ProcessorRef:  transactionID,
-		Status:        txResp.Status,
-	}, nil
+	return nil, processor.NewPaymentError(processor.MPC, "NOT_A_WALLET",
+		"MPC signer holds no transaction to approve", errNotAWallet)
 }
 
-// Refund signs a refund transaction via MPC (outbound transfer back to source).
+// Refund refuses.
+//
+// A refund is a spend back to the payer, which is the same problem as a sweep
+// with a different destination — so when one is wanted it belongs in
+// billing/custody with the payer's address as Transfer.To, not here. It is not
+// wired to that yet, and saying so is better than the previous shape, which
+// asked a 404 for the original transaction and reported the failure as a
+// lookup problem.
 func (mp *MPCProcessor) Refund(ctx context.Context, req processor.RefundRequest) (*processor.RefundResult, error) {
-	// Look up the original transaction to get the source address
-	origTx, err := mp.GetTransaction(ctx, req.TransactionID)
-	if err != nil {
-		return nil, processor.NewPaymentError(processor.MPC, "REFUND_LOOKUP_FAILED", "failed to look up original transaction for refund", err)
-	}
-
-	chain := ""
-	sourceAddr := ""
-	if origTx.Metadata != nil {
-		if c, ok := origTx.Metadata["chain"].(string); ok {
-			chain = c
-		}
-		if a, ok := origTx.Metadata["from"].(string); ok {
-			sourceAddr = a
-		}
-	}
-
-	// Create a refund transaction via MPC API
-	txReqURL := fmt.Sprintf("%s/api/v1/transactions", mp.mpcEndpoint)
-
-	var txResp mpcTxResp
-	err = mp.http.doJSON(ctx, http.MethodPost, txReqURL, &mpcCreateTxReq{
-		WalletID:  req.TransactionID,
-		TxType:    "refund",
-		Chain:     chain,
-		ToAddress: sourceAddr,
-		Amount:    req.Amount.MinorString(),
-	}, &txResp)
-	if err != nil {
-		return nil, processor.NewPaymentError(processor.MPC, "REFUND_FAILED", "failed to create MPC refund transaction", err)
-	}
-
-	return &processor.RefundResult{
-		Success:      true,
-		RefundID:     txResp.ID,
-		ProcessorRef: txResp.ID,
-	}, nil
+	return nil, processor.NewPaymentError(processor.MPC, "NOT_A_WALLET",
+		"MPC signer cannot build or broadcast a refund", errNotAWallet)
 }
 
-// GetTransaction retrieves transaction details from the MPC service.
+// GetTransaction refuses. The signer keeps signing sessions, not transactions;
+// what happened to a transaction is a question for the chain, and for the
+// intent record commerce already holds.
 func (mp *MPCProcessor) GetTransaction(ctx context.Context, txID string) (*processor.Transaction, error) {
-	reqURL := fmt.Sprintf("%s/api/v1/transactions/%s", mp.mpcEndpoint, txID)
-
-	var txResp mpcTxResp
-	err := mp.http.doJSON(ctx, http.MethodGet, reqURL, nil, &txResp)
-	if err != nil {
-		return nil, processor.NewPaymentError(processor.MPC, "TX_QUERY_FAILED", "failed to query MPC transaction", err)
-	}
-
-	now := time.Now().Unix()
-	return &processor.Transaction{
-		ID:           txResp.ID,
-		ProcessorRef: txResp.ID,
-		Type:         "transfer",
-		Amount:       currency.Cents(0), // MPC service stores amount as string
-		Currency:     currency.Type(txResp.Chain),
-		Status:       txResp.Status,
-		CreatedAt:    now,
-		UpdatedAt:    now,
-		Metadata: map[string]interface{}{
-			"chain":  txResp.Chain,
-			"txHash": txResp.TxHash,
-		},
-	}, nil
+	return nil, processor.NewPaymentError(processor.MPC, "NOT_A_WALLET",
+		"MPC signer does not track transactions", errNotAWallet)
 }
 
 // ValidateWebhook validates an incoming blockchain event notification.
