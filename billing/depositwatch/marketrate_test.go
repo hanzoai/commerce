@@ -179,3 +179,67 @@ func TestRateStringKeepsEveryDigit(t *testing.T) {
 		}
 	}
 }
+
+// --- configuring a native coin ---
+
+// A native coin has nothing to point at, so it is configured with the literal
+// word rather than an address — and an EMPTY value is refused, because empty is
+// indistinguishable from a typo, an unset variable, or a secret that failed to
+// sync, and each of those should stop a boot rather than arm a chain.
+func TestANativeCoinIsConfiguredAsNative(t *testing.T) {
+	for _, c := range []struct {
+		name    string
+		environ []string
+		wantErr bool
+	}{
+		{
+			name: "native, spelled",
+			environ: []string{
+				"CRYPTO_DEPOSIT_RPC_BITCOIN=https://esplora",
+				"CRYPTO_DEPOSIT_TOKEN_BITCOIN_BTC=" + NativeContract,
+			},
+		},
+		{
+			name: "an address where a native coin belongs",
+			environ: []string{
+				"CRYPTO_DEPOSIT_RPC_BITCOIN=https://esplora",
+				"CRYPTO_DEPOSIT_TOKEN_BITCOIN_BTC=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+			},
+			wantErr: true,
+		},
+		{
+			name: "native TON, which is the coin and not the jetton",
+			environ: []string{
+				"CRYPTO_DEPOSIT_RPC_TON=https://index",
+				"CRYPTO_DEPOSIT_TOKEN_TON_TON=" + NativeContract,
+			},
+		},
+		{
+			name: "native XRP needs no trust line and no issuer",
+			environ: []string{
+				"CRYPTO_DEPOSIT_RPC_XRPL=https://xrpl",
+				"CRYPTO_DEPOSIT_ADDRESS_XRPL=rhZHooGo1RcX7UBRofpojJn62wmKszzF9g",
+				"CRYPTO_DEPOSIT_TOKEN_XRPL_XRP=" + NativeContract,
+			},
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			got, err := AssetsFromEnv(c.environ)
+			if c.wantErr {
+				if err == nil {
+					t.Fatalf("accepted %+v", got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("AssetsFromEnv: %v", err)
+			}
+			if len(got) != 1 {
+				t.Fatalf("built %d assets, want 1", len(got))
+			}
+			if !got[0].MarketPriced() {
+				t.Errorf("%s is not market-priced", got[0].Key())
+			}
+		})
+	}
+}

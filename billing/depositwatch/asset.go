@@ -569,7 +569,29 @@ func AssetsFromEnv(environ []string) ([]Asset, error) {
 // is the chain read in Watcher.verify, which asks the token itself. This one
 // exists so an address pasted from the wrong chain entirely fails at boot,
 // loudly, instead of at the first deposit.
+// NativeContract is what a MARKET-PRICED native coin is configured with, in
+// place of a contract address:
+//
+//	CRYPTO_DEPOSIT_TOKEN_BITCOIN_BTC=native
+//
+// A native coin has nothing to point at — it is the chain's own unit, defined by
+// consensus rather than by a deployed contract — so the slot that names a token
+// on every other asset has no address to hold. The word is REQUIRED rather than
+// the field being left empty, because an empty value is indistinguishable from a
+// typo, an unset variable, or a secret that failed to sync, and every one of
+// those should stop a boot rather than silently arm a chain.
+const NativeContract = "native"
+
 func (a Asset) validateContract() error {
+	// A native coin is identified by its chain and its own name, and there is
+	// nothing on chain to check it against — which is exactly why it needs no
+	// symbol lookup either. The literal is the whole assertion.
+	if a.MarketPriced() {
+		if a.Contract != NativeContract {
+			return fmt.Errorf("is a native coin and must be configured as %q, not %q — there is no contract to point at", NativeContract, a.Contract)
+		}
+		return nil
+	}
 	switch a.Family() {
 	case FamilySolana:
 		if !isBase58Account(a.Contract) {
