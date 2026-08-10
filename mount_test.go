@@ -1,9 +1,6 @@
 // Copyright (c) 2014-present Hanzo AI, Inc.
 // Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
 
-//go:build cloud
-// +build cloud
-
 package commerce
 
 import (
@@ -12,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hanzoai/cloud"
 	luxlog "github.com/luxfi/log"
 
 	"github.com/zap-proto/zip"
@@ -23,24 +19,13 @@ import (
 // {"service":"commerce"}. Covers:
 //
 //   - Mount() can be called against a fresh *zip.App
-//   - cloud.Register fires from init() (Registry contains "commerce")
 //   - the native zip health route reaches Fiber and returns JSON
 //
-// The legacy gin handler surface (proxied via app.Mount(...)) is
-// covered separately by TestMount_GinSurfaceReachable below.
+// The rest of the mounted surface is covered by TestMount_GinSurfaceReachable
+// below.
 func TestMount_RegistersHealth(t *testing.T) {
-	if !registryContains("commerce") {
-		t.Fatalf("cloud.Registry missing 'commerce'; Names=%v", registryNames())
-	}
-
 	app := zip.New(zip.Config{Logger: luxlog.New("test")})
-	deps := cloud.Deps{
-		Logger:  luxlog.New("test"),
-		Brand:   "hanzo",
-		Domain:  "api.hanzo.ai",
-		DataDir: t.TempDir(),
-	}
-	if err := Mount(app, deps); err != nil {
+	if err := Mount(app, t.TempDir(), luxlog.New("test")); err != nil {
 		t.Fatalf("Mount: %v", err)
 	}
 
@@ -63,30 +48,24 @@ func TestMount_RegistersHealth(t *testing.T) {
 	}
 }
 
-// TestMount_GinSurfaceReachable proves the inner gin engine is actually
-// reachable through the outer zip.App. The /v1/commerce/tenant public route
-// is registered on the embedded gin engine; routing a request through
-// zip → AdaptNetHTTP → gin must reach the org-as-tenant handler. We accept
-// any non-NoRoute response — org resolution returns 200 with the tenant JSON —
-// which proves the route resolved past zip's adapter into a real handler
-// rather than falling through to the SPA NoRoute branch.
+// TestMount_PublicSurfaceReachable proves the /v1/commerce group actually
+// reaches commerce's handlers on the host's app — not just the health route
+// Mount registers by hand.
 //
-// Without this test, mount.go could regress to "zip mounts the prefix
-// but the inner engine is broken" and TestMount_RegistersHealth would
-// still pass (it only exercises the native zip route).
-func TestMount_GinSurfaceReachable(t *testing.T) {
+// It asks for the public catalog, which needs no host resolution and no
+// credential, so a 200 means the route resolved into the real handler. It used
+// to ask for /v1/commerce/tenant and only assert the body was not the SPA
+// fallback string; that route stopped existing when org-as-tenant became
+// GET /v1/commerce/org, and a mounted app has no SPA fallback to produce that
+// string anyway, so the assertion held no matter what — including if Mount
+// registered nothing at all. Which is the regression it was written to catch.
+func TestMount_PublicSurfaceReachable(t *testing.T) {
 	app := zip.New(zip.Config{Logger: luxlog.New("test")})
-	deps := cloud.Deps{
-		Logger:  luxlog.New("test"),
-		Brand:   "hanzo",
-		Domain:  "api.hanzo.ai",
-		DataDir: t.TempDir(),
-	}
-	if err := Mount(app, deps); err != nil {
+	if err := Mount(app, t.TempDir(), luxlog.New("test")); err != nil {
 		t.Fatalf("Mount: %v", err)
 	}
 
-	req := httptest.NewRequest("GET", "/v1/commerce/tenant", nil)
+	req := httptest.NewRequest("GET", "/v1/commerce/catalog", nil)
 	req.Host = "pay.example.test"
 	resp, err := app.Test(req)
 	if err != nil {
@@ -96,13 +75,9 @@ func TestMount_GinSurfaceReachable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read body: %v", err)
 	}
-	body := string(raw)
-
-	// NoRoute SPA fallback for API paths returns exactly the canonical
-	// `{"error":"not found"}` body. Seeing that proves the request never
-	// reached a real gin handler.
-	if body == `{"error":"not found"}` {
-		t.Fatalf("/v1/commerce/tenant fell through to NoRoute SPA — gin surface not wired through zip mount. status=%d body=%s", resp.StatusCode, body)
+	if resp.StatusCode != 200 {
+		t.Fatalf("GET /v1/commerce/catalog = %d (%s); the mount did not register commerce's public group on the host app",
+			resp.StatusCode, strings.TrimSpace(string(raw)))
 	}
 }
 
@@ -133,13 +108,7 @@ func TestMount_GinSurfaceReachable(t *testing.T) {
 // zip >= v1.8.3, or MCP disabled) before deleting this guard.
 func TestMount_NoUngatedTypedOpSurface(t *testing.T) {
 	app := zip.New(zip.Config{Logger: luxlog.New("test")})
-	deps := cloud.Deps{
-		Logger:  luxlog.New("test"),
-		Brand:   "hanzo",
-		Domain:  "api.hanzo.ai",
-		DataDir: t.TempDir(),
-	}
-	if err := Mount(app, deps); err != nil {
+	if err := Mount(app, t.TempDir(), luxlog.New("test")); err != nil {
 		t.Fatalf("Mount: %v", err)
 	}
 
@@ -167,21 +136,4 @@ func TestMount_NoUngatedTypedOpSurface(t *testing.T) {
 			"and prove an unauthenticated tools/call of a mint op is refused.",
 			resp.StatusCode, strings.TrimSpace(string(raw)))
 	}
-}
-
-func registryContains(name string) bool {
-	for _, s := range cloud.Registry {
-		if s.Name == name {
-			return true
-		}
-	}
-	return false
-}
-
-func registryNames() []string {
-	out := make([]string, 0, len(cloud.Registry))
-	for _, s := range cloud.Registry {
-		out = append(out, s.Name)
-	}
-	return out
 }

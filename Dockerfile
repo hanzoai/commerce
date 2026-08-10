@@ -163,17 +163,15 @@ COPY --from=billing-dist /public/ billing/ui/dist/
 # build of this image fails on `undefined: cgoBuildNeedsSQLiteMathFunctions` —
 # which is why v1.49.26 through v1.49.28 published no image at all.
 #
-# `-tags cloud` compiles in the HIP-0106 cloud-mount path (cloud_boot.go);
-# the binary remains backwards-compatible (legacy direct-Gin is the
-# default boot mode) but operators can now flip --cloud or
-# COMMERCE_MODE=cloud to serve commerce through a zip.App with gin
-# adapted as the inner handler. Phase 1 of the staged Gin → zip
-# migration — see mount.go for the contract and cmd/commerce/main.go
-# for the dispatcher.
+# The HIP-0106 cloud-mount path is always compiled in — it costs one zip
+# import, so there is nothing to gate. Legacy direct-Gin stays the default
+# boot mode; operators flip --cloud or COMMERCE_MODE=cloud to serve commerce
+# through a zip.App the way a host mounts it. See mount.go for the contract
+# and cmd/commerce/main.go for the dispatcher.
 #
 # Pass `./cmd/commerce` (the package) instead of `./cmd/commerce/main.go`
-# so cloud_boot.go / cloud_stub.go / legacy.go get compiled into the
-# same binary alongside main.go.
+# so cloud.go / legacy.go get compiled into the same binary alongside
+# main.go.
 # VERSION is injected by CI (docker-deploy.yml) from the immutable image
 # tag so the binary's /healthz version == its deployed tag. Empty default
 # keeps commerce.Version's in-source default for local builds.
@@ -193,7 +191,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_CFLAGS="-D_LARGEFILE64_SOURCE -D_GNU_SOURCE" \
     VER="${VERSION#v}" && \
     go build -mod=mod -p=8 \
-    -tags "cloud sqlite_omit_load_extension sqlite_math_functions" \
+    -tags "sqlite_omit_load_extension sqlite_math_functions" \
     -ldflags="-s -w \
       ${VER:+-X github.com/hanzoai/commerce.Version=${VER}} \
       -X github.com/hanzoai/commerce.GitCommit=$(git rev-parse --short HEAD 2>/dev/null || echo sandboxfix) \
