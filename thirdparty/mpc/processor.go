@@ -34,10 +34,11 @@ type MPCProcessor struct {
 	// business.
 	transport Transport
 
-	// http carries the transactional calls, which have no wire but this one —
-	// mpcd's ZAP surface registers no opcode for creating, approving,
-	// refunding or querying a transaction. When no ZAP address is configured
-	// this is also the Transport above, so the HTTP plumbing exists once.
+	// http carries signing, which has no wire but this one: mpcd defines an
+	// MPC-API ZAP surface with a sign opcode but never starts it — pkg/api
+	// StartZAP has no callers — so nothing in the fleet listens for it on any
+	// port or socket. When no ZAP address is configured this is also the
+	// Transport above, so the HTTP plumbing exists once.
 	http *httpTransport
 }
 
@@ -129,9 +130,10 @@ func NewProcessor(cfg Config) *MPCProcessor {
 // make us dial out just by posting.
 //
 // A ZAP address does not substitute for the HTTP endpoint and is deliberately
-// not consulted here. Selecting ZAP moves keygen and health onto that wire; the
-// transactional calls have no ZAP opcode to move to, so a rail without an HTTP
-// endpoint is still a rail that cannot finish a payment.
+// not consulted here. Selecting ZAP moves keygen and health onto that wire;
+// signing has no ZAP surface running anywhere in the fleet to move to, so a
+// rail without an HTTP endpoint is still a rail that can mint a custody address
+// and never spend from it.
 func (mp *MPCProcessor) configured() bool {
 	return mp.kmsEndpoint != "" && mp.mpcEndpoint != ""
 }
@@ -525,34 +527,6 @@ func (mp *MPCProcessor) IsAvailable(ctx context.Context) bool {
 	defer cancel()
 
 	return mp.transport.Health(healthCtx) == nil
-}
-
-// chainForCurrency maps a currency type to its primary chain.
-func chainForCurrency(c currency.Type) string {
-	switch c {
-	case currency.BTC:
-		return "bitcoin"
-	case currency.ETH:
-		return "ethereum"
-	case currency.Type("sol"):
-		return "solana"
-	case currency.Type("matic"):
-		return "polygon"
-	case currency.Type("avax"):
-		return "avalanche"
-	case currency.Type("lux"):
-		return "lux"
-	case currency.Type("arb"):
-		return "arbitrum"
-	case currency.Type("op"):
-		return "optimism"
-	case currency.Type("base"):
-		return "base"
-	case currency.Type("usdc"), currency.Type("usdt"):
-		return "ethereum" // default to Ethereum for stablecoins
-	default:
-		return "ethereum"
-	}
 }
 
 // Ensure MPCProcessor implements CryptoProcessor.
