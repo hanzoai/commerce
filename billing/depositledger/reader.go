@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hanzoai/commerce/billing/bitcoinrpc"
 	"github.com/hanzoai/commerce/billing/depositwatch"
 	"github.com/hanzoai/commerce/billing/husdindex"
 	"github.com/hanzoai/commerce/billing/solanarpc"
@@ -23,6 +24,27 @@ import (
 // Adding a chain means adding a Reader and a family entry — and nothing in the
 // policy half moves.
 func newReader(a depositwatch.Asset) (depositwatch.Reader, error) {
+	// A MARKET-PRICED coin is the chain's own unit, so it is read by a different
+	// client from the tokens on the same chain — native TON is a message value
+	// where a jetton is a decoded transfer body, native XRP is a drops string
+	// where an issued currency is an object. Asked here, once, so the two can
+	// never be confused downstream.
+	//
+	// It comes BEFORE the family switch because the family alone cannot answer
+	// it: "ton" names both the coin and the chain that carries jetton USDT.
+	if a.MarketPriced() {
+		switch a.Family() {
+		case depositwatch.FamilyBitcoin:
+			return bitcoinrpc.NewClient(a.RPCURL), nil
+		case depositwatch.FamilyTON:
+			return tonrpc.NewNative(a.RPCURL), nil
+		case depositwatch.FamilyXRPL:
+			return xrplrpc.NewNative(a.RPCURL), nil
+		default:
+			return nil, fmt.Errorf("depositledger: %s: %q is market-priced but its chain has no native reader", a.Key(), a.Token)
+		}
+	}
+
 	switch a.Family() {
 	case depositwatch.FamilySolana:
 		mint, err := solanarpc.ParsePublicKey(a.Contract)
