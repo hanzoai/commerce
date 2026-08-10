@@ -280,50 +280,30 @@ var pegCents = map[string]int64{
 	"rlusd": 100,
 }
 
-// marketPriced is the OTHER way a token can be creditable: at a live rate rather
-// than a fixed peg, keyed to the asset id the price oracle knows it by.
+// marketPriced is the other way a token is creditable: a live rate rather than a
+// fixed peg, keyed by the id the oracle knows it by ("ripple", not "xrp" — its
+// vocabulary, and translating twice is how a map goes stale).
 //
-// The paragraph above says a native coin "cannot be priced" and that reaching a
-// new chain "needs a Reader and NOT a price oracle". Both were true while there
-// was no oracle. There is one now (luxfi/price), so the sentence that still
-// holds is the narrower one: a rate must be JUSTIFIED — two independent venues
-// agreeing inside a spread — or nothing is credited. What is refused is a guess,
-// not a market.
-//
-// A token is in EXACTLY ONE of these two tables. Being in both would mean two
-// answers to what a customer's coin is worth, and no way to say which was used
-// on a receipt; AssetsFromEnv refuses that overlap rather than preferring one.
-//
-// The ids are the oracle's, not ours ("ripple", not "xrp"), because they are its
-// vocabulary and translating in two places is how a symbol map goes stale.
+// A token is in EXACTLY ONE of the two tables. Both would mean two answers to
+// what a coin is worth and no way to say which a receipt used.
 var marketPriced = map[string]string{
 	"btc": "bitcoin",
 	"xrp": "ripple",
 	"ton": "the-open-network",
 }
 
-// nativeChain is the ONE chain each market-priced coin is actually native to.
-//
-// A native coin exists on exactly one chain, and the same ticker elsewhere is a
-// WRAPPED asset: "btc on ethereum" is wBTC, a token with an issuer, a custodian
-// and a de-peg risk that bitcoin does not have. Crediting it at the bitcoin
-// price would value somebody's wBTC as if it were bitcoin — which is a different
-// bet, made on their behalf, silently.
-//
-// So this pins each coin to its chain and AssetsFromEnv refuses the rest. A
-// wrapped asset is welcome on this rail the day somebody adds it deliberately,
-// with its own peg or its own price id.
+// nativeChain pins each coin to the one chain it is native to. The same ticker
+// elsewhere is a WRAPPED asset — "btc on ethereum" is wBTC, with an issuer and a
+// de-peg risk — and crediting it at the bitcoin price values it as something it
+// is not. A wrapped asset is welcome the day someone adds it deliberately.
 var nativeChain = map[string]string{
 	"btc": "bitcoin",
 	"xrp": "xrpl",
 	"ton": "ton",
 }
 
-// MarketPriced reports whether this asset is credited at a live rate.
-//
-// It is the one question the credit path asks before choosing where the number
-// comes from, so the two tables cannot be consulted in different orders in
-// different places.
+// MarketPriced reports whether this asset is credited at a live rate. One
+// question, so the two tables are never consulted in different orders.
 func (a Asset) MarketPriced() bool { _, ok := marketPriced[a.Token]; return ok }
 
 // PriceID is the oracle's name for this asset, empty for a pegged token.
@@ -569,27 +549,9 @@ func AssetsFromEnv(environ []string) ([]Asset, error) {
 // is the chain read in Watcher.verify, which asks the token itself. This one
 // exists so an address pasted from the wrong chain entirely fails at boot,
 // loudly, instead of at the first deposit.
-// NativeContract is what a MARKET-PRICED native coin is configured with, in
-// place of a contract address:
-//
-//	CRYPTO_DEPOSIT_TOKEN_BITCOIN_BTC=native
-//
-// A native coin has nothing to point at — it is the chain's own unit, defined by
-// consensus rather than by a deployed contract — so the slot that names a token
-// on every other asset has no address to hold. The word is REQUIRED rather than
-// the field being left empty, because an empty value is indistinguishable from a
-// typo, an unset variable, or a secret that failed to sync, and every one of
-// those should stop a boot rather than silently arm a chain.
-const NativeContract = "native"
-
 func (a Asset) validateContract() error {
-	// A native coin is identified by its chain and its own name, and there is
-	// nothing on chain to check it against — which is exactly why it needs no
-	// symbol lookup either. The literal is the whole assertion.
+	// A native coin has no contract. The key names it: BITCOIN_BTC is bitcoin.
 	if a.MarketPriced() {
-		if a.Contract != NativeContract {
-			return fmt.Errorf("is a native coin and must be configured as %q, not %q — there is no contract to point at", NativeContract, a.Contract)
-		}
 		return nil
 	}
 	switch a.Family() {
@@ -793,40 +755,23 @@ func allASCIIDigits(s string) bool {
 // It is not a failure: sub-cent dust is a real transfer that credits nothing.
 var ErrDust = errors.New("depositwatch: transfer is worth less than one cent")
 
-// ErrUnderFee is returned when a transfer is worth something but not enough to
-// cover Terms.FeeCents. It is separate from ErrDust because the two need
-// different words for a customer: dust is "you sent almost nothing", this is
-// "you sent real money and it costs more than that to move it". Both credit
-// nothing; only one of them is worth telling somebody about before they send.
+// ErrUnderFee is a transfer worth something but less than Terms.FeeCents.
+// Separate from ErrDust because the customer needs different words: dust is "you
+// sent almost nothing", this is "it costs more than that to move it".
 var ErrUnderFee = errors.New("depositwatch: transfer does not cover the network fee")
 
-// Terms are what the rail deducts from a deposit's gross value before crediting.
-//
-// The zero value deducts NOTHING and is what a dollar-pegged token on a cheap
-// chain should use. Every field below has to be argued for per asset, because
-// each one takes money from a customer who already sent it.
+// Terms are what the rail deducts before crediting. Zero deducts nothing.
 type Terms struct {
-	// SlippageBps is a haircut in basis points against the price MOVING between
-	// the rate a customer was shown and the rate this rail credits at.
-	//
-	// It exists only for an asset priced at a market rate. A stablecoin is
-	// credited at a fixed peg, so there is no move to protect against and this
-	// must stay 0 — charging it there would be a fee wearing the word slippage.
-	//
-	// The exposure is real: a deposit is priced at CONFIRMATION, and BTC confirms
-	// roughly an hour after it is sent. Somebody carries that hour. This is the
-	// dial that says who, and by how much.
+	// SlippageBps is a haircut against the price moving between the rate quoted
+	// and the rate credited — a deposit is priced at CONFIRMATION, and BTC
+	// confirms about an hour after it is sent. Market-priced assets only: on a
+	// fixed peg there is no move, so a haircut there is a fee by another name.
 	SlippageBps int32
 
-	// FeeCents is a flat deduction for what it costs US to move the coin OUT of
-	// the deposit address — the sweep.
-	//
-	// NOT the customer's own send fee. They already paid that to their network
-	// and it never reaches us; deducting it again would charge them twice for one
-	// transfer. What this covers is the second transaction, the one nobody sees:
-	// on Bitcoin at a busy moment, sweeping a small deposit can cost more than
-	// the deposit is worth, and without this the rail credits the customer in
-	// full and eats the difference on every one.
+	// FeeCents is what it costs US to sweep the deposit out of the custody
+	// address. NOT the sender's own network fee — they already paid that, and
+	// deducting it again charges twice for one transfer. On Bitcoin a sweep can
+	// cost more than a small deposit is worth.
 	FeeCents int64
 }
 
@@ -834,59 +779,40 @@ type Terms struct {
 // "no deductions" rather than "0 and 0" and a receipt can omit the rows.
 func (t Terms) Deducts() bool { return t.SlippageBps > 0 || t.FeeCents > 0 }
 
-// RateResolver answers what one WHOLE unit of a market-priced asset is worth,
-// in USD cents × RateScale.
+// RateResolver answers what one whole unit is worth, in cents × RateScale.
 //
-// It exists so this package stays pure: the judgement about whether a rate may
-// be believed — how many venues agreed, how far apart they were — lives in the
-// oracle, and the only thing asked here is for a number or an error. An error
-// credits NOTHING on this pass and is retried, which is the safe direction: the
-// coin is already in custody, and a deposit valued at a wrong rate is wrong
-// permanently.
+// Whether a rate may be BELIEVED — how many venues agreed, how far apart — is
+// the oracle's judgement, not this package's. An error credits nothing and
+// retries: the coin is in custody, and a wrong rate is wrong permanently.
 //
-// It is consulted per CREDIT rather than per pass. A rate read once and reused
-// across a long scan would price a deposit at a moment that had passed.
+// Consulted per CREDIT, not per pass: a rate reused across a long scan prices a
+// deposit at a moment that had passed.
 type RateResolver interface {
 	MicroCents(ctx context.Context, priceID string) (int64, error)
 }
 
-// RateScale is how many micro-cents make one cent, matching the oracle's own
-// scale. Rates are carried at this precision because whole cents under-credit a
-// sub-dollar coin materially — XRP at $1.04295 becomes $1.04, which is 0.28% of
-// every deposit.
+// RateScale matches the oracle's. Whole cents under-credit a sub-dollar coin:
+// XRP at $1.04295 becomes $1.04, 0.28% of every deposit.
 const RateScale = 1_000_000
 
-// TermsResolver answers what ONE ORG is charged on a chain.
+// TermsResolver answers what one ORG is charged on a chain, overriding the
+// asset's platform default. Deductions are commercial terms, not platform facts:
+// an RPC endpoint is the same for everybody, what a customer pays to sweep is
+// agreed with that customer.
 //
-// Deductions are COMMERCIAL TERMS, not platform facts. An RPC endpoint and a
-// token contract are the same for everybody and belong in the deployment; what a
-// given customer is charged to sweep their deposit is a thing we agree with that
-// customer, and a rail that can only express one answer for the whole estate
-// cannot give a large customer better terms than a stranger.
+// ok=false means "no opinion, use the default" — distinct from zero Terms, which
+// means "this org pays nothing". An org negotiated to nothing must not look like
+// an org nobody configured.
 //
-// So the asset's own Terms — read from the environment, which is KMS-injected —
-// are the PLATFORM DEFAULT, and this overrides them per org. Resolution is:
-//
-//	asset.Terms (env/KMS default)  ->  TermsFor(org, chain) if it has an opinion
-//
-// Returning ok=false means "no opinion, use the default", which is different
-// from returning zero Terms — zero is a real answer meaning "this org pays
-// nothing", and an org negotiated to nothing must not be indistinguishable from
-// an org nobody has configured.
-//
-// It takes a CHAIN and not an asset because both costs are the chain's: a sweep
-// on Ethereum costs Ethereum gas whether it moves USDC or USDT.
+// Per CHAIN, because both costs are the chain's: a sweep on Ethereum costs
+// Ethereum gas whether it moves USDC or USDT.
 type TermsResolver interface {
 	TermsFor(ctx context.Context, org, chain string) (t Terms, ok bool, err error)
 }
 
-// resolveTerms applies the override to the default, failing CLOSED.
-//
-// A resolver that errors does NOT fall back to the platform default: the default
-// is usually the cheaper one, so falling back would quietly credit an org on
-// terms it is not on, and the error that caused it would be invisible. Nothing
-// is credited on this pass and the next one tries again — the coin is in custody
-// either way.
+// resolveTerms applies the override, failing CLOSED. An error does NOT fall back
+// to the default: the default is usually cheaper, so falling back would credit
+// an org on terms it is not on, invisibly.
 func resolveTerms(ctx context.Context, r TermsResolver, org, chain string, def Terms) (Terms, error) {
 	if r == nil {
 		return def, nil
