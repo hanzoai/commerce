@@ -39,6 +39,10 @@ const (
 	Zoo       Chain = "zoo"
 	TON       Chain = "ton"
 	XRPL      Chain = "xrpl"
+	// Bitcoin is the rail's only UTXO chain. It has no accounts and no
+	// contracts: a deposit is an OUTPUT paying our address, which is why
+	// billing/bitcoinrpc is its own reader rather than a variant of another.
+	Bitcoin Chain = "bitcoin"
 )
 
 func init() { orm.Register[CryptoPaymentIntent]("crypto-payment-intent") }
