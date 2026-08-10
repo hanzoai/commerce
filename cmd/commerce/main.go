@@ -33,6 +33,22 @@ import (
 )
 
 func main() {
+	// One subcommand, and it is the only thing this binary does that is not
+	// serving: `commerce sweep <chain> <token> --to <addr>` moves money out of
+	// custody and exits. It is read before flag.Parse because it takes its own
+	// flags — a sweep has nothing to say about listen addresses.
+	//
+	// There is a cobra tree in the library (App.RootCmd, serve/admin/seed) and
+	// nothing executes it; putting the sweep there would have been a command no
+	// operator could run, which is the shape of the defect it exists to end.
+	if len(os.Args) > 1 && os.Args[1] == "sweep" {
+		if err := runSweep(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "commerce: sweep: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	var (
 		dataDir         = flag.String("data", envStr("COMMERCE_DIR", "./commerce_data"), "data directory")
 		httpAddr        = flag.String("http", envStr("COMMERCE_HTTP", "127.0.0.1:8090"), "HTTP listen address")

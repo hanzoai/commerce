@@ -90,6 +90,7 @@ func (intentStore) Watched(_ context.Context, chain, token string) ([]depositwat
 				IntentID: db.EncodeKey(keys[i]),
 				Subject:  in.CustomerRef,
 				Address:  in.DepositAddress,
+				Wallet:   in.WalletID,
 				// Empty on every chain that mints one address per payer; the
 				// destination tag on XRPL, where the address is shared and this
 				// is the only thing that says whose deposit it is.
