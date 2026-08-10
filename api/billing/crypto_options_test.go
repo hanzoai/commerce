@@ -87,19 +87,20 @@ var allChains = []string{"ethereum", "base", "polygon", "arbitrum", "optimism", 
 
 // The other half of the rule, and the one this rail can hit TODAY.
 //
-// Solana became creditable the moment the watcher learned to read SPL transfers
-// — but the custody fleet derives no Ed25519 key, so thirdparty/mpc omits
-// "solana" from SupportedChains and CreateCryptoDeposit answers 400 for it.
-// Offering it would put a Solana button in front of a buyer that dead-ends after
-// they have chosen an amount, which is the ORIGINAL defect of this endpoint
-// wearing the opposite mask.
+// avalanche is readable — depositwatch.chainFamily gives it an EVM reader, so a
+// deposit there would be seen and credited — and it is not mintable, because the
+// signer's alias table has no entry for the name and would refuse every
+// signature over the coins. Offering it would put an Avalanche button in front of
+// a buyer that dead-ends after they have chosen an amount, which is the ORIGINAL
+// defect of this endpoint wearing the opposite mask.
 func TestOfferedFrom_OnlyChainsAnAddressCanBeMintedOn(t *testing.T) {
 	watched := []depositwatch.Asset{
 		{Chain: "base", Token: "usdc"},
-		{Chain: "solana", Token: "usdc"},
+		{Chain: "avalanche", Token: "usdc"},
 	}
-	// The real MPC chain list: every EVM chain, and deliberately not solana.
-	mintable := []string{"bitcoin", "ethereum", "polygon", "arbitrum", "optimism", "base", "avalanche", "lux", "zoo", "bsc"}
+	// The real MPC chain list: the EVM chains the signer knows by name, and
+	// deliberately not avalanche or zoo.
+	mintable := []string{"bitcoin", "ethereum", "polygon", "arbitrum", "optimism", "base", "lux", "bsc", "solana", "ton"}
 
 	chains, tokens := offeredFrom(watched, mintable)
 	if got, want := chains, []string{"base"}; !eq(got, want) {
@@ -111,7 +112,7 @@ func TestOfferedFrom_OnlyChainsAnAddressCanBeMintedOn(t *testing.T) {
 
 	// And a token that ONLY exists on an unmintable chain disappears with it,
 	// rather than lingering in the picker with nowhere to send it.
-	only := []depositwatch.Asset{{Chain: "solana", Token: "usdt"}}
+	only := []depositwatch.Asset{{Chain: "avalanche", Token: "usdt"}}
 	chains, tokens = offeredFrom(only, mintable)
 	if len(chains) != 0 || len(tokens) != 0 {
 		t.Fatalf("an unmintable chain still offers chains=%v tokens=%v", chains, tokens)

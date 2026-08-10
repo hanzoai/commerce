@@ -38,15 +38,15 @@ func xrplWatched() []depositwatch.Asset {
 // This is the case the previous rule got wrong in the other direction. The MPC
 // signer answers "no" for xrpl — it derives no XRPL key at all, and its chain
 // switch falls through to the EVM address — so deferring to it would hide a
-// chain the rail can both receive on and credit. Meanwhile solana must STILL be
-// hidden, because there the signer's "no" is the whole truth.
+// chain the rail can both receive on and credit. Meanwhile avalanche must STILL
+// be hidden, because there the signer's "no" is the whole truth.
 func TestOfferedFrom_APooledChainDoesNotNeedTheCustodySigner(t *testing.T) {
-	// The real MPC chain list: no xrpl, no solana.
-	mintable := []string{"bitcoin", "ethereum", "polygon", "arbitrum", "optimism", "base", "avalanche", "lux", "zoo", "bsc"}
+	// The real MPC chain list: no xrpl, no avalanche.
+	mintable := []string{"bitcoin", "ethereum", "polygon", "arbitrum", "optimism", "base", "lux", "bsc", "solana", "ton"}
 
 	chains, tokens := offeredFrom([]depositwatch.Asset{
 		{Chain: "xrpl", Token: "rlusd", PooledAddress: poolAccount},
-		{Chain: "solana", Token: "usdc"},
+		{Chain: "avalanche", Token: "usdc"},
 		{Chain: "base", Token: "usdc"},
 	}, mintable)
 
