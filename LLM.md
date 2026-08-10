@@ -1996,3 +1996,111 @@ Dockerfile ships — is green. Not caused by the headers.
 commerce stays PRIVATE. Licensing and visibility are independent: a gitleaks
 sweep of full history found live third-party merchant credentials and a
 customer's production hostnames. A licence change does not rewrite history.
+
+## Custody sweep — the half of the crypto rail that SPENDS (2026-08)
+
+The deposit watcher made money arrive and be credited. Nothing could move it
+out. What stood in for a spend path was five calls from `thirdparty/mpc` to
+`POST {mpcEndpoint}/api/v1/transactions`, asking the signer to build, sign and
+broadcast a chain transaction.
+
+**mpcd serves no such route.** Verified from inside `do-sfo3-hanzo-k8s`, ns
+`hanzo-mpc`, against `mpc-node-0`: `/api/v1/transactions` → 404, `/sign` → 401,
+`/keygen` → 401. Its internal API (`:9800`) has exactly five routes —
+`/healthz`, `/keys`, `/backup`, `/keygen`, `/sign`. The similarly-spelled
+`POST /v1/transactions` on the node-0 dashboard server is not a builder either:
+it records a row and, if policy approves, broadcasts a `raw_tx` the CALLER
+already built.
+
+Those calls are deleted, not repointed. A threshold signer that knew about
+chains, tokens and amounts would be a wallet; custody is safe because the
+component holding the key shares only ever sees a digest.
+
+### Shape
+
+- **`billing/custody`** — the vocabulary. `Chain` drafts and broadcasts;
+  `Signer` turns a digest into a signature; `Sweep` is the twenty lines
+  between. `Draft.Digests` is PLURAL from the start so Bitcoin needs no special
+  case. `Draft.Seal` proves every signature belongs to the address being spent
+  before it will assemble anything — that is where a wrong wallet id, a
+  reshared key and a wrong-curve answer all land.
+- **`billing/custody/{evm,bitcoin,solana}`** — one package per chain family.
+- **`thirdparty/mpc.Sign`** — the mpcd client, implementing `custody.Signer`.
+- Transport lives with the existing readers: `billing/husdindex` (EVM),
+  `billing/bitcoinrpc` (Esplora), `billing/solanarpc`. Each grew the calls a
+  spend needs; none grew a second JSON-RPC client.
+
+### mpcd's /sign contract — the parts that bite
+
+- Body is `{org_id, wallet_id, network, payload_hash, idempotency_key}`. All
+  five are required except `wallet_id` (which fails later, at share lookup).
+- **There is no curve field and must not be one.** The daemon derives the curve
+  from `network` deliberately. `key_type` — which luxfi/mpc's own stale
+  integration test and `lux/wallet`'s custody adapter both still send — decodes
+  into nothing and yields `400 unknown network: (empty)`.
+- **A signing FAILURE arrives as HTTP 200 with `status:"rejected"`.** 503 is
+  reserved for no-quorum. Trusting the status code reads an empty signature as
+  a good one.
+- secp256k1 answers 65 bytes `r‖s‖v` (v ∈ {0,1}, low-S normalised per EIP-2,
+  which is also Bitcoin's BIP-62 rule). Ed25519 answers 64 raw bytes.
+- `payload_hash` is hex, signed UNTOUCHED — no hashing anywhere in the daemon.
+  secp256k1 requires exactly 32 bytes; Ed25519 takes any length, because it
+  hashes internally and a pre-hashed payload would be a digest of a digest.
+- The idempotency key is derived from the content
+  (`sha256(tag‖org‖wallet‖network‖digest)`), so a resumed sweep collects the
+  signature it already paid for and two transfers can never collide. A random
+  key would strand a signature after a timeout and sign a second transaction
+  over the same coins.
+
+### Chain facts worth not rediscovering
+
+- **avalanche and zoo can be minted and never signed for.** Both are in
+  `thirdparty/mpc`'s `mintChains`; neither is in mpcd's alias table
+  (`400 unknown network`). `custody.curves` refuses them locally.
+- **BTC addresses are legacy P2PKH, and mpcd's docs are wrong.**
+  `pubKeyToBtcAddress` is `base58check(0x00 ‖ hash160(compressed pubkey))`;
+  `docs/content/docs/bitcoin.mdx` shows `NewAddressWitnessPubKeyHash`,
+  `NewAddressTaproot` and `CalcWitnessSigHash`. Building from the docs produces
+  a segwit input for a legacy output. That derivation has NO test in luxfi/mpc
+  — the only address there derived by hand and the only one with no vector —
+  though it is correct on the live path (proved here against a mined tx).
+- **btc_address is unconditionally mainnet.** Version byte `0x00` is a literal;
+  a testnet deployment still publishes `1…`. `custody/bitcoin.New` therefore
+  takes `*chaincfg.Params` explicitly.
+- **XRPL is secp256k1 on this rail**, not Ed25519.
+- A Bitcoin sweep has NO change output — it takes everything to one address, so
+  a partial amount is refused rather than quietly given change.
+- Solana's address IS the Ed25519 public key, so `Seal` verifies directly
+  rather than recovering.
+
+### What is proven, and how
+
+Each chain is anchored on a signature this code did not produce:
+
+- **EVM** — digest and assembled transaction byte-identical to `eth-account`'s
+  for a signed USDC transfer; EIP-155's published vector recovers to its
+  published address; live, the deployed mainnet USDC contract accepts our
+  transfer calldata (`EVM_LIVE=1`).
+- **Bitcoin** — our signature hash verifies the signature in mainnet block
+  961911; our scriptSig rebuilds that block's bytes exactly; **a real testnet
+  sweep was built, signed and broadcast by this code**
+  (`21bf975dd58f84b89d16f2a63d17a1379e45949fd6891ec6cbcdb4fa638368e6`).
+- **Solana** — a finalised mainnet message round-trips through our builder byte
+  for byte, and its signature verifies over the raw message and NOT over a hash
+  of it; live, the mainnet runtime executed our drafted transfer successfully
+  and, with `sigVerify` on, accepted our signature before failing on
+  `AccountNotFound` (`SOL_LIVE=1`).
+
+### Not built
+
+**TON cannot be swept, and XRPL cannot be swept.** TON needs cell/BOC
+construction (a new dependency or a hand-rolled serializer), a `seqno` get-call,
+and — on a wallet's FIRST outgoing message — the StateInit carried inline.
+Neither testnet funds nor an unthrottled toncenter key were available to prove
+it to the standard the other three meet, so it was not shipped. `CRYPTO_DEPOSIT_RPC_TON`
++ `_TOKEN_TON_TON` are armed in production; until a TON sweep exists and is
+proven, disarming them is the only way to stop that hole growing.
+
+Nothing CALLS `custody.Sweep` yet: there is no treasury destination in config,
+no schedule, and no durable record of a sweep. That is deliberate — rollout is
+a human decision.
