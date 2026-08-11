@@ -210,6 +210,11 @@ var brandDomains = []struct {
 	// customer met Hanzo's brand, IAM app and Square merchant. The fallback is
 	// right for an unknown host; the bug was that these were unknown.
 	{"lux.cloud", brandLux},
+	// lux.tel is the same case one domain later: pay.lux.tel answered with Hanzo's
+	// name, Hanzo's logo and Hanzo's IAM app, because it was unknown here and the
+	// fallback is hanzo. Every host a brand TAKES MONEY on has to be listed, and
+	// the list is the only thing that knows.
+	{"lux.tel", brandLux},
 	{"zoo.ngo", brandZoo},
 	{"zoo.network", brandZoo},
 	{"zoo.id", brandZoo},
