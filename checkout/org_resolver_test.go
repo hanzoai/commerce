@@ -183,13 +183,22 @@ func TestBrandLogosAreNotShared(t *testing.T) {
 		withLogo[b.logoURL] = b.slug
 	}
 
-	if brandHanzo.logoURL == "" {
-		t.Error("brandHanzo has no logoURL, so the checkout header falls back to a wordmark")
+	// Hanzo and Lux each have an asset that was fetched and confirmed: 200 with an
+	// image/* content type, and the two files differ — Hanzo's is the 67x67 square
+	// mark, Lux's the 63x17 wordmark. That second check is the one that matters
+	// here, because a Lux host serving Hanzo's bytes would pass every other test.
+	for _, b := range []brand{brandHanzo, brandLux} {
+		if b.logoURL == "" {
+			t.Errorf("brand %q lost its logoURL, so its checkout header falls back to a wordmark", b.slug)
+		}
 	}
-	// The other three have no logo that resolves — cdn.lux.network 404s, the zoo
-	// and pars CDNs answer 522. Giving them one would ship a broken image; the
-	// wordmark is the honest render until a real asset exists.
-	for _, b := range []brand{brandLux, brandZoo, brandPars} {
+	// Zoo and Pars have no asset that resolves: cdn.zoo.ngo and cdn.pars.network
+	// answer 522, and cdn.zoo.network / cdn.zoo.cloud / cdn.zoolabs.org do not
+	// resolve at all. Giving them one would ship a broken image; the wordmark is
+	// the honest render until a real asset exists. Lux sat in this list until
+	// 2026-08-11, when its asset was published — so re-fetch before believing a
+	// "none exists" note here, and put the measurement in the commit.
+	for _, b := range []brand{brandZoo, brandPars} {
 		if b.logoURL != "" {
 			t.Errorf("brand %q gained logoURL %q — verify it actually serves an image "+
 				"(200 AND an image/* content type, not a 200 of the SPA's index.html)",
