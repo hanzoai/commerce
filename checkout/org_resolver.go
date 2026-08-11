@@ -233,14 +233,25 @@ var brandDomains = []domainBrand{
 // never as somebody else. Filling these in by pattern would be the way a Hanzo
 // logo ends up on a Lux page.
 //
-// Each was fetched before it was written here. Only Hanzo answered with an
-// actual image (200, image/svg+xml); cdn.lux.network 404s and the zoo and pars
-// CDNs answer 522. lux.network/logo-white.svg looks like a hit at 200 until you
-// read the type — it is 112KB of text/html, the SPA's catch-all serving
-// index.html, which the browser would take for an image and fail to draw.
+// Each was fetched before it was written here, and re-fetched 2026-08-11.
+// Hanzo and Lux both answer with an actual image (200, image/svg+xml) and are
+// different files — Hanzo's is the 67x67 square mark, Lux's the 63x17 wordmark —
+// so the Lux entry is Lux's own asset and not Hanzo's served from a Lux host,
+// which is the failure worth checking for rather than assuming. cdn.lux.network
+// 404'd when this comment was first written; the asset was published since, so
+// re-measure before trusting a "none exists" note.
+//
+// Zoo and Pars still have none: cdn.zoo.ngo and cdn.pars.network answer 522, and
+// cdn.zoo.network / cdn.zoo.cloud / cdn.zoolabs.org do not resolve at all. They
+// stay empty, which renders the displayName as a wordmark. Publishing those two
+// assets is the remaining work, and it is a content task, not a config one.
+//
+// lux.network/logo-white.svg looks like a hit at 200 until you read the type —
+// it is 112KB of text/html, the SPA's catch-all serving index.html, which the
+// browser would take for an image and fail to draw.
 var (
 	brandHanzo = brand{slug: "hanzo", displayName: "Hanzo", logoURL: "https://cdn.hanzo.ai/img/logo-white.svg", primaryColor: "#808000", iamIssuer: "https://hanzo.id", iamClientID: "hanzo-app"}
-	brandLux   = brand{slug: "lux", displayName: "Lux", primaryColor: "#ffffff", iamIssuer: "https://lux.id", iamClientID: "lux-app"}
+	brandLux   = brand{slug: "lux", displayName: "Lux", logoURL: "https://cdn.lux.network/img/logo-white.svg", primaryColor: "#ffffff", iamIssuer: "https://lux.id", iamClientID: "lux-app"}
 	brandZoo   = brand{slug: "zoo", displayName: "Zoo", primaryColor: "#ffffff", iamIssuer: "https://zoolabs.id", iamClientID: "zoo-app"}
 	brandPars  = brand{slug: "pars", displayName: "Pars", primaryColor: "#ffffff", iamIssuer: "https://pars.id", iamClientID: "pars-app"}
 )
