@@ -20,6 +20,8 @@ func TestBrandForHost(t *testing.T) {
 		// Lux payment page carried Hanzo's brand and merchant. Nothing errored.
 		{"pay.lux.cloud", "lux"},
 		{"lux.cloud", "lux"},
+		{"pay.lux.tel", "lux"},
+		{"lux.tel", "lux"},
 		{"pay.zoo.cloud", "zoo"},
 		{"zoo.cloud", "zoo"},
 		{"pay.zoo.ngo", "zoo"},
@@ -31,7 +33,9 @@ func TestBrandForHost(t *testing.T) {
 		{"pay.lux.network.evil.com", "hanzo"},
 		{"pay.zoo.ngo.attacker.test", "hanzo"},
 		{"pay.lux.cloud.evil.com", "hanzo"},
+		{"pay.lux.tel.evil.com", "hanzo"},
 		{"notlux.cloud", "hanzo"},
+		{"notlux.tel", "hanzo"},
 		// Non-subdomain lookalikes must not hijack the brand.
 		{"notlux.network", "hanzo"},
 	}
