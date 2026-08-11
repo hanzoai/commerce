@@ -18,6 +18,7 @@ package checkout
 import (
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/payment"
@@ -193,10 +194,12 @@ type brand struct {
 // brandDomains maps a registrable brand domain to its brand. Matching is
 // exact-suffix (host == domain OR host endsWith "."+domain) so a spoof host
 // like "pay.hanzo.ai.evil.com" can never match "hanzo.ai".
-var brandDomains = []struct {
+type domainBrand struct {
 	domain string
 	brand  brand
-}{
+}
+
+var brandDomains = []domainBrand{
 	{"hanzo.ai", brandHanzo},
 	{"hanzo.id", brandHanzo},
 	{"hanzo.network", brandHanzo},
@@ -247,12 +250,65 @@ var (
 // same-cluster host that isn't a public brand domain still resolves to the org
 // this commerce serves.
 func brandForHost(host string) brand {
-	for _, bd := range brandDomains {
+	for _, bd := range configuredDomains() {
 		if host == bd.domain || strings.HasSuffix(host, "."+bd.domain) {
 			return bd.brand
 		}
 	}
 	return defaultBrand()
+}
+
+// COMMERCE_BRAND_DOMAINS adds paying hosts WITHOUT a release.
+//
+// The table above is the only thing that knows which hosts a brand takes money on,
+// and it is compiled in — so every new one cost a module tag, a dependency bump in
+// the host binary, an image build and a pin, to add one line. Meanwhile the host
+// answered with the fallback brand, which is somebody else's name and mark on a
+// checkout. That price is why lux.cloud and then lux.tel each shipped wrong first.
+//
+// The form is `domain=brand`, comma or space separated:
+//
+//	COMMERCE_BRAND_DOMAINS="lux.tel=lux, pay.example.coop=zoo"
+//
+// Entries are prepended, so configuration BEATS the compiled default and a
+// mistake in the table is correctable without a release too. An unknown brand is
+// skipped rather than guessed — naming a brand that does not exist should not
+// silently mint one.
+//
+// Read once. This runs on a PUBLIC unauthenticated path (see OrgLoader's warning),
+// so it must never do I/O or take a lock per request; parsing an env var at first
+// use does neither, and the value cannot change without a restart anyway.
+var configuredDomains = sync.OnceValue(func() []domainBrand {
+	return append(parseBrandDomains(os.Getenv("COMMERCE_BRAND_DOMAINS")), brandDomains...)
+})
+
+// parseBrandDomains reads the `domain=brand` list. Split out so it is testable:
+// configuredDomains reads the env exactly once by design, so a test cannot set it.
+func parseBrandDomains(raw string) []domainBrand {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	known := map[string]brand{
+		brandHanzo.slug: brandHanzo,
+		brandLux.slug:   brandLux,
+		brandZoo.slug:   brandZoo,
+		brandPars.slug:  brandPars,
+	}
+	extra := make([]domainBrand, 0, 4)
+	for _, pair := range strings.FieldsFunc(raw, func(r rune) bool { return r == ',' || r == ' ' || r == '\n' }) {
+		d, b, ok := strings.Cut(pair, "=")
+		if !ok {
+			continue
+		}
+		d = strings.ToLower(strings.TrimSpace(strings.TrimPrefix(d, ".")))
+		br, isKnown := known[strings.ToLower(strings.TrimSpace(b))]
+		if d == "" || !isKnown {
+			continue
+		}
+		extra = append(extra, domainBrand{d, br})
+	}
+	return extra
 }
 
 // BrandSlugForHost resolves a customer-facing host to the serving brand's org
