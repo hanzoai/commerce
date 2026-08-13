@@ -308,19 +308,26 @@ func ListPaymentMethods(c *zip.Ctx) error {
 	q := paymentmethod.Query(db).Ancestor(rootKey)
 
 	// Intra-org IDOR guard (#43a, enumeration). A non-privileged org member may
-	// only ever list its OWN subject's methods. EdgeAuth pins a PRESENT
-	// customerId/user query param to the org slug, but an ABSENT filter would
-	// return EVERY method in the namespace (incl. any service-token-created
-	// per-user records) — so force the subject filter for non-privileged callers,
-	// failing closed when no subject resolves. Privileged callers (service token /
-	// admin / global admin) keep the explicit client-supplied filter.
+	// only ever list its OWN subject's methods: an ABSENT filter would return
+	// EVERY method in the namespace (incl. any service-token-created per-user
+	// records) — so force the subject filter for non-privileged callers, failing
+	// closed when no subject resolves. Privileged callers (service token / admin /
+	// global admin) keep the explicit client-supplied filter.
+	//
+	// The subject is the PAYER, the key saveCard stamps on a vaulted card. It was
+	// the org slug, which is not that key: a person pays from "<org>/<user>", so
+	// this filtered on an owner no card of theirs was ever written with and a
+	// customer's own saved cards did not appear in their own list. Widening to the
+	// org would be the opposite error and a worse one — every self-serve signup
+	// shares one org, so the payer is the only thing standing between two
+	// customers' cards.
 	if isPrivilegedBillingCaller(c) {
 		if customerId := c.Query("customerId"); customerId != "" {
 			q = q.Filter("CustomerId=", customerId)
 		} else if user := c.Query("user"); user != "" {
 			q = q.Filter("CustomerId=", user)
 		}
-	} else if subject := orgBillingKey(c); subject != "" {
+	} else if subject := userBillingKey(c); subject != "" {
 		q = q.Filter("CustomerId=", subject)
 	} else {
 		return c.JSON(200, []map[string]interface{}{})
