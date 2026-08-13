@@ -18,7 +18,7 @@ const OrderDetails = ({ order, showStatus }: OrderDetailsProps) => {
       <Text>
         We have sent the order confirmation details to{" "}
         <span
-          className="text-ui-fg-medium-plus font-semibold"
+          className="font-semibold"
           data-testid="order-email"
         >
           {order.email}
@@ -35,7 +35,7 @@ const OrderDetails = ({ order, showStatus }: OrderDetailsProps) => {
         Order number: <span data-testid="order-id">{order.display_id}</span>
       </Text>
 
-      <div className="flex items-center text-compact-small gap-x-4 mt-4">
+      <div className="flex items-center gap-x-4 mt-4">
         {showStatus && (
           <>
             <Text>
