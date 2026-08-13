@@ -50,15 +50,22 @@ func isPrivilegedBillingCaller(c *zip.Ctx) bool {
 // INTRA-org gap.
 //
 // Privileged callers always pass. Everyone else passes only when one of ownerIDs
-// equals their own per-org billing subject — the org slug returned by
-// orgBillingKey, which is exactly the key EdgeAuth pins those records under
-// (== claims.Owner == org.Name == namespace). Fail-closed: an empty subject, or
-// no owner matching it, denies.
+// equals their own billing subject — the PAYER, userBillingKey, which is the key
+// saveCard stamps onto a card it vaults (its parameter is named `subject`) and the
+// key Topup compares before charging one. Fail-closed: an empty subject, or no
+// owner matching it, denies.
+//
+// It read the ORG SLUG until now, and that is not the key these records carry. A
+// person in the signup org pays from "<org>/<user>", so every card they saved was
+// looked up under an owner it was never written with: their own card answered 404
+// on get, update, detach and set-default, while Topup — already on the payer —
+// charged the same card happily. One record cannot have two owners. The payer is
+// the one the writer used, so the reader uses it too.
 func callerMayReachBillingSubject(c *zip.Ctx, ownerIDs ...string) bool {
 	if isPrivilegedBillingCaller(c) {
 		return true
 	}
-	subject := orgBillingKey(c)
+	subject := userBillingKey(c)
 	if subject == "" {
 		return false
 	}
