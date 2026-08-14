@@ -8,6 +8,7 @@ import (
 
 	"github.com/zap-proto/zip"
 
+	"github.com/hanzoai/commerce/billing/credit"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
@@ -34,7 +35,24 @@ type depositRequest struct {
 	Amount    int64  `json:"amount"` // cents
 	Notes     string `json:"notes"`
 	Tags      string `json:"tags"`
-	ExpiresIn int    `json:"expiresIn"` // days until expiry (0 = no expiry)
+	// ExpiresIn is days until expiry. Unset takes credit.LifetimeDays — every
+	// credit is good for a year — rather than the never it used to mean. A caller
+	// that wants a shorter promotion still says so; there is no longer a way to
+	// ask for credit that outlives the policy.
+	ExpiresIn int `json:"expiresIn"`
+}
+
+// expiryDays resolves how long a credit lives: the caller's own number when it
+// asked for one, the policy otherwise.
+//
+// A request may shorten a credit's life and may not extend it past the policy —
+// so a caller cannot mint money that outlives the year by naming a bigger number,
+// which is the one way an expiry becomes advisory.
+func expiryDays(requested int) int {
+	if requested > 0 && requested < credit.LifetimeDays {
+		return requested
+	}
+	return credit.LifetimeDays
 }
 
 // Deposit creates a deposit (credit) transaction for an IAM user.
@@ -174,9 +192,7 @@ func Deposit(c *zip.Ctx) error {
 	trans.Notes = notes
 	trans.Tags = req.Tags
 
-	if req.ExpiresIn > 0 {
-		trans.ExpiresAt = time.Now().AddDate(0, 0, req.ExpiresIn)
-	}
+	trans.ExpiresAt = time.Now().AddDate(0, 0, expiryDays(req.ExpiresIn))
 
 	if org.TestMode() {
 		trans.Test = true
