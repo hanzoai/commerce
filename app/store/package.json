@@ -21,7 +21,7 @@
     "@hanzo/commerce-ui": "workspace:*",
     "@hanzo/event": "^0.3.3",
     "@hanzo/gui": "^8.1.1",
-    "@hanzo/ui": "^8.0.73",
+    "@hanzo/ui": "^8.0.76",
     "@hanzogui/config": "^8.1.1",
     "@hanzogui/core": "^8.1.1",
     "@hanzogui/lucide-icons-2": "^8.1.1",
