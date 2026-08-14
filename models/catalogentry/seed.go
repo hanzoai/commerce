@@ -165,6 +165,68 @@ func Seed(db *datastore.Datastore) (created int, err error) {
 	return created, nil
 }
 
+// Correct sets every existing entry's API ADDRESS to the one the snapshot
+// declares — ApiPath, its host-qualified spelling ApiRoute, and Role (kind).
+// Rows the snapshot does not name are left alone, and no row is created here:
+// birth is [Seed]'s job, and this is only ever a correction.
+//
+// # Why an address is not a merchandising choice
+//
+// Everything else on a row — name, price, order, status, whether it is published
+// — is a decision a human makes in admin.hanzo.ai, and Seed is non-destructive
+// precisely so a deploy can never overwrite one. An address is not that kind of
+// value. Either the fleet answers at that path or it does not, and the fleet is
+// the only thing that knows; a catalog that disagrees is not expressing a
+// preference, it is wrong.
+//
+// It was wrong for a long time, and nothing could say so. Production first booted
+// on a 95-row snapshot, the snapshot was later cut to 60, and because BOTH gates
+// only ever create, the dropped rows stayed in the store forever carrying whatever
+// address they were born with. Thirty-one of the 84 products a customer sees named
+// a path that answers 404 — most of them literally "/v1/" + the slug, a guess
+// never once checked against the router. This list was the estate's last
+// hand-copied claim about its own routes: the published document is derived from
+// the router and gated on prose, so a served route CANNOT be missing from it, and
+// only this list could drift.
+//
+// So an address now travels the way the plan catalog's prices already do (see
+// runPlansSeed) — as a DEPLOY, reviewed like a deploy, rather than as a script
+// someone runs against production holding a SuperAdmin bearer. And cloud's
+// catalog_address_test.go refuses to build a fleet whose snapshot names a path
+// that fleet does not serve, so what arrives here has already been read back
+// against the document it is a claim about.
+func Correct(db *datastore.Datastore) (corrected int, err error) {
+	rows, err := HanzoSeedRows()
+	if err != nil {
+		return 0, err
+	}
+
+	for _, r := range rows {
+		slug := r.Slug
+		if slug == "" {
+			slug = r.ID
+		}
+
+		e := New(db)
+		ok, qerr := e.Query().Filter("Slug=", slug).Get()
+		if qerr != nil {
+			return corrected, qerr
+		}
+		if !ok || (e.ApiPath == r.ApiPath && e.ApiRoute == r.ApiRoute && e.Role == r.Kind) {
+			continue
+		}
+
+		e.ApiPath = r.ApiPath
+		e.ApiRoute = r.ApiRoute
+		e.Role = r.Kind
+		if err := e.Update(); err != nil {
+			return corrected, err
+		}
+		corrected++
+	}
+	return corrected, nil
+}
+
 // InfraSeedRow is one infra-tier seed record: a catalog-entry addressed by a
 // globally-unique slug, carrying its display price (PriceCents) and the full
 // structured spec in the Metadata JSON hatch (vcpus/memoryGB/… for cloud,

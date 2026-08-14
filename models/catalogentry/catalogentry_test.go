@@ -74,20 +74,21 @@ func TestProject_ConformsToContract(t *testing.T) {
 		if p.Route == "" {
 			t.Fatalf("%s: empty route", p.ID)
 		}
-		// A client has no route of its own, so it is the one shape that must NOT
-		// carry an apiPath. Asserting one on every product is what made seven
-		// working clients read as broken.
+		// Only a SERVICE has a route of its own. A client consumes the API and a
+		// pending product is not fronted by it, so neither may carry an apiPath —
+		// asserting one on every product is what made working clients read as
+		// broken, and asserting none is what let dead paths ship as "enabled".
 		switch p.Kind {
-		case KindClient:
+		case KindClient, KindPending:
 			if p.ApiPath != "" {
-				t.Fatalf("%s is a client yet projects apiPath %q", p.ID, p.ApiPath)
+				t.Fatalf("%s is %s yet projects apiPath %q", p.ID, p.Kind, p.ApiPath)
 			}
 		case KindService:
 			if len(p.ApiPath) < 3 || p.ApiPath[:3] != "/v1" {
 				t.Fatalf("%s: apiPath %q not /v1-prefixed", p.ID, p.ApiPath)
 			}
 		default:
-			t.Fatalf("%s: kind %q is neither %q nor %q", p.ID, p.Kind, KindService, KindClient)
+			t.Fatalf("%s: kind %q is none of %q, %q, %q", p.ID, p.Kind, KindService, KindClient, KindPending)
 		}
 	}
 
