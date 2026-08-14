@@ -40,11 +40,9 @@ services:
       VALKEY_ADDR: valkey:6379
       VALKEY_PASSWORD: ${VALKEY_PASSWORD:-}
 
-      # ClickHouse analytics
-      CLICKHOUSE_URL: http://clickhouse:8123
-      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
-      COMMERCE_DATASTORE: clickhouse://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD:-}@clickhouse:9000/commerce
+      # Datastore analytics. The app reads DATASTORE_URL and only that
+      # (commerce.go:165); one DSN carries host, credentials and database.
+      DATASTORE_URL: clickhouse://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD:-}@clickhouse:9000/commerce
 
       # Vector search (Qdrant)
       QDRANT_HOST: qdrant

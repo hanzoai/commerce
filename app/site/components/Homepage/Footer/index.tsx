@@ -13,7 +13,7 @@ const HomepageFooter = () => {
             GitHub
           </a>
           <a
-            href="https://discord.gg/hanzoai"
+            href="https://discord.gg/CJCyAsm9Vr"
             className="text-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
           >
             Discord
