@@ -37,6 +37,26 @@ const (
 	StatusSoon     = "soon"     // primitive shipped, no console surface yet
 )
 
+// A catalog entry either SERVES an API or CONSUMES one. The CLI, the SDKs, the
+// IDE and the console are products in their own right with no route of their
+// own, so reading their health off an apiPath is a category error — it is how
+// seven working products came to be advertised against paths that 404. An empty
+// kind reads as KindService, because every row written before this field exists
+// is API-backed.
+const (
+	KindService = "service" // API-backed: ApiPath is a real route
+	KindClient  = "client"  // consumes the API, so carries no ApiPath
+)
+
+// KindOf reports an entry's kind, defaulting the unset field to KindService so
+// a stored row and a projected one always agree on what the entry is.
+func KindOf(e *CatalogEntry) string {
+	if e.Role == "" {
+		return KindService
+	}
+	return e.Role
+}
+
 // Pricing is the PUBLIC pricing block for a capability — projected to everyone.
 // PublicPrice is a human display string ("From $0.10 / 1M input tokens"), or the
 // literal "TODO" when a real number is not yet sourced (never a fabricated one).
@@ -131,6 +151,11 @@ type CatalogEntry struct {
 	CostCents currency.Cents `json:"costCents,omitempty"`
 	MarginPct float64        `json:"marginPct,omitempty"`
 
+	// Role is service|client (KindOf defaults it). It is spelled `kind`
+	// everywhere it is observable — in storage and on the wire; the Go field
+	// cannot be Kind because Model[T] promotes a Kind() method that a field of
+	// that name shadows, silently breaking mixin.Entity (see entity_guard.go).
+	Role   string `json:"kind,omitempty"`
 	Status string `json:"status" orm:"default:enabled"` // enabled|external|soon
 	Repo   string `json:"repo,omitempty"`               // source repo, e.g. "hanzoai/ai"
 	Admin  bool   `json:"admin,omitempty"`              // admin-gated surface

@@ -1,8 +1,80 @@
 package catalogentry
 
 import (
+	"strings"
 	"testing"
 )
+
+// clientProducts is the exact set of catalog rows that CONSUME the API rather
+// than serve one — the CLI, the SDKs, the API reference, the IDE, the desktop
+// app and the two web surfaces.
+//
+// It is the SECOND WITNESS to the seed, and that is its whole job. All seven
+// once carried an apiPath, and since none of them serves a route, all seven of
+// those paths were dead links the catalog advertised as "enabled". Marking a row
+// a client now costs a deliberate edit here too, next to the reason.
+var clientProducts = map[string]bool{
+	"api":     true,
+	"cli":     true,
+	"sdks":    true,
+	"ide":     true,
+	"desktop": true,
+	"console": true,
+	"studio":  true,
+}
+
+func TestSeedGivesEveryClientNoApiPath(t *testing.T) {
+	rows, err := HanzoSeedRows()
+	if err != nil {
+		t.Fatalf("HanzoSeedRows: %v", err)
+	}
+	seen := map[string]bool{}
+	for _, r := range rows {
+		switch r.Kind {
+		case KindClient:
+			seen[r.Slug] = true
+			if !clientProducts[r.Slug] {
+				t.Errorf("%s is seeded a client but is not in the client table — one side moved alone", r.Slug)
+			}
+			if r.ApiPath != "" || r.ApiRoute != "" {
+				t.Errorf("%s is a client yet advertises apiPath %q / apiRoute %q — it consumes the API and has no route of its own, so any path on it is a dead link",
+					r.Slug, r.ApiPath, r.ApiRoute)
+			}
+		case KindService, "":
+			if clientProducts[r.Slug] {
+				t.Errorf("%s is a client but is seeded a service — it will be judged by an apiPath it can never have", r.Slug)
+			}
+			if !strings.HasPrefix(r.ApiPath, "/v1/") {
+				t.Errorf("%s: apiPath %q is not /v1-prefixed — a service is reached at a real route", r.Slug, r.ApiPath)
+			}
+		default:
+			t.Errorf("%s: kind %q is neither %q nor %q", r.Slug, r.Kind, KindService, KindClient)
+		}
+	}
+	for slug := range clientProducts {
+		if !seen[slug] {
+			t.Errorf("%s is a client but no seed row says so — it stays counted against an apiPath", slug)
+		}
+	}
+}
+
+// An apiPath and its host-qualified twin are two spellings of one route. Left to
+// drift they disagree, and a reader has no way to tell which one lies.
+func TestSeedApiRouteAgreesWithApiPath(t *testing.T) {
+	rows, err := HanzoSeedRows()
+	if err != nil {
+		t.Fatalf("HanzoSeedRows: %v", err)
+	}
+	for _, r := range rows {
+		want := ""
+		if r.ApiPath != "" {
+			want = "api.hanzo.ai" + r.ApiPath
+		}
+		if r.ApiRoute != want {
+			t.Errorf("%s: apiRoute %q contradicts apiPath %q (want %q)", r.Slug, r.ApiRoute, r.ApiPath, want)
+		}
+	}
+}
 
 // billedRetail is what the enso service CHARGES, per MTok, transcribed from the
 // deployed billing catalog (hanzoai/zen catalog-enso.yaml, mounted through

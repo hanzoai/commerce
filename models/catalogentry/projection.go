@@ -73,16 +73,21 @@ type Item struct {
 	Brands     []string `json:"brands,omitempty"`    // category-derived convenience
 
 	// Additive (client ignores unknowns).
-	Description string         `json:"description,omitempty"`
-	Gcp         string         `json:"gcp,omitempty"`
-	Status      string         `json:"status,omitempty"`
-	Repo        string         `json:"repo,omitempty"`
-	External    bool           `json:"external,omitempty"`
-	Admin       bool           `json:"admin,omitempty"`
-	PriceCents  currency.Cents `json:"priceCents,omitempty"`
-	Currency    currency.Type  `json:"currency,omitempty"`
-	Order       int            `json:"order,omitempty"`
-	ProductId   string         `json:"productId,omitempty"`
+	Description string `json:"description,omitempty"`
+	Gcp         string `json:"gcp,omitempty"`
+
+	// Kind is service|client. It is always stated, never omitted, so a reader
+	// never has to infer from an empty ApiPath why a product has no route: a
+	// client CONSUMES the API and must not be judged by apiPath reachability.
+	Kind       string         `json:"kind"`
+	Status     string         `json:"status,omitempty"`
+	Repo       string         `json:"repo,omitempty"`
+	External   bool           `json:"external,omitempty"`
+	Admin      bool           `json:"admin,omitempty"`
+	PriceCents currency.Cents `json:"priceCents,omitempty"`
+	Currency   currency.Type  `json:"currency,omitempty"`
+	Order      int            `json:"order,omitempty"`
+	ProductId  string         `json:"productId,omitempty"`
 
 	// Pricing is the PUBLIC pricing block. Private economics (cost/margin) are
 	// deliberately absent here — they ride only the owner=="admin" admin
@@ -220,6 +225,7 @@ func item(e *CatalogEntry) Item {
 		Brands:      e.Brands,
 		Description: e.Description,
 		Gcp:         e.Gcp,
+		Kind:        KindOf(e),
 		Status:      e.Status,
 		Repo:        e.Repo,
 		External:    e.External,
