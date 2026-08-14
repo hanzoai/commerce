@@ -79,6 +79,7 @@ type SeedRow struct {
 	Brands     []string   `json:"brands"`
 	Repo       string     `json:"repo"`
 	Admin      bool       `json:"admin"`
+	Kind       string     `json:"kind"` // service (default) | client
 	Status     string     `json:"status"`
 	Gcp        string     `json:"gcp"`
 }
@@ -151,6 +152,7 @@ func Seed(db *datastore.Datastore) (created int, err error) {
 		e.Brands = r.Brands
 		e.Repo = r.Repo
 		e.Admin = r.Admin
+		e.Role = r.Kind
 		e.Status = r.Status
 		e.Gcp = r.Gcp
 		e.Order = i
