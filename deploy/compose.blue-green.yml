@@ -28,7 +28,7 @@ services:
       PORT: 8001
       ENV: ${ENV:-staging}
       REDIS_URL: redis://redis:6379
-      DATASTORE_URL: clickhouse://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD:-}@clickhouse:9000/commerce
+      DATASTORE_URL: datastore://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD:-}@clickhouse:9000/commerce
       IAM_URL: ${IAM_URL:-https://api.hanzo.id}
       IAM_API_KEY: ${IAM_API_KEY:-}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
@@ -77,7 +77,7 @@ services:
       PORT: 8001
       ENV: ${ENV:-staging}
       REDIS_URL: redis://redis:6379
-      DATASTORE_URL: clickhouse://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD:-}@clickhouse:9000/commerce
+      DATASTORE_URL: datastore://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD:-}@clickhouse:9000/commerce
       IAM_URL: ${IAM_URL:-https://api.hanzo.id}
       IAM_API_KEY: ${IAM_API_KEY:-}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
