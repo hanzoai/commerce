@@ -11,13 +11,13 @@ datasources:
     isDefault: true
     editable: false
 
-  # ClickHouse (for analytics dashboards)
-  - name: ClickHouse
+  # Datastore (for analytics dashboards)
+  - name: Datastore
     type: grafana-clickhouse-datasource
     access: proxy
-    url: http://clickhouse:8123
+    url: http://datastore:8123
     jsonData:
       defaultDatabase: commerce
     secureJsonData:
-      password: ${CLICKHOUSE_PASSWORD}
+      password: ${DATASTORE_PASSWORD}
     editable: false
