@@ -59,11 +59,22 @@ const (
 
 // KindOf reports an entry's kind, defaulting the unset field to KindService so
 // a stored row and a projected one always agree on what the entry is.
-func KindOf(e *CatalogEntry) string {
-	if e.Role == "" {
+func KindOf(e *CatalogEntry) string { return Kind(e.Role) }
+
+// Kind defaults an unset kind to KindService.
+//
+// ONE place decides that "" and "service" are the same value, because two places
+// eventually disagree and the disagreement is silent. It very nearly was: the
+// public projection always states `kind`, so a console that reads a row and PUTs
+// it back stores the literal "service" where the snapshot says nothing at all.
+// Compared as raw strings those differ forever — the row is rewritten on every
+// boot of every pod, and the log line that exists so an address change can be
+// audited fires eternally and means nothing.
+func Kind(role string) string {
+	if role == "" {
 		return KindService
 	}
-	return e.Role
+	return role
 }
 
 // Pricing is the PUBLIC pricing block for a capability — projected to everyone.

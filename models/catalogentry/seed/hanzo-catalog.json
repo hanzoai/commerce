@@ -102,36 +102,6 @@
     }
   },
   {
-    "id": "fine-tuning",
-    "name": "Fine-tuning",
-    "category": "AI",
-    "brandColor": "orange",
-    "iconKey": "Sparkles",
-    "slug": "fine-tuning",
-    "route": "/cloud/fine-tuning",
-    "docsUrl": "https://docs.hanzo.ai/docs/services/fine-tuning",
-    "apiPath": "/v1/finetune",
-    "apiRoute": "api.hanzo.ai/v1/finetune",
-    "githubUrl": "https://github.com/hanzoai/ai",
-    "repo": "hanzoai/ai",
-    "gcp": "Vertex AI Training",
-    "status": "enabled",
-    "admin": false,
-    "external": false,
-    "brands": [
-      "hanzo"
-    ],
-    "pricingId": null,
-    "pricing": {
-      "publicPrice": "TODO",
-      "planTiers": [],
-      "usageMeter": ""
-    },
-    "private": {
-      "cost": "TODO"
-    }
-  },
-  {
     "id": "embeddings",
     "name": "Embeddings",
     "category": "AI",
@@ -351,36 +321,6 @@
     }
   },
   {
-    "id": "jobs",
-    "name": "Jobs",
-    "category": "Compute",
-    "brandColor": "amber",
-    "iconKey": "ListTodo",
-    "slug": "jobs",
-    "route": "/cloud/jobs",
-    "docsUrl": "https://docs.hanzo.ai/docs/services/jobs",
-    "apiPath": "/v1/tasks",
-    "apiRoute": "api.hanzo.ai/v1/tasks",
-    "githubUrl": "https://github.com/hanzoai/tasks",
-    "repo": "hanzoai/tasks",
-    "gcp": "Cloud Run Jobs / Batch",
-    "status": "enabled",
-    "admin": false,
-    "external": false,
-    "brands": [
-      "hanzo"
-    ],
-    "pricingId": null,
-    "pricing": {
-      "publicPrice": "TODO",
-      "planTiers": [],
-      "usageMeter": ""
-    },
-    "private": {
-      "cost": "TODO"
-    }
-  },
-  {
     "id": "vector",
     "name": "Vector",
     "category": "Data",
@@ -465,36 +405,6 @@
       "publicPrice": "TODO",
       "planTiers": [],
       "usageMeter": ""
-    },
-    "private": {
-      "cost": "TODO"
-    }
-  },
-  {
-    "id": "storage",
-    "name": "Object Storage",
-    "category": "Data",
-    "brandColor": "amber",
-    "iconKey": "HardDrive",
-    "slug": "storage",
-    "route": "/storage",
-    "docsUrl": "https://docs.hanzo.ai/docs/services/storage",
-    "apiPath": "/v1/s3",
-    "apiRoute": "api.hanzo.ai/v1/s3",
-    "githubUrl": "https://github.com/hanzoai/s3",
-    "repo": "hanzoai/s3",
-    "gcp": "Cloud Storage",
-    "status": "enabled",
-    "admin": false,
-    "external": false,
-    "brands": [
-      "hanzo"
-    ],
-    "pricingId": null,
-    "pricing": {
-      "publicPrice": "$0.08 / GB-month",
-      "planTiers": [],
-      "usageMeter": "per_gb_month"
     },
     "private": {
       "cost": "TODO"
@@ -1351,36 +1261,6 @@
     }
   },
   {
-    "id": "traces",
-    "name": "Traces",
-    "category": "Observe",
-    "brandColor": "blue",
-    "iconKey": "Activity",
-    "slug": "traces",
-    "route": "/telemetry",
-    "docsUrl": "https://docs.hanzo.ai/docs/services/traces",
-    "apiPath": "/v1/traces",
-    "apiRoute": "api.hanzo.ai/v1/traces",
-    "githubUrl": "https://github.com/hanzoai/o11y",
-    "repo": "hanzoai/o11y",
-    "gcp": "Cloud Trace",
-    "status": "enabled",
-    "admin": false,
-    "external": false,
-    "brands": [
-      "hanzo"
-    ],
-    "pricingId": null,
-    "pricing": {
-      "publicPrice": "TODO",
-      "planTiers": [],
-      "usageMeter": ""
-    },
-    "private": {
-      "cost": "TODO"
-    }
-  },
-  {
     "id": "dashboards",
     "name": "Dashboards",
     "category": "Observe",
@@ -1441,36 +1321,6 @@
     }
   },
   {
-    "id": "cost",
-    "name": "Cost",
-    "category": "Observe",
-    "brandColor": "green",
-    "iconKey": "Receipt",
-    "slug": "cost",
-    "route": "/cloud/cost",
-    "docsUrl": "https://docs.hanzo.ai/docs/services/cost",
-    "apiPath": "/v1/billing/usage",
-    "apiRoute": "api.hanzo.ai/v1/billing/usage",
-    "githubUrl": "https://github.com/hanzoai/commerce",
-    "repo": "hanzoai/commerce",
-    "gcp": "Cloud Billing",
-    "status": "enabled",
-    "admin": false,
-    "external": false,
-    "brands": [
-      "hanzo"
-    ],
-    "pricingId": null,
-    "pricing": {
-      "publicPrice": "TODO",
-      "planTiers": [],
-      "usageMeter": ""
-    },
-    "private": {
-      "cost": "TODO"
-    }
-  },
-  {
     "id": "settlement",
     "name": "Settlement",
     "category": "Web3",
@@ -1484,66 +1334,6 @@
     "githubUrl": "https://github.com/hanzoai/ledger",
     "repo": "hanzoai/ledger",
     "gcp": "On-chain settlement",
-    "status": "external",
-    "admin": false,
-    "external": true,
-    "brands": [
-      "lux"
-    ],
-    "pricingId": null,
-    "pricing": {
-      "publicPrice": "TODO",
-      "planTiers": [],
-      "usageMeter": ""
-    },
-    "private": {
-      "cost": "TODO"
-    }
-  },
-  {
-    "id": "chains",
-    "name": "Chains",
-    "category": "Web3",
-    "brandColor": "teal",
-    "iconKey": "Boxes",
-    "slug": "chains",
-    "route": "/blockchain/chains",
-    "docsUrl": "https://docs.hanzo.ai/docs/services/chains",
-    "apiPath": "/v1/chains",
-    "apiRoute": "api.hanzo.ai/v1/chains",
-    "githubUrl": "https://github.com/luxfi/node",
-    "repo": "luxfi/node",
-    "gcp": "Launch L1 / L2 rollups",
-    "status": "external",
-    "admin": false,
-    "external": true,
-    "brands": [
-      "lux"
-    ],
-    "pricingId": null,
-    "pricing": {
-      "publicPrice": "TODO",
-      "planTiers": [],
-      "usageMeter": ""
-    },
-    "private": {
-      "cost": "TODO"
-    }
-  },
-  {
-    "id": "wallets",
-    "name": "Wallets",
-    "category": "Web3",
-    "brandColor": "pink",
-    "iconKey": "Wallet",
-    "slug": "wallets",
-    "route": "/blockchain/wallets",
-    "docsUrl": "https://docs.hanzo.ai/docs/services/wallets",
-    "apiPath": "/v1/wallets",
-    "apiRoute": "api.hanzo.ai/v1/wallets",
-    "githubUrl": "https://github.com/luxfi/wallet",
-    "repo": "luxfi/wallet",
-    "gcp": "MPC custody & keys",
     "status": "external",
     "admin": false,
     "external": true,
@@ -2480,8 +2270,8 @@
     "slug": "networks",
     "route": "/networks",
     "docsUrl": "https://docs.hanzo.ai/docs/services/networks",
-    "apiPath": "/v1/networks",
-    "apiRoute": "api.hanzo.ai/v1/networks",
+    "apiPath": "/v1/chains",
+    "apiRoute": "api.hanzo.ai/v1/chains",
     "githubUrl": "https://github.com/hanzoai/bootnode",
     "repo": "hanzoai/bootnode",
     "gcp": "",
