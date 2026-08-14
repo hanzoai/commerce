@@ -69,6 +69,48 @@ func TestCorrect_MovesTheAddressAndNothingElse(t *testing.T) {
 	}
 }
 
+// A row that has been through the console once must still settle.
+//
+// The public projection ALWAYS states kind, so an admin who reads a row and PUTs
+// it back stores the literal "service" where the snapshot says nothing at all.
+// Compared as raw strings those never agree: the row is rewritten on every boot
+// of every pod, forever, and "catalog addresses corrected" — the line that exists
+// so a moved address can be audited — becomes noise that is always there.
+func TestCorrect_SettlesOnARowTheConsoleHasWritten(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	if _, err := Seed(db); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	// What a console round-trip leaves behind: the defaulted kind, made explicit.
+	e := New(db)
+	if ok, err := e.Query().Filter("Slug=", "models").Get(); err != nil || !ok {
+		t.Fatalf("models row: ok=%v err=%v", ok, err)
+	}
+	if e.Role != "" {
+		t.Fatalf("Role = %q, want the unset field this test is about", e.Role)
+	}
+	e.Role = KindService
+	if err := e.Update(); err != nil {
+		t.Fatalf("write the explicit kind: %v", err)
+	}
+
+	if _, err := Correct(db); err != nil {
+		t.Fatalf("correct: %v", err)
+	}
+	again, err := Correct(db)
+	if err != nil {
+		t.Fatalf("re-correct: %v", err)
+	}
+	if again != 0 {
+		t.Fatalf("re-correct wrote %d rows, want 0 — %q and %q are the same kind, and a "+
+			"correction that cannot recognise that never finishes", again, KindService, "")
+	}
+}
+
 // Correction is not creation. Seed owns birth, and a snapshot row for a product
 // this store never had must not quietly add a product to somebody's catalog.
 func TestCorrect_CreatesNothing(t *testing.T) {
