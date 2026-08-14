@@ -73,7 +73,7 @@ const (
 	// LayerOrg uses the organization-level SQLite database
 	LayerOrg
 
-	// LayerDatastore uses the Hanzo Datastore (ClickHouse) for analytics
+	// LayerDatastore uses the Hanzo Datastore (Datastore) for analytics
 	LayerDatastore
 
 	// LayerAll queries all layers (for cross-cutting queries)
@@ -168,7 +168,7 @@ type SQLiteConfig struct {
 	QueryTimeout time.Duration
 }
 
-// DatastoreConfig holds Hanzo Datastore (ClickHouse) configuration
+// DatastoreConfig holds Hanzo Datastore (Datastore) configuration
 type DatastoreConfig struct {
 	// MaxOpenConns for parallel queries
 	MaxOpenConns int
@@ -513,7 +513,7 @@ const sequenceDDL = `CREATE TABLE IF NOT EXISTS _sequences (
 		value BIGINT NOT NULL DEFAULT 0
 	)`
 
-// Datastore is the interface for Hanzo Datastore (ClickHouse) analytics queries
+// Datastore is the interface for Hanzo Datastore (Datastore) analytics queries
 type Datastore interface {
 	// Query executes datastore queries
 	Query(ctx context.Context, query string, args ...interface{}) (DatastoreRows, error)

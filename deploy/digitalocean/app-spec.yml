@@ -2,7 +2,7 @@
 # Deploy with: doctl apps create --spec deploy/digitalocean/app-spec.yml
 #
 # This configuration deploys Commerce to DigitalOcean App Platform with:
-# - Managed ClickHouse (via external component)
+# - Managed Datastore (via external component)
 # - Managed Redis
 # - Auto-scaling
 # - Zero-downtime deployments
@@ -83,8 +83,8 @@ services:
       - key: REDIS_URL
         scope: RUN_TIME
         value: ${redis.REDIS_URL}
-      # ClickHouse connection (external)
-      - key: CLICKHOUSE_URL
+      # Datastore connection (external)
+      - key: DATASTORE_URL
         type: SECRET
         scope: RUN_TIME
       - key: COMMERCE_DATASTORE

@@ -2,7 +2,7 @@
 //
 // Commerce is a multi-org e-commerce platform that runs as a standalone
 // binary with embedded SQLite for per-user/org data and optional analytics
-// via ClickHouse.
+// via Datastore.
 //
 // Architecture:
 //
@@ -128,7 +128,7 @@ type Config struct {
 	// Analytics collector endpoint (optional)
 	AnalyticsEndpoint string
 
-	// Analytics DSN (optional, for direct ClickHouse queries)
+	// Analytics DSN (optional, for direct Datastore queries)
 	DatastoreDSN string
 
 	// Infrastructure configuration
