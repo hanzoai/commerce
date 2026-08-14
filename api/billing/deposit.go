@@ -35,10 +35,8 @@ type depositRequest struct {
 	Amount    int64  `json:"amount"` // cents
 	Notes     string `json:"notes"`
 	Tags      string `json:"tags"`
-	// ExpiresIn is days until expiry. Unset takes credit.LifetimeDays — every
-	// credit is good for a year — rather than the never it used to mean. A caller
-	// that wants a shorter promotion still says so; there is no longer a way to
-	// ask for credit that outlives the policy.
+	// ExpiresIn is days until expiry. Unset takes credit.LifetimeDays. A caller
+	// may name a shorter promotion; nothing may outlive the policy.
 	ExpiresIn int `json:"expiresIn"`
 }
 

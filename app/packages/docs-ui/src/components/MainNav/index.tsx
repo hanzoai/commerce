@@ -93,7 +93,7 @@ export const MainNav = ({ className, itemsClassName }: MainNavProps) => {
                       {
                         type: "link",
                         title: "Discord Community",
-                        link: "https://discord.gg/hanzoai",
+                        link: "https://discord.gg/CJCyAsm9Vr",
                       },
                       {
                         type: "divider",
