@@ -212,13 +212,16 @@ func Correct(db *datastore.Datastore) (corrected int, err error) {
 		if qerr != nil {
 			return corrected, qerr
 		}
-		if !ok || (e.ApiPath == r.ApiPath && e.ApiRoute == r.ApiRoute && e.Role == r.Kind) {
+		// Kind, not the raw field: a stored "service" and a snapshot that says
+		// nothing are the SAME kind, and comparing the strings would rewrite the
+		// row on every boot forever. Twice is once — correct_test.go pins it.
+		if !ok || (e.ApiPath == r.ApiPath && e.ApiRoute == r.ApiRoute && KindOf(e) == Kind(r.Kind)) {
 			continue
 		}
 
 		e.ApiPath = r.ApiPath
 		e.ApiRoute = r.ApiRoute
-		e.Role = r.Kind
+		e.Role = Kind(r.Kind)
 		if err := e.Update(); err != nil {
 			return corrected, err
 		}

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/zap-proto/zip"
@@ -392,5 +393,50 @@ func TestSyncModels_GatedAndCostOnly(t *testing.T) {
 	// The syncer's "price" was dropped; retail is cost x the default markup.
 	if r.Price != "1.5" {
 		t.Fatalf("price = %q, want 1.5 (cost x default markup) — a sync must never set retail", r.Price)
+	}
+}
+
+// A product's API ADDRESS travels with a deploy, so this door refuses to store
+// one — and refuses out loud.
+//
+// It used to take the whole entity and answer 200, which meant an admin could set
+// apiPath to anything, watch it render back, and lose it at the next restart when
+// catalogentry.Correct read the snapshot over the row. A write surface that
+// reports durable success for a value it cannot keep is worse than one that says
+// no: nothing was wrong until a pod cycled, and then nothing said why.
+//
+// The read-modify-write the console actually performs still has to work, so the
+// refusal is for a CHANGE, not for the field being present.
+func TestUpdateEntry_RefusesToMoveTheAddress(t *testing.T) {
+	tc := ae.NewContext()
+	defer tc.Close()
+
+	admin := &auth.IAMClaims{Owner: "admin"}
+	create, _ := json.Marshal(map[string]any{
+		"slug": "gateway", "name": "Gateway", "category": "Network",
+		"apiPath": "/v1/gateway", "apiRoute": "api.hanzo.ai/v1/gateway", "published": true,
+	})
+	if code, b := callCatalog(t, admin, http.MethodPost, "/v1/catalog/entries", create, CreateEntry); code != 201 {
+		t.Fatalf("create = %d; %s", code, b)
+	}
+
+	move, _ := json.Marshal(map[string]any{"name": "Gateway", "category": "Network", "apiPath": "/v1/made-up"})
+	code, b := callPut(t, admin, "/v1/catalog/entries/*", "/v1/catalog/entries/gateway", move, UpdateEntry)
+	if code != 409 {
+		t.Fatalf("moving apiPath = %d, want 409; %s", code, b)
+	}
+	if !strings.Contains(string(b), "hanzo-catalog.json") {
+		t.Errorf("the refusal does not say where the address IS edited: %s", b)
+	}
+
+	// The whole-entity round-trip the console performs: same address back, plus
+	// the defaulted kind the projection always states. Both must be accepted.
+	echo, _ := json.Marshal(map[string]any{
+		"name": "Gateway, renamed", "category": "Network",
+		"apiPath": "/v1/gateway", "apiRoute": "api.hanzo.ai/v1/gateway",
+		"kind": catalogentry.KindService, "published": true,
+	})
+	if code, b := callPut(t, admin, "/v1/catalog/entries/*", "/v1/catalog/entries/gateway", echo, UpdateEntry); code != 200 {
+		t.Fatalf("echoing the address back = %d, want 200 — the console reads a row and PUTs it whole; %s", code, b)
 	}
 }
