@@ -354,7 +354,7 @@ importers:
         version: 3.4.17
       tsup:
         specifier: ^8.0.2
-        version: 8.5.1(jiti@1.21.7)(postcss@8.5.3)(typescript@5.9.3)(yaml@2.8.2)
+        version: 8.5.1(jiti@1.21.7)(postcss@8.5.23)(typescript@5.9.3)(yaml@2.8.2)
       typescript:
         specifier: ^5.4.5
         version: 5.9.3
@@ -450,8 +450,8 @@ importers:
         specifier: ^8.1.1
         version: 8.1.1(react-dom@19.0.4(react@19.0.4))(react-native@0.86.2(@babel/core@7.29.0)(@react-native/metro-config@0.86.2(@babel/core@7.29.0))(@types/react@19.0.3)(react@19.0.4))(react@19.0.4)
       '@hanzo/ui':
-        specifier: ^8.0.73
-        version: 8.0.74(jc2vlo7sd5v54goeovqlciwzny)
+        specifier: ^8.0.76
+        version: 8.0.76(jc2vlo7sd5v54goeovqlciwzny)
       '@hanzogui/config':
         specifier: ^8.1.1
         version: 8.1.1(@emotion/is-prop-valid@1.4.0)(react-dom@19.0.4(react@19.0.4))(react-native-reanimated@4.5.3(react-native-worklets@0.10.3(@babel/core@7.29.0)(@react-native/metro-config@0.86.2(@babel/core@7.29.0))(react-native@0.86.2(@babel/core@7.29.0)(@react-native/metro-config@0.86.2(@babel/core@7.29.0))(@types/react@19.0.3)(react@19.0.4))(react@19.0.4))(react-native@0.86.2(@babel/core@7.29.0)(@react-native/metro-config@0.86.2(@babel/core@7.29.0))(@types/react@19.0.3)(react@19.0.4))(react@19.0.4))(react@19.0.4)
@@ -1890,6 +1890,40 @@ packages:
 
   '@hanzo/ui@8.0.74':
     resolution: {integrity: sha512-0S5+N6PQ0KwxX7G5/Kl4N7vaLSCKA/eG3cpsT/PZGaj3LVnMBwwuxqZdBsm6pbwTyH6QzxNVCSyLCfFaVFZzeA==}
+    peerDependencies:
+      '@hanzo/canvas': '>=0.1.0'
+      '@hanzo/cd': '>=0.1.0'
+      '@hanzo/dashboard': '>=0.1.0'
+      '@hanzo/data': '>=1.2.3'
+      '@hanzo/gui': '>=8.1.0'
+      '@hanzo/usage': '>=0.1.0'
+      '@hanzogui/config': '>=8.1.0'
+      '@hanzogui/next-theme': '>=8.1.0'
+      next: '>=14'
+      next-themes: '>=0.2.1'
+      react: '>=19'
+      react-dom: '>=19'
+      react-native-web: '>=0.21'
+    peerDependenciesMeta:
+      '@hanzo/canvas':
+        optional: true
+      '@hanzo/cd':
+        optional: true
+      '@hanzo/dashboard':
+        optional: true
+      '@hanzo/usage':
+        optional: true
+      '@hanzogui/next-theme':
+        optional: true
+      next:
+        optional: true
+      next-themes:
+        optional: true
+      react-native-web:
+        optional: true
+
+  '@hanzo/ui@8.0.76':
+    resolution: {integrity: sha512-L7ZF0dqpraesU0ZD9HDB5tCELYvoUEhIHxthprLCyFV0mlqkHqvz6zc3im/yhm7lFZllbwcHgZVfkiFIqmeg5g==}
     peerDependencies:
       '@hanzo/canvas': '>=0.1.0'
       '@hanzo/cd': '>=0.1.0'
@@ -10674,6 +10708,28 @@ snapshots:
     transitivePeerDependencies:
       - react-native-svg
 
+  '@hanzo/ui@8.0.76(jc2vlo7sd5v54goeovqlciwzny)':
+    dependencies:
+      '@hanzo/appearance': 0.1.4(react@19.0.4)
+      '@hanzo/data': 1.2.1(@hanzo/gui@8.1.1(react-dom@19.0.4(react@19.0.4))(react-native@0.86.2(@babel/core@7.29.0)(@react-native/metro-config@0.86.2(@babel/core@7.29.0))(@types/react@19.0.3)(react@19.0.4))(react@19.0.4))(react@19.0.4)
+      '@hanzo/design': 0.5.1
+      '@hanzo/gui': 8.1.1(react-dom@19.0.4(react@19.0.4))(react-native@0.86.2(@babel/core@7.29.0)(@react-native/metro-config@0.86.2(@babel/core@7.29.0))(@types/react@19.0.3)(react@19.0.4))(react@19.0.4)
+      '@hanzo/logo': 1.0.13(react@19.0.4)
+      '@hanzo/products': 0.2.0(@hanzogui/lucide-icons-2@8.1.1(react-dom@19.0.4(react@19.0.4))(react-native-svg@15.15.5(react-native@0.86.2(@babel/core@7.29.0)(@react-native/metro-config@0.86.2(@babel/core@7.29.0))(@types/react@19.0.3)(react@19.0.4))(react@19.0.4))(react@19.0.4))(react@19.0.4)
+      '@hanzogui/config': 8.1.1(@emotion/is-prop-valid@1.4.0)(react-dom@19.0.4(react@19.0.4))(react-native-reanimated@4.5.3(react-native-worklets@0.10.3(@babel/core@7.29.0)(@react-native/metro-config@0.86.2(@babel/core@7.29.0))(react-native@0.86.2(@babel/core@7.29.0)(@react-native/metro-config@0.86.2(@babel/core@7.29.0))(@types/react@19.0.3)(react@19.0.4))(react@19.0.4))(react-native@0.86.2(@babel/core@7.29.0)(@react-native/metro-config@0.86.2(@babel/core@7.29.0))(@types/react@19.0.3)(react@19.0.4))(react@19.0.4))(react@19.0.4)
+      '@hanzogui/lucide-icons-2': 8.1.1(react-dom@19.0.4(react@19.0.4))(react-native-svg@15.15.5(react-native@0.86.2(@babel/core@7.29.0)(@react-native/metro-config@0.86.2(@babel/core@7.29.0))(@types/react@19.0.3)(react@19.0.4))(react@19.0.4))(react@19.0.4)
+      '@hanzogui/telemetry': 8.1.3(react@19.0.4)
+      '@hanzogui/toast': 8.1.1(react-dom@19.0.4(react@19.0.4))(react@19.0.4)
+      clsx: 2.1.1
+      react: 19.0.4
+      react-dom: 19.0.4(react@19.0.4)
+    optionalDependencies:
+      '@hanzogui/next-theme': 8.1.1(next@15.3.9(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.4(react@19.0.4))(react@19.0.4))(react@19.0.4)
+      next: 15.3.9(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.4(react@19.0.4))(react@19.0.4)
+      react-native-web: 0.21.2(react-dom@19.0.4(react@19.0.4))(react@19.0.4)
+    transitivePeerDependencies:
+      - react-native-svg
+
   '@hanzogui/accordion@7.3.0(expo@57.0.8)(react-dom@19.0.4(react@19.0.4))(react-native@0.86.2(@babel/core@7.29.0)(@react-native/metro-config@0.86.2(@babel/core@7.29.0))(@types/react@19.0.3)(react@19.0.4))(react@19.0.4)(sf-symbols-typescript@2.2.0)':
     dependencies:
       '@hanzogui/collapsible': 7.3.0(expo@57.0.8)(react-dom@19.0.4(react@19.0.4))(react-native@0.86.2(@babel/core@7.29.0)(@react-native/metro-config@0.86.2(@babel/core@7.29.0))(@types/react@19.0.3)(react@19.0.4))(react@19.0.4)(sf-symbols-typescript@2.2.0)
@@ -17024,8 +17080,8 @@ snapshots:
       '@typescript-eslint/parser': 8.62.1(eslint@8.10.0)(typescript@5.9.3)
       eslint: 8.10.0
       eslint-import-resolver-node: 0.3.10
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint@8.10.0))(eslint@8.10.0)
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint@8.10.0))(eslint@8.10.0))(eslint@8.10.0)
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@8.10.0)
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.10.0)
       eslint-plugin-jsx-a11y: 6.10.2(eslint@8.10.0)
       eslint-plugin-react: 7.37.5(eslint@8.10.0)
       eslint-plugin-react-hooks: 5.2.0(eslint@8.10.0)
@@ -17044,7 +17100,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint@8.10.0))(eslint@8.10.0):
+  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@8.10.0):
     dependencies:
       '@nolyfill/is-core-module': 1.0.39
       debug: 4.4.3
@@ -17055,22 +17111,22 @@ snapshots:
       tinyglobby: 0.2.15
       unrs-resolver: 1.12.2
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint@8.10.0))(eslint@8.10.0))(eslint@8.10.0)
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.10.0)
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.14.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint@8.10.0))(eslint@8.10.0))(eslint@8.10.0):
+  eslint-module-utils@2.14.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1)(eslint@8.10.0):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
       '@typescript-eslint/parser': 8.62.1(eslint@8.10.0)(typescript@5.9.3)
       eslint: 8.10.0
       eslint-import-resolver-node: 0.3.10
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint@8.10.0))(eslint@8.10.0)
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@8.10.0)
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint@8.10.0))(eslint@8.10.0))(eslint@8.10.0):
+  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.10.0):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9
@@ -17081,7 +17137,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 8.10.0
       eslint-import-resolver-node: 0.3.10
-      eslint-module-utils: 2.14.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint@8.10.0))(eslint@8.10.0))(eslint@8.10.0)
+      eslint-module-utils: 2.14.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1)(eslint@8.10.0)
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3
@@ -19451,14 +19507,6 @@ snapshots:
       postcss: 8.5.23
       yaml: 2.8.2
 
-  postcss-load-config@6.0.1(jiti@1.21.7)(postcss@8.5.3)(yaml@2.8.2):
-    dependencies:
-      lilconfig: 3.1.3
-    optionalDependencies:
-      jiti: 1.21.7
-      postcss: 8.5.3
-      yaml: 2.8.2
-
   postcss-nested@6.2.0(postcss@8.5.3):
     dependencies:
       postcss: 8.5.3
@@ -20564,34 +20612,6 @@ snapshots:
       tree-kill: 1.2.2
     optionalDependencies:
       postcss: 8.5.23
-      typescript: 5.9.3
-    transitivePeerDependencies:
-      - jiti
-      - supports-color
-      - tsx
-      - yaml
-
-  tsup@8.5.1(jiti@1.21.7)(postcss@8.5.3)(typescript@5.9.3)(yaml@2.8.2):
-    dependencies:
-      bundle-require: 5.1.0(esbuild@0.27.3)
-      cac: 6.7.14
-      chokidar: 4.0.3
-      consola: 3.4.2
-      debug: 4.4.3
-      esbuild: 0.27.3
-      fix-dts-default-cjs-exports: 1.0.1
-      joycon: 3.1.1
-      picocolors: 1.1.1
-      postcss-load-config: 6.0.1(jiti@1.21.7)(postcss@8.5.3)(yaml@2.8.2)
-      resolve-from: 5.0.0
-      rollup: 4.59.0
-      source-map: 0.7.6
-      sucrase: 3.35.1
-      tinyexec: 0.3.2
-      tinyglobby: 0.2.15
-      tree-kill: 1.2.2
-    optionalDependencies:
-      postcss: 8.5.3
       typescript: 5.9.3
     transitivePeerDependencies:
       - jiti
