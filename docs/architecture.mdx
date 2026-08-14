@@ -169,5 +169,5 @@ deploying, and confirm `/healthz` reports the expected version.
 - The PVC is ReadWriteOnce, so the deployment uses the `Recreate` strategy.
 - At-rest encryption (SQLCipher via `hanzoai/sqlite`) is built and staged but not
   enabled by default (key unset ⇒ plaintext for dev/CI).
-- ClickHouse (via `hanzoai/datastore-go`) backs analytics; the chain (Hanzo EVM)
+- Datastore (via `hanzoai/datastore-go`) backs analytics; the chain (Hanzo EVM)
   is the eventual source of truth for the HUSD-backed credit ledger.

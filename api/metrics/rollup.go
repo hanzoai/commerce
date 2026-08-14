@@ -317,7 +317,7 @@ func (a *acc) snapshot(opts options) *SaaSMetrics {
 
 	gaps := []string{
 		"subscriptions.upgrades / downgrades: plan-change events are not recorded (models/billingevent is not written on plan change), so upgrade/downgrade counts are unavailable — new/canceled are sourced from subscription create/cancel timestamps.",
-		"usage: per-model tokens, per-org AI-spend ranking, latency and error rate are served by the cloud fleet LLM-obs god-view GET /v1/admin/o11y (ClickHouse cloud_usage + signoz_traces), not re-derived here. Per-MODEL latency is captured NOWHERE in the stack; per-MODEL error rate is in cloud_usage.status but not yet exposed by /v1/admin/o11y topModels.",
+		"usage: per-model tokens, per-org AI-spend ranking, latency and error rate are served by the cloud fleet LLM-obs god-view GET /v1/admin/o11y (Datastore cloud_usage + signoz_traces), not re-derived here. Per-MODEL latency is captured NOWHERE in the stack; per-MODEL error rate is in cloud_usage.status but not yet exposed by /v1/admin/o11y topModels.",
 	}
 	if a.untagged > 0 {
 		gaps = append(gaps, fmt.Sprintf("usage.untaggedRequests: %d api-usage request(s) carried no model tag (excluded from any model attribution; still counted in totals).", a.untagged))

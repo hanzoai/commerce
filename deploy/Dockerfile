@@ -108,10 +108,10 @@ ENV PORT=8001
 # Redis connection (optional)
 ENV REDIS_URL=""
 
-# ClickHouse analytics (optional)
-ENV CLICKHOUSE_URL=""
-ENV CLICKHOUSE_USER=default
-ENV CLICKHOUSE_PASSWORD=""
+# Datastore analytics (optional)
+ENV DATASTORE_URL=""
+ENV DATASTORE_USER=default
+ENV DATASTORE_PASSWORD=""
 
 # IAM connection (hanzo.id)
 ENV IAM_URL=""

@@ -59,7 +59,7 @@ Commerce will be available at `http://localhost:8001`
               +---------------+---------------+
               |               |               |
      +--------v----+  +-------v-------+  +----v--------+
-     |    Redis    |  |   ClickHouse  |  |   External  |
+     |    Redis    |  |   Datastore  |  |   External  |
      |   (cache)   |  |  (analytics)  |  |  IAM (id)   |
      +-------------+  +---------------+  +-------------+
 ```
@@ -85,7 +85,7 @@ Commerce will be available at `http://localhost:8001`
 - Port: 6379
 - Used for: Session storage, caching
 
-### ClickHouse (Analytics)
+### Datastore (Analytics)
 - HTTP Port: 8123
 - Native Port: 9000
 - Used for: Event tracking, order analytics
@@ -174,7 +174,7 @@ Set these in the DO App Platform console:
 - `STRIPE_WEBHOOK_SECRET`
 - `SENDGRID_API_KEY`
 - `IAM_API_KEY`
-- `CLICKHOUSE_URL`
+- `DATASTORE_URL`
 - `COMMERCE_DATASTORE`
 
 ## Monitoring
@@ -192,7 +192,7 @@ Production deployments include Prometheus and Grafana for monitoring.
 - Error rates
 - Database query performance
 - Redis cache hit/miss ratio
-- ClickHouse query performance
+- Datastore query performance
 
 ## Troubleshooting
 
@@ -219,8 +219,8 @@ docker inspect --format='{{.State.Health}}' commerce-blue
 ### Database Connection Issues
 
 ```bash
-# Test ClickHouse
-docker exec commerce-clickhouse clickhouse-client --query "SELECT 1"
+# Test Datastore
+docker exec commerce-datastore hanzo-datastore-client --query "SELECT 1"
 
 # Test Redis
 docker exec commerce-redis redis-cli ping
