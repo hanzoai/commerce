@@ -37,15 +37,24 @@ const (
 	StatusSoon     = "soon"     // primitive shipped, no console surface yet
 )
 
-// A catalog entry either SERVES an API or CONSUMES one. The CLI, the SDKs, the
-// IDE and the console are products in their own right with no route of their
-// own, so reading their health off an apiPath is a category error — it is how
-// seven working products came to be advertised against paths that 404. An empty
-// kind reads as KindService, because every row written before this field exists
-// is API-backed.
+// Kind answers ONE question — what API does this product have on api.hanzo.ai —
+// and it has three answers, not two.
+//
+// It served a product BADLY while it had only two. The CLI, the SDKs, the desktop
+// app and the console are products in their own right with no route of their own,
+// so reading their health off an apiPath is a category error, and it is how seven
+// working products came to be advertised against paths that 404. But writing them
+// all "client" left a second group with nowhere to stand: Containers, CDN, HSM,
+// MPC and Attestations are not clients of anything — they are real products this
+// host simply does not front — and calling them clients would have been as wrong
+// as the dead paths, in the opposite direction.
+//
+// An empty kind reads as KindService, because every row written before this field
+// existed is API-backed.
 const (
 	KindService = "service" // API-backed: ApiPath is a real route
 	KindClient  = "client"  // consumes the API, so carries no ApiPath
+	KindPending = "pending" // no API on this host yet, so carries no ApiPath
 )
 
 // KindOf reports an entry's kind, defaulting the unset field to KindService so
