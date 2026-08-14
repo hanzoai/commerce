@@ -15,7 +15,27 @@ import (
 // Category must be one of these.
 var canonicalCategories = []string{
 	"AI", "Compute", "Data", "Network", "Security",
-	"Dev", "Platform", "Observe", "Web3", "Apps",
+	"Dev", "Infrastructure", "Observe", "Web3", "Apps",
+}
+
+// renamedCategories maps a category label the taxonomy has RETIRED to the one
+// that replaced it. It exists because a label is not just a display string:
+// CategorySlug derives the public URL from it, and scoped() drops any entry
+// whose Category is absent from canonicalCategories. So renaming a category in
+// that list, alone, would make every row still carrying the old label vanish
+// from the catalog — six products in the case of Platform → Infrastructure.
+//
+// [Rename] applies this map to the store on boot, and it can only ever touch
+// rows whose category is ALREADY invisible. A row sitting in a canonical
+// category is left alone, which is what keeps this from reverting the one
+// genuine merchandising decision an admin makes here: which of the ten a
+// product belongs to.
+//
+// Infrastructure was Platform until cloud.hanzo.ai titled its products section
+// "Platform"; a category of the same name nested inside a section of that name
+// reads as a mistake, so the inner one took the name that describes it.
+var renamedCategories = map[string]string{
+	"Platform": "Infrastructure",
 }
 
 // brandCategories restricts which categories a brand's console surfaces, in
