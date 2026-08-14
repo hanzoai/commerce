@@ -74,8 +74,20 @@ func TestProject_ConformsToContract(t *testing.T) {
 		if p.Route == "" {
 			t.Fatalf("%s: empty route", p.ID)
 		}
-		if len(p.ApiPath) < 3 || p.ApiPath[:3] != "/v1" {
-			t.Fatalf("%s: apiPath %q not /v1-prefixed", p.ID, p.ApiPath)
+		// A client has no route of its own, so it is the one shape that must NOT
+		// carry an apiPath. Asserting one on every product is what made seven
+		// working clients read as broken.
+		switch p.Kind {
+		case KindClient:
+			if p.ApiPath != "" {
+				t.Fatalf("%s is a client yet projects apiPath %q", p.ID, p.ApiPath)
+			}
+		case KindService:
+			if len(p.ApiPath) < 3 || p.ApiPath[:3] != "/v1" {
+				t.Fatalf("%s: apiPath %q not /v1-prefixed", p.ID, p.ApiPath)
+			}
+		default:
+			t.Fatalf("%s: kind %q is neither %q nor %q", p.ID, p.Kind, KindService, KindClient)
 		}
 	}
 
@@ -112,6 +124,42 @@ func TestProject_ConformsToContract(t *testing.T) {
 		if mach.Private == nil || mach.Private.MarginPct == nil {
 			t.Fatalf("machines private economics missing: %+v", mach.Private)
 		}
+	}
+}
+
+// hanzo.ai hydrates its product menu from this projection, and `kind` is the
+// only thing in it that says not to render an API link for the CLI. So the wire
+// must STATE the kind on every row rather than leave it to be inferred from an
+// empty apiPath — and a row that stores none is a service, which is what every
+// row written before the field is.
+func TestProject_StatesKindAndDefaultsToService(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+	if _, err := Seed(db); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	cat, err := Project(db, "hanzo")
+	if err != nil {
+		t.Fatalf("project: %v", err)
+	}
+	clients := 0
+	for _, p := range cat.Products {
+		if p.Kind == "" {
+			t.Fatalf("%s: projection omits kind — a consumer would have to guess it", p.ID)
+		}
+		if p.Kind == KindClient {
+			clients++
+		}
+	}
+	if clients != len(clientProducts) {
+		t.Fatalf("projected %d clients, want %d", clients, len(clientProducts))
+	}
+
+	// A stored row that predates the field carries no kind and is API-backed.
+	if got := KindOf(&CatalogEntry{}); got != KindService {
+		t.Fatalf("KindOf(unset) = %q, want %q", got, KindService)
 	}
 }
 
