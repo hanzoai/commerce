@@ -10,9 +10,21 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 )
 
-// canonicalCategories is the ordered "Open AI Cloud" taxonomy — the exact
-// labels and order @hanzo/products CATEGORY_ORDER renders. A catalog entry's
-// Category must be one of these.
+// canonicalCategories is the ordered "Open AI Cloud" taxonomy, and it is the
+// SOURCE of it. A catalog entry's Category must be one of these.
+//
+// This used to say it was "the exact labels and order @hanzo/products
+// CATEGORY_ORDER renders", which pointed the arrow the wrong way and was false
+// while it said so: that package rendered a `Commerce` category no row here has
+// ever carried, and omitted `Dev`, which eight carry. Four hand-written copies
+// of this list existed across the estate and every one of them was somebody's
+// mirror of somebody else.
+//
+// The direction is now stated once and runs one way. This list is edited here,
+// served at GET /v1/commerce/catalog, and every consumer generates its copy from
+// that response — @hanzo/products by `pnpm sync` (which fails a release when its
+// copy disagrees), the marketing site by scripts/sync-catalog.mjs at prebuild,
+// and the console by importing the package. Nothing downstream retypes it.
 var canonicalCategories = []string{
 	"AI", "Compute", "Data", "Network", "Security",
 	"Dev", "Infrastructure", "Observe", "Web3", "Apps",
@@ -39,9 +51,15 @@ var renamedCategories = map[string]string{
 }
 
 // brandCategories restricts which categories a brand's console surfaces, in
-// display order. nil = all categories (hanzo). Mirrors @hanzo/products
-// BRAND_CATEGORIES exactly — the server scopes by CATEGORY (matching
-// catalogForBrand), NOT by a per-entry brands list.
+// display order. nil = all categories (hanzo). The server scopes by CATEGORY
+// (matching catalogForBrand), NOT by a per-entry brands list.
+//
+// This is the source of the per-brand scope too, on the same footing as the
+// taxonomy above: a Lux console asks GET /v1/commerce/catalog?brand=lux, so the
+// answer to "which categories does lux show" is whatever this returns.
+// @hanzo/products reads each brand's answer instead of keeping the second copy
+// it used to keep, which had drifted to scoping the chain brands to
+// Infrastructure while this scoped them to Dev.
 var brandCategories = map[string][]string{
 	"hanzo": nil,
 	"lux":   {"Web3", "Network", "Security", "Dev"},
@@ -70,6 +88,38 @@ type Category struct {
 	ID    string `json:"id"`    // slugified label, e.g. "ai"
 	Label string `json:"label"` // "AI"
 	Order int    `json:"order"` // display rank
+	Color string `json:"color"` // accent swatch key, e.g. "violet"
+}
+
+// categoryColors is the accent each category reads as — the swatch key a surface
+// resolves to css, exactly like a product's BrandColor.
+//
+// It is served rather than looked up per surface because a category's colour is
+// part of what the category IS, not decoration each reader picks: it is the only
+// cue that distinguishes ten groups at a glance in a sidebar, and a group that is
+// teal in the console and indigo on the site is two different groups as far as
+// anyone looking at both can tell. That had happened — console.hanzo.ai drew this
+// category teal while @hanzo/products carried indigo for it — because the mapping
+// existed twice and neither copy was anyone's answer.
+//
+// The values are the ones the console has been shipping, since that is the
+// surface where a category accent is actually rendered at size (sidebar icons and
+// the category tiles); nothing re-themes as a result of moving them here.
+//
+// Keys are the canonical labels; TestCategoryColors_CoverTheTaxonomy pins that
+// this map and canonicalCategories name exactly the same set, so a category can
+// neither be added without an accent nor keep one after it is retired.
+var categoryColors = map[string]string{
+	"AI":             "violet",
+	"Compute":        "blue",
+	"Data":           "cyan",
+	"Network":        "sky",
+	"Security":       "red",
+	"Dev":            "indigo",
+	"Infrastructure": "teal",
+	"Observe":        "green",
+	"Web3":           "amber",
+	"Apps":           "pink",
 }
 
 // Item is the public projection of a CatalogEntry — the exact @hanzo/products
@@ -215,7 +265,12 @@ func categoriesForBrand(brand string) []Category {
 	}
 	out := make([]Category, 0, len(labels))
 	for i, label := range labels {
-		out = append(out, Category{ID: CategorySlug(label), Label: label, Order: i})
+		out = append(out, Category{
+			ID:    CategorySlug(label),
+			Label: label,
+			Order: i,
+			Color: categoryColors[label],
+		})
 	}
 	return out
 }
