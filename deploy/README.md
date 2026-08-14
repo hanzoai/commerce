@@ -252,4 +252,4 @@ docker compose -f deploy/compose.yml up -d
 
 - Documentation: https://docs.hanzo.ai/commerce
 - Issues: https://github.com/hanzoai/commerce/issues
-- Discord: https://discord.gg/hanzo
+- Discord: https://discord.gg/CJCyAsm9Vr

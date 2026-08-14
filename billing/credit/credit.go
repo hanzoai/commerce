@@ -21,21 +21,10 @@ const (
 	StarterCreditTag   = "starter-credit"
 )
 
-// LifetimeDays is how long ANY credit is good for.
-//
-// It was the starter grant's own number, which made "credit expires" a property
-// of one promotion rather than of credit. A deposit took an expiry only when the
-// caller passed `expiresIn`, and no caller did — so money granted with a deadline
-// sat next to money bought without one, and the ledger carried two kinds of
-// credit that looked identical in every balance it served.
-//
-// One year, one value, every credit. The mechanism was already here and enforced
-// — transaction.ExpiresAt is excluded from balance, and creditgrant consumes by
-// priority then earliest expiry — so this only decides the date those put on a
-// credit that arrives without one.
+// LifetimeDays is how long a credit is good for. It governs every credit,
+// whichever door it arrives through.
 const LifetimeDays = 365
 
-// StarterCreditDays is the starter grant's expiry, which is simply the lifetime
-// every other credit now gets. Kept as its own name because the grant's callers
-// read it, and pointed at the one value so the two cannot drift apart.
+// StarterCreditDays is the starter grant's expiry: the same lifetime, named for
+// its caller so the two cannot drift.
 const StarterCreditDays = LifetimeDays
