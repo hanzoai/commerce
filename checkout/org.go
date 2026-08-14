@@ -89,6 +89,13 @@ type Brand struct {
 	DisplayName  string `json:"displayName"`
 	LogoURL      string `json:"logoUrl"`
 	PrimaryColor string `json:"primaryColor"`
+	// The entity the buyer is contracting with, and the policies it publishes.
+	// A checkout is a contract; the footer is where it says whose. All three are
+	// omitted when unset so a brand that has not stated them renders nothing
+	// rather than a wrong name or a 404.
+	LegalName  string `json:"legalName,omitempty"`
+	TermsURL   string `json:"termsUrl,omitempty"`
+	PrivacyURL string `json:"privacyUrl,omitempty"`
 }
 
 // IAMConfig: Issuer + ClientID are OIDC-public (they already ship in the
