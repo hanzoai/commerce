@@ -1,0 +1,190 @@
+/**
+ * @hanzo/commerce-ui — the storefront kit's own stylesheet.
+ *
+ * Plain CSS on the `@hanzo/ui/theme.css` custom properties. No Tailwind, no
+ * preset, no plugin: every class here is authored, and the values are the
+ * Medusa metrics the storefront was drawn at (txt-medium = 14px/22.4px,
+ * h1-core = 18px/28px, …) so swapping the implementation does not move a
+ * single baseline. Import this BEFORE the app's utility stylesheet so a
+ * caller's className can still override a kit default while the utility
+ * layer exists.
+ */
+
+/* -- typography ---------------------------------------------------------- */
+
+.kit-text {
+  font-size: 0.875rem;
+  line-height: 1.4rem;
+  font-weight: 400;
+}
+.kit-text-xsmall { font-size: 0.75rem; line-height: 1.2rem; }
+.kit-text-small { font-size: 0.8125rem; line-height: 1.3rem; }
+.kit-text-large { font-size: 1rem; line-height: 1.6rem; }
+.kit-text-xlarge { font-size: 1.125rem; line-height: 1.8rem; }
+.kit-text-compact { line-height: 1.25rem; }
+.kit-text-plus { font-weight: 500; }
+.kit-text-mono { font-family: var(--font-geist-mono), ui-monospace, monospace; }
+
+.kit-h1 { font-size: 1.125rem; line-height: 1.75rem; font-weight: 500; }
+.kit-h2 { font-size: 1rem; line-height: 1.5rem; font-weight: 500; }
+.kit-h3 { font-size: 0.875rem; line-height: 1.25rem; font-weight: 500; }
+
+.kit-label { font-size: 0.875rem; line-height: 1.25rem; font-weight: 400; }
+.kit-label-xsmall { font-size: 0.75rem; }
+.kit-label-small { font-size: 0.8125rem; }
+.kit-label-large { font-size: 1rem; }
+.kit-label-plus { font-weight: 500; }
+
+/* -- surfaces ------------------------------------------------------------ */
+
+.kit-container {
+  width: 100%;
+  border-radius: 0.5rem;
+  background: var(--card);
+  padding: 1rem 1.5rem;
+  box-shadow:
+    0 0 0 1px var(--border),
+    0 1px 2px -1px rgb(0 0 0 / 0.08),
+    0 2px 4px 0 rgb(0 0 0 / 0.04);
+}
+
+/* -- table (compound: thead/tbody/tr/th/td) ------------------------------ */
+
+.kit-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+.kit-table-header { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.kit-table-row { border-bottom: 1px solid var(--border); }
+.kit-table-header-cell,
+.kit-table-cell {
+  height: 3rem;
+  padding: 0 1.5rem 0 0;
+  text-align: left;
+  vertical-align: middle;
+}
+.kit-table-header-cell { font-weight: 500; }
+
+/* -- badge / icon badge --------------------------------------------------- */
+
+.kit-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  box-sizing: border-box;
+  border: 1px solid var(--kit-tag-border, var(--border));
+  background: var(--kit-tag-bg, var(--muted));
+  color: var(--kit-tag-text, var(--foreground));
+  border-radius: 0.375rem;
+  height: 2rem;
+  padding: 0 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+}
+.kit-badge-small { height: 1.75rem; font-size: 0.75rem; }
+.kit-badge-xsmall { height: 1.5rem; font-size: 0.75rem; }
+.kit-badge-2xsmall { height: 1.25rem; font-size: 0.75rem; }
+.kit-badge-large { height: 2.5rem; font-size: 0.875rem; }
+.kit-badge-full { border-radius: 9999px; }
+
+.kit-badge-grey { --kit-tag-bg: #f4f4f5; --kit-tag-text: #52525b; --kit-tag-border: #e4e4e7; }
+.kit-badge-green { --kit-tag-bg: #ecfdf5; --kit-tag-text: #047857; --kit-tag-border: #a7f3d0; }
+.kit-badge-red { --kit-tag-bg: #fef2f2; --kit-tag-text: #b91c1c; --kit-tag-border: #fecaca; }
+.kit-badge-blue { --kit-tag-bg: #eff6ff; --kit-tag-text: #1d4ed8; --kit-tag-border: #bfdbfe; }
+.kit-badge-orange { --kit-tag-bg: #fff7ed; --kit-tag-text: #c2410c; --kit-tag-border: #fed7aa; }
+.kit-badge-purple { --kit-tag-bg: #faf5ff; --kit-tag-text: #7e22ce; --kit-tag-border: #e9d5ff; }
+
+.kit-icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--kit-tag-border, var(--border));
+  background: var(--kit-tag-bg, var(--card));
+  color: var(--kit-tag-text, var(--muted-foreground));
+  border-radius: 0.375rem;
+}
+
+/* -- input ---------------------------------------------------------------- */
+
+.kit-input {
+  width: 100%;
+  height: 2rem;
+  box-sizing: border-box;
+  background: var(--background);
+  color: var(--foreground);
+  border: 1px solid var(--input);
+  border-radius: 0.375rem;
+  padding: 0 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+.kit-input::placeholder { color: var(--muted-foreground); }
+.kit-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -1px;
+}
+
+/* -- radio group ----------------------------------------------------------
+   The group's card option only carries behavior; its look is the caller's.
+   The bare item is a native radio bound to the group. */
+
+.kit-radio-item { accent-color: var(--foreground); }
+
+/* -- checkbox -------------------------------------------------------------
+   The mark is drawn, not glyphed: a rotated rectangle with two borders is a
+   tick, a horizontal rule is the indeterminate bar. No icon font, no import. */
+
+.kit-checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 0.1875rem;
+  background: var(--background);
+  cursor: pointer;
+}
+.kit-checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.kit-checkbox:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+.kit-checkbox[data-state="checked"],
+.kit-checkbox[data-state="indeterminate"] {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+.kit-checkbox::after {
+  content: "";
+  display: none;
+  border-color: var(--primary-foreground);
+}
+.kit-checkbox[data-state="checked"]::after {
+  display: block;
+  width: 0.25rem;
+  height: 0.5rem;
+  margin-top: -0.125rem;
+  border-style: solid;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.kit-checkbox[data-state="indeterminate"]::after {
+  display: block;
+  width: 0.5rem;
+  border-style: solid;
+  border-width: 0 0 2px 0;
+}

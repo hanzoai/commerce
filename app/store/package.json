@@ -16,11 +16,19 @@
     "analyze": "ANALYZE=true next build"
   },
   "dependencies": {
-    "@headlessui/react": "^2.2.0",
-    "@hanzo/event": "^0.3.3",
     "@hanzo/commerce-icons": "workspace:*",
     "@hanzo/commerce-sdk": "workspace:*",
     "@hanzo/commerce-ui": "workspace:*",
+    "@hanzo/event": "^0.3.3",
+    "@hanzo/gui": "^8.1.1",
+    "@hanzo/ui": "^8.0.73",
+    "@hanzogui/config": "^8.1.1",
+    "@hanzogui/core": "^8.1.1",
+    "@hanzogui/lucide-icons-2": "^8.1.1",
+    "@hanzogui/next-theme": "^8.1.1",
+    "@hanzogui/react-native-svg": "^8.1.1",
+    "@hanzogui/web": "^8.1.1",
+    "@headlessui/react": "^2.2.0",
     "@radix-ui/react-accordion": "^1.2.1",
     "@stripe/react-stripe-js": "^5.3.0",
     "@stripe/stripe-js": "^8.2.0",
@@ -31,6 +39,7 @@
     "react": "19.0.4",
     "react-country-flag": "^3.1.0",
     "react-dom": "19.0.4",
+    "react-native-web": "^0.21.0",
     "server-only": "^0.0.1",
     "tailwindcss-radix": "^2.8.0",
     "webpack": "^5"
@@ -51,6 +60,7 @@
     "eslint": "8.10.0",
     "eslint-config-next": "15.0.8",
     "postcss": "^8.4.8",
+    "postcss-import": "^16.1.0",
     "prettier": "^2.8.8",
     "tailwindcss": "^3.0.23",
     "typescript": "^5.3.2"
