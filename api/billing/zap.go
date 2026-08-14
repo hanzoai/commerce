@@ -359,9 +359,7 @@ func zapDeposit(c *zip.Ctx, params json.RawMessage) (interface{}, *zapError) {
 	trans.Notes = notes
 	trans.Tags = req.Tags
 
-	if req.ExpiresIn > 0 {
-		trans.ExpiresAt = time.Now().AddDate(0, 0, req.ExpiresIn)
-	}
+	trans.ExpiresAt = time.Now().AddDate(0, 0, expiryDays(req.ExpiresIn))
 
 	if org.TestMode() {
 		trans.Test = true
