@@ -230,6 +230,64 @@ func Correct(db *datastore.Datastore) (corrected int, err error) {
 	return corrected, nil
 }
 
+// Rename moves every entry sitting in a RETIRED category to the one that
+// replaced it, per renamedCategories (projection.go). It returns the number
+// moved and is idempotent: a second run finds nothing, because the first left
+// no row carrying a retired label.
+//
+// A category rename is not the same act as an address correction, and this is
+// not [Correct] with a wider reach. Correct rewrites a field on rows that are
+// working fine; this one only ever touches rows that are ALREADY broken. The
+// canonical list is what scoped() filters on, so the instant a label leaves it
+// every row still naming it stops being projected — the products do not move,
+// they disappear. Reading the old label is therefore never a preference to
+// respect; it is a row that has been orphaned by a taxonomy change and has
+// exactly one right home.
+//
+// That narrowness is the safety property. Which of the ten categories a product
+// belongs to IS a merchandising decision, made in admin.hanzo.ai, and this
+// cannot overwrite one: a row in a canonical category never matches the map.
+//
+// Like every other catalog reconciliation here, it travels as a DEPLOY rather
+// than as a script someone runs against production holding a SuperAdmin bearer.
+func Rename(db *datastore.Datastore) (moved int, err error) {
+	if len(renamedCategories) == 0 {
+		return 0, nil
+	}
+
+	// Two steps, and the split is not stylistic: GetAll fills plain structs that
+	// are not bound to the store, so writing one back panics. A row is READ in
+	// bulk to find out which slugs are stranded, then re-fetched through New(db)
+	// to be written — the same shape [Correct] uses, for the same reason.
+	entries := make([]*CatalogEntry, 0, 128)
+	if _, err := Query(db).GetAll(&entries); err != nil {
+		return 0, err
+	}
+	stranded := make(map[string]string, len(renamedCategories))
+	for _, e := range entries {
+		if to, retired := renamedCategories[e.Category]; retired {
+			stranded[e.Slug] = to
+		}
+	}
+
+	for slug, to := range stranded {
+		e := New(db)
+		ok, qerr := e.Query().Filter("Slug=", slug).Get()
+		if qerr != nil {
+			return moved, qerr
+		}
+		if !ok || renamedCategories[e.Category] == "" {
+			continue
+		}
+		e.Category = to
+		if err := e.Update(); err != nil {
+			return moved, err
+		}
+		moved++
+	}
+	return moved, nil
+}
+
 // InfraSeedRow is one infra-tier seed record: a catalog-entry addressed by a
 // globally-unique slug, carrying its display price (PriceCents) and the full
 // structured spec in the Metadata JSON hatch (vcpus/memoryGB/… for cloud,
