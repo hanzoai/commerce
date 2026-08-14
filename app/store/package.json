@@ -19,6 +19,7 @@
     "@hanzo/commerce-icons": "workspace:*",
     "@hanzo/commerce-sdk": "workspace:*",
     "@hanzo/commerce-ui": "workspace:*",
+    "@hanzo/data": "^1.2.3",
     "@hanzo/event": "^0.3.3",
     "@hanzo/gui": "^8.1.1",
     "@hanzo/ui": "^8.0.76",
