@@ -37,6 +37,46 @@ const (
 	StatusSoon     = "soon"     // primitive shipped, no console surface yet
 )
 
+// Kind answers ONE question — what API does this product have on api.hanzo.ai —
+// and it has three answers, not two.
+//
+// It served a product BADLY while it had only two. The CLI, the SDKs, the desktop
+// app and the console are products in their own right with no route of their own,
+// so reading their health off an apiPath is a category error, and it is how seven
+// working products came to be advertised against paths that 404. But writing them
+// all "client" left a second group with nowhere to stand: Containers, CDN, HSM,
+// MPC and Attestations are not clients of anything — they are real products this
+// host simply does not front — and calling them clients would have been as wrong
+// as the dead paths, in the opposite direction.
+//
+// An empty kind reads as KindService, because every row written before this field
+// existed is API-backed.
+const (
+	KindService = "service" // API-backed: ApiPath is a real route
+	KindClient  = "client"  // consumes the API, so carries no ApiPath
+	KindPending = "pending" // no API on this host yet, so carries no ApiPath
+)
+
+// KindOf reports an entry's kind, defaulting the unset field to KindService so
+// a stored row and a projected one always agree on what the entry is.
+func KindOf(e *CatalogEntry) string { return Kind(e.Role) }
+
+// Kind defaults an unset kind to KindService.
+//
+// ONE place decides that "" and "service" are the same value, because two places
+// eventually disagree and the disagreement is silent. It very nearly was: the
+// public projection always states `kind`, so a console that reads a row and PUTs
+// it back stores the literal "service" where the snapshot says nothing at all.
+// Compared as raw strings those differ forever — the row is rewritten on every
+// boot of every pod, and the log line that exists so an address change can be
+// audited fires eternally and means nothing.
+func Kind(role string) string {
+	if role == "" {
+		return KindService
+	}
+	return role
+}
+
 // Pricing is the PUBLIC pricing block for a capability — projected to everyone.
 // PublicPrice is a human display string ("From $0.10 / 1M input tokens"), or the
 // literal "TODO" when a real number is not yet sourced (never a fabricated one).
@@ -131,6 +171,11 @@ type CatalogEntry struct {
 	CostCents currency.Cents `json:"costCents,omitempty"`
 	MarginPct float64        `json:"marginPct,omitempty"`
 
+	// Role is service|client (KindOf defaults it). It is spelled `kind`
+	// everywhere it is observable — in storage and on the wire; the Go field
+	// cannot be Kind because Model[T] promotes a Kind() method that a field of
+	// that name shadows, silently breaking mixin.Entity (see entity_guard.go).
+	Role   string `json:"kind,omitempty"`
 	Status string `json:"status" orm:"default:enabled"` // enabled|external|soon
 	Repo   string `json:"repo,omitempty"`               // source repo, e.g. "hanzoai/ai"
 	Admin  bool   `json:"admin,omitempty"`              // admin-gated surface

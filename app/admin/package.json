@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@hanzo/data": "^1.2.3",
     "@hanzo/design": "^0.4.9",
     "@hanzo/gui": "7.3.0",
     "@hanzo/iam": "^0.21.6",

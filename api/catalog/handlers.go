@@ -195,10 +195,32 @@ func UpdateEntry(c *zip.Ctx) error {
 		return http.Fail(c, 404, "no catalog entry found with slug: "+slug, errors.New("not found"))
 	}
 
+	was := struct{ path, route, kind string }{e.ApiPath, e.ApiRoute, catalogentry.KindOf(e)}
 	if err := json.DecodeBytes(c.Body(), e); err != nil {
 		return http.Fail(c, 400, "failed to decode request body", err)
 	}
 	e.Slug = slug // identity is immutable — the path slug wins over any body value
+
+	// The ADDRESS is not editable here, and saying so beats accepting it.
+	//
+	// A product's apiPath is a fact about the fleet — either the router delivers
+	// there or it does not — so it arrives with a deploy, from the snapshot, and
+	// catalogentry.Correct reads it back over this row on every boot. Storing an
+	// edit would return 200 for a value the next restart deletes, which is a
+	// door reporting durable success it cannot keep.
+	//
+	// Refused only when it CHANGES: this handler takes a whole entity, so the
+	// console reads a row and PUTs it back with the address it was given, and
+	// that has to keep working. Kind is compared defaulted, because a projection
+	// that always states "service" and a row that stores "" mean the same thing.
+	if e.ApiPath != was.path || e.ApiRoute != was.route || catalogentry.KindOf(e) != was.kind {
+		return http.Fail(c, 409, "a product's API address travels with a deploy, not this door — "+
+			"edit apiPath/apiRoute/kind in hanzoai/commerce models/catalogentry/seed/hanzo-catalog.json, "+
+			"where cloud's catalog_address_test.go checks it against the routes the fleet publishes. "+
+			"PUT the address you were given, or leave it out",
+			errors.New("apiPath/apiRoute/kind are deploy-owned"))
+	}
+
 	if err := e.Update(); err != nil {
 		return http.Fail(c, 500, "failed to update catalog entry", err)
 	}
