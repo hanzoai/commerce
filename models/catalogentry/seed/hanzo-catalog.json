@@ -1322,7 +1322,7 @@
   },
   {
     "id": "settlement",
-    "name": "Settlement",
+    "name": "Payments",
     "category": "Web3",
     "brandColor": "slate",
     "iconKey": "ArrowLeftRight",
