@@ -940,6 +940,20 @@ func (app *App) runCatalogSeed() {
 		slog.Info("catalog seeded", "products", created)
 	}
 
+	// A row left in a category the taxonomy has retired is not projected at all,
+	// so this runs on every boot and ahead of everything that reads the catalog.
+	// It moves such rows to the category that replaced the old one — the only
+	// home they can have — and touches nothing that already sits in a canonical
+	// category, so an admin's choice of category is never overwritten.
+	moved, err := catalogentry.Rename(db)
+	if err != nil {
+		slog.Error("catalog category rename failed", "err", err)
+		return
+	}
+	if moved > 0 {
+		slog.Info("catalog categories renamed", "products", moved)
+	}
+
 	// A product's API address is the fleet's fact, not the CMS's, so it is read
 	// back from the snapshot on every boot instead of only at birth. Logged
 	// because a boot that quietly moves where a customer is told to call is a

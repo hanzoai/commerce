@@ -205,6 +205,7 @@
     "description": "Enso orchestration, unlimited managed agents, and shared team workspaces.",
     "priceMonthly": 99,
     "priceAnnual": 83.25,
+    "prices": [99, 199, 299, 399, 499, 599, 699, 799, 899, 999],
     "features": [
       "Enso orchestration — dedicated routing through Hanzo's foundational framework model",
       "Unlimited managed agents — continuous background scheduling to unified team dashboards",

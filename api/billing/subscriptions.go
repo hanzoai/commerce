@@ -28,6 +28,10 @@ type createSubscriptionRequest struct {
 	// price_ref.recurring.per_seat); defaults to 1 and must meet the catalog's
 	// limits.minSeats. Ignored as a multiplier on flat plans.
 	Quantity int `json:"quantity"`
+	// Level picks which of the plan's published prices to open at — an INDEX into
+	// the catalog's `prices`, never an amount. 0 (the default) is the plan's base
+	// price. See plan.LevelPrice for why the wire carries a choice and not a sum.
+	Level int `json:"level,omitempty"`
 	// Members are the seat holders of a per-seat subscription. Each gets a
 	// zero-price bundle-child subscription row so the monthly allotment run
 	// grants their own per-user included credit. Never more than Quantity.
@@ -75,6 +79,13 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 		// sale — see plan.Listed. Same 404 as a slug that never existed, so the
 		// refusal tells a prober nothing about which slugs are real.
 		return http.Fail(c, 404, "plan not found", nil)
+	}
+
+	// The price this subscription opens at, chosen from what the catalog
+	// publishes. A level the plan does not publish is refused outright.
+	p, err = planAtLevel(p, req.Level)
+	if err != nil {
+		return http.Fail(c, 400, err.Error(), nil)
 	}
 
 	// C1-a: a PAID-tier subscription confers a spendable entitlement — its
@@ -165,6 +176,7 @@ func resolveSubscriptionPlan(db *datastore.Datastore, planId string) (*plan.Plan
 		p.Category = staticP.Category
 		p.Price = currency.Cents(staticP.Price)
 		p.PriceAnnual = currency.Cents(staticP.PriceAnnual)
+		p.Prices = centsOf(staticP.Prices)
 		p.ContactSales = staticP.ContactSales
 		p.Popular = staticP.Popular
 		p.PerSeat = staticP.PerSeat
@@ -177,12 +189,41 @@ func resolveSubscriptionPlan(db *datastore.Datastore, planId string) (*plan.Plan
 	return p, nil
 }
 
+// planAtLevel returns p priced at the level the purchase chose — a COPY, always,
+// priced at exactly one of the prices the catalog publishes for that plan. An
+// unpublished level is refused here, before any card is touched.
+//
+// It copies rather than repricing p because p is the AUTHORITY row: the same row
+// admin.hanzo.ai edits, GET /v1/billing/plans serves, and every other
+// subscription on this plan resolves through. A level is one customer's choice,
+// so it belongs to one subscription, and a level written onto the shared row
+// would be one persist away from repricing the tier for everyone.
+//
+// Where the choice then lives is what makes it survive: StartSubscription
+// snapshots the plan it is handed onto sub.Plan, the snapshot persists with the
+// subscription, and buildPeriodInvoice invoices sub.Plan.Price — so a
+// subscription opened at a level renews at that level for its whole life,
+// without the renewal path knowing levels exist.
+func planAtLevel(p *plan.Plan, level int) (*plan.Plan, error) {
+	price, err := p.LevelPrice(level)
+	if err != nil {
+		return nil, fmt.Errorf("plan %q is not sold at level %d: %w", p.Slug, level, err)
+	}
+	at := *p
+	at.Price = price
+	return &at, nil
+}
+
 // createSubscription is the reusable CORE of subscription creation: seat gate →
 // create the row → expand bundles → provision member seats → emit. It does NOT
 // enforce the C1-a paid-tier mint gate — that is the caller's job (the HTTP
 // CreateBillingSubscription gates it; the card path is authorized by its settled
 // charge). p carries the server-authoritative price; req.DefaultPaymentMethod is
 // set on the row (the card path passes the vaulted payment-method id).
+//
+// p is ALREADY priced at the chosen level (planAtLevel), because the card path
+// has to know the amount before it charges. So req.Level is the wire field, and
+// p.Price is the answer — this core reads the price and never re-derives it.
 func createSubscription(c *zip.Ctx, db *datastore.Datastore, org *organization.Organization, p *plan.Plan, req *createSubscriptionRequest) (*subscription.Subscription, error) {
 	// Seat gate: the catalog is the sole authority for per-seat-ness and the
 	// seat floor. A per-seat plan bills Price × quantity, never below
