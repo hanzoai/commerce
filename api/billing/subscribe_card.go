@@ -94,6 +94,13 @@ type subscribeCardRequest struct {
 	StoreID  string `json:"storeId,omitempty"`
 	Quantity int    `json:"quantity,omitempty"`
 	Currency string `json:"currency,omitempty"`
+	// Level picks which of the plan's published prices to buy at — an INDEX into
+	// the catalog's `prices`, never an amount. 0 (the default) is the plan's base
+	// price, so every client that predates levels keeps buying exactly what it
+	// bought before. plan.LevelPrice says why the wire carries a choice: there is
+	// no field here an amount could be written in, so underpaying is not a check
+	// that can be forgotten — it is a request that cannot be expressed.
+	Level int `json:"level,omitempty"`
 }
 
 // SubscribeWithCard vaults a Square card nonce as a reusable card-on-file, charges
@@ -175,6 +182,14 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		// Refused BEFORE the card is charged — a retired tier must never take money.
 		return http.Fail(c, 404, "plan not found", nil)
 	}
+	// The price this card is charged, chosen from what the catalog publishes. A
+	// level the plan does not publish is refused here — before the card is
+	// touched, before the idempotency guard is taken, and without ever consulting
+	// an amount the client sent, because the client sends none.
+	p, err = planAtLevel(p, req.Level)
+	if err != nil {
+		return http.Fail(c, 400, err.Error(), nil)
+	}
 	if int64(p.Price) <= 0 {
 		// A $0 plan needs no card — the free tier is self-serve via POST
 		// /v1/billing/subscriptions. This endpoint's contract is a PAID card sub.
@@ -238,7 +253,14 @@ func SubscribeWithCard(c *zip.Ctx) error {
 	// header, fall back to the STABLE (subject, planId): the single-use nonce is NOT a
 	// stable key (a re-tokenized retry mints a new nonce), which is exactly the
 	// double-charge to avoid. Scoped to the subject so keys never collide across tenants.
-	guard := guardKey(c, "store:"+req.StoreID+":plan:"+req.PlanID)
+	//
+	// The LEVEL is part of those facts, for the same reason the seat count is: a
+	// different level is a different purchase. Keyed on the plan alone, a customer
+	// who came back and moved Max from $99 to $299 inside the window would reuse
+	// the first attempt's key, and the server would REPLAY the $99 charge and hand
+	// back its receipt — selling the wrong thing quietly. Scoping by level keeps
+	// the retry guard doing its job without letting it mask a genuine change.
+	guard := guardKey(c, "store:"+req.StoreID+":plan:"+req.PlanID+":level:"+strconv.Itoa(req.Level))
 	// The Square idempotency key is derived from the SAME stable guard key (never the
 	// single-use nonce), so Square itself de-dups the money move even if the local
 	// guard store is unavailable OR two submits race — the definitive backstop.
@@ -418,6 +440,7 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		"subscriptionId":  sub.Id(),
 		"invoiceId":       invoiceID,
 		"planId":          req.PlanID,
+		"level":           req.Level,
 		"paymentMethodId": pm.Id(),
 		"amountCents":     chargeCents,
 		"currency":        cur,

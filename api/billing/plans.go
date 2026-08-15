@@ -40,6 +40,9 @@ type canonicalPlan struct {
 	Description  string   `json:"description"`
 	PriceMonthly *float64 `json:"priceMonthly"` // dollars per month (null for custom)
 	PriceAnnual  *float64 `json:"priceAnnual"`  // dollars per month billed annually (null for custom)
+	// Prices is every price the plan is sold at, in dollars per month, ascending,
+	// with Prices[0] == PriceMonthly. Absent for a plan sold at one price.
+	Prices []float64 `json:"prices,omitempty"`
 	Category     string   `json:"category"`
 	Popular      bool     `json:"popular,omitempty"`
 	ContactSales bool     `json:"contactSales,omitempty"`
@@ -97,6 +100,12 @@ type staticPlan struct {
 	Category        string   `json:"category"`
 	Price           int64    `json:"price"`       // monthly price in cents (0 = free)
 	PriceAnnual     int64    `json:"priceAnnual"` // annual price in cents per month
+	// Prices is every price this plan is sold at, in cents, ascending, with
+	// Prices[0] == Price. A client renders one control over this list and sends
+	// back the INDEX it landed on (subscribe/card's `level`) — never a price. It
+	// is absent for a plan sold at a single price, so a client that ignores it
+	// keeps working and a plan that gains a ladder needs no client release.
+	Prices []int64 `json:"prices,omitempty"`
 	Currency        string   `json:"currency"`
 	Interval        string   `json:"interval"`
 	IntervalCount   int      `json:"intervalCount"`
@@ -173,6 +182,9 @@ func loadPlansFromEmbed(fs embed.FS, path string) []staticPlan {
 		}
 		if cp.PriceAnnual != nil {
 			sp.PriceAnnual = int64(math.Round(*cp.PriceAnnual * 100))
+		}
+		for _, d := range cp.Prices {
+			sp.Prices = append(sp.Prices, int64(math.Round(d*100)))
 		}
 		if cp.TrialPeriodDays != nil {
 			sp.TrialPeriodDays = *cp.TrialPeriodDays

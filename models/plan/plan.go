@@ -2,6 +2,7 @@ package plan
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"sync"
 
@@ -98,6 +99,24 @@ type Plan struct {
 	// PerSeat marks a plan billed per seat (catalog price_ref.recurring.per_seat):
 	// invoices charge Price × subscription quantity, floored at 1.
 	PerSeat bool `json:"perSeat"`
+
+	// Prices is every price this plan is sold at, ascending, Prices[0] == Price.
+	// A tier the customer buys at ONE price publishes none; a tier sold at a
+	// chosen level publishes the whole ladder, and a subscription opens at the
+	// level its checkout named (LevelPrice).
+	//
+	// It is the ONE place a level's price is written down. That is the point: the
+	// page renders these, the charge validates against these, and the invoice
+	// carries whichever one was chosen — so a price can never be edited in one
+	// place and quoted from another. It rides the display envelope with Licensing
+	// rather than sitting in a column of its own, and for the same reason: it is a
+	// list, it is published as a unit, and it is read whole or not at all.
+	//
+	// An absent ladder does not break a plan or a subscription. Level 0 is always
+	// Price, so a plan that publishes nothing here is sold at exactly one price and
+	// every higher level is refused — which is the safe direction if a re-vendored
+	// catalog were ever to drop it.
+	Prices []currency.Cents `json:"prices,omitempty" datastore:"-"`
 
 	// ContactSales marks a custom / "contact sales" plan whose price is NULL, not
 	// $0 — the ONE way to preserve the free($0)-vs-custom(null) distinction while
@@ -213,6 +232,35 @@ func (p *Plan) Listed() bool {
 	return p.Status == "" || p.Status == StatusActive
 }
 
+// ErrLevel refuses a level this plan does not publish. It is a refusal about the
+// PLAN, so it says nothing about the caller and carries no amount.
+var ErrLevel = errors.New("plan is not sold at that level")
+
+// LevelPrice is what this plan costs at level, and the ONE place that question is
+// answered. Level 0 is Price; every other level is read out of Prices; anything
+// else is ErrLevel.
+//
+// The level is an INDEX, never an amount, and that is the whole safety property.
+// A caller picks one of the prices the catalog already published and the server
+// holds every one of them, so a request to buy a $99 plan for $1 is not merely
+// rejected — there is no field it could be written in. Validating a client-sent
+// amount against a list would refuse the same request, but it would also put an
+// amount on the wire, and the next door to grow one is the door that forgets the
+// check.
+//
+// Level 0 answers Price rather than Prices[0] so that a plan carrying no ladder
+// still sells at its own price, and a ladder that somehow arrived empty refuses
+// every level above the base instead of charging zero.
+func (p *Plan) LevelPrice(level int) (currency.Cents, error) {
+	if level == 0 {
+		return p.Price, nil
+	}
+	if level < 0 || level >= len(p.Prices) {
+		return 0, ErrLevel
+	}
+	return p.Prices[level], nil
+}
+
 // Licensing is what a tier LICENSES: the proprietary products, app builds and
 // engine capabilities a subscription on it may run. The catalog publishes it under
 // the licensing.* entitlement keys.
@@ -287,11 +335,12 @@ const EnvelopeKey = "envelope"
 // nothing outside this file should construct one: the typed fields on Plan are
 // the interface, and this is only how they are written down.
 type envelope struct {
-	Features   []string   `json:"features,omitempty"`
-	Bundles    []string   `json:"bundles,omitempty"`
-	IncludedIn []string   `json:"includedIn,omitempty"`
-	Limits     *Limits    `json:"limits,omitempty"`
-	Licensing  *Licensing `json:"licensing,omitempty"`
+	Features   []string         `json:"features,omitempty"`
+	Bundles    []string         `json:"bundles,omitempty"`
+	IncludedIn []string         `json:"includedIn,omitempty"`
+	Limits     *Limits          `json:"limits,omitempty"`
+	Licensing  *Licensing       `json:"licensing,omitempty"`
+	Prices     []currency.Cents `json:"prices,omitempty"`
 }
 
 func (p *Plan) Load(ps []datastore.Property) (err error) {
@@ -313,7 +362,7 @@ func (p *Plan) Load(ps []datastore.Property) (err error) {
 		var env envelope
 		if err := json.DecodeBytes([]byte(s), &env); err == nil {
 			p.Features, p.Bundles, p.IncludedIn, p.Limits = env.Features, env.Bundles, env.IncludedIn, env.Limits
-			p.Licensing = env.Licensing
+			p.Licensing, p.Prices = env.Licensing, env.Prices
 		}
 	}
 
@@ -327,8 +376,8 @@ func (p *Plan) Save() (ps []datastore.Property, err error) {
 	// persists: the ORM stores a row as JSON of the struct, and Metadata_ is
 	// `json:"-"`. Metadata_ is the older datastore-property path, kept because
 	// Load still honors it, but a value written only there does not survive.
-	env := envelope{Features: p.Features, Bundles: p.Bundles, IncludedIn: p.IncludedIn, Limits: p.Limits, Licensing: p.Licensing}
-	if len(env.Features) > 0 || len(env.Bundles) > 0 || len(env.IncludedIn) > 0 || env.Limits != nil || env.Licensing != nil {
+	env := envelope{Features: p.Features, Bundles: p.Bundles, IncludedIn: p.IncludedIn, Limits: p.Limits, Licensing: p.Licensing, Prices: p.Prices}
+	if len(env.Features) > 0 || len(env.Bundles) > 0 || len(env.IncludedIn) > 0 || env.Limits != nil || env.Licensing != nil || len(env.Prices) > 0 {
 		if p.Metadata == nil {
 			p.Metadata = Map{}
 		}
@@ -468,6 +517,7 @@ func planEqual(a, b *Plan) bool {
 	return slices.Equal(a.Features, b.Features) &&
 		slices.Equal(a.Bundles, b.Bundles) &&
 		slices.Equal(a.IncludedIn, b.IncludedIn) &&
+		slices.Equal(a.Prices, b.Prices) &&
 		limitsEqual(a.Limits, b.Limits) &&
 		licensingEqual(a.Licensing, b.Licensing)
 }
@@ -538,6 +588,7 @@ func copyInto(dst, src *Plan) {
 	dst.Category = src.Category
 	dst.Price = src.Price
 	dst.PriceAnnual = src.PriceAnnual
+	dst.Prices = src.Prices
 	dst.Currency = src.Currency
 	dst.Interval = src.Interval
 	dst.IntervalCount = src.IntervalCount
