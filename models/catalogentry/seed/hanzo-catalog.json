@@ -2332,5 +2332,80 @@
       "hanzo"
     ],
     "pricingId": null
+  },
+  {
+    "id": "safe",
+    "name": "Safe",
+    "category": "Web3",
+    "brandColor": "pink",
+    "iconKey": "Shield",
+    "slug": "safe",
+    "route": "/safe",
+    "docsUrl": "https://docs.hanzo.ai/docs/services/safe",
+    "apiPath": "",
+    "apiRoute": "",
+    "githubUrl": "https://github.com/luxdao/contracts",
+    "repo": "luxdao/contracts",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": true,
+    "brands": [
+      "hanzo",
+      "lux",
+      "zoo",
+      "pars"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "governance",
+    "name": "Governance",
+    "category": "Web3",
+    "brandColor": "pink",
+    "iconKey": "Vote",
+    "slug": "governance",
+    "route": "/governance",
+    "docsUrl": "https://docs.hanzo.ai/docs/services/governance",
+    "apiPath": "",
+    "apiRoute": "",
+    "githubUrl": "https://github.com/luxdao/app",
+    "repo": "luxdao/app",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": true,
+    "brands": [
+      "hanzo",
+      "lux",
+      "zoo",
+      "pars"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "daowork",
+    "name": "DaoWork",
+    "category": "Web3",
+    "brandColor": "pink",
+    "iconKey": "Hammer",
+    "slug": "daowork",
+    "route": "/daowork",
+    "docsUrl": "https://docs.hanzo.ai/docs/services/daowork",
+    "apiPath": "",
+    "apiRoute": "",
+    "githubUrl": "https://github.com/luxdao/app",
+    "repo": "luxdao/app",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": true,
+    "brands": [
+      "hanzo",
+      "lux",
+      "zoo",
+      "pars"
+    ],
+    "pricingId": null
   }
 ]
