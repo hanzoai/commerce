@@ -15,6 +15,17 @@
     "jsx": "preserve",
     "incremental": true,
     "paths": {
+      // @hanzo/ui's declarations name @hanzogui/web and @hanzogui/core without
+      // depending on them, so they resolve to whatever pnpm happened to hoist —
+      // the admin's 7.3.0. Two copies of a type is two different types, and the
+      // config this app passes GuiProvider stops matching the one it wants.
+      // Point them at the copies this app does depend on.
+      "@hanzogui/web": [
+        "./node_modules/@hanzogui/web"
+      ],
+      "@hanzogui/core": [
+        "./node_modules/@hanzogui/core"
+      ],
       "@lib/*": [
         "./src/lib/*"
       ],
@@ -31,7 +42,7 @@
       }
     ]
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": ["next-env.d.ts", "gui.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": [
     "node_modules",
     ".next",

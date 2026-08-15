@@ -864,6 +864,10 @@ func (app *App) Bootstrap() error {
 	// Hanzo's own products (the list docs/console/pricing derive from) on first
 	// boot. SeedIfEmpty is a cheap count-gated no-op once populated, so CMS
 	// edits are authoritative thereafter. Set COMMERCE_CATALOG_SEED=false to skip.
+	// The address on each of those rows is corrected on EVERY boot, because it is
+	// the one field on them the fleet owns rather than a human — see
+	// catalogentry.Correct. Same gate: the seed and its correction are one
+	// decision about where the catalog's contents come from.
 	if getEnv("COMMERCE_CATALOG_SEED", "true") != "false" {
 		app.runCatalogSeed()
 		app.runInfraCatalogSeed()
@@ -934,6 +938,33 @@ func (app *App) runCatalogSeed() {
 	}
 	if created > 0 {
 		slog.Info("catalog seeded", "products", created)
+	}
+
+	// A row left in a category the taxonomy has retired is not projected at all,
+	// so this runs on every boot and ahead of everything that reads the catalog.
+	// It moves such rows to the category that replaced the old one — the only
+	// home they can have — and touches nothing that already sits in a canonical
+	// category, so an admin's choice of category is never overwritten.
+	moved, err := catalogentry.Rename(db)
+	if err != nil {
+		slog.Error("catalog category rename failed", "err", err)
+		return
+	}
+	if moved > 0 {
+		slog.Info("catalog categories renamed", "products", moved)
+	}
+
+	// A product's API address is the fleet's fact, not the CMS's, so it is read
+	// back from the snapshot on every boot instead of only at birth. Logged
+	// because a boot that quietly moves where a customer is told to call is a
+	// boot nobody can audit afterwards.
+	corrected, err := catalogentry.Correct(db)
+	if err != nil {
+		slog.Error("catalog address correction failed", "err", err)
+		return
+	}
+	if corrected > 0 {
+		slog.Info("catalog addresses corrected", "products", corrected)
 	}
 }
 
