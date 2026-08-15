@@ -79,6 +79,7 @@ type SeedRow struct {
 	Brands     []string   `json:"brands"`
 	Repo       string     `json:"repo"`
 	Admin      bool       `json:"admin"`
+	Kind       string     `json:"kind"` // service (default) | client
 	Status     string     `json:"status"`
 	Gcp        string     `json:"gcp"`
 }
@@ -151,6 +152,7 @@ func Seed(db *datastore.Datastore) (created int, err error) {
 		e.Brands = r.Brands
 		e.Repo = r.Repo
 		e.Admin = r.Admin
+		e.Role = r.Kind
 		e.Status = r.Status
 		e.Gcp = r.Gcp
 		e.Order = i
@@ -161,6 +163,129 @@ func Seed(db *datastore.Datastore) (created int, err error) {
 		created++
 	}
 	return created, nil
+}
+
+// Correct sets every existing entry's API ADDRESS to the one the snapshot
+// declares — ApiPath, its host-qualified spelling ApiRoute, and Role (kind).
+// Rows the snapshot does not name are left alone, and no row is created here:
+// birth is [Seed]'s job, and this is only ever a correction.
+//
+// # Why an address is not a merchandising choice
+//
+// Everything else on a row — name, price, order, status, whether it is published
+// — is a decision a human makes in admin.hanzo.ai, and Seed is non-destructive
+// precisely so a deploy can never overwrite one. An address is not that kind of
+// value. Either the fleet answers at that path or it does not, and the fleet is
+// the only thing that knows; a catalog that disagrees is not expressing a
+// preference, it is wrong.
+//
+// It was wrong for a long time, and nothing could say so. Production first booted
+// on a 95-row snapshot, the snapshot was later cut to 60, and because BOTH gates
+// only ever create, the dropped rows stayed in the store forever carrying whatever
+// address they were born with. Thirty-one of the 84 products a customer sees named
+// a path that answers 404 — most of them literally "/v1/" + the slug, a guess
+// never once checked against the router. This list was the estate's last
+// hand-copied claim about its own routes: the published document is derived from
+// the router and gated on prose, so a served route CANNOT be missing from it, and
+// only this list could drift.
+//
+// So an address now travels the way the plan catalog's prices already do (see
+// runPlansSeed) — as a DEPLOY, reviewed like a deploy, rather than as a script
+// someone runs against production holding a SuperAdmin bearer. And cloud's
+// catalog_address_test.go refuses to build a fleet whose snapshot names a path
+// that fleet does not serve, so what arrives here has already been read back
+// against the document it is a claim about.
+func Correct(db *datastore.Datastore) (corrected int, err error) {
+	rows, err := HanzoSeedRows()
+	if err != nil {
+		return 0, err
+	}
+
+	for _, r := range rows {
+		slug := r.Slug
+		if slug == "" {
+			slug = r.ID
+		}
+
+		e := New(db)
+		ok, qerr := e.Query().Filter("Slug=", slug).Get()
+		if qerr != nil {
+			return corrected, qerr
+		}
+		// Kind, not the raw field: a stored "service" and a snapshot that says
+		// nothing are the SAME kind, and comparing the strings would rewrite the
+		// row on every boot forever. Twice is once — correct_test.go pins it.
+		if !ok || (e.ApiPath == r.ApiPath && e.ApiRoute == r.ApiRoute && KindOf(e) == Kind(r.Kind)) {
+			continue
+		}
+
+		e.ApiPath = r.ApiPath
+		e.ApiRoute = r.ApiRoute
+		e.Role = Kind(r.Kind)
+		if err := e.Update(); err != nil {
+			return corrected, err
+		}
+		corrected++
+	}
+	return corrected, nil
+}
+
+// Rename moves every entry sitting in a RETIRED category to the one that
+// replaced it, per renamedCategories (projection.go). It returns the number
+// moved and is idempotent: a second run finds nothing, because the first left
+// no row carrying a retired label.
+//
+// A category rename is not the same act as an address correction, and this is
+// not [Correct] with a wider reach. Correct rewrites a field on rows that are
+// working fine; this one only ever touches rows that are ALREADY broken. The
+// canonical list is what scoped() filters on, so the instant a label leaves it
+// every row still naming it stops being projected — the products do not move,
+// they disappear. Reading the old label is therefore never a preference to
+// respect; it is a row that has been orphaned by a taxonomy change and has
+// exactly one right home.
+//
+// That narrowness is the safety property. Which of the ten categories a product
+// belongs to IS a merchandising decision, made in admin.hanzo.ai, and this
+// cannot overwrite one: a row in a canonical category never matches the map.
+//
+// Like every other catalog reconciliation here, it travels as a DEPLOY rather
+// than as a script someone runs against production holding a SuperAdmin bearer.
+func Rename(db *datastore.Datastore) (moved int, err error) {
+	if len(renamedCategories) == 0 {
+		return 0, nil
+	}
+
+	// Two steps, and the split is not stylistic: GetAll fills plain structs that
+	// are not bound to the store, so writing one back panics. A row is READ in
+	// bulk to find out which slugs are stranded, then re-fetched through New(db)
+	// to be written — the same shape [Correct] uses, for the same reason.
+	entries := make([]*CatalogEntry, 0, 128)
+	if _, err := Query(db).GetAll(&entries); err != nil {
+		return 0, err
+	}
+	stranded := make(map[string]string, len(renamedCategories))
+	for _, e := range entries {
+		if to, retired := renamedCategories[e.Category]; retired {
+			stranded[e.Slug] = to
+		}
+	}
+
+	for slug, to := range stranded {
+		e := New(db)
+		ok, qerr := e.Query().Filter("Slug=", slug).Get()
+		if qerr != nil {
+			return moved, qerr
+		}
+		if !ok || renamedCategories[e.Category] == "" {
+			continue
+		}
+		e.Category = to
+		if err := e.Update(); err != nil {
+			return moved, err
+		}
+		moved++
+	}
+	return moved, nil
 }
 
 // InfraSeedRow is one infra-tier seed record: a catalog-entry addressed by a

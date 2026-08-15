@@ -16,6 +16,7 @@
 package checkout
 
 import (
+	"cmp"
 	"os"
 	"strings"
 	"sync"
@@ -79,6 +80,9 @@ func (r *OrgResolver) Resolve(host string) (Org, error) {
 			DisplayName:  b.displayName,
 			LogoURL:      b.logoURL,
 			PrimaryColor: b.primaryColor,
+			LegalName:    cmp.Or(b.legalName, b.displayName),
+			TermsURL:     b.termsURL,
+			PrivacyURL:   b.privacyURL,
 		},
 		IAM: IAMConfig{
 			Issuer:   b.iamIssuer,
@@ -189,6 +193,17 @@ type brand struct {
 	primaryColor string
 	iamIssuer    string
 	iamClientID  string
+	// legalName is the entity that takes the money — the name a receipt and a
+	// footer must carry, which is not the same string as the product's. "Hanzo"
+	// is a brand; "Hanzo Industries Inc." is who the customer is contracting
+	// with, and a checkout that never says so is a checkout that never says who
+	// it is. Empty falls back to displayName.
+	legalName string
+	// termsURL and privacyURL are the policies THIS brand publishes. Empty
+	// renders no link rather than a guess: a 404 in a footer is worse than an
+	// absence, and inventing a path on a brand's domain is how that happens.
+	termsURL   string
+	privacyURL string
 }
 
 // brandDomains maps a registrable brand domain to its brand. Matching is
@@ -250,7 +265,16 @@ var brandDomains = []domainBrand{
 // it is 112KB of text/html, the SPA's catch-all serving index.html, which the
 // browser would take for an image and fail to draw.
 var (
-	brandHanzo = brand{slug: "hanzo", displayName: "Hanzo", logoURL: "https://cdn.hanzo.ai/img/logo-white.svg", primaryColor: "#808000", iamIssuer: "https://hanzo.id", iamClientID: "hanzo-app"}
+	// #ffffff, like every other brand here. It was #808000 — CSS "olive" — and
+	// it painted the one control on the checkout that matters: pay renders the
+	// primary CTA from this value (accent() accepts it because olive does clear
+	// 3:1 on black), so "Continue to payment" shipped as a mustard slab and the
+	// selected plan wore a mustard edge. Hanzo's design system is monochrome by
+	// construction — "one hue rendered through an opacity ladder", with the only
+	// permitted hues being error/success state — so a brand hue here was never a
+	// value this system has. Lux and Zoo were already #ffffff; Hanzo was the odd
+	// one out, which is the shape of a placeholder that shipped.
+	brandHanzo = brand{slug: "hanzo", displayName: "Hanzo", logoURL: "https://cdn.hanzo.ai/img/logo-white.svg", primaryColor: "#ffffff", iamIssuer: "https://hanzo.id", iamClientID: "hanzo-app", legalName: "Hanzo Industries Inc.", termsURL: "https://hanzo.ai/terms", privacyURL: "https://hanzo.ai/privacy"}
 	brandLux   = brand{slug: "lux", displayName: "Lux", logoURL: "https://cdn.lux.network/img/logo-white.svg", primaryColor: "#ffffff", iamIssuer: "https://lux.id", iamClientID: "lux-app"}
 	brandZoo   = brand{slug: "zoo", displayName: "Zoo", primaryColor: "#ffffff", iamIssuer: "https://zoolabs.id", iamClientID: "zoo-app"}
 	brandPars  = brand{slug: "pars", displayName: "Pars", primaryColor: "#ffffff", iamIssuer: "https://pars.id", iamClientID: "pars-app"}

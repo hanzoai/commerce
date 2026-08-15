@@ -59,7 +59,7 @@ export default function TransferRequestForm() {
           <div className="flex gap-x-2 items-center">
             <CheckCircleMiniSolid className="w-4 h-4 text-emerald-500" />
             <div className="flex flex-col gap-y-1">
-              <Text className="text-medim-pl text-neutral-950">
+              <Text className="text-neutral-950">
                 Transfer for order {state.order?.id} requested
               </Text>
               <Text className="text-base-regular text-neutral-600">

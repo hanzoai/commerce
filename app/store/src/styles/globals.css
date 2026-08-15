@@ -1,6 +1,14 @@
 @import url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-mono/style.css');
+/* The shared design system — tokens and component atoms, one file, the entry
+   point the package names. It arrives here rather than through @hanzo/ui's own
+   `import './styles.css'` so that it is inlined into this sheet before Tailwind
+   runs; see next.config.js. */
+@import "@hanzo/ui/styles.css";
 @import "tailwindcss/base";
 @import "tailwindcss/components";
+/* The kit sits between components and utilities, so a caller's className still
+   overrides a kit default. */
+@import "@hanzo/commerce-ui/kit.css";
 @import "tailwindcss/utilities";
 
 @font-face {

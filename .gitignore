@@ -80,3 +80,6 @@ api/billing/plans/*
 !api/billing/plans/subscription.json
 /backfill-events
 app/admin/out/
+
+# turbo writes its build cache at the repo root; app/.gitignore only covers app/.turbo.
+.turbo/
