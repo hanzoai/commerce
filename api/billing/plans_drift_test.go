@@ -3,6 +3,7 @@ package billing
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"slices"
 	"testing"
 )
 
@@ -28,6 +29,13 @@ var versionDigests = map[string]struct{ subscription, dns string }{
 	},
 	"1.4.13": {
 		subscription: "c511dfb34552d6adbff33a25aa72cf2ef68eec7bca7fbed41ab17057f58540b1",
+		dns:          "de7da2ab600268bdf5528b9ec1fd037bdbe8f9112f3755d80b5f93a4cbf1cd87",
+	},
+	// 1.4.14 adds the max price ladder (`prices`) and changes nothing else. The
+	// ladder is what makes the tier sellable at a chosen level, so it is plan
+	// data and belongs in the catalog beside the price it starts from.
+	"1.4.14": {
+		subscription: "d3d8ce358ecc744b6908d6382c9d61f77a7d41a72ef84dcb0546bf5cc91abea6",
 		dns:          "de7da2ab600268bdf5528b9ec1fd037bdbe8f9112f3755d80b5f93a4cbf1cd87",
 	},
 }
@@ -100,6 +108,51 @@ func TestVendoredPlanPrices(t *testing.T) {
 		}
 		if p.ContactSales != w.contactSales {
 			t.Errorf("plan %q contactSales = %v, want %v (free-vs-null distinction)", slug, p.ContactSales, w.contactSales)
+		}
+	}
+}
+
+// TestVendoredPriceLadder canaries the OTHER money-bearing number in the embed:
+// the prices a plan is sold at above its base. The price canary above reads
+// Price alone, so a re-vendored catalog could drop or reprice the whole max
+// ladder without a single existing assertion noticing — and dropping it makes
+// every level above the base refuse (LevelPrice), which is the safe direction but
+// silently unsells the tier.
+//
+// It also pins the invariant the wire depends on: Prices[0] == Price. A client
+// renders one control over Prices and sends back the index it lands on, and level
+// 0 is answered from Price, so the two must name the same money or the first
+// position on that control quotes one number and charges another.
+func TestVendoredPriceLadder(t *testing.T) {
+	bySlug := map[string]staticPlan{}
+	for _, p := range hanzoPlans {
+		bySlug[p.Slug] = p
+	}
+
+	max, ok := bySlug["max"]
+	if !ok {
+		t.Fatalf("plan %q missing from embed", "max")
+	}
+	want := []int64{9900, 19900, 29900, 39900, 49900, 59900, 69900, 79900, 89900, 99900}
+	if !slices.Equal(max.Prices, want) {
+		t.Fatalf("max ladder = %v cents, want %v", max.Prices, want)
+	}
+
+	// Every plan that publishes a ladder: it starts at the plan's own price and
+	// it only ever goes up. Ascending is what lets a client render it as one
+	// control without sorting it first, and a ladder that stepped backwards would
+	// put a cheaper price at a higher level.
+	for _, p := range hanzoPlans {
+		if len(p.Prices) == 0 {
+			continue
+		}
+		if p.Prices[0] != p.Price {
+			t.Errorf("plan %q ladder starts at %d, want its price %d", p.Slug, p.Prices[0], p.Price)
+		}
+		for i := 1; i < len(p.Prices); i++ {
+			if p.Prices[i] <= p.Prices[i-1] {
+				t.Errorf("plan %q ladder is not ascending at %d: %d then %d", p.Slug, i, p.Prices[i-1], p.Prices[i])
+			}
 		}
 	}
 }
