@@ -52,7 +52,7 @@ func TestProject_ConformsToContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("project: %v", err)
 	}
-	if cat.Brand != "hanzo" || len(cat.Categories) != 10 {
+	if cat.Brand != "hanzo" || len(cat.Categories) != 11 {
 		t.Fatalf("hanzo: brand=%s cats=%d, want hanzo/10", cat.Brand, len(cat.Categories))
 	}
 	if cat.Categories[0].Label != "AI" || cat.Categories[0].ID != "ai" {
@@ -327,8 +327,8 @@ func TestSeedInfra_ProjectionAndValues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("project hanzo: %v", err)
 	}
-	if len(hanzo.Categories) != 10 {
-		t.Fatalf("hanzo categories = %d, want 10 (infra scope must not widen it)", len(hanzo.Categories))
+	if len(hanzo.Categories) != 11 {
+		t.Fatalf("hanzo categories = %d, want 11 (infra scope must not widen it)", len(hanzo.Categories))
 	}
 	for _, p := range hanzo.Products {
 		switch p.Category {
