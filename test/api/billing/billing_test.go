@@ -739,10 +739,10 @@ var _ = Describe("billing", Ordered, func() {
 	// Ordered: a report→grant→balance→rollup sequence sharing one user/plan.
 	Describe("included monthly allotment", Ordered, func() {
 		const user = "hanzo/allotuser"
-		// "max" (the $200 tier) declares a $100/mo cloud credit
-		// (limits.includedCloudCredits) that the allotment grants. "pro" declares
-		// none (→ 0), covered by the no-allotment case below.
-		const plan = "max"
+		// "team" declares $100/user/mo of cloud credit
+		// (limits.includedCloudCreditsPerUser) that the allotment grants. The
+		// personal rungs declare none (→ 0), covered by the no-allotment case below.
+		const plan = "team"
 		// The plan's DECLARED included amount, read from the catalog — never a
 		// hardcoded dollar figure (that brittleness is what broke these tests when
 		// the catalog drifted). Every downstream surface must equal it.

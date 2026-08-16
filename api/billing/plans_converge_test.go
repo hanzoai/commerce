@@ -15,7 +15,7 @@ import (
 //
 // This is the case the previous seed could not handle. Every stored row was
 // Managed (the seed set that flag itself), so the seed skipped all of them: it
-// would create `go` and `dev`, leave `pro` at $20, and leave `developer` and
+// would create `go` and `free`, leave `pro` at its old price, and leave `developer` and
 // `plus` on sale beside them. A catalog half-new and half-stale, which reads to a
 // customer as a pricing page that cannot make up its mind, and to billing as two
 // prices for one tier.
@@ -57,7 +57,7 @@ func TestCatalogConverges_OldStoreToPublishedLadder(t *testing.T) {
 	}
 
 	// The published ladder is what is offered, at the published prices.
-	for slug, want := range map[string]int64{"go": 900, "dev": 1900, "pro": 4900, "max": 9900} {
+	for slug, want := range map[string]int64{"free": 0, "go": 800, "pro": 1900, "max": 9900} {
 		if got[slug] != want {
 			t.Errorf("public %q = %d cents, want %d", slug, got[slug], want)
 		}

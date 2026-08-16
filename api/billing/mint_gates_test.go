@@ -140,7 +140,7 @@ func TestZapReads_OrgAdminNotBlocked(t *testing.T) {
 // ── /allotment/grant plan clamp ─────────────────────────────────────────────
 
 // TestAllotment_OrgAdminCannotInflatePlan is the acceptance test for the [HIGH]
-// miss: an org admin naming the paid "max" plan (which grants $100/mo) for a
+// miss: an org admin naming the paid "team" plan (which grants $100/mo) for a
 // subject with NO matching subscription is clamped to their real entitlement
 // (0 cents) — they cannot mint the higher tier's allotment for free.
 func TestAllotment_OrgAdminCannotInflatePlan(t *testing.T) {
@@ -157,7 +157,7 @@ func TestAllotment_OrgAdminCannotInflatePlan(t *testing.T) {
 		orgAdminSeed(c)
 	})
 
-	body := `{"user":"acme","plan":"max"}`
+	body := `{"user":"acme","plan":"team"}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/allotment/grant", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, terr := eng.Test(req)
@@ -176,13 +176,13 @@ func TestAllotment_OrgAdminCannotInflatePlan(t *testing.T) {
 		t.Fatalf("bad response: %v (%s)", err, raw)
 	}
 	if amt, _ := out["amountCents"].(float64); amt != 0 {
-		t.Fatalf("org-admin named 'max' without subscription: amountCents=%v, want 0 (clamped to real entitlement)", amt)
+		t.Fatalf("org-admin named 'team' without subscription: amountCents=%v, want 0 (clamped to real entitlement)", amt)
 	}
 }
 
 // TestAllotment_OrgAdminMatchingSubscriptionHonored proves the clamp is not
 // over-strict: an org admin granting the allotment for a subject who REALLY IS
-// subscribed to "max" — via a PAYMENT-BACKED subscription — gets the max plan's
+// subscribed to "team" — via a PAYMENT-BACKED subscription — gets the team plan's
 // declared credit (10000 cents). This is RED's intended behavior — "an org
 // legitimately grants its own allotment, it just must match the paid plan" — and
 // validates that subscriptionPlanSlug actually finds the subscription (the
@@ -199,12 +199,12 @@ func TestAllotment_OrgAdminMatchingSubscriptionHonored(t *testing.T) {
 	org.Name = ns
 	org.Live = true
 
-	// The subject really is subscribed to "max", and it is PAYMENT-BACKED (an
+	// The subject really is subscribed to "team", and it is PAYMENT-BACKED (an
 	// external provider manages billing) — the only kind of paid-tier sub whose
 	// allotment may be minted. Seed it in the org's namespace.
 	sub := subscription.New(datastore.New(nscontext.WithNamespace(ctx, ns)))
 	sub.UserId = ns
-	sub.Plan.Slug = "max"
+	sub.Plan.Slug = "team"
 	sub.Status = subscription.Active
 	sub.ProviderType = "stripe"
 	sub.PeriodStart = time.Now()
@@ -217,7 +217,7 @@ func TestAllotment_OrgAdminMatchingSubscriptionHonored(t *testing.T) {
 		c.Locals("organization", org)
 		orgAdminSeed(c)
 	})
-	body := `{"user":"` + ns + `","plan":"max"}`
+	body := `{"user":"` + ns + `","plan":"team"}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/allotment/grant", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, terr := eng.Test(req)
@@ -234,12 +234,12 @@ func TestAllotment_OrgAdminMatchingSubscriptionHonored(t *testing.T) {
 		t.Fatalf("bad response: %v (%s)", err, raw)
 	}
 	if amt, _ := out["amountCents"].(float64); amt != 10000 {
-		t.Fatalf("org-admin with a real 'max' subscription: amountCents=%v, want 10000 (clamp honors the matching paid plan)", amt)
+		t.Fatalf("org-admin with a real 'team' subscription: amountCents=%v, want 10000 (clamp honors the matching paid plan)", amt)
 	}
 }
 
 // TestAllotment_ServiceTokenMayNameAnyPlan proves the privileged override is
-// preserved: the internal service token (comps/backfills) may name "max" and
+// preserved: the internal service token (comps/backfills) may name "team" and
 // mint its declared $100/mo (10000 cents).
 func TestAllotment_ServiceTokenMayNameAnyPlan(t *testing.T) {
 	const tok = "svc-allot"
@@ -248,7 +248,7 @@ func TestAllotment_ServiceTokenMayNameAnyPlan(t *testing.T) {
 	defer ctx.Close()
 
 	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx) })
-	body := `{"user":"allotorg","plan":"max"}`
+	body := `{"user":"allotorg","plan":"team"}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/allotment/grant", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+tok)
@@ -267,7 +267,7 @@ func TestAllotment_ServiceTokenMayNameAnyPlan(t *testing.T) {
 		t.Fatalf("bad response: %v (%s)", err, raw)
 	}
 	if amt, _ := out["amountCents"].(float64); amt != 10000 {
-		t.Fatalf("service-token named 'max': amountCents=%v, want 10000 (privileged override honored)", amt)
+		t.Fatalf("service-token named 'team': amountCents=%v, want 10000 (privileged override honored)", amt)
 	}
 }
 

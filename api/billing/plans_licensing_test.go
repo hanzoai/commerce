@@ -20,12 +20,12 @@ func TestPublishedTiersCarryLicensing(t *testing.T) {
 	}
 
 	want := map[string][]string{
+		"free":       nil, // $0, and licenses no proprietary product
 		"go":         nil, // paid, but licenses no proprietary product
-		"dev":        {"team"},
 		"pro":        {"team"},
 		"max":        {"engine", "team"},
 		"team":       {"team"},
-		"enterprise": {"engine", "engine-rocm", "team"},
+		"enterprise": {"engine", "team"},
 	}
 	for slug, w := range want {
 		p := plan.New(plan.AuthorityDB(c))
