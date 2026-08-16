@@ -168,6 +168,36 @@
     }
   },
   {
+    "id": "benchmark",
+    "name": "Benchmark",
+    "category": "AI",
+    "brandColor": "red",
+    "iconKey": "Trophy",
+    "slug": "benchmark",
+    "route": "/cloud/benchmark",
+    "docsUrl": "https://docs.hanzo.ai/docs/services/benchmark",
+    "apiPath": "/v1/benchmark",
+    "apiRoute": "api.hanzo.ai/v1/benchmark",
+    "githubUrl": "https://github.com/hanzoai/cloud",
+    "repo": "hanzoai/cloud",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
     "id": "research",
     "name": "Research",
     "category": "AI",
