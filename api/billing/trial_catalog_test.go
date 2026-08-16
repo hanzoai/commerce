@@ -25,7 +25,15 @@ func TestEntryTrialPlanUsesCatalogPro(t *testing.T) {
 	if p.PriceCents != want.Price {
 		t.Fatalf("entry trial price = %d, want %d (the catalog's pro price)", p.PriceCents, want.Price)
 	}
+	// The trial hands one month of the entry plan, so the credit IS that price.
+	// Asserted as an equality rather than a number, so a reprice moves both and
+	// fails neither. The `> 0` half is the load-bearing one: resolveEntryPlan
+	// reads a zero credit as "trial not configured", so a trial funded from
+	// anything the catalog can stop declaring switches itself off in silence.
 	if p.CreditCents <= 0 {
-		t.Fatalf("entry trial credit = %d, want positive catalog allowance", p.CreditCents)
+		t.Fatalf("entry trial credit = %d, want a positive credit (zero reads as unconfigured)", p.CreditCents)
+	}
+	if p.CreditCents != want.Price {
+		t.Fatalf("entry trial credit = %d, want %d (one month of the entry plan)", p.CreditCents, want.Price)
 	}
 }
