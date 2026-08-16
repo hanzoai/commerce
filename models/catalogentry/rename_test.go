@@ -71,13 +71,15 @@ func TestRename_MovesRetiredCategoriesAndKeepsTheProducts(t *testing.T) {
 		}
 	}
 
-	// The taxonomy is still ten, and the renamed one still sits 7th: a rename is
-	// not a reordering, and the nav reads this order.
-	if len(after.Categories) != 10 {
-		t.Fatalf("categories = %d, want 10", len(after.Categories))
+	// The taxonomy is eleven, and the renamed one still sits 8th: a rename is not
+	// a reordering, and the nav reads this order. It was 7th of ten until Science
+	// was added after AI — the index moved because the taxonomy GAINED a member,
+	// which is the one thing that may move it. A rename still must not.
+	if len(after.Categories) != 11 {
+		t.Fatalf("categories = %d, want 11", len(after.Categories))
 	}
-	if after.Categories[6].Label != "Infrastructure" || after.Categories[6].ID != "infrastructure" {
-		t.Errorf("categories[6] = %+v, want label Infrastructure / id infrastructure", after.Categories[6])
+	if after.Categories[7].Label != "Infrastructure" || after.Categories[7].ID != "infrastructure" {
+		t.Errorf("categories[7] = %+v, want label Infrastructure / id infrastructure", after.Categories[7])
 	}
 	for _, cat := range after.Categories {
 		if cat.ID == "platform" {

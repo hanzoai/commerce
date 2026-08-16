@@ -140,7 +140,7 @@
   {
     "id": "evals",
     "name": "Evals",
-    "category": "AI",
+    "category": "Science",
     "brandColor": "red",
     "iconKey": "ListChecks",
     "slug": "evals",
@@ -170,7 +170,7 @@
   {
     "id": "benchmark",
     "name": "Benchmark",
-    "category": "AI",
+    "category": "Science",
     "brandColor": "red",
     "iconKey": "Trophy",
     "slug": "benchmark",
@@ -200,7 +200,7 @@
   {
     "id": "research",
     "name": "Research",
-    "category": "AI",
+    "category": "Science",
     "brandColor": "red",
     "iconKey": "FlaskConical",
     "slug": "research",
@@ -2142,7 +2142,7 @@
   {
     "id": "datasets",
     "name": "Datasets",
-    "category": "Observe",
+    "category": "Science",
     "brandColor": "red",
     "iconKey": "Database",
     "slug": "datasets",
@@ -2164,7 +2164,7 @@
   {
     "id": "experiments",
     "name": "Experiments",
-    "category": "Observe",
+    "category": "Science",
     "brandColor": "blue",
     "iconKey": "Workflow",
     "slug": "experiments",
@@ -2208,7 +2208,7 @@
   {
     "id": "scores",
     "name": "Scores",
-    "category": "Observe",
+    "category": "Science",
     "brandColor": "sky",
     "iconKey": "ListChecks",
     "slug": "scores",
@@ -2230,7 +2230,7 @@
   {
     "id": "score-configs",
     "name": "Score Configs",
-    "category": "Observe",
+    "category": "Science",
     "brandColor": "pink",
     "iconKey": "Ruler",
     "slug": "score-configs",

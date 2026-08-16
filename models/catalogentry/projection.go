@@ -14,7 +14,18 @@ import (
 // labels and order @hanzo/products CATEGORY_ORDER renders. A catalog entry's
 // Category must be one of these.
 var canonicalCategories = []string{
-	"AI", "Compute", "Data", "Network", "Security",
+	// Science sits directly after AI because it is the answer to the question AI
+	// raises. AI is the intelligence you CALL; Science is how you know it works;
+	// Observe is what the running system DID. The three were braided before: the
+	// eval family was split across AI and Observe, so /v1/evals sat in one
+	// category while /v1/evals/datasets, /v1/evals/scores and /v1/evals/rubrics —
+	// its own sub-routes — sat in another.
+	//
+	// The rule that unbraids them, and the one to apply to anything new: a
+	// product's category follows its API ROOT. Everything under /v1/evals is
+	// Science because /v1/evals is; /v1/o11y/reviews is Observe because /v1/o11y
+	// is. That is checkable against the manifest rather than argued about.
+	"AI", "Science", "Compute", "Data", "Network", "Security",
 	"Dev", "Infrastructure", "Observe", "Web3", "Apps",
 }
 
