@@ -1,21 +1,43 @@
 [
   {
+    "id": "free",
+    "name": "Free",
+    "category": "personal",
+    "description": "An account and the free models, bounded by a daily allowance.",
+    "priceMonthly": 0,
+    "priceAnnual": 0,
+    "features": [
+      "The free models — 20 messages a day, resetting at midnight UTC",
+      "60 requests a minute",
+      "Add credit at any time to reach the paid models"
+    ],
+    "limits": {
+      "requestsPerMinute": 60
+    },
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    },
+    "entitlements": {
+      "ai.requests_per_min": 60,
+      "commerce.support_tier": "community",
+      "commerce.idle_resale_percent": 20
+    }
+  },
+  {
     "id": "go",
     "name": "Go",
     "category": "personal",
     "description": "Omnichannel agent hosting and the Hanzo desktop app, for builders getting started.",
-    "priceMonthly": 9,
-    "priceAnnual": 8.25,
+    "priceMonthly": 8,
+    "priceAnnual": 7,
     "features": [
       "Hanzo Bot Gateway — host local agents across WhatsApp, Telegram, Discord and Slack",
-      "Hanzo Chat & UI — desktop app layout with instant global model context",
-      "$5 of credit each month, spendable on compute or AI"
+      "Hanzo Chat & UI — desktop app layout with instant global model context"
     ],
     "limits": {
       "requestsPerMinute": 60,
-      "tokensPerMinute": 100000,
-      "includedCreditUsd": 5,
-      "freeCredit": 5
+      "tokensPerMinute": 100000
     },
     "payouts": {
       "idleResalePercent": 20,
@@ -24,21 +46,19 @@
     "entitlements": {
       "ai.requests_per_min": 60,
       "ai.tokens_per_min": 100000,
-      "ai.free_credit_usd": 5,
       "ai.models": [
         "tier:starter"
       ],
       "commerce.support_tier": "community",
-      "commerce.included_credit_usd": 5,
       "commerce.idle_resale_percent": 20
     },
     "price_ref": {
       "currency": "USD",
       "recurring": {
-        "monthly_usd": 9,
-        "annual_usd": 8.25,
+        "monthly_usd": 8,
+        "annual_usd": 7,
         "per_seat": false,
-        "stripe_lookup_key": "hanzo_go_9"
+        "stripe_lookup_key": "hanzo_go_8"
       },
       "metered": [
         {
@@ -46,82 +66,6 @@
           "unit": "per_mtok",
           "source": "zen-gateway",
           "included": -1
-        },
-        {
-          "entitlement": "commerce.included_credit_usd",
-          "unit": "usd_month",
-          "source": "static",
-          "included": 5
-        }
-      ]
-    }
-  },
-  {
-    "id": "dev",
-    "name": "Dev",
-    "category": "personal",
-    "description": "Terminal-native pair programming in your own repository shell.",
-    "priceMonthly": 19,
-    "priceAnnual": 16.5,
-    "features": [
-      "Hanzo Dev — full terminal-native pair programmer inside your local repo shell",
-      "Medium reasoning dial — balanced latency-to-depth for standard code generation",
-      "Unlimited local context — codebase indexing via the native desktop client",
-      "$19 of credit each month, spendable on compute or AI"
-    ],
-    "payouts": {
-      "idleResalePercent": 20,
-      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
-    },
-    "entitlements": {
-      "ai.requests_per_min": 500,
-      "ai.tokens_per_min": 1000000,
-      "ai.priority_inference": true,
-      "ai.models": [
-        "tier:pro"
-      ],
-      "cloud.included_credits_usd": 5,
-      "licensing.product_ids": [
-        "team"
-      ],
-      "commerce.support_tier": "email",
-      "commerce.included_credit_usd": 19,
-      "commerce.idle_resale_percent": 20,
-      "team.guests": 3
-    },
-    "limits": {
-      "requestsPerMinute": 500,
-      "tokensPerMinute": 1000000,
-      "includedCreditUsd": 19,
-      "includedCloudCredits": 5,
-      "teamGuests": 3
-    },
-    "price_ref": {
-      "currency": "USD",
-      "recurring": {
-        "monthly_usd": 19,
-        "annual_usd": 16.5,
-        "per_seat": false,
-        "stripe_lookup_key": "hanzo_dev_19"
-      },
-      "metered": [
-        {
-          "entitlement": "ai.tokens_per_min",
-          "unit": "per_mtok",
-          "source": "zen-gateway",
-          "included": -1
-        },
-        {
-          "entitlement": "commerce.included_credit_usd",
-          "unit": "usd_month",
-          "source": "static",
-          "included": 19
-        },
-        {
-          "entitlement": "cloud.included_credits_usd",
-          "unit": "per_vm_hour",
-          "source": "digitalocean",
-          "included": 5
         }
       ]
     }
@@ -132,14 +76,13 @@
     "category": "personal",
     "popular": true,
     "description": "Multi-agent orchestration, background review, and maximum reasoning depth.",
-    "priceMonthly": 49,
-    "priceAnnual": 41.5,
+    "priceMonthly": 19,
+    "priceAnnual": 16.5,
     "features": [
       "Auto Drive orchestration — multi-agent teams executing repo milestones (/plan, /code, /solve)",
       "Auto Review — background watcher running changes in hidden git worktrees to suggest fixes silently",
       "High and XHigh reasoning dials — maximum context processing depth",
-      "Headless browser CDP — the agent tests and screenshots its own front-end work",
-      "$49 of credit each month, spendable on compute or AI"
+      "Headless browser CDP — the agent tests and screenshots its own front-end work"
     ],
     "payouts": {
       "idleResalePercent": 20,
@@ -152,29 +95,25 @@
       "ai.models": [
         "tier:max"
       ],
-      "cloud.included_credits_usd": 25,
       "licensing.product_ids": [
         "team"
       ],
       "commerce.support_tier": "priority",
-      "commerce.included_credit_usd": 49,
       "commerce.idle_resale_percent": 20,
       "team.guests": 3
     },
     "limits": {
       "requestsPerMinute": 2500,
       "tokensPerMinute": 5000000,
-      "includedCreditUsd": 49,
-      "includedCloudCredits": 25,
       "teamGuests": 3
     },
     "price_ref": {
       "currency": "USD",
       "recurring": {
-        "monthly_usd": 49,
-        "annual_usd": 41.5,
+        "monthly_usd": 19,
+        "annual_usd": 16.5,
         "per_seat": false,
-        "stripe_lookup_key": "hanzo_pro_49"
+        "stripe_lookup_key": "hanzo_pro_19"
       },
       "metered": [
         {
@@ -182,18 +121,6 @@
           "unit": "per_mtok",
           "source": "zen-gateway",
           "included": -1
-        },
-        {
-          "entitlement": "commerce.included_credit_usd",
-          "unit": "usd_month",
-          "source": "static",
-          "included": 49
-        },
-        {
-          "entitlement": "cloud.included_credits_usd",
-          "unit": "per_vm_hour",
-          "source": "digitalocean",
-          "included": 25
         }
       ]
     }
@@ -209,7 +136,6 @@
       "Enso orchestration — dedicated routing through Hanzo's foundational framework model",
       "Unlimited managed agents — continuous background scheduling to unified team dashboards",
       "Shared team workspaces — RBAC, KMS-backed credentials, centralized billing",
-      "$99 of credit each month, spendable on compute or AI",
       "Priority GPU inference queues"
     ],
     "payouts": {
@@ -225,7 +151,6 @@
       "ai.models": [
         "*"
       ],
-      "cloud.included_credits_usd": 100,
       "licensing.app_ids": [
         "hanzo"
       ],
@@ -242,14 +167,11 @@
       ],
       "commerce.support_tier": "dedicated",
       "commerce.idle_resale_percent": 20,
-      "commerce.included_credit_usd": 99,
       "team.guests": 3
     },
     "limits": {
       "requestsPerMinute": 5000,
       "tokensPerMinute": 10000000,
-      "includedCreditUsd": 99,
-      "includedCloudCredits": 100,
       "teamGuests": 3
     },
     "price_ref": {
@@ -266,18 +188,6 @@
           "unit": "per_mtok",
           "source": "zen-gateway",
           "included": -1
-        },
-        {
-          "entitlement": "commerce.included_credit_usd",
-          "unit": "usd_month",
-          "source": "static",
-          "included": 99
-        },
-        {
-          "entitlement": "cloud.included_credits_usd",
-          "unit": "per_vm_hour",
-          "source": "digitalocean",
-          "included": 100
         }
       ]
     }
@@ -383,7 +293,6 @@
       ],
       "licensing.product_ids": [
         "engine",
-        "engine-rocm",
         "team"
       ],
       "licensing.seats": -1,

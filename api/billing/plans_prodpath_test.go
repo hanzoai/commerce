@@ -104,21 +104,20 @@ func TestProdPath_CorrectsPreexistingBadRows(t *testing.T) {
 	// The prod corruption, re-planted on CURRENT slugs: a subscription-flow path
 	// wrote a $0 or category-less row where the catalog has a real one.
 	plant("go", 0, "")          // wrote $0 (the under-charge)
-	plant("dev", 0, "")         // wrote $0
 	plant("max", 0, "")         // wrote $0
 	plant("pro", 2000, "")      // stale price, no Category/PriceAnnual/envelope
 	plant("team", 2500, "team") // no minSeats/PriceAnnual
 
 	if _, corrected, err := SeedPlans(c); err != nil {
 		t.Fatalf("seed: %v", err)
-	} else if corrected < 5 {
-		t.Fatalf("corrected=%d, want >=5 (the planted bad rows)", corrected)
+	} else if corrected < 4 {
+		t.Fatalf("corrected=%d, want >=4 (the planted bad rows)", corrected)
 	}
 
 	orgDB := datastore.New(nscontext.WithNamespace(c, "acme"))
 	// The charge path resolves the CATALOG price — never the $0 under-charge, and
 	// never the stale 2000 that was planted over pro.
-	for _, slug := range []string{"go", "dev", "pro", "max"} {
+	for _, slug := range []string{"go", "pro", "max"} {
 		want := lookupPlan(slug).Price
 		rp, err := resolveSubscriptionPlan(orgDB, slug)
 		if err != nil {

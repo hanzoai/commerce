@@ -4,27 +4,26 @@ import (
 	"github.com/hanzoai/commerce/billing/trial"
 )
 
-// init wires the $20/mo Pro plan into billing/trial from the embedded plan
-// catalog. The resolver is lazy, so it runs at request time (after all package
-// init has loaded hanzoPlans) and billing/trial never imports the catalog —
-// keeping the trial engine decomplected from plan economics.
+// init wires the entry plan into billing/trial from the embedded plan catalog.
+// The resolver is lazy, so it runs at request time (after all package init has
+// loaded hanzoPlans) and billing/trial never imports the catalog — keeping the
+// trial engine decomplected from plan economics.
 func init() {
 	trial.SetEntryPlanResolver(entryTrialPlan)
 }
 
 // entryTrialPlan projects the catalog's entry plan (trial.PlanSlug) onto the
-// shape billing/trial needs. The unified trial credit is funded from the plan's
-// monthly included allowance (limits.includedCreditUsd), so the trial hands the
-// customer exactly one month of the $20 plan's usage up front.
+// shape billing/trial needs. The trial credit is the plan's PRICE: it hands the
+// customer one month of the entry plan up front, which is what a trial is.
+// Reading an included allowance instead tied the trial to a monthly allotment
+// the ladder no longer grants, which would have quietly resolved to zero and
+// switched the trial off (resolveEntryPlan treats a zero credit as unconfigured).
 func entryTrialPlan() trial.Plan {
 	p := lookupPlan(trial.PlanSlug)
 	if p == nil {
 		return trial.Plan{}
 	}
-	credit := IncludedMonthlyCents(p.Slug)
-	if p.Limits != nil && p.Limits.IncludedCreditUsd != nil {
-		credit = int64(*p.Limits.IncludedCreditUsd) * 100
-	}
+	credit := p.Price
 	return trial.Plan{
 		Slug:        p.Slug,
 		Name:        p.Name,
