@@ -51,12 +51,32 @@ var clientProducts = map[string]bool{
 //     Nothing in this fleet serves it. MPC custody is REACHED through /v1/wallets,
 //     which is the Wallets product, not this one.
 //   - attestations — no prefix, no handler, nothing HTTP-addressable.
+//
+// The three DAO rows are pending and not client, which is the same distinction
+// edge turns on read the other way: a client CONSUMES this API and serves none,
+// and each of these serves one that is not ours. luxdao/api is the offchain API
+// behind Governance and DaoWork — proposals, comments, temperature checks, SIWE —
+// so luxdao/app calls THAT, never api.hanzo.ai. Calling them clients would claim
+// a dependency on this API that does not exist.
+//
+//   - safe — the DAO treasury multisig (luxdao/contracts). The fleet DOES serve
+//     two paths spelled safe and NEITHER is this product: /v1/captable/safes and
+//     /v1/company/fundraise/safe are the fundraising instrument, a simple
+//     agreement for future equity, which those operations say in their own prose.
+//     One noun, two meanings — pointing here at either would sell a cap-table
+//     note as a multisig, which is the dressing-up the address gate refuses.
+//   - governance — no /v1 segment resembles it, and none of the 193 the fleet
+//     publishes is a vote, proposal or DAO surface. Served at lux.vote.
+//   - daowork — the bounty surface of that same app, likewise unfronted here.
 var pendingProducts = map[string]bool{
 	"containers":   true,
 	"cdn":          true,
 	"hsm":          true,
 	"mpc":          true,
 	"attestations": true,
+	"safe":         true,
+	"governance":   true,
+	"daowork":      true,
 }
 
 func TestSeedGivesEveryClientNoApiPath(t *testing.T) {
