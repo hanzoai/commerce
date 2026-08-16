@@ -177,12 +177,15 @@ func TestPaidTier_ContactSalesIsNotSelfServe(t *testing.T) {
 	if !paidTier("enterprise") {
 		t.Fatal("contact-sales 'enterprise' reads as a free tier; an org admin could self-subscribe")
 	}
-	// Control: a genuinely free tier stays self-serve, which is the distinction
-	// the predicate exists to make. The published ladder has none, so this is
-	// asserted on the predicate's inputs rather than on a catalog slug.
-	for _, slug := range []string{"go", "dev", "pro", "max"} {
+	// A genuinely free tier stays self-serve, which is the distinction the
+	// predicate exists to make. `free` is that rung, so the control is a catalog
+	// slug rather than a synthetic input.
+	if paidTier("free") {
+		t.Error(`paidTier("free") = true; a $0 rung is not a paid tier`)
+	}
+	for _, slug := range []string{"go", "pro", "max"} {
 		if !paidTier(slug) {
-			t.Errorf("paidTier(%q) = false; every ladder rung is paid", slug)
+			t.Errorf("paidTier(%q) = false; every priced rung is paid", slug)
 		}
 	}
 	if paidTier("no-such-plan") {

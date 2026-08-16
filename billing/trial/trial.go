@@ -38,7 +38,7 @@ import (
 )
 
 const (
-	// PlanSlug is the catalog's $20/mo entry plan.
+	// PlanSlug is the catalog's entry plan; the trial funds one month of it.
 	PlanSlug = "pro"
 
 	// CreditTag marks the one unified trial-credit deposit. Exactly one per

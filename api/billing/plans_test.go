@@ -22,7 +22,7 @@ func TestPlansLoaded(t *testing.T) {
 	bySlug := indexBySlug(hanzoPlans)
 
 	// Core subscription plans that must exist regardless of catalog growth.
-	must := []string{"go", "dev", "pro", "max", "team", "enterprise"}
+	must := []string{"free", "go", "pro", "max", "team", "enterprise"}
 	for _, slug := range must {
 		p, ok := bySlug[slug]
 		if !ok {
@@ -39,8 +39,8 @@ func TestPlansLoaded(t *testing.T) {
 	// `go` is the entry rung and carries the entry rate ceilings; `enterprise` is
 	// priced by conversation, so it is the one row with a null price.
 	entry := bySlug["go"]
-	if entry.Price != 900 {
-		t.Errorf("Go price = %d cents, want 900", entry.Price)
+	if entry.Price != 800 {
+		t.Errorf("Go price = %d cents, want 800", entry.Price)
 	}
 	if entry.Limits == nil {
 		t.Fatal("Go plan should have limits")
@@ -55,7 +55,7 @@ func TestPlansLoaded(t *testing.T) {
 	// The ladder climbs. Asserted as an ORDERING rather than four numbers, so it
 	// keeps holding after a reprice and only fails on a rung that is out of order.
 	prev := int64(-1)
-	for _, slug := range []string{"go", "dev", "pro", "max"} {
+	for _, slug := range []string{"free", "go", "pro", "max"} {
 		p := bySlug[slug]
 		if p.Price <= prev {
 			t.Errorf("ladder is not ascending at %q: %d cents follows %d", slug, p.Price, prev)
@@ -65,7 +65,7 @@ func TestPlansLoaded(t *testing.T) {
 
 	// Annual is a real discount on every rung, never merely equal to monthly —
 	// which is what "no annual offer" looks like in this data.
-	for _, slug := range []string{"go", "dev", "pro", "max", "team"} {
+	for _, slug := range []string{"go", "pro", "max", "team"} {
 		p := bySlug[slug]
 		if p.PriceAnnual <= 0 || p.PriceAnnual >= p.Price {
 			t.Errorf("plan %q annual = %d cents/mo, monthly = %d; annual must be a discount", slug, p.PriceAnnual, p.Price)

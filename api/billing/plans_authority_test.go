@@ -180,7 +180,7 @@ func TestSyncStripeUntouchedByDBEdit(t *testing.T) {
 	}
 
 	after := staticMonth(StaticPlans(), "pro")
-	if before != after || after != 4900 {
+	if before != after || after != 1900 {
 		t.Fatalf("StaticPlans(pro) changed by a DB edit: before=%d after=%d (SyncStripe must read the untouched embed)", before, after)
 	}
 }

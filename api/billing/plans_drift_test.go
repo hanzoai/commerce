@@ -30,6 +30,10 @@ var versionDigests = map[string]struct{ subscription, dns string }{
 		subscription: "c511dfb34552d6adbff33a25aa72cf2ef68eec7bca7fbed41ab17057f58540b1",
 		dns:          "de7da2ab600268bdf5528b9ec1fd037bdbe8f9112f3755d80b5f93a4cbf1cd87",
 	},
+	"1.4.16": {
+		subscription: "3ca9e1b0c77abaa2ddcb3d2fb708750b8a3c34db96f475c09eb39764727fb94d",
+		dns:          "de7da2ab600268bdf5528b9ec1fd037bdbe8f9112f3755d80b5f93a4cbf1cd87",
+	},
 }
 
 func digest(t *testing.T, fs interface {
@@ -61,7 +65,7 @@ func TestVendoredPlansMatchPinnedVersion(t *testing.T) {
 
 // TestVendoredPlanPrices is a diagnostic price-canary: if a money-bearing plan's
 // cents change, THIS test names which one (the digest test only says "drifted").
-// These are the @hanzo/plans@1.4.8 monthly/annual cents — the published ladder.
+// These are the @hanzo/plans@1.4.16 monthly/annual cents — the published ladder.
 // contactSales plans are null-priced → stored as 0 + ContactSales (never a
 // chargeable $0).
 func TestVendoredPlanPrices(t *testing.T) {
@@ -80,9 +84,9 @@ func TestVendoredPlanPrices(t *testing.T) {
 		contactSales    bool
 	}
 	cases := map[string]want{
-		"go":             {900, 825, false},
-		"dev":            {1900, 1650, false},
-		"pro":            {4900, 4150, false},
+		"free":           {0, 0, false}, // a real $0 rung, not a null price
+		"go":             {800, 700, false},
+		"pro":            {1900, 1650, false},
 		"max":            {9900, 8325, false},
 		"team":           {2500, 2000, false},
 		"enterprise":     {0, 0, true}, // null price → 0 + contactSales
@@ -114,7 +118,7 @@ func TestRetiredSlugsAreNotInTheEmbed(t *testing.T) {
 		bySlug[p.Slug] = true
 	}
 	for _, slug := range []string{
-		"developer", "plus", "team-max", "custom",
+		"developer", "dev", "plus", "team-max", "custom",
 		"world-free", "world-pro", "world-team", "world-enterprise",
 		"social-free", "social-pro", "social-team", "social-team-max", "social-enterprise",
 	} {
@@ -131,11 +135,11 @@ func TestRetiredSlugsAreNotInTheEmbed(t *testing.T) {
 // loudly + named — the price canary above does NOT cover it (Red F4).
 func TestVendoredAllotmentAmounts(t *testing.T) {
 	want := map[string]int64{ // slug -> allotment mint amount (cents)
-		"go":         500,   // includedCreditUsd 5 — the one the spec states in dollars
-		"dev":        500,   // includedCloudCredits 5
-		"pro":        2500,  // includedCloudCredits 25
-		"max":        10000, // includedCloudCredits 100
-		"team":       10000, // includedCloudCredits 100
+		"free":       0,     // the personal ladder sells capability and rate,
+		"go":         0,     // not credit returned: usage is bought separately,
+		"pro":        0,     // so no rung on it mints an allotment
+		"max":        0,     //
+		"team":       10000, // includedCloudCreditsPerUser 100 — the one rung that grants
 		"enterprise": 0,     // contact-sales: terms are negotiated, so none is published
 		"dns-pro":    0,     // dns tiers mint no cloud allotment
 	}
