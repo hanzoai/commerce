@@ -641,6 +641,22 @@ func Backfill(db *datastore.Datastore, licensing map[string]*Licensing) (filled 
 		if !ok || existing.Licensing != nil {
 			continue
 		}
+		// The row has to still be RETIRED. This map records what a tier licensed
+		// when it was last on sale, so it is an answer about a tier that is no
+		// longer sold; a slug that is listed again is a different product wearing
+		// a name that was already spent, and the terms of the old one are not its
+		// terms. Matching on the slug alone made the boot seed hand a revived tier
+		// whatever the retired one licensed, on every boot, for free — and grants
+		// are the half of a plan a tenant must never be able to set for itself.
+		//
+		// This is a guard against reuse, not a prediction that it will happen: the
+		// safe move is to never reuse a slug at all, because an archived row exists
+		// so that renewals and invoices which recorded that slug still price from
+		// it, and pointing the name at something else rewrites what those records
+		// mean. The guard is what makes the mistake visible instead of expensive.
+		if existing.Listed() {
+			continue
+		}
 		existing.Licensing = lic
 		if uerr := existing.Update(); uerr != nil {
 			return filled, uerr
