@@ -204,3 +204,58 @@ func TestBackfillIsIdempotent(t *testing.T) {
 		t.Errorf("backfill overwrote an existing licensing block: got %v, want [engine]", r.Licensing)
 	}
 }
+
+// TestBackfillSkipsARevivedSlug: a retired name that is on sale again must not
+// inherit the retired tier's grants.
+//
+// The backfill matched on slug alone, and it runs on every boot from SeedPlans.
+// So the moment a retired slug is published again — for any reason, by anyone —
+// the boot seed would write the OLD tier's licensing onto the new row, and keep
+// writing it. `plus` was a $100/mo personal tier licensing the `team` product;
+// republished at any price with no licensing of its own, it would silently
+// acquire that grant, and a grant is the half of a plan that costs the platform
+// rather than the tenant.
+//
+// The reuse itself stays a mistake this cannot fix: an archived row is kept so
+// that invoices and renewals which recorded the slug still price from it, and
+// aiming the name at a different product rewrites what every one of those
+// records means. This only stops the mistake from also minting entitlement.
+func TestBackfillSkipsARevivedSlug(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := plan.AuthorityDB(c)
+
+	// `plus` is in the retired map, carrying licensing.product_ids ["team"].
+	if retired["plus"] == nil {
+		t.Fatal("fixture assumes `plus` is in the retired map; it is not, so this test proves nothing")
+	}
+
+	// On sale again, licensing nothing of its own.
+	p := plan.New(db)
+	p.Slug = "plus"
+	p.Category = "personal"
+	p.Status = plan.StatusActive
+	if err := p.Create(); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if !p.Listed() {
+		t.Fatal("fixture row is not listed, so it does not exercise the guard")
+	}
+
+	filled, err := plan.Backfill(db, retired)
+	if err != nil {
+		t.Fatalf("backfill: %v", err)
+	}
+	if filled != 0 {
+		t.Errorf("backfill filled %d rows, want 0 — it wrote to a tier that is on sale", filled)
+	}
+
+	got := plan.New(db)
+	if ok, _ := got.Query().Filter("Slug=", "plus").Get(); !ok {
+		t.Fatal("row vanished")
+	}
+	if got.Licensing != nil {
+		t.Errorf("a listed %q was granted %v by the boot seed — the retired tier's terms, "+
+			"applied to a product that merely reuses its name", "plus", got.Licensing.Products)
+	}
+}
