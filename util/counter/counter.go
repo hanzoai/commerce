@@ -107,7 +107,12 @@ func Members(c context.Context, name string) ([]string, error) {
 	}
 
 	db := datastore.New(c)
-	q := db.Query(ShardKind).Filter("Name =", name)
+	// "Name=" and not "Name =": the space used to survive the filter parse and
+	// become part of the field, so this asked for a property called "Name " that
+	// no shard has — every read returned no shards, and a counter with no shards
+	// reads as zero rather than as an error. The other 355 filters in this repo
+	// are already spelled without it.
+	q := db.Query(ShardKind).Filter("Name=", name)
 	shards := []Shard{}
 	if _, err := q.GetAll(&shards); err != nil {
 		return members, err
@@ -143,7 +148,12 @@ func Count(c context.Context, name string) (int, error) {
 	}
 
 	db := datastore.New(c)
-	q := db.Query(ShardKind).Filter("Name =", name)
+	// "Name=" and not "Name =": the space used to survive the filter parse and
+	// become part of the field, so this asked for a property called "Name " that
+	// no shard has — every read returned no shards, and a counter with no shards
+	// reads as zero rather than as an error. The other 355 filters in this repo
+	// are already spelled without it.
+	q := db.Query(ShardKind).Filter("Name=", name)
 	shards := []Shard{}
 	if _, err := q.GetAll(&shards); err != nil {
 		return total, err

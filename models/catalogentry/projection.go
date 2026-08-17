@@ -26,7 +26,18 @@ import (
 // copy disagrees), the marketing site by scripts/sync-catalog.mjs at prebuild,
 // and the console by importing the package. Nothing downstream retypes it.
 var canonicalCategories = []string{
-	"AI", "Compute", "Data", "Network", "Security",
+	// Science sits directly after AI because it is the answer to the question AI
+	// raises. AI is the intelligence you CALL; Science is how you know it works;
+	// Observe is what the running system DID. The three were braided before: the
+	// eval family was split across AI and Observe, so /v1/evals sat in one
+	// category while /v1/evals/datasets, /v1/evals/scores and /v1/evals/rubrics —
+	// its own sub-routes — sat in another.
+	//
+	// The rule that unbraids them, and the one to apply to anything new: a
+	// product's category follows its API ROOT. Everything under /v1/evals is
+	// Science because /v1/evals is; /v1/o11y/reviews is Observe because /v1/o11y
+	// is. That is checkable against the manifest rather than argued about.
+	"AI", "Science", "Compute", "Data", "Network", "Security",
 	"Dev", "Infrastructure", "Observe", "Web3", "Apps",
 }
 
@@ -110,7 +121,17 @@ type Category struct {
 // this map and canonicalCategories name exactly the same set, so a category can
 // neither be added without an accent nor keep one after it is retired.
 var categoryColors = map[string]string{
-	"AI":             "violet",
+	"AI": "violet",
+	// Science is the one accent here the console never shipped, because the
+	// category and this map arrived from opposite directions: Science was added
+	// to canonicalCategories while the colours still lived per-surface, and the
+	// map was written from what the console rendered, which had nothing to
+	// render for it. Chosen on the rule the map exists to serve rather than by
+	// taste: it is the unused swatch furthest in hue from every accent already
+	// here (40deg to its nearest neighbour, against 30 for fuchsia and 20 for
+	// orange), because the whole job of these values is telling groups apart at
+	// sidebar size.
+	"Science":        "lime",
 	"Compute":        "blue",
 	"Data":           "cyan",
 	"Network":        "sky",
