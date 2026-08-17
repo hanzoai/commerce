@@ -47,7 +47,7 @@
   {
     "id": "dns-enterprise",
     "name": "DNS Enterprise",
-    "description": "Unlimited DNS infrastructure. Dedicated nameservers, SLA, and priority support.",
+    "description": "Unlimited DNS infrastructure. Dedicated nameservers and priority support.",
     "priceMonthly": 25,
     "priceAnnual": 20,
     "category": "dns",
@@ -59,7 +59,6 @@
       "Advanced routing (geo, weighted, failover)",
       "Query analytics dashboard",
       "Dedicated nameservers",
-      "99.999% SLA",
       "Priority support",
       "Custom TTL policies"
     ],
