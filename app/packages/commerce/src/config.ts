@@ -116,7 +116,7 @@ export const HANZO_PLANS: SubscriptionPlan[] = [
       'Unlimited queues',
       'Data retention management',
       'High rate limits',
-      'SOC2 and ISO 27001 reports',
+      'Certification scoped per engagement',
       'Overage: $6 per 100k requests',
     ],
     limits: {
@@ -158,7 +158,7 @@ export const HANZO_PLANS: SubscriptionPlan[] = [
       'Audit logs',
       'SCIM API for user provisioning',
       'Custom rate limits',
-      '99.99% uptime SLA',
+      'Multi-region redundancy with automated failover',
       'Dedicated support engineer',
       'Custom contract and invoicing',
     ],
