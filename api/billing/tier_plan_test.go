@@ -26,7 +26,7 @@ import (
 // property worth holding: not "these four slugs work" but "nothing we sell parses to
 // Free".
 func TestEverySoldPlanConfersAPaidTier(t *testing.T) {
-	plans := hanzoPlans
+	plans := catalog
 	if len(plans) == 0 {
 		t.Fatal("no plans in the catalog — this guard would pass over nothing")
 	}

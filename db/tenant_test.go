@@ -67,7 +67,7 @@ func TestManagerBoundsOpenTenantStores(t *testing.T) {
 		}
 		put(t, d, "Thing", "1", id)
 	}
-	if open := m.tenants.Open(); open > 2 {
+	if open := m.tenants.Held(); open > 2 {
 		t.Fatalf("%d tenant stores open, bound is 2 — the leak is back", open)
 	}
 	// Evicted is not lost: the file is the state, so a reopened tenant still
@@ -106,7 +106,7 @@ func TestTenantDBOutlivesTheHandleItBorrows(t *testing.T) {
 	if got := get(t, held, "Thing", "2"); got != "after" {
 		t.Errorf("write through held DB after eviction = %q, want %q", got, "after")
 	}
-	if open := m.tenants.Open(); open > 1 {
+	if open := m.tenants.Held(); open > 1 {
 		t.Errorf("%d stores open, bound is 1 — holding a DB must not pin a handle", open)
 	}
 }

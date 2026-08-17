@@ -6,7 +6,7 @@ import (
 
 // init wires the entry plan into billing/trial from the embedded plan catalog.
 // The resolver is lazy, so it runs at request time (after all package init has
-// loaded hanzoPlans) and billing/trial never imports the catalog — keeping the
+// loaded catalog) and billing/trial never imports the catalog — keeping the
 // trial engine decomplected from plan economics.
 func init() {
 	trial.SetEntryPlanResolver(entryTrialPlan)

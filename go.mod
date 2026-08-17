@@ -22,7 +22,7 @@ require (
 	github.com/hanzoai/base v1.5.18
 	github.com/hanzoai/goauthorizenet v0.0.0-20180920213706-626992b83568
 	github.com/hanzoai/gochimp3 v0.0.0-20241127054040-6051f77e24f1
-	github.com/hanzoai/orm v0.6.16
+	github.com/hanzoai/orm v0.6.26
 	github.com/hanzoai/pubsub-go v1.0.0
 	github.com/hanzoai/search-go v0.36.0
 	github.com/hanzoai/sendgrid-go v3.4.2-0.20180724185151-733a05184a8d+incompatible
@@ -86,7 +86,7 @@ require (
 	github.com/hanzoai/builder v0.3.13 // indirect
 	github.com/hanzoai/csqlite v0.1.2 // indirect
 	github.com/hanzoai/sqlcipher v0.1.1 // indirect
-	github.com/hanzoai/xorm v1.4.4 // indirect
+	github.com/hanzoai/xorm v1.4.5 // indirect
 	github.com/hanzos3/crc64nvme v1.1.2 // indirect
 	github.com/hanzos3/md5-simd v1.1.3 // indirect
 	github.com/holiman/uint256 v1.3.2 // indirect

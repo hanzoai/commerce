@@ -3,6 +3,7 @@ package billing
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"slices"
 	"testing"
 )
 
@@ -73,14 +74,14 @@ func TestVendoredPlansMatchPinnedVersion(t *testing.T) {
 // contactSales plans are null-priced → stored as 0 + ContactSales (never a
 // chargeable $0).
 func TestVendoredPlanPrices(t *testing.T) {
-	if got := len(hanzoPlans); got != 9 { // 6 subscription + 3 dns
-		t.Fatalf("hanzoPlans = %d, want 9 (6 subscription + 3 dns)", got)
+	if got := len(catalog); got != 9 { // 6 subscription + 3 dns
+		t.Fatalf("catalog = %d, want 9 (6 subscription + 3 dns)", got)
 	}
 	if got := len(dnsPlans); got != 3 {
 		t.Fatalf("dnsPlans = %d, want 3", got)
 	}
 	bySlug := map[string]staticPlan{}
-	for _, p := range hanzoPlans {
+	for _, p := range catalog {
 		bySlug[p.Slug] = p
 	}
 	type want struct {
@@ -118,7 +119,7 @@ func TestVendoredPlanPrices(t *testing.T) {
 // prevents for rows that already exist, and cannot prevent for rows that do not.
 func TestRetiredSlugsAreNotInTheEmbed(t *testing.T) {
 	bySlug := map[string]bool{}
-	for _, p := range hanzoPlans {
+	for _, p := range catalog {
 		bySlug[p.Slug] = true
 	}
 	for _, slug := range []string{
@@ -150,6 +151,51 @@ func TestVendoredAllotmentAmounts(t *testing.T) {
 	for slug, cents := range want {
 		if got := IncludedMonthlyCents(slug); got != cents {
 			t.Errorf("IncludedMonthlyCents(%q) = %d, want %d (allotment mint amount drifted)", slug, got, cents)
+		}
+	}
+}
+
+// TestVendoredPriceLadder canaries the OTHER money-bearing number in the embed:
+// the prices a plan is sold at above its base. The price canary above reads
+// Price alone, so a re-vendored catalog could drop or reprice the whole max
+// ladder without a single existing assertion noticing — and dropping it makes
+// every level above the base refuse (LevelPrice), which is the safe direction but
+// silently unsells the tier.
+//
+// It also pins the invariant the wire depends on: Prices[0] == Price. A client
+// renders one control over Prices and sends back the index it lands on, and level
+// 0 is answered from Price, so the two must name the same money or the first
+// position on that control quotes one number and charges another.
+func TestVendoredPriceLadder(t *testing.T) {
+	bySlug := map[string]staticPlan{}
+	for _, p := range catalog {
+		bySlug[p.Slug] = p
+	}
+
+	max, ok := bySlug["max"]
+	if !ok {
+		t.Fatalf("plan %q missing from embed", "max")
+	}
+	want := []int64{9900, 19900, 29900, 39900, 49900, 59900, 69900, 79900, 89900, 99900}
+	if !slices.Equal(max.Prices, want) {
+		t.Fatalf("max ladder = %v cents, want %v", max.Prices, want)
+	}
+
+	// Every plan that publishes a ladder: it starts at the plan's own price and
+	// it only ever goes up. Ascending is what lets a client render it as one
+	// control without sorting it first, and a ladder that stepped backwards would
+	// put a cheaper price at a higher level.
+	for _, p := range catalog {
+		if len(p.Prices) == 0 {
+			continue
+		}
+		if p.Prices[0] != p.Price {
+			t.Errorf("plan %q ladder starts at %d, want its price %d", p.Slug, p.Prices[0], p.Price)
+		}
+		for i := 1; i < len(p.Prices); i++ {
+			if p.Prices[i] <= p.Prices[i-1] {
+				t.Errorf("plan %q ladder is not ascending at %d: %d then %d", p.Slug, i, p.Prices[i-1], p.Prices[i])
+			}
 		}
 	}
 }
