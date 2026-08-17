@@ -32,8 +32,8 @@ func TestProdPath_SeedReadbackAllFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	if created != len(hanzoPlans) {
-		t.Fatalf("seed created %d, want %d", created, len(hanzoPlans))
+	if created != len(catalog) {
+		t.Fatalf("seed created %d, want %d", created, len(catalog))
 	}
 
 	rows, ok := planAuthorityRows(c)
@@ -46,8 +46,8 @@ func TestProdPath_SeedReadbackAllFields(t *testing.T) {
 	}
 	orgDB := datastore.New(nscontext.WithNamespace(c, "acme"))
 
-	for i := range hanzoPlans {
-		e := hanzoPlans[i]
+	for i := range catalog {
+		e := catalog[i]
 		g, present := list[e.Slug]
 		if !present {
 			t.Errorf("%s: missing from ListPlans", e.Slug)

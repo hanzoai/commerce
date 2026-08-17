@@ -161,9 +161,9 @@ func resolveSubscriptionPlan(db *datastore.Datastore, planId string) (*plan.Plan
 	p := plan.New(pdb)
 	if err := p.GetById(planId); err != nil {
 		var staticP *staticPlan
-		for i := range hanzoPlans {
-			if hanzoPlans[i].Slug == planId {
-				staticP = &hanzoPlans[i]
+		for i := range catalog {
+			if catalog[i].Slug == planId {
+				staticP = &catalog[i]
 				break
 			}
 		}
@@ -323,10 +323,10 @@ func createSubscription(c *zip.Ctx, db *datastore.Datastore, org *organization.O
 // a parent plan. Reads from the static catalog so we never need to hit
 // the DB for plan metadata that is already baked into the binary.
 func bundledPlansForSlug(slug string) []string {
-	for i := range hanzoPlans {
-		if hanzoPlans[i].Slug == slug {
-			out := make([]string, len(hanzoPlans[i].Bundles))
-			copy(out, hanzoPlans[i].Bundles)
+	for i := range catalog {
+		if catalog[i].Slug == slug {
+			out := make([]string, len(catalog[i].Bundles))
+			copy(out, catalog[i].Bundles)
 			return out
 		}
 	}
@@ -341,9 +341,9 @@ func bundledPlansForSlug(slug string) []string {
 // is unknown to the embed.
 func childSnapshotPlan(db *datastore.Datastore, childSlug string) *plan.Plan {
 	var sc *staticPlan
-	for i := range hanzoPlans {
-		if hanzoPlans[i].Slug == childSlug {
-			sc = &hanzoPlans[i]
+	for i := range catalog {
+		if catalog[i].Slug == childSlug {
+			sc = &catalog[i]
 			break
 		}
 	}

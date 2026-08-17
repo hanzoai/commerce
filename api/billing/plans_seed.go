@@ -11,7 +11,7 @@ import (
 )
 
 // The plan authority (models/plan, "system" namespace) is seeded from — and
-// falls back to — the SAME embedded @hanzo/plans catalog (hanzoPlans) that
+// falls back to — the SAME embedded @hanzo/plans catalog (catalog) that
 // SyncStripe and StaticPlans read. Seeding therefore changes NO charge: a
 // seeded row's typed money fields equal the embed's. Once seeded, admin.hanzo.ai
 // edits the rows and BOTH GET /v1/billing/plans and resolveSubscriptionPlan read
@@ -37,9 +37,9 @@ const PinnedPlansVersion = "1.4.14"
 // columns; the rich display envelope rides Metadata. This is the ONE seed
 // source, so the DB authority starts byte-for-byte equal to the embed.
 func SeedRows() []*plan.Plan {
-	rows := make([]*plan.Plan, 0, len(hanzoPlans))
-	for i := range hanzoPlans {
-		rows = append(rows, planFromStatic(&hanzoPlans[i]))
+	rows := make([]*plan.Plan, 0, len(catalog))
+	for i := range catalog {
+		rows = append(rows, planFromStatic(&catalog[i]))
 	}
 	return rows
 }
@@ -207,9 +207,9 @@ func planAuthorityRows(ctx context.Context) ([]staticPlan, bool) {
 // (so a seeded==embed authority serves the same order the client expects);
 // admin-added plans not in the embed sort after, by slug. Stable + deterministic.
 func sortByEmbedOrder(rows []staticPlan) {
-	idx := make(map[string]int, len(hanzoPlans))
-	for i := range hanzoPlans {
-		idx[hanzoPlans[i].Slug] = i
+	idx := make(map[string]int, len(catalog))
+	for i := range catalog {
+		idx[catalog[i].Slug] = i
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
 		oi, oki := idx[rows[i].Slug]
