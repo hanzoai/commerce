@@ -73,14 +73,14 @@ func TestVendoredPlansMatchPinnedVersion(t *testing.T) {
 // contactSales plans are null-priced → stored as 0 + ContactSales (never a
 // chargeable $0).
 func TestVendoredPlanPrices(t *testing.T) {
-	if got := len(hanzoPlans); got != 9 { // 6 subscription + 3 dns
-		t.Fatalf("hanzoPlans = %d, want 9 (6 subscription + 3 dns)", got)
+	if got := len(catalog); got != 9 { // 6 subscription + 3 dns
+		t.Fatalf("catalog = %d, want 9 (6 subscription + 3 dns)", got)
 	}
 	if got := len(dnsPlans); got != 3 {
 		t.Fatalf("dnsPlans = %d, want 3", got)
 	}
 	bySlug := map[string]staticPlan{}
-	for _, p := range hanzoPlans {
+	for _, p := range catalog {
 		bySlug[p.Slug] = p
 	}
 	type want struct {
@@ -125,7 +125,7 @@ func TestVendoredPlanPrices(t *testing.T) {
 // position on that control quotes one number and charges another.
 func TestVendoredPriceLadder(t *testing.T) {
 	bySlug := map[string]staticPlan{}
-	for _, p := range hanzoPlans {
+	for _, p := range catalog {
 		bySlug[p.Slug] = p
 	}
 
@@ -142,7 +142,7 @@ func TestVendoredPriceLadder(t *testing.T) {
 	// it only ever goes up. Ascending is what lets a client render it as one
 	// control without sorting it first, and a ladder that stepped backwards would
 	// put a cheaper price at a higher level.
-	for _, p := range hanzoPlans {
+	for _, p := range catalog {
 		if len(p.Prices) == 0 {
 			continue
 		}
@@ -163,7 +163,7 @@ func TestVendoredPriceLadder(t *testing.T) {
 // prevents for rows that already exist, and cannot prevent for rows that do not.
 func TestRetiredSlugsAreNotInTheEmbed(t *testing.T) {
 	bySlug := map[string]bool{}
-	for _, p := range hanzoPlans {
+	for _, p := range catalog {
 		bySlug[p.Slug] = true
 	}
 	for _, slug := range []string{

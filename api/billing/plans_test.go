@@ -15,11 +15,11 @@ func indexBySlug(plans []staticPlan) map[string]staticPlan {
 }
 
 func TestPlansLoaded(t *testing.T) {
-	if len(hanzoPlans) == 0 {
-		t.Fatal("hanzoPlans is empty")
+	if len(catalog) == 0 {
+		t.Fatal("catalog is empty")
 	}
 
-	bySlug := indexBySlug(hanzoPlans)
+	bySlug := indexBySlug(catalog)
 
 	// Core subscription plans that must exist regardless of catalog growth.
 	must := []string{"go", "dev", "pro", "max", "team", "enterprise"}
@@ -153,7 +153,7 @@ func TestIncludedMonthlyCents(t *testing.T) {
 	// @hanzo/plans catalog versions fetched at build time. (The prior test checked
 	// only includedCreditUsd, so plans that declare includedCloudCredits — e.g.
 	// max=$100, team-max=$100/seat — failed with "10000 want 0".)
-	for _, p := range hanzoPlans {
+	for _, p := range catalog {
 		got := IncludedMonthlyCents(p.Slug)
 		var want int64
 		if p.Limits != nil {

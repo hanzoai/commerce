@@ -9,6 +9,9 @@ import (
 
 	"github.com/zap-proto/zip"
 
+	"os"
+	"path/filepath"
+
 	"github.com/hanzoai/commerce/api/promo"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/util/json/http"
@@ -42,15 +45,15 @@ type canonicalPlan struct {
 	PriceAnnual  *float64 `json:"priceAnnual"`  // dollars per month billed annually (null for custom)
 	// Prices is every price the plan is sold at, in dollars per month, ascending,
 	// with Prices[0] == PriceMonthly. Absent for a plan sold at one price.
-	Prices []float64 `json:"prices,omitempty"`
-	Category     string   `json:"category"`
-	Popular      bool     `json:"popular,omitempty"`
-	ContactSales bool     `json:"contactSales,omitempty"`
+	Prices       []float64 `json:"prices,omitempty"`
+	Category     string    `json:"category"`
+	Popular      bool      `json:"popular,omitempty"`
+	ContactSales bool      `json:"contactSales,omitempty"`
 	// TrialPeriodDays is the base (no-card) free-trial length advertised for the
 	// plan. The actual on-ramp length is decided at signup by billing/trial
 	// (7 days without a card, 30 with one) — this only surfaces the base offer
 	// on GET /v1/billing/plans.
-	TrialPeriodDays *int     `json:"trialPeriodDays,omitempty"`
+	TrialPeriodDays *int        `json:"trialPeriodDays,omitempty"`
 	Features        []string    `json:"features"`
 	Bundles         []string    `json:"bundles,omitempty"`    // slugs of plans whose entitlement this plan also grants
 	IncludedIn      []string    `json:"includedIn,omitempty"` // slugs of plans that include this plan as a bundle
@@ -94,24 +97,24 @@ func licensingOf(cp *canonicalPlan) *plan.Licensing {
 // staticPlan is the wire type returned by GET /billing/plans.
 // Fields match the Plan type in the billing frontend's commerce-client.ts.
 type staticPlan struct {
-	Slug            string   `json:"slug"`
-	Name            string   `json:"name"`
-	Description     string   `json:"description"`
-	Category        string   `json:"category"`
-	Price           int64    `json:"price"`       // monthly price in cents (0 = free)
-	PriceAnnual     int64    `json:"priceAnnual"` // annual price in cents per month
+	Slug        string `json:"slug"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Category    string `json:"category"`
+	Price       int64  `json:"price"`       // monthly price in cents (0 = free)
+	PriceAnnual int64  `json:"priceAnnual"` // annual price in cents per month
 	// Prices is every price this plan is sold at, in cents, ascending, with
 	// Prices[0] == Price. A client renders one control over this list and sends
 	// back the INDEX it landed on (subscribe/card's `level`) — never a price. It
 	// is absent for a plan sold at a single price, so a client that ignores it
 	// keeps working and a plan that gains a ladder needs no client release.
-	Prices []int64 `json:"prices,omitempty"`
-	Currency        string   `json:"currency"`
-	Interval        string   `json:"interval"`
-	IntervalCount   int      `json:"intervalCount"`
-	TrialPeriodDays int      `json:"trialPeriodDays"`
-	ContactSales    bool     `json:"contactSales,omitempty"`
-	Popular         bool     `json:"popular,omitempty"`
+	Prices          []int64 `json:"prices,omitempty"`
+	Currency        string  `json:"currency"`
+	Interval        string  `json:"interval"`
+	IntervalCount   int     `json:"intervalCount"`
+	TrialPeriodDays int     `json:"trialPeriodDays"`
+	ContactSales    bool    `json:"contactSales,omitempty"`
+	Popular         bool    `json:"popular,omitempty"`
 	// PromoPercent / PromoUntil surface the ACTIVE, admin-configured platform plan
 	// promo for this plan (percent off + when it ends) — sourced from the promo
 	// package (a Promotion), never hardcoded in the catalog. Zero/empty when no promo
@@ -130,20 +133,71 @@ type staticPlan struct {
 	Licensing *plan.Licensing `json:"licensing,omitempty"`
 }
 
-// hanzoPlans contains all plans loaded at init from embedded JSON files.
+// catalog contains every plan this service sells, loaded at init from the
+// operator's directory when one is named and from the embed otherwise. It was
+// `catalog` — a brand in an identifier, in a package a second brand is meant
+// to be able to run.
 // Subscription plans have category "personal", "team", or "enterprise".
 // DNS plans have category "dns".
-var hanzoPlans []staticPlan
+var catalog []staticPlan
 
 // dnsPlans is a filtered view containing only DNS plans for the /dns/plans endpoint.
 var dnsPlans []staticPlan
 
-func init() {
-	hanzoPlans = loadPlansFromEmbed(subscriptionJSON, "plans/subscription.json")
+// PlansDirEnv names a DIRECTORY of catalog JSON the operator supplies. Set, the
+// files under it are the catalog; unset, the embedded copy is.
+//
+// The catalog is DATA, and it was reachable only by recompiling. Three costs
+// followed from that, and all three are real rather than tidiness:
+//
+//   - It ships on the BINARY's cadence. A price corrected in this repo cannot
+//     reach production until whatever embeds this module is rebuilt and rolled,
+//     which is how a catalog and the service serving it come to disagree for
+//     days at a time.
+//   - It is not brand neutral. An open binary that can only ever sell one
+//     company's plans is not something a second brand — or anyone who forks
+//     this — can run without editing Go and re-releasing.
+//   - It is not how the rest of the estate states anything. Every other
+//     deployment-shaped fact is declared, mounted and versioned outside the
+//     image; this one alone was compiled in.
+//
+// The embed stays, and stays the default, because a service that cannot start
+// without a mounted file is worse than one that ships a sensible catalog. It is
+// the FALLBACK, not the only answer.
+const PlansDirEnv = "COMMERCE_PLANS_DIR"
 
-	dns := loadPlansFromEmbed(dnsJSON, "plans/dns.json")
+func init() {
+	dir := os.Getenv(PlansDirEnv)
+	catalog = loadPlans(dir, subscriptionJSON, "plans/subscription.json")
+
+	dns := loadPlans(dir, dnsJSON, "plans/dns.json")
 	dnsPlans = dns
-	hanzoPlans = append(hanzoPlans, dns...)
+	catalog = append(catalog, dns...)
+}
+
+// loadPlans reads the catalog from `dir` when the operator named one, and from
+// the embed otherwise.
+//
+// A supplied file that cannot be read or parsed is FATAL, exactly as a bad
+// embed is. Falling back to the embed on a malformed file would be the worst of
+// both: the operator states one catalog, the service quietly sells another, and
+// nothing says so — which for a file that decides what customers are charged is
+// not a degradation but a silent wrong answer. Absent is the only condition
+// that means "use the default".
+func loadPlans(dir string, fallback embed.FS, path string) []staticPlan {
+	if dir == "" {
+		return loadPlansFromEmbed(fallback, path)
+	}
+	file := filepath.Join(dir, filepath.Base(path))
+	data, err := os.ReadFile(file)
+	if err != nil {
+		panic(fmt.Sprintf("billing: %s names %s and it cannot be read: %v", PlansDirEnv, file, err))
+	}
+	plans, err := parsePlans(data)
+	if err != nil {
+		panic(fmt.Sprintf("billing: %s is set and %s is not a catalog: %v", PlansDirEnv, file, err))
+	}
+	return plans
 }
 
 // loadPlansFromEmbed reads an embedded JSON file and converts canonical plans
@@ -155,9 +209,20 @@ func loadPlansFromEmbed(fs embed.FS, path string) []staticPlan {
 		panic(fmt.Sprintf("billing: failed to read embedded %s: %v", path, err))
 	}
 
+	plans, err := parsePlans(data)
+	if err != nil {
+		panic(fmt.Sprintf("billing: failed to parse %s: %v", path, err))
+	}
+	return plans
+}
+
+// parsePlans is the ONE decoder. It was inline in the embed reader, so a second
+// source would have meant a second copy of the projection — and the projection
+// is what decides which JSON field becomes which charged column.
+func parsePlans(data []byte) ([]staticPlan, error) {
 	var canonical []canonicalPlan
 	if err := json.Unmarshal(data, &canonical); err != nil {
-		panic(fmt.Sprintf("billing: failed to parse %s: %v", path, err))
+		return nil, err
 	}
 
 	plans := make([]staticPlan, len(canonical))
@@ -198,10 +263,10 @@ func loadPlansFromEmbed(fs embed.FS, path string) []staticPlan {
 		plans[i] = sp
 	}
 
-	return plans
+	return plans, nil
 }
 
-// withPromo returns a COPY of the catalog (never the shared hanzoPlans var) with
+// withPromo returns a COPY of the catalog (never the shared catalog var) with
 // each paid plan annotated by the ACTIVE, admin-configured platform promo. Applying
 // it here — at the read edge — is what makes the discount admin-controlled: the
 // catalog JSON carries no promo, the promo package (a Promotion) is the single
@@ -239,7 +304,7 @@ func ListPlans(c *zip.Ctx) error {
 	// or query serves the known catalog, never a silently blank list.
 	plans, ok := planAuthorityRows(c.Context())
 	if !ok {
-		plans = hanzoPlans
+		plans = catalog
 	}
 
 	category := c.Query("category")
@@ -264,7 +329,7 @@ func GetPlan(c *zip.Ctx) error {
 	// DB authority first; embed is the loud-failing fallback (see ListPlans).
 	plans, ok := planAuthorityRows(c.Context())
 	if !ok {
-		plans = hanzoPlans
+		plans = catalog
 	}
 	for _, p := range plans {
 		if p.Slug == id {
@@ -277,9 +342,9 @@ func GetPlan(c *zip.Ctx) error {
 // lookupPlan finds a plan by slug across all loaded plans.
 // Returns nil if not found.
 func lookupPlan(slug string) *staticPlan {
-	for i := range hanzoPlans {
-		if hanzoPlans[i].Slug == slug {
-			return &hanzoPlans[i]
+	for i := range catalog {
+		if catalog[i].Slug == slug {
+			return &catalog[i]
 		}
 	}
 	return nil
@@ -372,10 +437,10 @@ type Plan struct {
 
 // StaticPlans returns a snapshot of the embedded plan catalog as the
 // exported Plan shape. The slice is freshly allocated so callers may
-// mutate freely without bleeding into the canonical hanzoPlans var.
+// mutate freely without bleeding into the canonical catalog var.
 func StaticPlans() []Plan {
-	out := make([]Plan, len(hanzoPlans))
-	for i, p := range hanzoPlans {
+	out := make([]Plan, len(catalog))
+	for i, p := range catalog {
 		out[i] = toPlan(&p)
 	}
 	return out
