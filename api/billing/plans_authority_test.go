@@ -19,8 +19,8 @@ func TestSeedPlans_SeedsAndIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	if created != len(hanzoPlans) {
-		t.Fatalf("first seed created %d, want %d (17 subscription + 3 dns)", created, len(hanzoPlans))
+	if created != len(catalog) {
+		t.Fatalf("first seed created %d, want %d (17 subscription + 3 dns)", created, len(catalog))
 	}
 
 	created2, _, err := SeedPlans(c)
@@ -43,7 +43,7 @@ func TestSeededPricesEqualEmbed(t *testing.T) {
 	}
 
 	adb := plan.AuthorityDB(c)
-	for _, embed := range hanzoPlans {
+	for _, embed := range catalog {
 		p := plan.New(adb)
 		ok, err := p.Query().Filter("Slug=", embed.Slug).Get()
 		if err != nil || !ok {
@@ -141,14 +141,14 @@ func TestPlanAuthorityRows_LoudFallbackThenAuthority(t *testing.T) {
 	if !ok {
 		t.Fatal("seeded authority must read ok")
 	}
-	if len(rows) != len(hanzoPlans) {
-		t.Fatalf("authority rows = %d, want %d", len(rows), len(hanzoPlans))
+	if len(rows) != len(catalog) {
+		t.Fatalf("authority rows = %d, want %d", len(rows), len(catalog))
 	}
 	bySlug := map[string]staticPlan{}
 	for _, r := range rows {
 		bySlug[r.Slug] = r
 	}
-	for _, embed := range hanzoPlans {
+	for _, embed := range catalog {
 		got := bySlug[embed.Slug]
 		if got.Price != embed.Price || got.Category != embed.Category || got.PriceAnnual != embed.PriceAnnual {
 			t.Errorf("projected %q = %d/%d/%s, want %d/%d/%s", embed.Slug, got.Price, got.PriceAnnual, got.Category, embed.Price, embed.PriceAnnual, embed.Category)

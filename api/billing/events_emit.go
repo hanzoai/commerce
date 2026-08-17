@@ -121,9 +121,9 @@ func SubscriptionMRRCents(sub *subscription.Subscription) int64 {
 // (the same source bundledPlansForSlug reads). Empty when unknown — honest, the
 // read side buckets it under "".
 func planCategoryForSlug(slug string) string {
-	for i := range hanzoPlans {
-		if hanzoPlans[i].Slug == slug {
-			return hanzoPlans[i].Category
+	for i := range catalog {
+		if catalog[i].Slug == slug {
+			return catalog[i].Category
 		}
 	}
 	return ""
