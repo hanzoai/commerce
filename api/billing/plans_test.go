@@ -39,8 +39,8 @@ func TestPlansLoaded(t *testing.T) {
 	// `go` is the entry rung and carries the entry rate ceilings; `enterprise` is
 	// priced by conversation, so it is the one row with a null price.
 	entry := bySlug["go"]
-	if entry.Price != 800 {
-		t.Errorf("Go price = %d cents, want 800", entry.Price)
+	if entry.Price != 900 {
+		t.Errorf("Go price = %d cents, want 900", entry.Price)
 	}
 	if entry.Limits == nil {
 		t.Fatal("Go plan should have limits")

@@ -12,7 +12,11 @@
       "Add credit at any time to reach the paid models"
     ],
     "limits": {
-      "requestsPerMinute": 60
+      "requestsPerMinute": 60,
+      "requestsPerHour": 10,
+      "requestsPerDay": 20,
+      "requestsPerWeek": 100,
+      "requestsPerMonth": 300
     },
     "payouts": {
       "idleResalePercent": 20,
@@ -21,7 +25,11 @@
     "entitlements": {
       "ai.requests_per_min": 60,
       "commerce.support_tier": "community",
-      "commerce.idle_resale_percent": 20
+      "commerce.idle_resale_percent": 20,
+      "ai.requests_per_hour": 10,
+      "ai.requests_per_day": 20,
+      "ai.requests_per_week": 100,
+      "ai.requests_per_month": 300
     }
   },
   {
@@ -29,15 +37,20 @@
     "name": "Go",
     "category": "personal",
     "description": "Omnichannel agent hosting and the Hanzo desktop app, for builders getting started.",
-    "priceMonthly": 8,
-    "priceAnnual": 7,
+    "priceMonthly": 9,
+    "priceAnnual": 8.25,
     "features": [
       "Hanzo Bot Gateway — host local agents across WhatsApp, Telegram, Discord and Slack",
       "Hanzo Chat & UI — desktop app layout with instant global model context"
     ],
     "limits": {
       "requestsPerMinute": 60,
-      "tokensPerMinute": 100000
+      "tokensPerMinute": 100000,
+      "includedCreditUsd": 5,
+      "requestsPerHour": 150,
+      "requestsPerDay": 1000,
+      "requestsPerWeek": 5000,
+      "requestsPerMonth": 15000
     },
     "payouts": {
       "idleResalePercent": 20,
@@ -50,15 +63,80 @@
         "tier:starter"
       ],
       "commerce.support_tier": "community",
-      "commerce.idle_resale_percent": 20
+      "commerce.idle_resale_percent": 20,
+      "ai.requests_per_hour": 150,
+      "ai.requests_per_day": 1000,
+      "ai.requests_per_week": 5000,
+      "ai.requests_per_month": 15000
     },
     "price_ref": {
       "currency": "USD",
       "recurring": {
-        "monthly_usd": 8,
-        "annual_usd": 7,
+        "monthly_usd": 9,
+        "annual_usd": 8.25,
         "per_seat": false,
-        "stripe_lookup_key": "hanzo_go_8"
+        "stripe_lookup_key": "hanzo_go_9"
+      },
+      "metered": [
+        {
+          "entitlement": "ai.tokens_per_min",
+          "unit": "per_mtok",
+          "source": "zen-gateway",
+          "included": -1
+        }
+      ]
+    }
+  },
+  {
+    "id": "dev",
+    "name": "Dev",
+    "category": "personal",
+    "description": "Terminal-native pair programming in your own repository shell.",
+    "priceMonthly": 19,
+    "priceAnnual": 16.5,
+    "features": [
+      "Hanzo Dev — full terminal-native pair programmer inside your local repo shell",
+      "Medium reasoning dial — balanced latency-to-depth for standard code generation",
+      "Unlimited local context — codebase indexing via the native desktop client"
+    ],
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    },
+    "entitlements": {
+      "ai.requests_per_min": 500,
+      "ai.tokens_per_min": 1000000,
+      "ai.priority_inference": true,
+      "ai.models": [
+        "tier:max"
+      ],
+      "licensing.product_ids": [
+        "team"
+      ],
+      "commerce.support_tier": "priority",
+      "commerce.idle_resale_percent": 20,
+      "team.guests": 3,
+      "ai.requests_per_hour": 400,
+      "ai.requests_per_day": 2500,
+      "ai.requests_per_week": 12000,
+      "ai.requests_per_month": 40000
+    },
+    "limits": {
+      "requestsPerMinute": 500,
+      "tokensPerMinute": 1000000,
+      "teamGuests": 3,
+      "requestsPerHour": 400,
+      "requestsPerDay": 2500,
+      "requestsPerWeek": 12000,
+      "requestsPerMonth": 40000
+    },
+    "price_ref": {
+      "currency": "USD",
+      "recurring": {
+        "monthly_usd": 19,
+        "annual_usd": 16.5,
+        "per_seat": false,
+        "stripe_lookup_key": "hanzo_dev_19"
       },
       "metered": [
         {
@@ -76,8 +154,8 @@
     "category": "personal",
     "popular": true,
     "description": "Multi-agent orchestration, background review, and maximum reasoning depth.",
-    "priceMonthly": 19,
-    "priceAnnual": 16.5,
+    "priceMonthly": 49,
+    "priceAnnual": 41.5,
     "features": [
       "Auto Drive orchestration — multi-agent teams executing repo milestones (/plan, /code, /solve)",
       "Auto Review — background watcher running changes in hidden git worktrees to suggest fixes silently",
@@ -100,20 +178,28 @@
       ],
       "commerce.support_tier": "priority",
       "commerce.idle_resale_percent": 20,
-      "team.guests": 3
+      "team.guests": 3,
+      "ai.requests_per_hour": 1000,
+      "ai.requests_per_day": 6000,
+      "ai.requests_per_week": 30000,
+      "ai.requests_per_month": 100000
     },
     "limits": {
       "requestsPerMinute": 2500,
       "tokensPerMinute": 5000000,
-      "teamGuests": 3
+      "teamGuests": 3,
+      "requestsPerHour": 1000,
+      "requestsPerDay": 6000,
+      "requestsPerWeek": 30000,
+      "requestsPerMonth": 100000
     },
     "price_ref": {
       "currency": "USD",
       "recurring": {
-        "monthly_usd": 19,
-        "annual_usd": 16.5,
+        "monthly_usd": 49,
+        "annual_usd": 41.5,
         "per_seat": false,
-        "stripe_lookup_key": "hanzo_pro_19"
+        "stripe_lookup_key": "hanzo_pro_49"
       },
       "metered": [
         {
@@ -132,7 +218,18 @@
     "description": "Enso orchestration, unlimited managed agents, and shared team workspaces.",
     "priceMonthly": 99,
     "priceAnnual": 83.25,
-    "prices": [99, 199, 299, 399, 499, 599, 699, 799, 899, 999],
+    "prices": [
+      99,
+      199,
+      299,
+      399,
+      499,
+      599,
+      699,
+      799,
+      899,
+      999
+    ],
     "features": [
       "Enso orchestration — dedicated routing through Hanzo's foundational framework model",
       "Unlimited managed agents — continuous background scheduling to unified team dashboards",
@@ -168,12 +265,20 @@
       ],
       "commerce.support_tier": "dedicated",
       "commerce.idle_resale_percent": 20,
-      "team.guests": 3
+      "team.guests": 3,
+      "ai.requests_per_hour": 2500,
+      "ai.requests_per_day": 15000,
+      "ai.requests_per_week": 75000,
+      "ai.requests_per_month": 250000
     },
     "limits": {
       "requestsPerMinute": 5000,
       "tokensPerMinute": 10000000,
-      "teamGuests": 3
+      "teamGuests": 3,
+      "requestsPerHour": 2500,
+      "requestsPerDay": 15000,
+      "requestsPerWeek": 75000,
+      "requestsPerMonth": 250000
     },
     "price_ref": {
       "currency": "USD",
