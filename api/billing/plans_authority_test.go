@@ -180,8 +180,14 @@ func TestSyncStripeUntouchedByDBEdit(t *testing.T) {
 	}
 
 	after := staticMonth(StaticPlans(), "pro")
-	if before != after || after != 1900 {
+	// The property is that the DB edit did not reach the embed — not what the
+	// embed happens to charge. Pinning the price here made a reprice look like a
+	// broken authority boundary, which is a different fault entirely.
+	if before != after {
 		t.Fatalf("StaticPlans(pro) changed by a DB edit: before=%d after=%d (SyncStripe must read the untouched embed)", before, after)
+	}
+	if after == 12345 {
+		t.Fatalf("StaticPlans(pro) = %d, the value written to the DB — the embed is being read through the authority", after)
 	}
 }
 

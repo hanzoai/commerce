@@ -57,7 +57,7 @@ func TestCatalogConverges_OldStoreToPublishedLadder(t *testing.T) {
 	}
 
 	// The published ladder is what is offered, at the published prices.
-	for slug, want := range map[string]int64{"free": 0, "go": 800, "pro": 1900, "max": 9900} {
+	for slug, want := range map[string]int64{"free": 0, "go": 900, "dev": 1900, "pro": 4900, "max": 9900} {
 		if got[slug] != want {
 			t.Errorf("public %q = %d cents, want %d", slug, got[slug], want)
 		}
