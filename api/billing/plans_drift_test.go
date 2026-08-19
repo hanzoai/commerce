@@ -19,6 +19,10 @@ import (
 // entry whose digests must equal the new bytes, and editing the bytes under the
 // current version breaks the current entry.
 var versionDigests = map[string]struct{ subscription, dns string }{
+	"1.4.20": {
+		subscription: "f89507c4fdebf0df2f5c135281a6f89ae4b6bc1eb4f6aec178b804a795e87339",
+		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
+	},
 	"1.4.4": {
 		subscription: "e490185e58b4e83d925eaf2dfd4778e28023655b610d0504b8058670bbdf2f79",
 		dns:          "de7da2ab600268bdf5528b9ec1fd037bdbe8f9112f3755d80b5f93a4cbf1cd87",
@@ -74,8 +78,8 @@ func TestVendoredPlansMatchPinnedVersion(t *testing.T) {
 // contactSales plans are null-priced → stored as 0 + ContactSales (never a
 // chargeable $0).
 func TestVendoredPlanPrices(t *testing.T) {
-	if got := len(catalog); got != 9 { // 6 subscription + 3 dns
-		t.Fatalf("catalog = %d, want 9 (6 subscription + 3 dns)", got)
+	if got := len(catalog); got != 10 { // 7 subscription + 3 dns
+		t.Fatalf("catalog = %d, want 10 (6 subscription + 3 dns)", got)
 	}
 	if got := len(dnsPlans); got != 3 {
 		t.Fatalf("dnsPlans = %d, want 3", got)
@@ -90,8 +94,9 @@ func TestVendoredPlanPrices(t *testing.T) {
 	}
 	cases := map[string]want{
 		"free":           {0, 0, false}, // a real $0 rung, not a null price
-		"go":             {800, 700, false},
-		"pro":            {1900, 1650, false},
+		"go":             {900, 825, false},
+		"dev":            {1900, 1650, false},
+		"pro":            {4900, 4150, false},
 		"max":            {9900, 8325, false},
 		"team":           {2500, 2000, false},
 		"enterprise":     {0, 0, true}, // null price → 0 + contactSales
@@ -123,7 +128,7 @@ func TestRetiredSlugsAreNotInTheEmbed(t *testing.T) {
 		bySlug[p.Slug] = true
 	}
 	for _, slug := range []string{
-		"developer", "dev", "plus", "team-max", "custom",
+		"developer", "plus", "team-max", "custom",
 		"world-free", "world-pro", "world-team", "world-enterprise",
 		"social-free", "social-pro", "social-team", "social-team-max", "social-enterprise",
 	} {
@@ -140,10 +145,11 @@ func TestRetiredSlugsAreNotInTheEmbed(t *testing.T) {
 // loudly + named — the price canary above does NOT cover it (Red F4).
 func TestVendoredAllotmentAmounts(t *testing.T) {
 	want := map[string]int64{ // slug -> allotment mint amount (cents)
-		"free":       0,     // the personal ladder sells capability and rate,
-		"go":         0,     // not credit returned: usage is bought separately,
-		"pro":        0,     // so no rung on it mints an allotment
-		"max":        0,     //
+		"free":       0,     // a personal rung sells USAGE, bounded by its windows.
+		"go":         500,   // Go is backed: $9 sold against $5 of real usage, which
+		"dev":        0,     // is a margin — never the refund shape a rung granting
+		"pro":        0,     // its own price back would be. The buyer never meets
+		"max":        0,     // this figure; what they hold is prepaid credit.
 		"team":       10000, // includedCloudCreditsPerUser 100 — the one rung that grants
 		"enterprise": 0,     // contact-sales: terms are negotiated, so none is published
 		"dns-pro":    0,     // dns tiers mint no cloud allotment

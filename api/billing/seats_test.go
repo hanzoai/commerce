@@ -38,7 +38,7 @@ func TestPlans_TeamCommercialModel(t *testing.T) {
 	}
 	bySlug := indexBySlug(plans)
 
-	for slug, cents := range map[string]int64{"free": 0, "go": 800, "pro": 1900, "max": 9900, "team": 2500} {
+	for slug, cents := range map[string]int64{"free": 0, "go": 900, "dev": 1900, "pro": 4900, "max": 9900, "team": 2500} {
 		p, ok := bySlug[slug]
 		if !ok {
 			t.Fatalf("plan %q missing from GET /v1/billing/plans", slug)
