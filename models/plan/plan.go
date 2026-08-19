@@ -299,6 +299,20 @@ type Limits struct {
 	// Subscription (API) limits
 	RequestsPerMinute *int `json:"requestsPerMinute,omitempty"`
 	TokensPerMinute   *int `json:"tokensPerMinute,omitempty"`
+
+	// The usage a plan INCLUDES, in requests, over four nested windows.
+	//
+	// RequestsPerMinute above bounds a BURST and says nothing about how much of a
+	// plan a month contains; these bound volume. The short windows refresh as the
+	// day goes, so a holder can keep working all month, and the long ones are the
+	// ceiling that stops it being unlimited — which is only true while each longer
+	// window is smaller than the naive multiple of the shorter one. Set month to
+	// thirty times the day and it can never be reached, because every route to it
+	// crosses thirty daily ceilings first.
+	RequestsPerHour  *int `json:"requestsPerHour,omitempty"`
+	RequestsPerDay   *int `json:"requestsPerDay,omitempty"`
+	RequestsPerWeek  *int `json:"requestsPerWeek,omitempty"`
+	RequestsPerMonth *int `json:"requestsPerMonth,omitempty"`
 	FreeCredit        *int `json:"freeCredit,omitempty"`
 	MaxMembers        *int `json:"maxMembers,omitempty"`
 
