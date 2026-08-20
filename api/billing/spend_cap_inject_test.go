@@ -44,10 +44,15 @@ func TestSpendCap_InjectedReader_EnforcesOnFinanceSpend(t *testing.T) {
 	}
 }
 
-// SPEND_CAP_ENFORCE gates whether a spend_cap verdict DENIES. Default OFF (fail-open,
-// shadow): the same over-cap scope ALLOWS (so an auto-deployed cap never blocks a real
-// customer before the canary proof); ON: it denies. This is the auto-ship safety net.
-func TestSpendCap_EnforceFlag_ShadowWhenOff(t *testing.T) {
+// An exhausted enforcing cap denies, and nothing in the environment can talk it out of
+// that. The verdict is a function of the row and the spend — the two things an operator
+// can see — so a cap reading "$100" cannot be quietly serving an unbounded one.
+//
+// The environment is set here to the spelling that used to disable enforcement, because
+// the property worth pinning is that it now means nothing: a deployment that still
+// carries the old variable, or a shell that exports it out of habit, does not reopen the
+// ceiling.
+func TestSpendCap_ExhaustedCapDeniesRegardlessOfEnvironment(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
 
@@ -62,15 +67,13 @@ func TestSpendCap_EnforceFlag_ShadowWhenOff(t *testing.T) {
 	defer SetPeriodSpendReader(nil)
 	createCap(t, org, `{"title":"cap","threshold":100,"enforce":true}`)
 
-	// Flag ON (the package default) → DENY.
 	if v := authorize(t, org, "user=enforce-flag&amount=1"); v.Allow || v.Reason != "spend_cap" {
-		t.Fatalf("flag ON: authorize = %+v, want deny spend_cap", v)
+		t.Fatalf("authorize = %+v, want deny spend_cap", v)
 	}
 
-	// Flag OFF → SHADOW: the scope is still over cap, but the verdict ALLOWS (no block).
 	t.Setenv("SPEND_CAP_ENFORCE", "false")
-	if v := authorize(t, org, "user=enforce-flag&amount=1"); !v.Allow || v.Reason != "" {
-		t.Fatalf("flag OFF: authorize = %+v, want ALLOW (shadow, no deny)", v)
+	if v := authorize(t, org, "user=enforce-flag&amount=1"); v.Allow || v.Reason != "spend_cap" {
+		t.Fatalf("with SPEND_CAP_ENFORCE=false: authorize = %+v, want deny spend_cap — the cap is not switchable", v)
 	}
 }
 
