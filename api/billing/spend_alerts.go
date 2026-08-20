@@ -12,6 +12,12 @@ import (
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
+// createSpendAlertRequest takes Enforce as a POINTER for the same reason the update
+// request does: a plain bool collapses "the caller said nothing" into "the caller said
+// false", and here those must mean opposite things. A budget a customer sets is a
+// budget they want held, so an ABSENT enforce creates a HARD cap; only an explicit
+// "enforce": false buys the warn-only row. Every other field is fine as a plain value
+// because its zero IS the honest default (no rate limit, DefaultSoftPct, usd).
 type createSpendAlertRequest struct {
 	UserId    string `json:"userId"`
 	Title     string `json:"title"`
@@ -20,7 +26,7 @@ type createSpendAlertRequest struct {
 	// Scope + enforcement (issue #70).
 	Project      string `json:"project"`
 	Service      string `json:"service"`
-	Enforce      bool   `json:"enforce"`
+	Enforce      *bool  `json:"enforce"`
 	SoftPct      int    `json:"softPct"`
 	RateLimitRpm int    `json:"rateLimitRpm"`
 }
@@ -239,7 +245,11 @@ func CreateSpendAlert(c *zip.Ctx) error {
 	a.Currency = cur
 	a.Project = spendalert.NormalizeProject(req.Project)
 	a.Service = strings.TrimSpace(req.Service)
-	a.Enforce = req.Enforce
+	// A new cap enforces unless its creator opted out. The customer who set a ceiling
+	// meant the ceiling; a row that only warns while spend runs past it is a budget in
+	// name only. Existing rows are untouched by this — the default lives HERE, on the
+	// create path, so nothing rewrites a cap someone already chose to keep soft.
+	a.Enforce = req.Enforce == nil || *req.Enforce
 	a.SoftPct = req.SoftPct
 	a.RateLimitRpm = req.RateLimitRpm
 
