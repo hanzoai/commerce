@@ -18,7 +18,6 @@ package billing
 
 import (
 	"context"
-	"os"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -33,8 +32,8 @@ import (
 	"github.com/hanzoai/commerce/models/spendalert"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/util/nscontext"
 )
 
 // PeriodSpendFunc reports a scope's cumulative spend (cents) in the CURRENT UTC
@@ -259,29 +258,21 @@ func AuthorizeSpendCap(c *zip.Ctx) error {
 			res.WarnPct = pct
 		}
 	}
-	// ENFORCEMENT GATE (SPEND_CAP_ENFORCE, default OFF = fail-open). Because a push to
-	// main AUTO-DEPLOYS to prod, the finance-cap read + the S2S auth fix can go live
-	// while the cap only OBSERVES — it must NOT start blocking real customers until an
-	// operator has PROVEN correct enforcement on a canary and deliberately flips the
-	// flag ON. When OFF, a spend_cap deny is downgraded to an allow (logged as a shadow
-	// so the would-block is visible in prod BEFORE the flip). When ON, it denies.
-	if !res.Allow && res.Reason == "spend_cap" && !spendCapEnforce() {
-		log.Info("spend-cap SHADOW: scope over cap (cap=%d spent=%d) but SPEND_CAP_ENFORCE=off — allowing", res.CapCents, res.SpentCents, c)
-		res.Allow = true
-		res.Reason = ""
-		res.CapCents = 0
-		res.SpentCents = 0
-	}
-
 	if !res.Allow {
 		res.WarnPct = 0 // a deny carries no warn.
 	}
 	return c.JSON(200, res)
 }
 
-// spendCapEnforce reports whether a spend_cap verdict actually DENIES. Default OFF
-// (fail-open): the cap can be live+dormant on an auto-deployed binary while it only
-// observes, until an operator flips SPEND_CAP_ENFORCE=true after the canary proof.
-func spendCapEnforce() bool {
-	return strings.EqualFold(strings.TrimSpace(os.Getenv("SPEND_CAP_ENFORCE")), "true")
-}
+// A cap denies. There is no switch that makes it observe instead.
+//
+// There was one — an environment variable read here, defaulting to off — for the window
+// in which an auto-deployed cap needed to prove itself on a canary before it could
+// refuse a real customer. That window closed: the deployment has carried it on since,
+// so removing the read changes no behaviour, only the ability to unset it. A ceiling
+// that an unset variable silently lowers to infinity is not a ceiling, and the failure
+// is silent in the direction that costs money — the operator reads "cap: $100" and the
+// spend keeps climbing.
+//
+// Whether a given row denies is the row's own business: SpendAlert.Enforce, declared per
+// cap, is the one place that answers it.
