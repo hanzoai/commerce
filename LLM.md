@@ -879,18 +879,14 @@ and `topup`/deposits (real money) were all `transaction.Deposit` rolled into ONE
   `{balance,holds,available}` is unchanged, so the cloud proxy + console BFF
   forward the split verbatim; console shows credits vs prepaid distinctly).
   `util.GetRawByCurrency` fetches the raw (un-expiry-filtered) ledger the split needs.
-- **GPU rule (server-enforced, fail-closed)** — `api/billing/gpu_charge.go`:
-  - `GET /v1/billing/gpu/eligibility?user=&amountCents=&minPrepaidCents=` — the
-    launch gate: `{eligible,reason}` where reason ∈ `card_required` /
-    `insufficient_prepaid` / `ok`, reading `PrepaidAvailable` (never the combined
-    balance) + card-on-file.
-  - `POST /v1/billing/gpu/charge {user,amountCents,tag?}` — the ONLY writer of a
-    `gpu`-tagged Withdraw. Two gates: (1) a chargeable card MUST be on file
-    (402 `card_required`); (2) `PrepaidAvailable >= amountCents` (402
-    `insufficient_prepaid`) — credits are NEVER consulted, so a GPU can never draw
-    a grant. `gpuTag()` forces the recorded tag into the gpu bucket.
-  Both mounted on the admin group; the cloud GPU launch gate calls them. A GPU
-  charge NEVER calls `BurnCredits`.
+- **GPU rule (the bucket projection, `billing/bucket`)**: a `gpu`-tagged Withdraw
+  draws PREPAID only — `IsGPUWithdrawal` classifies it and `Compute` never lets it
+  reach a credit grant. It is a property of the LEDGER, so it holds for every
+  writer rather than for one endpoint. There is no bespoke GPU charge door here:
+  a GPU is a metered resource like any other and is billed through the general
+  metered path (a machine is launched via cloud `/v1/machines`, which fronts the
+  compute provider's resell endpoint where the balance gate and the per-hour meter
+  live). A GPU charge NEVER calls `BurnCredits`.
 - **CreditGrant** (`models/creditgrant`, `BurnCredits`) is a SEPARATE grant ledger
   used only for subscription/invoice collection (cycle/invoices/subscriptions) —
   NOT the pay-as-you-go wallet the balance endpoint reads. Left as-is.
