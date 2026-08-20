@@ -116,6 +116,15 @@ func GetTier(c *zip.Ctx) error {
 			"dailyRemaining":     dailyRemaining,
 			"effectiveAvailable": effectiveAvailable,
 		},
+		// The plan's own bounds, beside the wallet, on the read the router already
+		// makes for every request. A plan sells usage over four nested windows and
+		// nothing on the request path could see them: they were published in the
+		// catalog and reported to the account page, and the gate had no way to ask.
+		//
+		// This carries them, it does not enforce them — enforcing is the router's
+		// call and a refusal is money. A window with limit 0 declares no bound at
+		// that span, so a reader must skip it rather than treat it as spent.
+		"windows": usageWindows(ctx, user, subscriptionPlanSlug(datastore.New(ctx), user), org.TestMode(), time.Now()),
 	})
 }
 
