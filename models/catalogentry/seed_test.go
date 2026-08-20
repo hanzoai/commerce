@@ -69,14 +69,19 @@ var clientProducts = map[string]bool{
 //     publishes is a vote, proposal or DAO surface. Served at lux.vote.
 //   - daowork — the bounty surface of that same app, likewise unfronted here.
 var pendingProducts = map[string]bool{
-	"containers":   true,
-	"cdn":          true,
-	"hsm":          true,
-	"mpc":          true,
-	"attestations": true,
-	"safe":         true,
-	"governance":   true,
-	"daowork":      true,
+	// vpc and load-balancer were served by cloud's apps/do, the DigitalOcean
+	// plane, and that app is gone — so /v1/vpcs and /v1/balancers are addresses
+	// the fleet no longer answers. The products are real; the API is not here.
+	"vpc":           true,
+	"load-balancer": true,
+	"containers":    true,
+	"cdn":           true,
+	"hsm":           true,
+	"mpc":           true,
+	"attestations":  true,
+	"safe":          true,
+	"governance":    true,
+	"daowork":       true,
 }
 
 func TestSeedGivesEveryClientNoApiPath(t *testing.T) {

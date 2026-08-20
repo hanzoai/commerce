@@ -390,7 +390,7 @@
     "route": "/vector",
     "docsUrl": "https://docs.hanzo.ai/docs/services/vector",
     "apiPath": "/v1/instances/vector",
-    "apiRoute": "api.hanzo.ai/v1/vector",
+    "apiRoute": "api.hanzo.ai/v1/instances/vector",
     "githubUrl": "https://github.com/hanzoai/vector",
     "repo": "hanzoai/vector",
     "gcp": "Vertex Vector Search",
@@ -420,7 +420,7 @@
     "route": "/sql",
     "docsUrl": "https://docs.hanzo.ai/docs/services/sql",
     "apiPath": "/v1/instances/sql",
-    "apiRoute": "api.hanzo.ai/v1/sql",
+    "apiRoute": "api.hanzo.ai/v1/instances/sql",
     "githubUrl": "https://github.com/hanzoai/sql",
     "repo": "hanzoai/sql",
     "gcp": "Cloud SQL / AlloyDB",
@@ -450,7 +450,7 @@
     "route": "/kv",
     "docsUrl": "https://docs.hanzo.ai/docs/services/kv",
     "apiPath": "/v1/instances/kv",
-    "apiRoute": "api.hanzo.ai/v1/kv",
+    "apiRoute": "api.hanzo.ai/v1/instances/kv",
     "githubUrl": "https://github.com/hanzoai/kv",
     "repo": "hanzoai/kv",
     "gcp": "Memorystore",
@@ -480,7 +480,7 @@
     "route": "/datastore",
     "docsUrl": "https://docs.hanzo.ai/docs/services/datastore",
     "apiPath": "/v1/instances/datastore",
-    "apiRoute": "api.hanzo.ai/v1/datastore",
+    "apiRoute": "api.hanzo.ai/v1/instances/datastore",
     "githubUrl": "https://github.com/hanzoai/datastore",
     "repo": "hanzoai/datastore",
     "gcp": "Bigtable",
@@ -510,7 +510,7 @@
     "route": "/docdb",
     "docsUrl": "https://docs.hanzo.ai/docs/services/docdb",
     "apiPath": "/v1/instances/docdb",
-    "apiRoute": "api.hanzo.ai/v1/docdb",
+    "apiRoute": "api.hanzo.ai/v1/instances/docdb",
     "githubUrl": "https://github.com/hanzoai/docdb",
     "repo": "hanzoai/docdb",
     "gcp": "Firestore",
@@ -569,8 +569,8 @@
     "slug": "vpc",
     "route": "/network",
     "docsUrl": "https://docs.hanzo.ai/docs/services/vpc",
-    "apiPath": "/v1/vpcs",
-    "apiRoute": "api.hanzo.ai/v1/vpcs",
+    "apiPath": "",
+    "apiRoute": "",
     "githubUrl": "https://github.com/hanzoai/operator",
     "repo": "hanzoai/operator",
     "gcp": "VPC",
@@ -588,7 +588,8 @@
     },
     "private": {
       "cost": "TODO"
-    }
+    },
+    "kind": "pending"
   },
   {
     "id": "dns",
@@ -664,8 +665,8 @@
     "slug": "load-balancer",
     "route": "/ingress",
     "docsUrl": "https://docs.hanzo.ai/docs/services/load-balancer",
-    "apiPath": "/v1/balancers",
-    "apiRoute": "api.hanzo.ai/v1/balancers",
+    "apiPath": "",
+    "apiRoute": "",
     "githubUrl": "https://github.com/hanzoai/ingress",
     "repo": "hanzoai/ingress",
     "gcp": "Cloud Load Balancing",
@@ -683,7 +684,8 @@
     },
     "private": {
       "cost": "TODO"
-    }
+    },
+    "kind": "pending"
   },
   {
     "id": "service-mesh",
@@ -1825,7 +1827,7 @@
     "route": "/s3",
     "docsUrl": "https://docs.hanzo.ai/docs/services/s3",
     "apiPath": "/v1/s3/buckets",
-    "apiRoute": "api.hanzo.ai/v1/s3",
+    "apiRoute": "api.hanzo.ai/v1/s3/buckets",
     "githubUrl": "https://github.com/hanzoai/s3",
     "repo": "hanzoai/s3",
     "gcp": "Cloud Storage",
