@@ -68,10 +68,10 @@ services:
         max-file: "3"
 
   # ===========================================================================
-  # CLICKHOUSE - Production Settings
+  # DATASTORE - Production Settings
   # ===========================================================================
 
-  clickhouse:
+  datastore:
     deploy:
       resources:
         limits:
@@ -81,7 +81,7 @@ services:
           cpus: '1.0'
           memory: 1G
     environment:
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?Set CLICKHOUSE_PASSWORD}
+      DATASTORE_PASSWORD: ${DATASTORE_PASSWORD:?Set DATASTORE_PASSWORD}
     logging:
       driver: "json-file"
       options:
@@ -163,13 +163,13 @@ services:
       S3_BUCKET: ${DO_SPACES_BUCKET:-commerce-backups}
       AWS_ACCESS_KEY_ID: ${DO_SPACES_KEY:-}
       AWS_SECRET_ACCESS_KEY: ${DO_SPACES_SECRET:-}
-      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_HOST: datastore
       REDIS_HOST: redis
     volumes:
       - commerce_data:/data/commerce:ro
       - backup_data:/backup
     depends_on:
-      - clickhouse
+      - datastore
       - redis
     networks:
       - commerce-network

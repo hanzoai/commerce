@@ -40,11 +40,11 @@ services:
       VALKEY_ADDR: valkey:6379
       VALKEY_PASSWORD: ${VALKEY_PASSWORD:-}
 
-      # ClickHouse analytics
-      CLICKHOUSE_URL: http://clickhouse:8123
-      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
-      COMMERCE_DATASTORE: clickhouse://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD:-}@clickhouse:9000/commerce
+      # Hanzo Datastore analytics
+      DATASTORE_HTTP_URL: http://datastore:8123
+      DATASTORE_USER: ${DATASTORE_USER:-default}
+      DATASTORE_PASSWORD: ${DATASTORE_PASSWORD:-}
+      COMMERCE_DATASTORE: datastore://${DATASTORE_USER:-default}:${DATASTORE_PASSWORD:-}@datastore:9000/commerce
 
       # Vector search (Qdrant)
       QDRANT_HOST: qdrant
@@ -91,7 +91,7 @@ services:
     depends_on:
       valkey:
         condition: service_healthy
-      clickhouse:
+      datastore:
         condition: service_healthy
       qdrant:
         condition: service_healthy
@@ -285,25 +285,25 @@ services:
       - workflows
 
   # ===========================================================================
-  # CLICKHOUSE - Analytics & Event Store
+  # DATASTORE - Analytics & Event Store
   # ===========================================================================
 
-  clickhouse:
+  datastore:
     image: ghcr.io/hanzoai/datastore:26.6.1.1
-    container_name: commerce-clickhouse
+    container_name: commerce-datastore
     restart: unless-stopped
     environment:
-      CLICKHOUSE_DB: commerce
-      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
-      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      DATASTORE_DB: commerce
+      DATASTORE_USER: ${DATASTORE_USER:-default}
+      DATASTORE_PASSWORD: ${DATASTORE_PASSWORD:-}
+      DATASTORE_DEFAULT_ACCESS_MANAGEMENT: 1
     ports:
-      - "${CLICKHOUSE_HTTP_PORT:-8123}:8123"
-      - "${CLICKHOUSE_NATIVE_PORT:-9000}:9000"
+      - "${DATASTORE_HTTP_PORT:-8123}:8123"
+      - "${DATASTORE_NATIVE_PORT:-9000}:9000"
     volumes:
-      - clickhouse_data:/var/lib/clickhouse
-      - clickhouse_logs:/var/log/clickhouse-server
-      - ./clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - datastore_data:/var/lib/datastore
+      - datastore_logs:/var/log/datastore-server
+      - ./datastore/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD", "datastore-client", "--query", "SELECT 1"]
       interval: 10s
@@ -355,9 +355,9 @@ volumes:
     driver: local
   valkey_data:
     driver: local
-  clickhouse_data:
+  datastore_data:
     driver: local
-  clickhouse_logs:
+  datastore_logs:
     driver: local
   qdrant_data:
     driver: local
