@@ -34,8 +34,8 @@ type cardOnFileStatus struct {
 	IsDefault bool   `json:"isDefault,omitempty"`
 }
 
-// getCardOnFile reports whether the subject has a chargeable card vaulted. The
-// GPU charge gate requires this to be true before a real-money GPU debit.
+// getCardOnFile reports whether the subject has a chargeable card vaulted. It is
+// what the balance, tier and me reads report as `card{onFile,brand,last4}`.
 func getCardOnFile(db *datastore.Datastore, subject string) cardOnFileStatus {
 	subject = strings.ToLower(strings.TrimSpace(subject))
 	if subject == "" {
@@ -53,7 +53,7 @@ func getCardOnFile(db *datastore.Datastore, subject string) cardOnFileStatus {
 			break
 		}
 		// A chargeable card: a card type OR a vaulted provider ref (Square
-		// card-on-file). A bare bank/wire/paypal method is not a GPU-chargeable card.
+		// card-on-file). A bare bank/wire/paypal method is not a chargeable card.
 		chargeable := pm.Card != nil || strings.TrimSpace(pm.ProviderRef) != ""
 		if !chargeable {
 			continue
