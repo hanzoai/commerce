@@ -338,6 +338,10 @@ func GetUsageRollup(c *zip.Ctx) error {
 		"plan":     plan,
 		"currency": "usd",
 		"period":   allotment.Period(now),
+		// What the plan INCLUDES, and how much of each window is left. This is
+		// the half a holder actually asks about; the money blocks below are the
+		// wallet they bought separately and must never be added to it.
+		"windows": usageWindows(ctx, user, plan, org.TestMode(), now),
 		"included": map[string]any{
 			"monthlyCents": includedMonthlyCents, // catalog entitlement
 			"grantedCents": includedGrantedCents, // actually on balance this period
