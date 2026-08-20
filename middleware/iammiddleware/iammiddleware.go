@@ -69,6 +69,18 @@ func isOrgAdmin(c *zip.Ctx) bool {
 		strings.EqualFold(strings.TrimSpace(c.Header(HeaderUserIsAdmin)), "true")
 }
 
+// OrgAdmin reports whether the caller administers the org this request acts in:
+// the org-admin flag from the identity edge, BOUND to home==effective so an
+// org-switched principal never inherits merchant authority over a foreign
+// tenant. It is [isOrgAdmin] and [orgAdminHomeMatches] as ONE predicate, so a
+// caller outside this package cannot hold half of the pair.
+//
+// This is the CUSTOMER's authority over its own org — never a platform one. A
+// cross-tenant action gates on auth.IAMClaims.IsSuperAdmin instead.
+func OrgAdmin(c *zip.Ctx, effectiveOrg string) bool {
+	return isOrgAdmin(c) && orgAdminHomeMatches(c, effectiveOrg)
+}
+
 // orgAdminHomeMatches reports whether the caller's HOME org (X-User-Owner) equals
 // the EFFECTIVE org this request acts in (effectiveOrg == the resolved X-Org-Id).
 // The org-admin grant is authority over one's OWN org; this is the tenant check that

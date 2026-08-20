@@ -23,8 +23,16 @@ import (
 // restrain places a control on one subject in one org, the way a platform does.
 func restrain(t *testing.T, org *organization.Organization, ctx context.Context, subject risk.Subject, effect string, rate int64) {
 	t.Helper()
+	restrainCapped(t, org, ctx, subject, effect, rate, 100_000_000)
+}
+
+// restrainCapped is restrain with a stated reserve ceiling — the ceiling is
+// REQUIRED on a reserve, so the plain helper picks one far above the amounts
+// these cases move and the ceiling's own cases state their own.
+func restrainCapped(t *testing.T, org *organization.Organization, ctx context.Context, subject risk.Subject, effect string, rate, ceiling int64) {
+	t.Helper()
 	s := &risk.Screener{DB: datastore.New(org.Namespaced(ctx)), By: "platform"}
-	if _, err := risk.Place(s, subject, effect, rate, time.Time{}, "test"); err != nil {
+	if _, err := risk.Place(s, subject, effect, rate, ceiling, time.Time{}, "test"); err != nil {
 		t.Fatalf("place: %v", err)
 	}
 }
@@ -174,19 +182,39 @@ func TestPayout_AnotherOrgsControlDoesNotStopThisOnesPayout(t *testing.T) {
 	}
 }
 
-// TestPayout_TheSameIdemKeyScreensOnce — a retried payout is judged once, so
-// two answers to one question cannot disagree.
-func TestPayout_TheSameIdemKeyScreensOnce(t *testing.T) {
+// TestPayout_TheSameIdemKeyPaysOnce is the regression for the lie the doc used
+// to tell: the key reached the risk screen, which de-duplicated the JUDGEMENT,
+// while payout.Create ran again underneath it and the merchant was paid TWICE.
+//
+// The contract now: the first attempt creates (201), the retry REPLAYS the same
+// payout (200, same id, byte-identical body), and exactly one payout row and
+// one screen exist. Asserting the row count is the load-bearing half — two 201s
+// with one screen was the old test, and two 201s is what a double payout looks
+// like from outside.
+func TestPayout_TheSameIdemKeyPaysOnce(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	risk.Set(answers{})
 
 	org := moneyOrg("payoutidem")
 	body := `{"amount":100,"currency":"usd","destinationType":"bank_account","destinationId":"ba_1","idem":"p-1"}`
-	for i := 0; i < 2; i++ {
-		if res := invokeMoneyHandler(org, ctx, CreatePayout, body, nil); res.StatusCode != http.StatusCreated {
-			t.Fatalf("attempt %d: status=%d", i, res.StatusCode)
-		}
+
+	first := invokeMoneyHandler(org, ctx, CreatePayout, body, nil)
+	if first.StatusCode != http.StatusCreated {
+		t.Fatalf("first attempt: status=%d want 201", first.StatusCode)
+	}
+	created := decode(t, first)
+
+	retry := invokeMoneyHandler(org, ctx, CreatePayout, body, nil)
+	if retry.StatusCode != http.StatusOK {
+		t.Fatalf("retry: status=%d want 200 (a replay, not a second creation)", retry.StatusCode)
+	}
+	replayed := decode(t, retry)
+	if replayed["id"] != created["id"] {
+		t.Fatalf("the retry answered with a DIFFERENT payout: %v vs %v", replayed["id"], created["id"])
+	}
+	if n := payoutRows(org, ctx); n != 1 {
+		t.Fatalf("%d payout rows for one idempotency key — the merchant was paid twice", n)
 	}
 	if n := len(screen.For(datastore.New(org.Namespaced(ctx)), "", "", 0)); n != 1 {
 		t.Fatalf("%d screens for one idempotency key, want 1", n)

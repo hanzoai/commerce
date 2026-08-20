@@ -60,6 +60,12 @@ type Screen struct {
 	Held    int64 `json:"held,omitempty"`
 	Allowed int64 `json:"allowed,omitempty"`
 
+	// Posted records that Held has been written to the reserve ledger. It is
+	// what makes the ledger idempotent per move: a retried payout replays THIS
+	// row, so the second attempt posts nothing and the merchant's money is
+	// withheld once.
+	Posted bool `json:"posted,omitempty"`
+
 	// Reference is the money object this judged — a payment intent, a payout, a
 	// dispute — so the record joins back to the books.
 	Reference string `json:"reference,omitempty"`
@@ -70,6 +76,20 @@ type Screen struct {
 	// this row instead of screening — and, more importantly, instead of moving
 	// money twice.
 	Idem string `json:"idem,omitempty"`
+
+	// Digest fingerprints the move this row answered: the stage, the subject,
+	// the exact amount and direction, and the facts sent. A key is the name of
+	// ONE question, so a repeat under the same key that asks a DIFFERENT
+	// question is refused rather than answered with the cheap first answer — the
+	// swap that would otherwise let a caller screen one cent and spend the
+	// verdict on ten thousand dollars.
+	Digest string `json:"digest,omitempty"`
+
+	// Reasserted counts the times the controls in force were re-applied to this
+	// answer after it was first given. A replay never returns a verdict more
+	// permissive than the org's standing controls, so a block placed between two
+	// attempts tightens the row rather than being bypassed by it.
+	Reasserted int64 `json:"reasserted,omitempty"`
 
 	// Detail carries the evidence a decision has to survive on: the signals sent,
 	// the rules that hit, and the ids of the controls that bore on the move.
@@ -112,6 +132,25 @@ func Query(db *datastore.Datastore) datastore.Query {
 	return db.Query("risk-screen")
 }
 
+// Page is how many rows one read answers with, and the most it can ever
+// answer with.
+//
+// THERE IS NO UNBOUNDED READ. A limit of zero is not "every row" — it is this
+// page. A single request that materialises a busy merchant's whole history is
+// how one tenant takes the store down for every tenant sharing the process, and
+// a bound that a caller can opt out of by passing 0 is not a bound. Reads that
+// want more take another page.
+const Page = 200
+
+// bound clamps a caller's limit into 1..Page. It is the ONE place the page size
+// is decided, so no read can grow its own.
+func bound(limit int) int {
+	if limit <= 0 || limit > Page {
+		return Page
+	}
+	return limit
+}
+
 // ByIdem returns the screen already written under key, if any. The datastore it
 // is handed is namespaced to one org, so a key is unique within a tenant and
 // two tenants using the same key never collide.
@@ -120,7 +159,7 @@ func ByIdem(db *datastore.Datastore, key string) (*Screen, bool) {
 		return nil, false
 	}
 	root := db.NewKey("synckey", "", 1, nil)
-	iter := Query(db).Ancestor(root).Filter("Idem=", key).Run()
+	iter := Query(db).Ancestor(root).Filter("Idem=", key).Limit(1).Run()
 	s := New(db)
 	if _, err := iter.Next(s); err != nil {
 		return nil, false
@@ -128,9 +167,28 @@ func ByIdem(db *datastore.Datastore, key string) (*Screen, bool) {
 	return s, true
 }
 
-// For reads screens, newest first, optionally narrowed to one subject. limit 0
-// means the caller stated no bound and gets the page default.
+// For reads screens NEWEST FIRST, optionally narrowed to one subject, at most
+// [bound](limit) of them. The ordering is what makes the bound honest: the most
+// recent page of a merchant's judgements is a window on its behaviour now,
+// where the oldest page is a window on the day it signed up.
 func For(db *datastore.Datastore, subjectKind, subject string, limit int) []*Screen {
+	return collect(narrow(db, subjectKind, subject), db, limit)
+}
+
+// ByReference reads the screens that judged one money object — a payment
+// intent, a payout, an order. It asks the store for that reference instead of
+// walking every row looking for it: a dispute on a busy merchant must not read
+// the merchant's whole history to find the one judgement that admitted the
+// charge.
+func ByReference(db *datastore.Datastore, reference string, limit int) []*Screen {
+	if reference == "" {
+		return []*Screen{}
+	}
+	root := db.NewKey("synckey", "", 1, nil)
+	return collect(Query(db).Ancestor(root).Filter("Reference=", reference), db, limit)
+}
+
+func narrow(db *datastore.Datastore, subjectKind, subject string) datastore.Query {
 	root := db.NewKey("synckey", "", 1, nil)
 	q := Query(db).Ancestor(root)
 	if subjectKind != "" {
@@ -139,18 +197,23 @@ func For(db *datastore.Datastore, subjectKind, subject string, limit int) []*Scr
 	if subject != "" {
 		q = q.Filter("Subject=", subject)
 	}
+	return q
+}
+
+// collect runs a bounded, newest-first read. The bound is pushed into the
+// QUERY, not applied after the rows arrive: a limit enforced in Go has already
+// paid for every row it throws away.
+func collect(q datastore.Query, db *datastore.Datastore, limit int) []*Screen {
+	n := bound(limit)
+	iter := q.Order("-CreatedAt").Limit(n).Run()
 
 	out := []*Screen{}
-	iter := q.Run()
-	for {
+	for len(out) < n {
 		s := New(db)
 		if _, err := iter.Next(s); err != nil {
 			break
 		}
 		out = append(out, s)
-		if limit > 0 && len(out) >= limit {
-			break
-		}
 	}
 	return out
 }

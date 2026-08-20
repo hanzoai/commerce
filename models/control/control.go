@@ -65,6 +65,18 @@ type Control struct {
 	// only. 0 on the other effects, which withhold everything by stopping the move.
 	Rate int64 `json:"rate,omitempty"`
 
+	// Cap is the CEILING, in exact minor units, on everything this reserve may
+	// ever withhold from the subject — the total, not the per-move share. It is
+	// REQUIRED on a reserve and refused on the other effects.
+	//
+	// A rate with no ceiling is not a reserve, it is a standing seizure: the
+	// share applies to every outbound move forever, so the withheld total is
+	// bounded only by how much money the merchant tries to take out. The
+	// ceiling is what makes the reserve a stated, finite, disclosable amount,
+	// and it is enforced against the reserve LEDGER (models/reserve) so the
+	// accounting is cumulative rather than per-move.
+	Cap int64 `json:"cap,omitempty"`
+
 	// Until is when the control lapses. Zero means it stands until released,
 	// which is what a fraud restraint should do — an expiry a caller forgot to
 	// set must not silently open the gate.
@@ -128,22 +140,29 @@ func Query(db *datastore.Datastore) datastore.Query {
 	return db.Query("risk-control")
 }
 
-// Live reads every control in force for a subject at now, newest first. The
+// Page is how many controls one read answers with, and the most it can ever
+// answer with — the same bound, for the same reason, as [screen.Page].
+//
+// A subject's LIVE set is naturally small (Place is idempotent per effect and
+// rate, so a monitor running every cycle does not accumulate duplicates), which
+// is why reading a page of it is not a truncation in practice. The bound is
+// here for the case where it is not: a bound that only holds when the data is
+// well-behaved is not a bound.
+const Page = 200
+
+func bound(limit int) int {
+	if limit <= 0 || limit > Page {
+		return Page
+	}
+	return limit
+}
+
+// LiveFor reads the controls in force for a subject at now, newest first. The
 // datastore it is handed is ALREADY namespaced to one org — that is the tenant
 // boundary, and this function neither takes an org nor could widen one.
 func LiveFor(db *datastore.Datastore, subjectKind, subject string, now time.Time) ([]*Control, error) {
-	root := db.NewKey("synckey", "", 1, nil)
-	iter := Query(db).Ancestor(root).
-		Filter("SubjectKind=", subjectKind).
-		Filter("Subject=", subject).
-		Run()
-
 	out := []*Control{}
-	for {
-		c := New(db)
-		if _, err := iter.Next(c); err != nil {
-			break
-		}
+	for _, c := range For(db, subjectKind, subject, 0) {
 		if c.Live(now) {
 			out = append(out, c)
 		}
@@ -151,13 +170,32 @@ func LiveFor(db *datastore.Datastore, subjectKind, subject string, now time.Time
 	return out, nil
 }
 
-// All reads every control in the org, live or not, newest first.
-func All(db *datastore.Datastore) []*Control {
+// For reads a subject's controls, live or not, newest first, at most
+// bound(limit) of them.
+func For(db *datastore.Datastore, subjectKind, subject string, limit int) []*Control {
 	root := db.NewKey("synckey", "", 1, nil)
-	iter := Query(db).Ancestor(root).Run()
+	q := Query(db).Ancestor(root)
+	if subjectKind != "" {
+		q = q.Filter("SubjectKind=", subjectKind)
+	}
+	if subject != "" {
+		q = q.Filter("Subject=", subject)
+	}
+	return collect(q, db, limit)
+}
+
+// All reads the org's controls, live or not, newest first, at most
+// bound(limit) of them.
+func All(db *datastore.Datastore, limit int) []*Control {
+	return For(db, "", "", limit)
+}
+
+func collect(q datastore.Query, db *datastore.Datastore, limit int) []*Control {
+	n := bound(limit)
+	iter := q.Order("-CreatedAt").Limit(n).Run()
 
 	out := []*Control{}
-	for {
+	for len(out) < n {
 		c := New(db)
 		if _, err := iter.Next(c); err != nil {
 			break

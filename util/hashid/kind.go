@@ -213,6 +213,12 @@ var kinds = map[string]int{
 	"risk-screen":  291,
 	"risk-outcome": 292,
 	"risk-control": 293,
+
+	// The reserve LEDGER. risk-reserve-entry is one append-only movement of
+	// withheld money (positive withheld, negative released); the running
+	// balance beside it is keyed deterministically by subject and therefore
+	// needs no number here — a string-id row never reaches this table.
+	"risk-reserve-entry": 294,
 }
 
 var kindsReversed = make(map[int]string)

@@ -34,16 +34,19 @@ type boundKey struct{}
 // bound is everything Bind carries for one request, under ONE key so the
 // middleware costs one allocation however many facts have to cross.
 type bound struct {
-	org *organization.Organization
-	who string
+	org   *organization.Organization
+	who   string
+	admin bool
 }
 
-// Bind carries the request's tenant and principal into the typed ops beneath
-// it. A request that arrives with no organization resolved is bound with none,
-// and the ops refuse — Bind never invents a tenant.
+// Bind carries the request's tenant, principal and AUTHORITY into the typed ops
+// beneath it. A request that arrives with no organization resolved is bound with
+// none, and the ops refuse — Bind never invents a tenant, and it never invents
+// authority either: the admin bit is computed from the validated identity by
+// the one predicate [Admin], here, where the *zip.Ctx still exists.
 func Bind() zip.Handler {
 	return func(c *zip.Ctx) error {
-		b := &bound{}
+		b := &bound{admin: Admin(c)}
 		if org, ok := GetOrganizationOK(c); ok && org != nil {
 			b.org = org
 		}
@@ -82,4 +85,13 @@ func WhoFrom(ctx context.Context) string {
 		return ""
 	}
 	return b.who
+}
+
+// AdminFrom reports whether the caller administers the org this request serves
+// — the [Admin] predicate, decided at the request and carried forward. Absent
+// means NO: an op reached off the HTTP path (the CLI and op-call projections)
+// has no principal, and a missing fact must never read as authority.
+func AdminFrom(ctx context.Context) bool {
+	b, ok := ctx.Value(boundKey{}).(*bound)
+	return ok && b.admin
 }

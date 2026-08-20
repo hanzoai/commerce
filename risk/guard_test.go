@@ -109,7 +109,7 @@ func TestGuard_APayoutHoldDoesNotStopACharge(t *testing.T) {
 	defer ctx.Close()
 
 	s := tenant("guardhold", ctx, &oracle{answer: &Decision{Action: Allow}})
-	if _, err := Place(s, customer("c1"), control.Hold, 0, time.Time{}, "payouts held"); err != nil {
+	if _, err := Place(s, customer("c1"), control.Hold, 0, 0, time.Time{}, "payouts held"); err != nil {
 		t.Fatalf("place: %v", err)
 	}
 	inner := &gateway{}

@@ -151,7 +151,7 @@ func TestScreen_AControlStillStopsAShadowDecision(t *testing.T) {
 	defer ctx.Close()
 
 	s := tenant("shadowctl", ctx, &oracle{answer: &Decision{ID: "d1", Action: Allow, Shadow: true}})
-	if _, err := Place(s, customer("c1"), control.Block, 0, time.Time{}, "known mule"); err != nil {
+	if _, err := Place(s, customer("c1"), control.Block, 0, 0, time.Time{}, "known mule"); err != nil {
 		t.Fatalf("place: %v", err)
 	}
 	rec, err := s.Screen(context.Background(), Move{Stage: Payment, Subject: customer("c1"), Amount: 700})
@@ -171,7 +171,7 @@ func TestScreen_ACertainBlockCostsNoScoringHop(t *testing.T) {
 
 	p := &oracle{answer: &Decision{ID: "d1", Action: Allow}}
 	s := tenant("nohop", ctx, p)
-	if _, err := Place(s, customer("c1"), control.Block, 0, time.Time{}, "blocked"); err != nil {
+	if _, err := Place(s, customer("c1"), control.Block, 0, 0, time.Time{}, "blocked"); err != nil {
 		t.Fatalf("place: %v", err)
 	}
 	if _, err := s.Screen(context.Background(), Move{Stage: Payment, Subject: customer("c1"), Amount: 100}); err != nil {
@@ -188,7 +188,7 @@ func TestScreen_ReserveHoldsTheExactShareOfAPayout(t *testing.T) {
 	defer ctx.Close()
 
 	s := tenant("reserve", ctx, &oracle{answer: &Decision{ID: "d1", Action: Allow}})
-	if _, err := Place(s, Subject{Kind: KindMerchant, ID: "m1"}, control.Reserve, 2500, time.Time{}, "new merchant"); err != nil {
+	if _, err := Place(s, Subject{Kind: KindMerchant, ID: "m1"}, control.Reserve, 2500, 1_000_000, time.Time{}, "new merchant"); err != nil {
 		t.Fatalf("place: %v", err)
 	}
 	rec, err := s.Screen(context.Background(), Move{
@@ -260,7 +260,7 @@ func TestScreen_TenantIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("a screen: %v", err)
 	}
-	if _, err := Place(a, customer("shared-id"), control.Block, 0, time.Time{}, "a's fraudster"); err != nil {
+	if _, err := Place(a, customer("shared-id"), control.Block, 0, 0, time.Time{}, "a's fraudster"); err != nil {
 		t.Fatalf("a place: %v", err)
 	}
 
@@ -268,7 +268,7 @@ func TestScreen_TenantIsolation(t *testing.T) {
 	if rows := screen.For(b.DB, KindCustomer, "shared-id", 0); len(rows) != 0 {
 		t.Fatalf("org B read %d of org A's screens", len(rows))
 	}
-	if got := control.All(b.DB); len(got) != 0 {
+	if got := control.All(b.DB, 0); len(got) != 0 {
 		t.Fatalf("org B read %d of org A's controls", len(got))
 	}
 
@@ -325,12 +325,12 @@ func TestPlace_IsIdempotentWhileTheControlIsInForce(t *testing.T) {
 
 	s := tenant("place", ctx, &oracle{answer: &Decision{Action: Allow}})
 	subject := Subject{Kind: KindMerchant, ID: "m1"}
-	first, err := Place(s, subject, control.Hold, 0, time.Time{}, "review")
+	first, err := Place(s, subject, control.Hold, 0, 0, time.Time{}, "review")
 	if err != nil {
 		t.Fatalf("first: %v", err)
 	}
 	for i := 0; i < 5; i++ {
-		again, err := Place(s, subject, control.Hold, 0, time.Time{}, "review")
+		again, err := Place(s, subject, control.Hold, 0, 0, time.Time{}, "review")
 		if err != nil {
 			t.Fatalf("again: %v", err)
 		}
@@ -338,7 +338,7 @@ func TestPlace_IsIdempotentWhileTheControlIsInForce(t *testing.T) {
 			t.Fatalf("placing twice made a second control: %s vs %s", again.Id(), first.Id())
 		}
 	}
-	if got := control.All(s.DB); len(got) != 1 {
+	if got := control.All(s.DB, 0); len(got) != 1 {
 		t.Fatalf("%d controls stored, want 1", len(got))
 	}
 }
@@ -349,7 +349,7 @@ func TestPlace_RefusesAnImpossibleReserveRate(t *testing.T) {
 
 	s := tenant("rate", ctx, &oracle{answer: &Decision{Action: Allow}})
 	for _, rate := range []int64{0, -1, control.FullRate + 1} {
-		if _, err := Place(s, Subject{Kind: KindMerchant, ID: "m1"}, control.Reserve, rate, time.Time{}, ""); err == nil {
+		if _, err := Place(s, Subject{Kind: KindMerchant, ID: "m1"}, control.Reserve, rate, 1_000_000, time.Time{}, ""); err == nil {
 			t.Fatalf("reserve rate %d was accepted", rate)
 		}
 	}
@@ -362,7 +362,7 @@ func TestPlace_RecordsTheAuthorFromThePrincipal(t *testing.T) {
 	defer ctx.Close()
 
 	s := tenant("author", ctx, &oracle{answer: &Decision{Action: Allow}})
-	c, err := Place(s, Subject{Kind: KindMerchant, ID: "m1"}, control.Hold, 0, time.Time{}, "review")
+	c, err := Place(s, Subject{Kind: KindMerchant, ID: "m1"}, control.Hold, 0, 0, time.Time{}, "review")
 	if err != nil {
 		t.Fatalf("place: %v", err)
 	}

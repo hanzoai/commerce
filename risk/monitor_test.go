@@ -87,7 +87,7 @@ func TestMonitor_PlacesTheControlTheAnswerImplies(t *testing.T) {
 		s := tenant("monitor", ctx, &oracle{answer: &Decision{Action: c.answer}})
 		m := merchant(string(rune('a' + i)))
 
-		st, err := Monitor(context.Background(), s, m, c.reserve, true)
+		st, err := Monitor(context.Background(), s, m, c.reserve, 1_000_000, true)
 		if err != nil {
 			t.Fatalf("%s: %v", c.answer, err)
 		}
@@ -118,14 +118,14 @@ func TestMonitor_DoesNotActUnlessAsked(t *testing.T) {
 
 	s := tenant("noact", ctx, &oracle{answer: &Decision{Action: Block}})
 	m := merchant("m1")
-	st, err := Monitor(context.Background(), s, m, 0, false)
+	st, err := Monitor(context.Background(), s, m, 0, 0, false)
 	if err != nil {
 		t.Fatalf("monitor: %v", err)
 	}
 	if st.Placed != "" {
 		t.Fatalf("a read-only review placed control %s", st.Placed)
 	}
-	if got := control.All(s.DB); len(got) != 0 {
+	if got := control.All(s.DB, 0); len(got) != 0 {
 		t.Fatalf("%d controls were written by a review that was not asked to act", len(got))
 	}
 	if st.Screen == nil || Action(st.Screen.Action) != Block {
@@ -142,11 +142,11 @@ func TestMonitor_RepeatedCyclesPlaceOneControl(t *testing.T) {
 	s := tenant("cycles", ctx, &oracle{answer: &Decision{Action: Restrict}})
 	m := merchant("m1")
 	for i := 0; i < 4; i++ {
-		if _, err := Monitor(context.Background(), s, m, 0, true); err != nil {
+		if _, err := Monitor(context.Background(), s, m, 0, 0, true); err != nil {
 			t.Fatalf("cycle %d: %v", i, err)
 		}
 	}
-	if got := control.All(s.DB); len(got) != 1 {
+	if got := control.All(s.DB, 0); len(got) != 1 {
 		t.Fatalf("%d controls after 4 cycles, want 1", len(got))
 	}
 }

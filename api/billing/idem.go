@@ -20,8 +20,8 @@ import (
 // standing between a store blip and a duplicate charge on a real card. It is
 // also unreachable by any other means in a test, which is precisely why it sat
 // wrong (failing open) and unnoticed.
-var idemBegin = func(db *datastore.Datastore, scope, key string) (*idempotencykey.IdempotencyKey, bool, error) {
-	return idempotencykey.Begin(db, scope, key)
+var idemBegin = func(db *datastore.Datastore, scope, key string, digest ...string) (*idempotencykey.IdempotencyKey, bool, error) {
+	return idempotencykey.Begin(db, scope, key, digest...)
 }
 
 // idemWindowSec is the fallback idempotency WINDOW for a money move whose caller

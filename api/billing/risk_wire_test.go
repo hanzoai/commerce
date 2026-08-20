@@ -79,6 +79,8 @@ func TestRisk_TheFaceIsExactlyTheseOps(t *testing.T) {
 		"riskMerchant",
 		"riskMerchantReview",
 		"riskOutcome",
+		"riskReserveEntries",
+		"riskReserves",
 		"riskScreen",
 		"riskScreenView",
 		"riskScreens",

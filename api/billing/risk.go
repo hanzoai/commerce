@@ -30,17 +30,12 @@ import (
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/control"
 	"github.com/hanzoai/commerce/models/outcome"
+	"github.com/hanzoai/commerce/models/reserve"
 	"github.com/hanzoai/commerce/models/screen"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/risk"
-	"github.com/hanzoai/commerce/util/permission"
 )
-
-// pageMax bounds a list read. A caller that names no limit gets this many, and
-// one that names more gets this many — an unbounded list of a busy merchant's
-// screens is a way to take the store down, not a feature.
-const pageMax = 200
 
 // RiskRoute registers the money plane's risk face.
 //
@@ -51,9 +46,26 @@ const pageMax = 200
 // that does not exist. The group carries its own auth rather than inheriting
 // the neighbouring group's by path prefix, so the gate does not depend on the
 // order two registrations happened to run in.
+//
+// WHO MAY REACH IT. The gate is TokenRequired with NO MASK — any authenticated
+// principal, resolved to a tenant — exactly like the user-facing billing group
+// beside it, and for exactly the same reason: THIS FACE IS FOR CUSTOMERS.
+//
+// It was TokenRequired(permission.Admin), which reads like an admin gate and is
+// not one. On the IAM path that bit is minted ONLY for a Hanzo platform
+// SuperAdmin (edgeauth.permsHeader — an org owner deliberately gets Live and
+// not Admin, so no customer can mint platform money), so the mask did not scope
+// the face to the merchant's own admins: it scoped it to Hanzo staff, and every
+// merchant this was built for got 403 on all eleven ops.
+//
+// Inside the tenant, authority is enforced where it means something: the ops
+// that PLACE OR LIFT A RESTRAINT go through [restrainer], which additionally
+// requires the caller to administer this org. Reads and the two integration ops
+// (screen, outcomes) go through [screener]. Two doors, one rule each, and no op
+// can reach the store without passing one of them.
 func RiskRoute(root *zip.App) {
 	g := root.Group("/v1/billing/risk")
-	g.Use(middleware.TokenRequired(permission.Admin))
+	g.Use(middleware.TokenRequired())
 	g.Use(middleware.Bind())
 
 	zip.Post(g, "/screen", riskScreen,
@@ -112,6 +124,16 @@ func RiskRoute(root *zip.App) {
 		zip.WithOperationID("riskSubmit"),
 		zip.WithSummary("Submit an assembled dispute defence to the adjudicator"),
 		zip.WithTags("risk"))
+
+	zip.Get(g, "/reserves", riskReserves,
+		zip.WithOperationID("riskReserves"),
+		zip.WithSummary("Read what the reserve ledger currently withholds"),
+		zip.WithTags("risk"))
+
+	zip.Get(g, "/reserves/entries", riskReserveEntries,
+		zip.WithOperationID("riskReserveEntries"),
+		zip.WithSummary("Read the reserve ledger's movements"),
+		zip.WithTags("risk"))
 }
 
 // -----------------------------------------------------------------------------
@@ -119,8 +141,9 @@ func RiskRoute(root *zip.App) {
 // -----------------------------------------------------------------------------
 
 // screener resolves the org-scoped screener for this request. Every op starts
-// here and there is no other way into the store from this file, so the tenant
-// gate is one expression that cannot be forgotten one route at a time.
+// here — or at [restrainer], which is this plus one more question — and there is
+// no other way into the store from this file, so the tenant gate is one
+// expression that cannot be forgotten one route at a time.
 func screener(ctx context.Context) (*risk.Screener, error) {
 	org, ok := middleware.OrgFrom(ctx)
 	if !ok {
@@ -130,6 +153,21 @@ func screener(ctx context.Context) (*risk.Screener, error) {
 		DB: datastore.New(org.Namespaced(ctx)),
 		By: middleware.WhoFrom(ctx),
 	}, nil
+}
+
+// restrainer is [screener] for the ops that PLACE OR LIFT A RESTRAINT: it
+// additionally requires the caller to administer this org.
+//
+// The rule is one sentence — every op needs the org principal; the ops that
+// restrain money need the org's own admin — and it is enforced by the fact that
+// a restraining op has no other way to get a store handle. A judgement any
+// integration may ask for is one thing; standing instructions that stop a
+// merchant's money, and the release of them, are the org's own act.
+func restrainer(ctx context.Context) (*risk.Screener, error) {
+	if !middleware.AdminFrom(ctx) {
+		return nil, zip.ErrForbidden("placing or lifting a control is an administrator's act in this organization")
+	}
+	return screener(ctx)
 }
 
 // -----------------------------------------------------------------------------
@@ -240,29 +278,41 @@ func riskScreen(ctx context.Context, in *riskScreenIn) (*riskScreenOut, error) {
 type riskScreensIn struct {
 	SubjectKind string `json:"subjectKind,omitempty"`
 	Subject     string `json:"subject,omitempty"`
-	Limit       int    `json:"limit,omitempty"`
+	// Limit is how many rows to return, newest first. It is CLAMPED: a caller
+	// that names none, or names more than the page, gets the page. There is no
+	// value that means "every row".
+	Limit int `json:"limit,omitempty"`
 }
 
 // riskScreenPage is a page of recorded screens, newest first.
 type riskScreenPage struct {
 	Screens []*riskScreenOut `json:"screens"`
+	// Limit is the bound this page was read under, so a caller can tell a short
+	// page from a full one without counting.
+	Limit int `json:"limit"`
 }
 
-// riskScreens lists the screens this org recorded, newest first.
+// riskScreens lists the screens this org recorded, newest first, bounded.
 func riskScreens(ctx context.Context, in *riskScreensIn) (*riskScreenPage, error) {
 	s, err := screener(ctx)
 	if err != nil {
 		return nil, err
 	}
-	limit := in.Limit
-	if limit <= 0 || limit > pageMax {
-		limit = pageMax
-	}
-	out := &riskScreenPage{Screens: []*riskScreenOut{}}
-	for _, rec := range screen.For(s.DB, in.SubjectKind, in.Subject, limit) {
+	out := &riskScreenPage{Screens: []*riskScreenOut{}, Limit: page(in.Limit)}
+	for _, rec := range screen.For(s.DB, in.SubjectKind, in.Subject, out.Limit) {
 		out.Screens = append(out.Screens, screenView(rec))
 	}
 	return out, nil
+}
+
+// page clamps a caller's limit to the ONE page size the record models enforce.
+// It is stated here too so the API answers with the bound it actually used
+// rather than echoing what was asked for.
+func page(limit int) int {
+	if limit <= 0 || limit > screen.Page {
+		return screen.Page
+	}
+	return limit
 }
 
 // riskRef names one record by its id.
@@ -312,6 +362,12 @@ type riskControlIn struct {
 	// basis points and not a fraction because money is integer arithmetic, and
 	// a float rate drifts the withheld amount by a cent per move at scale.
 	Rate int64 `json:"rate,omitempty"`
+	// Cap is the CEILING on everything this reserve may ever withhold, in exact
+	// minor units — the total, not the per-move share. REQUIRED on a reserve: a
+	// rate with no total is not a reserve, it is an open-ended seizure, because
+	// the share applies to every outbound move forever. It is enforced against
+	// the reserve LEDGER, so the accounting is cumulative.
+	Cap int64 `json:"cap,omitempty"`
 	// Until lapses the control, RFC 3339. Empty means it stands until released,
 	// which is what a fraud restraint should do.
 	Until  string `json:"until,omitempty"`
@@ -325,8 +381,10 @@ type riskControlOut struct {
 	SubjectKind string `json:"subjectKind"`
 	Subject     string `json:"subject"`
 	Rate        int64  `json:"rate,omitempty"`
-	Until       string `json:"until,omitempty"`
-	Reason      string `json:"reason,omitempty"`
+	// Cap is the reserve's ceiling in exact minor units.
+	Cap    int64  `json:"cap,omitempty"`
+	Until  string `json:"until,omitempty"`
+	Reason string `json:"reason,omitempty"`
 	// By is who placed it, from the validated principal.
 	By         string `json:"by,omitempty"`
 	Live       bool   `json:"live"`
@@ -335,26 +393,29 @@ type riskControlOut struct {
 	ReleasedBy string `json:"releasedBy,omitempty"`
 }
 
-// riskControlPage is every control the org has placed.
+// riskControlPage is a page of the controls the org has placed.
 type riskControlPage struct {
 	Controls []*riskControlOut `json:"controls"`
+	Limit    int               `json:"limit"`
 }
 
 // riskControlsIn narrows the list to controls still in force.
 type riskControlsIn struct {
 	Live bool `json:"live,omitempty"`
+	// Limit is clamped to the page, exactly as on the screens list.
+	Limit int `json:"limit,omitempty"`
 }
 
-// riskControls lists the controls this org has placed, and whether each still
-// bears on a move.
+// riskControls lists the controls this org has placed, newest first and
+// bounded, and whether each still bears on a move.
 func riskControls(ctx context.Context, in *riskControlsIn) (*riskControlPage, error) {
 	s, err := screener(ctx)
 	if err != nil {
 		return nil, err
 	}
 	now := time.Now()
-	out := &riskControlPage{Controls: []*riskControlOut{}}
-	for _, c := range control.All(s.DB) {
+	out := &riskControlPage{Controls: []*riskControlOut{}, Limit: page(in.Limit)}
+	for _, c := range control.All(s.DB, out.Limit) {
 		if in.Live && !c.Live(now) {
 			continue
 		}
@@ -364,12 +425,13 @@ func riskControls(ctx context.Context, in *riskControlsIn) (*riskControlPage, er
 }
 
 // riskControlPlace places a reserve, a payout hold or a block on one subject.
+// It is an administrator's act in this org — see [restrainer].
 //
 // Placing is idempotent while a control is in force: a monitor that runs every
 // cycle does not accumulate a hundred identical holds on one merchant, and
 // releasing takes one act rather than a hundred.
 func riskControlPlace(ctx context.Context, in *riskControlIn) (*riskControlOut, error) {
-	s, err := screener(ctx)
+	s, err := restrainer(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -381,17 +443,21 @@ func riskControlPlace(ctx context.Context, in *riskControlIn) (*riskControlOut, 
 		}
 		until = t
 	}
-	c, err := risk.Place(s, risk.Subject{Kind: in.SubjectKind, ID: in.Subject}, in.Effect, in.Rate, until, in.Reason)
+	c, err := risk.Place(s, risk.Subject{Kind: in.SubjectKind, ID: in.Subject}, in.Effect, in.Rate, in.Cap, until, in.Reason)
 	if err != nil {
 		return nil, badRequest(err)
 	}
 	return controlView(c, time.Now()), nil
 }
 
-// riskControlRelease lifts a control. Releasing one already released is not an
-// error and does not rewrite who lifted it first.
+// riskControlRelease lifts a control and, when it was the last reserve standing
+// over the subject, frees what the reserve ledger was holding — a release that
+// keeps the money is not a release. It is an administrator's act in this org.
+//
+// Releasing one already released is not an error and does not rewrite who
+// lifted it first.
 func riskControlRelease(ctx context.Context, in *riskRef) (*riskControlOut, error) {
-	s, err := screener(ctx)
+	s, err := restrainer(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -399,18 +465,16 @@ func riskControlRelease(ctx context.Context, in *riskRef) (*riskControlOut, erro
 	if err := c.GetById(in.ID); err != nil {
 		return nil, zip.ErrNotFound("control not found")
 	}
-	now := time.Now()
-	c.Release(middleware.WhoFrom(ctx), now)
-	if err := c.Update(); err != nil {
+	if _, err := risk.Release(s, c); err != nil {
 		return nil, zip.ErrInternal("failed to release the control")
 	}
-	return controlView(c, now), nil
+	return controlView(c, time.Now()), nil
 }
 
 func controlView(c *control.Control, now time.Time) *riskControlOut {
 	out := &riskControlOut{
 		ID: c.Id(), Effect: c.Effect, SubjectKind: c.SubjectKind, Subject: c.Subject,
-		Rate: c.Rate, Reason: c.Reason, By: c.By, Live: c.Live(now), Released: c.Released,
+		Rate: c.Rate, Cap: c.Cap, Reason: c.Reason, By: c.By, Live: c.Live(now), Released: c.Released,
 		ReleasedBy: c.ReleasedBy,
 	}
 	if !c.Until.IsZero() {
@@ -449,11 +513,18 @@ type riskStandingOut struct {
 	Negative    int    `json:"negative"`
 	DisputeRate int64  `json:"disputeRate"`
 	RefusalRate int64  `json:"refusalRate"`
+	// Window is how many of the subject's most recent screens and outcomes the
+	// counts are over. The standing is a rolling window and says so.
+	Window int `json:"window"`
 	// VolumeIn, VolumeOut and Held are exact minor units.
-	VolumeIn  int64             `json:"volumeIn"`
-	VolumeOut int64             `json:"volumeOut"`
-	Held      int64             `json:"held"`
-	Controls  []*riskControlOut `json:"controls,omitempty"`
+	VolumeIn  int64 `json:"volumeIn"`
+	VolumeOut int64 `json:"volumeOut"`
+	Held      int64 `json:"held"`
+	// Reserved is what the reserve LEDGER withholds from this subject right
+	// now, per currency, in exact minor units — a different fact from Held,
+	// which is what the screens in the window judged.
+	Reserved map[string]int64  `json:"reserved,omitempty"`
+	Controls []*riskControlOut `json:"controls,omitempty"`
 	// Screen is the merchant-stage judgement, present when the standing was
 	// reviewed rather than merely counted.
 	Screen *riskScreenOut `json:"screen,omitempty"`
@@ -480,11 +551,14 @@ func riskMerchant(ctx context.Context, in *riskMerchantIn) (*riskStandingOut, er
 type riskReviewIn struct {
 	ID string `json:"id" validate:"required"`
 	// Act places the control the answer implies: a block on block, and on
-	// restrict a reserve when Reserve is a rate, else a payout hold.
+	// restrict a reserve when Reserve and Cap are both stated, else a payout
+	// hold.
 	Act bool `json:"act,omitempty"`
-	// Reserve is BASIS POINTS to withhold when the answer restricts. Zero means
-	// hold instead of reserving.
+	// Reserve is BASIS POINTS to withhold when the answer restricts.
 	Reserve int64 `json:"reserve,omitempty"`
+	// Cap is the reserve's CEILING in exact minor units. A reserve needs both;
+	// stating neither means hold instead of reserving.
+	Cap int64 `json:"cap,omitempty"`
 }
 
 // riskMerchantReview reviews a merchant now: it counts the standing, puts it to
@@ -492,13 +566,14 @@ type riskReviewIn struct {
 // when asked to act — places the control the answer implies.
 //
 // This is the continuous monitoring a platform runs on its merchants. It is a
-// POST because it records a judgement and may restrain money.
+// POST because it records a judgement and may restrain money, and it is an
+// administrator's act in this org for that second reason — see [restrainer].
 func riskMerchantReview(ctx context.Context, in *riskReviewIn) (*riskStandingOut, error) {
-	s, err := screener(ctx)
+	s, err := restrainer(ctx)
 	if err != nil {
 		return nil, err
 	}
-	st, err := risk.Monitor(ctx, s, risk.Subject{Kind: risk.KindMerchant, ID: in.ID}, in.Reserve, in.Act)
+	st, err := risk.Monitor(ctx, s, risk.Subject{Kind: risk.KindMerchant, ID: in.ID}, in.Reserve, in.Cap, in.Act)
 	if err != nil {
 		return nil, badRequest(err)
 	}
@@ -510,9 +585,9 @@ func standingView(st *risk.Standing) *riskStandingOut {
 		Subject: st.Subject.ID, Screens: st.Screens, Refused: st.Refused,
 		Disputes: st.Disputes, Lost: st.Lost, Refunds: st.Refunds,
 		Failed: st.Failed, Negative: st.Negative,
-		DisputeRate: st.DisputeRate, RefusalRate: st.RefusalRate,
+		DisputeRate: st.DisputeRate, RefusalRate: st.RefusalRate, Window: st.Window,
 		VolumeIn: int64(st.VolumeIn), VolumeOut: int64(st.VolumeOut), Held: int64(st.Held),
-		Placed: st.Placed,
+		Reserved: st.Reserved, Placed: st.Placed,
 	}
 	now := time.Now()
 	for _, c := range st.Controls {
@@ -741,13 +816,116 @@ func processorType(named string, e *risk.Evidence) processor.ProcessorType {
 	return ""
 }
 
-// badRequest renders a domain refusal as the caller's mistake it is. A subject
-// kind this plane does not name and a reserve rate outside 0..100% are both
-// things the caller can fix; anything else is ours.
+// -----------------------------------------------------------------------------
+// the reserve ledger
+// -----------------------------------------------------------------------------
+
+// riskReservesIn narrows the ledger to one subject.
+type riskReservesIn struct {
+	SubjectKind string `json:"subjectKind,omitempty"`
+	Subject     string `json:"subject,omitempty"`
+	Limit       int    `json:"limit,omitempty"`
+}
+
+// riskReserveOut is one subject's withheld balance in one currency.
+type riskReserveOut struct {
+	SubjectKind string `json:"subjectKind"`
+	Subject     string `json:"subject"`
+	Currency    string `json:"currency,omitempty"`
+	// Held is exact minor units withheld right now, and Entries how many
+	// movements are behind it.
+	Held    int64  `json:"held"`
+	Entries int64  `json:"entries,omitempty"`
+	At      string `json:"at,omitempty"`
+}
+
+// riskReservePage is a page of reserve balances, largest first.
+type riskReservePage struct {
+	Reserves []*riskReserveOut `json:"reserves"`
+	Limit    int               `json:"limit"`
+}
+
+// riskReserves reads what this org's reserve ledger currently withholds.
+//
+// A reserve that a merchant cannot see is money that disappeared. This is the
+// balance a short payout reconciles against, and it is a read: it is open to
+// any principal of the org, because the merchant whose money is held has the
+// most right to know how much of it is.
+func riskReserves(ctx context.Context, in *riskReservesIn) (*riskReservePage, error) {
+	s, err := screener(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := &riskReservePage{Reserves: []*riskReserveOut{}, Limit: page(in.Limit)}
+	for _, b := range reserve.Balances(s.DB, in.SubjectKind, in.Subject, out.Limit) {
+		row := &riskReserveOut{
+			SubjectKind: b.SubjectKind, Subject: b.Subject, Currency: string(b.Currency),
+			Held: b.Held, Entries: b.Entries,
+		}
+		if !b.At.IsZero() {
+			row.At = b.At.UTC().Format(time.RFC3339)
+		}
+		out.Reserves = append(out.Reserves, row)
+	}
+	return out, nil
+}
+
+// riskEntryOut is one movement of withheld money.
+type riskEntryOut struct {
+	ID          string `json:"id"`
+	SubjectKind string `json:"subjectKind"`
+	Subject     string `json:"subject"`
+	Currency    string `json:"currency,omitempty"`
+	// Amount is exact minor units, signed: positive withheld, negative
+	// released. Held is the balance after this movement.
+	Amount  int64  `json:"amount"`
+	Held    int64  `json:"held"`
+	Screen  string `json:"screen,omitempty"`
+	Control string `json:"control,omitempty"`
+	Reason  string `json:"reason,omitempty"`
+	By      string `json:"by,omitempty"`
+	At      string `json:"at,omitempty"`
+}
+
+// riskEntryPage is a page of ledger movements, newest first.
+type riskEntryPage struct {
+	Entries []*riskEntryOut `json:"entries"`
+	Limit   int             `json:"limit"`
+}
+
+// riskReserveEntries reads the reserve ledger's movements — every cent
+// withheld and every cent released, with the judgement and the control that
+// caused it. This is the audit trail a short payout is explained by.
+func riskReserveEntries(ctx context.Context, in *riskReservesIn) (*riskEntryPage, error) {
+	s, err := screener(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := &riskEntryPage{Entries: []*riskEntryOut{}, Limit: page(in.Limit)}
+	for _, e := range reserve.Entries(s.DB, in.SubjectKind, in.Subject, out.Limit) {
+		row := &riskEntryOut{
+			ID: e.Id(), SubjectKind: e.SubjectKind, Subject: e.Subject,
+			Currency: string(e.Currency), Amount: e.Amount, Held: e.Held,
+			Screen: e.Screen, Control: e.Control, Reason: e.Reason, By: e.By,
+		}
+		if at := e.GetCreatedAt(); !at.IsZero() {
+			row.At = at.UTC().Format(time.RFC3339)
+		}
+		out.Entries = append(out.Entries, row)
+	}
+	return out, nil
+}
+
+// badRequest renders a domain refusal as the status it deserves. A subject kind
+// this plane does not name, a reserve rate outside 0..100%, a reserve with no
+// ceiling and a signal this plane does not read are all things the caller can
+// fix. A REUSED idempotency key is a conflict and not a malformed request: the
+// request is well formed, it just contradicts one already answered under that
+// name, and the caller has to choose which one it meant.
 func badRequest(err error) error {
 	switch {
-	case errors.Is(err, risk.ErrKind):
-		return zip.ErrBadRequest(err.Error())
+	case errors.Is(err, risk.ErrReused):
+		return zip.ErrConflict(err.Error())
 	default:
 		return zip.ErrBadRequest(err.Error())
 	}

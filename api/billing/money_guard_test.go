@@ -39,7 +39,7 @@ import (
 func breakGuardStore(t *testing.T) {
 	t.Helper()
 	old := idemBegin
-	idemBegin = func(*datastore.Datastore, string, string) (*idempotencykey.IdempotencyKey, bool, error) {
+	idemBegin = func(*datastore.Datastore, string, string, ...string) (*idempotencykey.IdempotencyKey, bool, error) {
 		return nil, false, errors.New("guard store unavailable")
 	}
 	t.Cleanup(func() { idemBegin = old })

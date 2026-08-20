@@ -173,6 +173,10 @@
       },
       "riskControlIn": {
         "properties": {
+          "cap": {
+            "description": "Cap is the CEILING on everything this reserve may ever withhold, in exact\nminor units — the total, not the per-move share. REQUIRED on a reserve: a\nrate with no total is not a reserve, it is an open-ended seizure, because\nthe share applies to every outbound move forever. It is enforced against\nthe reserve LEDGER, so the accounting is cumulative.",
+            "type": "integer"
+          },
           "effect": {
             "description": "Effect is reserve, hold or block. A reserve withholds a share of every\noutbound move; a hold stops money leaving; a block stops it moving at all.",
             "type": "string"
@@ -208,6 +212,10 @@
           "by": {
             "description": "By is who placed it, from the validated principal.",
             "type": "string"
+          },
+          "cap": {
+            "description": "Cap is the reserve's ceiling in exact minor units.",
+            "type": "integer"
           },
           "effect": {
             "type": "string"
@@ -252,6 +260,62 @@
               "$ref": "#/components/schemas/riskControlOut"
             },
             "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "riskEntryOut": {
+        "properties": {
+          "amount": {
+            "description": "Amount is exact minor units, signed: positive withheld, negative\nreleased. Held is the balance after this movement.",
+            "type": "integer"
+          },
+          "at": {
+            "type": "string"
+          },
+          "by": {
+            "type": "string"
+          },
+          "control": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "held": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "screen": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "subjectKind": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "riskEntryPage": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/riskEntryOut"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
           }
         },
         "type": "object"
@@ -334,17 +398,59 @@
         },
         "type": "object"
       },
+      "riskReserveOut": {
+        "properties": {
+          "at": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "entries": {
+            "type": "integer"
+          },
+          "held": {
+            "description": "Held is exact minor units withheld right now, and Entries how many\nmovements are behind it.",
+            "type": "integer"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "subjectKind": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "riskReservePage": {
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "reserves": {
+            "items": {
+              "$ref": "#/components/schemas/riskReserveOut"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
       "riskReviewIn": {
         "properties": {
           "act": {
-            "description": "Act places the control the answer implies: a block on block, and on\nrestrict a reserve when Reserve is a rate, else a payout hold.",
+            "description": "Act places the control the answer implies: a block on block, and on\nrestrict a reserve when Reserve and Cap are both stated, else a payout\nhold.",
             "type": "boolean"
+          },
+          "cap": {
+            "description": "Cap is the reserve's CEILING in exact minor units. A reserve needs both;\nstating neither means hold instead of reserving.",
+            "type": "integer"
           },
           "id": {
             "type": "string"
           },
           "reserve": {
-            "description": "Reserve is BASIS POINTS to withhold when the answer restricts. Zero means\nhold instead of reserving.",
+            "description": "Reserve is BASIS POINTS to withhold when the answer restricts.",
             "type": "integer"
           }
         },
@@ -466,6 +572,10 @@
       },
       "riskScreenPage": {
         "properties": {
+          "limit": {
+            "description": "Limit is the bound this page was read under, so a caller can tell a short\npage from a full one without counting.",
+            "type": "integer"
+          },
           "screens": {
             "items": {
               "$ref": "#/components/schemas/riskScreenOut"
@@ -514,6 +624,13 @@
           "refused": {
             "type": "integer"
           },
+          "reserved": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Reserved is what the reserve LEDGER withholds from this subject right\nnow, per currency, in exact minor units — a different fact from Held,\nwhich is what the screens in the window judged.",
+            "type": "object"
+          },
           "screen": {
             "$ref": "#/components/schemas/riskScreenOut",
             "description": "Screen is the merchant-stage judgement, present when the standing was\nreviewed rather than merely counted."
@@ -529,6 +646,10 @@
             "type": "integer"
           },
           "volumeOut": {
+            "type": "integer"
+          },
+          "window": {
+            "description": "Window is how many of the subject's most recent screens and outcomes the\ncounts are over. The standing is a rolling window and says so.",
             "type": "integer"
           }
         },
@@ -574,7 +695,7 @@
   "paths": {
     "/v1/billing/risk/controls": {
       "get": {
-        "description": "Lists the controls this org has placed, and whether each still\nbears on a move.",
+        "description": "Lists the controls this org has placed, newest first and\nbounded, and whether each still bears on a move.",
         "operationId": "riskControls",
         "parameters": [
           {
@@ -583,6 +704,15 @@
             "required": false,
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "description": "Limit is clamped to the page, exactly as on the screens list.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer"
             }
           }
         ],
@@ -604,7 +734,7 @@
         ]
       },
       "post": {
-        "description": "Places a reserve, a payout hold or a block on one subject.\n\nPlacing is idempotent while a control is in force: a monitor that runs every\ncycle does not accumulate a hundred identical holds on one merchant, and\nreleasing takes one act rather than a hundred.",
+        "description": "Places a reserve, a payout hold or a block on one subject.\nIt is an administrator's act in this org — see [restrainer].\n\nPlacing is idempotent while a control is in force: a monitor that runs every\ncycle does not accumulate a hundred identical holds on one merchant, and\nreleasing takes one act rather than a hundred.",
         "operationId": "riskControlPlace",
         "requestBody": {
           "content": {
@@ -636,7 +766,7 @@
     },
     "/v1/billing/risk/controls/{id}": {
       "delete": {
-        "description": "Lifts a control. Releasing one already released is not an\nerror and does not rewrite who lifted it first.",
+        "description": "Lifts a control and, when it was the last reserve standing\nover the subject, frees what the reserve ledger was holding — a release that\nkeeps the money is not a release. It is an administrator's act in this org.\n\nReleasing one already released is not an error and does not rewrite who\nlifted it first.",
         "operationId": "riskControlRelease",
         "parameters": [
           {
@@ -774,7 +904,7 @@
     },
     "/v1/billing/risk/merchants/{id}/review": {
       "post": {
-        "description": "Reviews a merchant now: it counts the standing, puts it to\nthe risk plane as a merchant-stage question, records the judgement, and —\nwhen asked to act — places the control the answer implies.\n\nThis is the continuous monitoring a platform runs on its merchants. It is a\nPOST because it records a judgement and may restrain money.",
+        "description": "Reviews a merchant now: it counts the standing, puts it to\nthe risk plane as a merchant-stage question, records the judgement, and —\nwhen asked to act — places the control the answer implies.\n\nThis is the continuous monitoring a platform runs on its merchants. It is a\nPOST because it records a judgement and may restrain money, and it is an\nadministrator's act in this org for that second reason — see [restrainer].",
         "operationId": "riskMerchantReview",
         "parameters": [
           {
@@ -846,6 +976,102 @@
         ]
       }
     },
+    "/v1/billing/risk/reserves": {
+      "get": {
+        "description": "Reads what this org's reserve ledger currently withholds.\n\nA reserve that a merchant cannot see is money that disappeared. This is the\nbalance a short payout reconciles against, and it is a read: it is open to\nany principal of the org, because the merchant whose money is held has the\nmost right to know how much of it is.",
+        "operationId": "riskReserves",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "subjectKind",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "subject",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/riskReservePage"
+                }
+              }
+            },
+            "description": "ok"
+          }
+        },
+        "summary": "Read what the reserve ledger currently withholds",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
+    "/v1/billing/risk/reserves/entries": {
+      "get": {
+        "description": "Reads the reserve ledger's movements — every cent\nwithheld and every cent released, with the judgement and the control that\ncaused it. This is the audit trail a short payout is explained by.",
+        "operationId": "riskReserveEntries",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "subjectKind",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "subject",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/riskEntryPage"
+                }
+              }
+            },
+            "description": "ok"
+          }
+        },
+        "summary": "Read the reserve ledger's movements",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
     "/v1/billing/risk/screen": {
       "post": {
         "description": "Scores one money move against this org's own model and controls,\nrecords the judgement, and returns it.\n\nIt is processor-agnostic: it takes facts, not a payment. A merchant whose\npayments run through another processor calls this at authorization time and\nenforces the answer itself; a merchant on our own processors gets the same\njudgement automatically, from the same code, before the gateway is reached.",
@@ -880,7 +1106,7 @@
     },
     "/v1/billing/risk/screens": {
       "get": {
-        "description": "Lists the screens this org recorded, newest first.",
+        "description": "Lists the screens this org recorded, newest first, bounded.",
         "operationId": "riskScreens",
         "parameters": [
           {
@@ -900,6 +1126,7 @@
             }
           },
           {
+            "description": "Limit is how many rows to return, newest first. It is CLAMPED: a caller\nthat names none, or names more than the page, gets the page. There is no\nvalue that means \"every row\".",
             "in": "query",
             "name": "limit",
             "required": false,
