@@ -40,7 +40,6 @@ _export
 /commerce_data/
 nohup.out
 
-CLAUDE.md
 AGENTS.md
 GEMINI.md
 QWEN.md
