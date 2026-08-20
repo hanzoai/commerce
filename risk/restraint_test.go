@@ -13,8 +13,15 @@ import (
 
 // ctl builds a control without a store — Restrain is pure, so its tests need no
 // datastore and no clock but the one they pass.
+// ctl builds a control with a ceiling high enough that these cases exercise the
+// RATE arithmetic and nothing else; the ceiling has its own tests below.
 func ctl(effect string, rate int64) *control.Control {
-	return &control.Control{Effect: effect, Rate: rate}
+	return &control.Control{Effect: effect, Rate: rate, Cap: math.MaxInt64 / control.FullRate}
+}
+
+// capped builds a reserve with a stated ceiling.
+func capped(rate, ceiling int64) *control.Control {
+	return &control.Control{Effect: control.Reserve, Rate: rate, Cap: ceiling}
 }
 
 func lapsed(effect string, rate int64, at time.Time) *control.Control {
@@ -39,7 +46,7 @@ func TestRestrain_HeldPlusAllowedIsExactlyTheAmount(t *testing.T) {
 
 	for _, rate := range rates {
 		for _, amount := range amounts {
-			r := Restrain([]*control.Control{ctl(control.Reserve, rate)}, amount, true, now)
+			r := Restrain([]*control.Control{ctl(control.Reserve, rate)}, amount, true, now, 0)
 			if r.Held+r.Allowed != amount {
 				t.Fatalf("rate=%d amount=%d: held=%d allowed=%d, sum=%d want %d",
 					rate, amount, r.Held, r.Allowed, r.Held+r.Allowed, amount)
@@ -67,7 +74,7 @@ func TestRestrain_ReserveRoundsUp(t *testing.T) {
 		{0, 5000, 0},          // nothing to withhold
 	}
 	for _, c := range cases {
-		r := Restrain([]*control.Control{ctl(control.Reserve, c.rate)}, c.amount, true, now)
+		r := Restrain([]*control.Control{ctl(control.Reserve, c.rate)}, c.amount, true, now, 0)
 		if r.Held != c.held {
 			t.Fatalf("amount=%d rate=%d: held=%d want %d", c.amount, c.rate, r.Held, c.held)
 		}
@@ -77,11 +84,11 @@ func TestRestrain_ReserveRoundsUp(t *testing.T) {
 // TestRestrain_StrictestNotSum: two reserves compose to the strictest, never
 // their sum — summing would withhold more money than the move contains.
 func TestRestrain_StrictestNotSum(t *testing.T) {
-	r := Restrain([]*control.Control{ctl(control.Reserve, 6000), ctl(control.Reserve, 6000)}, 1000, true, now)
+	r := Restrain([]*control.Control{ctl(control.Reserve, 6000), ctl(control.Reserve, 6000)}, 1000, true, now, 0)
 	if r.Held != 600 {
 		t.Fatalf("two 60%% reserves: held=%d want 600 (the strictest, not the sum)", r.Held)
 	}
-	r = Restrain([]*control.Control{ctl(control.Reserve, 1000), ctl(control.Reserve, 7500)}, 1000, true, now)
+	r = Restrain([]*control.Control{ctl(control.Reserve, 1000), ctl(control.Reserve, 7500)}, 1000, true, now, 0)
 	if r.Held != 750 {
 		t.Fatalf("10%% and 75%%: held=%d want 750", r.Held)
 	}
@@ -89,11 +96,11 @@ func TestRestrain_StrictestNotSum(t *testing.T) {
 
 // TestRestrain_HoldStopsOnlyMoneyLeaving.
 func TestRestrain_HoldStopsOnlyMoneyLeaving(t *testing.T) {
-	out := Restrain([]*control.Control{ctl(control.Hold, 0)}, 500, true, now)
+	out := Restrain([]*control.Control{ctl(control.Hold, 0)}, 500, true, now, 0)
 	if !out.Blocked || out.Allowed != 0 || out.Held != 500 {
 		t.Fatalf("hold on an outbound move: %+v, want blocked with everything held", out)
 	}
-	in := Restrain([]*control.Control{ctl(control.Hold, 0)}, 500, false, now)
+	in := Restrain([]*control.Control{ctl(control.Hold, 0)}, 500, false, now, 0)
 	if in.Blocked || in.Allowed != 500 {
 		t.Fatalf("hold on an inbound move: %+v, want the charge to proceed", in)
 	}
@@ -102,7 +109,7 @@ func TestRestrain_HoldStopsOnlyMoneyLeaving(t *testing.T) {
 // TestRestrain_ReserveDoesNotTouchAnInboundCharge: withholding part of an
 // arriving payment would mean refusing part of a customer's money.
 func TestRestrain_ReserveDoesNotTouchAnInboundCharge(t *testing.T) {
-	r := Restrain([]*control.Control{ctl(control.Reserve, 5000)}, 900, false, now)
+	r := Restrain([]*control.Control{ctl(control.Reserve, 5000)}, 900, false, now, 0)
 	if r.Held != 0 || r.Allowed != 900 || r.Blocked {
 		t.Fatalf("reserve on an inbound charge: %+v, want untouched", r)
 	}
@@ -111,7 +118,7 @@ func TestRestrain_ReserveDoesNotTouchAnInboundCharge(t *testing.T) {
 // TestRestrain_BlockStopsBothDirections.
 func TestRestrain_BlockStopsBothDirections(t *testing.T) {
 	for _, out := range []bool{true, false} {
-		r := Restrain([]*control.Control{ctl(control.Block, 0)}, 42, out, now)
+		r := Restrain([]*control.Control{ctl(control.Block, 0)}, 42, out, now, 0)
 		if !r.Blocked || r.Allowed != 0 || r.Held != 42 {
 			t.Fatalf("block out=%v: %+v, want blocked", out, r)
 		}
@@ -124,13 +131,13 @@ func TestRestrain_LapsedOrReleasedRestrainsNothing(t *testing.T) {
 		"lapsed":   lapsed(control.Block, 0, now.Add(-time.Hour)),
 		"released": released(control.Block, 0),
 	} {
-		r := Restrain([]*control.Control{c}, 100, true, now)
+		r := Restrain([]*control.Control{c}, 100, true, now, 0)
 		if r.Blocked || r.Allowed != 100 {
 			t.Fatalf("%s control still restrains: %+v", name, r)
 		}
 	}
 	// A control that lapses in the future is still in force.
-	r := Restrain([]*control.Control{lapsed(control.Block, 0, now.Add(time.Hour))}, 100, true, now)
+	r := Restrain([]*control.Control{lapsed(control.Block, 0, now.Add(time.Hour))}, 100, true, now, 0)
 	if !r.Blocked {
 		t.Fatalf("a control lapsing in an hour must still bear on a move now: %+v", r)
 	}
@@ -139,18 +146,19 @@ func TestRestrain_LapsedOrReleasedRestrainsNothing(t *testing.T) {
 // TestRestrain_BlockBeatsReserve: the strictest applying control governs, and
 // the order the controls arrive in cannot change the answer.
 func TestRestrain_BlockBeatsReserve(t *testing.T) {
-	a := Restrain([]*control.Control{ctl(control.Reserve, 1000), ctl(control.Block, 0)}, 800, true, now)
-	b := Restrain([]*control.Control{ctl(control.Block, 0), ctl(control.Reserve, 1000)}, 800, true, now)
+	a := Restrain([]*control.Control{ctl(control.Reserve, 1000), ctl(control.Block, 0)}, 800, true, now, 0)
+	b := Restrain([]*control.Control{ctl(control.Block, 0), ctl(control.Reserve, 1000)}, 800, true, now, 0)
 	if !a.Blocked || !b.Blocked || a.Held != b.Held || a.Allowed != b.Allowed {
 		t.Fatalf("order changed the answer: %+v vs %+v", a, b)
 	}
 }
 
 // TestRestrain_RefusesAnAmountTooLargeToMultiplyExactly: the arithmetic never
-// wraps silently on a money path.
+// wraps silently on a money path. With a ceiling that is not the binding
+// constraint, an un-multipliable amount withholds everything.
 func TestRestrain_RefusesAnAmountTooLargeToMultiplyExactly(t *testing.T) {
 	huge := currency.Cents(math.MaxInt64/control.FullRate + 1)
-	r := Restrain([]*control.Control{ctl(control.Reserve, 5000)}, huge, true, now)
+	r := Restrain([]*control.Control{capped(5000, math.MaxInt64)}, huge, true, now, 0)
 	if r.Allowed != 0 || r.Held != huge {
 		t.Fatalf("an amount past the exact-multiply bound must withhold everything, got %+v", r)
 	}
@@ -162,7 +170,7 @@ func TestRestrain_RefusesAnAmountTooLargeToMultiplyExactly(t *testing.T) {
 // TestRestrain_NegativeAmountIsRefused: a negative amount is a move in the
 // other direction wearing the wrong sign.
 func TestRestrain_NegativeAmountIsRefused(t *testing.T) {
-	r := Restrain(nil, -1, true, now)
+	r := Restrain(nil, -1, true, now, 0)
 	if !r.Blocked || r.Allowed != 0 {
 		t.Fatalf("negative amount: %+v, want refused", r)
 	}
@@ -170,12 +178,12 @@ func TestRestrain_NegativeAmountIsRefused(t *testing.T) {
 
 // TestRestrain_NoControlsAllowsEverything.
 func TestRestrain_NoControlsAllowsEverything(t *testing.T) {
-	r := Restrain(nil, 1234, true, now)
+	r := Restrain(nil, 1234, true, now, 0)
 	if r.Blocked || r.Held != 0 || r.Allowed != 1234 {
 		t.Fatalf("no controls: %+v, want the whole move allowed", r)
 	}
 	// A nil entry in the slice must not panic or restrain.
-	r = Restrain([]*control.Control{nil}, 1234, true, now)
+	r = Restrain([]*control.Control{nil}, 1234, true, now, 0)
 	if r.Blocked || r.Allowed != 1234 {
 		t.Fatalf("nil control: %+v", r)
 	}

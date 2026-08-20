@@ -8,15 +8,18 @@ import (
 
 func init() {
 	zip.Describe("DELETE /v1/billing/risk/controls/:id", zip.Doc{
-		Description: "Lifts a control. Releasing one already released is not an\nerror and does not rewrite who lifted it first.",
+		Description: "Lifts a control and, when it was the last reserve standing\nover the subject, frees what the reserve ledger was holding — a release that\nkeeps the money is not a release. It is an administrator's act in this org.\n\nReleasing one already released is not an error and does not rewrite who\nlifted it first.",
 		Fields: map[string]string{
-			"riskControlOut.by": "By is who placed it, from the validated principal.",
+			"riskControlOut.by":  "By is who placed it, from the validated principal.",
+			"riskControlOut.cap": "Cap is the reserve's ceiling in exact minor units.",
 		},
 	})
 	zip.Describe("GET /v1/billing/risk/controls", zip.Doc{
-		Description: "Lists the controls this org has placed, and whether each still\nbears on a move.",
+		Description: "Lists the controls this org has placed, newest first and\nbounded, and whether each still bears on a move.",
 		Fields: map[string]string{
-			"riskControlOut.by": "By is who placed it, from the validated principal.",
+			"riskControlOut.by":    "By is who placed it, from the validated principal.",
+			"riskControlOut.cap":   "Cap is the reserve's ceiling in exact minor units.",
+			"riskControlsIn.limit": "Limit is clamped to the page, exactly as on the screens list.",
 		},
 	})
 	zip.Describe("GET /v1/billing/risk/disputes/:id/evidence", zip.Doc{
@@ -29,6 +32,7 @@ func init() {
 		Description: "Reads a merchant's standing from this org's own record. It\ncounts and reports; it scores nothing and changes nothing, so a console may\npoll it.",
 		Fields: map[string]string{
 			"riskControlOut.by":        "By is who placed it, from the validated principal.",
+			"riskControlOut.cap":       "Cap is the reserve's ceiling in exact minor units.",
 			"riskScreenOut.action":     "Action is what the money plane did: allow, challenge, review, restrict or\nblock. Restrict and block mean the money did not move.",
 			"riskScreenOut.agency":     "Agency is who acted: agent, human, bot or unknown.",
 			"riskScreenOut.decision":   "Decision is the /v1/risk decision this record is anchored to.",
@@ -41,12 +45,26 @@ func init() {
 			"riskScreenOut.score":      "Score is the scoring plane's weight of evidence in [0,1].",
 			"riskScreenOut.shadow":     "Shadow marks a judgement that was recorded and deliberately not enforced.",
 			"riskStandingOut.placed":   "Placed names a control the review placed.",
+			"riskStandingOut.reserved": "Reserved is what the reserve LEDGER withholds from this subject right\nnow, per currency, in exact minor units — a different fact from Held,\nwhich is what the screens in the window judged.",
 			"riskStandingOut.screen":   "Screen is the merchant-stage judgement, present when the standing was\nreviewed rather than merely counted.",
 			"riskStandingOut.volumeIn": "VolumeIn, VolumeOut and Held are exact minor units.",
+			"riskStandingOut.window":   "Window is how many of the subject's most recent screens and outcomes the\ncounts are over. The standing is a rolling window and says so.",
+		},
+	})
+	zip.Describe("GET /v1/billing/risk/reserves", zip.Doc{
+		Description: "Reads what this org's reserve ledger currently withholds.\n\nA reserve that a merchant cannot see is money that disappeared. This is the\nbalance a short payout reconciles against, and it is a read: it is open to\nany principal of the org, because the merchant whose money is held has the\nmost right to know how much of it is.",
+		Fields: map[string]string{
+			"riskReserveOut.held": "Held is exact minor units withheld right now, and Entries how many\nmovements are behind it.",
+		},
+	})
+	zip.Describe("GET /v1/billing/risk/reserves/entries", zip.Doc{
+		Description: "Reads the reserve ledger's movements — every cent\nwithheld and every cent released, with the judgement and the control that\ncaused it. This is the audit trail a short payout is explained by.",
+		Fields: map[string]string{
+			"riskEntryOut.amount": "Amount is exact minor units, signed: positive withheld, negative\nreleased. Held is the balance after this movement.",
 		},
 	})
 	zip.Describe("GET /v1/billing/risk/screens", zip.Doc{
-		Description: "Lists the screens this org recorded, newest first.",
+		Description: "Lists the screens this org recorded, newest first, bounded.",
 		Fields: map[string]string{
 			"riskScreenOut.action":   "Action is what the money plane did: allow, challenge, review, restrict or\nblock. Restrict and block mean the money did not move.",
 			"riskScreenOut.agency":   "Agency is who acted: agent, human, bot or unknown.",
@@ -59,6 +77,8 @@ func init() {
 			"riskScreenOut.refusal":  "Refusal states why the scoring plane could not judge. A screen carrying a\nrefusal was decided by the controls alone — it is not a clean result.",
 			"riskScreenOut.score":    "Score is the scoring plane's weight of evidence in [0,1].",
 			"riskScreenOut.shadow":   "Shadow marks a judgement that was recorded and deliberately not enforced.",
+			"riskScreenPage.limit":   "Limit is the bound this page was read under, so a caller can tell a short\npage from a full one without counting.",
+			"riskScreensIn.limit":    "Limit is how many rows to return, newest first. It is CLAMPED: a caller\nthat names none, or names more than the page, gets the page. There is no\nvalue that means \"every row\".",
 		},
 	})
 	zip.Describe("GET /v1/billing/risk/screens/:id", zip.Doc{
@@ -78,13 +98,15 @@ func init() {
 		},
 	})
 	zip.Describe("POST /v1/billing/risk/controls", zip.Doc{
-		Description: "Places a reserve, a payout hold or a block on one subject.\n\nPlacing is idempotent while a control is in force: a monitor that runs every\ncycle does not accumulate a hundred identical holds on one merchant, and\nreleasing takes one act rather than a hundred.",
+		Description: "Places a reserve, a payout hold or a block on one subject.\nIt is an administrator's act in this org — see [restrainer].\n\nPlacing is idempotent while a control is in force: a monitor that runs every\ncycle does not accumulate a hundred identical holds on one merchant, and\nreleasing takes one act rather than a hundred.",
 		Fields: map[string]string{
+			"riskControlIn.cap":         "Cap is the CEILING on everything this reserve may ever withhold, in exact\nminor units — the total, not the per-move share. REQUIRED on a reserve: a\nrate with no total is not a reserve, it is an open-ended seizure, because\nthe share applies to every outbound move forever. It is enforced against\nthe reserve LEDGER, so the accounting is cumulative.",
 			"riskControlIn.effect":      "Effect is reserve, hold or block. A reserve withholds a share of every\noutbound move; a hold stops money leaving; a block stops it moving at all.",
 			"riskControlIn.rate":        "Rate is BASIS POINTS withheld, for a reserve: 2500 is a quarter. It is\nbasis points and not a fraction because money is integer arithmetic, and\na float rate drifts the withheld amount by a cent per move at scale.",
 			"riskControlIn.subjectKind": "SubjectKind and Subject name what is restrained, inside this org.",
 			"riskControlIn.until":       "Until lapses the control, RFC 3339. Empty means it stands until released,\nwhich is what a fraud restraint should do.",
 			"riskControlOut.by":         "By is who placed it, from the validated principal.",
+			"riskControlOut.cap":        "Cap is the reserve's ceiling in exact minor units.",
 		},
 	})
 	zip.Describe("POST /v1/billing/risk/disputes/:id/submit", zip.Doc{
@@ -94,11 +116,13 @@ func init() {
 		},
 	})
 	zip.Describe("POST /v1/billing/risk/merchants/:id/review", zip.Doc{
-		Description: "Reviews a merchant now: it counts the standing, puts it to\nthe risk plane as a merchant-stage question, records the judgement, and —\nwhen asked to act — places the control the answer implies.\n\nThis is the continuous monitoring a platform runs on its merchants. It is a\nPOST because it records a judgement and may restrain money.",
+		Description: "Reviews a merchant now: it counts the standing, puts it to\nthe risk plane as a merchant-stage question, records the judgement, and —\nwhen asked to act — places the control the answer implies.\n\nThis is the continuous monitoring a platform runs on its merchants. It is a\nPOST because it records a judgement and may restrain money, and it is an\nadministrator's act in this org for that second reason — see [restrainer].",
 		Fields: map[string]string{
 			"riskControlOut.by":        "By is who placed it, from the validated principal.",
-			"riskReviewIn.act":         "Act places the control the answer implies: a block on block, and on\nrestrict a reserve when Reserve is a rate, else a payout hold.",
-			"riskReviewIn.reserve":     "Reserve is BASIS POINTS to withhold when the answer restricts. Zero means\nhold instead of reserving.",
+			"riskControlOut.cap":       "Cap is the reserve's ceiling in exact minor units.",
+			"riskReviewIn.act":         "Act places the control the answer implies: a block on block, and on\nrestrict a reserve when Reserve and Cap are both stated, else a payout\nhold.",
+			"riskReviewIn.cap":         "Cap is the reserve's CEILING in exact minor units. A reserve needs both;\nstating neither means hold instead of reserving.",
+			"riskReviewIn.reserve":     "Reserve is BASIS POINTS to withhold when the answer restricts.",
 			"riskScreenOut.action":     "Action is what the money plane did: allow, challenge, review, restrict or\nblock. Restrict and block mean the money did not move.",
 			"riskScreenOut.agency":     "Agency is who acted: agent, human, bot or unknown.",
 			"riskScreenOut.decision":   "Decision is the /v1/risk decision this record is anchored to.",
@@ -111,8 +135,10 @@ func init() {
 			"riskScreenOut.score":      "Score is the scoring plane's weight of evidence in [0,1].",
 			"riskScreenOut.shadow":     "Shadow marks a judgement that was recorded and deliberately not enforced.",
 			"riskStandingOut.placed":   "Placed names a control the review placed.",
+			"riskStandingOut.reserved": "Reserved is what the reserve LEDGER withholds from this subject right\nnow, per currency, in exact minor units — a different fact from Held,\nwhich is what the screens in the window judged.",
 			"riskStandingOut.screen":   "Screen is the merchant-stage judgement, present when the standing was\nreviewed rather than merely counted.",
 			"riskStandingOut.volumeIn": "VolumeIn, VolumeOut and Held are exact minor units.",
+			"riskStandingOut.window":   "Window is how many of the subject's most recent screens and outcomes the\ncounts are over. The standing is a rolling window and says so.",
 		},
 	})
 	zip.Describe("POST /v1/billing/risk/outcomes", zip.Doc{

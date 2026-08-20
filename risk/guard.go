@@ -4,7 +4,6 @@ package risk
 
 import (
 	"context"
-	"strings"
 
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
@@ -106,50 +105,4 @@ func refusalMessage(reason string) string {
 		return "payment refused by risk"
 	}
 	return "payment refused by risk: " + reason
-}
-
-// signalKeys is the CLOSED set of facts that may travel from a payment request
-// to the scoring plane. It is an allowlist and not a denylist because a payment
-// request's metadata is caller-shaped: a merchant who puts a card number in a
-// metadata field must not thereby send it to a scoring plane, and no list of
-// forbidden key names can be relied on to catch that.
-var signalKeys = map[string]bool{
-	"ip":          true,
-	"asn":         true,
-	"country":     true,
-	"email":       true,
-	"phone":       true,
-	"device":      true,
-	"fingerprint": true,
-	"ua":          true,
-	"bin":         true,
-	"funding":     true,
-	"brand":       true,
-	"last4":       true,
-	"channel":     true,
-	"agent":       true,
-	"session":     true,
-}
-
-// Signals projects a payment request's metadata onto the facts the scoring
-// plane may see: allowlisted keys with string values, lowercased for one
-// spelling per fact.
-func Signals(meta map[string]any) map[string]string {
-	if len(meta) == 0 {
-		return nil
-	}
-	out := map[string]string{}
-	for k, v := range meta {
-		key := strings.ToLower(strings.TrimSpace(k))
-		if !signalKeys[key] {
-			continue
-		}
-		if s, ok := v.(string); ok && s != "" {
-			out[key] = s
-		}
-	}
-	if len(out) == 0 {
-		return nil
-	}
-	return out
 }

@@ -76,6 +76,14 @@ type IdempotencyKey struct {
 	Status   string `json:"status" orm:"default:started"`
 	Response string `json:"response,omitempty" datastore:",noindex"`
 
+	// Digest fingerprints the REQUEST this key first named — the caller's own
+	// hash of the fields that make the operation what it is. A key names ONE
+	// request, so a second, different request under the same key is refused
+	// ([ErrDigest]) rather than answered with the first one's stored response.
+	// Optional: a scope that already pins the request (a refund keyed on the
+	// charge it reverses) has nothing left to fingerprint.
+	Digest string `json:"digest,omitempty"`
+
 	// RecoveryPoint lets a caller record how far a multi-step side effect got,
 	// so a retry can resume rather than restart. Optional.
 	RecoveryPoint string `json:"recoveryPoint,omitempty"`
@@ -89,6 +97,14 @@ func (k *IdempotencyKey) Save() ([]datastore.Property, error) {
 	return datastore.SaveStruct(k)
 }
 
+// ErrDigest refuses a key that already names a DIFFERENT request.
+//
+// Replaying the first request's answer to a second, different one is the flaw
+// that turns an idempotency key from a safety device into an exploit: send one
+// small request, then reuse the key with a bigger one and receive the small
+// one's stored success. The caller has to choose which request it meant.
+var ErrDigest = errors.New("idempotency: this key already names a different request")
+
 // Begin looks up (or records) the guard for (scope, key).
 //
 // Returns replay=true with the stored record when the key was already seen
@@ -96,8 +112,20 @@ func (k *IdempotencyKey) Save() ([]datastore.Property, error) {
 // effect and should return rec.Response if Status==completed. Returns
 // replay=false with a freshly-created "started" marker when this is the first
 // sighting; the caller performs the side effect then calls Complete.
-func Begin(db *datastore.Datastore, scope, key string) (rec *IdempotencyKey, replay bool, err error) {
+//
+// digest is OPTIONAL and at most one is read: pass the caller's fingerprint of
+// the request and a key reused for a different request is refused with
+// [ErrDigest] instead of replaying the wrong answer. It is variadic rather than
+// a fourth parameter so the guards whose SCOPE already pins the request keep
+// saying so by omission, and no call site is edited to pass an empty string.
+// A stored guard with no digest (written before a caller started supplying one)
+// never conflicts — an unknown fingerprint is not a mismatched one.
+func Begin(db *datastore.Datastore, scope, key string, digest ...string) (rec *IdempotencyKey, replay bool, err error) {
 	id := DeterministicID(scope, key)
+	var print string
+	if len(digest) > 0 {
+		print = digest[0]
+	}
 
 	// Replay: the guard for this (scope,key) already exists. Its STORAGE id is
 	// deterministic, so concurrent first-time Begins collapse onto ONE row via
@@ -115,6 +143,12 @@ func Begin(db *datastore.Datastore, scope, key string) (rec *IdempotencyKey, rep
 	existing := New(db)
 	guardKey := db.NewKey(existing.Kind(), id, 0, nil)
 	if e := existing.Get(guardKey); e == nil {
+		// A key names ONE request. Checked BEFORE the replay branches, so a
+		// mismatched retry can neither read the first request's answer nor
+		// re-claim a stale guard and run as if it were that request.
+		if print != "" && existing.Digest != "" && existing.Digest != print {
+			return existing, true, ErrDigest
+		}
 		// Completed → always a replay (return the stored response).
 		if existing.Status == StatusCompleted {
 			return existing, true, nil
@@ -143,6 +177,7 @@ func Begin(db *datastore.Datastore, scope, key string) (rec *IdempotencyKey, rep
 	rec.SetId(id)
 	rec.Scope = scope
 	rec.IdemKey = key
+	rec.Digest = print
 	rec.Status = StatusStarted
 	if e := rec.Create(); e != nil {
 		return nil, false, e

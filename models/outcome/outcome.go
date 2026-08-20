@@ -95,13 +95,24 @@ func Query(db *datastore.Datastore) datastore.Query {
 	return db.Query("risk-outcome")
 }
 
+// Page is how many outcomes one read answers with, and the most it can ever
+// answer with — the same bound, for the same reason, as [screen.Page].
+const Page = 200
+
+func bound(limit int) int {
+	if limit <= 0 || limit > Page {
+		return Page
+	}
+	return limit
+}
+
 // ByIdem returns the outcome already written under key, if any.
 func ByIdem(db *datastore.Datastore, key string) (*Outcome, bool) {
 	if key == "" {
 		return nil, false
 	}
 	root := db.NewKey("synckey", "", 1, nil)
-	iter := Query(db).Ancestor(root).Filter("Idem=", key).Run()
+	iter := Query(db).Ancestor(root).Filter("Idem=", key).Limit(1).Run()
 	o := New(db)
 	if _, err := iter.Next(o); err != nil {
 		return nil, false
@@ -109,9 +120,10 @@ func ByIdem(db *datastore.Datastore, key string) (*Outcome, bool) {
 	return o, true
 }
 
-// For reads outcomes for one subject, and with an empty subject every outcome
-// in the org. The datastore is already namespaced to one tenant.
-func For(db *datastore.Datastore, subjectKind, subject string) []*Outcome {
+// For reads outcomes NEWEST FIRST for one subject, at most bound(limit) of
+// them. An empty subject reads the org's own most recent page and never every
+// row it has: there is no unbounded read here either.
+func For(db *datastore.Datastore, subjectKind, subject string, limit int) []*Outcome {
 	root := db.NewKey("synckey", "", 1, nil)
 	q := Query(db).Ancestor(root)
 	if subjectKind != "" {
@@ -121,9 +133,11 @@ func For(db *datastore.Datastore, subjectKind, subject string) []*Outcome {
 		q = q.Filter("Subject=", subject)
 	}
 
+	n := bound(limit)
+	iter := q.Order("-CreatedAt").Limit(n).Run()
+
 	out := []*Outcome{}
-	iter := q.Run()
-	for {
+	for len(out) < n {
 		o := New(db)
 		if _, err := iter.Next(o); err != nil {
 			break

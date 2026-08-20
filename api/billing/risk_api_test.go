@@ -180,7 +180,7 @@ func TestRiskAPI_ReserveHoldsTheExactShare(t *testing.T) {
 
 	call := face(t, ctx, "apireserve")
 	if res := call(http.MethodPost, "/v1/billing/risk/controls",
-		`{"effect":"reserve","subjectKind":"merchant","subject":"m1","rate":2500}`); res.StatusCode != http.StatusCreated {
+		`{"effect":"reserve","subjectKind":"merchant","subject":"m1","rate":2500,"cap":1000000}`); res.StatusCode != http.StatusCreated {
 		t.Fatalf("place: %d", res.StatusCode)
 	}
 	out := decode(t, call(http.MethodPost, "/v1/billing/risk/screen",
@@ -259,7 +259,7 @@ func TestRiskAPI_MerchantReviewActs(t *testing.T) {
 		t.Fatalf("a read recorded a judgement: %v", before)
 	}
 
-	st := decode(t, call(http.MethodPost, "/v1/billing/risk/merchants/m1/review", `{"act":true,"reserve":1500}`))
+	st := decode(t, call(http.MethodPost, "/v1/billing/risk/merchants/m1/review", `{"act":true,"reserve":1500,"cap":1000000}`))
 	if st["placed"] == nil || st["placed"] == "" {
 		t.Fatalf("the review placed nothing: %v", st)
 	}

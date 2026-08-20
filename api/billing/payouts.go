@@ -1,13 +1,20 @@
 package billing
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/payout"
 	"github.com/hanzoai/commerce/models/screen"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -30,11 +37,46 @@ type createPayoutRequest struct {
 	// destination's.
 	Merchant string `json:"merchant,omitempty"`
 	// Idem makes a retried payout return the first answer rather than a second
-	// judgement — and, far more importantly, than a second payout.
+	// judgement — and, far more importantly, than a second payout. A caller may
+	// send it here or as X-Idempotency-Key; with neither, retries within a
+	// coarse window still collapse onto one payout by their own facts (see
+	// guardKey), because a retried payout is the ordinary case and a double
+	// payout is unrecoverable.
 	Idem string `json:"idem,omitempty"`
 }
 
+// facts are the payout details that stay STABLE across a retry, in one
+// deterministic string. They are the fallback idempotency key for a caller that
+// sent none, and the fingerprint that stops one key from naming two different
+// payouts.
+func (r createPayoutRequest) facts() string {
+	return strings.Join([]string{
+		strconv.FormatInt(r.Amount, 10),
+		strings.ToLower(r.Currency),
+		r.DestinationType,
+		r.DestinationId,
+		r.Merchant,
+	}, "|")
+}
+
+func (r createPayoutRequest) digest() string {
+	sum := sha256.Sum256([]byte(r.facts()))
+	return hex.EncodeToString(sum[:16])
+}
+
 // CreatePayout creates a new outbound payout.
+//
+// IT IS IDEMPOTENT, through the same guard every other money move in this
+// package uses (models/idempotencykey): a retry replays the FIRST payout's
+// exact response and creates no second row. The doc used to promise this and
+// the code did not implement it — the key reached the risk screen, which
+// de-duplicated the JUDGEMENT, while `payout.Create` ran again underneath it
+// and the merchant was paid twice. An idempotency key that lies is worse than
+// none: a client retries a timeout precisely because it was promised the retry
+// is free.
+//
+// A key naming a DIFFERENT payout is refused (409) rather than answered with
+// the first one's response — see [createPayoutRequest.digest].
 //
 //	POST /v1/billing/payouts
 func CreatePayout(c *zip.Ctx) error {
@@ -53,16 +95,46 @@ func CreatePayout(c *zip.Ctx) error {
 		return http.Fail(c, 400, "destinationId is required", nil)
 	}
 
+	// The guard comes FIRST, before the screen and before the row. Scoped to
+	// the destination so a key can never collide across endpoints, keyed on the
+	// caller's own key when there is one and on the payout's stable facts when
+	// there is not, and fingerprinted so one key names one payout. Fail CLOSED
+	// (503) when the guard store cannot answer: a payout we cannot de-duplicate
+	// must not run.
+	key := req.Idem
+	if key == "" {
+		key = guardKey(c, req.facts())
+	}
+	guard, replay, gerr := idemBegin(db, "billing-payout:"+req.DestinationId, key, req.digest())
+	switch {
+	case errors.Is(gerr, idempotencykey.ErrDigest):
+		return http.Fail(c, 409, "this idempotency key already names a different payout", gerr)
+	case gerr != nil:
+		log.Error("payout idempotency Begin failed (destination=%s): %v", req.DestinationId, gerr, c)
+		return http.Fail(c, 503, "payout temporarily unavailable; retry", gerr)
+	case replay:
+		if guard.Status == idempotencykey.StatusCompleted && guard.Response != "" {
+			c.SetHeader("Content-Type", "application/json")
+			return c.Bytes(200, []byte(guard.Response))
+		}
+		return http.Fail(c, 409, "a payout for this request is already in progress", nil)
+	}
+
 	// The money plane's own gate. A reserve or a payout hold in force on this
 	// merchant stops the money HERE, in the store that holds the control — no
 	// network hop, so a scoring outage can never lift a restraint. Risk
 	// declares; this is where commerce enforces.
-	gate, err := gatePayout(c, db, req)
+	gate, err := gatePayout(c, db, req, key)
 	if err != nil {
+		_ = guard.Delete()
 		log.Error("Failed to screen payout: %v", err, c)
 		return http.Fail(c, 500, "failed to screen the payout", err)
 	}
 	if gate.Status != 0 {
+		// Nothing moved, so the guard is released: a refusal is not an answer
+		// to replay, and a merchant whose hold is lifted must be able to ask
+		// again under the same key.
+		_ = guard.Delete()
 		return http.Fail(c, gate.Status, gate.Message, nil)
 	}
 
@@ -79,8 +151,17 @@ func CreatePayout(c *zip.Ctx) error {
 	}
 
 	if err := p.Create(); err != nil {
+		_ = guard.Delete()
 		log.Error("Failed to create payout: %v", err, c)
 		return http.Fail(c, 500, "failed to create payout", err)
+	}
+
+	// The money did not leave, so the ledger records that it is being HELD.
+	// Posted here and not at the screen: a judgement is a question, and asking
+	// it a thousand times must not withhold a thousand shares. Idempotent on
+	// the screen row, which a retry replays.
+	if _, err := gate.Screener.Hold(gate.Record, "payout "+p.Id()); err != nil {
+		log.Error("Failed to post the reserve hold for payout %s: %v", p.Id(), err, c)
 	}
 
 	// A reserve is DISCLOSED, never silent: the response states what was asked
@@ -91,6 +172,11 @@ func CreatePayout(c *zip.Ctx) error {
 	if gate.Held > 0 {
 		resp["requested"] = req.Amount
 		resp["held"] = int64(gate.Held)
+	}
+	// Seal the guard with the exact body, so a retry replays this payout rather
+	// than creating another one.
+	if body, mErr := json.Marshal(resp); mErr == nil {
+		_ = idempotencykey.Complete(guard, string(body))
 	}
 	return c.JSON(201, resp)
 }
@@ -182,6 +268,12 @@ type payoutGate struct {
 	Allow  currency.Cents
 	Held   currency.Cents
 	Screen string
+	// Record and Screener are what the caller needs to post the withheld share
+	// to the reserve ledger once the payout row actually exists. They are
+	// carried rather than re-derived so the ledger cites the SAME screen the
+	// response quotes.
+	Record   *screen.Screen
+	Screener *risk.Screener
 }
 
 // gatePayout screens the payout before a row is written and reports how much
@@ -194,7 +286,7 @@ type payoutGate struct {
 // simply reserves a share of the smaller amount too, and the caller is walked
 // in a circle it can never leave. Withholding the share is what a reserve IS —
 // and it is disclosed in the response, so it is not a silent shrink.
-func gatePayout(c *zip.Ctx, db *datastore.Datastore, req createPayoutRequest) (payoutGate, error) {
+func gatePayout(c *zip.Ctx, db *datastore.Datastore, req createPayoutRequest, key string) (payoutGate, error) {
 	subject := risk.Subject{Kind: risk.KindPayout, ID: req.DestinationId}
 	if req.Merchant != "" {
 		subject = risk.Subject{Kind: risk.KindMerchant, ID: req.Merchant}
@@ -208,9 +300,12 @@ func gatePayout(c *zip.Ctx, db *datastore.Datastore, req createPayoutRequest) (p
 		Currency:  currency.Type(req.Currency),
 		Out:       true,
 		Reference: req.DestinationId,
-		Idem:      req.Idem,
+		Idem:      key,
 	})
-	if err != nil {
+	switch {
+	case errors.Is(err, risk.ErrReused):
+		return payoutGate{Status: 409, Message: err.Error()}, nil
+	case err != nil:
 		return payoutGate{}, err
 	}
 	if risk.Refused(rec) {
@@ -223,9 +318,11 @@ func gatePayout(c *zip.Ctx, db *datastore.Datastore, req createPayoutRequest) (p
 			"a reserve withholds all %d of this payout", req.Amount), Screen: rec.Id()}, nil
 	}
 	return payoutGate{
-		Allow:  currency.Cents(rec.Allowed),
-		Held:   currency.Cents(rec.Held),
-		Screen: rec.Id(),
+		Allow:    currency.Cents(rec.Allowed),
+		Held:     currency.Cents(rec.Held),
+		Screen:   rec.Id(),
+		Record:   rec,
+		Screener: s,
 	}, nil
 }
 

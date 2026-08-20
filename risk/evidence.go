@@ -145,7 +145,7 @@ func Assemble(db *datastore.Datastore, disputeID string) (*Evidence, error) {
 		}
 	}
 
-	// The judgement that admitted the charge, and every later judgement of the
+	// The judgement that admitted the charge, and the recent judgements of the
 	// same customer — the pattern is as much of the defence as the single event.
 	for _, s := range screensFor(db, d, e.Charge) {
 		row := evidenceScreen{
@@ -159,15 +159,23 @@ func Assemble(db *datastore.Datastore, disputeID string) (*Evidence, error) {
 	}
 	if len(e.Screens) == 0 {
 		e.Gaps = append(e.Gaps, "judgement: this charge was never screened, so there is no decision to cite")
+	} else if len(e.Screens) >= packet {
+		e.Gaps = append(e.Gaps, fmt.Sprintf(
+			"judgements: this packet carries the %d most recent; there may be older ones", packet))
 	}
 
 	if e.Charge != nil && e.Charge.Customer != "" {
-		for _, o := range outcome.For(db, KindCustomer, e.Charge.Customer) {
+		rows := outcome.For(db, KindCustomer, e.Charge.Customer, packet)
+		for _, o := range rows {
 			row := evidenceOutcome{ID: o.Id(), Event: o.Event, Note: o.Note}
 			if at := o.GetCreatedAt(); !at.IsZero() {
 				row.At = at.UTC().Format(time.RFC3339)
 			}
 			e.Outcomes = append(e.Outcomes, row)
+		}
+		if len(rows) == packet {
+			e.Gaps = append(e.Gaps, fmt.Sprintf(
+				"outcomes: this packet carries the %d most recent for the customer; there may be older ones", packet))
 		}
 	}
 
@@ -175,14 +183,29 @@ func Assemble(db *datastore.Datastore, disputeID string) (*Evidence, error) {
 	return e, nil
 }
 
-// screensFor finds the risk record bearing on this dispute: the screen whose
-// reference IS the charge, then every screen of that customer.
+// packet bounds every read a dispute packet makes. A defence is a document a
+// human reads and an adjudicator accepts; it is not an export of the merchant's
+// history, and one request must never be able to materialise that history.
+const packet = 50
+
+// screensFor finds the risk record bearing on this dispute: the screens whose
+// reference IS the charge, then the customer's recent screens.
+//
+// It ASKS THE STORE for the reference. Reading every screen in the org and
+// keeping the ones that matched — which is what this did — is a full scan of a
+// busy merchant's whole history on a route any authenticated caller can hit,
+// with nothing bounding it but how much the merchant has sold.
 func screensFor(db *datastore.Datastore, d *dispute.Dispute, charge *evidenceCharge) []*screen.Screen {
 	seen := map[string]bool{}
 	out := []*screen.Screen{}
 
+	// The bound is on the PACKET, not on each read: two bounded reads unioned
+	// are twice the bound, which is how a cap quietly stops being one.
 	add := func(rows []*screen.Screen) {
 		for _, s := range rows {
+			if len(out) >= packet {
+				return
+			}
 			if seen[s.Id()] {
 				continue
 			}
@@ -191,15 +214,13 @@ func screensFor(db *datastore.Datastore, d *dispute.Dispute, charge *evidenceCha
 		}
 	}
 
+	// The judgement that named this exact charge comes FIRST, so the one row a
+	// defence cannot do without is never the row the bound drops.
 	if d.PaymentIntentId != "" {
-		for _, s := range screen.For(db, "", "", 0) {
-			if s.Reference == d.PaymentIntentId {
-				add([]*screen.Screen{s})
-			}
-		}
+		add(screen.ByReference(db, d.PaymentIntentId, packet))
 	}
 	if charge != nil && charge.Customer != "" {
-		add(screen.For(db, KindCustomer, charge.Customer, 0))
+		add(screen.For(db, KindCustomer, charge.Customer, packet))
 	}
 	return out
 }

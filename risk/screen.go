@@ -4,7 +4,12 @@ package risk
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -17,6 +22,15 @@ import (
 // happen. It is a distinct error so a caller can render a clean refusal instead
 // of a gateway failure — a refused move is a decision, not a fault.
 var ErrRefused = errors.New("risk: the move is refused")
+
+// ErrReused refuses an idempotency key that names a different move than the one
+// it first named.
+//
+// A key is the name of ONE question. Answering a second, different question
+// with the first question's answer is how a caller screens a one-cent move and
+// spends the verdict on ten thousand dollars — so the second question is
+// refused outright rather than answered, and no money moves on it at all.
+var ErrReused = errors.New("risk: this idempotency key already names a different move")
 
 // Screener screens money moves for ONE org. The datastore it holds is already
 // namespaced to that org, which IS the tenant boundary: a Screener cannot read
@@ -63,14 +77,47 @@ func (s *Screener) plane() Client {
 	return Of()
 }
 
+// digest fingerprints the move: everything that makes it THIS move and nothing
+// that makes it this ATTEMPT. The idempotency key is deliberately not part of
+// it — the digest is what the key is checked against.
+func (m Move) digest() string {
+	h := sha256.New()
+	write := func(parts ...string) {
+		for _, p := range parts {
+			h.Write([]byte(p))
+			h.Write([]byte{0})
+		}
+	}
+	write(string(m.Stage), m.Subject.Kind, m.Subject.ID,
+		strconv.FormatInt(int64(m.Amount), 10), strings.ToLower(string(m.Currency)),
+		strconv.FormatBool(m.Out), m.Reference, m.Processor)
+
+	keys := make([]string, 0, len(m.Signals))
+	for k := range m.Signals {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		write(k, m.Signals[k])
+	}
+	return hex.EncodeToString(h.Sum(nil)[:16])
+}
+
 // Screen judges one move and RECORDS the judgement before returning it. The
 // record is written first for the same reason a ledger entry is: an answer the
 // money plane acted on and did not keep is an answer that cannot be defended in
 // a dispute.
 //
-// Order is deliberate. The CONTROLS are read first and from the org's own
-// store, so a scoring outage can never lift a reserve. A move the controls
-// already stop is not sent for scoring at all — spending the authorization
+// ORDER IS THE WHOLE DESIGN, and it is this:
+//
+//	controls  →  idempotency  →  scoring  →  record
+//
+// The CONTROLS are read first, every time, from the org's own store — so a
+// scoring outage can never lift a reserve, AND NEITHER CAN A REPLAY. An
+// idempotency key makes the SCORE idempotent (one question, one verdict, one
+// charge) and it is applied AFTER the controls precisely so that it can never
+// hand back a verdict the controls have since overtaken. A move the controls
+// already stop is not sent for scoring at all: spending the authorization
 // budget on advice that cannot change the outcome is exactly the latency an
 // attacker hammering a blocked merchant wants to buy.
 func (s *Screener) Screen(ctx context.Context, m Move) (*screen.Screen, error) {
@@ -80,17 +127,33 @@ func (s *Screener) Screen(ctx context.Context, m Move) (*screen.Screen, error) {
 	if m.Amount < 0 {
 		return nil, errors.New("risk: amount is negative")
 	}
+	stated, err := Facts(m.Signals)
+	if err != nil {
+		return nil, err
+	}
+	m.Signals = stated
 	now := s.now()
 
-	if prior, ok := screen.ByIdem(s.DB, m.Idem); ok {
-		return prior, nil
-	}
-
+	// 1. THE CONTROLS. Durable rows in this org's own store, read with no
+	//    network in the path and nothing cached in front of them.
 	live, err := control.LiveFor(s.DB, m.Subject.Kind, m.Subject.ID, now)
 	if err != nil {
 		return nil, err
 	}
-	restraint := Restrain(live, m.Amount, m.Out, now)
+	held, err := s.settle(live, m.Subject, m.Currency, now)
+	if err != nil {
+		return nil, err
+	}
+	restraint := Restrain(live, m.Amount, m.Out, now, held)
+
+	// 2. IDEMPOTENCY, against the controls just read. A repeat gets the first
+	//    answer re-asserted — never a laxer one, and never another move's.
+	if prior, ok := screen.ByIdem(s.DB, m.Idem); ok {
+		if prior.Digest != "" && prior.Digest != m.digest() {
+			return nil, ErrReused
+		}
+		return s.reassert(prior, restraint)
+	}
 
 	rec := screen.New(s.DB)
 	rec.Stage = string(m.Stage)
@@ -102,6 +165,7 @@ func (s *Screener) Screen(ctx context.Context, m Move) (*screen.Screen, error) {
 	rec.Reference = m.Reference
 	rec.Processor = m.Processor
 	rec.Idem = m.Idem
+	rec.Digest = m.digest()
 	rec.Held = int64(restraint.Held)
 	rec.Allowed = int64(restraint.Allowed)
 	rec.Reason = restraint.Reason
@@ -109,14 +173,16 @@ func (s *Screener) Screen(ctx context.Context, m Move) (*screen.Screen, error) {
 	if len(restraint.Controls) > 0 {
 		rec.Detail["controls"] = restraint.Controls
 	}
+	if restraint.Reserve != "" {
+		rec.Detail["reserve"] = restraint.Reserve
+	}
 	if len(m.Signals) > 0 {
 		rec.Detail["signals"] = m.Signals
 	}
 
-	action := Allow
-	if restraint.Blocked {
-		action = Block
-	} else {
+	// 3. SCORING, only when the controls left something to decide.
+	action := restraint.Action()
+	if !restraint.Blocked {
 		ask := &Ask{Stage: m.Stage, Subject: m.Subject, Signals: m.Signals, Idem: m.Idem}
 		if m.Amount > 0 || m.Currency != "" {
 			ask.Amount = &Money{Cents: m.Amount, Currency: m.Currency, Out: m.Out}
@@ -154,10 +220,60 @@ func (s *Screener) Screen(ctx context.Context, m Move) (*screen.Screen, error) {
 		rec.Held = int64(m.Amount)
 	}
 
+	// 4. THE RECORD.
 	if err := rec.Create(); err != nil {
 		return nil, err
 	}
 	return rec, nil
+}
+
+// reassert answers a repeat with the first answer, tightened by the controls in
+// force NOW.
+//
+// Composition is [Strictest], which makes the repeat safe from both sides. A
+// block placed since the first answer TIGHTENS the repeat, so a cached verdict
+// can never release money the org has since stopped. A block LIFTED since the
+// first answer does not loosen it, because the answer to one question does not
+// change under the caller — that is what an idempotency key promises.
+//
+// The row is rewritten only when the effective answer actually moved, so a
+// retry storm against an unchanged posture is pure reads. What is rewritten is
+// the ENFORCEMENT — the action and the split. The provenance of the original
+// judgement (its score, its decision id, its refusal) is left exactly as it
+// was: that is the evidence, and it did not happen twice.
+func (s *Screener) reassert(prior *screen.Screen, r Restraint) (*screen.Screen, error) {
+	action := Strictest(Action(prior.Action), r.Action())
+	held := currency.Cents(prior.Held)
+	if r.Held > held {
+		held = r.Held
+	}
+	allowed := currency.Cents(prior.Amount) - held
+	if !action.Moves() || allowed < 0 {
+		held, allowed = currency.Cents(prior.Amount), 0
+	}
+
+	if string(action) == prior.Action && int64(held) == prior.Held && int64(allowed) == prior.Allowed {
+		return prior, nil
+	}
+
+	prior.Action = string(action)
+	prior.Held = int64(held)
+	prior.Allowed = int64(allowed)
+	prior.Reasserted++
+	if r.Reason != "" {
+		prior.Reason = r.Reason
+	}
+	if prior.Detail == nil {
+		prior.Detail = map[string]any{}
+	}
+	if len(r.Controls) > 0 {
+		prior.Detail["controls"] = r.Controls
+	}
+	prior.Detail["reasserted"] = prior.Reasserted
+	if err := prior.Update(); err != nil {
+		return nil, err
+	}
+	return prior, nil
 }
 
 // Refused reports whether a screen stops the move it judged.
