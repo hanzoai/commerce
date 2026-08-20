@@ -31,10 +31,13 @@ const defaultProject = "default"
 //     be summed per scope. "" is the wildcard: empty Project AND Service = the
 //     org-wide default row; (P,"") = every service in project P; ("",S) = service
 //     S in any project.
-//   - Enforce=false (the DEFAULT — every legacy row keeps its behavior) => SOFT:
-//     the cap only warns (X-Spend-Warn), never blocks.
 //   - Enforce=true => HARD: once period spend for the scope would exceed
-//     Threshold, the metering gate returns ErrSpendCapExceeded => 402.
+//     Threshold, the metering gate returns ErrSpendCapExceeded => 402. This is what
+//     the create API writes for a caller who says nothing about enforcement — a
+//     ceiling asked for is a ceiling held.
+//   - Enforce=false => SOFT: the cap only warns (X-Spend-Warn), never blocks. It is
+//     reached only by asking for it, and rows written before enforcement became the
+//     create default keep it: the default applies to new rows, never to stored ones.
 //   - RateLimitRpm>0 => the cloud ScopeRateLimit middleware caps requests/min for
 //     the scope => 429.
 //
@@ -53,7 +56,9 @@ type SpendAlert struct {
 	Project string `json:"project"`
 	Service string `json:"service"`
 
-	// Enforce turns the soft alert into a HARD cap (default false = soft/warn only).
+	// Enforce turns the soft alert into a HARD cap. The field's zero value is soft, so
+	// a row built directly in Go warns only; the create API always sets it explicitly
+	// (api/billing.CreateSpendAlert), where an unstated enforcement means a hard cap.
 	Enforce bool `json:"enforce"`
 
 	// SoftPct is the soft-warn threshold percent (1..100). 0 => DefaultSoftPct.
