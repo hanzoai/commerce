@@ -1,6 +1,8 @@
 package billing
 
 import (
+	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -11,6 +13,8 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/billinginvoice"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -65,10 +69,53 @@ func CreateInvoice(c *zip.Ctx) error {
 	return c.JSON(201, invoiceResponse(inv))
 }
 
-// ListInvoices lists billing invoices, optionally filtered by userId and status.
+// ListInvoices is the org's billing invoices, filtered — the QUERY, with no HTTP
+// in it.
+//
+// It takes values rather than a request so a caller that is not a request can
+// ask: the same list is read over the internal plane by a peer process that
+// keeps no invoice store, and re-deriving this query there would be a second
+// implementation of one question. Two invoice filters is how a billing page and
+// a dunning run come to disagree about what is owed.
+//
+// Empty userID, status or subscriptionID means "do not filter on it", which is
+// what an absent query parameter has always meant here.
+//
+// The rows come back as the same view the HTTP doors render, so a peer reads the
+// fields it already knows. The ENVELOPE around them is each door's own; putting
+// it here would make every future caller inherit one door's shape.
+func ListInvoices(ctx context.Context, org *organization.Organization, userID, status, subscriptionID string) ([]Invoice, error) {
+	if org == nil {
+		return nil, fmt.Errorf("invoices: %w", errNoOrg)
+	}
+	db := datastore.New(org.Namespaced(ctx))
+	q := billinginvoice.Query(db).Ancestor(db.NewKey("synckey", "", 1, nil))
+	if userID != "" {
+		q = q.Filter("UserId=", userID)
+	}
+	if status != "" {
+		q = q.Filter("Status=", status)
+	}
+	if subscriptionID != "" {
+		q = q.Filter("SubscriptionId=", subscriptionID)
+	}
+
+	invoices := make([]*billinginvoice.BillingInvoice, 0)
+	if _, err := q.GetAll(&invoices); err != nil {
+		return nil, err
+	}
+
+	items := make([]Invoice, 0, len(invoices))
+	for _, inv := range invoices {
+		items = append(items, invoiceResponse(inv))
+	}
+	return items, nil
+}
+
+// ListBillingInvoices lists billing invoices, optionally filtered by userId and status.
 //
 //	GET /v1/billing/invoices?userId=...&status=...
-func ListInvoices(c *zip.Ctx) error {
+func ListBillingInvoices(c *zip.Ctx) error {
 	// #146 class: never panic on a missing org. On the co-resident cloud embed path
 	// this read can run with no "organization" local (IAMTokenRequired no-ops with no
 	// gateway X-Org-Id) — GetOrganization would panic → 502. No org ⇒ honest empty.
@@ -76,35 +123,14 @@ func ListInvoices(c *zip.Ctx) error {
 	if !ok || org == nil {
 		return c.JSON(200, map[string]any{"invoices": []map[string]any{}, "count": 0})
 	}
-	db := datastore.New(org.Namespaced(c.Context()))
 
-	rootKey := db.NewKey("synckey", "", 1, nil)
-	invoices := make([]*billinginvoice.BillingInvoice, 0)
-	q := billinginvoice.Query(db).Ancestor(rootKey)
-
-	userId := strings.TrimSpace(c.Query("userId"))
-	if userId != "" {
-		q = q.Filter("UserId=", userId)
-	}
-
-	status := strings.TrimSpace(c.Query("status"))
-	if status != "" {
-		q = q.Filter("Status=", status)
-	}
-
-	subId := strings.TrimSpace(c.Query("subscriptionId"))
-	if subId != "" {
-		q = q.Filter("SubscriptionId=", subId)
-	}
-
-	if _, err := q.GetAll(&invoices); err != nil {
+	items, err := ListInvoices(c.Context(), org,
+		strings.TrimSpace(c.Query("userId")),
+		strings.TrimSpace(c.Query("status")),
+		strings.TrimSpace(c.Query("subscriptionId")))
+	if err != nil {
 		log.Error("Failed to list invoices: %v", err, c)
 		return http.Fail(c, 500, "failed to list invoices", err)
-	}
-
-	items := make([]map[string]any, 0, len(invoices))
-	for _, inv := range invoices {
-		items = append(items, invoiceResponse(inv))
 	}
 
 	return c.JSON(200, map[string]any{
@@ -230,40 +256,81 @@ func BurnCreditsPreview(db *datastore.Datastore, userId string, amount int64) (i
 	return remaining, nil
 }
 
-func invoiceResponse(inv *billinginvoice.BillingInvoice) map[string]any {
-	resp := map[string]any{
-		"id":             inv.Id(),
-		"userId":         inv.UserId,
-		"customerEmail":  inv.CustomerEmail,
-		"subscriptionId": inv.SubscriptionId,
-		"periodStart":    inv.PeriodStart,
-		"periodEnd":      inv.PeriodEnd,
-		"subtotal":       inv.Subtotal,
-		"tax":            inv.Tax,
-		"discount":       inv.Discount,
-		"creditApplied":  inv.CreditApplied,
-		"amountDue":      inv.AmountDue,
-		"amountPaid":     inv.AmountPaid,
-		"currency":       inv.Currency,
-		"status":         inv.Status,
-		"paymentMethod":  inv.PaymentMethod,
-		"paymentRef":     inv.PaymentRef,
-		"number":         inv.Number,
-		"numberStr":      inv.NumberStr,
-		"attemptCount":   inv.AttemptCount,
-		"lineItems":      inv.LineItems,
-		"createdAt":      inv.CreatedAt,
-		"updatedAt":      inv.UpdatedAt,
+// Invoice is a billing invoice as every invoice door has answered with it —
+// InvoiceView's facts plus the ones only the doors carry (the period, the tax
+// and discount lines, the dunning attempt count).
+//
+// The three lifecycle timestamps are pointers: each key has always been emitted
+// only once its moment has happened, and a due date of the zero time is a
+// different claim from an invoice that is not yet due.
+type Invoice struct {
+	ID             string                    `json:"id"`
+	UserID         string                    `json:"userId"`
+	CustomerEmail  string                    `json:"customerEmail"`
+	SubscriptionID string                    `json:"subscriptionId"`
+	PeriodStart    time.Time                 `json:"periodStart"`
+	PeriodEnd      time.Time                 `json:"periodEnd"`
+	Subtotal       int64                     `json:"subtotal"`
+	Tax            int64                     `json:"tax"`
+	Discount       int64                     `json:"discount"`
+	CreditApplied  int64                     `json:"creditApplied"`
+	AmountDue      int64                     `json:"amountDue"`
+	AmountPaid     int64                     `json:"amountPaid"`
+	Currency       currency.Type             `json:"currency"`
+	Status         billinginvoice.Status     `json:"status"`
+	PaymentMethod  string                    `json:"paymentMethod"`
+	PaymentRef     string                    `json:"paymentRef"`
+	Number         int                       `json:"number"`
+	NumberStr      string                    `json:"numberStr"`
+	AttemptCount   int                       `json:"attemptCount"`
+	LineItems      []billinginvoice.LineItem `json:"lineItems"`
+	CreatedAt      time.Time                 `json:"createdAt"`
+	UpdatedAt      time.Time                 `json:"updatedAt"`
+	DueDate        *time.Time                `json:"dueDate,omitempty"`
+	PaidAt         *time.Time                `json:"paidAt,omitempty"`
+	VoidedAt       *time.Time                `json:"voidedAt,omitempty"`
+}
+
+// invoiceResponse projects the model onto that view. It stays the ONE projection
+// the doors share, now typed, so the list a peer reads and the body a browser
+// reads cannot drift into describing one invoice two ways.
+func invoiceResponse(inv *billinginvoice.BillingInvoice) Invoice {
+	resp := Invoice{
+		ID:             inv.Id(),
+		UserID:         inv.UserId,
+		CustomerEmail:  inv.CustomerEmail,
+		SubscriptionID: inv.SubscriptionId,
+		PeriodStart:    inv.PeriodStart,
+		PeriodEnd:      inv.PeriodEnd,
+		Subtotal:       inv.Subtotal,
+		Tax:            inv.Tax,
+		Discount:       inv.Discount,
+		CreditApplied:  inv.CreditApplied,
+		AmountDue:      inv.AmountDue,
+		AmountPaid:     inv.AmountPaid,
+		Currency:       inv.Currency,
+		Status:         inv.Status,
+		PaymentMethod:  inv.PaymentMethod,
+		PaymentRef:     inv.PaymentRef,
+		Number:         inv.Number,
+		NumberStr:      inv.NumberStr,
+		AttemptCount:   inv.AttemptCount,
+		LineItems:      inv.LineItems,
+		CreatedAt:      inv.CreatedAt,
+		UpdatedAt:      inv.UpdatedAt,
 	}
 
 	if !inv.DueDate.IsZero() {
-		resp["dueDate"] = inv.DueDate
+		due := inv.DueDate
+		resp.DueDate = &due
 	}
 	if !inv.PaidAt.IsZero() {
-		resp["paidAt"] = inv.PaidAt
+		paid := inv.PaidAt
+		resp.PaidAt = &paid
 	}
 	if !inv.VoidedAt.IsZero() {
-		resp["voidedAt"] = inv.VoidedAt
+		voided := inv.VoidedAt
+		resp.VoidedAt = &voided
 	}
 
 	return resp
