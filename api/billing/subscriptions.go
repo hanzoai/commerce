@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -479,6 +480,40 @@ func billingSubscription(db *datastore.Datastore, subject string) *subscription.
 	return nil
 }
 
+// ListSubscriptions is the org's subscriptions, filtered — the QUERY, with no
+// HTTP in it.
+//
+// It takes values rather than a request so a caller that is not a request can
+// ask: the same list is read over the internal plane by a peer process that
+// holds no ledger of its own, and re-deriving this query there would be a second
+// implementation of one question. Two copies of a subscription filter is how a
+// billing page and a plan gate come to disagree about who is subscribed.
+//
+// Empty userID or status means "do not filter on it", which is what an absent
+// query parameter has always meant here.
+//
+// It returns the ROWS, not a rendered view: the HTTP handler builds its own
+// envelope from these, and a peer builds its own. Returning the envelope would
+// put a renderer next to the datastore and make every future caller inherit it.
+func ListSubscriptions(ctx context.Context, org *organization.Organization, userID, status string) ([]*subscription.Subscription, error) {
+	if org == nil {
+		return nil, errors.New("subscriptions: no organization")
+	}
+	db := datastore.New(org.Namespaced(ctx))
+	q := subscription.Query(db).Ancestor(db.NewKey("synckey", "", 1, nil))
+	if userID != "" {
+		q = q.Filter("UserId=", userID)
+	}
+	if status != "" {
+		q = q.Filter("Status=", status)
+	}
+	subs := make([]*subscription.Subscription, 0)
+	if _, err := q.GetAll(&subs); err != nil {
+		return nil, err
+	}
+	return subs, nil
+}
+
 // ListBillingSubscriptions lists subscriptions for a user.
 //
 //	GET /v1/billing/subscriptions?userId=...
@@ -489,23 +524,8 @@ func ListBillingSubscriptions(c *zip.Ctx) error {
 	if !ok || org == nil {
 		return c.JSON(200, map[string]any{"subscriptions": []map[string]any{}, "count": 0})
 	}
-	db := datastore.New(org.Namespaced(c.Context()))
-
-	rootKey := db.NewKey("synckey", "", 1, nil)
-	subs := make([]*subscription.Subscription, 0)
-	q := subscription.Query(db).Ancestor(rootKey)
-
-	userId := strings.TrimSpace(c.Query("userId"))
-	if userId != "" {
-		q = q.Filter("UserId=", userId)
-	}
-
-	status := strings.TrimSpace(c.Query("status"))
-	if status != "" {
-		q = q.Filter("Status=", status)
-	}
-
-	if _, err := q.GetAll(&subs); err != nil {
+	subs, err := ListSubscriptions(c.Context(), org, strings.TrimSpace(c.Query("userId")), strings.TrimSpace(c.Query("status")))
+	if err != nil {
 		log.Error("Failed to list subscriptions: %v", err, c)
 		return http.Fail(c, 500, "failed to list subscriptions", err)
 	}
