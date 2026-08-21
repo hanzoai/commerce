@@ -248,6 +248,39 @@ type saleOutcome struct {
 	Replayed json.RawMessage `json:"replayed,omitempty"`
 }
 
+// Sold is what a sale answered with, and it keeps the two shapes APART.
+//
+// A sale has two: a fresh receipt, and the sealed body of an identical earlier
+// one replayed verbatim. A caller has to tell them apart — the door answers 201
+// for the first and 200 for the second, and a retry that got 201 would read as a
+// second subscription having been opened. Exactly one field is ever set.
+type Sold struct {
+	// Sale is the receipt for a fresh sale. Nil on a replay.
+	Sale *Sale `json:"sale,omitempty"`
+	// Replayed is the sealed body of the earlier sale, VERBATIM — the bytes the
+	// first answer was, not a second rendering of them.
+	Replayed json.RawMessage `json:"replayed,omitempty"`
+}
+
+// SubscribeCard is Subscribe with the two answers kept apart, and with the
+// sale's own analytics fired from the context rather than from a request.
+//
+// It exists because Subscribe flattens a replay into a receipt, which is right
+// for a caller that only wants to know what was bought and wrong for a DOOR,
+// which owes the status and the events. A peer serving this address needs both,
+// so both are answered here rather than re-derived on the other side.
+func SubscribeCard(ctx context.Context, org *organization.Organization, in SubscribeIn) (*Sold, error) {
+	out, err := subscribe(ctx, org, in)
+	if err != nil {
+		return nil, err
+	}
+	if len(out.Replayed) > 0 {
+		return &Sold{Replayed: out.Replayed}, nil
+	}
+	emitSale(ctx, in.Events, org.Name, out.Sub, out.Inv)
+	return &Sold{Sale: out.Sale}, nil
+}
+
 // Subscribe vaults or reuses a card, charges it for the plan's FIRST period at
 // the SERVER-AUTHORITATIVE catalog price, and opens the subscription — one act,
 // all of it server-side.
