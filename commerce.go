@@ -1362,7 +1362,7 @@ func getEnv(key, defaultVal string) string {
 // forwardedHostMiddleware lifts the X-Forwarded-Host header into
 // req.Host so downstream org resolution sees the original customer
 // hostname (e.g. world.hanzo.ai) instead of the ingress hostname
-// (e.g. commerce-api.hanzo.ai). Org resolution is exact-match, so a
+// (e.g. commerce.hanzo.ai). Org resolution is exact-match, so a
 // spoofed header still must point at an existing org row to do
 // anything — there is no probe oracle. Empty header is a no-op.
 func forwardedHostMiddleware() zip.Handler {

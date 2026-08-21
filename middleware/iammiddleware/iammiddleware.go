@@ -126,8 +126,8 @@ func Init(cfg *auth.IAMConfig) error {
 //
 // Returns the client built by Init from the IAM config, or nil when IAM
 // is disabled / misconfigured (fail-closed at the call site). This is the
-// non-gateway entry point hook: commerce-api.hanzo.ai is exposed directly
-// (not behind hanzoai/gateway), so its edge surfaces verify the JWT here.
+// non-gateway entry point hook: commerce is exposed directly, not behind
+// hanzoai/gateway, so its edge surfaces verify the JWT here.
 func Client() *auth.IAMClient {
 	mu.RLock()
 	defer mu.RUnlock()
