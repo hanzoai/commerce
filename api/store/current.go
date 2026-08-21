@@ -10,7 +10,6 @@ import (
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
-	"github.com/hanzoai/commerce/models/store"
 )
 
 // getCurrent returns the authenticated org's default store. It resolves the store
@@ -28,13 +27,10 @@ func getCurrent(c *zip.Ctx) error {
 		return c.JSON(http.StatusOK, defaultStorePayload())
 	}
 
-	// Resolve the caller org's OWN store — the SAME per-org namespace the write path
-	// (listing.go orgNamespacedDB, rest.newEntity) persists into.
-	db := datastore.NewNamespaced(org.Namespaced(c.Context()))
-
 	// A selected store is explicit. Resolve it only inside this org's namespace;
 	// a foreign id therefore cannot cross the tenant boundary.
 	if c.Header("X-Store-Id") != "" {
+		db := datastore.NewNamespaced(org.Namespaced(c.Context()))
 		s, err := resolveStore(c, db)
 		if err != nil || s == nil {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "store not found"})
@@ -42,16 +38,10 @@ func getCurrent(c *zip.Ctx) error {
 		return c.JSON(http.StatusOK, map[string]any{"store": s})
 	}
 
-	// Return the org's existing store if it already has one (any slug).
-	var stores []store.Store
-	if _, err := store.New(db).Query().All().Limit(1).GetAll(&stores); err == nil && len(stores) > 0 {
-		return c.JSON(http.StatusOK, map[string]any{"store": stores[0]})
-	}
-
-	// First authenticated visit for an org with no store yet: lazily provision the
-	// canonical default store (idempotent, org-scoped, no payment creds) so the
-	// storefront edge resolves a REAL store id instead of the phantom "default".
-	s, err := store.EnsureDefault(db)
+	// The org's own store, resolved-or-provisioned by the one core the plane op
+	// also asks. A failure here keeps the minimal fallback: the dashboard still
+	// renders, exactly as it did before.
+	s, err := Current(c.Context(), org)
 	if err != nil {
 		return c.JSON(http.StatusOK, defaultStorePayload())
 	}

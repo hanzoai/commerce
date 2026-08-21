@@ -20,6 +20,23 @@ const httpTimeout = 8 * time.Second
 // The ledger aggregate is computed once and shared: OpenAI's estimate fallback and
 // the Anthropic/Fireworks/DO-AI estimates all read from it, so the metering source
 // is walked a single time.
+// Report is the per-vendor COGS breakdown for a period — the QUERY, with no HTTP
+// in it.
+//
+// It exists so a caller that is not a request can ask: the admin cockpit reads
+// this god-view from a process that holds none of these books, and it used to do
+// it by re-entering commerce's own /v1/costs door. Re-deriving the walk on that
+// side would be a second implementation of one question, and two answers to
+// "what did we pay our vendors" is a worse failure than no answer.
+//
+// It returns the report only. The ledger aggregate buildReport also computes is
+// how margin is kept DRY with cost inside this package; it is not a fact a cost
+// reader asked for, and sending it would make every caller inherit it.
+func Report(ctx context.Context, isTest bool, period string) CostReport {
+	report, _ := buildReport(ctx, isTest, period)
+	return report
+}
+
 func buildReport(ctx context.Context, isTest bool, p string) (CostReport, ledgerUsage) {
 	client := &http.Client{Timeout: httpTimeout}
 	ledger := aggregateLedger(ctx, isTest, p)
