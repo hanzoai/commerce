@@ -35,8 +35,8 @@ import (
 // this is here to catch.
 //
 // The /healthz asymmetry is by design (HIP-0106): cloud surfaces are scoped to
-// /v1/commerce + /_/commerce so one binary can host iam, base, kms and gateway
-// side by side without root-path collisions. Probes use /_/commerce/healthz.
+// /v1/commerce so one binary can host iam, base, kms and gateway side by side
+// without root-path collisions. Probes use /v1/commerce/health.
 //
 // It asks that of REGISTERED routes. It used to ask it of /v1/commerce/tenant
 // and /v1/commerce/health, neither of which has been a route since org-as-tenant
@@ -86,8 +86,10 @@ func TestMount_EquivalentToStandalone(t *testing.T) {
 		// The public catalog projection, same handler both modes.
 		{name: "catalog", path: "/v1/commerce/catalog", host: "pay.example.test", body: true},
 		// Nothing registers this. Both must still MISS — a path that resolves in
-		// one mode and not the other is the drift worth catching.
-		{name: "unregistered", path: "/v1/commerce/health", host: "pay.example.test"},
+		// one mode and not the other is the drift worth catching. It used to be
+		// /v1/commerce/health, which Mount now registers as the scoped probe, so
+		// the case was measuring the probe rather than a miss.
+		{name: "unregistered", path: "/v1/commerce/nonesuch", host: "pay.example.test"},
 	}
 
 	for _, tc := range cases {
@@ -127,12 +129,12 @@ func TestMount_ServesScopedHealthz(t *testing.T) {
 	if err := Mount(zapp, t.TempDir(), luxlog.New("test")); err != nil {
 		t.Fatalf("Mount: %v", err)
 	}
-	resp, err := zapp.Test(httptest.NewRequest(http.MethodGet, "/_/commerce/healthz", nil))
+	resp, err := zapp.Test(httptest.NewRequest(http.MethodGet, "/v1/commerce/health", nil))
 	if err != nil {
 		t.Fatalf("Fiber Test: %v", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("/_/commerce/healthz = %d, want 200", resp.StatusCode)
+		t.Fatalf("/v1/commerce/health = %d, want 200", resp.StatusCode)
 	}
 	body, _ := io.ReadAll(resp.Body)
 	if !bytes.Contains(body, []byte(`"service":"commerce"`)) {

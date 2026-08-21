@@ -1203,18 +1203,26 @@ func (app *App) setupRoutes() {
 	// signature and settles the payment — the address registered in the Square
 	// dashboard.
 
-	// Operator surface under /_ (the ingress blocks it publicly), IAM-gated.
-	// The registry CRUD that once lived here is gone — the IAM org is the
-	// org. What remains is read-only runtime state.
+	// The tenant's own admin read, under commerce's root. The registry CRUD that
+	// once lived beside it is gone — the IAM org is the org — so what remains is
+	// read-only runtime state.
+	//
+	// It answers on the `api` group rather than a second one at /_: an address
+	// outside /v1 is one no generated client, tool list or CLI can name, and the
+	// audience never justified it — a superadmin read is still a read of this
+	// capability. The group already carries the chain this needs (IAMTokenRequired
+	// when IAM is on, which is what populates the claims below), and a second
+	// group at one prefix would run that chain twice per request.
+	//
+	// The ingress used to be the gate. It is not one now and never was a good
+	// one: DepositWatcherStatus refuses anonymously (401) and refuses a
+	// non-superadmin (403) on its own, so the answer does not depend on which
+	// door the request came through.
 	if app.CommerceStore != nil {
-		adminGroup := app.Router.Group("/_/commerce")
-		if app.config.IAM.Enabled {
-			adminGroup.Use(iammiddleware.IAMTokenRequired())
-		}
 		// The crypto deposit rail's runtime state. Read-only and superadmin
 		// only — see api/billing.DepositWatcherStatus for why arming an asset
 		// stays a CRYPTO_DEPOSIT_* act and never a button.
-		adminGroup.Get("/deposits", billingPkg.DepositWatcherStatus)
+		api.Get("/deposits", billingPkg.DepositWatcherStatus)
 	}
 
 	// SPA fallback — the least-specific catch-all; standalone only. A host

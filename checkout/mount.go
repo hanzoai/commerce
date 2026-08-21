@@ -1,28 +1,7 @@
-// Package checkout mounts the hosted multi-org checkout into the
-// commerce router. Public paths live under /v1/commerce/*; admin paths
-// live under /_/commerce/*; the Vite SPA is the least-specific catch-all.
-//
-// Path convention (canonical, per platform rules):
-//
-//	GET  /v1/commerce/org                 public org config (branding)
-//	POST /v1/commerce/deposits               create intent → proxy to org BD
-//	POST /v1/commerce/deposits/:id/confirm   submit provider token
-//	GET  /v1/commerce/deposits/:id/status    poll settlement
-//	POST /v1/commerce/webhooks/:provider     provider-hosted webhook intake
-//
-//	GET    /_/commerce/providers                       list (redacted)
-//	POST   /_/commerce/providers/:name/enable          toggle enabled=true
-//	POST   /_/commerce/providers/:name/disable         toggle enabled=false
-//	POST   /_/commerce/providers/:name/credentials     stream creds → KMS
-//	DELETE /_/commerce/providers/:name/credentials     clear KMS version
-//	POST   /_/commerce/providers/:name/test            sandbox $0.01 charge
-//	GET    /_/commerce/methods                         derived live methods
-//	POST   /_/commerce/methods/:method/configure       per-method config
-//	GET    /_/commerce/idv                             IDV provider + config
-//	PUT    /_/commerce/idv                             set IDV provider
-//	GET    /_/commerce/iam                             IAM app config
-//	PUT    /_/commerce/iam                             set IAM app config
-//	GET    /_/commerce/audit                           admin action audit log
+// Package checkout mounts the hosted multi-org checkout into the commerce
+// router. Every route it contributes lives under /v1/commerce — the public org
+// config a storefront reads before anyone signs in (GET /v1/commerce/org) — and
+// the Vite SPA is the least-specific catch-all behind them.
 package checkout
 
 import (
@@ -71,10 +50,9 @@ func isAPIPath(path string) bool {
 // apiPrefixes enumerates path prefixes owned by the Go API surface.
 // /admin/ is the embedded Next.js admin SPA served by the commerce
 // binary itself and its deep-links must never fall through to the
-// checkout SPA. /_/commerce/ is org admin (new). /v1/commerce/ is
-// the canonical public API surface.
+// checkout SPA. /v1/ is every API route commerce answers, the tenant's
+// own admin reads included — there is no second root.
 var apiPrefixes = []string{
 	"/v1/",
-	"/_/",
 	"/admin/",
 }
