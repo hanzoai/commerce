@@ -64,8 +64,8 @@ func installEventsLocal(app *App) {
 // require=true, 401s a request carrying NO identity. It is mounted AFTER
 // setupRoutes — DELIBERATELY: that preserves the long-standing exemption of the
 // probe + public routes registered there (notably /healthz, which k8s
-// liveness/readiness probes hit unauthenticated, and /v1/commerce, /_/commerce
-// which carry their own IAMTokenRequired/handler auth). It covers the admin SPA
+// liveness/readiness probes hit unauthenticated, and /v1/commerce, which
+// carries its own IAMTokenRequired/handler auth). It covers the admin SPA
 // and the post-Bootstrap /v1 api.Route() bundle, exactly as before. require is
 // off by default and MUST stay off wherever the service-token money path runs
 // (it has no X-Org-Id) — see Config.RequireIdentity. EdgeAuth (installed before
