@@ -1,11 +1,17 @@
 package billing
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
+	"time"
+
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/payout"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json/http"
@@ -18,6 +24,29 @@ type createPayoutRequest struct {
 	DestinationId   string                 `json:"destinationId"`
 	Description     string                 `json:"description,omitempty"`
 	Metadata        map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// Payout is one outbound transfer as this surface reports it. The fields a
+// payout does not always have are pointers, because that is where the emission
+// rule lives: an arrival date exists only once the money lands, and a failure
+// message travels with its code even when the provider sent no words with it.
+type Payout struct {
+	Id              string        `json:"id"`
+	Amount          int64         `json:"amount"` // cents
+	Currency        currency.Type `json:"currency"`
+	Status          payout.Status `json:"status"`
+	DestinationType string        `json:"destinationType"`
+	DestinationId   string        `json:"destinationId"`
+	Created         time.Time     `json:"created"`
+	Description     string        `json:"description,omitempty"`
+	ArrivalDate     *time.Time    `json:"arrivalDate,omitempty"`
+	ProviderRef     string        `json:"providerRef,omitempty"`
+	FailureCode     string        `json:"failureCode,omitempty"`
+	FailureMessage  *string       `json:"failureMessage,omitempty"`
+	// Metadata is whatever the creator attached, carried as the bytes it
+	// arrived as. Raw JSON is the one free-form shape that also crosses the
+	// internal plane, where a map has no type.
+	Metadata json.RawMessage `json:"metadata,omitempty"`
 }
 
 // CreatePayout creates a new outbound payout.
@@ -74,20 +103,23 @@ func GetPayout(c *zip.Ctx) error {
 	return c.JSON(200, payoutResponse(p))
 }
 
-// ListPayouts lists payouts.
+// ListPayouts is the org's payouts, newest first — the QUERY, with no HTTP in
+// it.
 //
-//	GET /v1/billing/payouts
-func ListPayouts(c *zip.Ctx) error {
-	// #146 class: never panic on a missing org (co-resident embed path — see ListInvoices).
-	// No org ⇒ honest empty list.
-	org, ok := middleware.GetOrganizationOK(c)
-	if !ok || org == nil {
-		return c.JSON(200, []map[string]interface{}{})
+// It takes values rather than a request so a caller that is not a request can
+// ask: a peer process holding no datastore reads the same list over the
+// internal plane, and re-deriving the query there would be a second
+// implementation of one question. Two copies of "what has this org paid out" is
+// how a treasury view and a payout page come to disagree about money that has
+// already left.
+func ListPayouts(ctx context.Context, org *organization.Organization) ([]Payout, error) {
+	if org == nil {
+		return nil, errors.New("payouts: no organization")
 	}
-	db := datastore.New(org.Namespaced(c.Context()))
+	db := datastore.New(org.Namespaced(ctx))
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
-	payouts := make([]*payout.Payout, 0)
+	payouts := make([]Payout, 0)
 	iter := payout.Query(db).Ancestor(rootKey).Order("-Created").Run()
 
 	for {
@@ -95,14 +127,29 @@ func ListPayouts(c *zip.Ctx) error {
 		if _, err := iter.Next(p); err != nil {
 			break
 		}
-		payouts = append(payouts, p)
+		payouts = append(payouts, payoutResponse(p))
+	}
+	return payouts, nil
+}
+
+// ListBillingPayouts lists payouts.
+//
+//	GET /v1/billing/payouts
+func ListBillingPayouts(c *zip.Ctx) error {
+	// #146 class: never panic on a missing org (co-resident embed path — see ListInvoices).
+	// No org ⇒ honest empty list.
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		return c.JSON(200, []Payout{})
 	}
 
-	results := make([]map[string]interface{}, len(payouts))
-	for i, p := range payouts {
-		results[i] = payoutResponse(p)
+	payouts, err := ListPayouts(c.Context(), org)
+	if err != nil {
+		log.Error("Failed to list payouts: %v", err, c)
+		return http.Fail(c, 500, "failed to list payouts", err)
 	}
-	return c.JSON(200, results)
+
+	return c.JSON(200, payouts)
 }
 
 // CancelPayout cancels a pending payout.
@@ -129,31 +176,36 @@ func CancelPayout(c *zip.Ctx) error {
 	return c.JSON(200, payoutResponse(p))
 }
 
-func payoutResponse(p *payout.Payout) map[string]interface{} {
-	resp := map[string]interface{}{
-		"id":              p.Id(),
-		"amount":          p.Amount,
-		"currency":        p.Currency,
-		"status":          p.Status,
-		"destinationType": p.DestinationType,
-		"destinationId":   p.DestinationId,
-		"created":         p.Created,
-	}
-	if p.Description != "" {
-		resp["description"] = p.Description
+func payoutResponse(p *payout.Payout) Payout {
+	v := Payout{
+		Id:              p.Id(),
+		Amount:          p.Amount,
+		Currency:        p.Currency,
+		Status:          p.Status,
+		DestinationType: p.DestinationType,
+		DestinationId:   p.DestinationId,
+		// The row's creation time. p.Created is the mixin's persisted-yet
+		// predicate — a func, which no encoder can render — so the time comes
+		// from the accessor.
+		Created:     p.GetCreatedAt(),
+		Description: p.Description,
+		ProviderRef: p.ProviderRef,
+		FailureCode: p.FailureCode,
 	}
 	if !p.ArrivalDate.IsZero() {
-		resp["arrivalDate"] = p.ArrivalDate
-	}
-	if p.ProviderRef != "" {
-		resp["providerRef"] = p.ProviderRef
+		arrived := p.ArrivalDate
+		v.ArrivalDate = &arrived
 	}
 	if p.FailureCode != "" {
-		resp["failureCode"] = p.FailureCode
-		resp["failureMessage"] = p.FailureMessage
+		msg := p.FailureMessage
+		v.FailureMessage = &msg
 	}
 	if p.Metadata != nil {
-		resp["metadata"] = p.Metadata
+		// Metadata reached the row as JSON, so it re-encodes; on the failure
+		// that leaves, the key is absent rather than the whole payout.
+		if b, err := json.Marshal(p.Metadata); err == nil {
+			v.Metadata = b
+		}
 	}
-	return resp
+	return v
 }

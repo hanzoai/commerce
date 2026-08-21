@@ -177,7 +177,7 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// Payouts. Creating/cancelling a payout MOVES money out — money-MINT bar
 	// (service-token / global-admin ONLY). Reads stay admin-scoped.
 	mint.Post("/payouts", CreatePayout)
-	api.Get("/payouts", ListPayouts)
+	api.Get("/payouts", ListBillingPayouts)
 	api.Get("/payouts/:id", GetPayout)
 	mint.Post("/payouts/:id/cancel", CancelPayout)
 
@@ -359,7 +359,7 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// Registered here so it lives under the CORS-enabled API group; an
 	// unregistered route hits gin NoRoute (404, no Access-Control-Allow-Origin)
 	// and the browser reports it as a CORS failure rather than an honest empty list.
-	user.Get("/transactions", ListTransactions)
+	user.Get("/transactions", ListBillingTransactions)
 
 	// Withdraw (user-initiated: move funds out of Commerce balance).
 	// Used by bot wallet funding (source=usd) to deduct from user's account.

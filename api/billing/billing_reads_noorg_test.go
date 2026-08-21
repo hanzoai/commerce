@@ -40,7 +40,7 @@ func TestBillingReads_NoOrgInContext_NoPanic(t *testing.T) {
 
 	read("invoices", "/v1/billing/invoices", ListInvoices, `"count":0`)
 	read("subscriptions", "/v1/billing/subscriptions", ListBillingSubscriptions, `"count":0`)
-	read("payouts", "/v1/billing/payouts", ListPayouts, `[]`)
+	read("payouts", "/v1/billing/payouts", ListBillingPayouts, `[]`)
 	read("payment-config", "/v1/billing/settings", GetPaymentConfig, `"provider":"square"`)
 
 	// The per-invoice PDF download is a binary GET in the SAME block; with no validated org it
