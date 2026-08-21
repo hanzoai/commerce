@@ -107,7 +107,7 @@ export class Commerce {
   // ── Balance ──────────────────────────────────────────────────────────────
 
   async getBalance(user: string, currency = 'usd', token?: string): Promise<Balance> {
-    return this.request<Balance>('/api/v1/billing/balance', {
+    return this.request<Balance>('/v1/billing/balance', {
       params: { user, currency },
       token,
     })
@@ -117,7 +117,7 @@ export class Commerce {
     params: { user: string; currency?: string; amount: number; notes?: string; tags?: string[]; expiresIn?: string },
     token?: string,
   ): Promise<CommerceTransaction> {
-    return this.request<CommerceTransaction>('/api/v1/billing/deposit', {
+    return this.request<CommerceTransaction>('/v1/billing/deposit', {
       method: 'POST',
       body: params,
       token,
@@ -125,7 +125,7 @@ export class Commerce {
   }
 
   async grantStarterCredit(user: string, token?: string): Promise<CommerceTransaction> {
-    return this.request<CommerceTransaction>('/api/v1/billing/credit', {
+    return this.request<CommerceTransaction>('/v1/billing/credit', {
       method: 'POST',
       body: { user },
       token,
@@ -139,7 +139,7 @@ export class Commerce {
     params?: { limit?: number; offset?: number; currency?: string },
     token?: string,
   ): Promise<CommerceTransaction[]> {
-    return this.request<CommerceTransaction[]>('/api/v1/billing/transactions', {
+    return this.request<CommerceTransaction[]>('/v1/billing/transactions', {
       params: {
         user,
         ...(params?.limit ? { limit: String(params.limit) } : {}),
@@ -156,7 +156,7 @@ export class Commerce {
     params: { planId: string; userId: string; paymentToken?: string },
     token?: string,
   ): Promise<CommerceSubscription> {
-    return this.request<CommerceSubscription>('/api/v1/subscribe', {
+    return this.request<CommerceSubscription>('/v1/billing/subscriptions', {
       method: 'POST',
       body: params,
       token,
@@ -165,7 +165,7 @@ export class Commerce {
 
   async getSubscription(subscriptionId: string, token?: string): Promise<CommerceSubscription | null> {
     try {
-      return await this.request<CommerceSubscription>(`/api/v1/subscribe/${subscriptionId}`, { token })
+      return await this.request<CommerceSubscription>(`/v1/billing/subscriptions/${subscriptionId}`, { token })
     } catch {
       return null
     }
@@ -173,7 +173,7 @@ export class Commerce {
 
   async getUserSubscriptions(userId: string, token?: string): Promise<CommerceSubscription[]> {
     try {
-      return await this.request<CommerceSubscription[]>('/api/v1/subscribe', {
+      return await this.request<CommerceSubscription[]>('/v1/billing/subscriptions', {
         params: { userId },
         token,
       })
@@ -183,7 +183,7 @@ export class Commerce {
   }
 
   async cancelSubscription(subscriptionId: string, token?: string): Promise<void> {
-    await this.request<void>(`/api/v1/subscribe/${subscriptionId}`, {
+    await this.request<void>(`/v1/billing/subscriptions/${subscriptionId}`, {
       method: 'DELETE',
       token,
     })
@@ -194,7 +194,7 @@ export class Commerce {
     params: { planId: string },
     token?: string,
   ): Promise<CommerceSubscription> {
-    return this.request<CommerceSubscription>(`/api/v1/subscribe/${subscriptionId}`, {
+    return this.request<CommerceSubscription>(`/v1/billing/subscriptions/${subscriptionId}`, {
       method: 'PATCH',
       body: params,
       token,
@@ -206,7 +206,7 @@ export class Commerce {
     code: string,
     token?: string,
   ): Promise<CommerceDiscountCode> {
-    return this.request<CommerceDiscountCode>(`/api/v1/subscribe/${subscriptionId}/promotion`, {
+    return this.request<CommerceDiscountCode>(`/v1/billing/subscriptions/${subscriptionId}/promotion`, {
       method: 'POST',
       body: { code },
       token,
@@ -216,12 +216,12 @@ export class Commerce {
   // ── Plans ────────────────────────────────────────────────────────────────
 
   async getPlans(token?: string): Promise<CommercePlan[]> {
-    return this.request<CommercePlan[]>('/api/v1/plan', { token })
+    return this.request<CommercePlan[]>('/v1/plans', { token })
   }
 
   async getPlan(planId: string, token?: string): Promise<CommercePlan | null> {
     try {
-      return await this.request<CommercePlan>(`/api/v1/plan/${planId}`, { token })
+      return await this.request<CommercePlan>(`/v1/plans/${planId}`, { token })
     } catch {
       return null
     }
@@ -235,7 +235,7 @@ export class Commerce {
     token?: string,
   ): Promise<CommerceInvoice[]> {
     try {
-      const res = await this.request<any>('/api/v1/billing/invoices', {
+      const res = await this.request<any>('/v1/billing/invoices', {
         params: {
           user: userId,
           ...(params?.limit ? { limit: String(params.limit) } : {}),
@@ -254,7 +254,7 @@ export class Commerce {
 
   async getPaymentMethods(userId: string, token?: string): Promise<CommercePaymentMethod[]> {
     try {
-      return await this.request<CommercePaymentMethod[]>('/api/v1/billing/methods', {
+      return await this.request<CommercePaymentMethod[]>('/v1/billing/methods', {
         params: { user: userId },
         token,
       })
@@ -267,7 +267,7 @@ export class Commerce {
     params: CommercePaymentMethod,
     token?: string,
   ): Promise<CommercePaymentMethod> {
-    return this.request<CommercePaymentMethod>('/api/v1/billing/methods', {
+    return this.request<CommercePaymentMethod>('/v1/billing/methods', {
       method: 'POST',
       body: params,
       token,
@@ -275,14 +275,14 @@ export class Commerce {
   }
 
   async removePaymentMethod(methodId: string, token?: string): Promise<void> {
-    await this.request<void>(`/api/v1/billing/methods/${methodId}`, {
+    await this.request<void>(`/v1/billing/methods/${methodId}`, {
       method: 'DELETE',
       token,
     })
   }
 
   async setDefaultPaymentMethod(methodId: string, token?: string): Promise<void> {
-    await this.request<void>(`/api/v1/billing/methods/${methodId}/default`, {
+    await this.request<void>(`/v1/billing/methods/${methodId}/default`, {
       method: 'POST',
       token,
     })
@@ -292,7 +292,7 @@ export class Commerce {
 
   async getUsage(userId: string, token?: string): Promise<CommerceUsageSummary> {
     try {
-      return await this.request<CommerceUsageSummary>('/api/v1/billing/usage', {
+      return await this.request<CommerceUsageSummary>('/v1/billing/usage', {
         params: { user: userId },
         token,
       })
@@ -305,7 +305,7 @@ export class Commerce {
 
   async getSpendAlerts(userId: string, token?: string): Promise<CommerceSpendAlert[]> {
     try {
-      return await this.request<CommerceSpendAlert[]>('/api/v1/billing/spend-alerts', {
+      return await this.request<CommerceSpendAlert[]>('/v1/billing/alerts', {
         params: { user: userId },
         token,
       })
@@ -318,7 +318,7 @@ export class Commerce {
     params: { userId: string; title: string; threshold: number; currency?: string },
     token?: string,
   ): Promise<CommerceSpendAlert> {
-    return this.request<CommerceSpendAlert>('/api/v1/billing/spend-alerts', {
+    return this.request<CommerceSpendAlert>('/v1/billing/alerts', {
       method: 'POST',
       body: params,
       token,
@@ -330,7 +330,7 @@ export class Commerce {
     params: { title?: string; threshold?: number },
     token?: string,
   ): Promise<CommerceSpendAlert> {
-    return this.request<CommerceSpendAlert>(`/api/v1/billing/spend-alerts/${alertId}`, {
+    return this.request<CommerceSpendAlert>(`/v1/billing/alerts/${alertId}`, {
       method: 'PATCH',
       body: params,
       token,
@@ -338,7 +338,7 @@ export class Commerce {
   }
 
   async deleteSpendAlert(alertId: string, token?: string): Promise<void> {
-    await this.request<void>(`/api/v1/billing/spend-alerts/${alertId}`, {
+    await this.request<void>(`/v1/billing/alerts/${alertId}`, {
       method: 'DELETE',
       token,
     })
@@ -347,7 +347,7 @@ export class Commerce {
   // ── Discount Codes ───────────────────────────────────────────────────────
 
   async validateDiscountCode(code: string, token?: string): Promise<CommerceDiscountCode> {
-    return this.request<CommerceDiscountCode>('/api/v1/billing/discount/validate', {
+    return this.request<CommerceDiscountCode>('/v1/billing/discount/validate', {
       params: { code },
       token,
     })
@@ -357,7 +357,7 @@ export class Commerce {
 
   async getCreditGrants(userId: string, token?: string): Promise<CommerceCreditGrant[]> {
     try {
-      return await this.request<CommerceCreditGrant[]>('/api/v1/billing/credits', {
+      return await this.request<CommerceCreditGrant[]>('/v1/billing/credits', {
         params: { userId },
         token,
       })
@@ -368,7 +368,7 @@ export class Commerce {
 
   async getCreditBalance(userId: string, token?: string): Promise<CommerceCreditBalance> {
     try {
-      return await this.request<CommerceCreditBalance>('/api/v1/billing/credit-balance', {
+      return await this.request<CommerceCreditBalance>('/v1/billing/credit-balance', {
         params: { userId },
         token,
       })
@@ -380,7 +380,7 @@ export class Commerce {
   // ── Portal ───────────────────────────────────────────────────────────────
 
   async getPortalOverview(customerId: string, token?: string): Promise<CommercePortalOverview> {
-    return this.request<CommercePortalOverview>('/api/v1/billing/portal/overview', {
+    return this.request<CommercePortalOverview>('/v1/billing/portal/overview', {
       params: { customerId },
       token,
     })
@@ -390,7 +390,7 @@ export class Commerce {
 
   async getMeters(token?: string): Promise<CommerceMeter[]> {
     try {
-      return await this.request<CommerceMeter[]>('/api/v1/billing/meters', { token })
+      return await this.request<CommerceMeter[]>('/v1/billing/meters', { token })
     } catch {
       return []
     }
@@ -398,7 +398,7 @@ export class Commerce {
 
   async getMeterEventsSummary(userId: string, token?: string): Promise<CommerceMeterEventsSummary> {
     try {
-      return await this.request<CommerceMeterEventsSummary>('/api/v1/billing/meter-events/summary', {
+      return await this.request<CommerceMeterEventsSummary>('/v1/billing/meter-events/summary', {
         params: { userId },
         token,
       })

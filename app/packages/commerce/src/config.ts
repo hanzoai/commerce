@@ -20,7 +20,7 @@ const hanzo: CommerceOrgConfig = {
   displayName: 'Hanzo',
   iamServerUrl: 'https://hanzo.id',
   iamClientId: 'hanzo-commerce',
-  commerceUrl: 'https://commerce-api.hanzo.ai/api',
+  commerceUrl: 'https://api.hanzo.ai',
   logo: '/logos/hanzo.svg',
   theme: {
     brand: '#fd4444',
@@ -51,7 +51,7 @@ export function isAdminUser(email: string): boolean {
 }
 
 /** Default Commerce API base URL. */
-export const DEFAULT_COMMERCE_URL = 'https://commerce-api.hanzo.ai/api'
+export const DEFAULT_COMMERCE_URL = 'https://api.hanzo.ai'
 
 /** Default IAM server URL. */
 export const DEFAULT_IAM_SERVER_URL = 'https://hanzo.id'
