@@ -3,6 +3,7 @@ package billing
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -13,9 +14,9 @@ import (
 	"github.com/hanzoai/commerce/billing/depositledger"
 	"github.com/hanzoai/commerce/billing/depositwatch"
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/cryptopaymentintent"
+	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/payment/processor"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 )
@@ -41,7 +42,11 @@ type cryptoDepositRequest struct {
 	AmountCents int64  `json:"amountCents,omitempty"`
 }
 
-type cryptoDepositResponse struct {
+// CryptoDeposit is a payer's destination and what has become of it — where to
+// send, what names them when it arrives, and how far the chain has got. Both
+// doors hand back this same value, so a deposit reads identically over HTTP and
+// over the internal plane.
+type CryptoDeposit struct {
 	ID             string `json:"id"`
 	Status         string `json:"status"`
 	Chain          string `json:"chain"`
@@ -61,6 +66,66 @@ type cryptoDepositResponse struct {
 
 	ExpiresAt string `json:"expiresAt,omitempty"`
 }
+
+// CryptoOptions is the menu of assets the rail accepts: the chains a payer may
+// send on and the tokens they may send, both already deduplicated and ordered.
+// Neither list is ever nil — a picker handed `null` where it expects an array is
+// a client-side crash rather than an empty menu.
+type CryptoOptions struct {
+	Chains []string `json:"chains"`
+	Tokens []string `json:"tokens"`
+}
+
+// depositValidationError marks a request that named an asset this rail cannot
+// mint on — the caller's own doing, and fixable by asking for a different one.
+// The subscription core states its client-side failures the same way
+// (subValidationError).
+type depositValidationError struct{ msg string }
+
+func (e depositValidationError) Error() string { return e.msg }
+
+// depositRefusal is the rail itself being shut for an asset: nothing is watching
+// it, no custody account is configured, the signer will not mint, a reference
+// could not be issued. msg is the sentence the PAYER reads and names another way
+// to pay; cause carries the operational detail for the log, and is nil where
+// there is no underlying failure to report.
+type depositRefusal struct {
+	msg   string
+	cause error
+}
+
+func (e depositRefusal) Error() string { return e.msg }
+func (e depositRefusal) Unwrap() error { return e.cause }
+
+// errDepositNotFound is the ONE answer for both an id that names nothing and an
+// id that names another payer's intent. They are deliberately the same value:
+// distinguishing them would let a caller confirm a foreign intent exists, which
+// is the whole reason the read is payer-scoped.
+var errDepositNotFound = errors.New("crypto deposit: no such deposit for this payer")
+
+// IsDepositUnsupported reports whether the rail turned down the ASSET that was
+// asked for — a chain the custody signer cannot mint an address on. Asking for a
+// different one is the fix, which is why this is a separate question from
+// IsDepositRefused, and why the door answers it with a 400.
+func IsDepositUnsupported(err error) bool {
+	var e depositValidationError
+	return errors.As(err, &e)
+}
+
+// IsDepositRefused reports whether the rail is SHUT for that asset — nothing is
+// watching it, or nothing can mint on it right now. Nothing sent while this
+// holds could be credited, so asking differently does not help and only time or
+// an operator does; the door answers it with a 503 and Error() is the sentence
+// to show the payer.
+func IsDepositRefused(err error) bool {
+	var e depositRefusal
+	return errors.As(err, &e)
+}
+
+// IsDepositNotFound reports the miss. An unknown id and another payer's id are
+// one answer here, on purpose: a caller that could tell them apart could confirm
+// a foreign deposit exists.
+func IsDepositNotFound(err error) bool { return errors.Is(err, errDepositNotFound) }
 
 // cryptoProcessor resolves the ONE crypto custody processor (default MPC,
 // override via COMMERCE_DEFAULT_CRYPTO_PROCESSOR upstream in the registry).
@@ -100,17 +165,32 @@ func cryptoProcessor(ctx context.Context) (processor.CryptoProcessor, error) {
 // watcher therefore offers nothing rather than everything, which is the safe
 // direction for a list whose entries invite people to send money.
 //
-//	GET /v1/billing/crypto/options
-func GetCryptoOptions(c *zip.Ctx) error {
+// It takes a context and nothing else because that is the whole of what the
+// question depends on: the offer is a property of this process — which assets
+// its watcher reads, which chains its custody signer will mint on — and not of
+// the org asking. A peer that offers the same picker over the internal plane
+// asks here rather than keeping a list of its own, since a second list is how a
+// buyer comes to be shown an asset the mint path refuses.
+func GetCryptoOptions(ctx context.Context) (CryptoOptions, error) {
 	// The custody signer must still be reachable — an asset nobody can mint an
 	// address for is no more useful than one nobody can credit.
-	cp, err := cryptoProcessor(c.Context())
+	cp, err := cryptoProcessor(ctx)
+	if err != nil {
+		return CryptoOptions{}, err
+	}
+	chains, tokens := offeredFrom(watchedAssets(), cp.SupportedChains())
+	return CryptoOptions{Chains: chains, Tokens: tokens}, nil
+}
+
+// GetBillingCryptoOptions is the picker's door onto that menu.
+//
+//	GET /v1/billing/crypto/options
+func GetBillingCryptoOptions(c *zip.Ctx) error {
+	out, err := GetCryptoOptions(c.Context())
 	if err != nil {
 		return jsonhttp.Fail(c, 503, "Crypto deposits not configured", err)
 	}
-
-	chains, tokens := offeredFrom(watchedAssets(), cp.SupportedChains())
-	return c.JSON(200, map[string]any{"chains": chains, "tokens": tokens})
+	return c.JSON(200, out)
 }
 
 // watchedAssets is the set of assets something is actually watching — the ONE
@@ -310,51 +390,40 @@ func destinationIsComplete(in *cryptopaymentintent.CryptoPaymentIntent) bool {
 	return !depositwatch.Pooled(string(in.Chain)) || in.AddressTag != ""
 }
 
-// CreateCryptoDeposit answers a custody deposit address for the caller. An
-// open PENDING intent for the same (payer, chain, token) is reused — one
-// payer, one live address per asset — so refreshing the page cannot spray
-// MPC keygens or strand funds across addresses.
+// CreateCryptoDeposit answers where a payer sends and what names them when it
+// arrives — the MINT, with no HTTP in it.
 //
-//	POST /v1/billing/crypto/deposit   { chain?, token?, amountCents? }
-func CreateCryptoDeposit(c *zip.Ctx) error {
-	// The rail refuses to hand out an address for an asset nothing is watching.
-	//
-	// This used to be a blanket `if !cryptoDepositsCanBeCredited` — correct when
-	// written, because NOTHING credited any chain: no component moved an intent off
-	// Pending, no watcher observed DepositAddress, and the keygen wallet_id was
-	// discarded so we held no handle to the wallet the coins landed in. Three
-	// comments in this tree asserted "the chain watcher credits on real
-	// confirmations" and no such component existed. That sentence is why this
-	// shipped, and why the stop was a constant rather than config.
-	//
-	// All of that is built now. But "crediting exists" is not "crediting exists FOR
-	// THIS CHAIN", and flipping one boolean would have re-created the original bug
-	// for every unconfigured asset — a real custody address, minted, that nothing
-	// will ever look at. So the question is asked per ASSET, against the watcher
-	// itself, and arming an asset is one act (configure CRYPTO_DEPOSIT_*) rather
-	// than two that must be remembered in the right order.
-	//
-	// Deliberately at the TOP, before any keygen: an address that is never minted is
-	// an address nobody can send to. Reads (GetCryptoDeposit, GetCryptoOptions) are
-	// untouched so an existing intent can still be inspected.
-	payer := userBillingKey(c)
+// It takes values rather than a request because the peer that offers this rail
+// over the internal plane holds no datastore, and two implementations of "where
+// does this payer send, and may they" is how one door comes to hand out an
+// address the other refuses. The asset defaults here rather than at the door for
+// the same reason: an unnamed chain means ethereum wherever it is asked from.
+//
+// The payer is the CALLER's own billing identity, resolved at the door and
+// passed in. A deposit lands where the credential says and nowhere else.
+//
+// An open PENDING intent for the same (payer, chain, token) is reused — one
+// payer, one live address per asset — so refreshing the page cannot spray MPC
+// keygens, strand funds across addresses, or consume the finite tag space.
+//
+// The two refusals are separate types because they mean opposite things to
+// whoever asked: IsDepositUnsupported says ask for another asset,
+// IsDepositRefused says nothing sent now could be credited. Anything else is a
+// write that failed.
+func CreateCryptoDeposit(ctx context.Context, org *organization.Organization, payer, chain, token string, amountCents int64) (CryptoDeposit, error) {
+	if org == nil {
+		return CryptoDeposit{}, errors.New("crypto deposit: no organization")
+	}
 	if payer == "" {
-		return jsonhttp.Fail(c, 401, "Authentication required", nil)
+		return CryptoDeposit{}, errors.New("crypto deposit: no payer")
 	}
-	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c.Context()))
+	db := datastore.New(org.Namespaced(ctx))
 
-	var req cryptoDepositRequest
-	if len(c.Body()) > 0 {
-		if err := json.Unmarshal(c.Body(), &req); err != nil {
-			return jsonhttp.Fail(c, 400, "invalid request body", err)
-		}
-	}
-	chain := strings.ToLower(strings.TrimSpace(req.Chain))
+	chain = strings.ToLower(strings.TrimSpace(chain))
 	if chain == "" {
 		chain = "ethereum"
 	}
-	token := strings.ToLower(strings.TrimSpace(req.Token))
+	token = strings.ToLower(strings.TrimSpace(token))
 	if token == "" {
 		token = "usdc"
 	}
@@ -370,9 +439,9 @@ func CreateCryptoDeposit(c *zip.Ctx) error {
 	// be done in the right order.
 	watched := watchedAssets()
 	if !creditable(watched, chain, token) {
-		return jsonhttp.Fail(c, 503, fmt.Sprintf(
+		return CryptoDeposit{}, depositRefusal{msg: fmt.Sprintf(
 			"%s on %s is not accepted yet — nothing is watching that address, so a deposit could not be credited. Use a card, bank transfer or wire.",
-			strings.ToUpper(token), chain), nil)
+			strings.ToUpper(token), chain)}
 	}
 
 	// A POOLED chain does not mint anything, so it asks the custody signer
@@ -386,12 +455,12 @@ func CreateCryptoDeposit(c *zip.Ctx) error {
 	var cp processor.CryptoProcessor
 	if !pooled {
 		var err error
-		cp, err = cryptoProcessor(c.Context())
+		cp, err = cryptoProcessor(ctx)
 		if err != nil {
-			return jsonhttp.Fail(c, 503, "Crypto deposits not configured", err)
+			return CryptoDeposit{}, depositRefusal{msg: "Crypto deposits not configured", cause: err}
 		}
 		if !supportedChain(cp, chain) {
-			return jsonhttp.Fail(c, 400, fmt.Sprintf("unsupported chain %q", chain), nil)
+			return CryptoDeposit{}, depositValidationError{fmt.Sprintf("unsupported chain %q", chain)}
 		}
 	}
 
@@ -400,16 +469,18 @@ func CreateCryptoDeposit(c *zip.Ctx) error {
 		// A pooled destination missing its tag names NOBODY: the payment would
 		// arrive at an address we own and be credited to no one (recorded as
 		// unattributed, refundable only by hand). It cannot arise from this
-		// handler — the tag is allocated and written in the same record as the
+		// path — the tag is allocated and written in the same record as the
 		// address — so a row like it is corruption, and the two tempting
 		// repairs are both worse than refusing. Handing it over takes money we
 		// cannot route; minting a replacement leaves the untagged row live and
 		// sprays the tag space on every refresh.
 		if !destinationIsComplete(existing) {
-			log.Error("crypto deposit intent %s on %s has no destination tag; refusing to reuse it", existing.Id(), chain, c)
-			return jsonhttp.Fail(c, 503, "Crypto deposits are temporarily unavailable — this deposit reference is incomplete. Contact support or choose another way to pay.", nil)
+			return CryptoDeposit{}, depositRefusal{
+				msg:   "Crypto deposits are temporarily unavailable — this deposit reference is incomplete. Contact support or choose another way to pay.",
+				cause: fmt.Errorf("crypto deposit intent %s on %s has no destination tag; refusing to reuse it", existing.Id(), chain),
+			}
 		}
-		return c.JSON(200, toCryptoDepositResponse(existing))
+		return toCryptoDepositResponse(existing), nil
 	}
 
 	// WHERE the payer sends, and WHAT names them when they arrive. This is the
@@ -425,7 +496,8 @@ func CreateCryptoDeposit(c *zip.Ctx) error {
 		// configured, nothing is handed out.
 		addr := pooledAddressFor(watched, chain, token)
 		if addr == "" {
-			return jsonhttp.Fail(c, 503, fmt.Sprintf("Crypto deposits on %s are not configured — no custody account is set for %s.", chain, strings.ToUpper(token)), nil)
+			return CryptoDeposit{}, depositRefusal{msg: fmt.Sprintf(
+				"Crypto deposits on %s are not configured — no custody account is set for %s.", chain, strings.ToUpper(token))}
 		}
 		// The tag is allocated BY THE DATABASE and never chosen here — see
 		// depositledger.NextTag for what makes it unique across replicas, and
@@ -434,9 +506,11 @@ func CreateCryptoDeposit(c *zip.Ctx) error {
 		// issuing one twice halts the asset for every customer. So this refuses
 		// rather than falls back.
 		var err error
-		if tag, err = depositledger.NextTag(c.Context(), chain); err != nil {
-			log.Error("crypto deposit tag allocation failed for %q on %s: %v", payer, chain, err, c)
-			return jsonhttp.Fail(c, 503, "Crypto deposits are temporarily unavailable — a deposit reference could not be issued. Try again shortly or choose another way to pay.", err)
+		if tag, err = depositledger.NextTag(ctx, chain); err != nil {
+			return CryptoDeposit{}, depositRefusal{
+				msg:   "Crypto deposits are temporarily unavailable — a deposit reference could not be issued. Try again shortly or choose another way to pay.",
+				cause: fmt.Errorf("crypto deposit tag allocation failed for %q on %s: %w", payer, chain, err),
+			}
 		}
 		// No wallet ID. The custody signer holds no per-deposit wallet here —
 		// the pooled account IS the wallet, and it is the operator's rather
@@ -444,26 +518,59 @@ func CreateCryptoDeposit(c *zip.Ctx) error {
 		wallet = processor.Wallet{Address: addr}
 	} else {
 		var err error
-		if wallet, err = cp.GenerateAddress(c.Context(), payer, chain); err != nil {
-			log.Error("crypto deposit address generation failed for %q on %s: %v", payer, chain, err, c)
-			// 503, NOT 502 — and the difference is what the customer reads.
-			// Cloudflare REPLACES an origin 502 with its own "Bad gateway"
-			// interstitial, so the JSON below never reaches the browser: measured on
-			// pay.hanzo.ai, the deposit call returned a text/html CF error page while
-			// the identical call to the origin returned this message. 503 passes
-			// through untouched (the wire rail's own "not configured" 503 proves it),
-			// which is also the honest code: the custody signer is unavailable, we
-			// are not a broken gateway.
-			return jsonhttp.Fail(c, 503, "Crypto deposits are temporarily unavailable — the custody service is not accepting new addresses. Try again shortly or choose another way to pay.", err)
+		if wallet, err = cp.GenerateAddress(ctx, payer, chain); err != nil {
+			return CryptoDeposit{}, depositRefusal{
+				msg:   "Crypto deposits are temporarily unavailable — the custody service is not accepting new addresses. Try again shortly or choose another way to pay.",
+				cause: fmt.Errorf("crypto deposit address generation failed for %q on %s: %w", payer, chain, err),
+			}
 		}
 	}
 
-	intent, err := recordIntent(db, payer, chain, token, req.AmountCents, wallet, tag)
+	intent, err := recordIntent(db, payer, chain, token, amountCents, wallet, tag)
 	if err != nil {
-		return jsonhttp.Fail(c, 500, "failed to record deposit intent", err)
+		return CryptoDeposit{}, err
 	}
 
-	return c.JSON(200, toCryptoDepositResponse(intent))
+	return toCryptoDepositResponse(intent), nil
+}
+
+// CreateBillingCryptoDeposit is the payer's door onto the crypto rail. It
+// resolves who is asking, reads the asset off the body, and maps a refusal to
+// the code it has always mapped to.
+//
+//	POST /v1/billing/crypto/deposit   { chain?, token?, amountCents? }
+func CreateBillingCryptoDeposit(c *zip.Ctx) error {
+	payer := userBillingKey(c)
+	if payer == "" {
+		return jsonhttp.Fail(c, 401, "Authentication required", nil)
+	}
+	org := middleware.GetOrganization(c)
+
+	var req cryptoDepositRequest
+	if len(c.Body()) > 0 {
+		if err := json.Unmarshal(c.Body(), &req); err != nil {
+			return jsonhttp.Fail(c, 400, "invalid request body", err)
+		}
+	}
+
+	out, err := CreateCryptoDeposit(c.Context(), org, payer, req.Chain, req.Token, req.AmountCents)
+	switch {
+	case IsDepositUnsupported(err):
+		return jsonhttp.Fail(c, 400, err.Error(), nil)
+	case IsDepositRefused(err):
+		// 503, NOT 502 — and the difference is what the customer reads.
+		// Cloudflare REPLACES an origin 502 with its own "Bad gateway"
+		// interstitial, so the JSON never reaches the browser: measured on
+		// pay.hanzo.ai, the deposit call returned a text/html CF error page while
+		// the identical call to the origin returned this message. 503 passes
+		// through untouched (the wire rail's own "not configured" 503 proves it),
+		// which is also the honest code: the rail is unavailable, we are not a
+		// broken gateway.
+		return jsonhttp.Fail(c, 503, err.Error(), errors.Unwrap(err))
+	case err != nil:
+		return jsonhttp.Fail(c, 500, "failed to record deposit intent", err)
+	}
+	return c.JSON(200, out)
 }
 
 // recordIntent turns a resolved destination into the durable row the watcher
@@ -516,29 +623,48 @@ func recordIntent(db *datastore.Datastore, payer, chain, token string, amountCen
 }
 
 // GetCryptoDeposit reports an intent's state (pending → confirming →
-// succeeded), scoped to the caller: another payer's intent id answers 404.
+// succeeded) — the READ, with no HTTP in it.
+//
+// It takes the payer as a value because the read is SCOPED to them and the scope
+// is the point: the same lookup answered over the internal plane must refuse a
+// foreign id there too, and a second copy of "is this yours" is a copy that can
+// be written without the check. An id that names nothing and an id that names
+// somebody else return the SAME error, so neither door can be made to confirm
+// that a foreign intent exists.
+func GetCryptoDeposit(ctx context.Context, org *organization.Organization, payer, id string) (CryptoDeposit, error) {
+	if org == nil {
+		return CryptoDeposit{}, errors.New("crypto deposit: no organization")
+	}
+	if payer == "" {
+		return CryptoDeposit{}, errors.New("crypto deposit: no payer")
+	}
+	intent := cryptopaymentintent.New(datastore.New(org.Namespaced(ctx)))
+	if err := intent.GetById(id); err != nil {
+		return CryptoDeposit{}, errDepositNotFound
+	}
+	if intent.CustomerRef != payer {
+		return CryptoDeposit{}, errDepositNotFound
+	}
+	return toCryptoDepositResponse(intent), nil
+}
+
+// GetBillingCryptoDeposit is the payer's door onto their own deposit.
 //
 //	GET /v1/billing/crypto/deposit/:id
-func GetCryptoDeposit(c *zip.Ctx) error {
+func GetBillingCryptoDeposit(c *zip.Ctx) error {
 	payer := userBillingKey(c)
 	if payer == "" {
 		return jsonhttp.Fail(c, 401, "Authentication required", nil)
 	}
-	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c.Context()))
-
-	intent := cryptopaymentintent.New(db)
-	if err := intent.GetById(c.Param("id")); err != nil {
+	out, err := GetCryptoDeposit(c.Context(), middleware.GetOrganization(c), payer, c.Param("id"))
+	if err != nil {
 		return jsonhttp.Fail(c, 404, "deposit not found", err)
 	}
-	if intent.CustomerRef != payer {
-		return jsonhttp.Fail(c, 404, "deposit not found", nil)
-	}
-	return c.JSON(200, toCryptoDepositResponse(intent))
+	return c.JSON(200, out)
 }
 
-func toCryptoDepositResponse(i *cryptopaymentintent.CryptoPaymentIntent) cryptoDepositResponse {
-	return cryptoDepositResponse{
+func toCryptoDepositResponse(i *cryptopaymentintent.CryptoPaymentIntent) CryptoDeposit {
+	return CryptoDeposit{
 		ID:             i.Id(),
 		Status:         string(i.Status),
 		Chain:          string(i.Chain),
