@@ -12,12 +12,13 @@ func TestBrandForHost(t *testing.T) {
 		slug string
 	}{
 		{"pay.hanzo.ai", "hanzo"},
-		{"commerce-api.hanzo.ai", "hanzo"},
+		{"commerce.hanzo.ai", "hanzo"},
 		{"hanzo.ai", "hanzo"},
 		{"pay.lux.network", "lux"},
 		{"lux.network", "lux"},
-		// The MONEY hosts, which resolved to the deployment default — hanzo — so a
-		// Lux payment page carried Hanzo's brand and merchant. Nothing errored.
+		// The MONEY hosts. Each must carry its OWN brand and merchant: falling
+		// through to the deployment default would bill the wrong party, and no
+		// error would be raised to say so.
 		{"pay.lux.cloud", "lux"},
 		{"lux.cloud", "lux"},
 		{"pay.lux.tel", "lux"},
