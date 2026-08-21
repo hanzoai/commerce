@@ -46,7 +46,7 @@ func joinGroupPath(prefix, path string) string {
 }
 
 // handlerFullName is the fully-qualified name of the func a route is bound to
-// (e.g. ".../api/billing.ListTransactions") — the zip-native analog of gin's
+// (e.g. ".../api/billing.ListBillingTransactions") — the zip-native analog of gin's
 // RouteInfo.Handler.
 func handlerFullName(h zip.Handler) string {
 	return runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
@@ -129,7 +129,7 @@ func mountRoutes(t *testing.T) (*zip.App, []routeRec) {
 }
 
 // TestTransactionsRouteRegistered proves GET /v1/billing/transactions is routed
-// and bound to ListTransactions. Regression guard: the handler existed but was
+// and bound to ListBillingTransactions. Regression guard: the handler existed but was
 // never registered, so the billing dashboard's Transactions tab got a 404.
 func TestTransactionsRouteRegistered(t *testing.T) {
 	_, routes := mountRoutes(t)
@@ -146,11 +146,11 @@ func TestTransactionsRouteRegistered(t *testing.T) {
 	}
 
 	if found == nil {
-		t.Fatalf("route %s %s is not registered (the defect): handler ListTransactions exists but was never routed", wantMethod, wantPath)
+		t.Fatalf("route %s %s is not registered (the defect): handler ListBillingTransactions exists but was never routed", wantMethod, wantPath)
 	}
 
-	if !strings.HasSuffix(found.handler, ".ListTransactions") {
-		t.Fatalf("route %s %s resolves to %q, want it bound to ListTransactions", wantMethod, wantPath, found.handler)
+	if !strings.HasSuffix(found.handler, ".ListBillingTransactions") {
+		t.Fatalf("route %s %s resolves to %q, want it bound to ListBillingTransactions", wantMethod, wantPath, found.handler)
 	}
 }
 
