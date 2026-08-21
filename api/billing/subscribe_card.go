@@ -403,7 +403,7 @@ func SubscribeWithCard(c *zip.Ctx) error {
 	if err != nil {
 		// Money moved + card saved; surface the failure. Leave the guard STARTED so a
 		// retry replays rather than re-charging.
-		uncredited(c, org.Name, subject, res.ProcessorRef,
+		uncredited(c.Context(), eventsOf(c), org.Name, subject, res.ProcessorRef,
 			"the first-period charge settled and no subscription was created: "+err.Error(),
 			chargeCents, false)
 		return subscriptionCreateError(c, err)
