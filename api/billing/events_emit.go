@@ -38,6 +38,27 @@ func fireEvent(c *zip.Ctx, fn func(context.Context, *events.Client)) {
 	go fn(ctx, ev)
 }
 
+// emitSale fires the two events a settled sale produces, from a CONTEXT rather
+// than a request.
+//
+// It is the same pair the door has always fired and in the same order, moved
+// where the sale happens so a caller that is not a request still records it. A
+// nil collector is a no-op, which is what an unwired deployment has always been.
+// WithoutCancel, not Background: the emit survives a client disconnect and keeps
+// the trace it belongs to.
+func emitSale(ctx context.Context, ev *events.Client, orgName string, sub *subscription.Subscription, inv *billinginvoice.BillingInvoice) {
+	if ev == nil {
+		return
+	}
+	detached := context.WithoutCancel(ctx)
+	if sub != nil {
+		go ev.EmitSubscriptionCreated(detached, subscriptionEvent(orgName, sub))
+	}
+	if inv != nil {
+		go ev.EmitInvoicePaid(detached, invoiceEvent(orgName, inv))
+	}
+}
+
 // MonthlyNormalizedCents normalizes a plan price to a monthly figure by its
 // billing PERIOD so plans on different cycles are comparable in one MRR sum.
 // The read side never re-normalizes — the cents emitted here ARE the MRR.
