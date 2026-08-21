@@ -8,7 +8,6 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
-	"github.com/hanzoai/commerce/thirdparty/kms"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -73,11 +72,16 @@ func envCents(key string, def int64) int64 {
 //
 // This is the BROWSER projection of TakePayment (payment_core.go), which holds the
 // whole money move. Everything below the Bind is reading values off the request —
-// the subject from ?user= bounded to the caller's org, the retry key from the
-// header, the KMS client from the request locals — and handing them to the one
-// core. The typed op an agent calls is the other projection of the same core, so
-// the bounds, the idempotency derivation and the ledger write are shared rather
-// than reimplemented.
+// the subject from the caller's signed identity, the retry key from the header,
+// the KMS client from the request locals — and handing them to the one core. The
+// typed op an agent calls is the other projection of the same core, so the
+// bounds, the idempotency derivation and the ledger write are shared rather than
+// reimplemented.
+//
+// There is deliberately NO core beside TakePayment for this door to own. A second
+// one would be a second set of bounds to drift, a second idempotency derivation
+// to disagree, and eventually a card charged twice for one top-up — which is the
+// exact reason the money move was lifted out of this handler in the first place.
 func TopupWithToken(c *zip.Ctx) error {
 	// The OK form: IAMTokenRequired falls through WITHOUT setting the
 	// "organization" local when the gateway named no principal, and the MustGet
@@ -100,20 +104,14 @@ func TopupWithToken(c *zip.Ctx) error {
 	// a request-supplied userId: a client- or proxy-set selector is what let the
 	// same customer top up `hanzo` on one charge and `hanzo/<user>` on the next,
 	// stranding the credit off the key their usage draws from. One identity, one key.
-	in := TakePaymentIn{
+	out, f := TakePayment(c.Context(), org, TakePaymentIn{
 		SourceID:       req.SourceID,
 		AmountCents:    req.AmountCents,
 		Currency:       req.Currency,
 		Subject:        userBillingKey(c),
 		IdempotencyKey: strings.TrimSpace(c.Header("X-Idempotency-Key")),
-	}
-	if v := c.Locals("kms"); v != nil {
-		if kmsClient, ok := v.(*kms.CachedClient); ok {
-			in.KMS = kmsClient
-		}
-	}
-
-	out, f := TakePayment(c.Context(), org, in)
+		KMS:            kmsOf(c),
+	})
 	if f != nil {
 		return jsonhttp.Fail(c, f.Status, f.Message, f.Err)
 	}
