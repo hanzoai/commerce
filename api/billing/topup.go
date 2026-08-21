@@ -58,9 +58,11 @@ var (
 // knows how to say them; this only reports that they were crossed.
 func IsTopupOutOfBounds(err error) bool { return errors.Is(err, errAmountOutOfBounds) }
 
-// IsTopupUnchargeable reports whether the saved method carries no chargeable
-// card.
-func IsTopupUnchargeable(err error) bool { return errors.Is(err, errMethodUnchargeable) }
+// IsMethodUnchargeable reports whether the saved method carries no chargeable
+// card. It is the package's answer rather than this file's: the card subscribe
+// path refuses the same row for the same reason and says the same sentence, and
+// two names for one condition is how two doors come to disagree about it.
+func IsMethodUnchargeable(err error) bool { return errors.Is(err, errMethodUnchargeable) }
 
 // IsTopupNoProcessor reports whether this org has no payment processor that can
 // take the money — a configuration state, not a decline.
@@ -460,7 +462,7 @@ func Topup(c *zip.Ctx) error {
 			return jsonhttp.Fail(c, 400, err.Error(), nil)
 		case IsMethodNotFound(err):
 			return jsonhttp.Fail(c, 404, "payment method not found", err)
-		case IsTopupUnchargeable(err):
+		case IsMethodUnchargeable(err):
 			return jsonhttp.Fail(c, 422, "saved payment method has no chargeable card — add the card again", nil)
 		case IsTopupOutOfBounds(err):
 			minCents, maxCents := topupBounds()
