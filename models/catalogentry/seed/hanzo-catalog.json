@@ -1870,7 +1870,7 @@
     "slug": "memory",
     "route": "/memory",
     "docsUrl": "https://docs.hanzo.ai/docs/services/memory",
-    "apiPath": "/v1/memory",
+    "apiPath": "/v1/ai/memory",
     "apiRoute": "api.hanzo.ai/v1/memory",
     "githubUrl": "https://github.com/hanzoai/ai",
     "repo": "hanzoai/ai",
