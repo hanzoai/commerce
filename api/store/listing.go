@@ -114,34 +114,23 @@ func createListing(c *zip.Ctx) error {
 func updateListing(c *zip.Ctx) error {
 	id := c.Param("storeid")
 	key := c.Param("key")
-	db := orgNamespacedDB(c)
 
-	stor := store.New(db)
-	if err := stor.GetById(id); err != nil {
-		return http.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		return http.Fail(c, 403, "no organization on the request", errors.New("no org"))
 	}
-
-	listing, ok := stor.Listings[key]
-
-	// Decode response body to create new listings
-	if err := json.DecodeBytes(c.Body(), &listing); err != nil {
-		return http.Fail(c, 400, "Failed decode request body", err)
-	}
-
-	// Override listing potentially
-	stor.Listings[key] = listing
-
-	// Try to save store
-	if err := stor.Put(); err != nil {
+	// The one core the plane op also asks, so a listing written through either
+	// door is written the same way — decoded ONTO the existing listing, never
+	// replacing it.
+	listings, existed, err := SetListing(c.Context(), org, id, key, c.Body())
+	if err != nil {
 		return http.Fail(c, 500, "Failed to save store listings", err)
-	} else {
-		if ok {
-			return http.Render(c, 200, stor.Listings)
-		} else {
-			c.SetHeader("Location", c.Path())
-			return http.Render(c, 201, stor.Listings)
-		}
 	}
+	if existed {
+		return http.Render(c, 200, listings)
+	}
+	c.SetHeader("Location", c.Path())
+	return http.Render(c, 201, listings)
 }
 
 func patchListing(c *zip.Ctx) error {
