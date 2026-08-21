@@ -1,6 +1,6 @@
 // Copyright © 2026 Hanzo AI. MIT License.
 
-package meter
+package rate
 
 import (
 	"context"
@@ -15,8 +15,8 @@ func sysDB(c context.Context) *datastore.Datastore {
 	return datastore.New(nscontext.WithNamespace(c, Namespace))
 }
 
-func rows() []*Meter {
-	return []*Meter{
+func rows() []*Rate {
+	return []*Rate{
 		{Product: "ai", Meter: "zen-coder", Label: "Zen Coder", Unit: PerMTok, Rate: 250_000, Currency: "usd", Source: "zen-gateway"},
 		{Product: "ai", Meter: "zen-embedding", Label: "Zen Embedding", Unit: PerMTok, Rate: 20_000, Currency: "usd", Source: "zen-gateway"},
 		{Product: "tools", Meter: "websearch", Label: "Web Search", Unit: PerCall, Rate: 5_000_000, Currency: "usd"},
@@ -101,7 +101,7 @@ func TestTheSameKeyUnderTwoProductsIsTwoRates(t *testing.T) {
 	defer c.Close()
 	db := sysDB(c)
 
-	both := []*Meter{
+	both := []*Rate{
 		{Product: "ai", Meter: "shared", Unit: PerMTok, Rate: 100, Currency: "usd"},
 		{Product: "tools", Meter: "shared", Unit: PerCall, Rate: 900, Currency: "usd"},
 	}
@@ -121,7 +121,7 @@ func TestARateWithNoIdentityIsRefused(t *testing.T) {
 	defer c.Close()
 	db := sysDB(c)
 
-	created, corrected, err := Seed(db, []*Meter{
+	created, corrected, err := Seed(db, []*Rate{
 		{Product: "", Meter: "orphan", Unit: PerCall, Rate: 1},
 		{Product: "ai", Meter: "", Unit: PerMTok, Rate: 1},
 		nil,
