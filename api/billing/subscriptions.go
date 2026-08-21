@@ -541,6 +541,32 @@ func ListSubscriptions(ctx context.Context, org *organization.Organization, user
 	return subs, nil
 }
 
+// Subscriptions is the org's subscriptions as the customer's own billing page
+// reads them — the rows of ListSubscriptions, each projected through the one
+// view.
+//
+// It exists beside ListSubscriptions because a caller without a datastore cannot
+// apply that projection itself: viewSubscription is where a row becomes an
+// answer, and a peer re-deriving it would be a second description of one
+// subscription. Two cores, one query, one projection.
+//
+// Empty userID or status means "do not filter on it", the same as an absent
+// query parameter.
+func Subscriptions(ctx context.Context, org *organization.Organization, userID, status string) ([]Subscription, error) {
+	rows, err := ListSubscriptions(ctx, org, userID, status)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Subscription, 0, len(rows))
+	for _, s := range rows {
+		if s == nil {
+			continue
+		}
+		out = append(out, *viewSubscription(s))
+	}
+	return out, nil
+}
+
 // ListBillingSubscriptions lists subscriptions for a user.
 //
 //	GET /v1/billing/subscriptions?userId=...
