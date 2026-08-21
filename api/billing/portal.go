@@ -5,10 +5,12 @@ import (
 
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/paymentmethod"
 	"github.com/hanzoai/commerce/models/subscription"
+	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -122,28 +124,27 @@ func PortalSubscriptions(c *zip.Ctx) error {
 
 // PortalPaymentMethods returns the customer's payment methods.
 //
+// The customer named here is a value the CALLER supplies, so the org namespace is
+// what keeps one host's customerId from selecting another org's cards; asking for
+// a foreign subject selects nothing inside your own namespace. It answers with
+// the same ListMethods every other saved-card surface reads, because a portal
+// that derived its own list would be a second answer to one question.
+//
 //	GET /v1/billing/portal/methods?customerId=...
 func PortalPaymentMethods(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c.Context()))
 
 	customerId := c.Query("customerId")
 	if customerId == "" {
 		return http.Fail(c, 400, "customerId is required", nil)
 	}
 
-	rootKey := db.NewKey("synckey", "", 1, nil)
-	methods := make([]*paymentmethod.PaymentMethod, 0)
-	q := paymentmethod.Query(db).Ancestor(rootKey).
-		Filter("CustomerId=", customerId).
-		Order("-Created")
-	_, _ = q.GetAll(&methods)
-
-	healPaymentMethods(c, org, methods)
-
-	results := make([]map[string]interface{}, len(methods))
-	for i, pm := range methods {
-		results[i] = paymentMethodResponse(pm)
+	creds, _ := c.Locals("kms").(*kms.CachedClient)
+	methods, err := ListMethods(c.Context(), org, customerId, "", creds)
+	if err != nil {
+		// A store that cannot be read has always answered an honest empty list
+		// here rather than a 500 — the portal renders no cards, not an error page.
+		log.Error("Failed to list portal payment methods: %v", err, c)
 	}
-	return c.JSON(200, results)
+	return c.JSON(200, methods)
 }
