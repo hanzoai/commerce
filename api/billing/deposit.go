@@ -133,7 +133,7 @@ func Deposit(c *zip.Ctx) error {
 		if reason == "" {
 			reason = "deposit"
 		}
-		rc, err := chainMintCredit(c, org, req.User, req.Amount, bucketForTags(req.Tags), reason, mintKey)
+		rc, err := chainMintCredit(c.Context(), org, req.User, req.Amount, bucketForTags(req.Tags), reason, mintKey)
 		if err != nil {
 			log.Error("chain deposit mint failed for %s: %v", req.User, err, c)
 			return http.Fail(c, 502, "on-chain credit mint failed", err)

@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 
@@ -41,9 +42,9 @@ func bucketForTags(tags string) treasury.Bucket {
 // (a PlatformOnly route, a settled payment, or a server-fixed grant) — exactly
 // as before a DB deposit — so wrapping the ctx authorized here is faithful: it is
 // the SAME capability that satisfies the ledger sink on the DB path.
-func chainMintCredit(c *zip.Ctx, org *organization.Organization, subject string, cents int64, b treasury.Bucket, reason, idemKey string) (*treasury.Receipt, error) {
-	ctx := mintauth.WithAuthorized(org.Namespaced(c.Context()))
-	return husdledger.Default().MintCredit(ctx, treasury.MintRequest{
+func chainMintCredit(ctx context.Context, org *organization.Organization, subject string, cents int64, b treasury.Bucket, reason, idemKey string) (*treasury.Receipt, error) {
+	authorized := mintauth.WithAuthorized(org.Namespaced(ctx))
+	return husdledger.Default().MintCredit(authorized, treasury.MintRequest{
 		OrgID:       org.Namespace(),
 		Subject:     subject,
 		AmountCents: cents,

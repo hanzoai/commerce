@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/mintauth"
@@ -33,7 +35,52 @@ var (
 	errAmountOutOfBounds      = errors.New("amount outside the permitted range")
 	errGuardUnavailable       = errors.New("idempotency guard unavailable")
 	errChargeInFlight         = errors.New("charge already in progress")
+
+	// errMethodUnchargeable is a saved row with no chargeable card behind it —
+	// the vaulting half-completed, so the record exists and the instrument does
+	// not. Distinct from the miss because the customer can fix this one by
+	// adding the card again.
+	errMethodUnchargeable = errors.New("saved payment method has no chargeable card")
 )
+
+// The classes a top-up can fail in, published so a caller outside this package
+// answers them the way the door answers them. Each is a different thing for the
+// asker to do — fix the request, retry later, use another card, call support —
+// which is why they are separate questions and not one "it failed".
+//
+// Two of the classes are the package's and not this file's: a request naming no
+// card is IsMethodRefused, and a card that is not the paying subject's is
+// IsMethodNotFound. Reusing them is what keeps "not there, or not yours" a
+// single answer everywhere, which is the whole reason it cannot be probed.
+
+// IsTopupOutOfBounds reports whether the amount sits outside the server-side
+// [min,max]. The bounds are the door's to state, since it is the door that
+// knows how to say them; this only reports that they were crossed.
+func IsTopupOutOfBounds(err error) bool { return errors.Is(err, errAmountOutOfBounds) }
+
+// IsTopupUnchargeable reports whether the saved method carries no chargeable
+// card.
+func IsTopupUnchargeable(err error) bool { return errors.Is(err, errMethodUnchargeable) }
+
+// IsTopupNoProcessor reports whether this org has no payment processor that can
+// take the money — a configuration state, not a decline.
+func IsTopupNoProcessor(err error) bool { return errors.Is(err, errNoProcessor) }
+
+// IsTopupInFlight reports whether an identical top-up is already running under
+// the same key. The answer is to wait for it, never to charge again.
+func IsTopupInFlight(err error) bool { return errors.Is(err, errChargeInFlight) }
+
+// IsTopupGuardUnavailable reports whether the idempotency guard could not be
+// consulted. Nothing was charged: the guard fails CLOSED, because a store that
+// cannot tell a first attempt from a retry cannot protect a reusable saved card.
+func IsTopupGuardUnavailable(err error) bool { return errors.Is(err, errGuardUnavailable) }
+
+// IsTopupUncredited reports the one failure where MONEY MOVED: the card settled
+// and the ledger did not follow. It is not retryable — a same-key retry is
+// refused as in flight rather than charging twice — and it is the class that
+// needs a person, which is why uncredited has already raised the alarm by the
+// time a caller sees this.
+func IsTopupUncredited(err error) bool { return errors.Is(err, errChargedButCreditFailed) }
 
 // receipt is what a completed charge seals into its idempotency guard, so a
 // replay returns the SAME answer instead of moving money a second time.
@@ -58,11 +105,15 @@ type topupRequest struct {
 // transaction id and the new balance.
 //
 // This is the single charge primitive reused by both the on-session top-up
-// (Topup) and the off-session auto-recharge cron. For a Square card-on-file the
-// SourceID is the saved card id (pm.ProviderRef) and CustomerID must be the
+// (TopupCard) and the off-session auto-recharge cron. For a Square card-on-file
+// the SourceID is the saved card id (pm.ProviderRef) and CustomerID must be the
 // Square customer id — a card-on-file is only chargeable in its customer's
 // context (fall back to the org slug for legacy methods saved before card-on-file).
-func chargeAndCredit(c *zip.Ctx, org *organization.Organization, db *datastore.Datastore, pm *paymentmethod.PaymentMethod, amountCents int64, cur currency.Type, userId, idemKey, description string) (string, currency.Cents, error) {
+//
+// It takes a context and the collector rather than a request: the cron reaching
+// it has neither, and a primitive that needed one could only ever move money for
+// somebody holding a browser.
+func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, pm *paymentmethod.PaymentMethod, amountCents int64, cur currency.Type, userId, idemKey, description string) (string, currency.Cents, error) {
 	// Server-authoritative amount bounds, enforced HERE so both callers inherit
 	// them: the HTTP top-up (where a scripted request bypasses the browser cap)
 	// and the auto-recharge cron (where a mis-set config would otherwise charge a
@@ -111,7 +162,6 @@ func chargeAndCredit(c *zip.Ctx, org *organization.Organization, db *datastore.D
 		}
 	}
 
-	ctx := c.Context()
 	chargeReq := processor.PaymentRequest{
 		Token:      pm.ProviderRef,
 		Amount:     currency.Cents(amountCents),
@@ -157,17 +207,17 @@ func chargeAndCredit(c *zip.Ctx, org *organization.Organization, db *datastore.D
 	// prepaid HUSD to the org's derived address instead of a DB deposit row —
 	// idempotent by the processor reference so a retried charge credits once.
 	if chainCreditEnabled() {
-		rc, mErr := chainMintCredit(c, org, userId, amountCents, treasury.BucketPrepaid,
+		rc, mErr := chainMintCredit(ctx, org, userId, amountCents, treasury.BucketPrepaid,
 			fmt.Sprintf("topup via %s (ref: %s)", proc.Type(), result.ProcessorRef),
 			"topup:"+result.ProcessorRef)
 		if mErr != nil {
-			uncredited(c, org.Name, userId, result.ProcessorRef,
+			uncredited(ctx, ev, org.Name, userId, result.ProcessorRef,
 				"the charge settled and the chain mint failed: "+mErr.Error(),
 				int64(amountCents), false)
 			return "", 0, fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, result.ProcessorRef, mErr)
 		}
 		var balanceCents currency.Cents
-		if datas, bErr := util.GetTransactionsByCurrency(org.Namespaced(c.Context()), userId, "iam-user", cur, org.TestMode()); bErr == nil {
+		if datas, bErr := util.GetTransactionsByCurrency(org.Namespaced(ctx), userId, "iam-user", cur, org.TestMode()); bErr == nil {
 			if data, ok := datas.Data[cur]; ok {
 				balanceCents = data.Balance
 			}
@@ -199,7 +249,7 @@ func chargeAndCredit(c *zip.Ctx, org *organization.Organization, db *datastore.D
 	trans.SetContext(mintauth.WithAuthorized(trans.Context()))
 	if err := trans.Create(); err != nil {
 		// Charge succeeded but credit failed — log with full context for manual reconciliation.
-		uncredited(c, org.Name, userId, result.ProcessorRef,
+		uncredited(ctx, ev, org.Name, userId, result.ProcessorRef,
 			"the charge settled and the deposit failed: "+err.Error(),
 			int64(amountCents), false)
 		return "", 0, fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, result.ProcessorRef, err)
@@ -207,7 +257,7 @@ func chargeAndCredit(c *zip.Ctx, org *organization.Organization, db *datastore.D
 
 	// Read back the new balance so the caller doesn't need a separate request.
 	var balanceCents currency.Cents
-	if datas, err := util.GetTransactionsByCurrency(org.Namespaced(c.Context()), userId, "iam-user", cur, test); err == nil {
+	if datas, err := util.GetTransactionsByCurrency(org.Namespaced(ctx), userId, "iam-user", cur, test); err == nil {
 		if data, ok := datas.Data[cur]; ok {
 			balanceCents = data.Balance
 		}
@@ -233,12 +283,142 @@ func seal(rec *idempotencykey.IdempotencyKey, txID string, balanceCents currency
 	}
 }
 
+// TopupCardIn is the whole input of a saved-card top-up. Every field is a VALUE
+// the caller resolved — nothing is read from a request, a header or the
+// environment inside the core.
+type TopupCardIn struct {
+	// MethodID names the saved card to charge. It must belong to Subject; a
+	// method that does not is refused as a miss, never as a "not yours".
+	MethodID string
+	// AmountCents is the charge in whole cents, bounded server-side by
+	// topupBounds before any money moves.
+	AmountCents int64
+	// Currency is the ISO code. Empty means usd.
+	Currency string
+	// Subject is the billing key to credit, ALREADY resolved from the caller's
+	// own signed identity by the door. The core trusts it and cannot re-derive
+	// it: a subject the core chose would be a subject nobody proved.
+	Subject string
+	// IdempotencyKey is the caller's explicit retry key. Empty falls back to the
+	// same windowed derivation over the stable facts — the saved card, the amount
+	// and the currency — that a browser sending no header has always used.
+	IdempotencyKey string
+	// Description rides on the charge to the processor, which is where the
+	// customer reads it. The two callers say different true things there ("Top-up"
+	// versus "Auto-recharge"), so it is a value rather than a sentence invented here.
+	Description string
+	// KMS is the request-scoped cached client used to hydrate the org's payment
+	// credentials. Nil is legitimate and non-fatal (dev/tests, env-var creds).
+	KMS *kms.CachedClient
+	// Events is the analytics collector the money alarm fires on when a settled
+	// charge fails to move the ledger. Nil is a no-op.
+	Events *events.Client
+}
+
+// TopupCardOut is the settled result — the same three fields the browser has
+// always received, with the same names, so the door renders it directly and a
+// typed caller reads the same answer.
+type TopupCardOut struct {
+	// TransactionID is the ledger deposit's id: the receipt for the credit.
+	TransactionID string `json:"transactionId"`
+	// BalanceCents is the subject's balance read back AFTER the credit, from the
+	// same key just credited, so what is returned is what me/balance will report.
+	BalanceCents int64 `json:"balanceCents"`
+	// Status is "ok" on a settled charge. A failure is an error, never a status.
+	Status string `json:"status"`
+}
+
+// TopupCard charges a card the subject already saved and credits their balance,
+// exactly once.
+//
+// It is the saved-card half of the pair whose other half is TakePayment (a
+// single-use nonce). Both exist because the two rails differ in their backstop:
+// a nonce dies on first use, while a card-on-file id is REUSABLE, so on this
+// side the idempotency guard is the whole protection and it fails closed.
+//
+// It takes values rather than a request so the act is reachable by a peer that
+// holds no ledger of its own. What it will NOT do is resolve who is paying:
+// Subject arrives already bound to the caller's own identity, because a core
+// that resolved identity from its own input would let any door hand it a subject
+// nobody proved.
+//
+// The refusal of a method belonging to another subject stays here rather than at
+// the door — it is what stands between a member and the org owner's card, and a
+// gate only the browser applied would be no gate at all.
+func TopupCard(ctx context.Context, org *organization.Organization, in TopupCardIn) (*TopupCardOut, error) {
+	if org == nil {
+		return nil, errors.New("topup: no organization")
+	}
+	if in.Subject == "" {
+		return nil, errors.New("topup: no subject")
+	}
+	if strings.TrimSpace(in.MethodID) == "" {
+		return nil, methodValidationError{"paymentMethodId is required"}
+	}
+
+	// Best-effort credential hydration, exactly as the browser path did: a
+	// missing KMS client is dev/test with env-var creds, not a failure.
+	if in.KMS != nil {
+		if err := kms.Hydrate(in.KMS, org); err != nil {
+			log.Error("KMS hydration failed for org %q: %v", org.Name, err)
+		}
+	}
+
+	db := datastore.New(org.Namespaced(ctx))
+	cur := normalizeCurrency(in.Currency)
+
+	// Load the payment method. It must be the PAYING SUBJECT's own instrument:
+	// paymentMethodId is an unpinned field that can name another subject's card
+	// inside the org, and the credit lands on the subject — charging someone
+	// else's card to fund your own balance is the exact cross-subject move this
+	// refuses. A miss, so method ids can't be probed. Stricter on purpose than
+	// the read-side callerMayReachBillingSubject: a charge binds to the RESOLVED
+	// paying subject, so an org member's fine <org>/<user> subject can never
+	// spend the org owner's shared card.
+	pm := paymentmethod.New(db)
+	if err := pm.GetById(strings.TrimSpace(in.MethodID)); err != nil {
+		return nil, fmt.Errorf("%w: %v", errNoMethod, err)
+	}
+	if pm.CustomerId != in.Subject && pm.UserId != in.Subject {
+		return nil, errNoMethod
+	}
+	if strings.TrimSpace(pm.ProviderRef) == "" {
+		return nil, errMethodUnchargeable
+	}
+
+	// Stable across a retry: the saved card, the amount and the currency, in a
+	// coarse window. Never the payment-method row's mutable state, never a nonce.
+	// ONE derivation, here, so the browser's fallback and a peer's cannot drift
+	// into disagreeing about what "the same request" means.
+	idemKey := in.IdempotencyKey
+	if idemKey == "" {
+		idemKey = windowKey("pm:" + strings.TrimSpace(in.MethodID) + ":amount:" + strconv.FormatInt(in.AmountCents, 10) + ":cur:" + string(cur))
+	}
+
+	desc := in.Description
+	if desc == "" {
+		desc = fmt.Sprintf("Top-up %d %s for %s", in.AmountCents, cur, in.Subject)
+	}
+
+	txID, balanceCents, err := chargeAndCredit(ctx, in.Events, org, db, pm, in.AmountCents, cur, in.Subject, idemKey, desc)
+	if err != nil {
+		return nil, err
+	}
+	return &TopupCardOut{TransactionID: txID, BalanceCents: int64(balanceCents), Status: "ok"}, nil
+}
+
 // Topup charges a saved payment method and credits the user's balance.
 //
 //	POST /v1/billing/topup
 //
 // Body: { userId, paymentMethodId, amountCents, currency? }
 // Returns: { transactionId, balanceCents, status }
+//
+// Everything below the bind is reading values off the request and handing them
+// to TopupCard: the payer from the caller's signed identity, the retry key from
+// the header, the KMS and analytics clients from the request locals. The status
+// each failure carries is the door's to decide, which is why the core answers
+// with a class and this maps it.
 func Topup(c *zip.Ctx) error {
 	// The OK form: IAMTokenRequired falls through WITHOUT setting the
 	// "organization" local when the gateway named no principal, and the MustGet
@@ -250,24 +430,9 @@ func Topup(c *zip.Ctx) error {
 		return jsonhttp.Fail(c, 401, "sign in to add funds", nil)
 	}
 
-	// Hydrate payment credentials from KMS (same pattern as checkout/subscription).
-	if v := c.Locals("kms"); v != nil {
-		if kmsClient, ok := v.(*kms.CachedClient); ok {
-			if err := kms.Hydrate(kmsClient, org); err != nil {
-				log.Error("KMS hydration failed for org %q: %v", org.Name, err, c)
-			}
-		}
-	}
-
-	db := datastore.New(org.Namespaced(c.Context()))
-
 	var req topupRequest
 	if err := c.Bind(&req); err != nil {
 		return jsonhttp.Fail(c, 400, "invalid request body", err)
-	}
-
-	if req.PaymentMethodID == "" {
-		return jsonhttp.Fail(c, 400, "paymentMethodId is required", nil)
 	}
 
 	// Credit the payer resolved from the caller's signed identity (userBillingKey
@@ -280,50 +445,35 @@ func Topup(c *zip.Ctx) error {
 		return jsonhttp.Fail(c, 401, "missing identity headers", nil)
 	}
 
-	cur := currency.Type(strings.ToLower(req.Currency))
-	if cur == "" {
-		cur = "usd"
-	}
-
-	// Load the payment method. It must be the PAYING SUBJECT's own instrument:
-	// paymentMethodId is an unpinned body field that can name another subject's
-	// card inside the org, and the credit lands on the caller — charging someone
-	// else's card to fund your own balance is the exact cross-subject move this
-	// refuses. 404, so method ids can't be probed. Stricter on purpose than the
-	// read-side callerMayReachBillingSubject: a charge binds to the RESOLVED
-	// paying subject, so an org member's fine <org>/<user> subject can never
-	// spend the org owner's shared card.
-	pm := paymentmethod.New(db)
-	if err := pm.GetById(req.PaymentMethodID); err != nil {
-		return jsonhttp.Fail(c, 404, "payment method not found", err)
-	}
-	if pm.CustomerId != subject && pm.UserId != subject {
-		return jsonhttp.Fail(c, 404, "payment method not found", nil)
-	}
-	if strings.TrimSpace(pm.ProviderRef) == "" {
-		return jsonhttp.Fail(c, 422, "saved payment method has no chargeable card — add the card again", nil)
-	}
-
-	// Stable across a retry: the saved card, the amount and the currency, in a
-	// coarse window. Never the payment-method row's mutable state, never a nonce.
-	guard := guardKey(c, "pm:"+req.PaymentMethodID+":amount:"+strconv.FormatInt(req.AmountCents, 10)+":cur:"+string(cur))
-
-	desc := fmt.Sprintf("Top-up %d %s for %s", req.AmountCents, cur, subject)
-	txID, balanceCents, err := chargeAndCredit(c, org, db, pm, req.AmountCents, cur, subject, guard, desc)
+	out, err := TopupCard(c.Context(), org, TopupCardIn{
+		MethodID:       req.PaymentMethodID,
+		AmountCents:    req.AmountCents,
+		Currency:       req.Currency,
+		Subject:        subject,
+		IdempotencyKey: strings.TrimSpace(c.Header("X-Idempotency-Key")),
+		KMS:            kmsOf(c),
+		Events:         eventsOf(c),
+	})
 	if err != nil {
 		switch {
-		case errors.Is(err, errAmountOutOfBounds):
+		case IsMethodRefused(err):
+			return jsonhttp.Fail(c, 400, err.Error(), nil)
+		case IsMethodNotFound(err):
+			return jsonhttp.Fail(c, 404, "payment method not found", err)
+		case IsTopupUnchargeable(err):
+			return jsonhttp.Fail(c, 422, "saved payment method has no chargeable card — add the card again", nil)
+		case IsTopupOutOfBounds(err):
 			minCents, maxCents := topupBounds()
 			return jsonhttp.Fail(c, 400, fmt.Sprintf("amountCents must be between %d and %d", minCents, maxCents), nil)
-		case errors.Is(err, errGuardUnavailable):
+		case IsTopupGuardUnavailable(err):
 			log.Error("topup idempotency guard unavailable (subject=%s): %v", subject, err, c)
 			return jsonhttp.Fail(c, 503, "billing is temporarily unavailable; please retry", err)
-		case errors.Is(err, errChargeInFlight):
+		case IsTopupInFlight(err):
 			return jsonhttp.Fail(c, 409, "top-up already in progress", nil)
-		case errors.Is(err, errNoProcessor):
+		case IsTopupNoProcessor(err):
 			log.Error("No processor available for topup: %v", err, c)
 			return jsonhttp.Fail(c, 422, "no payment processor available", err)
-		case errors.Is(err, errChargedButCreditFailed):
+		case IsTopupUncredited(err):
 			return jsonhttp.Fail(c, 500, "charge succeeded but balance credit failed; contact support", err)
 		default:
 			log.Error("Charge failed for topup (subject=%s pm=%s): %v", subject, req.PaymentMethodID, err, c)
@@ -331,9 +481,5 @@ func Topup(c *zip.Ctx) error {
 		}
 	}
 
-	return c.JSON(200, map[string]any{
-		"transactionId": txID,
-		"balanceCents":  balanceCents,
-		"status":        "ok",
-	})
+	return c.JSON(200, out)
 }

@@ -3,8 +3,6 @@ package billing
 import (
 	"context"
 
-	"github.com/zap-proto/zip"
-
 	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/log"
 )
@@ -28,10 +26,20 @@ import (
 // one clears when the customer or the provider tries again; a terminal one needs
 // somebody to grant the balance and refund the charge, and telling that customer
 // to "try again" charges their card twice.
-func uncredited(c *zip.Ctx, orgName, subject, settlement, reason string, amountCents int64, terminal bool) {
+// It takes the collector as a VALUE rather than lifting it off a request,
+// because the moment it reports belongs to the money move and not to whoever
+// asked for it: the off-session recharge that discovers this has no request at
+// all, and an alarm only a browser can raise is the same silence this exists to
+// end.
+func uncredited(ctx context.Context, ev *events.Client, orgName, subject, settlement, reason string, amountCents int64, terminal bool) {
 	log.Error("RECONCILE: a settled payment did not move the ledger — org=%s subject=%s settlement=%s amount=%d terminal=%v: %s",
-		orgName, subject, settlement, amountCents, terminal, reason, c)
-	fireEvent(c, func(ctx context.Context, ev *events.Client) {
-		_ = ev.EmitPaymentUncredited(ctx, orgName, subject, settlement, reason, amountCents, terminal)
-	})
+		orgName, subject, settlement, amountCents, terminal, reason)
+	if ev == nil {
+		return
+	}
+	// WithoutCancel (not Background): survive client disconnect but keep trace values.
+	detached := context.WithoutCancel(ctx)
+	go func() {
+		_ = ev.EmitPaymentUncredited(detached, orgName, subject, settlement, reason, amountCents, terminal)
+	}()
 }

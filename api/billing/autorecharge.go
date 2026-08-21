@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/autorecharge"
@@ -149,7 +151,11 @@ func SetAutoRecharge(c *zip.Ctx) error {
 	return c.JSON(200, autoRechargeResponse(cfg, org.Name))
 }
 
-type autoRechargeRunResult struct {
+// RechargeResult is one organization's outcome in a sweep — charged, skipped,
+// or failed with the reason. The amount, balance and transaction are absent on
+// anything but a charge, which is exactly what omitempty says here: a skipped
+// org has no amount, rather than an amount of zero.
+type RechargeResult struct {
 	OrgName       string `json:"orgName"`
 	UserId        string `json:"userId"`
 	Charged       bool   `json:"charged"`
@@ -159,30 +165,40 @@ type autoRechargeRunResult struct {
 	Error         string `json:"error,omitempty"`
 }
 
-// RunAutoRechargeAllOrgs iterates every organization and, for those with
-// auto-recharge enabled whose available balance is below the threshold, charges
-// the default payment method and credits the balance. Intended to be invoked on
-// a recurring schedule (CronJob) by the platform.
-//
-//	POST /v1/billing/recharge/run-all
-func RunAutoRechargeAllOrgs(c *zip.Ctx) error {
-	var kmsClient *kms.CachedClient
-	if v := c.Locals("kms"); v != nil {
-		kmsClient, _ = v.(*kms.CachedClient)
-	}
+// RechargeRun is one whole sweep: how many organizations were considered, how
+// many were charged, and what happened to each one that was not simply skipped.
+// Orgs is the population, not the row count — that difference is how a reader
+// knows a quiet run swept anything at all.
+type RechargeRun struct {
+	Orgs    int              `json:"orgs"`
+	Charged int              `json:"charged"`
+	Results []RechargeResult `json:"results"`
+}
 
-	rootDb := datastore.New(c.Context())
+// RunAutoRecharge sweeps every organization and, for those with auto-recharge
+// enabled whose available balance has fallen below the threshold, charges the
+// default card and credits the balance.
+//
+// It takes values because the caller is a SCHEDULE, not a person: there is no
+// request behind an off-session charge, and the one thing that must never be
+// read from one is the retry key. A single run-all request's header would be
+// shared by every org this loop charges, which is why each recharge derives its
+// own key from its own identity instead.
+//
+// A failure to charge one org is that org's result, not the sweep's: the loop
+// continues, so one bad card cannot leave every later customer unfunded. Only
+// the population read failing ends the run.
+func RunAutoRecharge(ctx context.Context, kmsClient *kms.CachedClient, ev *events.Client) (*RechargeRun, error) {
+	rootDb := datastore.New(ctx)
 	orgs := make([]*organization.Organization, 0)
 	if _, err := organization.Query(rootDb).GetAll(&orgs); err != nil {
-		log.Error("Failed to list organizations for auto-recharge: %v", err, c)
-		return jsonhttp.Fail(c, 500, "failed to list organizations", err)
+		return nil, err
 	}
 
-	results := make([]autoRechargeRunResult, 0)
-	charged := 0
+	run := &RechargeRun{Orgs: len(orgs), Results: make([]RechargeResult, 0)}
 
 	for _, org := range orgs {
-		db := datastore.New(org.Namespaced(c.Context()))
+		db := datastore.New(org.Namespaced(ctx))
 
 		cfg := loadAutoRecharge(db, org.Name)
 		if cfg == nil || !cfg.Enabled || cfg.AmountCents <= 0 {
@@ -196,7 +212,7 @@ func RunAutoRechargeAllOrgs(c *zip.Ctx) error {
 
 		// Available = balance - holds. Skip if still above the threshold.
 		var available int64
-		if datas, err := util.GetTransactionsByCurrency(org.Namespaced(c.Context()), org.Name, "iam-user", cur, org.TestMode()); err == nil {
+		if datas, err := util.GetTransactionsByCurrency(org.Namespaced(ctx), org.Name, "iam-user", cur, org.TestMode()); err == nil {
 			if data, ok := datas.Data[cur]; ok {
 				available = int64(data.Balance) - int64(data.Holds)
 			}
@@ -207,7 +223,7 @@ func RunAutoRechargeAllOrgs(c *zip.Ctx) error {
 
 		pm := defaultPaymentMethod(db, org.Name)
 		if pm == nil {
-			results = append(results, autoRechargeRunResult{
+			run.Results = append(run.Results, RechargeResult{
 				OrgName: org.Name, UserId: org.Name, Charged: false,
 				Error: "no default payment method",
 			})
@@ -218,7 +234,7 @@ func RunAutoRechargeAllOrgs(c *zip.Ctx) error {
 		// Square creds for the off-session charge.
 		if kmsClient != nil {
 			if err := kms.Hydrate(kmsClient, org); err != nil {
-				log.Error("KMS hydration failed for org %q during auto-recharge: %v", org.Name, err, c)
+				log.Error("KMS hydration failed for org %q during auto-recharge: %v", org.Name, err)
 			}
 		}
 
@@ -233,10 +249,10 @@ func RunAutoRechargeAllOrgs(c *zip.Ctx) error {
 			strconv.FormatInt(cfg.AmountCents, 10) + ":cur:" + string(cur))
 
 		desc := fmt.Sprintf("Auto-recharge %d %s for %s", cfg.AmountCents, cur, org.Name)
-		txID, balanceCents, err := chargeAndCredit(c, org, db, pm, cfg.AmountCents, cur, org.Name, guard, desc)
+		txID, balanceCents, err := chargeAndCredit(ctx, ev, org, db, pm, cfg.AmountCents, cur, org.Name, guard, desc)
 		if err != nil {
-			log.Error("Auto-recharge charge failed for org %q: %v", org.Name, err, c)
-			results = append(results, autoRechargeRunResult{
+			log.Error("Auto-recharge charge failed for org %q: %v", org.Name, err)
+			run.Results = append(run.Results, RechargeResult{
 				OrgName: org.Name, UserId: org.Name, Charged: false, Error: err.Error(),
 			})
 			continue
@@ -245,8 +261,8 @@ func RunAutoRechargeAllOrgs(c *zip.Ctx) error {
 		cfg.LastRechargedAt = time.Now().UTC().Format(time.RFC3339)
 		_ = cfg.Update()
 
-		charged++
-		results = append(results, autoRechargeRunResult{
+		run.Charged++
+		run.Results = append(run.Results, RechargeResult{
 			OrgName:       org.Name,
 			UserId:        org.Name,
 			Charged:       true,
@@ -256,9 +272,20 @@ func RunAutoRechargeAllOrgs(c *zip.Ctx) error {
 		})
 	}
 
-	return c.JSON(200, map[string]any{
-		"orgs":    len(orgs),
-		"charged": charged,
-		"results": results,
-	})
+	return run, nil
+}
+
+// RunAutoRechargeAllOrgs iterates every organization and, for those with
+// auto-recharge enabled whose available balance is below the threshold, charges
+// the default payment method and credits the balance. Intended to be invoked on
+// a recurring schedule (CronJob) by the platform.
+//
+//	POST /v1/billing/recharge/run-all
+func RunAutoRechargeAllOrgs(c *zip.Ctx) error {
+	run, err := RunAutoRecharge(c.Context(), kmsOf(c), eventsOf(c))
+	if err != nil {
+		log.Error("Failed to list organizations for auto-recharge: %v", err, c)
+		return jsonhttp.Fail(c, 500, "failed to list organizations", err)
+	}
+	return c.JSON(200, run)
 }
