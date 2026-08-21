@@ -31,7 +31,17 @@ import (
 // (the commerce API ingress); commerce.hanzo.ai serves the marketing SPA, not
 // the API. Overridable per-org (org.Square.WebhookURL) or per-deployment
 // (SQUARE_WEBHOOK_URL) for non-production hosts.
-const defaultSquareWebhookURL = "https://pay.hanzo.ai/v1/billing/webhooks/square"
+//
+// It answers under COMMERCE's root because that is the capability that verifies
+// it. /v1/billing is the billing capability's address and billing holds no
+// signature key; this callback is commerce's own, and a processor posts it to
+// the app that can check it.
+//
+// THIS VALUE IS PART OF THE SIGNATURE, not merely where the request lands, so
+// changing it is a coordinated change and never a redirect: the Square
+// dashboard's notification URL and any SQUARE_WEBHOOK_URL override must move
+// with it, or every delivery fails verification with a valid signature.
+const defaultSquareWebhookURL = "https://pay.hanzo.ai/v1/commerce/webhooks/square"
 
 // ProcessorsForOrg returns a processor registry configured with the given
 // organization's payment credentials. Each processor is a fresh instance —

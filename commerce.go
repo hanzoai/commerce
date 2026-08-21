@@ -1199,7 +1199,7 @@ func (app *App) setupRoutes() {
 	// unhandled by name silently went there.
 	// The provider-webhook forwarder went with it, and for the same reason: it
 	// relayed Square's callbacks to that same absent backend. The REAL receiver
-	// is commerce's own POST /v1/billing/webhooks/:provider, which verifies the
+	// is commerce's own POST /v1/commerce/webhooks/:provider, which verifies the
 	// signature and settles the payment — the address registered in the Square
 	// dashboard.
 
