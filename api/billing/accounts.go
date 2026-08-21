@@ -1,25 +1,102 @@
 package billing
 
 import (
+	"context"
+	"errors"
 	"time"
 
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
+	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
-// billingAccountMember is a simplified member record.
-// In the current architecture, org members live in IAM, not in Commerce.
-// We return stub data here; a richer implementation would call IAM's API.
-type billingAccountMember struct {
-	ID      string    `json:"id"`
-	UserID  string    `json:"userId"`
+// Account is a billing account. In Commerce an organization IS the account, so
+// the id, name and age are the org's, and the currency is the usd this surface
+// has always reported.
+type Account struct {
+	Id        string    `json:"id"`
+	Name      string    `json:"name"`
+	OrgId     string    `json:"orgId"`
+	OrgName   string    `json:"orgName"`
+	Currency  string    `json:"currency"`
+	CreatedAt time.Time `json:"createdAt"`
+	// Role is the caller's standing in the org. It is absent when no caller was
+	// named, so an anonymous read gets an account rather than an implied
+	// membership.
+	Role string `json:"role,omitempty"`
+}
+
+// Member is one member of a billing account. The roster lives in IAM, not in
+// Commerce, so the only member Commerce can name is the caller itself.
+type Member struct {
+	Id      string    `json:"id"`
+	UserId  string    `json:"userId"`
 	Email   string    `json:"email"`
-	Name    string    `json:"name"`
 	Role    string    `json:"role"`
 	AddedAt time.Time `json:"addedAt"`
+}
+
+// errForeignAccount is the roster refusal: the account named belongs to another
+// organization.
+var errForeignAccount = errors.New("members: account belongs to another organization")
+
+// IsAccountRefusal reports whether err is that refusal. ListAccountMembers
+// renders it as its 403, and a caller that reached the core another way reads
+// the same answer here rather than guessing from an error string.
+func IsAccountRefusal(err error) bool { return errors.Is(err, errForeignAccount) }
+
+// ListAccounts is the billing accounts an org exposes — one, itself.
+//
+// The caller's identity arrives as values because the caller is not always a
+// request: a peer holding no HTTP context asks the same question over the
+// internal plane and must get the same account back. An empty subject means
+// nobody was named, and then the account carries no role.
+func ListAccounts(ctx context.Context, org *organization.Organization, subject, role string) ([]Account, error) {
+	if org == nil {
+		return nil, errors.New("accounts: no organization")
+	}
+	a := Account{
+		Id:        org.Id(),
+		Name:      org.FullName,
+		OrgId:     org.Id(),
+		OrgName:   org.Name,
+		Currency:  "usd",
+		CreatedAt: org.CreatedAt,
+	}
+	if subject != "" {
+		a.Role = role
+	}
+	return []Account{a}, nil
+}
+
+// ListMembers is the roster of one billing account: the caller, or nobody when
+// no caller was named.
+//
+// It takes the account id and the caller's identity as values so the check that
+// guards the roster — this account is yours — holds for every asker, not only
+// for one arriving over HTTP. A foreign account id is errForeignAccount here,
+// which the door renders as its refusal.
+func ListMembers(ctx context.Context, org *organization.Organization, accountId, subject, email, role string) ([]Member, error) {
+	if org == nil {
+		return nil, errors.New("members: no organization")
+	}
+	if accountId != org.Id() {
+		return nil, errForeignAccount
+	}
+	members := make([]Member, 0)
+	if subject != "" {
+		members = append(members, Member{
+			Id:      subject,
+			UserId:  subject,
+			Email:   email,
+			Role:    role,
+			AddedAt: org.CreatedAt,
+		})
+	}
+	return members, nil
 }
 
 // ListBillingAccounts returns billing accounts visible to the caller.
@@ -30,30 +107,26 @@ type billingAccountMember struct {
 func ListBillingAccounts(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 
-	account := map[string]any{
-		"id":        org.Id(),
-		"name":      org.FullName,
-		"orgId":     org.Id(),
-		"orgName":   org.Name,
-		"currency":  "usd",
-		"createdAt": org.CreatedAt,
-	}
-
 	// Surface the caller's role if the gateway authenticated them.
 	// claims is always non-nil; an empty Subject means anonymous and
 	// we leave the "role" field unset rather than implying membership.
+	var subject, role string
 	if claims := iammiddleware.GetIAMClaims(c); claims.Subject != "" {
-		role := "member"
+		subject, role = claims.Subject, "member"
 		for _, r := range claims.Roles {
 			if r == "admin" || r == "owner" {
 				role = r
 				break
 			}
 		}
-		account["role"] = role
 	}
 
-	return c.JSON(200, []map[string]any{account})
+	accounts, err := ListAccounts(c.Context(), org, subject, role)
+	if err != nil {
+		return http.Fail(c, 500, "failed to list billing accounts", err)
+	}
+
+	return c.JSON(200, accounts)
 }
 
 // CreateBillingAccount is a no-op stub. Billing accounts are provisioned via
@@ -73,31 +146,23 @@ func CreateBillingAccount(c *zip.Ctx) error {
 func ListAccountMembers(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 
-	// Verify the requested account belongs to the authenticated org.
-	if id := c.Param("id"); id != org.Id() {
-		return http.Fail(c, 403, "access denied to billing account", nil)
-	}
-
-	members := make([]map[string]any, 0)
-
 	// claims is always non-nil; an empty Subject means anonymous and
 	// the response stays an empty members list rather than synthesizing
 	// a phantom row.
+	var subject, email, role string
 	if claims := iammiddleware.GetIAMClaims(c); claims.Subject != "" {
-		role := "member"
+		subject, email, role = claims.Subject, claims.Email, "member"
 		for _, r := range claims.Roles {
 			if r == "admin" || r == "owner" {
 				role = r
 				break
 			}
 		}
-		members = append(members, map[string]any{
-			"id":      claims.Subject,
-			"userId":  claims.Subject,
-			"email":   claims.Email,
-			"role":    role,
-			"addedAt": org.CreatedAt,
-		})
+	}
+
+	members, err := ListMembers(c.Context(), org, c.Param("id"), subject, email, role)
+	if err != nil {
+		return http.Fail(c, 403, "access denied to billing account", nil)
 	}
 
 	return c.JSON(200, members)
