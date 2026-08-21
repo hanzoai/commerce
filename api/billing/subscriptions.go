@@ -120,10 +120,12 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 			"creating a paid-tier subscription requires platform-administrator or internal-service credentials", nil)
 	}
 
-	sub, err := createSubscription(c, db, org, p, &req)
+	sub, err := createSubscription(db, p, &req)
 	if err != nil {
 		return subscriptionCreateError(c, err)
 	}
+
+	emitSubscriptionCreated(c, org.Name, sub)
 
 	return c.JSON(201, subscriptionResponse(sub))
 }
@@ -238,16 +240,21 @@ func planAtLevel(p *plan.Plan, level int) (*plan.Plan, error) {
 }
 
 // createSubscription is the reusable CORE of subscription creation: seat gate →
-// create the row → expand bundles → provision member seats → emit. It does NOT
-// enforce the C1-a paid-tier mint gate — that is the caller's job (the HTTP
+// create the row → expand bundles → provision member seats. It does NOT enforce
+// the C1-a paid-tier mint gate — that is the caller's job (the HTTP
 // CreateBillingSubscription gates it; the card path is authorized by its settled
 // charge). p carries the server-authoritative price; req.DefaultPaymentMethod is
 // set on the row (the card path passes the vaulted payment-method id).
 //
+// It takes the datastore and the priced plan and nothing else, so it is reachable
+// from a core as well as from a door. The analytics emit belongs to the door that
+// rendered the result — it reads the collector off the request — so each
+// entrypoint fires its own once this hands back the row.
+//
 // p is ALREADY priced at the chosen level (planAtLevel), because the card path
 // has to know the amount before it charges. So req.Level is the wire field, and
 // p.Price is the answer — this core reads the price and never re-derives it.
-func createSubscription(c *zip.Ctx, db *datastore.Datastore, org *organization.Organization, p *plan.Plan, req *createSubscriptionRequest) (*subscription.Subscription, error) {
+func createSubscription(db *datastore.Datastore, p *plan.Plan, req *createSubscriptionRequest) (*subscription.Subscription, error) {
 	// Seat gate: the catalog is the sole authority for per-seat-ness and the
 	// seat floor. A per-seat plan bills Price × quantity, never below
 	// limits.minSeats, and member rows (each minting a per-user allotment) can
@@ -282,7 +289,7 @@ func createSubscription(c *zip.Ctx, db *datastore.Datastore, org *organization.O
 	engine.StartSubscription(sub, p)
 
 	if err := sub.Create(); err != nil {
-		log.Error("Failed to create subscription: %v", err, c)
+		log.Error("Failed to create subscription: %v", err)
 		return nil, err
 	}
 
@@ -305,7 +312,7 @@ func createSubscription(c *zip.Ctx, db *datastore.Datastore, org *organization.O
 		// seed + CRUD. Mirrors provisionMembers' in-memory child copy.
 		childPlan := childSnapshotPlan(db, childSlug)
 		if childPlan == nil {
-			log.Error("bundled plan %q not found for parent %q (skipping)", childSlug, req.PlanId, nil, c)
+			log.Error("bundled plan %q not found for parent %q (skipping)", childSlug, req.PlanId, nil)
 			continue
 		}
 
@@ -325,7 +332,7 @@ func createSubscription(c *zip.Ctx, db *datastore.Datastore, org *organization.O
 		engine.StartSubscription(childSub, childPlan)
 		childSub.PlanId = childSlug // stable label; the child plan is a local snapshot, not an authority row
 		if err := childSub.Create(); err != nil {
-			log.Error("Failed to create bundled subscription %q for parent %q: %v", childSlug, req.PlanId, err, c)
+			log.Error("Failed to create bundled subscription %q for parent %q: %v", childSlug, req.PlanId, err)
 			continue
 		}
 	}
@@ -334,10 +341,8 @@ func createSubscription(c *zip.Ctx, db *datastore.Datastore, org *organization.O
 	// monthly allotment run grants each member their own per-user included
 	// credit (never a multiplied org wallet).
 	if perSeat(req.PlanId) {
-		provisionMembers(c, db, sub, req.PlanId, p, req.Members)
+		provisionMembers(db, sub, req.PlanId, p, req.Members)
 	}
-
-	emitSubscriptionCreated(c, org.Name, sub)
 
 	return sub, nil
 }
@@ -395,7 +400,7 @@ func childSnapshotPlan(db *datastore.Datastore, childSlug string) *plan.Plan {
 // a live child row is never duplicated. The child plan is an in-memory
 // zero-price copy of the parent's plan — the customer pays once, on the
 // parent's per-seat invoice.
-func provisionMembers(c *zip.Ctx, db *datastore.Datastore, parent *subscription.Subscription, planSlug string, base *plan.Plan, members []string) {
+func provisionMembers(db *datastore.Datastore, parent *subscription.Subscription, planSlug string, base *plan.Plan, members []string) {
 	seen := map[string]bool{parent.UserId: true}
 	for _, m := range members {
 		m = strings.ToLower(strings.TrimSpace(m))
@@ -419,7 +424,7 @@ func provisionMembers(c *zip.Ctx, db *datastore.Datastore, parent *subscription.
 		}
 		engine.StartSubscription(childSub, &childPlan)
 		if err := childSub.Create(); err != nil {
-			log.Error("Failed to create member subscription for %q (parent %q): %v", m, parent.Id(), err, c)
+			log.Error("Failed to create member subscription for %q (parent %q): %v", m, parent.Id(), err)
 		}
 	}
 }
@@ -684,7 +689,7 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 
 	// Seat → credits on seat changes: same per-member machinery as create.
 	if perSeat(slug) && len(req.Members) > 0 {
-		provisionMembers(c, db, sub, slug, &sub.Plan, req.Members)
+		provisionMembers(db, sub, slug, &sub.Plan, req.Members)
 	}
 
 	if planChanged {
