@@ -1,6 +1,6 @@
 // Copyright © 2026 Hanzo AI. MIT License.
 
-package meter
+package rate
 
 import (
 	"sync"
@@ -27,7 +27,7 @@ var seedMu sync.Mutex
 // record of what happened.
 //
 // Returns (created, corrected) so a caller can log what a boot actually did.
-func Seed(db *datastore.Datastore, rows []*Meter) (created, corrected int, err error) {
+func Seed(db *datastore.Datastore, rows []*Rate) (created, corrected int, err error) {
 	seedMu.Lock()
 	defer seedMu.Unlock()
 
@@ -71,7 +71,7 @@ func Seed(db *datastore.Datastore, rows []*Meter) (created, corrected int, err e
 // equal reports whether the stored row already says what the file says. Compared
 // field by field rather than by a serialization, so a formatting change in the
 // file does not rewrite every row and report hundreds of corrections.
-func equal(a, b *Meter) bool {
+func equal(a, b *Rate) bool {
 	return a.Label == b.Label &&
 		a.Unit == b.Unit &&
 		a.Rate == b.Rate &&
@@ -90,12 +90,14 @@ func equal(a, b *Meter) bool {
 // datastore key alone. AdminEdited is deliberately NOT copied: it is a fact
 // about the ROW, not about the file, and copying it would let a seed clear the
 // flag that protects an operator's edit.
-func copyInto(dst, src *Meter) {
+func copyInto(dst, src *Rate) {
 	dst.Product = src.Product
 	dst.Meter = src.Meter
+	dst.Rate = src.Rate
 	dst.Bind()
 	dst.Label = src.Label
 	dst.Unit = src.Unit
+	dst.Meter = src.Meter
 	dst.Rate = src.Rate
 	dst.Currency = src.Currency
 	dst.Source = src.Source

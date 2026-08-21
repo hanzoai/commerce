@@ -67,6 +67,9 @@ var kinds = map[string]int{
 	"movie":            200,
 	"watchlist":        201,
 	"meter":            202,
+	// A per-unit price. Distinct from "meter" (202), which is an event
+	// aggregation rule — what to count — where this is what one unit costs.
+	"rate":             291,
 	"credit-grant":     203,
 
 	// Billing & commerce entities added for ORM compatibility
