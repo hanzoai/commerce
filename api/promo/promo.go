@@ -12,6 +12,7 @@
 package promo
 
 import (
+	"context"
 	"strconv"
 	"strings"
 	"time"
@@ -190,8 +191,20 @@ func PutPromo(c *zip.Ctx) error {
 // right now, else nil. This is the ONE gate both the plans view and any pricing
 // path share, so a promo that is drafted or expired never discounts. Reads the
 // reserved platform namespace so the public (org-less) plans endpoint resolves it.
-func Active(c *zip.Ctx) *Promo {
-	db := datastore.New(nscontext.WithNamespace(c.Context(), platformNS))
+//
+// It is the request-shaped face of Current, and holds nothing of its own.
+func Active(c *zip.Ctx) *Promo { return Current(c.Context()) }
+
+// Current is the same offer, asked WITHOUT a request.
+//
+// The plan catalog is read over the internal plane by a peer that holds no
+// store, and a catalog priced without the offer is a different catalog — so the
+// question has to be askable from a context alone. Nothing here was ever
+// request-shaped: the promo lives in the reserved PLATFORM namespace, which is
+// the same row for every caller, which is also why the public org-less plans
+// endpoint can resolve it.
+func Current(ctx context.Context) *Promo {
+	db := datastore.New(nscontext.WithNamespace(ctx, platformNS))
 	p, err := load(db)
 	if err != nil || p == nil {
 		return nil
