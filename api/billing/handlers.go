@@ -310,10 +310,10 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// Wire + crypto top-up rails (user-scoped; nothing here mints — a wire
 	// settles via the admin wire/credit verb on bank receipt, a crypto deposit
 	// via the chain watcher on confirmations).
-	user.Get("/wire", GetWireInstructions)
-	user.Get("/crypto/options", GetCryptoOptions)
-	user.Post("/crypto/deposit", CreateCryptoDeposit)
-	user.Get("/crypto/deposit/:id", GetCryptoDeposit)
+	user.Get("/wire", GetBillingWireInstructions)
+	user.Get("/crypto/options", GetBillingCryptoOptions)
+	user.Post("/crypto/deposit", CreateBillingCryptoDeposit)
+	user.Get("/crypto/deposit/:id", GetBillingCryptoDeposit)
 
 	// Plans (public catalog — cacheable, no writes).
 	// CF caches for 1 hour; plans rarely change.
