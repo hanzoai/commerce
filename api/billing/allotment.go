@@ -2,6 +2,7 @@ package billing
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/transaction"
 	txutil "github.com/hanzoai/commerce/models/transaction/util"
@@ -278,26 +280,100 @@ func RunAllotments(c *zip.Ctx) error {
 	})
 }
 
-// GetUsageRollup returns the unified plan + included-usage + consumed + overage
-// + balance view for a user, for the current UTC month. This is the single
-// read surface the console billing UI renders. All figures are derived from the
-// same transactions the gateway's balance gate reads — no separate store.
+// RollupAllotment is the PLAN side of the month: what the subscription includes,
+// what has been granted against it, what has been spent out of that grant, and
+// what is left of it.
 //
-//	GET /v1/billing/usage/rollup?user=hanzo/alice&plan=pro
+// Every figure here is measured against the GRANT, never against the wallet. A
+// holder within their allotment has spent nothing of their own, and adding these
+// cents to RollupBalance counts one month of usage twice.
+type RollupAllotment struct {
+	// MonthlyCents is what the catalog says the plan includes each month.
+	MonthlyCents int64 `json:"monthlyCents"`
+	// GrantedCents is what the allotment run has actually placed on the balance
+	// for this period. It matches MonthlyCents once the grant has run; before the
+	// first grant it is 0 while the catalog figure already shows the entitlement.
+	GrantedCents int64 `json:"grantedCents"`
+	// ConsumedCents is the part of the month's spend the grant covered — never
+	// more than GrantedCents, so this block stays a statement about the plan.
+	ConsumedCents int64 `json:"consumedCents"`
+	// RemainingCents is what is left of the grant, floored at zero.
+	RemainingCents int64 `json:"remainingCents"`
+}
+
+// RollupBalance is the WALLET side: prepaid money the holder bought, exactly as
+// the gateway's balance gate computes it. It is a separate block from
+// RollupAllotment because the two are separate monies — one was sold with the
+// plan, one was bought with a card — and a sum of them is not a number anyone
+// holds.
+type RollupBalance struct {
+	// BalanceCents is the ledger balance.
+	BalanceCents int64 `json:"balanceCents"`
+	// HoldsCents is what is held against pending charges.
+	HoldsCents int64 `json:"holdsCents"`
+	// AvailableCents is balance less holds, floored at zero.
+	AvailableCents int64 `json:"availableCents"`
+}
+
+// RollupView is a subject's month as a TYPED value: the plan, its included
+// allotment, what was consumed, what ran over, and the wallet beside it.
+type RollupView struct {
+	// User is the billing subject this answers for.
+	User string `json:"user"`
+	// Plan is the slug the figures were computed against, after resolution.
+	Plan string `json:"plan"`
+	// Currency is the ISO code the cents are denominated in.
+	Currency string `json:"currency"`
+	// Period is the UTC month, YYYY-MM.
+	Period string `json:"period"`
+	// Windows are the plan's four nested request bounds and how much of each is
+	// left — the half a holder actually asks about.
+	Windows []Window `json:"windows"`
+	// Included is the plan side: see RollupAllotment.
+	Included RollupAllotment `json:"included"`
+	// ConsumedCents is everything spent this month, inside the allotment and out.
+	// Included.ConsumedCents is the part of it the grant covered.
+	ConsumedCents int64 `json:"consumedCents"`
+	// OverageCents is the part that ran past the grant — what the wallet pays for.
+	OverageCents int64 `json:"overageCents"`
+	// Balance is the wallet side: see RollupBalance.
+	Balance RollupBalance `json:"balance"`
+}
+
+// errRollupNoOrg is ReadRollup REFUSING the question: with no tenant named there
+// is no ledger to read, and an empty month is not the same answer as an unread one.
+var errRollupNoOrg = errors.New("rollup: no organization")
+
+// IsRollupRefusal reports whether ReadRollup refused the question — no tenant
+// named — as against failing to read the ledger. The door answers the first 400
+// and the second 500, and a caller that collapses them shows a customer a month
+// in which they spent nothing when the truth is that nothing could be read.
+func IsRollupRefusal(err error) bool { return errors.Is(err, errRollupNoOrg) }
+
+// ReadRollup is a subject's month — plan, included allotment, consumption,
+// overage and balance — the QUESTION, with no HTTP in it.
 //
-// `plan` is optional; when omitted it is resolved from the user's subscription.
-func GetUsageRollup(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
-	ctx := org.Namespaced(c.Context())
+// It takes values rather than a request so a caller that is not a request can
+// ask: the same month is read over the internal plane by a peer that holds no
+// ledger, and re-deriving it there would be a second answer to "how much of the
+// plan is left", which is the figure a customer is shown and a gate acts on.
+//
+// Every figure comes off the SAME transactions the gateway's balance gate reads,
+// at ONE instant (`now`), so no two of them can straddle a period boundary.
+//
+// An empty plan means "resolve it from the subscription", which is what an absent
+// query parameter has always meant here; a named one is a projection preview and
+// never mints, so it is safe to honour from anyone (the mint path resolves its
+// plan through planForGrant instead). The plan the figures were actually computed
+// against comes back on the value.
+func ReadRollup(ctx context.Context, org *organization.Organization, user, plan string, now time.Time) (*RollupView, error) {
+	if org == nil {
+		return nil, errRollupNoOrg
+	}
+	ctx = org.Namespaced(ctx)
 	db := datastore.New(ctx)
 
-	user := strings.ToLower(strings.TrimSpace(c.Query("user")))
-	if user == "" {
-		return http.Fail(c, 400, "user query parameter is required", nil)
-	}
-
-	plan := resolvePlanSlug(db, user, c.Query("plan"))
-	now := time.Now()
+	plan = resolvePlanSlug(db, user, plan)
 
 	// Catalog-declared included allotment, and what is actually granted on the
 	// balance this month (they match once the grant has run; before the first
@@ -317,12 +393,18 @@ func GetUsageRollup(c *zip.Ctx) error {
 	if overageCents < 0 {
 		overageCents = 0
 	}
+	// The part of the month's spend the GRANT covered — never more than was
+	// granted, so the plan block stays a statement about the plan.
+	consumedAgainstGrant := consumedCents
+	if consumedAgainstGrant > includedGrantedCents {
+		consumedAgainstGrant = includedGrantedCents
+	}
 
 	// Balance exactly as the gateway gate computes it.
 	var balance, holds currency.Cents
 	datas, err := txutil.GetTransactionsByCurrency(ctx, user, "iam-user", currency.USD, org.TestMode())
 	if err != nil {
-		return http.Fail(c, 500, "failed to query balance", err)
+		return nil, err
 	}
 	if data, ok := datas.Data[currency.USD]; ok {
 		balance = data.Balance
@@ -333,34 +415,47 @@ func GetUsageRollup(c *zip.Ctx) error {
 		available = 0
 	}
 
-	return c.JSON(200, map[string]any{
-		"user":     user,
-		"plan":     plan,
-		"currency": "usd",
-		"period":   allotment.Period(now),
-		// What the plan INCLUDES, and how much of each window is left. This is
-		// the half a holder actually asks about; the money blocks below are the
-		// wallet they bought separately and must never be added to it.
-		"windows": usageWindows(ctx, user, plan, org.TestMode(), now),
-		"included": map[string]any{
-			"monthlyCents": includedMonthlyCents, // catalog entitlement
-			"grantedCents": includedGrantedCents, // actually on balance this period
-			"consumedCents": func() int64 {
-				if consumedCents > includedGrantedCents {
-					return includedGrantedCents
-				}
-				return consumedCents
-			}(),
-			"remainingCents": includedRemaining,
+	return &RollupView{
+		User:     user,
+		Plan:     plan,
+		Currency: "usd",
+		Period:   allotment.Period(now),
+		Windows:  usageWindows(ctx, user, plan, org.TestMode(), now),
+		Included: RollupAllotment{
+			MonthlyCents:   includedMonthlyCents,
+			GrantedCents:   includedGrantedCents,
+			ConsumedCents:  consumedAgainstGrant,
+			RemainingCents: includedRemaining,
 		},
-		"consumedCents": consumedCents,
-		"overageCents":  overageCents,
-		"balance": map[string]any{
-			"balanceCents":   int64(balance),
-			"holdsCents":     int64(holds),
-			"availableCents": int64(available),
+		ConsumedCents: consumedCents,
+		OverageCents:  overageCents,
+		Balance: RollupBalance{
+			BalanceCents:   int64(balance),
+			HoldsCents:     int64(holds),
+			AvailableCents: int64(available),
 		},
-	})
+	}, nil
+}
+
+// GetUsageRollup is the door onto ReadRollup. This is the single read surface
+// the console billing UI renders.
+//
+//	GET /v1/billing/usage/rollup?user=hanzo/alice&plan=pro
+//
+// `plan` is optional; when omitted it is resolved from the user's subscription.
+func GetUsageRollup(c *zip.Ctx) error {
+	org := middleware.GetOrganization(c)
+
+	user := strings.ToLower(strings.TrimSpace(c.Query("user")))
+	if user == "" {
+		return http.Fail(c, 400, "user query parameter is required", nil)
+	}
+
+	view, err := ReadRollup(c.Context(), org, user, c.Query("plan"), time.Now())
+	if err != nil {
+		return http.Fail(c, 500, "failed to query balance", err)
+	}
+	return c.JSON(200, view)
 }
 
 // monthlyUsageCents sums api-usage withdrawals for a user since the first

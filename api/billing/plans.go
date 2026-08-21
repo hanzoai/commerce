@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -91,9 +92,10 @@ func licensingOf(cp *canonicalPlan) *plan.Licensing {
 	return &plan.Licensing{Products: e.Products, Apps: e.Apps, Features: e.Features, Seats: e.Seats}
 }
 
-// staticPlan is the wire type returned by GET /billing/plans.
-// Fields match the Plan type in the billing frontend's commerce-client.ts.
-type staticPlan struct {
+// PlanView is a plan as this service SELLS it — the wire type GET /billing/plans
+// returns, promo annotation and all. Fields match the Plan type in the billing
+// frontend's commerce-client.ts.
+type PlanView struct {
 	Slug        string `json:"slug"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
@@ -129,6 +131,12 @@ type staticPlan struct {
 	// the row, where it survives the tier's retirement.
 	Licensing *plan.Licensing `json:"licensing,omitempty"`
 }
+
+// staticPlan is the name the rest of the package writes for a PlanView. It is an
+// ALIAS, not a second declaration: the plan a peer reads off the internal plane
+// and the plan the endpoint serves are then one type by construction, rather than
+// two structs kept in agreement.
+type staticPlan = PlanView
 
 // catalog contains every plan this service sells, loaded at init from the
 // operator's directory when one is named and from the embed otherwise. It was
@@ -220,8 +228,12 @@ func parsePlans(data []byte) ([]staticPlan, error) {
 // it here — at the read edge — is what makes the discount admin-controlled: the
 // catalog JSON carries no promo, the promo package (a Promotion) is the single
 // source, and a plan shows a discount only while a promo is live and covers it.
-func withPromo(c *zip.Ctx, plans []staticPlan) []staticPlan {
-	pr := promo.Active(c)
+//
+// The live promo is passed IN. Resolving it is a read of the reserved platform
+// namespace off the request (promo.Active), and taking the resolved value keeps
+// the annotation usable by a caller that has no request. A nil promo annotates
+// nothing and the plans come back at list price.
+func withPromo(pr *promo.Promo, plans []staticPlan) []staticPlan {
 	out := make([]staticPlan, len(plans))
 	copy(out, plans)
 	if pr == nil {
@@ -241,24 +253,32 @@ func withPromo(c *zip.Ctx, plans []staticPlan) []staticPlan {
 	return out
 }
 
-// ListPlans returns the list of available plans, optionally filtered by category,
-// annotated with the active platform promo. Catalog data is embedded; the promo is
-// admin-configured and resolved per request.
+// ReadPlans is what this service sells, optionally narrowed to one category and
+// annotated with a live promo — the QUESTION, with no HTTP in it.
 //
-//	GET /v1/billing/plans
-//	GET /v1/billing/plans?category=dns
-func ListPlans(c *zip.Ctx) error {
+// It takes values rather than a request so a caller that is not a request can
+// ask: the same catalog is read over the internal plane by a peer that holds no
+// plan authority, and a copy of it there would be a second answer to "what do we
+// sell and for how much" — the answer a customer is charged against.
+//
+// An empty category means "everything", which is what an absent query parameter
+// has always meant here.
+//
+// The list is freshly allocated, never the shared catalog, so a caller may
+// annotate its own copy without editing what the next reader sees. The error is
+// the shape every core on this plane answers in; this read has no failure of its
+// own, because an unreadable or empty plan authority falls back to the embedded
+// catalog — loudly (planAuthorityRows logs) — rather than serving a blank list.
+func ReadPlans(ctx context.Context, category string, pr *promo.Promo) ([]PlanView, error) {
 	// The DB plan authority (admin-editable) is the source of truth; the embed is a
 	// LOUD-failing fallback (planAuthorityRows logs when it fires) so a failed seed
 	// or query serves the known catalog, never a silently blank list.
-	plans, ok := planAuthorityRows(c.Context())
+	plans, ok := planAuthorityRows(ctx)
 	if !ok {
 		plans = catalog
 	}
-
-	category := c.Query("category")
 	if category == "" {
-		return c.JSON(200, withPromo(c, plans))
+		return withPromo(pr, plans), nil
 	}
 
 	filtered := make([]staticPlan, 0)
@@ -267,7 +287,20 @@ func ListPlans(c *zip.Ctx) error {
 			filtered = append(filtered, p)
 		}
 	}
-	return c.JSON(200, withPromo(c, filtered))
+	return withPromo(pr, filtered), nil
+}
+
+// ListPlans is the door onto ReadPlans. Catalog data is admin-editable and
+// embedded as a fallback; the promo is admin-configured and resolved per request.
+//
+//	GET /v1/billing/plans
+//	GET /v1/billing/plans?category=dns
+func ListPlans(c *zip.Ctx) error {
+	plans, err := ReadPlans(c.Context(), c.Query("category"), promo.Active(c))
+	if err != nil {
+		return http.Fail(c, 500, "failed to list plans", err)
+	}
+	return c.JSON(200, plans)
 }
 
 // GetPlan returns a single plan by slug, annotated with the active platform promo.
@@ -282,7 +315,7 @@ func GetPlan(c *zip.Ctx) error {
 	}
 	for _, p := range plans {
 		if p.Slug == id {
-			return c.JSON(200, withPromo(c, []staticPlan{p})[0])
+			return c.JSON(200, withPromo(promo.Active(c), []staticPlan{p})[0])
 		}
 	}
 	return http.Fail(c, 404, "plan not found", nil)

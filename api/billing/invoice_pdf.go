@@ -2,6 +2,8 @@ package billing
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -11,9 +13,55 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/billinginvoice"
+	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json/http"
 )
+
+// Document is a rendered attachment: the bytes and the base name they are
+// offered under, without the extension the door appends. The name travels with
+// the bytes because it is derived from the row, and a reader that rebuilt it
+// would need its own copy of that rule.
+type Document struct {
+	Filename string `json:"filename"`
+	Body     []byte `json:"body"`
+}
+
+// InvoicePDF renders one invoice as an attachment — the RENDER, with no HTTP in
+// it.
+//
+// It takes values so a caller that is not a request can ask: the download is
+// served by a peer process that holds no ledger, and the alternative is shipping
+// the invoice row across and re-rendering it there, which is a second renderer
+// and therefore a second-looking invoice.
+//
+// Bytes cross this seam happily because the render is a PURE function of the
+// row — one page, no timestamps, no random ids — so the same invoice renders the
+// same bytes however often it is asked for, and a retry costs a re-render and
+// nothing else.
+//
+// The org scopes the lookup at the storage layer, so an id from another tenant
+// resolves to nothing rather than being found and then filtered.
+func InvoicePDF(ctx context.Context, org *organization.Organization, id string) (*Document, error) {
+	if org == nil {
+		return nil, errors.New("invoice pdf: no organization")
+	}
+	inv := billinginvoice.New(datastore.New(org.Namespaced(ctx)))
+	if err := inv.GetById(id); err != nil {
+		return nil, fmt.Errorf("invoice not found: %w", err)
+	}
+
+	orgName := org.FullName
+	if orgName == "" {
+		orgName = org.Name
+	}
+
+	name := inv.NumberStr
+	if name == "" {
+		name = "invoice-" + inv.Id()
+	}
+	return &Document{Filename: name, Body: renderInvoicePDF(inv, orgName)}, nil
+}
 
 // DownloadInvoicePDF renders and serves an invoice as a PDF.
 //
@@ -32,29 +80,15 @@ func DownloadInvoicePDF(c *zip.Ctx) error {
 	if !ok || org == nil {
 		return http.Fail(c, 401, "authentication required", nil)
 	}
-	db := datastore.New(org.Namespaced(c.Context()))
 
-	id := c.Param("id")
-	inv := billinginvoice.New(db)
-	if err := inv.GetById(id); err != nil {
+	doc, err := InvoicePDF(c.Context(), org, c.Param("id"))
+	if err != nil {
 		return http.Fail(c, 404, "invoice not found", err)
 	}
 
-	orgName := org.FullName
-	if orgName == "" {
-		orgName = org.Name
-	}
-
-	pdf := renderInvoicePDF(inv, orgName)
-
-	filename := inv.NumberStr
-	if filename == "" {
-		filename = "invoice-" + inv.Id()
-	}
-
-	c.SetHeader("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.pdf"`, filename))
+	c.SetHeader("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.pdf"`, doc.Filename))
 	c.SetHeader("Content-Type", "application/pdf")
-	return c.Bytes(200, pdf)
+	return c.Bytes(200, doc.Body)
 }
 
 // ── Deterministic, dependency-free PDF writer ────────────────────────────────
