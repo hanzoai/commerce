@@ -176,7 +176,7 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 		// The boot fact that used to go to stderr and could not be read back off
 		// a running pod. It is here because a structured log line is greppable,
 		// and — the part that matters — it is also served live at
-		// GET /_/commerce/deposits, so the answer does not depend on catching it.
+		// GET /v1/commerce/deposits, so the answer does not depend on catching it.
 		"deposit_watcher", depositWatcher.Running(),
 		"deposit_assets", len(depositWatcher.Assets()),
 	)
