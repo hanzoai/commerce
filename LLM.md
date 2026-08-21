@@ -653,6 +653,26 @@ reconciled to the new values and stayed invisible. That is what happened to
 catalog. An admin's own unlisting still wins, because `AdminEdited` is checked
 first — the package is the source, a human edit is an override.
 
+### OPEN: the list and the enforcement read different sources
+
+`ListPlans`/`GetPlan` read `planAuthorityRows` — the DB, where an admin edit
+lands. Everything that ENFORCES reads `lookupPlan`, which walks the Go `catalog`
+embed: the meter's bounds (`windows.go:75`), tier resolution
+(`tier.go:388,458`), trials (`trial.go:22`), DNS usage (`dns_usage.go:216`) and
+six more in `plans.go`. Eleven call sites, one source, and it is not the one the
+admin writes to.
+
+So an operator editing a plan's limits at admin.hanzo.ai changes what a customer
+is SHOWN and not what they GET. Which of the two should win is a real design
+question — this file's own heading says a plan is "applied by a DEPLOY", which
+argues for the embed; the AdminEdited override argues the other way — and it
+should be answered deliberately rather than by whichever call site a reader
+happens to open.
+
+Worth knowing while it stands: the usage meter reads the EMBED, so it was never
+affected by the stale rows above. Free's windows have been measured correctly
+all along; it was the published catalog that disagreed.
+
 ## One way to price a UNIT — the rate authority, edited at admin.hanzo.ai
 
 A plan says what a SUBSCRIPTION costs. A rate says what one UNIT costs — a model
