@@ -626,6 +626,73 @@ ALIAS of `plan.Limits`, not a second declaration.
   compile time). Without it v1.49.26–v1.49.37 each pushed a release tag and
   published NO image — twelve dead releases.
 
+## One way to price a UNIT — the rate authority, edited at admin.hanzo.ai
+
+A plan says what a SUBSCRIPTION costs. A rate says what one UNIT costs — a model
+per million tokens, a tool per call, storage per GB-month. They are different
+questions with different lifecycles, and `models/rate` is the second one.
+
+Rates used to live in `hanzoai/pricing` as an embedded 150KB JSON: 506 priced
+items, where changing one number meant editing a module, cutting a tag, bumping
+commerce, bumping cloud and deploying. That is the right lifecycle for a plan
+ladder (see the section above — versioned, reviewed, revertible) and the wrong
+one for 506 upstream prices that move when a vendor moves theirs.
+
+So the rate authority has NO EMBED, deliberately. There is nothing to vendor and
+no `PinnedRatesVersion`. `POST /v1/commerce/rates/import` loads a whole document
+and RECONCILES it: a matching row is left alone, a drifted one corrected, an
+operator-edited one skipped. Importing the same document twice is a no-op.
+
+`AdminEdited` means the same thing it means for plans, and matters more here: an
+operator's price outranks the document it came from. Without it you would change
+a rate in admin.hanzo.ai, watch it apply, and find it silently reverted by the
+next import — which would make an editable catalog WORSE than a hardcoded one.
+
+**Identity is `(product, meter)`, derived into one indexed `Slug` by `Bind()`.**
+The same model name can be metered by two products at two rates, so keying on the
+name alone lets one product's price overwrite another's.
+
+**Rates are NANO-dollars.** Cents cannot hold them: a cheap model is fractions of
+a cent per million tokens, and rounding to a cent prices it at zero or at 100x.
+The usage ledger already carries `cost_nano`/`billed_nano`/`margin_nano`.
+
+**`models/rate` is NOT `models/meter`.** A meter is an event AGGREGATION rule
+(`EventName`, `AggregationType` sum/count/last, `Dimensions`) — what to count. A
+rate is what one of those units costs. They shared a name for one commit and
+`billing/engine` broke immediately.
+
+### Usage windows — what a plan INCLUDES
+
+`plan.Limits` carries four nested bounds in requests: `requestsPerHour`,
+`PerDay`, `PerWeek`, `PerMonth`. `requestsPerMinute` is NOT one of them — that is
+a burst rate, what the service absorbs at once, and conflating the two is how "60
+a minute" comes to be read as a quota.
+
+They only mean anything while each longer window is SMALLER than the naive
+multiple of the shorter one. Set month = 30 x day and the monthly ceiling can
+never be reached — every route to it crosses thirty daily ceilings first — and
+the plan collapses into a daily limit wearing four names. `@hanzo/plans`
+`test/windows.test.mjs` pins the ratios, because four ascending numbers look
+correct and only the ratios say whether three of them do anything.
+
+**Counting is the money ledger, not a new counter.** Every `api-usage` debit is
+written once per call behind an idempotency record, so counting rows counts
+requests — and it is the same source the balance gate reads, so what a holder is
+shown and what the gate enforces cannot disagree. One query covers all four
+windows: the month contains the others, so rows are read once and bucketed.
+
+Periods are CALENDAR-aligned, not trailing. "Clears at midnight" is actionable; a
+rolling 24h window recovers a trickle at a time and never visibly clears. The
+week starts Monday — Go's `Weekday()` puts Sunday at 0, so the naive subtraction
+moves a Sunday into the previous week and reports a spent bound as fresh.
+
+**`LevelWindows(level)` — usage scales with what you pay.** A ladder that sells
+ten levels ($99…$999 on max) carries ONE set of windows; each level includes them
+in proportion to its own price. Nothing is stored per level, so the prices and
+the allowance cannot disagree and a new level needs no second edit. Only the
+volume windows scale; the burst rate does not.
+
+
 ## One way to grant credit — POST /v1/billing/credit (2026-07-16)
 
 `POST /v1/billing/credit` is the ONLY way credit enters an org ledger. It is
