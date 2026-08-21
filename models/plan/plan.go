@@ -313,8 +313,8 @@ type Limits struct {
 	RequestsPerDay   *int `json:"requestsPerDay,omitempty"`
 	RequestsPerWeek  *int `json:"requestsPerWeek,omitempty"`
 	RequestsPerMonth *int `json:"requestsPerMonth,omitempty"`
-	FreeCredit        *int `json:"freeCredit,omitempty"`
-	MaxMembers        *int `json:"maxMembers,omitempty"`
+	FreeCredit       *int `json:"freeCredit,omitempty"`
+	MaxMembers       *int `json:"maxMembers,omitempty"`
 
 	// MinSeats is the minimum billable seat count for per-seat plans
 	// (price_ref.recurring.per_seat) — the ONE canonical home for seat minimums.
@@ -462,10 +462,21 @@ func Seed(db *datastore.Datastore, rows []*Plan) (created, corrected int, err er
 			if existing.AdminEdited {
 				continue
 			}
-			if planEqual(existing, r) {
+			// THE CATALOG DECIDES WHETHER A PLAN IS SOLD, IN BOTH DIRECTIONS. The
+			// loop below archives a slug the catalog stopped publishing; this is
+			// the other half, and without it a retired tier can never come back.
+			// Status is carried by neither copyInto nor planEqual, so a
+			// republished row reconciles to the catalog's values and stays
+			// invisible — reported as present by the seed and absent by the public
+			// catalog, with nothing to read that says why.
+			back := !existing.Listed()
+			if !back && planEqual(existing, r) {
 				continue // already the published value — write nothing
 			}
 			copyInto(existing, r)
+			if back {
+				existing.Status = StatusActive
+			}
 			existing.Managed = true
 			if uerr := existing.Update(); uerr != nil {
 				return created, corrected, uerr
@@ -563,6 +574,10 @@ func limitsEqual(a, b *Limits) bool {
 	}
 	return eqInt(a.RequestsPerMinute, b.RequestsPerMinute) &&
 		eqInt(a.TokensPerMinute, b.TokensPerMinute) &&
+		eqInt(a.RequestsPerHour, b.RequestsPerHour) &&
+		eqInt(a.RequestsPerDay, b.RequestsPerDay) &&
+		eqInt(a.RequestsPerWeek, b.RequestsPerWeek) &&
+		eqInt(a.RequestsPerMonth, b.RequestsPerMonth) &&
 		eqInt(a.FreeCredit, b.FreeCredit) &&
 		eqInt(a.MaxMembers, b.MaxMembers) &&
 		eqInt(a.MinSeats, b.MinSeats) &&

@@ -626,6 +626,33 @@ ALIAS of `plan.Limits`, not a second declaration.
   compile time). Without it v1.49.26–v1.49.37 each pushed a release tag and
   published NO image — twelve dead releases.
 
+### The seed is only as good as what it compares
+
+`planEqual`/`limitsEqual` decide whether the seed writes at all, so **a field
+copied but not compared is invisible**: the stored row and the published catalog
+disagree, the seed reports success, and nothing logs. `copyInto`'s comment has
+always said the two lists must match; nothing enforced it.
+
+It broke the first time the struct grew. Four window fields were added to
+`Limits` and to `copyInto` and not to `limitsEqual`, so any plan whose ONLY
+change was its included usage read as already published. It reached production:
+`go` and `pro` carried their windows (their PRICES had changed, which planEqual
+does compare) while **`free` and `max` carried none** — so the holders most
+likely to meet a limit were the only ones with no meter to warn them, which is
+the exact failure the meter was built for.
+
+`TestEveryLimitCopiedIsAlsoCompared` walks the struct by reflection, so the next
+field added to `Limits` fails immediately instead of two deploys later.
+
+**The catalog decides whether a plan is sold, in BOTH directions.** The seed
+archives a slug the catalog stops publishing; it now un-archives one the catalog
+names again. Without the second half a retired tier could never come back —
+`Status` is carried by neither `copyInto` nor `planEqual`, so a republished row
+reconciled to the new values and stayed invisible. That is what happened to
+`dev`: retired at plans 1.4.16, republished at 1.4.20, still absent from the live
+catalog. An admin's own unlisting still wins, because `AdminEdited` is checked
+first — the package is the source, a human edit is an override.
+
 ## One way to price a UNIT — the rate authority, edited at admin.hanzo.ai
 
 A plan says what a SUBSCRIPTION costs. A rate says what one UNIT costs — a model
