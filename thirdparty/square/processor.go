@@ -55,7 +55,7 @@ type Config struct {
 	LocationID    string
 	WebhookSecret string
 	// WebhookURL is the notification URL registered with Square's webhook
-	// subscription (e.g. https://api.hanzo.ai/v1/billing/webhooks/square).
+	// subscription (e.g. https://api.hanzo.ai/v1/commerce/webhooks/square).
 	// Required to validate live Square signatures; see SquareProcessor.webhookURL.
 	WebhookURL  string
 	Environment string // "sandbox" or "production"
