@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/zap-proto/zip"
 
@@ -127,20 +128,41 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 	return c.JSON(201, subscriptionResponse(sub))
 }
 
-// subValidationError marks a client-side (HTTP 400) subscription-creation failure
-// — a seat-floor or members>seats violation — as distinct from an internal (500)
-// failure, so the shared core can be reused by both HTTP entrypoints without
-// smearing the status codes.
+// subValidationError marks a client-side (HTTP 400) subscription failure — a
+// seat-floor or members>seats violation on the way in, a lifecycle move the
+// engine refuses once the row exists — as distinct from an internal (500)
+// failure, so a core can refuse the caller's values without knowing what a
+// status code is.
 type subValidationError struct{ msg string }
 
 func (e subValidationError) Error() string { return e.msg }
 
+// errSubscriptionNotFound is the miss: no such subscription in the caller's org.
+// The namespace IS the boundary, so a row belonging to another tenant is simply
+// not found — there is no window in which the wrong row is in hand.
+var errSubscriptionNotFound = errors.New("subscription: no such subscription for this org")
+
+// IsSubscriptionNotFound reports whether err is that miss. A caller outside this
+// package has to answer it the same way the door does, and an unexported
+// sentinel cannot be asked about.
+func IsSubscriptionNotFound(err error) bool { return errors.Is(err, errSubscriptionNotFound) }
+
+// IsSubscriptionRefused reports whether err is a refusal of what the CALLER
+// asked for — seats below the plan's floor, members beyond the seats paid for,
+// a lifecycle move the engine will not make — as distinct from the store
+// failing. The asker can fix the first and can do nothing about the second,
+// which is why they carry different statuses, and why a caller that could not
+// tell them apart would report every typo as an outage.
+func IsSubscriptionRefused(err error) bool {
+	var ve subValidationError
+	return errors.As(err, &ve)
+}
+
 // subscriptionCreateError maps a createSubscription error to the right HTTP status:
 // a seat/members validation error is a 400, anything else (persist failure) a 500.
 func subscriptionCreateError(c *zip.Ctx, err error) error {
-	var ve subValidationError
-	if errors.As(err, &ve) {
-		return http.Fail(c, 400, ve.msg, nil)
+	if IsSubscriptionRefused(err) {
+		return http.Fail(c, 400, err.Error(), nil)
 	}
 	return http.Fail(c, 500, "failed to create subscription", err)
 }
@@ -672,6 +694,180 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 	return c.JSON(200, subscriptionResponse(sub))
 }
 
+// Subscription is one subscription as this surface reports it — the same facts
+// subscriptionResponse renders for the browser, carried with a schema so a
+// caller holding types instead of a response writer gets the same answer. One
+// row, two projections; never two sets of facts.
+type Subscription struct {
+	ID       string `json:"id"`
+	UserID   string `json:"userId"`
+	PlanID   string `json:"planId"`
+	Status   string `json:"status"`
+	Quantity int    `json:"quantity"`
+
+	CurrentPeriodStart time.Time `json:"currentPeriodStart"`
+	CurrentPeriodEnd   time.Time `json:"currentPeriodEnd"`
+	CancelAtPeriodEnd  bool      `json:"cancelAtPeriodEnd"`
+
+	// MRRCents is what this subscription contributes to monthly recurring
+	// revenue, computed here so no reader re-derives it from price and interval.
+	MRRCents             int64  `json:"mrrCents"`
+	ProviderType         string `json:"providerType"`
+	DefaultPaymentMethod string `json:"defaultPaymentMethod"`
+
+	Plan SubscriptionPlan `json:"plan"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+
+	// The four dates a subscription may not have. Each is a POINTER because the
+	// key is absent on a CONDITION — a trial was opened, a cancel happened, the
+	// row ended — and NOT because the value is zero: omitempty omits no
+	// time.Time, so a plain field would report every subscription as trialing
+	// since year one. Trial start and end appear together or not at all, which
+	// is what "it had a trial" means.
+	TrialStart *time.Time `json:"trialStart,omitempty"`
+	TrialEnd   *time.Time `json:"trialEnd,omitempty"`
+	CanceledAt *time.Time `json:"canceledAt,omitempty"`
+	EndedAt    *time.Time `json:"endedAt,omitempty"`
+}
+
+// SubscriptionPlan is the plan AS THIS SUBSCRIPTION SNAPSHOTTED IT: the priced
+// thing the customer bought, which is not necessarily what the catalog sells
+// today. It is a different type from PlanView (the catalog's sales shape)
+// because renewals invoice off this snapshot — the two are meant to be free to
+// disagree, and one shared type would quietly make every price edit retroactive.
+type SubscriptionPlan struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Price    int64  `json:"price"`
+	Currency string `json:"currency"`
+	Interval string `json:"interval"`
+}
+
+// viewSubscription projects the row onto the typed answer. ONE projection, so
+// two cores cannot describe the same subscription two ways.
+func viewSubscription(sub *subscription.Subscription) *Subscription {
+	v := &Subscription{
+		ID:                   sub.Id(),
+		UserID:               sub.UserId,
+		PlanID:               sub.PlanId,
+		Status:               string(sub.Status),
+		Quantity:             sub.Quantity,
+		CurrentPeriodStart:   sub.PeriodStart,
+		CurrentPeriodEnd:     sub.PeriodEnd,
+		CancelAtPeriodEnd:    sub.EndCancel,
+		MRRCents:             SubscriptionMRRCents(sub),
+		ProviderType:         sub.ProviderType,
+		DefaultPaymentMethod: sub.DefaultPaymentMethod,
+		Plan: SubscriptionPlan{
+			ID:       sub.Plan.Id(),
+			Name:     sub.Plan.Name,
+			Price:    int64(sub.Plan.Price),
+			Currency: string(sub.Plan.Currency),
+			Interval: string(sub.Plan.Interval),
+		},
+		CreatedAt: sub.CreatedAt,
+		UpdatedAt: sub.UpdatedAt,
+	}
+	if !sub.TrialStart.IsZero() {
+		start, end := sub.TrialStart, sub.TrialEnd
+		v.TrialStart, v.TrialEnd = &start, &end
+	}
+	if !sub.CanceledAt.IsZero() {
+		at := sub.CanceledAt
+		v.CanceledAt = &at
+	}
+	if !sub.Ended.IsZero() {
+		at := sub.Ended
+		v.EndedAt = &at
+	}
+	return v
+}
+
+// loadSubscription reads one subscription inside the org's own namespace, and
+// answers errSubscriptionNotFound when there is none. The namespace does the
+// scoping by construction: an id from another org is not found rather than found
+// and then filtered, so there is no window in which the wrong row is in hand.
+func loadSubscription(ctx context.Context, org *organization.Organization, id string) (*subscription.Subscription, error) {
+	if org == nil {
+		return nil, errors.New("subscriptions: no organization")
+	}
+	sub := subscription.New(datastore.New(org.Namespaced(ctx)))
+	if err := sub.GetById(id); err != nil {
+		return nil, fmt.Errorf("%w: %v", errSubscriptionNotFound, err)
+	}
+	return sub, nil
+}
+
+// CancelSubscription ends a subscription — at the end of the period already paid
+// for, or immediately — and answers with the row as it now stands.
+//
+// It takes values rather than a request because the customer who cancels is not
+// always at a browser: the same act arrives over the internal plane from a peer
+// that holds no ledger of its own, and a second implementation of "cancel" is
+// how a billing page and a renewal come to disagree about who is still paying.
+//
+// The lifecycle belongs to the engine, so a move it will not make comes back as
+// the caller's own refusal (IsSubscriptionRefused) rather than being re-checked
+// here: one state machine, in one place.
+func CancelSubscription(ctx context.Context, org *organization.Organization, id string, atPeriodEnd bool) (*Subscription, error) {
+	sub, err := cancelSubscription(ctx, org, id, atPeriodEnd)
+	if err != nil {
+		return nil, err
+	}
+	return viewSubscription(sub), nil
+}
+
+// cancelSubscription is the worker: it returns the ROW, so the HTTP door renders
+// its long-standing subscriptionResponse body and fires its analytics event off
+// the model, while the typed caller reads Subscription. Two projections of one
+// result, never two implementations.
+//
+// The emit stays at the door on purpose — it reads the collector off the
+// request, and nothing that needs a request belongs in here.
+func cancelSubscription(ctx context.Context, org *organization.Organization, id string, atPeriodEnd bool) (*subscription.Subscription, error) {
+	sub, err := loadSubscription(ctx, org, id)
+	if err != nil {
+		return nil, err
+	}
+	if err := engine.CancelSubscription(sub, atPeriodEnd); err != nil {
+		return nil, subValidationError{err.Error()}
+	}
+	if err := sub.Update(); err != nil {
+		return nil, err
+	}
+	return sub, nil
+}
+
+// ReactivateSubscription puts a canceled subscription back on its plan and
+// answers with the row as it now stands. Values rather than a request for the
+// reason CancelSubscription gives, and with more force: reactivation is the act
+// least likely to come from a browser, since what asks for it is usually a
+// recovered payment method or a support tool.
+func ReactivateSubscription(ctx context.Context, org *organization.Organization, id string) (*Subscription, error) {
+	sub, err := reactivateSubscription(ctx, org, id)
+	if err != nil {
+		return nil, err
+	}
+	return viewSubscription(sub), nil
+}
+
+// reactivateSubscription is the worker. See cancelSubscription.
+func reactivateSubscription(ctx context.Context, org *organization.Organization, id string) (*subscription.Subscription, error) {
+	sub, err := loadSubscription(ctx, org, id)
+	if err != nil {
+		return nil, err
+	}
+	if err := engine.ReactivateSubscription(sub); err != nil {
+		return nil, subValidationError{err.Error()}
+	}
+	if err := sub.Update(); err != nil {
+		return nil, err
+	}
+	return sub, nil
+}
+
 // CancelBillingSubscription cancels a subscription.
 //
 //	POST /v1/billing/subscriptions/:id/cancel
@@ -685,25 +881,20 @@ func CancelBillingSubscription(c *zip.Ctx) error {
 	if !ok || org == nil {
 		return http.Fail(c, 401, "sign in to change your subscription", nil)
 	}
-	db := datastore.New(org.Namespaced(c.Context()))
-
-	id := c.Param("id")
-	sub := subscription.New(db)
-	if err := sub.GetById(id); err != nil {
-		return http.Fail(c, 404, "subscription not found", err)
-	}
-
 	var req cancelSubscriptionRequest
 	if err := c.Bind(&req); err != nil {
 		// Default to cancel at period end
 		req.AtPeriodEnd = true
 	}
 
-	if err := engine.CancelSubscription(sub, req.AtPeriodEnd); err != nil {
-		return http.Fail(c, 400, err.Error(), nil)
-	}
-
-	if err := sub.Update(); err != nil {
+	sub, err := cancelSubscription(c.Context(), org, c.Param("id"), req.AtPeriodEnd)
+	if err != nil {
+		switch {
+		case IsSubscriptionNotFound(err):
+			return http.Fail(c, 404, "subscription not found", err)
+		case IsSubscriptionRefused(err):
+			return http.Fail(c, 400, err.Error(), nil)
+		}
 		log.Error("Failed to cancel subscription: %v", err, c)
 		return http.Fail(c, 500, "failed to cancel subscription", err)
 	}
@@ -726,19 +917,14 @@ func ReactivateBillingSubscription(c *zip.Ctx) error {
 	if !ok || org == nil {
 		return http.Fail(c, 401, "sign in to change your subscription", nil)
 	}
-	db := datastore.New(org.Namespaced(c.Context()))
-
-	id := c.Param("id")
-	sub := subscription.New(db)
-	if err := sub.GetById(id); err != nil {
-		return http.Fail(c, 404, "subscription not found", err)
-	}
-
-	if err := engine.ReactivateSubscription(sub); err != nil {
-		return http.Fail(c, 400, err.Error(), nil)
-	}
-
-	if err := sub.Update(); err != nil {
+	sub, err := reactivateSubscription(c.Context(), org, c.Param("id"))
+	if err != nil {
+		switch {
+		case IsSubscriptionNotFound(err):
+			return http.Fail(c, 404, "subscription not found", err)
+		case IsSubscriptionRefused(err):
+			return http.Fail(c, 400, err.Error(), nil)
+		}
 		log.Error("Failed to reactivate subscription: %v", err, c)
 		return http.Fail(c, 500, "failed to reactivate subscription", err)
 	}
