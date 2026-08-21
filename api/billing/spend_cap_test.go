@@ -65,14 +65,14 @@ func recordUsage(t *testing.T, org *organization.Organization, body string) int 
 }
 
 // authorize drives AuthorizeSpendCap and returns the parsed verdict.
-func authorize(t *testing.T, org *organization.Organization, query string) authorizeResult {
+func authorize(t *testing.T, org *organization.Organization, query string) Verdict {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, "/v1/billing/alerts/authorize?"+query, nil)
 	w := driveSeeded(capSeed(org), "/v1/billing/alerts/authorize", req, AuthorizeSpendCap)
 	if w.StatusCode != 200 {
 		t.Fatalf("AuthorizeSpendCap status = %d, body=%s", w.StatusCode, func() string { b, _ := io.ReadAll(w.Body); return string(b) }())
 	}
-	var res authorizeResult
+	var res Verdict
 	if err := json.Unmarshal(func() []byte { b, _ := io.ReadAll(w.Body); return b }(), &res); err != nil {
 		t.Fatalf("decode authorize: %v (body=%s)", err, func() string { b, _ := io.ReadAll(w.Body); return string(b) }())
 	}
