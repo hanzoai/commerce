@@ -2,6 +2,7 @@ package billing
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -11,67 +12,114 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
+	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
-// GetTier returns the billing tier, limits, and effective balance for a user.
+// TierLimits is what a tier ALLOWS, as the wire has always carried it: the
+// registry's configuration plus the one fact that is derived rather than stored.
 //
-// For IAM-authenticated requests the tier is read from the JWT claim.
-// For service-to-service calls the tier may be passed as a query parameter.
-//
-//	GET /v1/billing/tier?user=hanzo/alice
-//
-// Response includes the tier config plus the effective available balance.
-// There is no free tier: a zero-balance account has effectiveAvailable == 0
-// and is gated. The daily-credit term is 0 for every tier (see billing/tier);
-// onboarding funds an account once via the starter-credit grant, and once
-// that is spent the account is gated until it is topped up.
-func GetTier(c *zip.Ctx) error {
-	// No organization on the request is a REFUSAL, not a panic and not a Free.
-	//
-	// The one-value GetOrganization type-asserts and blew up here for every
-	// service-to-service caller — measured live, a 500 on every call. That is
-	// this route's main caller: IAMTokenRequired resolves an org only from a
-	// gateway-validated user identity and deliberately falls through on a bare
-	// X-Org-Id, so an S2S request reaches the handler with a nil org.
-	//
-	// Answering Free instead would be worse than the 500. Free is exactly what
-	// the router falls back to on error, so serving it from a request that could
-	// read nothing turns an unanswerable question into a confident wrong answer:
-	// every paying customer silently pinned to the most restrictive tier, with no
-	// error anywhere to find. A tier that cannot be read is reported as not read.
-	org, ok := middleware.GetOrganizationOK(c)
-	if !ok || org == nil {
-		return http.Fail(c, 400, "organization is required to read a tier", nil)
-	}
-	ctx := org.Namespaced(c.Context())
+// tier.Config is embedded, not copied field by field. The registry is the
+// authority on what a tier allows, and a second declaration of its five fields
+// here is how a read and a gate come to disagree about maxAgents.
+type TierLimits struct {
+	tier.Config
+	// UnlimitedAgents reports that MaxAgents 0 means "no ceiling" rather than
+	// "no agents" — the reading a bare zero cannot carry.
+	UnlimitedAgents bool `json:"unlimitedAgents"`
+}
 
-	user := strings.ToLower(strings.TrimSpace(c.Query("user")))
-	if user == "" {
-		return http.Fail(c, 400, "user query parameter is required", nil)
-	}
+// TierBalance is what the subject can actually spend, from the same three-bucket
+// split the balance endpoint serves.
+//
+// EffectiveAvailable is the only figure a gate should compare against zero. The
+// others are its parts, and prepaid + credits + daily are three sources of one
+// spend, not three balances to add up a second time.
+type TierBalance struct {
+	// Currency is the ISO code the figures are denominated in.
+	Currency currency.Type `json:"currency"`
+	// PrepaidAvailable is real money on the ledger, less holds, floored at zero.
+	PrepaidAvailable currency.Cents `json:"prepaidAvailable"`
+	// CreditsRemaining is granted, still-active, non-cash credit — spendable on
+	// metered usage, never on GPUs.
+	CreditsRemaining currency.Cents `json:"creditsRemaining"`
+	// DailyRemaining is what is left of the tier's daily allowance today. It is 0
+	// for every registered tier; see ReadTier.
+	DailyRemaining int64 `json:"dailyRemaining"`
+	// EffectiveAvailable is spendable balance plus the daily term — what the gate
+	// in front of the models reads.
+	EffectiveAvailable int64 `json:"effectiveAvailable"`
+}
 
-	tierName, err := resolveTierName(c, user)
-	if err != nil {
-		// Fail-safe: a subscription-store hiccup must NOT downgrade a paid
-		// subscriber to Free. Surface the error so the caller retries or holds
-		// the last-known tier instead of asserting a wrong Free.
-		return http.Fail(c, 500, "failed to resolve tier", err)
+// TierView is a subject's tier as a TYPED value: which tier they are on, what it
+// allows, what they can spend, and how much of each plan window is left.
+type TierView struct {
+	// User is the billing subject this answers for.
+	User string `json:"user"`
+	// Tier is the tier's own bounds.
+	Tier TierLimits `json:"tier"`
+	// Balance is what they can spend right now.
+	Balance TierBalance `json:"balance"`
+	// Windows are the plan's own bounds, over four nested spans. A plan sells
+	// usage over them and nothing on the request path could see it: they were
+	// published in the catalog and reported to the account page, and the gate had
+	// no way to ask. They are CARRIED here, not enforced — enforcing is the
+	// router's call and a refusal is money. A window with limit 0 declares no
+	// bound at that span, so a reader skips it rather than treating it as spent.
+	Windows []Window `json:"windows"`
+}
+
+// errTierNoOrg is ReadTier REFUSING the question rather than failing at it: with
+// no tenant named there is no ledger to read, and a tier answered from nothing
+// would be a tier invented.
+var errTierNoOrg = errors.New("tier: no organization")
+
+// IsTierRefusal reports whether ReadTier refused the question — no tenant named —
+// as against failing to read one that exists.
+//
+// The two must stay apart at every caller, which is why the class is exported
+// rather than left as a sentinel only this package can see. The router in front
+// of the models reads ANY non-2xx from the tier door as the free tier, so a
+// caller that cannot tell a question it malformed (fix the call) from a ledger it
+// could not read (retry, or hold the last-known tier) pins a paying customer to
+// the most restrictive tier in the table, silently. The door maps the first to
+// 400 and the second to 500; a peer on the internal plane splits them here.
+func IsTierRefusal(err error) bool { return errors.Is(err, errTierNoOrg) }
+
+// ReadTier is a subject's tier and what it leaves them able to spend — the
+// QUESTION, with no HTTP in it.
+//
+// It takes values rather than a request so a caller that is not a request can
+// ask: the rate limiter in front of the models asks this of every call over the
+// internal plane, holding no ledger of its own, and re-deriving it there would be
+// a second answer to "may this subject spend" — which is the one question that
+// must have exactly one.
+//
+// The tier NAME is passed in rather than resolved here. An override is a mint and
+// only a minter may name one (resolveTierName), which is a fact about the caller's
+// credential, not about the subject.
+//
+// Its single failure is the ledger read. The daily term and the windows report
+// what they can and stay quiet otherwise, exactly as they do on the wire.
+func ReadTier(ctx context.Context, org *organization.Organization, user string, name tier.Name) (*TierView, error) {
+	if org == nil {
+		return nil, errTierNoOrg
 	}
-	cfg := tier.Get(tierName)
+	ctx = org.Namespaced(ctx)
+	cfg := tier.Get(name)
 
 	// Spendable balance from the SAME three-bucket split the balance endpoint
 	// serves — prepaid real money AND still-active granted credits both spend
-	// (credits-first). The previous bespoke prepaid-only read silently zeroed
-	// accounts funded purely by a starter/promo grant, 402-gating orgs that
-	// hold real spendable credit.
+	// (credits-first). A bespoke prepaid-only read silently zeroes accounts funded
+	// purely by a starter/promo grant, 402-gating orgs that hold real spendable
+	// credit.
 	cur := currency.Type("usd")
 	split, err := bucketedSplit(ctx, user, cur, org.TestMode())
 	if err != nil {
-		return http.Fail(c, 500, "failed to query balance", err)
+		return nil, err
 	}
 
 	prepaidAvailable := split.PrepaidAvailable
@@ -97,35 +145,74 @@ func GetTier(c *zip.Ctx) error {
 		}
 	}
 
-	effectiveAvailable := int64(spendable) + dailyRemaining
+	return &TierView{
+		User: user,
+		Tier: TierLimits{Config: *cfg, UnlimitedAgents: cfg.IsUnlimitedAgents()},
+		Balance: TierBalance{
+			Currency:           cur,
+			PrepaidAvailable:   prepaidAvailable,
+			CreditsRemaining:   split.CreditsRemaining,
+			DailyRemaining:     dailyRemaining,
+			EffectiveAvailable: int64(spendable) + dailyRemaining,
+		},
+		Windows: usageWindows(ctx, user, subscriptionPlanSlug(datastore.New(ctx), user), org.TestMode(), time.Now()),
+	}, nil
+}
 
-	return c.JSON(200, map[string]any{
-		"user": user,
-		"tier": map[string]any{
-			"name":              cfg.Name,
-			"displayName":       cfg.DisplayName,
-			"maxAgents":         cfg.MaxAgents,
-			"unlimitedAgents":   cfg.IsUnlimitedAgents(),
-			"dailyCreditsCents": cfg.DailyCreditsCents,
-			"allowedModels":     cfg.AllowedModels,
-		},
-		"balance": map[string]any{
-			"currency":           cur,
-			"prepaidAvailable":   prepaidAvailable,
-			"creditsRemaining":   split.CreditsRemaining,
-			"dailyRemaining":     dailyRemaining,
-			"effectiveAvailable": effectiveAvailable,
-		},
-		// The plan's own bounds, beside the wallet, on the read the router already
-		// makes for every request. A plan sells usage over four nested windows and
-		// nothing on the request path could see them: they were published in the
-		// catalog and reported to the account page, and the gate had no way to ask.
-		//
-		// This carries them, it does not enforce them — enforcing is the router's
-		// call and a refusal is money. A window with limit 0 declares no bound at
-		// that span, so a reader must skip it rather than treat it as spent.
-		"windows": usageWindows(ctx, user, subscriptionPlanSlug(datastore.New(ctx), user), org.TestMode(), time.Now()),
-	})
+// GetTier is the door onto ReadTier.
+//
+// For IAM-authenticated requests the tier is read from the JWT claim.
+// For service-to-service calls the tier may be passed as a query parameter.
+//
+//	GET /v1/billing/tier?user=hanzo/alice
+//
+// There is no free tier: a zero-balance account has effectiveAvailable == 0
+// and is gated. Onboarding funds an account once via the starter-credit grant,
+// and once that is spent the account is gated until it is topped up.
+//
+// Every status here is load-bearing. The router in front of the models reads
+// this on every request and maps ANY non-2xx to Free, so a refusal it did not
+// expect downgrades a paying customer in silence — which is why the two
+// unanswerable cases refuse loudly rather than answering Free.
+func GetTier(c *zip.Ctx) error {
+	// No organization on the request is a REFUSAL, not a panic and not a Free.
+	//
+	// The one-value GetOrganization type-asserts and blew up here for every
+	// service-to-service caller — measured live, a 500 on every call. That is
+	// this route's main caller: IAMTokenRequired resolves an org only from a
+	// gateway-validated user identity and deliberately falls through on a bare
+	// X-Org-Id, so an S2S request reaches the handler with a nil org.
+	//
+	// Answering Free instead would be worse than the 500. Free is exactly what
+	// the router falls back to on error, so serving it from a request that could
+	// read nothing turns an unanswerable question into a confident wrong answer:
+	// every paying customer silently pinned to the most restrictive tier, with no
+	// error anywhere to find. A tier that cannot be read is reported as not read.
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		return http.Fail(c, 400, "organization is required to read a tier", nil)
+	}
+
+	user := strings.ToLower(strings.TrimSpace(c.Query("user")))
+	if user == "" {
+		return http.Fail(c, 400, "user query parameter is required", nil)
+	}
+
+	// Resolved HERE because it reads the caller's own credential, not the
+	// subject: an override is a mint and only a minter may name one.
+	tierName, err := resolveTierName(c, user)
+	if err != nil {
+		// Fail-safe: a subscription-store hiccup must NOT downgrade a paid
+		// subscriber to Free. Surface the error so the caller retries or holds
+		// the last-known tier instead of asserting a wrong Free.
+		return http.Fail(c, 500, "failed to resolve tier", err)
+	}
+
+	view, err := ReadTier(c.Context(), org, user, tierName)
+	if err != nil {
+		return http.Fail(c, 500, "failed to query balance", err)
+	}
+	return c.JSON(200, view)
 }
 
 // TierCheck is a lightweight endpoint for model-access gating.
