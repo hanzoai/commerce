@@ -317,8 +317,8 @@ func parsePermissionsHeader(v string) bit.Field {
 // EdgeAuth-minted, post-strip) X-Org-Id and set iam_authenticated. It does NOT
 // fall back to the raw X-Org-Id header: trusting mere header presence let an
 // unvalidated opaque bearer + a client X-Org-Id impersonate any org (the checkout
-// money-surface bypass). IAMTokenRequired runs on every /v1, /v1/commerce and
-// /_/commerce group, so the local-key check covers every legitimate IAM caller; an
+// money-surface bypass). IAMTokenRequired runs on every /v1 and /v1/commerce
+// group, so the local-key check covers every legitimate IAM caller; an
 // opaque service token authorizes through TokenRequired's service-token branch
 // instead, never here.
 func IsIAMAuthenticated(c *zip.Ctx) bool {

@@ -45,8 +45,8 @@ func Mount(app *zip.App, dataDir string, log Log) error {
 		dataDir = "/var/lib/cloud/commerce"
 	}
 
-	// App: app is the whole mount. Bootstrap registers commerce's route groups
-	// (/v1/commerce public, /_/commerce admin) ON THE HOST'S ROUTER and skips
+	// App: app is the whole mount. Bootstrap registers commerce's route group
+	// (/v1/commerce, public and tenant-admin alike) ON THE HOST'S ROUTER and skips
 	// every standalone-only surface — /healthz, the legacy admin SPA, the
 	// checkout SPA catch-all, and Listen, since the host owns the listener.
 	// HTTPAddr stays empty for the same reason.
@@ -62,8 +62,11 @@ func Mount(app *zip.App, dataDir string, log Log) error {
 	}
 
 	// Native zip health endpoint, on a commerce-scoped path so a probe can
-	// target this subsystem specifically rather than the whole binary.
-	app.Get("/_/commerce/healthz", func(c *zip.Ctx) error {
+	// target this subsystem specifically rather than the whole binary. Under
+	// /v1 like everything else commerce answers: a probe path outside it is a
+	// second address rule for one subsystem, and hosts already spell it
+	// /v1/commerce/health.
+	app.Get("/v1/commerce/health", func(c *zip.Ctx) error {
 		return c.JSON(200, map[string]string{
 			"status":  "ok",
 			"service": "commerce",
@@ -85,8 +88,7 @@ func Mount(app *zip.App, dataDir string, log Log) error {
 	// the standalone binary, where those prefixes have no other owner.
 
 	log.Info("commerce mounted",
-		"prefix.public", "/v1/commerce",
-		"prefix.admin", "/_/commerce",
+		"prefix", "/v1/commerce",
 		"data_dir", dataDir,
 	)
 	return nil

@@ -57,7 +57,7 @@ func RequireIdentity(require bool) func(http.Handler) http.Handler {
 }
 
 // Identity returns a zip middleware that mirrors RequireIdentity. Used by
-// server.go to gate the /v1/commerce and /_/commerce groups.
+// server.go to gate the /v1/commerce group.
 func Identity(require bool) zip.Handler {
 	return func(c *zip.Ctx) error {
 		org := c.Header(HeaderOrgID)

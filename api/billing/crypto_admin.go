@@ -12,7 +12,7 @@ import (
 // DepositWatcherStatus reports what the crypto deposit rail is watching and how
 // far it has scanned.
 //
-//	GET /_/commerce/deposits
+//	GET /v1/commerce/deposits
 //
 // It exists because the answer used to be two fmt.Fprintf(os.Stderr, …) lines at
 // boot, and a boot line is not an answer. Measured on the live pod: the watcher
@@ -22,8 +22,8 @@ import (
 // holds it. That cost a wrong diagnosis. A fact worth printing once is a fact
 // worth serving.
 //
-// SUPERADMIN ONLY — deliberately stricter than the sibling routes in this group
-// (GET /_/commerce/providers allows an org admin too). The watch table is a
+// SUPERADMIN ONLY, and it says so itself rather than leaning on where it is
+// mounted. The watch table is a
 // PLATFORM fact, not a tenant one: it is a single process-wide table shared by
 // every org, and it names the custody accounts and node providers the whole
 // deployment's money moves through. An org admin has no tenant-scoped view of it

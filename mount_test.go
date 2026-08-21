@@ -15,7 +15,7 @@ import (
 )
 
 // TestMount_RegistersHealth boots an empty zip.App, runs commerce.Mount,
-// and asserts the native /_/commerce/healthz route answers 200 with
+// and asserts the native /v1/commerce/health route answers 200 with
 // {"service":"commerce"}. Covers:
 //
 //   - Mount() can be called against a fresh *zip.App
@@ -29,7 +29,7 @@ func TestMount_RegistersHealth(t *testing.T) {
 		t.Fatalf("Mount: %v", err)
 	}
 
-	req := httptest.NewRequest("GET", "/_/commerce/healthz", nil)
+	req := httptest.NewRequest("GET", "/v1/commerce/health", nil)
 	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("Fiber Test: %v", err)
