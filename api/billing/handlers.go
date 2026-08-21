@@ -112,7 +112,7 @@ func Route(r zip.Router, args ...zip.Handler) {
 
 	// Billing invoices
 	api.Post("/invoices", CreateInvoice)
-	api.Get("/invoices", ListInvoices)
+	api.Get("/invoices", ListBillingInvoices)
 	api.Get("/invoices/upcoming", UpcomingInvoice)
 	api.Get("/invoices/:id", GetInvoice)
 	api.Post("/invoices/:id/finalize", FinalizeInvoice)
@@ -349,7 +349,7 @@ func Route(r zip.Router, args ...zip.Handler) {
 	user.Get("/me/balance", GetMyBalance)
 
 	// Credit grants & balance (read-only, user-scoped)
-	user.Get("/credits", ListCreditGrants)
+	user.Get("/credits", ListBillingCreditGrants)
 	user.Get("/credit-balance", GetCreditBalance)
 	user.Get("/credit-balance/breakdown", GetCreditBalanceBreakdown)
 
