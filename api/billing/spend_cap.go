@@ -18,6 +18,7 @@ package billing
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -29,6 +30,7 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/employee"
+	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/spendalert"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -168,11 +170,11 @@ func hardAxesValidated(s *spendalert.SpendAlert, projectValidated bool) bool {
 	return s.Project == "" || projectValidated
 }
 
-// authorizeResult is the gate verdict the metering client consumes. reason is
-// "" (allow) or "spend_cap" (deny). warnPct is the actual utilization percent of
-// the most-utilized covering cap when at/over its soft threshold (else 0), so the
-// gate emits X-Spend-Warn without a second round trip.
-type authorizeResult struct {
+// Verdict is the gate decision the metering client consumes. Reason is "" (allow)
+// or "spend_cap" (deny). WarnPct is the actual utilization percent of the most-
+// utilized covering cap when at/over its soft threshold (else 0), so the gate emits
+// X-Spend-Warn without a second round trip.
+type Verdict struct {
 	Allow      bool   `json:"allow"`
 	Reason     string `json:"reason"`
 	CapCents   int64  `json:"capCents"`
@@ -180,42 +182,46 @@ type authorizeResult struct {
 	WarnPct    int    `json:"warnPct"`
 }
 
-// AuthorizeSpendCap is the per-request cap verdict for a (project,service) scope
-// and a proposed amount, over the org's spend-alert rows. It evaluates EVERY
-// covering row (most-restrictive-wins) and DENIES when any HARD-enforceable
-// ENFORCE=true row is exceeded, reporting the tightest one. Soft rows — and a
-// project-scoped enforce row whose project axis is NOT validated (pv=0) — never
+// AuthorizeCap is the per-request cap verdict for a (project,service) scope and a
+// proposed amount, over the org's spend-alert rows — the DECISION, with no HTTP in it.
+// It evaluates EVERY covering row (most-restrictive-wins) and DENIES when any
+// HARD-enforceable ENFORCE=true row is exceeded, reporting the tightest one. Soft rows
+// — and a project-scoped enforce row whose project axis is NOT validated — never
 // block; they only raise the warn utilization.
+//
+// It takes values rather than a request because the request edge is not the only place
+// that asks. A peer holding no ledger puts the same question over the internal plane,
+// and a cap answered twice by two derivations is how a cap and a rate limit come to
+// disagree about which requests they bind. project/service/amount arrive already
+// resolved — the door parses its query, a peer passes what it holds — and
+// projectValidated says whether the PROJECT axis came from a validated claim, which is
+// the only axis that can degrade a hard cap to a warn.
 //
 // FAIL OPEN on UNKNOWN spend: if an enforce row's spend sum cannot be read (a transient
 // finance-ledger error), the verdict does NOT block — a backend blip must not 402 an
 // under-cap customer, nor storm every capped org at once. A row DENIES only when spend is
 // KNOWN and over the cap, so this never fails open on a real overage. Per-scope sums are
 // memoized so covering rows sharing a scope cost one query. The row scan is bounded
-// (loadOrgScopes).
-//
-//	GET /v1/billing/alerts/authorize?user=&project=&service=&amount=&pv=
-func AuthorizeSpendCap(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c.Context()))
+// (loadOrgScopes). A returned error means no verdict was reached at all — the caller
+// decides what an unanswered cap means, and at the edge that is the non-2xx the gate
+// already reads as fail-open.
+func AuthorizeCap(ctx context.Context, org *organization.Organization, project, service string, amount int64, projectValidated bool) (Verdict, error) {
+	if org == nil {
+		return Verdict{}, errors.New("spend-cap: no organization")
+	}
+	db := datastore.New(org.Namespaced(ctx))
 	test := org.TestMode()
-
-	reqProject := spendalert.NormalizeProject(c.Query("project"))
-	reqService := strings.TrimSpace(c.Query("service"))
-	amount := parseCents(c.Query("amount"))
-	projectValidated := c.Query("pv") == "1"
 
 	rows, err := loadOrgScopes(db)
 	if err != nil {
-		log.Error("spend-cap: load scopes failed: %v", err, c)
-		return http.Fail(c, 500, "failed to load spend caps", err)
+		return Verdict{}, err
 	}
 
 	spentBy := map[string]int64{} // memoize per (project,service) scope.
-	res := authorizeResult{Allow: true}
+	res := Verdict{Allow: true}
 	var blockCap int64 // tightest violated enforced cap (most restrictive wins).
 	for _, s := range rows {
-		if s.Threshold <= 0 || !s.Covers(reqProject, reqService) {
+		if s.Threshold <= 0 || !s.Covers(project, service) {
 			continue
 		}
 		hard := s.Enforce && hardAxesValidated(s, projectValidated)
@@ -233,7 +239,7 @@ func AuthorizeSpendCap(c *zip.Ctx) error {
 				// gate still bounds spend and the next request re-reads. A genuine over-cap
 				// still denies below, where spend IS known — so this fails open ONLY on the
 				// unknown, never on a real overage. Logged for observability.
-				log.Error("spend-cap: spend read failed for scope (cap=%d) — failing OPEN, not blocking: %v", s.Threshold, serr, c)
+				log.Error("spend-cap: spend read failed for scope (cap=%d) — failing OPEN, not blocking: %v", s.Threshold, serr)
 				continue
 			}
 			spent = v
@@ -261,6 +267,26 @@ func AuthorizeSpendCap(c *zip.Ctx) error {
 	if !res.Allow {
 		res.WarnPct = 0 // a deny carries no warn.
 	}
+	return res, nil
+}
+
+// AuthorizeSpendCap serves the cap verdict to the cloud metering gate, which reads it
+// on every billable request and treats any non-2xx as fail-open.
+//
+//	GET /v1/billing/alerts/authorize?user=&project=&service=&amount=&pv=
+func AuthorizeSpendCap(c *zip.Ctx) error {
+	org := middleware.GetOrganization(c)
+
+	res, err := AuthorizeCap(c.Context(), org,
+		spendalert.NormalizeProject(c.Query("project")),
+		strings.TrimSpace(c.Query("service")),
+		parseCents(c.Query("amount")),
+		c.Query("pv") == "1")
+	if err != nil {
+		log.Error("spend-cap: load scopes failed: %v", err, c)
+		return http.Fail(c, 500, "failed to load spend caps", err)
+	}
+
 	return c.JSON(200, res)
 }
 
