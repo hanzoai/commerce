@@ -23,8 +23,8 @@ import (
 )
 
 // identityHeaders are the gateway-minted identity headers commerce trusts
-// downstream (see middleware/iammiddleware). At a directly-exposed edge
-// (commerce-api.hanzo.ai is NOT behind hanzoai/gateway) a client can set
+// downstream (see middleware/iammiddleware). At a directly-exposed edge —
+// one not behind hanzoai/gateway — a client can set
 // these by hand and impersonate any org — IsIAMAuthenticated only checks
 // that X-Org-Id is present. EdgeAuth strips them unconditionally and only
 // re-mints them from a cryptographically-verified IAM JWT.

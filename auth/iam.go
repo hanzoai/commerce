@@ -521,11 +521,10 @@ func (c *IAMClient) ValidateToken(ctx context.Context, tokenString string) (*IAM
 	}
 
 	// Verify the token signature against the IAM JWKS. REQUIRED — fail
-	// closed. commerce-api is a directly-exposed trust boundary
-	// (commerce-api.hanzo.ai is NOT behind hanzoai/gateway), so a token
-	// whose RS256 signature we cannot verify is rejected. The prior code
-	// returned UNVERIFIED claims whenever the JWKS was unreachable or the
-	// kid was unknown — a forged token slipped through on any JWKS hiccup.
+	// closed. Commerce serves a directly-exposed edge, not one behind
+	// hanzoai/gateway, so it is the boundary: a token whose RS256 signature
+	// cannot be verified is rejected. An unreachable JWKS and an unknown kid
+	// are both failures to verify, and neither yields claims.
 	jwks, err := c.getJWKS(ctx)
 	if err != nil || jwks == nil {
 		return nil, fmt.Errorf("%w: JWKS unavailable: %v", ErrInvalidToken, err)
