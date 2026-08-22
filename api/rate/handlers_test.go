@@ -274,3 +274,130 @@ func TestImportRefusesADocumentThatSaysNothing(t *testing.T) {
 		t.Errorf("object import → %d, want 400", code)
 	}
 }
+
+// SeedRates is the boot path: it puts the catalog into the authority, and running
+// it twice must change nothing. A boot that reprices metered work every time is a
+// boot nobody can audit.
+func TestSeedRatesIsTheBootPathAndIsIdempotent(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	ctx := context.Background()
+
+	created, corrected, err := SeedRates(ctx)
+	if err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if want := len(Seeded()); created != want {
+		t.Fatalf("first seed created=%d, want the whole catalog of %d", created, want)
+	}
+	if corrected != 0 {
+		t.Errorf("first seed corrected=%d against an empty authority", corrected)
+	}
+
+	created, corrected, err = SeedRates(ctx)
+	if err != nil || created != 0 || corrected != 0 {
+		t.Fatalf("re-seed created=%d corrected=%d err=%v — the second boot must write nothing",
+			created, corrected, err)
+	}
+
+	// And the rows are actually readable at the addresses the catalog names.
+	code, body := mount(t, admin, http.MethodGet, "/rates/entries", nil)
+	if code != http.StatusOK {
+		t.Fatalf("list after seed → %d (%s)", code, body)
+	}
+	var rows []*rate.Rate
+	if err := json.Unmarshal(body, &rows); err != nil {
+		t.Fatalf("list: %s", body)
+	}
+	if len(rows) != len(Seeded()) {
+		t.Errorf("the authority holds %d rows after seeding %d", len(rows), len(Seeded()))
+	}
+
+	// LogSeed is the boot wrapper and must be safe to call on a seeded authority.
+	LogSeed(ctx)
+}
+
+// ?product= narrows the list, so an editor can show one surface at a time rather
+// than every rate at once.
+func TestListNarrowsByProduct(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	if _, _, err := SeedRates(context.Background()); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	_, body := mount(t, admin, http.MethodGet, "/rates/entries?product=storage", nil)
+	var rows []*rate.Rate
+	if err := json.Unmarshal(body, &rows); err != nil {
+		t.Fatalf("list: %s", body)
+	}
+	if len(rows) == 0 {
+		t.Fatal("?product=storage returned nothing, and the catalog seeds a storage meter")
+	}
+	for _, r := range rows {
+		if r.Product != "storage" {
+			t.Errorf("?product=storage returned %s/%s", r.Product, r.Meter)
+		}
+	}
+
+	// A product nobody meters is an empty list, not an error: an editor showing a
+	// new surface must render "nothing here yet" rather than a failure.
+	code, body := mount(t, admin, http.MethodGet, "/rates/entries?product=nothing", nil)
+	if code != http.StatusOK {
+		t.Fatalf("unknown product → %d, want 200 (%s)", code, body)
+	}
+}
+
+// Delete removes the row, and the delete is real: the rate stops answering.
+func TestDeleteRemovesTheRate(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+
+	row := map[string]any{"product": "storage", "meter": "gone", "unit": "GB-month", "rate": 1, "currency": "USD"}
+	if code, body := mount(t, admin, http.MethodPost, "/rates/entries", row); code != http.StatusCreated {
+		t.Fatalf("create → %d (%s)", code, body)
+	}
+	code, body := mount(t, admin, http.MethodDelete, "/rates/entries/storage/gone", nil)
+	if code != http.StatusOK {
+		t.Fatalf("delete → %d, want 200 (%s)", code, body)
+	}
+	var out struct{ Deleted string }
+	if err := json.Unmarshal(body, &out); err != nil || out.Deleted != "storage/gone" {
+		t.Errorf("delete answered %s, want the slug it removed", body)
+	}
+	// Gone means gone: a second delete finds nothing.
+	if code, _ := mount(t, admin, http.MethodDelete, "/rates/entries/storage/gone", nil); code != http.StatusNotFound {
+		t.Errorf("second delete → %d, want 404 — the first one did not remove the row", code)
+	}
+}
+
+// A body that is not a rate is a bad request, not a 500 and not a row of zeros.
+func TestAMalformedBodyIsRefused(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	seed := func(x *zip.Ctx) error {
+		x.SetContext(context.Background())
+		x.Locals("iam_claims", admin)
+		return x.Next()
+	}
+	AdminRoute(app.Group("/v1"), seed)
+
+	for _, tc := range []struct{ method, target string }{
+		{http.MethodPost, "/v1/rates/entries"},
+		{http.MethodPut, "/v1/rates/entries/storage/block-gb-month"},
+		{http.MethodPost, "/v1/rates/import"},
+	} {
+		req := httptest.NewRequest(tc.method, tc.target, bytes.NewReader([]byte("{not json")))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("%s %s: %v", tc.method, tc.target, err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("%s %s with a malformed body → %d, want 400", tc.method, tc.target, resp.StatusCode)
+		}
+	}
+}

@@ -122,14 +122,29 @@ type Rate struct {
 	// which is the whole point of the authority.
 	AdminEdited bool `json:"adminEdited,omitempty"`
 
-	// Status is "active" or "archived". Archiving stops a meter being offered
-	// without deleting the row, so historical charges still resolve their rate.
+	// Status is the row's lifecycle, on the same three the plan model uses:
+	// ACTIVE (sold; empty means the same), DRAFT (exists, not yet sold) and
+	// ARCHIVED (retired, kept so a past charge still resolves its rate).
+	//
+	// The three are shared with plan deliberately. A word that means one thing on
+	// one authority and another on the next is a trap for the operator who learns
+	// it once: "draft" priced a live meter here while it withheld a plan there,
+	// so saving a half-written price would have charged for it.
 	Status string `json:"status,omitempty"`
 }
 
-// Listed reports whether this meter is currently sold. An archived row still
-// resolves for a past charge; it is simply not offered.
-func (m *Rate) Listed() bool { return !strings.EqualFold(m.Status, "archived") }
+// Listed reports whether this meter is sold TODAY. An archived or draft row
+// still resolves for a past charge; it is simply not what anyone is billed now.
+//
+// It admits only the states that mean sold, rather than excluding the one that
+// means retired. The difference is what an UNRECOGNISED status does: a typo, or
+// a state added later and not taught to this predicate, now withholds the price
+// instead of charging it. For a rate that is the safe direction — a caller that
+// reads no price falls back to the floor it charged yesterday, where one that
+// reads a wrong price bills a customer for it.
+func (m *Rate) Listed() bool {
+	return m.Status == "" || strings.EqualFold(m.Status, "active")
+}
 
 // Bind derives the slug from the parts. Called before any write, so the two can
 // never disagree — a slug typed independently of its product and key is a third
