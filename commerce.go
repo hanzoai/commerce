@@ -37,6 +37,7 @@ import (
 	billingPkg "github.com/hanzoai/commerce/api/billing"
 	catalogapi "github.com/hanzoai/commerce/api/catalog"
 	currencyapi "github.com/hanzoai/commerce/api/currency"
+	rateapi "github.com/hanzoai/commerce/api/rate"
 	uploadApi "github.com/hanzoai/commerce/api/upload"
 	"github.com/hanzoai/commerce/auth"
 	billingUI "github.com/hanzoai/commerce/billing"
@@ -899,6 +900,12 @@ func (app *App) Bootstrap() error {
 	// COMMERCE_PLANS_SEED=false to skip.
 	if getEnv("COMMERCE_PLANS_SEED", "true") != "false" {
 		app.runPlansSeed()
+		// The meter authority the same way, under the SAME decision: seeding an
+		// authority at boot is one policy, not two, and a second env var would
+		// let a deployment hold half of it. What it seeds is the platform's own
+		// metered work — storage, translation, screening — each of which is
+		// otherwise a compiled constant with an env override and no history.
+		rateapi.LogSeed(context.Background())
 	}
 
 	// Anti-spoofing boundary — MUST be installed before any route group so it

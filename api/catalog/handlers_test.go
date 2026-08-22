@@ -98,8 +98,34 @@ func TestPublic_ReturnsProjection_NoAuth(t *testing.T) {
 	if err := json.Unmarshal(body, &cat); err != nil {
 		t.Fatalf("projection not JSON: %s", body)
 	}
-	if cat.Brand != "hanzo" || len(cat.Categories) != 10 || len(cat.Products) == 0 {
+	// Against the TAXONOMY, not a literal. The hanzo brand scopes to no subset
+	// (brandCategories["hanzo"] is nil), so a complete projection carries every
+	// canonical category — and asserting the count as a number meant adding one
+	// reddened this package for a change it has nothing to do with.
+	if cat.Brand != "hanzo" || len(cat.Products) == 0 {
 		t.Fatalf("bad projection: brand=%s cats=%d products=%d", cat.Brand, len(cat.Categories), len(cat.Products))
+	}
+	// BY NAME, not by count. The count was `!= 10`, so adding Science reddened
+	// this package for a change it has nothing to do with — and comparing it to
+	// the taxonomy'''s own length instead would be worse still: both sides read the
+	// same list, so the assertion passes for any list at all, including an empty
+	// one. (Measured: it did.)
+	//
+	// What can actually go wrong is a category DISAPPEARING from the public
+	// projection while the taxonomy still declares it — a rename that misses
+	// renamedCategories, or a brand scope that drops one — and that is a whole
+	// section missing from the pricing page. So this names a few the projection
+	// must carry, and stays quiet when a twelfth is added.
+	have := map[string]bool{}
+	for _, c := range cat.Categories {
+		have[c.Label] = true
+	}
+	for _, must := range []string{"AI", "Infrastructure", "Security"} {
+		if !have[must] {
+			t.Errorf("the public projection carries no %q category — the taxonomy declares "+
+				"it, so a whole section is missing from the catalog. Present: %v",
+				must, cat.Categories)
+		}
 	}
 }
 
