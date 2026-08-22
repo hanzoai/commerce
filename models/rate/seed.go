@@ -72,7 +72,9 @@ func Seed(db *datastore.Datastore, rows []*Rate) (created, corrected int, err er
 // field by field rather than by a serialization, so a formatting change in the
 // file does not rewrite every row and report hundreds of corrections.
 func equal(a, b *Rate) bool {
-	return a.Label == b.Label &&
+	return a.Product == b.Product &&
+		a.Meter == b.Meter &&
+		a.Label == b.Label &&
 		a.Unit == b.Unit &&
 		a.Rate == b.Rate &&
 		a.Currency == b.Currency &&
@@ -91,13 +93,13 @@ func equal(a, b *Rate) bool {
 // about the ROW, not about the file, and copying it would let a seed clear the
 // flag that protects an operator's edit.
 func copyInto(dst, src *Rate) {
+	// The parts first, then Bind, because the slug is DERIVED from them and a
+	// bind over stale parts writes the previous row's identity.
 	dst.Product = src.Product
 	dst.Meter = src.Meter
-	dst.Rate = src.Rate
 	dst.Bind()
 	dst.Label = src.Label
 	dst.Unit = src.Unit
-	dst.Meter = src.Meter
 	dst.Rate = src.Rate
 	dst.Currency = src.Currency
 	dst.Source = src.Source
