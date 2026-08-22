@@ -32,12 +32,13 @@ func bootCloud(dataDir, httpAddr string, dev, requireIdentity bool) error {
 	// Build the zip.App with the canonical middleware pipeline. Match
 	// cmd/cloud/main.go ordering so the cloud-mounted commerce and the
 	// in-cloud-binary commerce behave identically at the boundary:
-	//   Recover → RequestID → Logger. Auth/Telemetry are gateway-owned
+	//   Recover → RequestID. The report is the framework's: zip installs it at
+	//   build, outermost, so it sees the requests no route matched and the ones a
+	//   later middleware refused. Auth/Telemetry are gateway-owned
 	//   per the HIP-0026 trust boundary.
 	app := zip.New(zip.Config{Logger: logger})
 	app.Use(middleware.Recover())
 	app.Use(middleware.RequestID())
-	app.Use(middleware.Logger(logger))
 
 	// commerce.Mount boots the embedded server via commerce.Embed, which
 	// honors COMMERCE_DIR/HTTPAddr/etc. via DefaultConfig when dataDir is
