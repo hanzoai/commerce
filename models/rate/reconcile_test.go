@@ -82,9 +82,9 @@ func TestAPartialRowIsRepaired(t *testing.T) {
 			"product cannot see it at all")
 	}
 
-	copyInto(stored, published)
+	stored.Take(published)
 	if stored.Product != "ai" || stored.Meter != "zen-coder" {
-		t.Fatalf("copyInto left the parts as %q/%q", stored.Product, stored.Meter)
+		t.Fatalf("Take left the parts as %q/%q", stored.Product, stored.Meter)
 	}
 	if stored.Slug != "ai/zen-coder" {
 		t.Fatalf("Bind produced %q, want ai/zen-coder", stored.Slug)

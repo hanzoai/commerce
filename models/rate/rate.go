@@ -140,6 +140,37 @@ func (m *Rate) Listed() bool { return !strings.EqualFold(m.Status, "archived") }
 // product's price overwrite another's.
 func (m *Rate) Bind() { m.Slug = m.Product + "/" + m.Meter }
 
+// Take copies what a rate SAYS onto this one — the parts, the words and the
+// price — and rebinds the identity from the parts it just took.
+//
+// It is the ONE definition of "what a write may set", so the seed reconciling a
+// published row and an admin saving an edited one move exactly the same fields.
+// They were two functions before, in two packages, listing the same eight fields
+// in the same order; nothing made them agree, and the seed's own comparator had
+// already drifted from its copy once (four window fields on the plan model, the
+// same shape of bug, which reached production).
+//
+// What it deliberately does NOT take is the bookkeeping: the datastore binding,
+// the timestamps, and AdminEdited. Those belong to the caller, because whether a
+// write is a person's decision is a fact about the REQUEST, not about the values
+// it carried.
+func (m *Rate) Take(src *Rate) {
+	m.Product = src.Product
+	m.Meter = src.Meter
+	m.Bind()
+	m.Label = src.Label
+	m.Unit = src.Unit
+	m.Rate = src.Rate
+	m.Currency = src.Currency
+	m.Source = src.Source
+	m.Included = src.Included
+	// Only when it says one: an import that omits status must not silently
+	// unlist a row that an operator archived.
+	if src.Status != "" {
+		m.Status = src.Status
+	}
+}
+
 // New returns an empty meter bound to db.
 func New(db *datastore.Datastore) *Rate {
 	m := new(Rate)
