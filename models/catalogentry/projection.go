@@ -51,7 +51,7 @@ var canonicalCategories = []string{
 // [Rename] applies this map to the store on boot, and it can only ever touch
 // rows whose category is ALREADY invisible. A row sitting in a canonical
 // category is left alone, which is what keeps this from reverting the one
-// genuine merchandising decision an admin makes here: which of the ten a
+// genuine merchandising decision an admin makes here: which category a
 // product belongs to.
 //
 // Infrastructure was Platform until cloud.hanzo.ai titled its products section
