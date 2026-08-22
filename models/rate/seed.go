@@ -50,7 +50,7 @@ func Seed(db *datastore.Datastore, rows []*Rate) (created, corrected int, err er
 			if equal(existing, r) {
 				continue // already the published value — write nothing
 			}
-			copyInto(existing, r)
+			existing.Take(r)
 			if uerr := existing.Update(); uerr != nil {
 				return created, corrected, uerr
 			}
@@ -59,7 +59,7 @@ func Seed(db *datastore.Datastore, rows []*Rate) (created, corrected int, err er
 		}
 
 		e := New(db)
-		copyInto(e, r)
+		e.Take(r)
 		if cerr := e.Create(); cerr != nil {
 			return created, corrected, cerr
 		}
@@ -92,19 +92,3 @@ func equal(a, b *Rate) bool {
 // datastore key alone. AdminEdited is deliberately NOT copied: it is a fact
 // about the ROW, not about the file, and copying it would let a seed clear the
 // flag that protects an operator's edit.
-func copyInto(dst, src *Rate) {
-	// The parts first, then Bind, because the slug is DERIVED from them and a
-	// bind over stale parts writes the previous row's identity.
-	dst.Product = src.Product
-	dst.Meter = src.Meter
-	dst.Bind()
-	dst.Label = src.Label
-	dst.Unit = src.Unit
-	dst.Rate = src.Rate
-	dst.Currency = src.Currency
-	dst.Source = src.Source
-	dst.Included = src.Included
-	if src.Status != "" {
-		dst.Status = src.Status
-	}
-}

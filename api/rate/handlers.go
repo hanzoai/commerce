@@ -3,11 +3,19 @@
 // The platform-admin CRUD over the rate authority — what one unit of anything
 // costs, edited at admin.hanzo.ai instead of in a Go file.
 //
-// Rates used to live in an embedded 150KB JSON: 506 priced items across models,
-// tools, infrastructure, cloud and datastore. Changing one number meant editing
-// a module, cutting a tag, bumping the service and waiting for a build, so the
-// published price and the intended price drifted for as long as that took.
-// These rows are the price now; nothing is compiled in.
+// WHAT THESE ROWS PRICE, and what they do not. The authority covers the
+// platform's own metered work — see api/rate/catalog.go for the seeded set. Two
+// products are deliberately outside it because each already has an authority
+// that is read first:
+//
+//	a MODEL is priced by its ModelRoute row (InputPrice/OutputPrice), resolved
+//	org-first and read ahead of config and the compiled table;
+//	a TOOL is priced by its marketplace listing, set by the publisher who is paid.
+//
+// An earlier version of this comment claimed these rows were already the price
+// of 506 items and that nothing was compiled in. Neither was true — nothing read
+// them at all — and a file that describes an authority it does not yet have is
+// how the next reader comes to trust a number that is not being charged.
 //
 // PLATFORM ADMIN, NOT ORG ADMIN. A rate is cross-tenant money — one row decides
 // what every customer pays for a model — so an org's own admin must not reach
@@ -31,32 +39,42 @@ import (
 
 func rateDB(c *zip.Ctx) *datastore.Datastore { return rate.AuthorityDB(c.Context()) }
 
-func requireSuperAdmin(c *zip.Ctx) bool {
+// SuperAdmin refuses anyone who is not the platform.
+//
+// It is bound ON THE GROUP rather than repeated at the top of each handler. Five
+// copies of one sentence is five chances to add a sixth handler and forget it,
+// and forgetting it here opens every customer's price to any org's own admin. On
+// the group it is a property of the ADDRESS: a route registered under /rates
+// carries it whether or not its author thought about it.
+//
+// It is checked SEPARATELY from the bundle's own middleware, which proves a
+// caller is authenticated and never that they are the platform.
+func SuperAdmin(c *zip.Ctx) error {
 	claims := iammiddleware.GetIAMClaims(c)
 	if claims == nil || !claims.IsSuperAdmin() {
-		http.Fail(c, 403, "platform admin required to edit rates", errors.New("not a global admin"))
-		return false
+		return http.Fail(c, 403, "platform admin required to edit rates", errors.New("not a platform admin"))
 	}
-	return true
+	return c.Next()
 }
 
 // AdminRoute wires the rate CRUD and the bulk import on the /v1 bundle. args
-// carry the bundle's own middleware; every handler also gates on IsSuperAdmin.
+// carry the bundle's own middleware; SuperAdmin gates the whole group.
 func AdminRoute(r zip.Router, args ...zip.Handler) {
-	g := r.Group("/rates")
-	g.Get("/entries", append(args, ListEntries)...)
-	g.Post("/entries", append(args, CreateEntry)...)
-	g.Put("/entries/:slug", append(args, UpdateEntry)...)
-	g.Delete("/entries/:slug", append(args, DeleteEntry)...)
-	g.Post("/import", append(args, ImportEntries)...)
+	g := r.Group("/rates", append(args, SuperAdmin)...)
+	g.Get("/entries", ListEntries)
+	g.Post("/entries", CreateEntry)
+	// ADDRESSED BY THE PARTS, because the identity IS the parts: a slug is
+	// product + "/" + meter, so it carries a slash and can never be one path
+	// segment. Mounted at ":slug" these two matched nothing that exists — every
+	// real rate 404'd, on both verbs, for every caller.
+	g.Put("/entries/:product/:meter", UpdateEntry)
+	g.Delete("/entries/:product/:meter", DeleteEntry)
+	g.Post("/import", ImportEntries)
 }
 
 // ListEntries returns the authority rows. Optionally narrowed by ?product= so
 // an editor can show one surface at a time rather than every rate at once.
 func ListEntries(c *zip.Ctx) error {
-	if !requireSuperAdmin(c) {
-		return nil
-	}
 	q := rate.Query(rateDB(c))
 	if p := strings.TrimSpace(c.Query("product")); p != "" {
 		q = q.Filter("Product=", p)
@@ -72,9 +90,6 @@ func ListEntries(c *zip.Ctx) error {
 // are the identity, and a rate keyed on the metered thing alone would let one
 // product's price overwrite another's for the same name.
 func CreateEntry(c *zip.Ctx) error {
-	if !requireSuperAdmin(c) {
-		return nil
-	}
 	in := new(rate.Rate)
 	if err := json.DecodeBytes(c.Body(), in); err != nil {
 		return http.Fail(c, 400, "invalid rate", err)
@@ -93,7 +108,7 @@ func CreateEntry(c *zip.Ctx) error {
 	}
 
 	row := rate.New(db)
-	assign(row, in)
+	row.Take(in)
 	// Created HERE is created by a person, so it is theirs from the start and no
 	// later import may quietly replace it.
 	row.AdminEdited = true
@@ -103,17 +118,28 @@ func CreateEntry(c *zip.Ctx) error {
 	return http.Render(c, 201, row)
 }
 
+// addressed is the rate this request names, read from the two path parts and
+// bound the same way a write binds. ONE reader, so update and delete cannot
+// disagree about what "the rate at this address" means.
+func addressed(c *zip.Ctx) (string, bool) {
+	product := strings.TrimSpace(c.Param("product"))
+	meter := strings.TrimSpace(c.Param("meter"))
+	if product == "" || meter == "" {
+		return "", false
+	}
+	r := &rate.Rate{Product: product, Meter: meter}
+	r.Bind()
+	return r.Slug, true
+}
+
 // UpdateEntry edits a rate and MARKS IT as edited. That mark is the whole
 // contract with the importer: an operator's price outranks the document it was
 // imported from, so a later import leaves this row alone. Without it, a price
 // set here would apply, work, and silently revert on the next import.
 func UpdateEntry(c *zip.Ctx) error {
-	if !requireSuperAdmin(c) {
-		return nil
-	}
-	slug := strings.TrimSpace(c.Param("slug"))
-	if slug == "" {
-		return http.Fail(c, 400, "slug is required", errors.New("no slug"))
+	slug, ok := addressed(c)
+	if !ok {
+		return http.Fail(c, 400, "product and meter are required", errors.New("no identity"))
 	}
 	in := new(rate.Rate)
 	if err := json.DecodeBytes(c.Body(), in); err != nil {
@@ -121,16 +147,15 @@ func UpdateEntry(c *zip.Ctx) error {
 	}
 
 	row := rate.New(rateDB(c))
-	ok, err := row.Query().Filter("Slug=", slug).Get()
+	found, err := row.Query().Filter("Slug=", slug).Get()
 	if err != nil {
 		return http.Fail(c, 500, "failed to read rate", err)
 	}
-	if !ok {
+	if !found {
 		return http.Fail(c, 404, "no rate at "+slug, errors.New("not found"))
 	}
 
-	assign(row, in)
-	row.Bind()
+	row.Take(in)
 	row.AdminEdited = true
 	if err := row.Update(); err != nil {
 		return http.Fail(c, 500, "failed to update rate", err)
@@ -142,16 +167,16 @@ func UpdateEntry(c *zip.Ctx) error {
 // what is wanted instead: a deleted row cannot price a historical charge, and a
 // past invoice that has to re-resolve its rate then has nothing to read.
 func DeleteEntry(c *zip.Ctx) error {
-	if !requireSuperAdmin(c) {
-		return nil
+	slug, ok := addressed(c)
+	if !ok {
+		return http.Fail(c, 400, "product and meter are required", errors.New("no identity"))
 	}
-	slug := strings.TrimSpace(c.Param("slug"))
 	row := rate.New(rateDB(c))
-	ok, err := row.Query().Filter("Slug=", slug).Get()
+	found, err := row.Query().Filter("Slug=", slug).Get()
 	if err != nil {
 		return http.Fail(c, 500, "failed to read rate", err)
 	}
-	if !ok {
+	if !found {
 		return http.Fail(c, 404, "no rate at "+slug, errors.New("not found"))
 	}
 	if err := row.Delete(); err != nil {
@@ -169,9 +194,6 @@ func DeleteEntry(c *zip.Ctx) error {
 // document twice is a no-op, and importing a corrected one moves exactly the
 // rows that changed.
 func ImportEntries(c *zip.Ctx) error {
-	if !requireSuperAdmin(c) {
-		return nil
-	}
 	var rows []*rate.Rate
 	if err := json.DecodeBytes(c.Body(), &rows); err != nil {
 		return http.Fail(c, 400, "expected an array of rates", err)
@@ -193,21 +215,4 @@ func ImportEntries(c *zip.Ctx) error {
 		// as "nothing to do" rather than as a failure.
 		"unchanged": len(rows) - created - corrected,
 	})
-}
-
-// assign copies the editable fields of a rate, leaving identity and bookkeeping
-// (key, timestamps, AdminEdited) to the caller. Listing them explicitly is what
-// stops a request body from writing a field it has no business setting.
-func assign(dst, src *rate.Rate) {
-	dst.Product = src.Product
-	dst.Meter = src.Meter
-	dst.Label = src.Label
-	dst.Unit = src.Unit
-	dst.Rate = src.Rate
-	dst.Currency = src.Currency
-	dst.Source = src.Source
-	dst.Included = src.Included
-	if src.Status != "" {
-		dst.Status = src.Status
-	}
 }
