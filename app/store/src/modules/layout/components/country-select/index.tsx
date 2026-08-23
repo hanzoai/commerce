@@ -1,13 +1,13 @@
 "use client"
 
 import {
-  Listbox,
-  ListboxButton,
-  ListboxOption,
-  ListboxOptions,
-  Transition,
-} from "@headlessui/react"
-import { Fragment, useEffect, useMemo, useState } from "react"
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@hanzo/ui"
+import { useEffect, useMemo, useState } from "react"
 import ReactCountryFlag from "react-country-flag"
 
 import { StateType } from "@lib/hooks/use-toggle-state"
@@ -26,109 +26,91 @@ type CountrySelectProps = {
   regions: HttpTypes.StoreRegion[]
 }
 
+/**
+ * The country picker, on the kit's Select.
+ *
+ * It was a Headless UI Listbox whose options were `static` and whose visibility
+ * came from a `Transition show={state}` driven by the side menu's hover — so
+ * the Listbox's own open state was never consulted and the panel had to be
+ * placed by hand at `-bottom-[calc(100%-36px)]`. Select takes that same state
+ * as `open`, and places its own list.
+ *
+ * The option VALUE is now the country code rather than the option object: a
+ * select's value is a string, and the object is one lookup away.
+ */
 const CountrySelect = ({ toggleState, regions }: CountrySelectProps) => {
-  const [current, setCurrent] = useState<
-    | { country: string | undefined; region: string; label: string | undefined }
-    | undefined
-  >(undefined)
+  const [current, setCurrent] = useState<CountryOption | undefined>(undefined)
 
   const { countryCode } = useParams()
   const currentPath = usePathname().split(`/${countryCode}`)[1]
 
   const { state, close } = toggleState
 
-  const options = useMemo(() => {
-    return regions
-      ?.map((r) => {
-        return r.countries?.map((c) => ({
-          country: c.iso_2,
-          region: r.id,
-          label: c.display_name,
-        }))
-      })
-      .flat()
-      .sort((a, b) => (a?.label ?? "").localeCompare(b?.label ?? ""))
-  }, [regions])
+  const options = useMemo(
+    () =>
+      regions
+        ?.flatMap((r) =>
+          (r.countries ?? []).map((c) => ({
+            country: c.iso_2 ?? "",
+            region: r.id,
+            label: c.display_name ?? "",
+          }))
+        )
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [regions]
+  )
 
   useEffect(() => {
     if (countryCode) {
-      const option = options?.find((o) => o?.country === countryCode)
-      setCurrent(option)
+      setCurrent(options?.find((o) => o.country === countryCode))
     }
   }, [options, countryCode])
 
-  const handleChange = (option: CountryOption) => {
-    updateRegion(option.country, currentPath)
+  const handleChange = (country: string) => {
+    updateRegion(country, currentPath)
     close()
   }
 
   return (
-    <div>
-      <Listbox
-        as="span"
-        onChange={handleChange}
-        defaultValue={
-          countryCode
-            ? options?.find((o) => o?.country === countryCode)
-            : undefined
-        }
-      >
-        <ListboxButton className="py-1 w-full">
-          <div className="txt-compact-small flex items-start gap-x-2">
-            <span>Shipping to:</span>
-            {current && (
-              <span className="txt-compact-small flex items-center gap-x-2">
-                {/* @ts-ignore */}
-                <ReactCountryFlag
-                  svg
-                  style={{
-                    width: "16px",
-                    height: "16px",
-                  }}
-                  countryCode={current.country ?? ""}
-                />
-                {current.label}
-              </span>
-            )}
-          </div>
-        </ListboxButton>
-        <div className="flex relative w-full min-w-[320px]">
-          <Transition
-            show={state}
-            as={Fragment}
-            leave="transition ease-in duration-150"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <ListboxOptions
-              className="absolute -bottom-[calc(100%-36px)] left-0 xsmall:left-auto xsmall:right-0 max-h-[442px] overflow-y-scroll z-[900] bg-white drop-shadow-md text-small-regular uppercase text-black no-scrollbar rounded-rounded w-full"
-              static
-            >
-              {options?.map((o, index) => {
-                return (
-                  <ListboxOption
-                    key={index}
-                    value={o}
-                    className="py-2 hover:bg-gray-200 px-3 cursor-pointer flex items-center gap-x-2"
-                  >
-                    {/* @ts-ignore */}
-                    <ReactCountryFlag
-                      svg
-                      style={{
-                        width: "16px",
-                        height: "16px",
-                      }}
-                      countryCode={o?.country ?? ""}
-                    />{" "}
-                    {o?.label}
-                  </ListboxOption>
-                )
-              })}
-            </ListboxOptions>
-          </Transition>
-        </div>
-      </Listbox>
-    </div>
+    <Select
+      value={current?.country}
+      onValueChange={handleChange}
+      open={state}
+      onOpenChange={(open) => !open && close()}
+    >
+      <SelectTrigger data-testid="country-select">
+        <SelectValue placeholder="Shipping to:">
+          {current ? (
+            <span className="txt-compact-small flex items-center gap-x-2">
+              {/* @ts-ignore */}
+              <ReactCountryFlag
+                svg
+                style={{ width: "16px", height: "16px" }}
+                countryCode={current.country}
+              />
+              {current.label}
+            </span>
+          ) : (
+            "Shipping to:"
+          )}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        {options?.map((o, index) => (
+          <SelectItem key={o.country} index={index} value={o.country}>
+            <span className="flex items-center gap-x-2">
+              {/* @ts-ignore */}
+              <ReactCountryFlag
+                svg
+                style={{ width: "16px", height: "16px" }}
+                countryCode={o.country}
+              />
+              {o.label}
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }
 

@@ -1,13 +1,13 @@
 "use client"
 
 import {
-  Listbox,
-  ListboxButton,
-  ListboxOption,
-  ListboxOptions,
-  Transition,
-} from "@headlessui/react"
-import { Fragment, useEffect, useMemo, useState, useTransition } from "react"
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@hanzo/ui"
+import { useEffect, useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import ReactCountryFlag from "react-country-flag"
 
@@ -61,6 +61,10 @@ const getLocalizedLanguageName = (
   }
 }
 
+/** A select's value is a string and "" is not one — an empty value reads as
+ *  "nothing chosen", which is a different fact from "the default locale". */
+const DEFAULT_CODE = "default"
+
 const DEFAULT_OPTION: LanguageOption = {
   code: "",
   name: "Default",
@@ -104,9 +108,9 @@ const LanguageSelect = ({
     }
   }, [options, currentLocale])
 
-  const handleChange = (option: LanguageOption) => {
+  const handleChange = (code: string) => {
     startTransition(async () => {
-      await updateLocale(option.code)
+      await updateLocale(code === DEFAULT_CODE ? "" : code)
       close()
       router.refresh()
     })
@@ -114,77 +118,51 @@ const LanguageSelect = ({
 
   return (
     <div>
-      <Listbox
-        as="span"
-        onChange={handleChange}
-        defaultValue={
-          currentLocale
-            ? options.find(
-                (o) => o.code.toLowerCase() === currentLocale.toLowerCase()
-              ) ?? DEFAULT_OPTION
-            : DEFAULT_OPTION
-        }
-        disabled={isPending}
+      <Select
+        value={current?.code || DEFAULT_CODE}
+        onValueChange={handleChange}
+        open={state}
+        onOpenChange={(open) => !open && close()}
       >
-        <ListboxButton className="py-1 w-full">
-          <div className="txt-compact-small flex items-start gap-x-2">
-            <span>Language:</span>
-            {current && (
-              <span className="txt-compact-small flex items-center gap-x-2">
-                {current.countryCode && (
+        <SelectTrigger data-testid="language-select" disabled={isPending}>
+          <SelectValue placeholder="Language:">
+            <span className="txt-compact-small flex items-center gap-x-2">
+              {current?.countryCode && (
+                /* @ts-ignore */
+                <ReactCountryFlag
+                  svg
+                  style={{ width: "16px", height: "16px" }}
+                  countryCode={current.countryCode}
+                />
+              )}
+              {isPending ? "..." : current?.localizedName ?? "Language:"}
+            </span>
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((o, index) => (
+            <SelectItem
+              key={o.code || DEFAULT_CODE}
+              index={index}
+              value={o.code || DEFAULT_CODE}
+            >
+              <span className="flex items-center gap-x-2">
+                {o.countryCode ? (
                   /* @ts-ignore */
                   <ReactCountryFlag
                     svg
-                    style={{
-                      width: "16px",
-                      height: "16px",
-                    }}
-                    countryCode={current.countryCode}
+                    style={{ width: "16px", height: "16px" }}
+                    countryCode={o.countryCode}
                   />
+                ) : (
+                  <span style={{ width: "16px", height: "16px" }} />
                 )}
-                {isPending ? "..." : current.localizedName}
+                {o.localizedName}
               </span>
-            )}
-          </div>
-        </ListboxButton>
-        <div className="flex relative w-full min-w-[320px]">
-          <Transition
-            show={state}
-            as={Fragment}
-            leave="transition ease-in duration-150"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <ListboxOptions
-              className="absolute -bottom-[calc(100%-36px)] left-0 xsmall:left-auto xsmall:right-0 max-h-[442px] overflow-y-scroll z-[900] bg-white drop-shadow-md text-small-regular uppercase text-black no-scrollbar rounded-rounded w-full"
-              static
-            >
-              {options.map((o) => (
-                <ListboxOption
-                  key={o.code || "default"}
-                  value={o}
-                  className="py-2 hover:bg-gray-200 px-3 cursor-pointer flex items-center gap-x-2"
-                >
-                  {o.countryCode ? (
-                    /* @ts-ignore */
-                    <ReactCountryFlag
-                      svg
-                      style={{
-                        width: "16px",
-                        height: "16px",
-                      }}
-                      countryCode={o.countryCode}
-                    />
-                  ) : (
-                    <span style={{ width: "16px", height: "16px" }} />
-                  )}
-                  {o.localizedName}
-                </ListboxOption>
-              ))}
-            </ListboxOptions>
-          </Transition>
-        </div>
-      </Listbox>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   )
 }
