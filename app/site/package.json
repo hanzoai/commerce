@@ -2,19 +2,24 @@
   "name": "@hanzo/commerce-site",
   "version": "0.1.0",
   "private": true,
-  "license": "MIT OR Apache-2.0",
   "scripts": {
     "dev": "next dev -p 3002",
     "build": "next build",
     "start": "next start",
     "lint": "next lint --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "../node_modules/typescript/bin/tsc --noEmit"
   },
   "dependencies": {
     "@hanzo/commerce-client": "workspace:*",
-    "@hanzo/commerce-docs-ui": "workspace:*",
-    "@hanzo/commerce-docs-utils": "workspace:*",
     "@hanzo/commerce-icons": "workspace:*",
+    "@hanzo/gui": "^8.1.1",
+    "@hanzo/ui": "^8.3.0",
+    "@hanzogui/config": "^8.1.1",
+    "@hanzogui/core": "^8.1.1",
+    "@hanzogui/lucide-icons-2": "^8.1.1",
+    "@hanzogui/next-theme": "^8.1.1",
+    "@hanzogui/react-native-svg": "^8.1.1",
+    "@hanzogui/web": "^8.1.1",
     "@mdx-js/loader": "^3.1.0",
     "@mdx-js/react": "^3.1.0",
     "@next/mdx": "^15.3.0",
@@ -23,6 +28,7 @@
     "next": "^15.3.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-native-web": "^0.21.0",
     "rehype-mdx-code-props": "^2.0.0",
     "rehype-slug": "^6.0.0",
     "remark-frontmatter": "^5.0.0"
@@ -32,12 +38,11 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.5.0",
-    "tailwindcss": "^3.4.17",
+    "react-native": "0.86.2",
     "typescript": "^5.9.0"
   },
   "engines": {
     "node": ">=20"
-  }
+  },
+  "license": "MIT OR Apache-2.0"
 }
