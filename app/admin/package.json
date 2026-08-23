@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@hanzo/data": "^1.2.3",
-    "@hanzo/design": "^0.4.9",
+    "@hanzo/font": "^1.8.0",
     "@hanzo/gui": "^8.1.1",
     "@hanzo/iam": "^0.21.6",
     "@hanzo/ui": "^8.3.0",

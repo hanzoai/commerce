@@ -61,7 +61,7 @@ const TIGHT_LEADING: CSSProperties = { lineHeight: "1.25" }
  * component code are one face.
  */
 const MONO: CSSProperties = {
-  fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+  fontFamily: "var(--font-mono), ui-monospace, monospace",
 }
 
 const BORDER = { borderWidth: 1, borderColor: "$borderColor" } as const

@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 import "./globals.css"
 import { config } from "@/config"
-import { sans, mono } from "./fonts"
 
 export const metadata: Metadata = {
   title: {
@@ -26,11 +25,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html
-      lang="en"
-      className={`${sans.variable} ${mono.variable} dark t_dark`}
-      suppressHydrationWarning
-    >
+    <html lang="en" className="dark t_dark" suppressHydrationWarning>
       {children}
     </html>
   )

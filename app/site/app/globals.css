@@ -3,20 +3,27 @@
  *
  * `@hanzo/ui/theme.css` declares EVERY design token the component layer names
  * (--background, --foreground, --muted-foreground, --border, --primary, --radius,
- * …) for both schemes, plus the Geist bindings `app/fonts.ts` fills in. Nothing
- * here invents a colour: every rule below reads one of those custom properties,
- * so the CSS-rendered MDX prose and the Gui-rendered components cannot drift.
+ * …) for both schemes. Nothing here invents a colour: every rule below reads one
+ * of those custom properties, so the CSS-rendered MDX prose and the Gui-rendered
+ * components cannot drift.
  *
  * The only thing this file OWNS is prose — the raw <h1>/<p>/<ul>/<pre> elements
  * MDX emits, which no component library can style because no component wraps
  * them. Everything a component could draw is a component (components/docs).
  */
+@import "@hanzo/font/css";
 @import "@hanzo/ui/theme.css";
 
 :root {
   /* The docs measure and gutter, named once so the shell and the prose agree. */
   --docs-measure: 56rem;
   --docs-gutter: 1rem;
+
+  /* Zen, over whatever the theme defaults to. The faces come from @hanzo/font
+     above; these are the two names the component layer already reads. */
+  --font-sans: "Zen", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-sans);
+  --font-mono: "Zen Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 html {
@@ -33,7 +40,7 @@ body {
   overflow-x: hidden;
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
 }
 
 *::selection {
@@ -158,7 +165,7 @@ a {
 .docs-prose code,
 .docs-prose kbd,
 .docs-prose samp {
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 0.875em;
 }
 
