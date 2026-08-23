@@ -43,7 +43,7 @@ const DISPLAY_LEADING: CSSProperties = { lineHeight: "1.15" }
  * component code are one face.
  */
 const MONO: CSSProperties = {
-  fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+  fontFamily: "var(--font-mono), ui-monospace, monospace",
 }
 
 /**

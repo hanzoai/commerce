@@ -22,9 +22,9 @@ importers:
       '@hanzo/data':
         specifier: ^1.2.3
         version: 1.2.3(@hanzo/gui@8.1.1(react-dom@19.0.4(react@19.0.4))(react-native@0.86.2(@babel/core@7.29.0)(@react-native/metro-config@0.86.2(@babel/core@7.29.0))(@types/react@19.0.3)(react@19.0.4))(react@19.0.4))(react@19.0.4)
-      '@hanzo/design':
-        specifier: ^0.4.9
-        version: 0.4.9
+      '@hanzo/font':
+        specifier: ^1.8.0
+        version: 1.8.0(next@15.3.9(@babel/core@7.29.0)(@playwright/test@1.62.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.4(react@19.0.4))(react@19.0.4))
       '@hanzo/gui':
         specifier: 8.1.1
         version: 8.1.1(react-dom@19.0.4(react@19.0.4))(react-native@0.86.2(@babel/core@7.29.0)(@react-native/metro-config@0.86.2(@babel/core@7.29.0))(@types/react@19.0.3)(react@19.0.4))(react@19.0.4)
@@ -207,6 +207,9 @@ importers:
       '@hanzo/commerce-icons':
         specifier: workspace:*
         version: link:../packages/icons
+      '@hanzo/font':
+        specifier: ^1.8.0
+        version: 1.8.0(next@15.3.9(@babel/core@7.29.0)(@playwright/test@1.62.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.4(react@19.0.4))(react@19.0.4))
       '@hanzo/gui':
         specifier: 8.1.1
         version: 8.1.1(react-dom@19.0.4(react@19.0.4))(react-native@0.86.2(@babel/core@7.29.0)(@react-native/metro-config@0.86.2(@babel/core@7.29.0))(@types/react@19.0.3)(react@19.0.4))(react@19.0.4)
@@ -304,6 +307,9 @@ importers:
       '@hanzo/event':
         specifier: ^0.3.3
         version: 0.3.3(react@19.0.4)
+      '@hanzo/font':
+        specifier: ^1.8.0
+        version: 1.8.0(next@15.3.9(@babel/core@7.29.0)(@playwright/test@1.62.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.4(react@19.0.4))(react@19.0.4))
       '@hanzo/gui':
         specifier: 8.1.1
         version: 8.1.1(react-dom@19.0.4(react@19.0.4))(react-native@0.86.2(@babel/core@7.29.0)(@react-native/metro-config@0.86.2(@babel/core@7.29.0))(@types/react@19.0.3)(react@19.0.4))(react@19.0.4)
@@ -1259,10 +1265,6 @@ packages:
       '@hanzo/gui': 8.1.1
       react: '>=19'
 
-  '@hanzo/design@0.4.9':
-    resolution: {integrity: sha512-8zhsAxJM1y+nqc6nRrXs1/Ig5V2Lk4/XkXduP/7o/S7XahDlG9dYRTIz6uIyMzAAC7uv8Zo28KiohMizhZeKOQ==}
-    hasBin: true
-
   '@hanzo/design@0.5.17':
     resolution: {integrity: sha512-jkYV9Tcz8NC2g0aOetGvJTMoFA3Z4+m2Aet23Dzd5X78Zgk56rpYy0R5SMO0MMUrYYIyGSQ62332KG9S4q5aXQ==}
     hasBin: true
@@ -1282,6 +1284,11 @@ packages:
     peerDependenciesMeta:
       react:
         optional: true
+
+  '@hanzo/font@1.8.0':
+    resolution: {integrity: sha512-6xP+E37OMTciZqQXf5oTMXdBXYaruimdxyDMkR5wzqrlo5WDdzn4a/bnd+JXLNbdo8y0Y2Qn76zZ0dDjfKGvdQ==}
+    peerDependencies:
+      next: '>=13.2.0'
 
   '@hanzo/gui@8.1.1':
     resolution: {integrity: sha512-ZZ9h2B8DonQVjefVXxekd1rZ+Gftp5ZLhrf8DWf7/E+hVbwzTpwdumcAWPepovV4C1GodiER15x8F7Z8/JLxnw==}
@@ -6761,8 +6768,6 @@ snapshots:
       '@hanzo/gui': 8.1.1(react-dom@19.0.4(react@19.0.4))(react-native@0.86.2(@babel/core@7.29.0)(@react-native/metro-config@0.86.2(@babel/core@7.29.0))(@types/react@19.0.3)(react@19.0.4))(react@19.0.4)
       react: 19.0.4
 
-  '@hanzo/design@0.4.9': {}
-
   '@hanzo/design@0.5.17': {}
 
   '@hanzo/event@0.3.21(react@19.0.4)':
@@ -6772,6 +6777,10 @@ snapshots:
   '@hanzo/event@0.3.3(react@19.0.4)':
     optionalDependencies:
       react: 19.0.4
+
+  '@hanzo/font@1.8.0(next@15.3.9(@babel/core@7.29.0)(@playwright/test@1.62.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.4(react@19.0.4))(react@19.0.4))':
+    dependencies:
+      next: 15.3.9(@babel/core@7.29.0)(@playwright/test@1.62.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.4(react@19.0.4))(react@19.0.4)
 
   '@hanzo/gui@8.1.1(react-dom@19.0.4(react@19.0.4))(react-native@0.86.2(@babel/core@7.29.0)(@react-native/metro-config@0.86.2(@babel/core@7.29.0))(@types/react@19.0.3)(react@19.0.4))(react@19.0.4)':
     dependencies:
@@ -8460,9 +8469,7 @@ snapshots:
       metro-runtime: 0.84.4
     transitivePeerDependencies:
       - '@babel/core'
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@react-native/normalize-color@2.1.0': {}
 
@@ -9774,8 +9781,8 @@ snapshots:
       '@typescript-eslint/parser': 8.62.1(eslint@8.10.0)(typescript@5.9.3)
       eslint: 8.10.0
       eslint-import-resolver-node: 0.3.10
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint@8.10.0))(eslint@8.10.0)
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint@8.10.0))(eslint@8.10.0))(eslint@8.10.0)
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@8.10.0)
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.10.0)
       eslint-plugin-jsx-a11y: 6.10.2(eslint@8.10.0)
       eslint-plugin-react: 7.37.5(eslint@8.10.0)
       eslint-plugin-react-hooks: 5.2.0(eslint@8.10.0)
@@ -9794,7 +9801,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint@8.10.0))(eslint@8.10.0):
+  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@8.10.0):
     dependencies:
       '@nolyfill/is-core-module': 1.0.39
       debug: 4.4.3
@@ -9805,22 +9812,22 @@ snapshots:
       tinyglobby: 0.2.15
       unrs-resolver: 1.12.2
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint@8.10.0))(eslint@8.10.0))(eslint@8.10.0)
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.10.0)
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.14.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint@8.10.0))(eslint@8.10.0))(eslint@8.10.0):
+  eslint-module-utils@2.14.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1)(eslint@8.10.0):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
       '@typescript-eslint/parser': 8.62.1(eslint@8.10.0)(typescript@5.9.3)
       eslint: 8.10.0
       eslint-import-resolver-node: 0.3.10
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint@8.10.0))(eslint@8.10.0)
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@8.10.0)
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint@8.10.0))(eslint@8.10.0))(eslint@8.10.0):
+  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.10.0):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9
@@ -9831,7 +9838,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 8.10.0
       eslint-import-resolver-node: 0.3.10
-      eslint-module-utils: 2.14.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint@8.10.0))(eslint@8.10.0))(eslint@8.10.0)
+      eslint-module-utils: 2.14.0(@typescript-eslint/parser@8.62.1(eslint@8.10.0)(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1)(eslint@8.10.0)
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3

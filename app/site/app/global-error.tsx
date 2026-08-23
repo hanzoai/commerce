@@ -1,6 +1,5 @@
 "use client"
 
-import { sans, mono } from "./fonts"
 import "./globals.css"
 
 /**
@@ -10,7 +9,7 @@ import "./globals.css"
  */
 export default function GlobalError() {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
+    <html lang="en">
       <body>
         <main
           style={{

@@ -1,22 +1,28 @@
-/* Canonical Hanzo faces — Geist Sans (UI/body/headings) + Geist Mono (data), the
-   same two the console loads, so the shared @hanzo/ui/product components typeset
+/* Canonical Hanzo faces — Zen (UI/body/headings) + Zen Mono (data), the same two
+   the console loads, so the shared @hanzo/ui/product components typeset
    identically in both admins. The component classes themselves (hz-mono, hz-tnum,
    hz-paper, hz-skeleton, …) travel with the package.
-   
-   SELF-HOSTED, from @hanzo/design — the same import billing uses. These were two
-   `@import url(https://cdn.jsdelivr.net/...)` lines, and this estate BLOCKS
-   third-party CDNs: the request fails, nothing errors, and the admin silently
-   typesets in system-ui while every local build looks perfect. A font that only
-   loads on the machine that wrote it is the kind of defect a screenshot cannot
-   show you. */
-@import '@hanzo/design/tokens/fonts.css';
+
+   The faces ship inside @hanzo/font and are served from this origin. A
+   third-party CDN is blocked estate-wide, and a blocked font request errors
+   nowhere — the admin would typeset in system-ui while every local build looked
+   perfect, which is a defect a screenshot cannot show you. */
+@import '@hanzo/font/css';
 @import '@hanzo/ui/styles/motion.css';
+
+/* The names the component layer reads. @hanzo/font declares the faces; this says
+   which of them a token means. */
+:root {
+  --font-sans: 'Zen', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-sans);
+  --font-mono: 'Zen Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
 
 html,
 body {
   margin: 0;
   padding: 0;
-  font-family: 'Geist', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   color-scheme: dark;
 }
