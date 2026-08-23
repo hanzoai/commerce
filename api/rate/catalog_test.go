@@ -26,7 +26,7 @@ func TestSeededRatesEqualTheConstantsTheyReplace(t *testing.T) {
 	}
 
 	got := map[string]int64{}
-	for _, r := range Seeded() {
+	for _, r := range catalog() {
 		r.Bind()
 		got[r.Slug] = r.Rate
 	}
@@ -52,7 +52,7 @@ func TestSeededRatesEqualTheConstantsTheyReplace(t *testing.T) {
 // A row with no unit prices nothing: the rate is "per one of these", so without
 // it the number is unreadable and an editor cannot say what it is charging for.
 func TestEverySeededRateStatesWhatOneUnitIs(t *testing.T) {
-	for _, r := range Seeded() {
+	for _, r := range catalog() {
 		r.Bind()
 		if strings.TrimSpace(r.Unit) == "" {
 			t.Errorf("%s declares no Unit — its rate is a number with no meaning", r.Slug)
@@ -75,7 +75,7 @@ func TestEverySeededRateStatesWhatOneUnitIs(t *testing.T) {
 // read ahead of anything else. A row here would be a SECOND answer to a question
 // that already has one, on the money path, with no stated precedence.
 func TestTheCatalogDoesNotDuplicateAnExistingAuthority(t *testing.T) {
-	for _, r := range Seeded() {
+	for _, r := range catalog() {
 		switch r.Product {
 		case "ai":
 			t.Errorf("%s/%s prices a model, which ModelRoute.InputPrice/OutputPrice already "+
@@ -93,7 +93,7 @@ func TestTheCatalogDoesNotDuplicateAnExistingAuthority(t *testing.T) {
 // unbound part silently reconciles one row twice.
 func TestTheCatalogIsAValidSeedInput(t *testing.T) {
 	seen := map[string]bool{}
-	for _, r := range Seeded() {
+	for _, r := range catalog() {
 		if r.Product == "" || r.Meter == "" {
 			t.Errorf("a row is missing a part (product=%q meter=%q); Bind derives the "+
 				"identity from both", r.Product, r.Meter)
