@@ -287,7 +287,7 @@ func TestSeedRatesIsTheBootPathAndIsIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	if want := len(Seeded()); created != want {
+	if want := len(catalog()); created != want {
 		t.Fatalf("first seed created=%d, want the whole catalog of %d", created, want)
 	}
 	if corrected != 0 {
@@ -309,8 +309,8 @@ func TestSeedRatesIsTheBootPathAndIsIdempotent(t *testing.T) {
 	if err := json.Unmarshal(body, &rows); err != nil {
 		t.Fatalf("list: %s", body)
 	}
-	if len(rows) != len(Seeded()) {
-		t.Errorf("the authority holds %d rows after seeding %d", len(rows), len(Seeded()))
+	if len(rows) != len(catalog()) {
+		t.Errorf("the authority holds %d rows after seeding %d", len(rows), len(catalog()))
 	}
 
 	// LogSeed is the boot wrapper and must be safe to call on a seeded authority.

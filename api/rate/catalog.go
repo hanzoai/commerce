@@ -67,11 +67,6 @@ func SeedRates(ctx context.Context) (created, corrected int, err error) {
 	return rate.Seed(rate.AuthorityDB(ctx), catalog())
 }
 
-// Seeded reports the catalog for callers that want the published value without
-// touching the authority — the fail-soft floor a reader falls back to when the
-// authority cannot be reached.
-func Seeded() []*rate.Rate { return catalog() }
-
 // LogSeed runs the seed and reports it. A boot that silently reprices metered
 // work is a boot nobody can audit afterwards.
 func LogSeed(ctx context.Context) {
