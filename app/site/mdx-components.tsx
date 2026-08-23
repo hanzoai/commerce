@@ -1,17 +1,21 @@
 import type { MDXComponents } from "mdx/types"
-import CustomMDXComponents from "./components/MDXComponents"
 
-// This file allows you to provide custom React components
-// to be used in MDX files. You can import and use any
-// React component you want, including components from
-// other libraries.
+import * as docs from "@/components/docs"
 
-// This file is required to use MDX in `app` directory.
+/**
+ * The components every MDX page can name — supplied once, here.
+ *
+ * MDX resolves a capitalised tag it cannot see in module scope through this
+ * provider, so a page writes `<Note>` or `<Prerequisites/>` and gets the kit
+ * without an import line. That is why the kit is the ONE definition of these
+ * shapes: there is no second way for a page to obtain a different `Table`.
+ *
+ * The raw elements MDX emits (h1, p, ul, pre, …) are not overridden — they are
+ * styled by the `.docs-prose` rules in `app/globals.css`, plain CSS on the Hanzo
+ * tokens, because no component wraps them.
+ *
+ * This file is required to use MDX in the `app` directory.
+ */
 export function useMDXComponents(components: MDXComponents): MDXComponents {
-  return {
-    // Allows customizing built-in components, e.g. to add styling.
-    // h1: ({ children }) => <h1 style={{ fontSize: "100px" }}>{children}</h1>,
-    ...components,
-    ...CustomMDXComponents,
-  }
+  return { ...docs, ...components }
 }
