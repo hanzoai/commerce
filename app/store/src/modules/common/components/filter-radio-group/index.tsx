@@ -33,7 +33,7 @@ const FilterRadioGroup = ({
             {i.value === value && <EllipseMiniSolid />}
             <RadioGroup.Item
               checked={i.value === value}
-              className="hidden peer"
+              className="hidden"
               id={i.value}
               value={i.value}
             />

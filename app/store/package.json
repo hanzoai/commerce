@@ -13,7 +13,8 @@
     "build": "next build",
     "start": "next start -p 8000",
     "lint": "next lint",
-    "analyze": "ANALYZE=true next build"
+    "analyze": "ANALYZE=true next build",
+    "e2e:css": "node e2e/css-check.mjs"
   },
   "dependencies": {
     "@hanzo/commerce-icons": "workspace:*",
@@ -46,6 +47,7 @@
     "@babel/core": "^7.17.5",
     "@hanzo/commerce-types": "workspace:*",
     "@hanzo/commerce-ui-preset": "workspace:*",
+    "@playwright/test": "^1.56.0",
     "@types/lodash": "^4.14.195",
     "@types/node": "17.0.21",
     "@types/pg": "^8.11.0",

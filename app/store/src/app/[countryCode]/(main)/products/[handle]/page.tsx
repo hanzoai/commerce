@@ -60,13 +60,17 @@ function getImagesForVariant(
     return product.images
   }
 
+  // A variant carries images only when someone attached them, so `images` is
+  // absent on most of them. Reading `.length` off that threw on every such
+  // product page — a crash the store's `ignoreBuildErrors` kept out of the
+  // build log and a rendered page put straight back in.
   const variant = product.variants!.find((v) => v.id === selectedVariantId)
-  if (!variant || !variant.images.length) {
+  if (!variant?.images?.length) {
     return product.images
   }
 
   const imageIdsMap = new Map(variant.images.map((i) => [i.id, true]))
-  return product.images!.filter((i) => imageIdsMap.has(i.id))
+  return product.images?.filter((i) => imageIdsMap.has(i.id)) ?? product.images
 }
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
@@ -125,7 +129,7 @@ export default async function ProductPage(props: Props) {
       product={pricedProduct}
       region={region}
       countryCode={params.countryCode}
-      images={images}
+      images={images ?? []}
     />
   )
 }
