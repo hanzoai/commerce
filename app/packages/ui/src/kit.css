@@ -23,7 +23,7 @@
 .kit-text-xlarge { font-size: 1.125rem; line-height: 1.8rem; }
 .kit-text-compact { line-height: 1.25rem; }
 .kit-text-plus { font-weight: 500; }
-.kit-text-mono { font-family: var(--font-geist-mono), ui-monospace, monospace; }
+.kit-text-mono { font-family: var(--font-mono), ui-monospace, monospace; }
 
 .kit-h1 { font-size: 1.125rem; line-height: 1.75rem; font-weight: 500; }
 .kit-h2 { font-size: 1rem; line-height: 1.5rem; font-weight: 500; }

@@ -1,4 +1,3 @@
-@import url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-mono/style.css');
 /* The shared design system — tokens and component atoms, one file, the entry
    point the package names. It arrives here rather than through @hanzo/ui's own
    `import './styles.css'` so that it is inlined into this sheet before Tailwind
@@ -11,24 +10,51 @@
 @import "@hanzo/commerce-ui/kit.css";
 @import "tailwindcss/utilities";
 
+/* Zen, from @hanzo/font — one variable file, declared twice because the
+   storefront was drawn in two Basel Grotesk cuts and neither sits at its
+   nominal weight. Fitted by pixel residual: Book is Zen at wght 497, Medium is
+   Zen at wght 606, both within 1.6% of Basel on every outline ratio. A variable
+   face clamps the axis into the range its @font-face names, so a one-point
+   range at each slot pins the substitution HERE and leaves every `font-normal`
+   and `font-medium` in the app alone.
+
+   size-adjust carries the x-height correction, and this is the only place it is
+   stated. Basel's x-height is 0.718 of its cap where Zen's is 0.746, so Zen set
+   at Basel's size reads ~4% larger; 96.2% scales the outlines back without
+   touching font-size, which is what every rem in this app is measured against.
+   Zen Mono replaces Geist Mono — same lineage, same metrics, no correction. */
 @font-face {
-  font-family: "Basel";
-  font-weight: 400;
+  font-family: "Zen";
+  font-weight: 497;
   font-style: normal;
   font-display: swap;
-  src:
-    url("/fonts/Basel-Grotesk-Book.woff2") format("woff2"),
-    url("/fonts/Basel-Grotesk-Book.woff") format("woff");
+  size-adjust: 96.2%;
+  src: url("~@hanzo/font/dist/fonts/zen-sans/Zen-Variable.woff2") format("woff2");
 }
 
 @font-face {
-  font-family: "Basel";
-  font-weight: 500;
+  font-family: "Zen";
+  font-weight: 606;
   font-style: normal;
   font-display: swap;
-  src:
-    url("/fonts/Basel-Grotesk-Medium.woff2") format("woff2"),
-    url("/fonts/Basel-Grotesk-Medium.woff") format("woff");
+  size-adjust: 96.2%;
+  src: url("~@hanzo/font/dist/fonts/zen-sans/Zen-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Zen Mono";
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  src: url("~@hanzo/font/dist/fonts/zen-mono/ZenMono-Variable.woff2") format("woff2");
+}
+
+/* The two names the component layer reads (@hanzo/ui declares them, this rebinds
+   them to Zen). Tailwind's own `font-sans`/`font-mono` come from the preset. */
+:root {
+  --font-sans: "Zen", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-sans);
+  --font-mono: "Zen Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 @layer utilities {
