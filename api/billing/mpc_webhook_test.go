@@ -125,7 +125,7 @@ func TestMPCWebhook_UnsetSecretRejects(t *testing.T) {
 }
 
 // TestMPCWebhook_CorrectSignatureReachesTheRail proves the fix did not simply
-// close the door on everyone: a genuinely signed delivery passes signature
+// refuse everyone: a genuinely signed delivery passes signature
 // validation and is processed (the header the real sender uses is selected, the
 // digest over the raw body matches, and the handler proceeds past the 401).
 func TestMPCWebhook_CorrectSignatureReachesTheRail(t *testing.T) {

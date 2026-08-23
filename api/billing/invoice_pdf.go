@@ -19,7 +19,7 @@ import (
 )
 
 // Document is a rendered attachment: the bytes and the base name they are
-// offered under, without the extension the door appends. The name travels with
+// offered under, without the extension the endpoint appends. The name travels with
 // the bytes because it is derived from the row, and a reader that rebuilt it
 // would need its own copy of that rule.
 type Document struct {

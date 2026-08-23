@@ -581,7 +581,7 @@ func TestGenerateAddress_RefusesAnUndeclaredChain(t *testing.T) {
 // one configured custody account plus a per-payer destination tag — so a minted
 // XRPL address would both strand a non-refundable base reserve and, since this
 // table has no XRPL entry, be refused anyway. Offering it here would route the
-// pooled chain down the per-payer door.
+// pooled chain down the per-payer path.
 func TestSupportedChains_ExcludesPooledXRPL(t *testing.T) {
 	mp := startHTTPSigner(t, mints(addrs{evm: "0x8888888888888888888888888888888888888888"}))
 	for _, c := range mp.SupportedChains() {

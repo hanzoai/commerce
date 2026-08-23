@@ -18,7 +18,7 @@ package billing
 //	what commerce WROTE reaches the seam at that payer's (org, subject, test), and a
 //	redelivery does not credit it again.
 //
-//	REFUSE EVERYTHING ELSE — an in-session charge (its own door already credited the
+//	REFUSE EVERYTHING ELSE — an in-session charge (its own endpoint already credited the
 //	spendable ledger), an invoice already settled, and above all a payment nobody in
 //	these books can be tied to. A wrong credit is not a small error here: it is one
 //	customer's money in another's wallet, reported as success.
@@ -67,7 +67,7 @@ func seedProviderSubscription(t *testing.T, org *organization.Organization, ctx 
 	sub.MustCreate()
 }
 
-// seedInternalSubscription writes a subscription as commerce's OWN doors create one:
+// seedInternalSubscription writes a subscription as commerce's OWN endpoints create one:
 // ProviderType internal/bundle and ProviderId UNSET. Every production subscription is
 // this shape — no call site anywhere sets ProviderId.
 func seedInternalSubscription(t *testing.T, org *organization.Organization, ctx context.Context, subject string) {
@@ -80,9 +80,9 @@ func seedInternalSubscription(t *testing.T, org *organization.Organization, ctx 
 	sub.MustCreate()
 }
 
-// seedInSessionCharge writes the ledger row a card door writes when it takes a
+// seedInSessionCharge writes the ledger row a card endpoint writes when it takes a
 // payment — stamped with the processor's own reference for that charge, which is
-// exactly what the door does at charge time (payment_core.go, topup.go).
+// exactly what the endpoint does at charge time (payment_core.go, topup.go).
 func seedInSessionCharge(t *testing.T, org *organization.Organization, ctx context.Context, subject, paymentID string, cents int64) {
 	t.Helper()
 	db := datastore.New(org.Namespaced(ctx))
@@ -203,7 +203,7 @@ func TestWebhookSeam_AnAlreadyCreditedSettlementIsNotCreditedTwice(t *testing.T)
 	defer ctx.Close()
 	org := webhookOrg(t, ctx, "seam-door", true)
 	seedProviderSubscription(t, org, ctx, "sub_door", "seam-door/alice")
-	// The receipt a previous delivery (or a card door) wrote for this settlement.
+	// The receipt a previous delivery (or a card endpoint) wrote for this settlement.
 	seedInSessionCharge(t, org, ctx, "seam-door/alice", "inv_door", 4200)
 
 	body := renewalEvent("evt_door", "inv_door", "sub_door", 4200)
@@ -337,7 +337,7 @@ func resolve(t *testing.T, org *organization.Organization, ctx context.Context, 
 }
 
 // RULE 1, alone: a stamped receipt makes a settlement ACCOUNTED FOR — silent, not an
-// alarm. This is what the in-session card doors buy: their charge already credited
+// alarm. This is what the in-session card endpoints buy: their charge already credited
 // the spendable ledger through the host, so the callback must stand down without
 // reporting a reconciliation nobody needs to do.
 func TestSettlementDestination_AStampedChargeIsAccountedForAndSilent(t *testing.T) {

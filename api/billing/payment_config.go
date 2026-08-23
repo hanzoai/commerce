@@ -39,7 +39,7 @@ type PaymentConfig struct {
 //
 // A nil org is not a failure — it is an org with no credentials of its own, which
 // resolves to the deployment's public config. Nothing here can fail, so the
-// answer is a value and no door has an error to invent a status for.
+// answer is a value and no endpoint has an error to invent a status for.
 func ReadPaymentConfig(ctx context.Context, org *organization.Organization) *PaymentConfig {
 	sq := payment.SquarePublicConfig(org)
 	return &PaymentConfig{
@@ -90,7 +90,7 @@ type Mode struct {
 // internal plane asks the same question — and a mode set one way and read another
 // is how a sandbox charge lands on a live customer.
 //
-// WHO may move it is not decided here: the door sits behind the money-mint bar,
+// WHO may move it is not decided here: the endpoint sits behind the money-mint bar,
 // because a user who could put their own org in sandbox could dodge real charges.
 func SetTestMode(ctx context.Context, org *organization.Organization, testMode bool) (*Mode, error) {
 	if org == nil {

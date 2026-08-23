@@ -128,7 +128,7 @@ func attachSquareCardOnFile(ctx context.Context, cp squareCustomerProcessor, exi
 
 // saveCard is the ONE constructor for a vaulted-card payment method: it vaults
 // the nonce, refuses to stack a duplicate, and persists a row a customer can
-// recognize. Both doors that save a card — CreatePaymentMethod and
+// recognize. Both endpoints that save a card — CreatePaymentMethod and
 // SubscribeWithCard — go through it, so they cannot drift.
 //
 // Dedupe: the processor's Fingerprint identifies the card NUMBER across vaults.

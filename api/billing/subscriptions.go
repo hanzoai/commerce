@@ -145,7 +145,7 @@ func (e subValidationError) Error() string { return e.msg }
 var errSubscriptionNotFound = errors.New("subscription: no such subscription for this org")
 
 // IsSubscriptionNotFound reports whether err is that miss. A caller outside this
-// package has to answer it the same way the door does, and an unexported
+// package has to answer it the same way the endpoint does, and an unexported
 // sentinel cannot be asked about.
 func IsSubscriptionNotFound(err error) bool { return errors.Is(err, errSubscriptionNotFound) }
 
@@ -247,7 +247,7 @@ func planAtLevel(p *plan.Plan, level int) (*plan.Plan, error) {
 // set on the row (the card path passes the vaulted payment-method id).
 //
 // It takes the datastore and the priced plan and nothing else, so it is reachable
-// from a core as well as from a door. The analytics emit belongs to the door that
+// from a core as well as from an endpoint. The analytics emit belongs to the endpoint that
 // rendered the result — it reads the collector off the request — so each
 // entrypoint fires its own once this hands back the row.
 //
@@ -471,7 +471,7 @@ func hasMemberSub(db *datastore.Datastore, planSlug, member string) bool {
 //	main funnel.
 //	NOT-payment-backed paid rows do not count either. A zero-payment internal row
 //	collects nothing, so it cannot double-charge, and counting it would trap the
-//	holder of a forged Active row outside any door that could fix it.
+//	holder of a forged Active row outside any endpoint that could fix it.
 //
 // It answers a different question from subscriptionPlanSlug ("what may this
 // subject's allotment anchor on") and shares its filters by coincidence of
@@ -850,12 +850,12 @@ func CancelSubscription(ctx context.Context, org *organization.Organization, id 
 	return viewSubscription(sub), nil
 }
 
-// cancelSubscription is the worker: it returns the ROW, so the HTTP door renders
+// cancelSubscription is the worker: it returns the ROW, so the HTTP endpoint renders
 // its long-standing subscriptionResponse body and fires its analytics event off
 // the model, while the typed caller reads Subscription. Two projections of one
 // result, never two implementations.
 //
-// The emit stays at the door on purpose — it reads the collector off the
+// The emit stays at the endpoint on purpose — it reads the collector off the
 // request, and nothing that needs a request belongs in here.
 func cancelSubscription(ctx context.Context, org *organization.Organization, id string, atPeriodEnd bool) (*subscription.Subscription, error) {
 	sub, err := loadSubscription(ctx, org, id)

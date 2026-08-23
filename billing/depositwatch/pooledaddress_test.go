@@ -187,7 +187,7 @@ func TestPooledAddress_OnAnUnreadableChainIsRefused(t *testing.T) {
 }
 
 // Pooled(chain) and Asset.Pooled() must be ONE fact. The read side matches
-// deposits by identity and the write side decides which door a request takes;
+// deposits by identity and the write side decides which path a request takes;
 // if they could disagree, an intent would be issued in a shape the watcher
 // never looks for.
 func TestPooled_ChainAndAssetAgree(t *testing.T) {
@@ -203,7 +203,7 @@ func TestPooled_ChainAndAssetAgree(t *testing.T) {
 	// The mint side receives a chain from a request body, so the free function
 	// must normalise the way the rest of the rail does.
 	if !Pooled(" XRPL ") {
-		t.Fatal("Pooled does not normalise its input, so a request could take the per-payer door on a pooled chain")
+		t.Fatal("Pooled does not normalise its input, so a request could take the per-payer path on a pooled chain")
 	}
 	if Pooled("") || Pooled("dogecoin") {
 		t.Fatal("an unknown chain reports as pooled")

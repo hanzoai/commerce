@@ -1224,7 +1224,7 @@ func (app *App) setupRoutes() {
 	// The ingress used to be the gate. It is not one now and never was a good
 	// one: DepositWatcherStatus refuses anonymously (401) and refuses a
 	// non-superadmin (403) on its own, so the answer does not depend on which
-	// door the request came through.
+	// route the request came through.
 	if app.CommerceStore != nil {
 		// The crypto deposit rail's runtime state. Read-only and superadmin
 		// only — see api/billing.DepositWatcherStatus for why arming an asset

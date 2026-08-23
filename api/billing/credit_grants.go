@@ -98,7 +98,7 @@ func CreateCreditGrant(c *zip.Ctx) error {
 }
 
 // The two refusals a billing read makes about its own scope, as values rather
-// than prose. A caller outside this package maps each to the status the doors
+// than prose. A caller outside this package maps each to the status the endpoints
 // below map it to; matching on a message would make the wording a contract, and
 // the wording is not one.
 var (
@@ -107,13 +107,13 @@ var (
 )
 
 // IsNoOrg reports whether err is a core declining to answer because nothing
-// named the tenant. The list doors answer this with an empty page rather than a
+// named the tenant. The list endpoints answer this with an empty page rather than a
 // status: an unnamed tenant has no rows, which is not something the caller can
 // fix by asking differently.
 func IsNoOrg(err error) bool { return errors.Is(err, errNoOrg) }
 
 // IsNoUser reports whether err is a core declining to answer because nothing
-// named the subject. The doors answer this 400, because dropping the subject
+// named the subject. The endpoints answer this 400, because dropping the subject
 // does not narrow a credit read — it widens it to everyone in the org.
 func IsNoUser(err error) bool { return errors.Is(err, errNoUser) }
 

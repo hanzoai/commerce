@@ -305,7 +305,7 @@ func CollectInvoice(ctx context.Context, org *organization.Organization, id stri
 // collectOutcome is what the collection worker learned, carried by VALUE.
 //
 // It exists because a collection has two shapes of answer — a fresh attempt and a
-// replay of a sealed one — and both doors need to tell them apart. Returning it
+// replay of a sealed one — and both endpoints need to tell them apart. Returning it
 // is what keeps that state on the stack: a package-level var would be shared by
 // every concurrent collection in the process, which on this path means one
 // tenant's receipt answering another tenant's request.
@@ -419,7 +419,7 @@ func emitInvoiceCtx(ctx context.Context, ev *events.Client, orgName string, inv 
 var _ = currency.USD
 
 // eventsOf and kmsOf lift the two request-scoped side channels a core takes as
-// values off a *zip.Ctx. They exist so the HTTP door — and only the HTTP door —
+// values off a *zip.Ctx. They exist so the HTTP endpoint — and only the HTTP endpoint —
 // knows that these live in locals; the cores take them as parameters and are
 // therefore callable from a typed op, a cron, or a test with no request at all.
 func eventsOf(c *zip.Ctx) *events.Client {

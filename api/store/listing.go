@@ -120,7 +120,7 @@ func updateListing(c *zip.Ctx) error {
 		return http.Fail(c, 403, "no organization on the request", errors.New("no org"))
 	}
 	// The one core the plane op also asks, so a listing written through either
-	// door is written the same way — decoded ONTO the existing listing, never
+	// surface is written the same way — decoded ONTO the existing listing, never
 	// replacing it.
 	listings, existed, err := SetListing(c.Context(), org, id, key, c.Body())
 	if err != nil {

@@ -7,7 +7,7 @@ package store
 //
 // The content storefront reads an org's store and upserts a product listing from
 // a process that is not commerce, and it used to do that by re-entering
-// commerce's own HTTP door. Asking over the internal plane needs the questions
+// commerce's own HTTP endpoint. Asking over the internal plane needs the questions
 // answerable WITHOUT a *zip.Ctx, and the alternative is re-deriving them on the
 // other side — a second implementation of "which store is this org's", which is
 // how two surfaces come to publish into different stores.
@@ -57,7 +57,7 @@ func Current(ctx context.Context, org *organization.Organization) (*store.Store,
 // same decode the HTTP handler performs, and it is the whole contract of the
 // route — replacing instead would silently blank a merchandiser's work.
 // It reports whether the listing ALREADY existed, because that is the difference
-// between a 200 and a 201 on the HTTP door and the caller is the only one that
+// between a 200 and a 201 on the HTTP endpoint and the caller is the only one that
 // can say it — and it hands back the resulting listings, so a caller renders what
 // was actually stored rather than what it hoped it sent.
 func SetListing(ctx context.Context, org *organization.Organization, storeID, key string, patch []byte) (listings store.Listings, existed bool, err error) {

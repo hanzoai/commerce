@@ -78,7 +78,7 @@ func ListAccounts(ctx context.Context, org *organization.Organization, subject, 
 // It takes the account id and the caller's identity as values so the check that
 // guards the roster — this account is yours — holds for every asker, not only
 // for one arriving over HTTP. A foreign account id is errForeignAccount here,
-// which the door renders as its refusal.
+// which the endpoint renders as its refusal.
 func ListMembers(ctx context.Context, org *organization.Organization, accountId, subject, email, role string) ([]Member, error) {
 	if org == nil {
 		return nil, errors.New("members: no organization")

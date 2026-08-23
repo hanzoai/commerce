@@ -13,7 +13,7 @@ import (
 // the PUSH of already-decided rows; this is the same landing, for an upstream
 // that has to be read rather than told. Both funnel through
 // catalogentry.UpsertModels, so the rule that a sync owns cost and admin owns
-// price is enforced in one place regardless of which door a row came through.
+// price is enforced in one place regardless of which endpoint a row came through.
 //
 // Scheduling is a cron entry poking this with the service token, the same shape
 // billing-autorecharge uses, so there is one way to run a periodic job. That is

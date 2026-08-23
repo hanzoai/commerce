@@ -204,7 +204,7 @@ func TestSignRefusesUnknownNetworkAndMissingIdentity(t *testing.T) {
 	}
 }
 
-// TestMintChainsAreSignable is the invariant that keeps custody a two-way door.
+// TestMintChainsAreSignable is the invariant that keeps custody two-way.
 //
 // Minting an address and spending from one are separate capabilities behind
 // separate tables — mintChains here, custody.curves there — and for a while they

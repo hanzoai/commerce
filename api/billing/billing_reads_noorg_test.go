@@ -55,7 +55,7 @@ func TestBillingReads_NoOrgInContext_NoPanic(t *testing.T) {
 }
 
 // TestSubscribeWithCard_NoOrgInContext_NoPanic is the same class on the WRITE side, and it
-// is the one that cost money. SubscribeWithCard — the paid front door — opened with the
+// is the one that cost money. SubscribeWithCard — the paid entry point — opened with the
 // unguarded `middleware.GetOrganization(c)` while every read beside it had been fixed.
 //
 // IAMTokenRequired deliberately FALLS THROUGH without setting the local when the gateway
@@ -66,7 +66,7 @@ func TestBillingReads_NoOrgInContext_NoPanic(t *testing.T) {
 // starves the serving plane, because ai's funding gate requires a confirmed paying
 // subscriber for any prepaid SKU and fails closed.
 //
-// A door that takes a card must refuse cleanly when it cannot name the payer. Money never
+// An endpoint that takes a card must refuse cleanly when it cannot name the payer. Money never
 // bills a guess, and a missing org is the emptiest guess there is.
 func TestMoneyWrites_NoOrgInContext_NoPanic(t *testing.T) {
 	noOrg := func(c *zip.Ctx) {} // the fall-through path: nothing set the "organization" local.
@@ -78,7 +78,7 @@ func TestMoneyWrites_NoOrgInContext_NoPanic(t *testing.T) {
 	// gateway named no principal (`ownerID == "" || userID == ""`), so legacy auth
 	// still gets its turn.
 	//
-	// A door that moves money must refuse cleanly when it cannot name the payer.
+	// An endpoint that moves money must refuse cleanly when it cannot name the payer.
 	// Money never bills a guess, and a missing org is the emptiest guess there is.
 	write := func(name, method, path, body string, h zip.Handler) {
 		t.Run(name, func(t *testing.T) {
@@ -88,7 +88,7 @@ func TestMoneyWrites_NoOrgInContext_NoPanic(t *testing.T) {
 			if w.StatusCode != 401 {
 				b, _ := io.ReadAll(w.Body)
 				t.Fatalf("%s with no org: status = %d, body = %q; want 401 — "+
-					"a panic here 500s with no body, and on a charging door it does so "+
+					"a panic here 500s with no body, and on a charging endpoint it does so "+
 					"AFTER the card has moved", name, w.StatusCode, string(b))
 			}
 		})

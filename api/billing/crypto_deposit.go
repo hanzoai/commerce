@@ -44,7 +44,7 @@ type cryptoDepositRequest struct {
 
 // CryptoDeposit is a payer's destination and what has become of it — where to
 // send, what names them when it arrives, and how far the chain has got. Both
-// doors hand back this same value, so a deposit reads identically over HTTP and
+// endpoints hand back this same value, so a deposit reads identically over HTTP and
 // over the internal plane.
 type CryptoDeposit struct {
 	ID             string `json:"id"`
@@ -106,7 +106,7 @@ var errDepositNotFound = errors.New("crypto deposit: no such deposit for this pa
 // IsDepositUnsupported reports whether the rail turned down the ASSET that was
 // asked for — a chain the custody signer cannot mint an address on. Asking for a
 // different one is the fix, which is why this is a separate question from
-// IsDepositRefused, and why the door answers it with a 400.
+// IsDepositRefused, and why the endpoint answers it with a 400.
 func IsDepositUnsupported(err error) bool {
 	var e depositValidationError
 	return errors.As(err, &e)
@@ -115,7 +115,7 @@ func IsDepositUnsupported(err error) bool {
 // IsDepositRefused reports whether the rail is SHUT for that asset — nothing is
 // watching it, or nothing can mint on it right now. Nothing sent while this
 // holds could be credited, so asking differently does not help and only time or
-// an operator does; the door answers it with a 503 and Error() is the sentence
+// an operator does; the endpoint answers it with a 503 and Error() is the sentence
 // to show the payer.
 func IsDepositRefused(err error) bool {
 	var e depositRefusal
@@ -182,7 +182,7 @@ func GetCryptoOptions(ctx context.Context) (CryptoOptions, error) {
 	return CryptoOptions{Chains: chains, Tokens: tokens}, nil
 }
 
-// GetBillingCryptoOptions is the picker's door onto that menu.
+// GetBillingCryptoOptions is the picker's endpoint for that menu.
 //
 //	GET /v1/billing/crypto/options
 func GetBillingCryptoOptions(c *zip.Ctx) error {
@@ -344,7 +344,7 @@ func creditable(assets []depositwatch.Asset, chain, token string) bool {
 // more: a tag is drawn from a finite space that is never reclaimed, and every
 // intent ever minted stays watched forever (depositledger.Watched filters on
 // the asset and deliberately not on status). Reuse allocates nothing, so the
-// second request through this door costs the sequence nothing.
+// second request through this endpoint costs the sequence nothing.
 //
 // A reused intent is returned whole rather than as an address, so its tag
 // travels with it and the two halves of its identity cannot come from different
@@ -395,11 +395,11 @@ func destinationIsComplete(in *cryptopaymentintent.CryptoPaymentIntent) bool {
 //
 // It takes values rather than a request because the peer that offers this rail
 // over the internal plane holds no datastore, and two implementations of "where
-// does this payer send, and may they" is how one door comes to hand out an
-// address the other refuses. The asset defaults here rather than at the door for
+// does this payer send, and may they" is how one endpoint comes to hand out an
+// address the other refuses. The asset defaults here rather than at the endpoint for
 // the same reason: an unnamed chain means ethereum wherever it is asked from.
 //
-// The payer is the CALLER's own billing identity, resolved at the door and
+// The payer is the CALLER's own billing identity, resolved at the endpoint and
 // passed in. A deposit lands where the credential says and nowhere else.
 //
 // An open PENDING intent for the same (payer, chain, token) is reused — one
@@ -534,7 +534,7 @@ func CreateCryptoDeposit(ctx context.Context, org *organization.Organization, pa
 	return toCryptoDepositResponse(intent), nil
 }
 
-// CreateBillingCryptoDeposit is the payer's door onto the crypto rail. It
+// CreateBillingCryptoDeposit is the payer's endpoint for the crypto rail. It
 // resolves who is asking, reads the asset off the body, and maps a refusal to
 // the code it has always mapped to.
 //
@@ -629,7 +629,7 @@ func recordIntent(db *datastore.Datastore, payer, chain, token string, amountCen
 // is the point: the same lookup answered over the internal plane must refuse a
 // foreign id there too, and a second copy of "is this yours" is a copy that can
 // be written without the check. An id that names nothing and an id that names
-// somebody else return the SAME error, so neither door can be made to confirm
+// somebody else return the SAME error, so neither endpoint can be made to confirm
 // that a foreign intent exists.
 func GetCryptoDeposit(ctx context.Context, org *organization.Organization, payer, id string) (CryptoDeposit, error) {
 	if org == nil {
@@ -648,7 +648,7 @@ func GetCryptoDeposit(ctx context.Context, org *organization.Organization, payer
 	return toCryptoDepositResponse(intent), nil
 }
 
-// GetBillingCryptoDeposit is the payer's door onto their own deposit.
+// GetBillingCryptoDeposit is the payer's endpoint for their own deposit.
 //
 //	GET /v1/billing/crypto/deposit/:id
 func GetBillingCryptoDeposit(c *zip.Ctx) error {

@@ -198,7 +198,7 @@ func TestSubscribeWithCardChargesTheChosenLevel(t *testing.T) {
 // TestRenewalChargesTheChosenLevel is the one that matters: a customer who buys
 // Max at a level is charged that level AGAIN at renewal, not the base price.
 //
-// It renews through the HTTP door, which re-reads the subscription by id, so the
+// It renews through the HTTP endpoint, which re-reads the subscription by id, so the
 // price under test is the one that survived storage — not one held in memory
 // from the purchase. A subscription that silently dropped to $99 in month two
 // would pass every test that never re-read it.
