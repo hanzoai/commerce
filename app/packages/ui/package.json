@@ -19,7 +19,7 @@
   "dependencies": {
     "@hanzo/data": "^1.2.3",
     "@hanzo/gui": "^8.1.1",
-    "@hanzo/ui": "^8.0.76",
+    "@hanzo/ui": "^8.3.0",
     "clsx": "^2.1.0",
     "tailwind-merge": "^2.2.1"
   },
