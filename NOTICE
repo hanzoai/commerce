@@ -22,9 +22,9 @@ This product includes software from Medusa (https://github.com/medusajs/medusa),
 
 The TypeScript frontend under app/ is vendored from Medusa and rebranded to the
 @hanzo/commerce-* namespace: app/admin (@medusajs/dashboard), app/site (the
-Medusa Book documentation), and app/packages/{admin-shared,admin-vite-plugin,
-docs-ui,docs-utils,icons,sdk,types,ui,ui-preset} (the corresponding @medusajs
-packages). app/store derives from the Medusa Next.js starter
+Medusa Book documentation), and app/packages/{docs-ui,icons,sdk,types,ui,
+ui-preset} (the corresponding @medusajs packages). app/store derives from the
+Medusa Next.js starter
 (https://github.com/medusajs/nextjs-starter-medusa), also MIT:
 
     Copyright (c) 2022 Medusa
