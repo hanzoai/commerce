@@ -104,7 +104,7 @@ func Credit(c *zip.Ctx) error {
 	// test-ness; the ledger path stated none, so its CreditInput carried the zero
 	// value and a test-mode org's grant was posted into LIVE books — money the gate
 	// happily spends on real inference, minted by a sandbox tenant. The two paths are
-	// the same door and disagreed about the one fact that decides where the money
+	// the same endpoint and disagreed about the one fact that decides where the money
 	// goes, so the fact is resolved once, here, off the org itself.
 	targetOrg, oerr := creditTargetOrg(c, org)
 	if oerr != nil {

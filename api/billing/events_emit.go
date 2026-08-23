@@ -41,7 +41,7 @@ func fireEvent(c *zip.Ctx, fn func(context.Context, *events.Client)) {
 // emitSale fires the two events a settled sale produces, from a CONTEXT rather
 // than a request.
 //
-// It is the same pair the door has always fired and in the same order, moved
+// It is the same pair the endpoint has always fired and in the same order, moved
 // where the sale happens so a caller that is not a request still records it. A
 // nil collector is a no-op, which is what an unwired deployment has always been.
 // WithoutCancel, not Background: the emit survives a client disconnect and keeps

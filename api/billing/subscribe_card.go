@@ -54,7 +54,7 @@ func hydratePaymentCreds(c *zip.Ctx, org *organization.Organization) {
 // returns the requested subject only when it is the org slug or a <org>/<user>
 // child of it, else the org slug — fail-secure, so a subject (and the money keyed
 // to it) can never be steered outside the caller's org. The in-org bound used by
-// subscribeSubject. (The top-up doors no longer take a requested subject at all —
+// subscribeSubject. (The top-up endpoints no longer take a requested subject at all —
 // they credit the caller's own payer identity, userBillingKey.)
 func inOrgSubject(org, requested string) string {
 	s := strings.ToLower(strings.TrimSpace(requested))
@@ -69,7 +69,7 @@ func inOrgSubject(org, requested string) string {
 // is provably within the caller's own org (the subject arrives in the request
 // BODY). Returns "" when no org resolves (caller 401s).
 //
-// NOTE: unlike the top-up doors (which credit the caller's own payer identity via
+// NOTE: unlike the top-up endpoints (which credit the caller's own payer identity via
 // userBillingKey), a subscription still honors a body userId within the org bound.
 // A subscription is a durable object an org admin may create ON BEHALF OF a member,
 // so its owner is not necessarily the caller. If that ever needs to become the
@@ -119,7 +119,7 @@ type SubscribeIn struct {
 	// forgotten — it is a request that cannot be expressed.
 	PlanID string
 	// Subject is the billing subject this subscription belongs to, ALREADY bounded
-	// to the caller's own org by the door that resolved it (subscribeSubject).
+	// to the caller's own org by the endpoint that resolved it (subscribeSubject).
 	Subject string
 	// StoreID scopes the sale to one store, when the seller has several.
 	StoreID string
@@ -153,7 +153,7 @@ type SubscribeIn struct {
 
 // Sale is the receipt for a card subscription: what was opened, what was
 // charged, and what paid for it. The same fields the browser has always
-// received, so the door renders it directly and a typed caller reads the same
+// received, so the endpoint renders it directly and a typed caller reads the same
 // answer.
 type Sale struct {
 	// SubscriptionID is the subscription this sale opened.
@@ -179,8 +179,8 @@ type Sale struct {
 // The kinds of no a sale can end in. They are separate because each is a
 // different thing for the buyer to do — fix the request, name something that
 // exists, wait for the sale already in flight, use another card, try a different
-// card — and the door turns each into the status it has always answered. The
-// reason lives here; the number lives at the door.
+// card — and the endpoint turns each into the status it has always answered. The
+// reason lives here; the number lives at the endpoint.
 type saleKind int
 
 const (
@@ -226,14 +226,14 @@ func IsSaleUnchargeable(err error) bool { return isSale(err, saleUnchargeable) }
 
 // IsSaleDeclined reports whether the processor refused the card. The message is
 // already the customer-facing sentence parseCardDeclineReason produced, which is
-// why the door sends it verbatim rather than writing a second one.
+// why the endpoint sends it verbatim rather than writing a second one.
 func IsSaleDeclined(err error) bool { return isSale(err, saleDeclined) }
 
 // saleOutcome is what the subscribe worker learned, carried by VALUE.
 //
 // It exists because a sale has two shapes of answer — a fresh one and a replay
-// of a sealed one — and the door needs to tell them apart to answer 201 or 200.
-// It carries the ROWS as well as the receipt so the door can fire its analytics
+// of a sealed one — and the endpoint needs to tell them apart to answer 201 or 200.
+// It carries the ROWS as well as the receipt so the endpoint can fire its analytics
 // off the models, exactly as it always has.
 type saleOutcome struct {
 	// Sale is the receipt for a fresh sale. Nil when Replayed is set.
@@ -251,7 +251,7 @@ type saleOutcome struct {
 // Sold is what a sale answered with, and it keeps the two shapes APART.
 //
 // A sale has two: a fresh receipt, and the sealed body of an identical earlier
-// one replayed verbatim. A caller has to tell them apart — the door answers 201
+// one replayed verbatim. A caller has to tell them apart — the endpoint answers 201
 // for the first and 200 for the second, and a retry that got 201 would read as a
 // second subscription having been opened. Exactly one field is ever set.
 type Sold struct {
@@ -266,7 +266,7 @@ type Sold struct {
 // sale's own analytics fired from the context rather than from a request.
 //
 // It exists because Subscribe flattens a replay into a receipt, which is right
-// for a caller that only wants to know what was bought and wrong for a DOOR,
+// for a caller that only wants to know what was bought and wrong for an ENDPOINT,
 // which owes the status and the events. A peer serving this address needs both,
 // so both are answered here rather than re-derived on the other side.
 func SubscribeCard(ctx context.Context, org *organization.Organization, in SubscribeIn) (*Sold, error) {
@@ -293,7 +293,7 @@ func SubscribeCard(ctx context.Context, org *organization.Organization, in Subsc
 // It takes values rather than a request so the sale is reachable by a peer that
 // holds no ledger. What it will NOT do is resolve who is buying: Subject arrives
 // already bounded to the caller's own org, because a core that resolved identity
-// from its own input would let any door hand it a subject nobody proved.
+// from its own input would let any endpoint hand it a subject nobody proved.
 func Subscribe(ctx context.Context, org *organization.Organization, in SubscribeIn) (*Sale, error) {
 	out, err := subscribe(ctx, org, in)
 	if err != nil {
@@ -310,7 +310,7 @@ func Subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 }
 
 // subscribe is the worker: it returns the ROWS alongside the receipt, so the
-// HTTP door emits from the models and answers 201 or 200 as it always has, while
+// HTTP endpoint emits from the models and answers 201 or 200 as it always has, while
 // the typed caller reads Sale. Two projections of one result, never two
 // implementations.
 //
@@ -475,7 +475,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 
 	// ONE PAID SUBSCRIPTION PER SUBJECT — refused BEFORE the card is touched.
 	//
-	// This door only ever STARTED a subscription: it charged, then called
+	// This endpoint only ever STARTED a subscription: it charged, then called
 	// createSubscription unconditionally, and nothing looked for one the subject
 	// already had. The idempotency guard did not help — it keys on (subject, store,
 	// plan), so a DIFFERENT plan is a different key and replays nothing. A paying
@@ -489,7 +489,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// policy decision this act cannot invent. PATCH /v1/billing/subscriptions/:id is
 	// where a move belongs, and it currently refuses an allotment increase without
 	// mint credentials precisely because engine.ChangePlan swaps the plan for free.
-	// Until that door can charge, a customer who wants a different tier is told so by
+	// Until that endpoint can charge, a customer who wants a different tier is told so by
 	// name — which is strictly better than being billed twice for it.
 	//
 	// It sits AFTER the idempotency guard on purpose. A retry carrying the SAME key
@@ -660,7 +660,7 @@ func SubscribeWithCard(c *zip.Ctx) error {
 	// IAMTokenRequired deliberately FALLS THROUGH without setting the local when
 	// the gateway named no principal (`ownerID == "" || userID == ""`), so legacy
 	// auth still gets its turn — every other billing read tolerates that; this
-	// door dereferenced it and took the whole request down at line one.
+	// endpoint dereferenced it and took the whole request down at line one.
 	//
 	// Measured in production 2026-08-06: the panic recovered as a bare 500 with no
 	// body, so the console could not say what went wrong, and `zero subscriptions

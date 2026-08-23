@@ -422,7 +422,7 @@ func TestSyncModels_GatedAndCostOnly(t *testing.T) {
 	}
 }
 
-// A product's API ADDRESS travels with a deploy, so this door refuses to store
+// A product's API ADDRESS travels with a deploy, so this endpoint refuses to store
 // one — and refuses out loud.
 //
 // It used to take the whole entity and answer 200, which meant an admin could set

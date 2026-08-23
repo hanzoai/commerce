@@ -44,7 +44,7 @@ var (
 )
 
 // The classes a top-up can fail in, published so a caller outside this package
-// answers them the way the door answers them. Each is a different thing for the
+// answers them the way the endpoint answers them. Each is a different thing for the
 // asker to do — fix the request, retry later, use another card, call support —
 // which is why they are separate questions and not one "it failed".
 //
@@ -54,14 +54,14 @@ var (
 // single answer everywhere, which is the whole reason it cannot be probed.
 
 // IsTopupOutOfBounds reports whether the amount sits outside the server-side
-// [min,max]. The bounds are the door's to state, since it is the door that
+// [min,max]. The bounds are the endpoint's to state, since it is the endpoint that
 // knows how to say them; this only reports that they were crossed.
 func IsTopupOutOfBounds(err error) bool { return errors.Is(err, errAmountOutOfBounds) }
 
 // IsMethodUnchargeable reports whether the saved method carries no chargeable
 // card. It is the package's answer rather than this file's: the card subscribe
 // path refuses the same row for the same reason and says the same sentence, and
-// two names for one condition is how two doors come to disagree about it.
+// two names for one condition is how two endpoints come to disagree about it.
 func IsMethodUnchargeable(err error) bool { return errors.Is(err, errMethodUnchargeable) }
 
 // IsTopupNoProcessor reports whether this org has no payment processor that can
@@ -94,7 +94,7 @@ type receipt struct {
 type topupRequest struct {
 	// No userId: the credited subject is the caller's own signed identity
 	// (userBillingKey → account.Payer), never a body field, so a request can not
-	// steer where the money lands. Same rule as the token door.
+	// steer where the money lands. Same rule as the token endpoint.
 	PaymentMethodID string `json:"paymentMethodId"`
 	AmountCents     int64  `json:"amountCents"`
 	Currency        string `json:"currency,omitempty"`
@@ -237,7 +237,7 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 	trans.Notes = fmt.Sprintf("Top-up via %s (ref: %s)", proc.Type(), result.ProcessorRef)
 	trans.Tags = "topup"
 	// The processor's own reference for this charge, so the provider's later callback
-	// recognises a payment this door already took — the same stamp the token door
+	// recognises a payment this endpoint already took — the same stamp the token endpoint
 	// writes, for the same reason (payment_core.go).
 	trans.SourceKind = chargeSourceKind(proc.Type())
 	trans.SourceId = result.ProcessorRef
@@ -298,7 +298,7 @@ type TopupCardIn struct {
 	// Currency is the ISO code. Empty means usd.
 	Currency string
 	// Subject is the billing key to credit, ALREADY resolved from the caller's
-	// own signed identity by the door. The core trusts it and cannot re-derive
+	// own signed identity by the endpoint. The core trusts it and cannot re-derive
 	// it: a subject the core chose would be a subject nobody proved.
 	Subject string
 	// IdempotencyKey is the caller's explicit retry key. Empty falls back to the
@@ -318,7 +318,7 @@ type TopupCardIn struct {
 }
 
 // TopupCardOut is the settled result — the same three fields the browser has
-// always received, with the same names, so the door renders it directly and a
+// always received, with the same names, so the endpoint renders it directly and a
 // typed caller reads the same answer.
 type TopupCardOut struct {
 	// TransactionID is the ledger deposit's id: the receipt for the credit.
@@ -341,11 +341,11 @@ type TopupCardOut struct {
 // It takes values rather than a request so the act is reachable by a peer that
 // holds no ledger of its own. What it will NOT do is resolve who is paying:
 // Subject arrives already bound to the caller's own identity, because a core
-// that resolved identity from its own input would let any door hand it a subject
+// that resolved identity from its own input would let any endpoint hand it a subject
 // nobody proved.
 //
 // The refusal of a method belonging to another subject stays here rather than at
-// the door — it is what stands between a member and the org owner's card, and a
+// the endpoint — it is what stands between a member and the org owner's card, and a
 // gate only the browser applied would be no gate at all.
 func TopupCard(ctx context.Context, org *organization.Organization, in TopupCardIn) (*TopupCardOut, error) {
 	if org == nil {
@@ -419,7 +419,7 @@ func TopupCard(ctx context.Context, org *organization.Organization, in TopupCard
 // Everything below the bind is reading values off the request and handing them
 // to TopupCard: the payer from the caller's signed identity, the retry key from
 // the header, the KMS and analytics clients from the request locals. The status
-// each failure carries is the door's to decide, which is why the core answers
+// each failure carries is the endpoint's to decide, which is why the core answers
 // with a class and this maps it.
 func Topup(c *zip.Ctx) error {
 	// The OK form: IAMTokenRequired falls through WITHOUT setting the

@@ -39,7 +39,7 @@ func Webhook(c *zip.Ctx) error {
 
 	// Verify signature — UNCONDITIONALLY. An unset secret used to skip
 	// verification entirely and process the payload, so a missing config was an
-	// open door that credited money. Fail closed: no secret, no trust.
+	// unverified endpoint that credited money. Fail closed: no secret, no trust.
 	signature := c.Header("Mercury-Signature")
 	secret := config.Mercury.WebhookSecret
 	if secret == "" || !mercury.VerifySignature(body, signature, secret) {

@@ -14,9 +14,9 @@ import (
 // topupTokenRequest is the wire body. There is deliberately NO userId field: the
 // credited subject is resolved from the caller's own signed identity
 // (userBillingKey → account.Payer), never from the request, so a body value can
-// not steer where the money lands. This door takes a FRESH nonce only; a card the
+// not steer where the money lands. This endpoint takes a FRESH nonce only; a card the
 // subject already saved goes through POST /v1/billing/topup (paymentMethodId), the
-// one saved-card door.
+// one saved-card endpoint.
 type topupTokenRequest struct {
 	SourceID    string `json:"sourceId"` // Square Web Payments SDK nonce
 	AmountCents int64  `json:"amountCents"`
@@ -78,7 +78,7 @@ func envCents(key string, def int64) int64 {
 // bounds, the idempotency derivation and the ledger write are shared rather than
 // reimplemented.
 //
-// There is deliberately NO core beside TakePayment for this door to own. A second
+// There is deliberately NO core beside TakePayment for this endpoint to own. A second
 // one would be a second set of bounds to drift, a second idempotency derivation
 // to disagree, and eventually a card charged twice for one top-up — which is the
 // exact reason the money move was lifted out of this handler in the first place.

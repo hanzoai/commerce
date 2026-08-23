@@ -290,7 +290,7 @@ func ReadPlans(ctx context.Context, category string, pr *promo.Promo) ([]PlanVie
 	return withPromo(pr, filtered), nil
 }
 
-// ListPlans is the door onto ReadPlans. Catalog data is admin-editable and
+// ListPlans is the endpoint over ReadPlans. Catalog data is admin-editable and
 // embedded as a fallback; the promo is admin-configured and resolved per request.
 //
 //	GET /v1/billing/plans

@@ -245,8 +245,8 @@ var ErrLevel = errors.New("plan is not sold at that level")
 // holds every one of them, so a request to buy a $99 plan for $1 is not merely
 // rejected — there is no field it could be written in. Validating a client-sent
 // amount against a list would refuse the same request, but it would also put an
-// amount on the wire, and the next door to grow one is the door that forgets the
-// check.
+// amount on the wire, and the next endpoint to grow one is the endpoint that
+// forgets the check.
 //
 // Level 0 answers Price rather than Prices[0] so that a plan carrying no ladder
 // still sells at its own price, and a ladder that somehow arrived empty refuses

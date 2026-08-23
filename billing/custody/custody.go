@@ -97,7 +97,7 @@ const (
 // and zoo are in thirdparty/mpc's mintChains, so the rail will hand out custody
 // addresses on both, but mpcd's alias table has no entry for either name and
 // answers 400 "unknown network". An address that can be minted and never signed
-// for is a one-way door, and it is better to find that here than at a sweep.
+// for strands its deposits, and it is better to find that here than at a sweep.
 var curves = map[Network]Curve{
 	Ethereum: Secp256k1,
 	Base:     Secp256k1,

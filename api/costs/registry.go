@@ -25,7 +25,7 @@ const httpTimeout = 8 * time.Second
 //
 // It exists so a caller that is not a request can ask: the admin cockpit reads
 // this god-view from a process that holds none of these books, and it used to do
-// it by re-entering commerce's own /v1/costs door. Re-deriving the walk on that
+// it by re-entering commerce's own /v1/costs endpoint. Re-deriving the walk on that
 // side would be a second implementation of one question, and two answers to
 // "what did we pay our vendors" is a worse failure than no answer.
 //

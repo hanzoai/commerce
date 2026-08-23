@@ -105,7 +105,7 @@ var errAlertNotFound = errors.New("spend alert: no such alert for this org")
 // IsAlertNotFound reports whether an alert core refused because the row is not the
 // caller's to see. A row that does not exist and a row owned by another tenant answer
 // the SAME way on purpose: distinguishing them would let anyone walk ids and learn
-// which ones are real, so every caller — this module's door and the cloud side alike —
+// which ones are real, so every caller — this module's endpoint and the cloud side alike —
 // renders both as one miss.
 func IsAlertNotFound(err error) bool { return errors.Is(err, errAlertNotFound) }
 
@@ -232,7 +232,7 @@ func ownedAlert(db *datastore.Datastore, subject, id string) (*spendalert.SpendA
 // requests they bind.
 //
 // subject is the key the rows are stored under — the caller's validated org, resolved
-// at the door (billingSubject) and never taken from a client field, so the writer and
+// at the endpoint (billingSubject) and never taken from a client field, so the writer and
 // every reader resolve one cap identically. Nobody owns nothing: an empty subject reads
 // empty rather than matching rows that carry no owner.
 //
@@ -290,7 +290,7 @@ func ListSpendAlerts(c *zip.Ctx) error {
 // At least one limit must be meaningful: a Threshold>0 (spend cap) or a
 // RateLimitRpm>0 (rate limit).
 //
-// It takes values rather than a request because the door is not the only writer: a
+// It takes values rather than a request because the endpoint is not the only writer: a
 // peer that provisions a tenant's budget over the internal plane must open the row the
 // same way, and a second create path is how two rows come to describe one budget.
 //
@@ -300,7 +300,7 @@ func ListSpendAlerts(c *zip.Ctx) error {
 // so enforcement binds.
 //
 // A refusal of the caller's values answers IsAlertRefusal; anything else is the store
-// failing. Which status each becomes is the door's business, not this one's.
+// failing. Which status each becomes is the endpoint's business, not this one's.
 func CreateAlert(ctx context.Context, org *organization.Organization, subject string, spec AlertSpec) (*Alert, error) {
 	if org == nil {
 		return nil, errors.New("alerts: no organization")

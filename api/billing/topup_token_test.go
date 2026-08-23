@@ -60,7 +60,7 @@ func ctxWithIdentity(orgName, xUserID, xBillingAccount, userQuery string) *zip.C
 // TestTopupSubject_FollowsSignedIdentity_NotQuery is the regression guard for the
 // split-subject money bug: a customer's card top-ups landing on `hanzo` on one
 // charge and `hanzo/<user>` on the next, so the balance read (one key) under-
-// reported what they paid. Both top-up doors now credit userBillingKey(c) — the
+// reported what they paid. Both top-up endpoints now credit userBillingKey(c) — the
 // payer resolved from the signed identity, the SAME account.Payer rule the LLM
 // gate debits and GetMyBalance reads — and a ?user= query can never steer it.
 func TestTopupSubject_FollowsSignedIdentity_NotQuery(t *testing.T) {

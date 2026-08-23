@@ -345,7 +345,7 @@ type RollupView struct {
 var errRollupNoOrg = errors.New("rollup: no organization")
 
 // IsRollupRefusal reports whether ReadRollup refused the question — no tenant
-// named — as against failing to read the ledger. The door answers the first 400
+// named — as against failing to read the ledger. The endpoint answers the first 400
 // and the second 500, and a caller that collapses them shows a customer a month
 // in which they spent nothing when the truth is that nothing could be read.
 func IsRollupRefusal(err error) bool { return errors.Is(err, errRollupNoOrg) }
@@ -437,7 +437,7 @@ func ReadRollup(ctx context.Context, org *organization.Organization, user, plan 
 	}, nil
 }
 
-// GetUsageRollup is the door onto ReadRollup. This is the single read surface
+// GetUsageRollup is the endpoint over ReadRollup. This is the single read surface
 // the console billing UI renders.
 //
 //	GET /v1/billing/usage/rollup?user=hanzo/alice&plan=pro

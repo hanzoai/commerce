@@ -55,7 +55,7 @@ func CreateInvoice(c *zip.Ctx) error {
 	if f != nil {
 		return http.Fail(c, f.Status, f.Message, f.Err)
 	}
-	// SubscriptionId and Metadata are carried by this door only; the typed op has
+	// SubscriptionId and Metadata are carried by this endpoint only; the typed op has
 	// no field for either, so they are set after the shared core has built the row.
 	if req.SubscriptionId != "" || req.Metadata != nil {
 		inv.SubscriptionId = req.SubscriptionId
@@ -81,9 +81,9 @@ func CreateInvoice(c *zip.Ctx) error {
 // Empty userID, status or subscriptionID means "do not filter on it", which is
 // what an absent query parameter has always meant here.
 //
-// The rows come back as the same view the HTTP doors render, so a peer reads the
-// fields it already knows. The ENVELOPE around them is each door's own; putting
-// it here would make every future caller inherit one door's shape.
+// The rows come back as the same view the HTTP endpoints render, so a peer reads the
+// fields it already knows. The ENVELOPE around them is each endpoint's own; putting
+// it here would make every future caller inherit one endpoint's shape.
 func ListInvoices(ctx context.Context, org *organization.Organization, userID, status, subscriptionID string) ([]Invoice, error) {
 	if org == nil {
 		return nil, fmt.Errorf("invoices: %w", errNoOrg)
@@ -256,8 +256,8 @@ func BurnCreditsPreview(db *datastore.Datastore, userId string, amount int64) (i
 	return remaining, nil
 }
 
-// Invoice is a billing invoice as every invoice door has answered with it —
-// InvoiceView's facts plus the ones only the doors carry (the period, the tax
+// Invoice is a billing invoice as every invoice endpoint has answered with it —
+// InvoiceView's facts plus the ones only the endpoints carry (the period, the tax
 // and discount lines, the dunning attempt count).
 //
 // The three lifecycle timestamps are pointers: each key has always been emitted
@@ -292,7 +292,7 @@ type Invoice struct {
 }
 
 // invoiceResponse projects the model onto that view. It stays the ONE projection
-// the doors share, now typed, so the list a peer reads and the body a browser
+// the endpoints share, now typed, so the list a peer reads and the body a browser
 // reads cannot drift into describing one invoice two ways.
 func invoiceResponse(inv *billinginvoice.BillingInvoice) Invoice {
 	resp := Invoice{

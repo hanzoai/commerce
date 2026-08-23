@@ -210,9 +210,9 @@ func isSettlementEvent(eventType string) bool {
 // there. Nothing in the embedded binary spends from that store: the prepaid balance
 // every gate consults is the host's finance ledger, reached through [creditledger].
 // So an asynchronously-settled payment moved real money, wrote a row, and the balance
-// that decides whether a request is served never changed. The in-session doors close
+// that decides whether a request is served never changed. The in-session endpoints close
 // that half themselves (the host's settle.go, at the point their handler returns);
-// this is the same half for the settlements that have no door.
+// this is the same half for the settlements that have no endpoint.
 //
 // # WHO PAID IS READ FROM WHAT WE WROTE, NEVER FROM THE CALLBACK
 //
@@ -238,7 +238,7 @@ func isSettlementEvent(eventType string) bool {
 // idempotency key. The host dedups a credit on that key WITHIN one ledger, so the
 // key is only exactly-once if every path that can credit one payment resolves the
 // same (org, subject, test) — which is why the address comes from the one persisted
-// record rather than from whichever door happened to be looking.
+// record rather than from whichever endpoint happened to be looking.
 //
 // A "payment.updated" event only settles when the payment object reports a
 // terminal completed/captured status; pending or failed updates are ignored.
@@ -293,7 +293,7 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 	who, why := settlementDestination(db, org, event, pay, kind, paymentID)
 	if who == nil {
 		if why == "" {
-			return // already accounted for by a door that owns the credit
+			return // already accounted for by an endpoint that owns the credit
 		}
 		reconcileSettlement(org, event, paymentID, why)
 		return
@@ -380,9 +380,9 @@ type destination struct {
 // The three lookups are all keyed on the provider's payment id, and each one is a
 // record commerce wrote itself:
 //
-//	A STAMPED LEDGER ROW is an in-session charge. Both card doors stamp the deposit
+//	A STAMPED LEDGER ROW is an in-session charge. Both card endpoints stamp the deposit
 //	they write with (SourceKind, SourceId) at charge time, so this row means either
-//	that a door took this payment — in which case the host credited the spendable
+//	that an endpoint took this payment — in which case the host credited the spendable
 //	ledger at its own resolved payer as the handler returned — or that an earlier
 //	delivery of this very callback already credited it. Both are "already done".
 //
@@ -395,7 +395,7 @@ type destination struct {
 //	commerce, reached only after the two above missed — so there is no local invoice
 //	and no local deposit, and this callback is the only record of the money there
 //	will be. Its UserId is the billing subject, the same <org> or <org>/<user> key
-//	the doors resolve and the gate debits.
+//	the endpoints resolve and the gate debits.
 //
 // EVERYTHING ELSE IS REFUSED: a payment link, a charge raised in the provider's
 // dashboard, a checkout order's capture. Those really are unattributable here —
@@ -509,9 +509,9 @@ func subscriptionRef(eventType string, data map[string]interface{}) string {
 
 // chargeSourceKind is the ledger SourceKind under which a processor's own charge
 // reference is filed. It is ONE function because two sides must spell it identically:
-// the card doors stamp a settled charge with it, and this callback looks that charge
+// the card endpoints stamp a settled charge with it, and this callback looks that charge
 // up by it. Two literals drift, the lookup silently finds nothing, and "nothing" here
-// reads exactly like "no door ever took this payment" — which credits it twice.
+// reads exactly like "no endpoint ever took this payment" — which credits it twice.
 //
 // It carries the processor's name because the reference inside it is that processor's,
 // and two processors' id spaces are not one space. For Square it is the same
@@ -532,7 +532,7 @@ func chargeSourceKind(p processor.ProcessorType) string {
 // resolved the namespace, the provider's own customer id, an order id sitting in
 // reference_id — so a guess is not a slightly-wrong credit, it is a customer's money
 // in a stranger's wallet, reported as success. The refusal names the payment, the
-// books it was refused in, and the door that settles it, because a settled payment
+// books it was refused in, and the endpoint that settles it, because a settled payment
 // nobody is told about is the defect this whole path exists to end.
 func reconcileSettlement(org *organization.Organization, event *processor.WebhookEvent, paymentID, why string) {
 	log.Error("RECONCILE: a settled payment could not be attributed and NO balance was credited — "+

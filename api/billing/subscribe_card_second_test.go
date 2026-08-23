@@ -15,7 +15,7 @@ import (
 
 // ONE PAID SUBSCRIPTION PER SUBJECT.
 //
-// This door only ever STARTED a subscription — charge, then createSubscription,
+// This endpoint only ever STARTED a subscription — charge, then createSubscription,
 // with nothing looking for one the subject already had. The idempotency guard keys
 // on (subject, store, plan), so a DIFFERENT plan replayed nothing: a paying Pro
 // customer clicking Upgrade on Max was charged $99 in full, got a SECOND active
@@ -73,7 +73,7 @@ func TestSubscribeWithCard_SecondPaidTierRefusedBeforeCharge(t *testing.T) {
 	m := squareMock("cust_1", "ccof_1", "sqpay_1")
 	withFakeSquare(t, m)
 
-	// A real first purchase, through the real door.
+	// A real first purchase, through the real endpoint.
 	if resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"pro"}`, nil); resp.StatusCode != http.StatusCreated {
 		t.Fatalf("first subscribe status=%d, want 201", resp.StatusCode)
 	}
@@ -108,7 +108,7 @@ func TestSubscribeWithCard_SecondPaidTierRefusedBeforeCharge(t *testing.T) {
 
 // TestSubscribeWithCard_FreeTierDoesNotBlockPaying: the main funnel. A free
 // subscription bills nothing, so it can never be the thing a second sale would
-// double-charge — and a customer on the free tier is exactly who needs this door.
+// double-charge — and a customer on the free tier is exactly who needs this endpoint.
 func TestSubscribeWithCard_FreeTierDoesNotBlockPaying(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -135,7 +135,7 @@ func TestSubscribeWithCard_FreeTierDoesNotBlockPaying(t *testing.T) {
 // TestSubscribeWithCard_UnpaidInternalRowDoesNotBlockPaying: a zero-payment
 // internal Active row (what CreateBillingSubscription starts) collects nothing, so
 // it cannot double-charge — and counting it would trap its holder outside the only
-// door that can fix it.
+// endpoint that can fix it.
 func TestSubscribeWithCard_UnpaidInternalRowDoesNotBlockPaying(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()

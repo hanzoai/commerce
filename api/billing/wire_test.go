@@ -27,7 +27,7 @@ func TestWireReference(t *testing.T) {
 }
 
 // TestWireFromHostReadsTheOrgScopedAddress pins the KMS ADDRESS, because getting
-// it wrong is silent: both doors reach the same store keyed by (path, name, env),
+// it wrong is silent: both sides reach the same store keyed by (path, name, env),
 // so a read at a path nothing writes returns "" and the rail answers "Wire
 // transfer not configured" exactly as it would if no one had ever stored the
 // bank. It read /tenants/hanzo/wire/<NAME> while cloud writes every in-process
