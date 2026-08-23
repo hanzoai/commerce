@@ -1,5 +1,5 @@
-import { Disclosure } from "@headlessui/react"
-import { Badge, Button, clx } from "@hanzo/commerce-ui"
+import { Collapsible, CollapsibleContent } from "@hanzo/ui"
+import { Badge, Button } from "@hanzo/commerce-ui"
 import { useEffect } from "react"
 
 import useToggleState from "@lib/hooks/use-toggle-state"
@@ -68,56 +68,31 @@ const AccountInfo = ({
         </div>
       </div>
 
-      {/* Success state */}
-      <Disclosure>
-        <Disclosure.Panel
-          static
-          className={clx(
-            "transition-[max-height,opacity] duration-300 ease-in-out overflow-hidden",
-            {
-              "max-h-[1000px] opacity-100": isSuccess,
-              "max-h-0 opacity-0": !isSuccess,
-            }
-          )}
-          data-testid="success-message"
-        >
+      {/* Three regions that reveal. They were `Disclosure.Panel static` — which
+          renders unconditionally and never reads the Disclosure's state — with
+          the open/closed look faked by animating max-height between 0 and an
+          arbitrary 1000px. So the region was always in the tree and always in
+          the accessibility tree, announcing a success message that was visually
+          collapsed. Collapsible takes the state it already had as a prop. */}
+      <Collapsible open={!!isSuccess}>
+        <CollapsibleContent data-testid="success-message">
           <Badge className="p-2 my-4" color="green">
             <span>{label} updated succesfully</span>
           </Badge>
-        </Disclosure.Panel>
-      </Disclosure>
+        </CollapsibleContent>
+      </Collapsible>
 
-      {/* Error state  */}
-      <Disclosure>
-        <Disclosure.Panel
-          static
-          className={clx(
-            "transition-[max-height,opacity] duration-300 ease-in-out overflow-hidden",
-            {
-              "max-h-[1000px] opacity-100": isError,
-              "max-h-0 opacity-0": !isError,
-            }
-          )}
-          data-testid="error-message"
-        >
+      <Collapsible open={!!isError}>
+        <CollapsibleContent data-testid="error-message">
           <Badge className="p-2 my-4" color="red">
             <span>{errorMessage}</span>
           </Badge>
-        </Disclosure.Panel>
-      </Disclosure>
+        </CollapsibleContent>
+      </Collapsible>
 
-      <Disclosure>
-        <Disclosure.Panel
-          static
-          className={clx(
-            "transition-[max-height,opacity] duration-300 ease-in-out overflow-visible",
-            {
-              "max-h-[1000px] opacity-100": state,
-              "max-h-0 opacity-0": !state,
-            }
-          )}
-        >
-          <div className="flex flex-col gap-y-2 py-4">
+      <Collapsible open={state}>
+        <CollapsibleContent>
+          <div className="grid gap-y-2 py-4">
             <div>{children}</div>
             <div className="flex items-center justify-end mt-2">
               <Button
@@ -130,8 +105,8 @@ const AccountInfo = ({
               </Button>
             </div>
           </div>
-        </Disclosure.Panel>
-      </Disclosure>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   )
 }
