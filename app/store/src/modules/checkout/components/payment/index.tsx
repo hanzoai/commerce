@@ -1,6 +1,6 @@
 "use client"
 
-import { RadioGroup } from "@headlessui/react"
+import { RadioGroup } from "@hanzo/ui"
 import { isStripeLike, paymentInfoMap } from "@lib/constants"
 import { initiatePaymentSession } from "@lib/data/cart"
 import { CheckCircleSolid, CreditCard } from "@hanzo/commerce-icons"
@@ -138,7 +138,7 @@ const Payment = ({
             <>
               <RadioGroup
                 value={selectedPaymentMethod}
-                onChange={(value: string) => setPaymentMethod(value)}
+                onValueChange={(value: string) => setPaymentMethod(value)}
               >
                 {availablePaymentMethods.map((paymentMethod) => (
                   <div key={paymentMethod.id}>

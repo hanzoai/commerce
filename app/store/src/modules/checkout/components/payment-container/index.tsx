@@ -1,8 +1,6 @@
-import { Radio as RadioGroupOption } from "@headlessui/react"
+import { RadioGroupItem } from "@hanzo/ui"
 import { Text, clx } from "@hanzo/commerce-ui"
 import React, { useContext, useMemo, type JSX } from "react"
-
-import Radio from "@modules/common/components/radio"
 
 import { isManual } from "@lib/constants"
 import SkeletonCardDetails from "@modules/skeletons/components/skeleton-card-details"
@@ -29,12 +27,15 @@ const PaymentContainer: React.FC<PaymentContainerProps> = ({
   const isDevelopment = process.env.NODE_ENV === "development"
 
   return (
-    <RadioGroupOption
+    // A label, so the whole tile selects — the tile is not the control. The
+    // control is RadioGroupItem, which carries the dot, the checked state and
+    // the hidden bubbling input. The dot this replaced hardcoded
+    // aria-checked="true", so every payment method announced itself as the
+    // chosen one.
+    <label
       key={paymentProviderId}
-      value={paymentProviderId}
-      disabled={disabled}
       className={clx(
-        "flex flex-col gap-y-2 text-small-regular cursor-pointer py-4 border rounded-rounded px-8 mb-2 hover:shadow-borders-interactive-with-active",
+        "grid gap-y-2 text-small-regular cursor-pointer py-4 border rounded-rounded px-8 mb-2 hover:shadow-borders-interactive-with-active",
         {
           "border-ui-border-interactive":
             selectedPaymentOptionId === paymentProviderId,
@@ -43,7 +44,7 @@ const PaymentContainer: React.FC<PaymentContainerProps> = ({
     >
       <div className="flex items-center justify-between ">
         <div className="flex items-center gap-x-4">
-          <Radio checked={selectedPaymentOptionId === paymentProviderId} />
+          <RadioGroupItem value={paymentProviderId} disabled={disabled} />
           <Text className="text-base-regular">
             {paymentInfoMap[paymentProviderId]?.title || paymentProviderId}
           </Text>
@@ -59,7 +60,7 @@ const PaymentContainer: React.FC<PaymentContainerProps> = ({
         <PaymentTest className="small:hidden text-[10px]" />
       )}
       {children}
-    </RadioGroupOption>
+    </label>
   )
 }
 

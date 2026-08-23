@@ -1,6 +1,6 @@
 "use client"
 
-import { Radio, RadioGroup } from "@headlessui/react"
+import { RadioGroup, RadioGroupItem } from "@hanzo/ui"
 import { setShippingMethod } from "@lib/data/cart"
 import { calculatePriceForShippingOption } from "@lib/data/fulfillment"
 import { convertToLocale } from "@lib/util/money"
@@ -9,7 +9,6 @@ import { HttpTypes } from "@hanzo/commerce-types"
 import { Button, clx, Heading, Text } from "@hanzo/commerce-ui"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import Divider from "@modules/common/components/divider"
-import CommerceRadio from "@modules/common/components/radio"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 
@@ -197,7 +196,7 @@ const Shipping: React.FC<ShippingProps> = ({
                 {hasPickupOptions && (
                   <RadioGroup
                     value={showPickupOptions}
-                    onChange={(value) => {
+                    onValueChange={(value) => {
                       const id = _pickupMethods.find(
                         (option) => !option.insufficient_inventory
                       )?.id
@@ -207,8 +206,7 @@ const Shipping: React.FC<ShippingProps> = ({
                       }
                     }}
                   >
-                    <Radio
-                      value={PICKUP_OPTION_ON}
+                    <label
                       data-testid="delivery-option-radio"
                       className={clx(
                         "flex items-center justify-between text-small-regular cursor-pointer py-4 border rounded-rounded px-8 mb-2 hover:shadow-borders-interactive-with-active",
@@ -219,9 +217,7 @@ const Shipping: React.FC<ShippingProps> = ({
                       )}
                     >
                       <div className="flex items-center gap-x-4">
-                        <CommerceRadio
-                          checked={showPickupOptions === PICKUP_OPTION_ON}
-                        />
+                        <RadioGroupItem value={PICKUP_OPTION_ON} />
                         <span className="text-base-regular">
                           Pick up your order
                         </span>
@@ -229,12 +225,12 @@ const Shipping: React.FC<ShippingProps> = ({
                       <span className="justify-self-end text-ui-fg-base">
                         -
                       </span>
-                    </Radio>
+                    </label>
                   </RadioGroup>
                 )}
                 <RadioGroup
-                  value={shippingMethodId}
-                  onChange={(v) => {
+                  value={shippingMethodId ?? undefined}
+                  onValueChange={(v) => {
                     if (v) {
                       return handleSetShippingMethod(v, "shipping")
                     }
@@ -247,11 +243,9 @@ const Shipping: React.FC<ShippingProps> = ({
                       typeof calculatedPricesMap[option.id] !== "number"
 
                     return (
-                      <Radio
+                      <label
                         key={option.id}
-                        value={option.id}
                         data-testid="delivery-option-radio"
-                        disabled={isDisabled}
                         className={clx(
                           "flex items-center justify-between text-small-regular cursor-pointer py-4 border rounded-rounded px-8 mb-2 hover:shadow-borders-interactive-with-active",
                           {
@@ -263,8 +257,9 @@ const Shipping: React.FC<ShippingProps> = ({
                         )}
                       >
                         <div className="flex items-center gap-x-4">
-                          <CommerceRadio
-                            checked={option.id === shippingMethodId}
+                          <RadioGroupItem
+                            value={option.id}
+                            disabled={isDisabled}
                           />
                           <span className="text-base-regular">
                             {option.name}
@@ -287,7 +282,7 @@ const Shipping: React.FC<ShippingProps> = ({
                             "-"
                           )}
                         </span>
-                      </Radio>
+                      </label>
                     )
                   })}
                 </RadioGroup>
@@ -308,8 +303,8 @@ const Shipping: React.FC<ShippingProps> = ({
               <div data-testid="delivery-options-container">
                 <div className="pb-8 md:pt-0 pt-2">
                   <RadioGroup
-                    value={shippingMethodId}
-                    onChange={(v) => {
+                    value={shippingMethodId ?? undefined}
+                    onValueChange={(v) => {
                       if (v) {
                         return handleSetShippingMethod(v, "pickup")
                       }
@@ -317,10 +312,8 @@ const Shipping: React.FC<ShippingProps> = ({
                   >
                     {_pickupMethods?.map((option) => {
                       return (
-                        <Radio
+                        <label
                           key={option.id}
-                          value={option.id}
-                          disabled={option.insufficient_inventory}
                           data-testid="delivery-option-radio"
                           className={clx(
                             "flex items-center justify-between text-small-regular cursor-pointer py-4 border rounded-rounded px-8 mb-2 hover:shadow-borders-interactive-with-active",
@@ -333,8 +326,9 @@ const Shipping: React.FC<ShippingProps> = ({
                           )}
                         >
                           <div className="flex items-start gap-x-4">
-                            <CommerceRadio
-                              checked={option.id === shippingMethodId}
+                            <RadioGroupItem
+                              value={option.id}
+                              disabled={option.insufficient_inventory}
                             />
                             <div className="flex flex-col">
                               <span className="text-base-regular">
@@ -354,7 +348,7 @@ const Shipping: React.FC<ShippingProps> = ({
                               currency_code: cart?.currency_code,
                             })}
                           </span>
-                        </Radio>
+                        </label>
                       )
                     })}
                   </RadioGroup>
