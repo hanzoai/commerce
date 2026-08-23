@@ -16,7 +16,7 @@ import (
 // simultaneously a credential leak (the value is stored in plaintext as a
 // tenant identifier — incident 2026-07-02) and an unbounded-cardinality bug:
 // one 5.25KB Organization per distinct token, which is heap growth with no
-// ceiling. Refusal turns on shape, not on whether the value opens a door.
+// ceiling. Refusal turns on shape, not on whether the value still authenticates.
 var bearerNames = []string{
 	"hk-2ff139c7-4dd5-4f23-9de1-df7b67331b6e",
 	"sk-live-0123456789abcdef",

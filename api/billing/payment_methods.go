@@ -115,7 +115,7 @@ func parseCardDeclineReason(result *processor.PaymentResult, err error) string {
 }
 
 // The refusals these cores make, as VALUES. A core has no request to answer on,
-// so it says which KIND of refusal happened and the door it was reached through
+// so it says which KIND of refusal happened and the endpoint it was reached through
 // picks the status — the same split subValidationError makes for subscriptions.
 
 // errNoMethod is the single answer to "not there, or not yours". A row the
@@ -125,7 +125,7 @@ func parseCardDeclineReason(result *processor.PaymentResult, err error) string {
 var errNoMethod = errors.New("payment method not found")
 
 // IsMethodNotFound reports whether err is that one answer. A caller outside this
-// package has to answer it exactly as the door does — not found, no detail — and
+// package has to answer it exactly as the endpoint does — not found, no detail — and
 // an unexported sentinel cannot be asked about.
 func IsMethodNotFound(err error) bool { return errors.Is(err, errNoMethod) }
 
@@ -146,7 +146,7 @@ func IsMethodRefused(err error) bool {
 }
 
 // declineError marks a card the processor refused. Its msg is already the
-// customer-facing sentence parseCardDeclineReason produced, which is why the door
+// customer-facing sentence parseCardDeclineReason produced, which is why the endpoint
 // sends it verbatim rather than writing a second one.
 type declineError struct{ msg string }
 
@@ -184,12 +184,12 @@ type CreateMethodIn struct {
 // already holds it rather than stacking a duplicate, and the caller has to be
 // able to tell which happened.
 //
-// It takes values rather than a request because the browser's door is not the
+// It takes values rather than a request because the browser's endpoint is not the
 // only place this is asked from — a peer holding no datastore asks it over the
 // internal plane — and a second implementation of "vault a nonce and persist a
 // method" is a second place for the card-on-file dedupe to go missing.
 //
-// email is the caller's own address, resolved at the door from its credential: it
+// email is the caller's own address, resolved at the endpoint from its credential: it
 // names the Square customer profile, and a core must never read an identity it
 // was not handed. creds hydrates the org's processor credentials; nil is
 // legitimate (dev/tests, env-var creds).
@@ -396,7 +396,7 @@ func GetPaymentMethod(c *zip.Ctx) error {
 // ListMethods is a subject's saved payment methods, healed and rendered — the
 // QUERY, with no HTTP in it.
 //
-// It takes values rather than a request because two doors already ask it (a
+// It takes values rather than a request because two endpoints already ask it (a
 // customer's own list, and the portal list a proxying host reads) and a peer
 // holding no datastore asks it over the internal plane. Three copies of one query
 // is how a saved-cards panel and a renewal come to disagree about which cards
@@ -404,7 +404,7 @@ func GetPaymentMethod(c *zip.Ctx) error {
 //
 // An empty subject means "every method in the org" — what an absent customerId
 // has always meant on the privileged path. WHO may ask that is settled at the
-// door, from the credential, and never re-derived here. An empty kind means "any
+// endpoint, from the credential, and never re-derived here. An empty kind means "any
 // type", which is what an absent ?type has always meant.
 //
 // creds hydrates the org's processor credentials before card facts are healed
@@ -541,9 +541,9 @@ type Detachment struct {
 // DetachMethod removes a subject's saved method: the Square card-on-file first,
 // best-effort so the vault stays in step, then the local row.
 //
-// It takes values rather than a request so the doors that publish this removal
+// It takes values rather than a request so the endpoints that publish this removal
 // and a peer on the internal plane share one implementation of it. What it must
-// NOT take is the caller: subject is the billing key the door already proved the
+// NOT take is the caller: subject is the billing key the endpoint already proved the
 // caller owns, and privileged is the service or admin caller that may act on any
 // subject inside the org. Authority decided twice is authority that eventually
 // disagrees with itself.
@@ -721,7 +721,7 @@ type Method struct {
 	Metadata json.RawMessage `json:"metadata,omitempty"`
 }
 
-// methodOf states a stored row as the Method every door answers with.
+// methodOf states a stored row as the Method every endpoint answers with.
 func methodOf(pm *paymentmethod.PaymentMethod) Method {
 	m := Method{
 		Id:             pm.Id(),

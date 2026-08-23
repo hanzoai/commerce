@@ -39,7 +39,7 @@ func GetBalance(c *zip.Ctx) error {
 	// THE ORG AND THE SUBJECT ARE TWO VALUES, and passing one for both is what this
 	// fixes. `user` is a SUBJECT — the org's pool key, or the finer "<org>/<user>" of
 	// a member who spends from their own wallet, which is exactly what the datastore
-	// path below hands bucketedSplit and what this door's own example documents. It
+	// path below hands bucketedSplit and what this endpoint's own example documents. It
 	// was being passed as the LEDGER, so a person-scoped subject opened a namespace
 	// named after the person: a different ledger, holding nothing, reported as a real
 	// zero to a customer with money. The org is the request's own, the same one the

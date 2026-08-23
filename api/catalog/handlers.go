@@ -49,14 +49,14 @@ func requireSuperAdmin(c *zip.Ctx) bool {
 
 // requirePlatform fails closed unless the caller is the PLATFORM PRINCIPAL —
 // a SuperAdmin or the internal service token (middleware.IsPlatform). It gates
-// the SYNC doors, which a scheduled job has to be able to walk: a sync that only
+// the SYNC endpoints, which a scheduled job has to be able to call: a sync that only
 // a human can start is a catalog that goes stale, and the model rows stayed
 // empty in production for exactly that reason.
 //
 // Admitting the service token here costs nothing a sync could abuse. A sync
 // writes upstream COST and only ever freezes a retail price on a row BORN in
 // that run (catalogentry.freezePrice); a live model's Price is unreachable from
-// this door, so the money a customer is charged still moves only by a human
+// this endpoint, so the money a customer is charged still moves only by a human
 // hand in admin.hanzo.ai. Editing entries stays requireSuperAdmin.
 func requirePlatform(c *zip.Ctx) bool {
 	if !middleware.IsPlatform(c) {
@@ -206,15 +206,15 @@ func UpdateEntry(c *zip.Ctx) error {
 	// A product's apiPath is a fact about the fleet — either the router delivers
 	// there or it does not — so it arrives with a deploy, from the snapshot, and
 	// catalogentry.Correct reads it back over this row on every boot. Storing an
-	// edit would return 200 for a value the next restart deletes, which is a
-	// door reporting durable success it cannot keep.
+	// edit would return 200 for a value the next restart deletes, which is an
+	// endpoint reporting durable success it cannot keep.
 	//
 	// Refused only when it CHANGES: this handler takes a whole entity, so the
 	// console reads a row and PUTs it back with the address it was given, and
 	// that has to keep working. Kind is compared defaulted, because a projection
 	// that always states "service" and a row that stores "" mean the same thing.
 	if e.ApiPath != was.path || e.ApiRoute != was.route || catalogentry.KindOf(e) != was.kind {
-		return http.Fail(c, 409, "a product's API address travels with a deploy, not this door — "+
+		return http.Fail(c, 409, "a product's API address travels with a deploy, not this endpoint — "+
 			"edit apiPath/apiRoute/kind in hanzoai/commerce models/catalogentry/seed/hanzo-catalog.json, "+
 			"where cloud's catalog_address_test.go checks it against the routes the fleet publishes. "+
 			"PUT the address you were given, or leave it out",
@@ -257,7 +257,7 @@ func DeleteEntry(c *zip.Ctx) error {
 // upstream and the catalog: they own the structure and publish it, commerce
 // holds the numbers, admin.hanzo.ai edits them.
 //
-// Platform principal, like its sibling RefreshModels — the two sync doors land
+// Platform principal, like its sibling RefreshModels — the two sync endpoints land
 // through the same UpsertModels, so gating them differently would only decide
 // which syncer has to be a human.
 func SyncModels(c *zip.Ctx) error {

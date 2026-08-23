@@ -102,7 +102,7 @@ func TestAPartialRowIsRepaired(t *testing.T) {
 //
 // It read `!archived` before, so every other value — "draft", a typo, a state
 // added later and not taught here — meant SOLD. Draft is the one that mattered:
-// the word withholds a plan on the model next door, so an operator who learned
+// the word withholds a plan on the model beside it, so an operator who learned
 // it there would have published a half-written price by saving it.
 func TestOnlyARecognisedStatusIsSold(t *testing.T) {
 	for status, sold := range map[string]bool{

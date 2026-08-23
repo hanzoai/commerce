@@ -193,7 +193,7 @@ type Verdict struct {
 // that asks. A peer holding no ledger puts the same question over the internal plane,
 // and a cap answered twice by two derivations is how a cap and a rate limit come to
 // disagree about which requests they bind. project/service/amount arrive already
-// resolved — the door parses its query, a peer passes what it holds — and
+// resolved — the endpoint parses its query, a peer passes what it holds — and
 // projectValidated says whether the PROJECT axis came from a validated claim, which is
 // the only axis that can degrade a hard cap to a warn.
 //

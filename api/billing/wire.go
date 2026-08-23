@@ -40,7 +40,7 @@ type WireInstructions struct {
 var errNoWire = errors.New("wire: no receiving account for this brand")
 
 // IsWireUnconfigured reports that refusal. It is the only error class the wire
-// rail has, so a caller outside this module answers the same 503 the door does
+// rail has, so a caller outside this module answers the same 503 the endpoint does
 // without knowing anything about how the details are stored.
 func IsWireUnconfigured(err error) bool { return errors.Is(err, errNoWire) }
 
@@ -140,7 +140,7 @@ func GetWireInstructions(ctx context.Context, recv *organization.Organization, b
 	}, nil
 }
 
-// GetBillingWireInstructions is the customer's door onto those details. It
+// GetBillingWireInstructions is the customer's endpoint for those details. It
 // resolves the two things only a request knows — who is asking, and which host
 // they are paying on — and hands the host's KMS handle to the read.
 //
@@ -193,7 +193,7 @@ func wireReference(payer string) string {
 // folds every write under that prefix from the validated org claim, because the
 // org is the tenant boundary and belongs in the key.
 //
-// This read used `/tenants/hanzo/wire/<NAME>`, which nothing writes. Both doors
+// This read used `/tenants/hanzo/wire/<NAME>`, which nothing writes. Both sides
 // hit the same store keyed by (path, name, env), so an address only one of them
 // spells is a read that can never hit: the rail answered "Wire transfer not
 // configured" no matter how carefully the details were stored, and would have

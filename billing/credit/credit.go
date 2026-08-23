@@ -22,7 +22,7 @@ const (
 )
 
 // LifetimeDays is how long a credit is good for. It governs every credit,
-// whichever door it arrives through.
+// whichever endpoint it arrives through.
 const LifetimeDays = 365
 
 // StarterCreditDays is the starter grant's expiry: the same lifetime, named for

@@ -795,7 +795,7 @@ func TestPayInvoice_DeclineThenRetryReCollects(t *testing.T) {
 // money must leave nothing wedged, so a fresh key genuinely subscribes.
 //
 // It used to prove that by subscribing TWICE successfully to "pro" and asserting two
-// charges and two parent subscriptions — which is the double-billing this door now
+// charges and two parent subscriptions — which is the double-billing this endpoint now
 // refuses (see TestSubscribeWithCard_SecondPaidTierRefusedBeforeCharge). The
 // property worth protecting was never "sell the same plan twice"; it was "a spent
 // key does not brick the plan". So the first attempt DECLINES here, which is the

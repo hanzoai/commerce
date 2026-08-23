@@ -20,7 +20,7 @@ import (
 // an organization slug. Matching is on the normalized form (see Normalize), so
 // each entry is lowercase.
 //
-// Membership is decided by SHAPE, never by whether a marker still opens a door.
+// Membership is decided by SHAPE, never by whether a marker still authenticates.
 // These values arrive on the untrusted X-Org-Id header, and one that is not
 // refused is persisted as a tenant row — a credential-shaped string in
 // plaintext, plus one Organization per distinct value. Stripe's pk_ is

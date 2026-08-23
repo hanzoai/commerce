@@ -155,7 +155,7 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 		return nil, fmt.Errorf("commerce.Embed: bootstrap: %w", err)
 	}
 
-	// Start the crypto deposit schedule. This is the PRODUCTION door — no
+	// Start the crypto deposit schedule. This is the PRODUCTION entry point — no
 	// standalone commerce backend is deployed, so Embed is the only path by
 	// which the rail ever runs — and it is the right owner because this is the
 	// call that produces the handle whose Stop() stops it. Start and stop now

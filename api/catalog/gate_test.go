@@ -56,7 +56,7 @@ func iamIdentity(claims *auth.IAMClaims) func(*zip.Ctx) {
 	}
 }
 
-// TestSyncGate_AdmitsTheServiceToken is the regression. The sync doors were
+// TestSyncGate_AdmitsTheServiceToken is the regression. The sync endpoints were
 // gated on SuperAdmin CLAIMS, which the internal service token does not carry,
 // so the scheduled run this catalog depends on could only ever 403 — and the
 // model rows were in fact empty in production. A sync a human has to start is a
@@ -88,7 +88,7 @@ func TestSyncGate_RefusesAnOrgAdmin(t *testing.T) {
 }
 
 // TestEditGate_RefusesTheServiceToken is the other half of the widening, and the
-// one that keeps it honest: the token may land upstream COST on the sync door and
+// one that keeps it honest: the token may land upstream COST on the sync endpoint and
 // nothing more. Editing an entry — which is how a retail price is set — stays a
 // named human in the admin org, so possession of a service credential can never
 // change what a customer is charged.
@@ -103,7 +103,7 @@ func TestEditGate_RefusesTheServiceToken(t *testing.T) {
 	}
 }
 
-// TestSyncGate_AdmitsASuperAdmin: a platform admin keeps the door they had, so
+// TestSyncGate_AdmitsASuperAdmin: a platform admin keeps the access they had, so
 // the change is purely additive to who may run a sync.
 func TestSyncGate_AdmitsASuperAdmin(t *testing.T) {
 	tc := ae.NewContext()

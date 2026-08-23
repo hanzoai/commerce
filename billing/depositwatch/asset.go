@@ -168,7 +168,7 @@ func (a Asset) Pooled() bool { return Pooled(a.Chain) }
 //
 // It takes a chain rather than an asset because the MINT side must ask before
 // it has one: the question "is this chain's address configured or minted?"
-// decides which door a deposit request goes through, and at that moment there
+// decides which path a deposit request goes through, and at that moment there
 // is a chain and a token and no Asset yet. The pooling fact is per-chain
 // anyway — the account is shared by every currency sent to it — so this is the
 // primitive and Asset.Pooled is the convenience.

@@ -82,10 +82,10 @@ var errTierNoOrg = errors.New("tier: no organization")
 //
 // The two must stay apart at every caller, which is why the class is exported
 // rather than left as a sentinel only this package can see. The router in front
-// of the models reads ANY non-2xx from the tier door as the free tier, so a
+// of the models reads ANY non-2xx from the tier endpoint as the free tier, so a
 // caller that cannot tell a question it malformed (fix the call) from a ledger it
 // could not read (retry, or hold the last-known tier) pins a paying customer to
-// the most restrictive tier in the table, silently. The door maps the first to
+// the most restrictive tier in the table, silently. The endpoint maps the first to
 // 400 and the second to 500; a peer on the internal plane splits them here.
 func IsTierRefusal(err error) bool { return errors.Is(err, errTierNoOrg) }
 
@@ -165,7 +165,7 @@ func ReadTier(ctx context.Context, org *organization.Organization, user string, 
 // It is deliberately the store half only. The two ways a caller can NAME a tier
 // rather than earn one — an X-Tier header, an explicit ?tier= — are request
 // facts and are a MINT, admitted only for a caller that may mint; that decision
-// belongs at the door that can see the credential, and a core that read them
+// belongs at the endpoint that can see the credential, and a core that read them
 // would be honouring a claim nobody proved.
 //
 // Fail-safe: a lookup error is RETURNED rather than answered as Free, so a
@@ -179,7 +179,7 @@ func TierOf(ctx context.Context, org *organization.Organization, user string) (t
 	return deriveTier(datastore.New(org.Namespaced(ctx)), user)
 }
 
-// GetTier is the door onto ReadTier.
+// GetTier is the endpoint over ReadTier.
 //
 // For IAM-authenticated requests the tier is read from the JWT claim.
 // For service-to-service calls the tier may be passed as a query parameter.
@@ -344,7 +344,7 @@ func resolveTierName(c *zip.Ctx, user string) (tier.Name, error) {
 			return tierOfName(override), nil
 		}
 	}
-	// The derivation itself is TierOf, so the door and a peer asking by name read
+	// The derivation itself is TierOf, so the endpoint and a peer asking by name read
 	// one implementation. A missing org (which should not happen under the
 	// billing group) is Free there for the reason it was Free here: with no store
 	// to reach there is genuinely no subscription in view.

@@ -18,7 +18,7 @@ package billing
 // projection of it that reads those values off a *zip.Ctx, and the typed op in
 // the host is another projection that gets them from a decoded body. There is
 // exactly ONE charge path underneath both, which is the only reason it is safe
-// to have two doors: a second implementation of "charge a card and credit the
+// to have two endpoints: a second implementation of "charge a card and credit the
 // ledger" is a second set of bounds to drift, a second idempotency derivation to
 // disagree, and eventually a double charge nobody can explain.
 //
@@ -26,13 +26,13 @@ package billing
 //
 //   - It does not resolve WHO is paying. Subject arrives already bounded to the
 //     caller's org (inOrgSubject), because the bound belongs to the identity
-//     boundary and each door has its own: the browser door reads ?user= behind
-//     EdgeAuth, the typed door reads the validated tenant off the context. A core
-//     that resolved identity from its input would let either door hand it a
+//     boundary and each endpoint has its own: the browser endpoint reads ?user= behind
+//     EdgeAuth, the typed endpoint reads the validated tenant off the context. A core
+//     that resolved identity from its input would let either endpoint hand it a
 //     subject the caller never proved, which is the whole IDOR class.
 //   - It does not read the environment for its idempotency key. The key arrives
 //     as a value; an empty one falls back to the SAME windowKey derivation the
-//     header-less browser path has always used, so the two doors cannot drift
+//     header-less browser path has always used, so the two endpoints cannot drift
 //     into disagreeing about what "the same request" means.
 //   - It does not choose sandbox or production. That is the org's KMS-hydrated
 //     Square credentials and org.TestMode(), exactly as before — the caller
@@ -66,7 +66,7 @@ type TakePaymentIn struct {
 	// SourceID is the single-use payment token: a Square Web Payments SDK nonce
 	// from the browser, or a Square sandbox test nonce. It is the ONLY thing that
 	// stands in for a card here — the PAN never reaches this process. A card the
-	// subject already SAVED is charged by the other door (Topup → chargeAndCredit),
+	// subject already SAVED is charged by the other endpoint (Topup → chargeAndCredit),
 	// never through this core.
 	SourceID string
 	// AmountCents is the charge in whole cents. Bounded server-side by
@@ -75,7 +75,7 @@ type TakePaymentIn struct {
 	// Currency is the ISO code. Empty means usd.
 	Currency string
 	// Subject is the billing key to credit, ALREADY bounded to the caller's own
-	// org by the door that resolved it (inOrgSubject). The core trusts it and
+	// org by the endpoint that resolved it (inOrgSubject). The core trusts it and
 	// cannot re-derive it — see the package note.
 	Subject string
 	// IdempotencyKey is the caller's explicit retry key. Empty falls back to the
@@ -110,11 +110,11 @@ type TakePaymentOut struct {
 	Test bool `json:"test"`
 }
 
-// PaymentFault is a money-path failure carrying the status the door must answer
+// PaymentFault is a money-path failure carrying the status the endpoint must answer
 // with. The core cannot write an HTTP response — it has no request — but the
 // status is part of the money contract (402 declined is not 500 broken, and a
 // dunning workflow reads the difference), so it travels with the failure instead
-// of being re-derived per door.
+// of being re-derived per endpoint.
 type PaymentFault struct {
 	// Status is the HTTP status this failure means.
 	Status int
@@ -254,7 +254,7 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		return nil, fault(402, msg, nil)
 	}
 
-	// Credit the canonical balance for the subject the caller's door bounded.
+	// Credit the canonical balance for the subject the caller's endpoint bounded.
 	trans := transaction.New(db)
 	trans.Type = transaction.Deposit
 	trans.DestinationId = in.Subject
@@ -266,13 +266,13 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 
 	// THE PROCESSOR'S OWN REFERENCE FOR THIS CHARGE, stamped on the row the charge
 	// wrote. It is what lets the provider's later callback recognise a payment this
-	// door already took, and it is the difference between crediting a top-up once and
+	// endpoint already took, and it is the difference between crediting a top-up once and
 	// crediting it twice.
 	//
-	// The callback settles asynchronously for the payments that have no door
+	// The callback settles asynchronously for the payments that have no endpoint
 	// (webhooks.go), and it identifies the ones that DO by looking this pair up. The
 	// pair was never written here, so the lookup matched nothing on every in-session
-	// charge, and the callback read its own door's payment as one nobody had handled.
+	// charge, and the callback read its own endpoint's payment as one nobody had handled.
 	trans.SourceKind = chargeSourceKind(proc.Type())
 	trans.SourceId = result.ProcessorRef
 
@@ -383,7 +383,7 @@ func ReadPayment(ctx context.Context, org *organization.Organization, id string)
 	return rec, nil
 }
 
-// normalizeCurrency is the ONE currency default, shared by both doors so a
+// normalizeCurrency is the ONE currency default, shared by both endpoints so a
 // missing currency cannot mean usd on one and empty on the other.
 func normalizeCurrency(code string) currency.Type {
 	cur := currency.Type(strings.ToLower(strings.TrimSpace(code)))
