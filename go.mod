@@ -2,7 +2,7 @@ module github.com/hanzoai/commerce
 
 go 1.26.5
 
-require github.com/zap-proto/zip v1.34.1
+require github.com/zap-proto/zip v1.34.2
 
 require (
 	github.com/Machiel/slugify v1.0.1
