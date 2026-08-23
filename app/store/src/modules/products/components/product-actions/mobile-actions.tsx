@@ -1,6 +1,7 @@
-import { Dialog, Transition } from "@headlessui/react"
+import { Dialog, DialogContent } from "@hanzo/ui"
+import { Grid } from "@hanzo/ui/grid"
 import { Button, clx } from "@hanzo/commerce-ui"
-import React, { Fragment, useMemo } from "react"
+import React, { useMemo } from "react"
 
 import useToggleState from "@lib/hooks/use-toggle-state"
 import ChevronDown from "@modules/common/icons/chevron-down"
@@ -59,20 +60,11 @@ const MobileActions: React.FC<MobileActionsProps> = ({
           "pointer-events-none": !show,
         })}
       >
-        <Transition
-          as={Fragment}
-          show={show}
-          enter="ease-in-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-300"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
+        <div
+          className="bg-white grid gap-y-3 justify-center items-center text-large-regular p-4 h-full w-full border-t border-gray-200"
+          style={{ opacity: show ? 1 : 0, transition: "opacity 300ms ease-in-out" }}
+          data-testid="mobile-actions"
         >
-          <div
-            className="bg-white flex flex-col gap-y-3 justify-center items-center text-large-regular p-4 h-full w-full border-t border-gray-200"
-            data-testid="mobile-actions"
-          >
             <div className="flex items-center gap-x-2">
               <span data-testid="mobile-title">{product.title}</span>
               <span>—</span>
@@ -98,9 +90,7 @@ const MobileActions: React.FC<MobileActionsProps> = ({
                 <div></div>
               )}
             </div>
-            <div className={clx("grid grid-cols-2 w-full gap-x-4", {
-              "!grid-cols-1": isSimple
-            })}>
+            <Grid columns={isSimple ? 1 : 2} gap={16} style={{ width: "100%" }}>
               {!isSimple && <Button
                 onClick={open}
                 variant="secondary"
@@ -129,73 +119,56 @@ const MobileActions: React.FC<MobileActionsProps> = ({
                   ? "Out of stock"
                   : "Add to cart"}
               </Button>
-            </div>
+            </Grid>
           </div>
-        </Transition>
       </div>
-      <Transition appear show={state} as={Fragment}>
-        <Dialog as="div" className="relative z-[75]" onClose={close}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-gray-700 bg-opacity-75 backdrop-blur-sm" />
-          </Transition.Child>
-
-          <div className="fixed bottom-0 inset-x-0">
-            <div className="flex min-h-full h-full items-center justify-center text-center">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0"
-                enterTo="opacity-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100"
-                leaveTo="opacity-0"
-              >
-                <Dialog.Panel
-                  className="w-full h-full transform overflow-hidden text-left flex flex-col gap-y-3"
-                  data-testid="mobile-actions-modal"
-                >
-                  <div className="w-full flex justify-end pr-6">
-                    <button
-                      onClick={close}
-                      className="bg-white w-12 h-12 rounded-full text-ui-fg-base flex justify-center items-center"
-                      data-testid="close-modal-button"
-                    >
-                      <X />
-                    </button>
-                  </div>
-                  <div className="bg-white px-6 py-12">
-                    {(product.variants?.length ?? 0) > 1 && (
-                      <div className="flex flex-col gap-y-6">
-                        {(product.options || []).map((option) => {
-                          return (
-                            <div key={option.id}>
-                              <OptionSelect
-                                option={option}
-                                current={options[option.id]}
-                                updateOption={updateOptions}
-                                title={option.title ?? ""}
-                                disabled={optionsDisabled}
-                              />
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </Dialog.Panel>
-              </Transition.Child>
-            </div>
+      {/* The option picker. Its overlay, its two enter/leave transitions and its
+          focus trap were three Headless UI wrappers deep; DialogContent is all
+          three. The bottom-sheet placement is the only thing left to say. */}
+      <Dialog modal open={state} onOpenChange={(o) => !o && close()}>
+        <DialogContent
+          data-testid="mobile-actions-modal"
+          showCloseButton={false}
+          p={0}
+          gap="$3"
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            top: "auto",
+            maxWidth: "100%",
+            width: "100%",
+            transform: "none",
+          }}
+        >
+          <div className="w-full flex justify-end pr-6">
+            <button
+              onClick={close}
+              className="bg-white w-12 h-12 rounded-full text-ui-fg-base flex justify-center items-center"
+              data-testid="close-modal-button"
+            >
+              <X />
+            </button>
           </div>
-        </Dialog>
-      </Transition>
+          <div className="bg-white px-6 py-12">
+            {(product.variants?.length ?? 0) > 1 && (
+              <div className="grid gap-y-6">
+                {(product.options || []).map((option) => (
+                  <OptionSelect
+                    key={option.id}
+                    option={option}
+                    current={options[option.id]}
+                    updateOption={updateOptions}
+                    title={option.title ?? ""}
+                    disabled={optionsDisabled}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
