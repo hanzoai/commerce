@@ -1,32 +1,11 @@
-// Hanzo GUI config for the Commerce admin — the same Geist face and v5 default
-// scales the console uses, so both shells render the shared @hanzo/ui/product
-// components identically.
-import { defaultConfig } from '@hanzogui/config/v5'
-import { createGui } from '@hanzo/gui'
+// The Commerce admin renders @hanzo/ui/product, so it renders that kit's scale.
+// @hanzo/ui/gui-config IS the scale — the Geist face, the type/radius/spacing
+// ladder and the #0A0A0A dark ground the console and every other Hanzo surface
+// draw on. This file used to restate it from @hanzogui/config/v5's defaults,
+// which is a second copy of a number: the kit moves, the admin does not, and
+// the two shells stop matching. Re-exporting is what keeps them one.
+export { config, config as default } from '@hanzo/ui/gui-config'
 
-const GEIST = "'Geist', system-ui, -apple-system, sans-serif"
+import type { config as shared } from '@hanzo/ui/gui-config'
 
-// THE GROUND IS BLACK. gui's v5 dark scale grounds at a mid-grey, which is what
-// the admin has been rendering — and it is the one surface behind every other
-// Hanzo product, all of which ground at #0A0A0A. Setting it here, in the app's
-// own theme, is the one place that decides it: a CSS override would fork the
-// value from the token every component reads, which is how one product's black
-// stops matching everyone else's.
-const GROUND = '#0A0A0A'
-
-export const config = createGui({
-  ...defaultConfig,
-  fonts: {
-    ...defaultConfig.fonts,
-    body: { ...defaultConfig.fonts.body, family: GEIST },
-    heading: { ...defaultConfig.fonts.heading, family: GEIST },
-  },
-  themes: {
-    ...defaultConfig.themes,
-    dark: { ...defaultConfig.themes.dark, background: GROUND },
-  },
-})
-
-export default config
-
-export type Conf = typeof config
+export type Conf = typeof shared
