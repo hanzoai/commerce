@@ -1,0 +1,4 @@
+{
+  "why": "@hanzo/ui 8.0.47 backends/gui/button.js buttonVariants: 'A stable class handle for hosts that hook buttons from CSS. Styling lives in the tokens; this only names the variant and size.' Same contract as the hanzo-button/hanzo-badge handles gui-css-check@8.0.2 already allows by default — 8.0.47 renamed them to btn/btn-*, the checker's allowlist predates the rename.",
+  "allow": ["btn", "btn-*"]
+}
