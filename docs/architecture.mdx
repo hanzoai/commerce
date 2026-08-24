@@ -127,7 +127,7 @@ Store access is a **$20/month** entitlement on the `pro` plan. The rules:
 - The admin UI and the merchant API routes call the **same** `api/store.HasAccess`
   rule, so the paywall is enforced in exactly one place, identically for both.
 
-Credit into an org ledger has one gated door: `POST /v1/billing/credit`, which is
+Credit into an org ledger has one gated endpoint: `POST /v1/billing/credit`, which is
 mint-gated (internal service token or a global admin only). Self-service callers
 can top up prepaid balance and subscribe, but cannot mint credit.
 

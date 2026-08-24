@@ -1004,7 +1004,7 @@ and `topup`/deposits (real money) were all `transaction.Deposit` rolled into ONE
 - **GPU rule (the bucket projection, `billing/bucket`)**: a `gpu`-tagged Withdraw
   draws PREPAID only — `IsGPUWithdrawal` classifies it and `Compute` never lets it
   reach a credit grant. It is a property of the LEDGER, so it holds for every
-  writer rather than for one endpoint. There is no bespoke GPU charge door here:
+  writer rather than for one endpoint. There is no bespoke GPU charge endpoint here:
   a GPU is a metered resource like any other and is billed through the general
   metered path (a machine is launched via cloud `/v1/machines`, which fronts the
   compute provider's resell endpoint where the balance gate and the per-hour meter
@@ -1876,7 +1876,7 @@ frozen.
 
 - **Route**: `POST /v1/catalog/models/refresh` (super-admin). `POST
   /v1/catalog/models` remains the PUSH of decided rows; both funnel through
-  `UpsertModels`, so the cost/price rule holds whichever door a row came through.
+  `UpsertModels`, so the cost/price rule holds whichever endpoint a row came through.
   Scheduled by a CronJob curling it with `COMMERCE_SERVICE_TOKEN`, the same shape
   the contributor payout uses. It deliberately does NOT run at boot — a
   boot-time call to a third party is a boot hazard.

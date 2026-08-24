@@ -90,7 +90,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           It steps aside below the breakpoint rather than growing a drawer,
           because the drawer already exists: the palette lists every surface in
           the same catalog this sidebar renders, so there is one navigation, not
-          two that can disagree. What it lacked was a door reachable without a
+          two that can disagree. What it lacked was an endpoint reachable without a
           keyboard — that is the button in the top bar. */}
       {/* `sm` is minWidth:640 in the v5 config — TRUE above the breakpoint, so
           390px is false and 1440px is true. (`gtSm` is the v4 vocabulary and is
