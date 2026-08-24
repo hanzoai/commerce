@@ -35,8 +35,8 @@ function matches(haystack: string, needle: string): boolean {
  *
  * On a narrow screen the palette IS the navigation — the sidebar is 232px of a
  * 390px viewport, so it steps aside and this takes over. A keystroke cannot be
- * typed on a touch device, so the palette needs a door that is not ⌘K; this is
- * that door, and it stays a plain event so nothing has to thread a setter down
+ * typed on a touch device, so the palette needs an endpoint that is not ⌘K; this is
+ * that endpoint, and it stays a plain event so nothing has to thread a setter down
  * through the shell.
  */
 const OPEN = 'hanzo.admin.palette.open'
