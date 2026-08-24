@@ -2,7 +2,7 @@
  * The ONE Hanzo Commerce client the admin talks to.
  *
  * `api.hanzo.ai/v1/commerce/<kind>` — the commerce endpoint. Commerce is a
- * PLUGIN of hanzoai/cloud, and api.hanzo.ai is the unified door to every Hanzo
+ * PLUGIN of hanzoai/cloud, and api.hanzo.ai is the unified endpoint to every Hanzo
  * service, so the merchant surface is reached the same way as everything else.
  *
  * It used to call BARE `/v1/<kind>` on commerce.hanzo.ai, and nothing answered:
