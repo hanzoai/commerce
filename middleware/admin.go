@@ -33,8 +33,8 @@ import (
 // These are per-ORG money actions (the caller acts within its own resolved
 // namespace), so org-level admin suffices and a global admin is also allowed
 // (superset). Cross-tenant/platform actions gate on the STRICTER SuperAdmin
-// predicate instead (api/catalog.requireSuperAdmin,
-// checkout.isSuperadmin), never this one.
+// predicate instead (api/catalog.requireSuperAdmin, and the same gate in
+// api/plan and api/rate), never this one.
 //
 // Returns true when admin; writes a 403 and returns false otherwise. Reads
 // c["permissions"] without MustGet so a handler mounted without the token gate

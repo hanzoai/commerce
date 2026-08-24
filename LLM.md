@@ -128,7 +128,7 @@ is a migration that needs that capability first — not a cleanup.
 - Every org (incl. `"platform"`) is STRICTLY scoped to its own name. The legacy
   `"platform" -> "" (cross-org) namespace` bypass was REMOVED (1.42.40, Red M1):
   it keyed cross-org datastore on an org-NAME string, not real platform-admin
-  identity. Cross-org access gates on `auth.IAMClaims.GlobalAdmin()` ONLY.
+  identity. Cross-org access gates on `auth.IAMClaims.IsSuperAdmin()` ONLY.
 
 ## Gateway Trust Headers (2026-04-27)
 
@@ -159,7 +159,7 @@ which EdgeAuth stashes and only `TokenRequired`'s service-token branch reads,
 AFTER verifying the bearer — the mechanism described further down this file. The
 conclusion held; the reason given for it did not, and a reader debugging a
 mis-billed tenant would have gone looking for the wrong header.
-Regression: `edgeauth_standalone_test.go`, `middleware/edgeauth_test.go`.
+Regression: `middleware/edgeauth_test.go`.
 
 | Header                | Source                  | Use                                         |
 |-----------------------|-------------------------|---------------------------------------------|
@@ -167,42 +167,53 @@ Regression: `edgeauth_standalone_test.go`, `middleware/edgeauth_test.go`.
 | X-User-Id             | JWT `sub` claim         | User identity                               |
 | X-User-Email          | JWT `email` claim       | Email; audit + notifications                |
 | X-User-IsAdmin        | JWT `isAdmin` claim     | "true" iff ORG-level admin (an org owner)   |
-| X-User-IsGlobalAdmin  | gateway-derived         | "true" iff PLATFORM (global) admin          |
+| X-User-Owner          | JWT `owner` claim       | HOME org — the platform-sudo anchor         |
 | X-Roles               | JWT `roles` claim       | Comma-joined role names (admin/owner/etc.)  |
 | X-User-Permissions    | gateway-derived         | bit.Field as base-10 int; 0 fails closed    |
 
+`X-User-Owner` is minted BEFORE the `/billing/` `?org` override, so it carries the
+caller's un-switchable home org even when `X-Org-Id` is re-pointed at another
+tenant for a SuperAdmin view. `X-User-IsGlobalAdmin` is RETIRED: no longer minted
+by anything, still stripped on ingress so a stale client copy never survives
+(`middleware/edgeauth.go:31-38`).
+
 Fail-closed contract: missing X-User-IsAdmin -> IsAdmin=false; missing
-X-User-IsGlobalAdmin -> IsGlobalAdmin=false. Missing X-User-Permissions ->
+X-User-Owner -> no home org -> IsSuperAdmin() false. Missing X-User-Permissions ->
 bit.Field(0). Identity headers absent -> handler chain falls through to legacy
 auth (or 401 when COMMERCED_REQUIRE_IDENTITY).
 
-**Org-admin vs global-admin (Red — anti-conflation):** `X-User-IsAdmin` is the
-ORG-level admin role — an org owner (e.g. `maxpower`) carries `isAdmin=true`
-within their own org. It is ONLY for org-scoped RBAC. Cross-org / superadmin
-actions (e.g. POST `/_/commerce/tenants`) MUST gate on
-`auth.IAMClaims.GlobalAdmin()` — the explicit `isGlobalAdmin` claim
-(X-User-IsGlobalAdmin) OR `owner=="admin"` — NEVER on `IsAdmin` nor an
-org-mintable role NAME like "superadmin". `iammiddleware.GetIAMClaims` populates
-both `IsAdmin` (X-User-IsAdmin) and `IsGlobalAdmin` (X-User-IsGlobalAdmin); the
-gateway mints X-User-IsGlobalAdmin only for a real global admin and strips it on
-ingress, so it can't be forged. Predicates: `checkout.isSuperadmin` =
-`GlobalAdmin()`; `checkout.isTenantAdmin` = the robust org-level `IsAdmin` claim
-(not a role string). Tests: `auth/globaladmin_test.go`,
-`checkout/admin_tenants_authz_test.go`, `middleware/edgeauth_test.go`.
+**Org-admin vs SuperAdmin (anti-conflation):** `X-User-IsAdmin` is the ORG-level
+admin role — an org owner carries `isAdmin=true` within their own org. It is ONLY
+for org-scoped RBAC. Cross-org / platform actions (editing the catalog, plans or
+rates) MUST gate on `auth.IAMClaims.IsSuperAdmin()` — NEVER on `IsAdmin`, never on
+an org-mintable role NAME like "superadmin".
+
+ONE signal, and it is an org rather than a flag: `IsSuperAdmin()` is
+`homeOrg() == "admin"` (`auth/iam.go:269`), membership in the reserved org Hanzo
+IAM seeds SuperAdmins into. It keys on the HOME org, so a SuperAdmin acting inside
+another tenant does not lose sudo, and a switched-into org can never be mistaken
+for `admin`. No boolean is minted at all, which is what makes it unforgeable —
+there is nothing to spoof, and the header that used to carry one is retired.
+
+Enforced at `api/catalog.requireSuperAdmin` (`handlers.go:41`) and the same gate
+open-coded in `api/plan` and `api/rate`, each asking the predicate itself rather
+than trusting a mount. `middleware.RequireAdmin` is the LOOSER org-money gate —
+`IsAdmin || IsSuperAdmin()` — and is never the cross-tenant one.
+Tests: `auth/superadmin_test.go`, `middleware/edgeauth_test.go`.
 
 ### EdgeAuth admin billing-view override (middleware/edgeauth.go, 1.42.36+)
 
 At the standalone edge (COMMERCE_EDGE_AUTH=true) EdgeAuth normally locks every
 `/billing/` request to the caller's OWN org (X-Org-Id + user/userId/customerId
-== claims.Owner) — strict per-org isolation. A GLOBAL ADMIN may retarget the
+== claims.Owner) — strict per-org isolation. A SuperAdmin may retarget the
 view to another org via `?org=<slug>`: `resolveBillingSubject()` sets both the
 namespace (X-Org-Id) and the locked subject to the requested org. The override
-is HONORED only when `isGlobalAdmin(claims)` holds — `claims.IsGlobalAdmin` OR
-`claims.Owner=="admin"` (NOT plain `IsAdmin`, which is an org-level role: an org
-owner like maxpower has it). For everyone else the `?org` param is
-consumed-and-ignored (stripped, never honored) so isolation can never be
-weakened. Tests: middleware/edgeauth_test.go (admin-switch, non-admin-isolation,
-bad-slug reject). `auth.IAMClaims` carries `IsGlobalAdmin` (json `isGlobalAdmin`).
+is HONORED only when `claims.IsSuperAdmin()` holds — `owner=="admin"`, NOT plain
+`IsAdmin`, which is an org-level role every org owner carries. For everyone else
+the `?org` param is consumed-and-ignored (stripped, never honored) so isolation
+can never be weakened. The strip is unconditional, so `?org` can only ever reach
+a handler as the gated signal `resolveBillingSubject` decided. Tests:
+middleware/edgeauth_test.go (admin-switch, non-admin-isolation, bad-slug reject).
 
 Call sites read identity via:
 - `pkg/auth.OrgID(ctx)` / `UserID(ctx)` / `UserEmail(ctx)` (preferred)
@@ -281,7 +292,7 @@ Gate: `middleware.RequirePlatformAdmin` — the SINGLE cross-org read gate (glob
 admin OR trusted service token; org-admin refused). `api/costs.requireCostsAdmin`
 delegates to it, so the two god-views share ONE gate definition. The route-level
 `TokenRequired(permission.Admin)` is a no-op on the IAM path — the in-handler gate
-is the boundary. The console reaches it through its OWN global-admin-gated proxy
+is the boundary. The console reaches it through its OWN SuperAdmin-gated proxy
 (`app/admin/saas`) forwarding `COMMERCE_SERVICE_TOKEN`.
 
 Deliberately NOT here (owned by the fleet o11y god-view `GET /v1/admin/o11y`):
@@ -745,7 +756,7 @@ volume windows scale; the burst rate does not.
 `POST /v1/billing/credit` is the ONLY way credit enters an org ledger. It is
 **mint-gated** (registered through `middleware.Mint`, which applies
 `middleware.PlatformOnly`): only the internal
-service token OR a global admin (`owner=="admin"`) reaches it — every
+service token OR a SuperAdmin (`owner=="admin"`) reaches it — every
 self-service / org-owner / no-auth caller is 403/401. A client-supplied mint
 amount must never be self-service; that is the money-critical core (a user cannot
 credit itself). Body: `{org, amountCents, reason, tag?, currency?, expiresAt?, idempotencyKey?}`,
@@ -869,7 +880,7 @@ live in `models/contributor/`; the executor is `cron/payout/contributor/`.
 CI injects the immutable image tag at build time so `/healthz` `version` always
 equals the deployed tag:
 
-- `docker-deploy.yml` passes `VERSION=<git tag>` (build-arg) on `v*` tag pushes.
+- `.hanzo/workflows/cicd.yml` passes `VERSION=<git tag>` (build-arg) on `v*` tag pushes.
 - `Dockerfile` strips the leading `v` and applies
   `-ldflags "-X github.com/hanzoai/commerce.Version=<ver>"`. It is the ONLY
   Dockerfile that builds the binary — `Dockerfile.sqfix`, `Dockerfile.prebuilt`
@@ -1748,13 +1759,13 @@ Moving a kind onto the leaf is a move, never an add.
 
 ## Medusa parity (native Go /v1 — 1.42.41)
 
-The `/v1` model bundle (`api/api/api.go`, mounted at `/v1/*` by `cmd/commerced`
+The `/v1` model bundle (`api/api.go`, mounted at `/v1/*` by `cmd/commerce`
 + `mount.go`; the `/v1/commerce/*` prefix is the SEPARATE checkout/tenant surface)
 covers Medusa v2's admin domains natively — no Medusa/Node fork. Reference:
 `~/work/medusa/medusa/packages/medusa/src/api/admin/*` + `packages/modules/*`.
 
 ### Newly wired (models existed, routes were orphaned → 404 in prod)
-`api/api/api.go` now calls these 5 previously-unwired sub-routers:
+`api/api.go` now calls these 5 previously-unwired sub-routers:
 - `fulfillment` — fulfillmentset, servicezone, geozone, shippingoption,
   shippingoptionrule, shippingprofile, fulfillmentprovider, `POST /fulfillment/:id/ship|cancel`
 - `tax` — taxregion, taxrate, taxraterule, taxprovider, `POST /tax/calculate`
@@ -1803,7 +1814,7 @@ exactly — the shape is NOT ours to change.
   same `system`-namespace store serves every brand; an entry shows iff its
   category is in the requested brand's set. Slug is globally unique.
 - **Admin CRUD** `/v1/catalog/entries` (+ `/seed`) gates on
-  `auth.IAMClaims.GlobalAdmin()` — the catalog is cross-tenant PLATFORM data in
+  `auth.IAMClaims.IsSuperAdmin()` — the catalog is cross-tenant PLATFORM data in
   the `system` namespace, so an org-level admin must NOT edit it. Keyed by slug.
 - **Seed**: the embedded `seed/hanzo-catalog.json` is the `@hanzo/products`
   snapshot (`hanzoai/ui/pkgs/products/snapshot/catalog.json`) VERBATIM — 95
@@ -1946,7 +1957,7 @@ commerce/v1/* strip`) rather than re-prefixing the backend bundle.
 Cloud's inlined fork (`hanzoai/cloud clients/commerce/`, no go.mod) is being
 retired: cloud `import github.com/hanzoai/commerce` + a thin subsystems adapter.
 v1.47.0 = content parity with the fork's last cloud-side deltas:
-- product.created/updated events (`events/`, `api/api/product_events.go`) — storefront loop
+- product.created/updated events (`events/`, `api/product_events.go`) — storefront loop
 - `middleware/accesstoken.go`: service-token checked BEFORE the IAM branch (S2S
   metering dispatch must never hit the per-user scope gate) + `ensureIAMOrg`
   (org from gateway X-Org-Id via svcorg.Resolve; IAM is the one org authority)
@@ -2074,7 +2085,7 @@ same thing the root LICENSE says:
 ```
 
 That replaced two stale forms: `// Copyright © 2026 Hanzo AI. MIT License.` (71
-files, understated the dual offer) and, in `cmd/commerced/telemetry.go`,
+files, understated the dual offer) and, in `cmd/commerce/telemetry.go`,
 `// Copyright 2023-2026 Hanzo AI Inc. All Rights Reserved.` (1 file, a
 proprietary reservation left over from before the relicense). Headers are what
 licence scanners actually read, so a header contradicting the root is the
