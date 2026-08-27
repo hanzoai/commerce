@@ -325,6 +325,18 @@ type Limits struct {
 	// max invited guests on the holder's hanzo.team workspace (-1 = unlimited).
 	TeamGuests *int `json:"teamGuests,omitempty"`
 
+	// Agents and Bots are the roster the plan INCLUDES — the back-compat source
+	// for the ai.agents / ai.bots entitlements. A seat past the included count is
+	// charged at the flat rate in the catalog's seats.json, so these two numbers
+	// are the whole subtraction: what is included here, what is billed there.
+	//
+	// -1 is unlimited, as it is for MaxMembers. A present 0 means the plan
+	// includes NONE of that kind and is enforceable; nil means no one has said,
+	// and a caller must not read it as zero — that difference is what stops a
+	// tier whose catalog entry predates this field from locking its holders out.
+	Agents *int `json:"agents,omitempty"`
+	Bots   *int `json:"bots,omitempty"`
+
 	// IncludedCreditUsd is a legacy alias (entitlements["commerce.included_credit_usd"]).
 	// IncludedCloudCredits(+PerUser) is the cloud allowance the monthly allotment
 	// grants (the canonical cloud.included_credits_usd entitlement).
@@ -582,6 +594,8 @@ func limitsEqual(a, b *Limits) bool {
 		eqInt(a.MaxMembers, b.MaxMembers) &&
 		eqInt(a.MinSeats, b.MinSeats) &&
 		eqInt(a.TeamGuests, b.TeamGuests) &&
+		eqInt(a.Agents, b.Agents) &&
+		eqInt(a.Bots, b.Bots) &&
 		eqInt(a.IncludedCreditUsd, b.IncludedCreditUsd) &&
 		eqInt(a.IncludedCloudCredits, b.IncludedCloudCredits) &&
 		eqInt(a.IncludedCloudCreditsPerUser, b.IncludedCloudCreditsPerUser) &&
