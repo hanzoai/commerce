@@ -19,6 +19,10 @@ import (
 // entry whose digests must equal the new bytes, and editing the bytes under the
 // current version breaks the current entry.
 var versionDigests = map[string]struct{ subscription, dns string }{
+	"1.6.0": {
+		subscription: "883bbdc5261feddc90f2782590a3c806e71c7bc40d017b5fa4ed77ddd2d8c1cb",
+		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
+	},
 	"1.5.0": {
 		subscription: "f76c7b381c0a56127b566b060b34a998c077975eddeccd6255081c8d56981e34",
 		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
@@ -82,8 +86,8 @@ func TestVendoredPlansMatchPinnedVersion(t *testing.T) {
 // contactSales plans are null-priced → stored as 0 + ContactSales (never a
 // chargeable $0).
 func TestVendoredPlanPrices(t *testing.T) {
-	if got := len(catalog); got != 10 { // 7 subscription + 3 dns
-		t.Fatalf("catalog = %d, want 10 (6 subscription + 3 dns)", got)
+	if got := len(catalog); got != 8 { // 5 subscription + 3 dns
+		t.Fatalf("catalog = %d, want 8 (5 subscription + 3 dns)", got)
 	}
 	if got := len(dnsPlans); got != 3 {
 		t.Fatalf("dnsPlans = %d, want 3", got)
@@ -96,14 +100,15 @@ func TestVendoredPlanPrices(t *testing.T) {
 		monthly, annual int64
 		contactSales    bool
 	}
+	// Annual is monthly less 18%, so these are not free-floating numbers: 1900
+	// → 1558, 9900 → 8118, 2400 → 1968. A rung whose annual stops being 0.82 of
+	// its monthly is selling a discount nobody agreed to.
 	cases := map[string]want{
 		"free":           {0, 0, false}, // a real $0 rung, not a null price
-		"go":             {900, 825, false},
-		"dev":            {1900, 1650, false},
-		"pro":            {4900, 4150, false},
-		"max":            {9900, 8325, false},
-		"team":           {2500, 2000, false},
-		"enterprise":     {0, 0, true}, // null price → 0 + contactSales
+		"dev":            {1900, 1558, false},
+		"max":            {9900, 8118, false},
+		"team":           {2400, 1968, false}, // the individual plan plus $5 a seat
+		"enterprise":     {0, 0, true},        // null price → 0 + contactSales
 		"dns-free":       {0, 0, false},
 		"dns-pro":        {500, 400, false},
 		"dns-enterprise": {2500, 2000, false},
@@ -122,10 +127,12 @@ func TestVendoredPlanPrices(t *testing.T) {
 	}
 }
 
-// TestVendoredPlanRoster is the price canary's twin for what a plan INCLUDES.
-// The roster decides whether a customer may create their next agent, so a
-// number that drifts here refuses paying work or gives it away — and the digest
-// test only ever says "drifted", never which figure moved.
+// TestVendoredPlanRoster is the price canary's twin for what a plan may RUN.
+// These are capacities, not allowances of runtime: they decide whether a
+// customer may create their next agent, while the hours it then runs meter
+// separately at the catalog's hourly rate. A number that drifts here refuses
+// paying work or gives away concurrency — and the digest test only ever says
+// "drifted", never which figure moved.
 //
 // It reads through AgentsIncluded/BotsIncluded rather than the raw field so the
 // accessor cloud enforces with is the thing under test. A bare struct read
@@ -133,10 +140,8 @@ func TestVendoredPlanPrices(t *testing.T) {
 func TestVendoredPlanRoster(t *testing.T) {
 	cases := map[string]struct{ agents, bots int }{
 		"free":       {1, 0},  // one personal agent, no bot
-		"go":         {5, 0},  // the $9 tier
 		"dev":        {10, 0}, // the $19 tier
-		"pro":        {10, 0},
-		"max":        {10, 1}, // the $99 tier includes a bot
+		"max":        {10, 1}, // the $99 tier may run a resident bot
 		"team":       {10, 0},
 		"enterprise": {-1, -1}, // -1 is unlimited, as it is for maxMembers
 	}
@@ -175,6 +180,10 @@ func TestRetiredSlugsAreNotInTheEmbed(t *testing.T) {
 		bySlug[p.Slug] = true
 	}
 	for _, slug := range []string{
+		// go ($9) and pro ($49) came off the ladder; a renewal still prices
+		// through resolveSubscriptionPlan, which is ungated by design, but the
+		// embed must not offer them for sale again.
+		"go", "pro",
 		"developer", "plus", "team-max", "custom",
 		"world-free", "world-pro", "world-team", "world-enterprise",
 		"social-free", "social-pro", "social-team", "social-team-max", "social-enterprise",
@@ -192,14 +201,14 @@ func TestRetiredSlugsAreNotInTheEmbed(t *testing.T) {
 // loudly + named — the price canary above does NOT cover it (Red F4).
 func TestVendoredAllotmentAmounts(t *testing.T) {
 	want := map[string]int64{ // slug -> allotment mint amount (cents)
-		"free":       0,     // a personal rung sells USAGE, bounded by its windows.
-		"go":         500,   // Go is backed: $9 sold against $5 of real usage, which
-		"dev":        0,     // is a margin — never the refund shape a rung granting
-		"pro":        0,     // its own price back would be. The buyer never meets
-		"max":        0,     // this figure; what they hold is prepaid credit.
+		"free":       0,     // a personal rung sells USAGE, bounded by its windows —
+		"dev":        0,     // never the refund shape a rung granting its own price
+		"max":        0,     // back would be.
 		"team":       10000, // includedCloudCreditsPerUser 100 — the one rung that grants
 		"enterprise": 0,     // contact-sales: terms are negotiated, so none is published
 		"dns-pro":    0,     // dns tiers mint no cloud allotment
+		"go":         0,     // archived: an unpublished slug mints nothing at all
+		"pro":        0,
 	}
 	for slug, cents := range want {
 		if got := IncludedMonthlyCents(slug); got != cents {

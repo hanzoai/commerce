@@ -20,7 +20,7 @@ import (
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
-// End-to-end at the API layer: a SuperAdmin PUTs a 50%-off promo on "pro", and
+// End-to-end at the API layer: a SuperAdmin PUTs a 50%-off promo on "dev", and
 // GET /v1/billing/plans then surfaces promoPercent ONLY on the covered PAID plan —
 // not on a free plan, not on an uncovered paid plan. This is the "50% is
 // admin-controlled, not hardcoded" proof: the catalog JSON carries no promo.
@@ -41,9 +41,9 @@ func TestPlans_SurfaceActivePromo(t *testing.T) {
 	a.Put("/v1/platform/promo", promo.PutPromo)
 	a.Get("/v1/billing/plans", ListPlans)
 
-	// Admin configures a live 50% promo scoped to the "pro" plan.
+	// Admin configures a live 50% promo scoped to the "dev" plan.
 	putReq := httptest.NewRequest(http.MethodPut, "/v1/platform/promo",
-		bytes.NewReader([]byte(`{"percentOff":50,"plans":["pro"],"active":true}`)))
+		bytes.NewReader([]byte(`{"percentOff":50,"plans":["dev"],"active":true}`)))
 	putReq.Header.Set("Content-Type", "application/json")
 	if resp, err := a.Test(putReq); err != nil || resp.StatusCode != 200 {
 		t.Fatalf("PUT promo: err=%v status=%v", err, statusOf(resp))
@@ -66,9 +66,9 @@ func TestPlans_SurfaceActivePromo(t *testing.T) {
 		}
 	}
 
-	// "pro" is a covered PAID plan → promoPercent 50.
-	if pct := intField(bySlug["pro"], "promoPercent"); pct != 50 {
-		t.Fatalf("pro promoPercent = %d, want 50 (admin promo must surface on the covered paid plan)", pct)
+	// "dev" is a covered PAID plan → promoPercent 50.
+	if pct := intField(bySlug["dev"], "promoPercent"); pct != 50 {
+		t.Fatalf("dev promoPercent = %d, want 50 (admin promo must surface on the covered paid plan)", pct)
 	}
 	// "developer" is FREE ($0) → no promo (nothing to discount).
 	if pct := intField(bySlug["developer"], "promoPercent"); pct != 0 {

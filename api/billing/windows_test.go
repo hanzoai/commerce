@@ -84,7 +84,7 @@ func TestAnUndeclaredSpanIsNotALimitOfZero(t *testing.T) {
 	}
 	// The published ladder does declare all four on its personal rungs, which is
 	// what makes the zero above unambiguous when it appears.
-	for _, slug := range []string{"free", "go", "dev", "pro", "max"} {
+	for _, slug := range []string{"free", "dev", "max"} {
 		l := planWindowLimits(slug)
 		for _, span := range []string{"hour", "day", "week", "month"} {
 			if l[span] <= 0 {

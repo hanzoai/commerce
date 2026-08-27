@@ -21,8 +21,7 @@ func TestPublishedTiersCarryLicensing(t *testing.T) {
 
 	want := map[string][]string{
 		"free":       nil, // $0, and licenses no proprietary product
-		"go":         nil, // paid, but licenses no proprietary product
-		"pro":        {"team"},
+		"dev":        {"team"},
 		"max":        {"engine", "team"},
 		"team":       {"team"},
 		"enterprise": {"engine", "team"},
@@ -47,7 +46,7 @@ func TestPublishedTiersCarryLicensing(t *testing.T) {
 // the catalog STOPS publishing keeps knowing what it licensed.
 //
 // It seeds the published catalog, then reconciles against a catalog that no longer
-// carries "pro" — exactly what shipping a release that retires a tier does. The row
+// carries "dev" — exactly what shipping a release that retires a tier does. The row
 // is archived, as it should be, and it must STILL answer the licensing question,
 // because the subscriber on it is still being charged.
 func TestLicensingSurvivesRetirement(t *testing.T) {
@@ -58,27 +57,27 @@ func TestLicensingSurvivesRetirement(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
-	// Publish a catalog with "pro" removed — retire the tier.
+	// Publish a catalog with "dev" removed — retire the tier.
 	var kept []*plan.Plan
 	for _, r := range SeedRows() {
-		if r.Slug != "pro" {
+		if r.Slug != "dev" {
 			kept = append(kept, r)
 		}
 	}
 	if _, _, err := plan.Seed(db, kept); err != nil {
-		t.Fatalf("re-seed without pro: %v", err)
+		t.Fatalf("re-seed without dev: %v", err)
 	}
 
 	p := plan.New(db)
-	ok, err := p.Query().Filter("Slug=", "pro").Get()
+	ok, err := p.Query().Filter("Slug=", "dev").Get()
 	if err != nil || !ok {
-		t.Fatalf("retired plan %q must stay resolvable: ok=%v err=%v", "pro", ok, err)
+		t.Fatalf("retired plan %q must stay resolvable: ok=%v err=%v", "dev", ok, err)
 	}
 	if p.Listed() {
-		t.Fatalf("retired plan %q is still listed; archiving is what stops the sale", "pro")
+		t.Fatalf("retired plan %q is still listed; archiving is what stops the sale", "dev")
 	}
 	if p.Licensing == nil || !slices.Equal(p.Licensing.Products, []string{"team"}) {
-		t.Fatalf("retired plan %q licenses %v, want [team] — a retired tier must not lose its licences", "pro", p.Licensing)
+		t.Fatalf("retired plan %q licenses %v, want [team] — a retired tier must not lose its licences", "dev", p.Licensing)
 	}
 }
 

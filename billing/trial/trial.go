@@ -1,11 +1,11 @@
 // Package trial implements the new-signup on-ramp: a trialing subscription of
-// the $20/mo entry plan funded with a single unified trial credit.
+// the entry plan funded with a single unified trial credit.
 //
 // The model (settled 2026-07-02):
 //
-//   - Entry plan is the $20/mo "pro" plan: its
+//   - Entry plan is the catalog's entry paid rung, "dev": its
 //     allowance is metered down across usage. After the trial the subscriber is
-//     on $20/mo, metered, with overage billed.
+//     on that rung, metered, with overage billed.
 //   - A brand-new signup with NO card gets a 7-day trial; adding a card extends
 //     it to 30 days (ExtendForCard). A signup that adds a card up front is just
 //     the 7-day path immediately extended to 30 — ExtendForCard starts a 30-day
@@ -39,7 +39,7 @@ import (
 
 const (
 	// PlanSlug is the catalog's entry plan; the trial funds one month of it.
-	PlanSlug = "pro"
+	PlanSlug = "dev"
 
 	// CreditTag marks the one unified trial-credit deposit. Exactly one per
 	// subject; it is both the funding record and the idempotency anchor.

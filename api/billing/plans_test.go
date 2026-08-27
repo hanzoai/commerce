@@ -22,7 +22,7 @@ func TestPlansLoaded(t *testing.T) {
 	bySlug := indexBySlug(catalog)
 
 	// Core subscription plans that must exist regardless of catalog growth.
-	must := []string{"free", "go", "pro", "max", "team", "enterprise"}
+	must := []string{"free", "dev", "max", "team", "enterprise"}
 	for _, slug := range must {
 		p, ok := bySlug[slug]
 		if !ok {
@@ -36,26 +36,26 @@ func TestPlansLoaded(t *testing.T) {
 		}
 	}
 
-	// `go` is the entry rung and carries the entry rate ceilings; `enterprise` is
-	// priced by conversation, so it is the one row with a null price.
-	entry := bySlug["go"]
-	if entry.Price != 900 {
-		t.Errorf("Go price = %d cents, want 900", entry.Price)
+	// `dev` is the entry paid rung; `enterprise` is priced by conversation, so it
+	// is the one row with a null price.
+	entry := bySlug["dev"]
+	if entry.Price != 1900 {
+		t.Errorf("Dev price = %d cents, want 1900", entry.Price)
 	}
 	if entry.Limits == nil {
-		t.Fatal("Go plan should have limits")
+		t.Fatal("Dev plan should have limits")
 	}
-	if entry.Limits.RequestsPerMinute == nil || *entry.Limits.RequestsPerMinute != 60 {
-		t.Error("Go requestsPerMinute should be 60")
+	if entry.Limits.RequestsPerMinute == nil || *entry.Limits.RequestsPerMinute != 500 {
+		t.Error("Dev requestsPerMinute should be 500")
 	}
-	if entry.Limits.TokensPerMinute == nil || *entry.Limits.TokensPerMinute != 100000 {
-		t.Error("Go tokensPerMinute should be 100000")
+	if entry.Limits.TokensPerMinute == nil || *entry.Limits.TokensPerMinute != 1000000 {
+		t.Error("Dev tokensPerMinute should be 1000000")
 	}
 
 	// The ladder climbs. Asserted as an ORDERING rather than four numbers, so it
 	// keeps holding after a reprice and only fails on a rung that is out of order.
 	prev := int64(-1)
-	for _, slug := range []string{"free", "go", "pro", "max"} {
+	for _, slug := range []string{"free", "dev", "max"} {
 		p := bySlug[slug]
 		if p.Price <= prev {
 			t.Errorf("ladder is not ascending at %q: %d cents follows %d", slug, p.Price, prev)
@@ -63,17 +63,23 @@ func TestPlansLoaded(t *testing.T) {
 		prev = p.Price
 	}
 
-	// Annual is a real discount on every rung, never merely equal to monthly —
-	// which is what "no annual offer" looks like in this data.
-	for _, slug := range []string{"go", "pro", "max", "team"} {
+	// Annual is one discount, the same on every rung: 18% off the monthly rate,
+	// stored as the per-month equivalent. Pinned as the ARITHMETIC rather than as
+	// four numbers, so a reprice moves both halves together and a rung that drifts
+	// to its own private discount fails here.
+	//
+	// This supersedes an earlier rule that the stored per-month had to multiply to
+	// a round dollar year (which forced it to a multiple of 25 cents). A fixed
+	// percentage cannot also land on that grid — 19.00 x 0.82 is 15.58, and no
+	// rounding of it is both 18% and a quarter — so the ladder now prices the
+	// DISCOUNT exactly and lets the yearly total fall where it falls.
+	for _, slug := range []string{"dev", "max", "team"} {
 		p := bySlug[slug]
 		if p.PriceAnnual <= 0 || p.PriceAnnual >= p.Price {
 			t.Errorf("plan %q annual = %d cents/mo, monthly = %d; annual must be a discount", slug, p.PriceAnnual, p.Price)
 		}
-		// Stored per-month must multiply to a round annual total; otherwise the
-		// page can advertise a yearly figure the stored number does not reach.
-		if (p.PriceAnnual*12)%100 != 0 {
-			t.Errorf("plan %q annual %d cents/mo x12 = %d cents, not a round dollar year", slug, p.PriceAnnual, p.PriceAnnual*12)
+		if want := (p.Price * 82) / 100; p.PriceAnnual != want {
+			t.Errorf("plan %q annual = %d cents/mo, want %d (18%% off %d)", slug, p.PriceAnnual, want, p.Price)
 		}
 	}
 }
@@ -116,12 +122,12 @@ func TestDNSPlansLoaded(t *testing.T) {
 }
 
 func TestLookupPlan(t *testing.T) {
-	p := lookupPlan("go")
+	p := lookupPlan("dev")
 	if p == nil {
-		t.Fatal("lookupPlan(go) returned nil")
+		t.Fatal("lookupPlan(dev) returned nil")
 	}
-	if p.Slug != "go" {
-		t.Errorf("lookupPlan(go).Slug = %q", p.Slug)
+	if p.Slug != "dev" {
+		t.Errorf("lookupPlan(dev).Slug = %q", p.Slug)
 	}
 
 	p = lookupPlan("dns-pro")

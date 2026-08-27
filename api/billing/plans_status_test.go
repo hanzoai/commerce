@@ -34,9 +34,9 @@ func TestPlanStatus_UnlistedRowsAreHiddenButKept(t *testing.T) {
 
 	// Archive one row the way the admin CRUD does.
 	p := plan.New(db)
-	found, err := p.Query().Filter("Slug=", "pro").Get()
+	found, err := p.Query().Filter("Slug=", "dev").Get()
 	if err != nil || !found {
-		t.Fatalf("load pro: found=%v err=%v", found, err)
+		t.Fatalf("load dev: found=%v err=%v", found, err)
 	}
 	p.Status = plan.StatusArchived
 	if err := p.Update(); err != nil {
@@ -53,15 +53,15 @@ func TestPlanStatus_UnlistedRowsAreHiddenButKept(t *testing.T) {
 		t.Fatalf("public rows %d, want %d (one archived)", len(after), len(before)-1)
 	}
 	for _, r := range after {
-		if r.Slug == "pro" {
+		if r.Slug == "dev" {
 			t.Fatal("archived plan still served publicly")
 		}
 	}
 
 	// 2. The ROW SURVIVES — this is the whole difference from DELETE. A renewal
-	//    or invoice that recorded "pro" must still resolve it.
+	//    or invoice that recorded "dev" must still resolve it.
 	kept := plan.New(db)
-	stillThere, err := kept.Query().Filter("Slug=", "pro").Get()
+	stillThere, err := kept.Query().Filter("Slug=", "dev").Get()
 	if err != nil || !stillThere {
 		t.Fatalf("archived plan was destroyed: found=%v err=%v", stillThere, err)
 	}
@@ -183,7 +183,7 @@ func TestPaidTier_ContactSalesIsNotSelfServe(t *testing.T) {
 	if paidTier("free") {
 		t.Error(`paidTier("free") = true; a $0 rung is not a paid tier`)
 	}
-	for _, slug := range []string{"go", "pro", "max"} {
+	for _, slug := range []string{"dev", "max", "team"} {
 		if !paidTier(slug) {
 			t.Errorf("paidTier(%q) = false; every priced rung is paid", slug)
 		}

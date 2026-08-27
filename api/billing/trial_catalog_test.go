@@ -6,24 +6,24 @@ import (
 	"github.com/hanzoai/commerce/billing/trial"
 )
 
-func TestEntryTrialPlanUsesCatalogPro(t *testing.T) {
-	if trial.PlanSlug != "pro" {
-		t.Fatalf("trial plan = %q, want catalog plan pro", trial.PlanSlug)
+func TestEntryTrialPlanUsesCatalogEntryPlan(t *testing.T) {
+	if trial.PlanSlug != "dev" {
+		t.Fatalf("trial plan = %q, want catalog entry plan dev", trial.PlanSlug)
 	}
 
 	p := entryTrialPlan()
-	if p.Slug != "pro" {
+	if p.Slug != "dev" {
 		t.Fatalf("entry trial plan = %q, want pro", p.Slug)
 	}
 	// Read from the catalog, not restated: the contract is that the trial charges
-	// the SAME price the catalog publishes for pro. Restating the number here just
+	// the SAME price the catalog publishes for the entry rung. Restating the number here just
 	// means a reprice fails a test that has no opinion about the price.
-	want := lookupPlan("pro")
+	want := lookupPlan("dev")
 	if want == nil {
-		t.Fatal("catalog has no pro plan")
+		t.Fatal("catalog has no dev plan")
 	}
 	if p.PriceCents != want.Price {
-		t.Fatalf("entry trial price = %d, want %d (the catalog's pro price)", p.PriceCents, want.Price)
+		t.Fatalf("entry trial price = %d, want %d (the catalog's entry-rung price)", p.PriceCents, want.Price)
 	}
 	// The trial hands one month of the entry plan, so the credit IS that price.
 	// Asserted as an equality rather than a number, so a reprice moves both and
