@@ -2,7 +2,6 @@
 //
 // Each IAM user has a "tier" property stored in hanzo.id (Hanzo IAM) user
 // properties and propagated via JWT claims. The tier determines:
-//   - maximum concurrent agents
 //   - which model prefixes are allowed
 //   - a daily replenishing credit allowance (the generic mechanism; the
 //     Free tier's allowance is 0, see below)
@@ -35,8 +34,16 @@ type Config struct {
 	// DisplayName is the human-readable tier label.
 	DisplayName string `json:"displayName"`
 
-	// MaxAgents is the maximum concurrent agents allowed.
-	MaxAgents int `json:"maxAgents"`
+	// A tier does NOT say how many agents or bots a customer may run. That is a
+	// CAPACITY and it is published per PLAN, in the catalog — subscription.json
+	// `limits.agents` / `limits.bots`, read through api/billing's AgentsIncluded
+	// and BotsIncluded. This registry used to carry its own MaxAgents beside it,
+	// which was one fact in two homes with no stated precedence, and the two
+	// disagreed by construction: the registry is keyed by TIER NAME and the
+	// catalog by PLAN SLUG, and six slugs collapse onto four names, so `dev`,
+	// `max` and `team` all resolved to Pro and `max`'s bots had nowhere to land.
+	// api/billing.TierLimits composes the two now, and
+	// TestTheRegistryDoesNotHoldACapacity keeps this comment true.
 
 	// DailyCreditsCents is the daily replenishing credit allowance in cents.
 	// It is 0 for EVERY tier: there is no free tier, so no tier grants a
@@ -55,7 +62,6 @@ var registry = map[Name]*Config{
 	Free: {
 		Name:        Free,
 		DisplayName: "Free",
-		MaxAgents:   1,
 		// No free tier: a zero-balance "free" account grants NO daily credit and
 		// is gated. The one-time starter grant is the only onboarding funding.
 		DailyCreditsCents: 0,
@@ -64,21 +70,18 @@ var registry = map[Name]*Config{
 	Starter: {
 		Name:              Starter,
 		DisplayName:       "Starter",
-		MaxAgents:         3,
 		DailyCreditsCents: 0,
 		AllowedModels:     []string{"claude-sonnet", "claude-haiku", "zen3", "zen4"},
 	},
 	Pro: {
 		Name:              Pro,
 		DisplayName:       "Pro",
-		MaxAgents:         10,
 		DailyCreditsCents: 0,
 		AllowedModels:     []string{"*"},
 	},
 	Enterprise: {
 		Name:              Enterprise,
 		DisplayName:       "Enterprise",
-		MaxAgents:         0, // 0 = unlimited
 		DailyCreditsCents: 0,
 		AllowedModels:     []string{"*"},
 	},
@@ -145,11 +148,6 @@ func (c *Config) IsModelAllowed(model string) bool {
 		}
 	}
 	return false
-}
-
-// IsUnlimitedAgents returns true if MaxAgents is 0 (unlimited).
-func (c *Config) IsUnlimitedAgents() bool {
-	return c.MaxAgents == 0
 }
 
 // HasDailyCredits returns true if the tier receives daily replenishing credits.

@@ -21,12 +21,10 @@ var _ = Describe("Tier", func() {
 			// account is gated (effectiveAvailable collapses to prepaid).
 			cfg := tier.Get(tier.Free)
 			Expect(cfg.Name).To(Equal(tier.Free))
-			Expect(cfg.MaxAgents).To(Equal(1))
 			Expect(cfg.DailyCreditsCents).To(Equal(int64(0)))
 
 			cfg = tier.Get(tier.Pro)
 			Expect(cfg.Name).To(Equal(tier.Pro))
-			Expect(cfg.MaxAgents).To(Equal(10))
 			Expect(cfg.DailyCreditsCents).To(Equal(int64(0)))
 		})
 
@@ -75,14 +73,6 @@ var _ = Describe("Tier", func() {
 			Expect(tier.Get(tier.Starter).HasDailyCredits()).To(BeFalse())
 			Expect(tier.Get(tier.Pro).HasDailyCredits()).To(BeFalse())
 			Expect(tier.Get(tier.Enterprise).HasDailyCredits()).To(BeFalse())
-		})
-	})
-
-	Describe("IsUnlimitedAgents", func() {
-		It("returns true only for enterprise tier", func() {
-			Expect(tier.Get(tier.Enterprise).IsUnlimitedAgents()).To(BeTrue())
-			Expect(tier.Get(tier.Free).IsUnlimitedAgents()).To(BeFalse())
-			Expect(tier.Get(tier.Pro).IsUnlimitedAgents()).To(BeFalse())
 		})
 	})
 

@@ -27,9 +27,57 @@ import (
 // here is how a read and a gate come to disagree about maxAgents.
 type TierLimits struct {
 	tier.Config
+	// MaxAgents and MaxBots are what the customer's PLAN includes — the capacity
+	// published in the catalog (subscription.json `limits.agents` / `limits.bots`),
+	// read by slug through AgentsIncluded and BotsIncluded. They are composed here
+	// rather than stored on tier.Config, because a tier is not a plan: six slugs
+	// collapse onto four tier names, so a registry keyed by name cannot answer a
+	// question the catalog answers per slug.
+	//
+	// The WIRE reading is the one this field has always had, and it is not the
+	// catalog's: 0 means NO CEILING. The two agree wherever it matters — an
+	// unlimited plan (catalog -1) and a plan the catalog is silent about both
+	// serve without a bound, which is 0 here — and `capacity` is the one place the
+	// translation happens, with TestTheWireKeepsItsUnlimitedReading pinning it.
+	MaxAgents int `json:"maxAgents"`
+	MaxBots   int `json:"maxBots"`
 	// UnlimitedAgents reports that MaxAgents 0 means "no ceiling" rather than
 	// "no agents" — the reading a bare zero cannot carry.
 	UnlimitedAgents bool `json:"unlimitedAgents"`
+}
+
+// capacity translates the catalog's published roster into the wire's reading.
+//
+// The catalog says three things and the wire has room for two, so this is where
+// the difference is decided rather than at each reader:
+//
+//	(-1, true)   unlimited             -> 0, the wire's own "no ceiling"
+//	(n>0, true)  a real bound          -> n
+//	(_, false)   the catalog is silent -> 0, serve WITHOUT a bound
+//
+// The silent case is the important one and it admits, per the catalog's own rule:
+// "a missing CAPACITY has no safe number. Zero would refuse a customer their
+// first agent." So does a plan that includes NONE of a kind — (0, true) — which
+// this wire cannot distinguish from unlimited; it is returned as 0 with the same
+// admitting reading, because enforcing a bound no reader can tell apart from its
+// opposite is worse than enforcing none.
+func capacity(n int, known bool) int {
+	if !known || n < 0 {
+		return 0
+	}
+	return n
+}
+
+// tierLimits composes what a TIER allows with what the PLAN includes. One
+// constructor, so a read and a check cannot compose them differently.
+func tierLimits(cfg *tier.Config, slug string) TierLimits {
+	agents := capacity(AgentsIncluded(slug))
+	return TierLimits{
+		Config:          *cfg,
+		MaxAgents:       agents,
+		MaxBots:         capacity(BotsIncluded(slug)),
+		UnlimitedAgents: agents == 0,
+	}
 }
 
 // TierBalance is what the subject can actually spend, from the same three-bucket
@@ -145,9 +193,14 @@ func ReadTier(ctx context.Context, org *organization.Organization, user string, 
 		}
 	}
 
+	// ONE slug resolution, for both the usage windows and the plan's roster. It was
+	// already resolved for the windows; reading it twice is two chances to answer
+	// for two different plans in one payload.
+	slug := subscriptionPlanSlug(datastore.New(ctx), user)
+
 	return &TierView{
 		User: user,
-		Tier: TierLimits{Config: *cfg, UnlimitedAgents: cfg.IsUnlimitedAgents()},
+		Tier: tierLimits(cfg, slug),
 		Balance: TierBalance{
 			Currency:           cur,
 			PrepaidAvailable:   prepaidAvailable,
@@ -155,7 +208,7 @@ func ReadTier(ctx context.Context, org *organization.Organization, user string, 
 			DailyRemaining:     dailyRemaining,
 			EffectiveAvailable: int64(spendable) + dailyRemaining,
 		},
-		Windows: usageWindows(ctx, user, subscriptionPlanSlug(datastore.New(ctx), user), org.TestMode(), time.Now()),
+		Windows: usageWindows(ctx, user, slug, org.TestMode(), time.Now()),
 	}, nil
 }
 
@@ -254,13 +307,23 @@ func TierCheck(c *zip.Ctx) error {
 	}
 	cfg := tier.Get(tierName)
 
+	// The SAME composition ReadTier answers with, so a check and a read cannot
+	// report a different roster for one customer. A missing org means no store to
+	// reach and so no subscription in view — the slug is empty, the catalog is
+	// silent, and `capacity` serves without a bound rather than refusing on nothing.
+	slug := ""
+	if org, ok := middleware.GetOrganizationOK(c); ok && org != nil {
+		slug = subscriptionPlanSlug(datastore.New(org.Namespaced(c.Context())), user)
+	}
+	lim := tierLimits(cfg, slug)
 	resp := map[string]any{
 		"user": user,
 		"tier": map[string]any{
 			"name":          cfg.Name,
 			"displayName":   cfg.DisplayName,
 			"allowedModels": cfg.AllowedModels,
-			"maxAgents":     cfg.MaxAgents,
+			"maxAgents":     lim.MaxAgents,
+			"maxBots":       lim.MaxBots,
 		},
 	}
 
