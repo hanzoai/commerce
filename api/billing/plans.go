@@ -400,9 +400,14 @@ func minSeats(slug string) int {
 	return *p.Limits.MinSeats
 }
 
-// AgentsIncluded and BotsIncluded report how many of each the plan includes on
-// its roster, read from the catalog by slug — the same embed every other gate
-// reads, so what is enforced cannot disagree with what was published.
+// AgentsIncluded and BotsIncluded report how many of each the plan may RUN,
+// read from the catalog by slug — the same embed every other gate reads, so
+// what is enforced cannot disagree with what was published.
+//
+// These bound CONCURRENCY and nothing else. What an agent costs is its runtime,
+// metered by the hour, so these numbers never appear in an invoice line; a
+// caller that treats "includes 1 bot" as a month of free compute is reading a
+// capacity as an allowance, and a resident bot's month is ~720 hours of it.
 //
 // The bool is the point. Every sibling accessor above returns a bare number
 // because a missing value has a safe reading there: no allotment is no grant,

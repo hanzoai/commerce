@@ -68,11 +68,11 @@ func TestEditPrice_ResolveReflects(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
-	// Admin raises "pro" from $20 to $99 in the authority.
+	// Admin raises "dev" from $19 to $99 in the authority.
 	adb := plan.AuthorityDB(c)
 	p := plan.New(adb)
-	if ok, _ := p.Query().Filter("Slug=", "pro").Get(); !ok {
-		t.Fatal("pro not seeded")
+	if ok, _ := p.Query().Filter("Slug=", "dev").Get(); !ok {
+		t.Fatal("dev not seeded")
 	}
 	p.Price = 9900
 	if err := p.Update(); err != nil {
@@ -81,12 +81,12 @@ func TestEditPrice_ResolveReflects(t *testing.T) {
 
 	// resolveSubscriptionPlan — called with ANY org db — reads the NEW price.
 	orgDB := datastore.New(nscontext.WithNamespace(c, "acme"))
-	got, err := resolveSubscriptionPlan(orgDB, "pro")
+	got, err := resolveSubscriptionPlan(orgDB, "dev")
 	if err != nil {
 		t.Fatalf("resolve: %v", err)
 	}
 	if got.Price != 9900 {
-		t.Fatalf("resolveSubscriptionPlan(pro).Price = %d, want 9900 (admin edit MUST reflect in the charge)", got.Price)
+		t.Fatalf("resolveSubscriptionPlan(dev).Price = %d, want 9900 (admin edit MUST reflect in the charge)", got.Price)
 	}
 }
 
@@ -96,13 +96,13 @@ func TestResolveSeededEqualsEmbed(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
 	orgDB := datastore.New(nscontext.WithNamespace(c, "acme"))
-	embed := lookupPlan("pro")
+	embed := lookupPlan("dev")
 	if embed == nil {
-		t.Fatal("embed pro missing")
+		t.Fatal("embed dev missing")
 	}
 
 	// Before seed: authority empty → resolve falls back to the embed VALUE.
-	before, err := resolveSubscriptionPlan(orgDB, "pro")
+	before, err := resolveSubscriptionPlan(orgDB, "dev")
 	if err != nil {
 		t.Fatalf("resolve pre-seed: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestResolveSeededEqualsEmbed(t *testing.T) {
 	if _, _, err := SeedPlans(c); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	after, err := resolveSubscriptionPlan(orgDB, "pro")
+	after, err := resolveSubscriptionPlan(orgDB, "dev")
 	if err != nil {
 		t.Fatalf("resolve post-seed: %v", err)
 	}
@@ -167,11 +167,11 @@ func TestSyncStripeUntouchedByDBEdit(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
-	before := staticMonth(StaticPlans(), "pro")
+	before := staticMonth(StaticPlans(), "dev")
 
 	adb := plan.AuthorityDB(c)
 	p := plan.New(adb)
-	if ok, _ := p.Query().Filter("Slug=", "pro").Get(); !ok {
+	if ok, _ := p.Query().Filter("Slug=", "dev").Get(); !ok {
 		t.Fatal("pro missing")
 	}
 	p.Price = 12345
@@ -179,7 +179,7 @@ func TestSyncStripeUntouchedByDBEdit(t *testing.T) {
 		t.Fatalf("edit: %v", err)
 	}
 
-	after := staticMonth(StaticPlans(), "pro")
+	after := staticMonth(StaticPlans(), "dev")
 	// The property is that the DB edit did not reach the embed — not what the
 	// embed happens to charge. Pinning the price here made a reprice look like a
 	// broken authority boundary, which is a different fault entirely.

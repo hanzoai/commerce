@@ -38,7 +38,7 @@ func TestPlans_TeamCommercialModel(t *testing.T) {
 	}
 	bySlug := indexBySlug(plans)
 
-	for slug, cents := range map[string]int64{"free": 0, "go": 900, "dev": 1900, "pro": 4900, "max": 9900, "team": 2500} {
+	for slug, cents := range map[string]int64{"free": 0, "dev": 1900, "max": 9900, "team": 2400} {
 		p, ok := bySlug[slug]
 		if !ok {
 			t.Fatalf("plan %q missing from GET /v1/billing/plans", slug)
@@ -58,15 +58,15 @@ func TestPlans_TeamCommercialModel(t *testing.T) {
 	if team.Limits.IncludedCloudCreditsPerUser == nil || *team.Limits.IncludedCloudCreditsPerUser != 100 {
 		t.Error("team must serve limits.includedCloudCreditsPerUser=100")
 	}
-	pro := bySlug["pro"]
-	if pro.Limits == nil || pro.Limits.TeamGuests == nil || *pro.Limits.TeamGuests != 3 {
-		t.Error("pro must serve limits.teamGuests=3 (team.guests back-compat source)")
+	dev := bySlug["dev"]
+	if dev.Limits == nil || dev.Limits.TeamGuests == nil || *dev.Limits.TeamGuests != 3 {
+		t.Error("dev must serve limits.teamGuests=3 (team.guests back-compat source)")
 	}
 	// The wire carries a real annual discount, not a copy of the monthly price —
 	// stated as a relationship so it survives a reprice and still fails the thing
 	// that actually went wrong once: annual silently equal to monthly.
-	if pro.PriceAnnual <= 0 || pro.PriceAnnual >= pro.Price {
-		t.Errorf("pro priceAnnual = %d cents, monthly = %d; annual must be a discount", pro.PriceAnnual, pro.Price)
+	if dev.PriceAnnual <= 0 || dev.PriceAnnual >= dev.Price {
+		t.Errorf("dev priceAnnual = %d cents, monthly = %d; annual must be a discount", dev.PriceAnnual, dev.Price)
 	}
 }
 

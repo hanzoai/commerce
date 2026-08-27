@@ -74,7 +74,7 @@ func TestSubscribeWithCard_SecondPaidTierRefusedBeforeCharge(t *testing.T) {
 	withFakeSquare(t, m)
 
 	// A real first purchase, through the real endpoint.
-	if resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"pro"}`, nil); resp.StatusCode != http.StatusCreated {
+	if resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev"}`, nil); resp.StatusCode != http.StatusCreated {
 		t.Fatalf("first subscribe status=%d, want 201", resp.StatusCode)
 	}
 	chargesAfterFirst := m.chargeCalls
@@ -88,7 +88,7 @@ func TestSubscribeWithCard_SecondPaidTierRefusedBeforeCharge(t *testing.T) {
 			resp.StatusCode, string(body))
 	}
 	// The refusal has to name what the customer already has, or they cannot act on it.
-	if !strings.Contains(string(body), "pro") {
+	if !strings.Contains(string(body), "dev") {
 		t.Errorf("409 body %s does not name the existing plan", string(body))
 	}
 
@@ -121,13 +121,13 @@ func TestSubscribeWithCard_FreeTierDoesNotBlockPaying(t *testing.T) {
 	// of a provider.
 	liveSub(t, db, "subfree", "dns-free", string(processor.Square))
 
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"pro"}`, nil)
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev"}`, nil)
 	if resp.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(resp.Body)
 		t.Fatalf("status=%d body=%s, want 201 — a free tier must not block the customer who is finally paying",
 			resp.StatusCode, string(body))
 	}
-	if parentSub(t, db, "subfree", "pro") == nil {
+	if parentSub(t, db, "subfree", "dev") == nil {
 		t.Error("no 'pro' subscription created")
 	}
 }
@@ -145,12 +145,12 @@ func TestSubscribeWithCard_UnpaidInternalRowDoesNotBlockPaying(t *testing.T) {
 
 	db := datastore.New(org.Namespaced(ctx))
 	// A PAID slug with no provider and no invoice — not payment-backed.
-	held := liveSub(t, db, "subunpaid", "pro", "internal")
+	held := liveSub(t, db, "subunpaid", "dev", "internal")
 	if subscriptionPaymentBacked(held) {
 		t.Fatal("seeded row must not be payment-backed, or this test asserts nothing")
 	}
 
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"pro"}`, nil)
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev"}`, nil)
 	if resp.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(resp.Body)
 		t.Fatalf("status=%d body=%s, want 201 — an unpaid internal row must not block paying",

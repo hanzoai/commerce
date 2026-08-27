@@ -97,7 +97,7 @@ func TestSubscribeWithCardRefusesUnpublishedLevel(t *testing.T) {
 		"one past the end":   `{"sourceId":"cnon:ok","planId":"max","level":` + itoa(len(ladder)) + `}`,
 		"far past the end":   `{"sourceId":"cnon:ok","planId":"max","level":999}`,
 		"negative":           `{"sourceId":"cnon:ok","planId":"max","level":-1}`,
-		"plan has no ladder": `{"sourceId":"cnon:ok","planId":"pro","level":1}`,
+		"plan has no ladder": `{"sourceId":"cnon:ok","planId":"dev","level":1}`,
 	}
 
 	for name, body := range cases {
