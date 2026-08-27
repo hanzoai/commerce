@@ -16,7 +16,9 @@
       "requestsPerHour": 10,
       "requestsPerDay": 20,
       "requestsPerWeek": 100,
-      "requestsPerMonth": 300
+      "requestsPerMonth": 300,
+      "agents": 1,
+      "bots": 0
     },
     "payouts": {
       "idleResalePercent": 20,
@@ -29,7 +31,9 @@
       "ai.requests_per_hour": 10,
       "ai.requests_per_day": 20,
       "ai.requests_per_week": 100,
-      "ai.requests_per_month": 300
+      "ai.requests_per_month": 300,
+      "ai.agents": 1,
+      "ai.bots": 0
     }
   },
   {
@@ -50,7 +54,9 @@
       "requestsPerHour": 150,
       "requestsPerDay": 1000,
       "requestsPerWeek": 5000,
-      "requestsPerMonth": 15000
+      "requestsPerMonth": 15000,
+      "agents": 5,
+      "bots": 0
     },
     "payouts": {
       "idleResalePercent": 20,
@@ -67,7 +73,9 @@
       "ai.requests_per_hour": 150,
       "ai.requests_per_day": 1000,
       "ai.requests_per_week": 5000,
-      "ai.requests_per_month": 15000
+      "ai.requests_per_month": 15000,
+      "ai.agents": 5,
+      "ai.bots": 0
     },
     "price_ref": {
       "currency": "USD",
@@ -119,7 +127,9 @@
       "ai.requests_per_hour": 400,
       "ai.requests_per_day": 2500,
       "ai.requests_per_week": 12000,
-      "ai.requests_per_month": 40000
+      "ai.requests_per_month": 40000,
+      "ai.agents": 10,
+      "ai.bots": 0
     },
     "limits": {
       "requestsPerMinute": 500,
@@ -128,7 +138,9 @@
       "requestsPerHour": 400,
       "requestsPerDay": 2500,
       "requestsPerWeek": 12000,
-      "requestsPerMonth": 40000
+      "requestsPerMonth": 40000,
+      "agents": 10,
+      "bots": 0
     },
     "price_ref": {
       "currency": "USD",
@@ -182,7 +194,9 @@
       "ai.requests_per_hour": 1000,
       "ai.requests_per_day": 6000,
       "ai.requests_per_week": 30000,
-      "ai.requests_per_month": 100000
+      "ai.requests_per_month": 100000,
+      "ai.agents": 10,
+      "ai.bots": 0
     },
     "limits": {
       "requestsPerMinute": 2500,
@@ -191,7 +205,9 @@
       "requestsPerHour": 1000,
       "requestsPerDay": 6000,
       "requestsPerWeek": 30000,
-      "requestsPerMonth": 100000
+      "requestsPerMonth": 100000,
+      "agents": 10,
+      "bots": 0
     },
     "price_ref": {
       "currency": "USD",
@@ -269,7 +285,9 @@
       "ai.requests_per_hour": 2500,
       "ai.requests_per_day": 15000,
       "ai.requests_per_week": 75000,
-      "ai.requests_per_month": 250000
+      "ai.requests_per_month": 250000,
+      "ai.agents": 10,
+      "ai.bots": 1
     },
     "limits": {
       "requestsPerMinute": 5000,
@@ -278,7 +296,9 @@
       "requestsPerHour": 2500,
       "requestsPerDay": 15000,
       "requestsPerWeek": 75000,
-      "requestsPerMonth": 250000
+      "requestsPerMonth": 250000,
+      "agents": 10,
+      "bots": 1
     },
     "price_ref": {
       "currency": "USD",
@@ -317,7 +337,9 @@
       "tokensPerMinute": 5000000,
       "maxMembers": 100,
       "minSeats": 2,
-      "includedCloudCreditsPerUser": 100
+      "includedCloudCreditsPerUser": 100,
+      "agents": 10,
+      "bots": 0
     },
     "payouts": {
       "idleResalePercent": 20,
@@ -362,7 +384,9 @@
       "commerce.shared_billing": true,
       "commerce.audit_log": true,
       "commerce.support_tier": "priority",
-      "commerce.idle_resale_percent": 20
+      "commerce.idle_resale_percent": 20,
+      "ai.agents": 10,
+      "ai.bots": 0
     }
   },
   {
@@ -416,12 +440,16 @@
       "commerce.support_tier": "dedicated",
       "commerce.sla": "99.99%",
       "commerce.on_prem": true,
-      "commerce.idle_resale_percent": 20
+      "commerce.idle_resale_percent": 20,
+      "ai.agents": -1,
+      "ai.bots": -1
     },
     "limits": {
       "requestsPerMinute": 50000,
       "tokensPerMinute": 100000000,
-      "maxMembers": -1
+      "maxMembers": -1,
+      "agents": -1,
+      "bots": -1
     }
   }
 ]

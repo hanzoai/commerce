@@ -400,6 +400,50 @@ func minSeats(slug string) int {
 	return *p.Limits.MinSeats
 }
 
+// AgentsIncluded and BotsIncluded report how many of each the plan includes on
+// its roster, read from the catalog by slug — the same embed every other gate
+// reads, so what is enforced cannot disagree with what was published.
+//
+// The bool is the point. Every sibling accessor above returns a bare number
+// because a missing value has a safe reading there: no allotment is no grant,
+// no minimum is one seat. A missing CAPACITY has no safe number. Zero would
+// refuse a customer their first agent, and a large default would give an
+// unbounded roster away, so the catalog's silence is returned AS silence and
+// the caller decides — enforce a known bound, or serve without one.
+//
+// -1 is unlimited, the convention the catalog already uses for MaxMembers and
+// licensing.seats. Callers compare against it before comparing against a count.
+func AgentsIncluded(slug string) (int, bool) { return roster(slug, agentSeat) }
+
+// BotsIncluded is AgentsIncluded for the persistent-bot kind.
+func BotsIncluded(slug string) (int, bool) { return roster(slug, botSeat) }
+
+// seatKind selects which roster count to read. Two kinds today, and the reason
+// they share one reader is that "how many does this plan include" is one
+// question — a second copy of the lookup is a second place for the unknown-vs-
+// zero rule to be got wrong.
+type seatKind int
+
+const (
+	agentSeat seatKind = iota
+	botSeat
+)
+
+func roster(slug string, kind seatKind) (int, bool) {
+	p := lookupPlan(slug)
+	if p == nil || p.Limits == nil {
+		return 0, false
+	}
+	n := p.Limits.Agents
+	if kind == botSeat {
+		n = p.Limits.Bots
+	}
+	if n == nil {
+		return 0, false
+	}
+	return *n, true
+}
+
 // Plan is the exported snapshot used by external seeders (e.g. the
 // Stripe parity seed in commerce.go). It mirrors the subset of fields
 // the seed populates onto seed.Plan, with field names that match the

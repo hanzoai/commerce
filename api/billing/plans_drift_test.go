@@ -19,6 +19,10 @@ import (
 // entry whose digests must equal the new bytes, and editing the bytes under the
 // current version breaks the current entry.
 var versionDigests = map[string]struct{ subscription, dns string }{
+	"1.5.0": {
+		subscription: "f76c7b381c0a56127b566b060b34a998c077975eddeccd6255081c8d56981e34",
+		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
+	},
 	"1.4.20": {
 		subscription: "f89507c4fdebf0df2f5c135281a6f89ae4b6bc1eb4f6aec178b804a795e87339",
 		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
@@ -115,6 +119,49 @@ func TestVendoredPlanPrices(t *testing.T) {
 		if p.ContactSales != w.contactSales {
 			t.Errorf("plan %q contactSales = %v, want %v (free-vs-null distinction)", slug, p.ContactSales, w.contactSales)
 		}
+	}
+}
+
+// TestVendoredPlanRoster is the price canary's twin for what a plan INCLUDES.
+// The roster decides whether a customer may create their next agent, so a
+// number that drifts here refuses paying work or gives it away — and the digest
+// test only ever says "drifted", never which figure moved.
+//
+// It reads through AgentsIncluded/BotsIncluded rather than the raw field so the
+// accessor cloud enforces with is the thing under test. A bare struct read
+// would pass while the exported answer was wrong.
+func TestVendoredPlanRoster(t *testing.T) {
+	cases := map[string]struct{ agents, bots int }{
+		"free":       {1, 0},  // one personal agent, no bot
+		"go":         {5, 0},  // the $9 tier
+		"dev":        {10, 0}, // the $19 tier
+		"pro":        {10, 0},
+		"max":        {10, 1}, // the $99 tier includes a bot
+		"team":       {10, 0},
+		"enterprise": {-1, -1}, // -1 is unlimited, as it is for maxMembers
+	}
+	for slug, w := range cases {
+		agents, ok := AgentsIncluded(slug)
+		if !ok {
+			t.Errorf("plan %q publishes no agent roster — enforcement has nothing to read and a holder is refused their first agent", slug)
+			continue
+		}
+		if agents != w.agents {
+			t.Errorf("plan %q includes %d agents, want %d", slug, agents, w.agents)
+		}
+		bots, ok := BotsIncluded(slug)
+		if !ok {
+			t.Errorf("plan %q publishes no bot roster", slug)
+			continue
+		}
+		if bots != w.bots {
+			t.Errorf("plan %q includes %d bots, want %d", slug, bots, w.bots)
+		}
+	}
+	// Silence must stay distinguishable from zero, or the accessor's whole
+	// contract collapses into "unknown means refuse".
+	if n, ok := AgentsIncluded("no-such-plan"); ok || n != 0 {
+		t.Errorf("AgentsIncluded(unknown) = (%d, %v), want (0, false)", n, ok)
 	}
 }
 
