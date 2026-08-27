@@ -40,7 +40,7 @@ func TestDeriveTier_FromSubscription(t *testing.T) {
 	// active PAID 'pro' → Pro. Seeded as a COMP (manual_gift, no invoice), which
 	// also proves tier derivation does NOT apply the money-path payment-backed
 	// clamp: a gifted paid subscription still confers its tier.
-	seedSub(t, db, "tierderive/pro-user", "pro", subscription.Active, "manual_gift", "")
+	seedSub(t, db, "tierderive/pro-user", "dev", subscription.Active, "manual_gift", "")
 	// active $200 'max' (personal category) → Pro (all-models tier, not enterprise).
 	seedSub(t, db, "tierderive/max-user", "max", subscription.Active, "stripe", "")
 	// active 'enterprise' (enterprise category) → Enterprise.
@@ -50,7 +50,7 @@ func TestDeriveTier_FromSubscription(t *testing.T) {
 	// active $0 'developer' → Free (self-serve, confers no paid tier).
 	seedSub(t, db, "tierderive/dev-user", "developer", subscription.Active, "internal", "")
 	// canceled 'pro' → Free (only active/trialing confer a tier).
-	seedSub(t, db, "tierderive/canceled-user", "pro", subscription.Canceled, "stripe", "")
+	seedSub(t, db, "tierderive/canceled-user", "dev", subscription.Canceled, "stripe", "")
 
 	cases := []struct {
 		user string
@@ -88,7 +88,7 @@ func TestDeriveTier_HighestWins(t *testing.T) {
 
 	seedSub(t, db, user, "enterprise", subscription.Canceled, "stripe", "") // ignored
 	seedSub(t, db, user, "starter", subscription.Trialing, "trial", "")     // Starter
-	seedSub(t, db, user, "pro", subscription.Active, "stripe", "")          // Pro
+	seedSub(t, db, user, "dev", subscription.Active, "stripe", "")          // Pro
 
 	got, err := deriveTier(db, user)
 	if err != nil {
@@ -124,7 +124,7 @@ func TestGetTier_ReturnsRealSubscriptionTier(t *testing.T) {
 
 	org := moneyOrg("tierwire")
 	db := tierDeriveDB(org)
-	seedSub(t, db, "tierwire/paige", "pro", subscription.Active, "stripe", "")
+	seedSub(t, db, "tierwire/paige", "dev", subscription.Active, "stripe", "")
 
 	code, out := driveTierJSON(org, "/v1/billing/tier", "/v1/billing/tier?user=tierwire/paige", GetTier)
 	if code != 200 {
@@ -152,7 +152,7 @@ func TestTierCheck_GatesByRealTier(t *testing.T) {
 
 	org := moneyOrg("tiercheck")
 	db := tierDeriveDB(org)
-	seedSub(t, db, "tiercheck/pro", "pro", subscription.Active, "stripe", "")
+	seedSub(t, db, "tiercheck/pro", "dev", subscription.Active, "stripe", "")
 
 	// Pro (AllowedModels ["*"]) → any model, including an enso SKU, is allowed.
 	code, out := driveTierJSON(org, "/v1/billing/tier-check",

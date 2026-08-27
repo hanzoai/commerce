@@ -35,7 +35,7 @@ func TestSubscribeWithCard_SavedMethod(t *testing.T) {
 	m := squareMock("cust_never", "ccof_never", "sqpay_saved")
 	withFakeSquare(t, m)
 
-	body := fmt.Sprintf(`{"paymentMethodId":%q,"planId":"pro"}`, pm.Id())
+	body := fmt.Sprintf(`{"paymentMethodId":%q,"planId":"dev"}`, pm.Id())
 	resp := invokeSubscribeCard(org, ctx, body, nil)
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("status=%d, want 201", resp.StatusCode)
@@ -64,7 +64,7 @@ func TestSubscribeWithCard_SavedMethod(t *testing.T) {
 	if !pms[0].IsDefault {
 		t.Fatal("the charged saved method should be default")
 	}
-	sub := parentSub(t, db, "savedsub", "pro")
+	sub := parentSub(t, db, "savedsub", "dev")
 	if sub == nil || sub.DefaultPaymentMethod != pm.Id() {
 		t.Fatalf("subscription DefaultPaymentMethod=%v, want %q", sub, pm.Id())
 	}
@@ -82,7 +82,7 @@ func TestSubscribeWithCard_SavedMethodOtherSubject(t *testing.T) {
 	m := squareMock("c", "cc", "ref")
 	withFakeSquare(t, m)
 
-	body := fmt.Sprintf(`{"paymentMethodId":%q,"planId":"pro"}`, other.Id())
+	body := fmt.Sprintf(`{"paymentMethodId":%q,"planId":"dev"}`, other.Id())
 	resp := invokeSubscribeCard(org, ctx, body, nil)
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("status=%d, want 404 for another subject's method", resp.StatusCode)
@@ -102,8 +102,8 @@ func TestSubscribeWithCard_ExactlyOneCardInput(t *testing.T) {
 	withFakeSquare(t, m)
 
 	for _, body := range []string{
-		`{"planId":"pro"}`,
-		`{"sourceId":"cnon:x","paymentMethodId":"pm_x","planId":"pro"}`,
+		`{"planId":"dev"}`,
+		`{"sourceId":"cnon:x","paymentMethodId":"pm_x","planId":"dev"}`,
 	} {
 		resp := invokeSubscribeCard(org, ctx, body, nil)
 		if resp.StatusCode != http.StatusBadRequest {

@@ -103,10 +103,10 @@ func TestProdPath_CorrectsPreexistingBadRows(t *testing.T) {
 	}
 	// The prod corruption, re-planted on CURRENT slugs: a subscription-flow path
 	// wrote a $0 or category-less row where the catalog has a real one.
-	plant("go", 0, "")          // wrote $0 (the under-charge)
-	plant("max", 0, "")         // wrote $0
-	plant("pro", 2000, "")      // stale price, no Category/PriceAnnual/envelope
-	plant("team", 2500, "team") // no minSeats/PriceAnnual
+	plant("dev", 0, "")     // wrote $0 (the under-charge)
+	plant("max", 0, "")     // wrote $0
+	plant("team", 2500, "") // the stale $25 seat price, no Category/PriceAnnual/envelope
+	plant("free", 900, "")  // wrote a charge over a rung that is genuinely free
 
 	if _, corrected, err := SeedPlans(c); err != nil {
 		t.Fatalf("seed: %v", err)
@@ -115,9 +115,10 @@ func TestProdPath_CorrectsPreexistingBadRows(t *testing.T) {
 	}
 
 	orgDB := datastore.New(nscontext.WithNamespace(c, "acme"))
-	// The charge path resolves the CATALOG price — never the $0 under-charge, and
-	// never the stale 2000 that was planted over pro.
-	for _, slug := range []string{"go", "pro", "max"} {
+	// The charge path resolves the CATALOG price — never the $0 under-charge,
+	// never the stale 2500 planted over team, and never the 900 planted over a
+	// free rung.
+	for _, slug := range []string{"free", "dev", "max", "team"} {
 		want := lookupPlan(slug).Price
 		rp, err := resolveSubscriptionPlan(orgDB, slug)
 		if err != nil {
@@ -136,14 +137,14 @@ func TestProdPath_CorrectsPreexistingBadRows(t *testing.T) {
 	for _, r := range rows {
 		byslug[r.Slug] = r
 	}
-	if byslug["go"].Category != "personal" {
-		t.Fatalf("go category=%q, want personal (not corrected)", byslug["go"].Category)
+	if byslug["dev"].Category != "personal" {
+		t.Fatalf("dev category=%q, want personal (not corrected)", byslug["dev"].Category)
 	}
 	if ms := minSeatsOf(ptr(byslug["team"])); ms != 2 {
 		t.Fatalf("team minSeats=%d, want 2 (not corrected)", ms)
 	}
-	if want := lookupPlan("pro").PriceAnnual; byslug["pro"].PriceAnnual != want {
-		t.Fatalf("pro priceAnnual=%d, want %d (not corrected)", byslug["pro"].PriceAnnual, want)
+	if want := lookupPlan("team").PriceAnnual; byslug["team"].PriceAnnual != want {
+		t.Fatalf("team priceAnnual=%d, want %d (not corrected)", byslug["team"].PriceAnnual, want)
 	}
 }
 

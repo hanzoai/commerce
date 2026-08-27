@@ -137,14 +137,14 @@ func TestSubscribeWithCard_VaultChargeCreateInvoice(t *testing.T) {
 
 	// Flat plan, no amount in the body — the price is the catalog's, always. Read
 	// rather than restated, so a reprice does not fail a test about authority.
-	proCents := float64(lookupPlan("pro").Price)
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"pro"}`, nil)
+	devCents := float64(lookupPlan("dev").Price)
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev"}`, nil)
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("status=%d body=%s, want 201", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
 	out := jsonBody(t, resp)
-	if out["amountCents"].(float64) != proCents {
-		t.Fatalf("response amountCents=%v, want %v (catalog pro price)", out["amountCents"], proCents)
+	if out["amountCents"].(float64) != devCents {
+		t.Fatalf("response amountCents=%v, want %v (catalog pro price)", out["amountCents"], devCents)
 	}
 	if out["subscriptionId"] == "" || out["invoiceId"] == "" {
 		t.Fatalf("response missing ids: %+v", out)
@@ -167,8 +167,8 @@ func TestSubscribeWithCard_VaultChargeCreateInvoice(t *testing.T) {
 	if m.lastChargeCustomer != "cust_1" {
 		t.Fatalf("charge customer=%q, want cust_1", m.lastChargeCustomer)
 	}
-	if float64(m.lastChargeAmount) != proCents {
-		t.Fatalf("charged amount=%d, want %v (server-authoritative)", m.lastChargeAmount, proCents)
+	if float64(m.lastChargeAmount) != devCents {
+		t.Fatalf("charged amount=%d, want %v (server-authoritative)", m.lastChargeAmount, devCents)
 	}
 
 	db := datastore.New(org.Namespaced(ctx))
@@ -190,7 +190,7 @@ func TestSubscribeWithCard_VaultChargeCreateInvoice(t *testing.T) {
 	}
 
 	// The subscription: active, Square-backed, pointing at the vaulted card.
-	sub := parentSub(t, db, "subcard", "pro")
+	sub := parentSub(t, db, "subcard", "dev")
 	if sub == nil {
 		t.Fatal("no 'pro' subscription created for subject")
 	}
@@ -222,8 +222,8 @@ func TestSubscribeWithCard_VaultChargeCreateInvoice(t *testing.T) {
 	if inv.PaymentRef != "sqpay_1" {
 		t.Fatalf("first invoice paymentRef=%q, want the charge ref sqpay_1", inv.PaymentRef)
 	}
-	if float64(inv.AmountPaid) != proCents || float64(inv.AmountDue) != proCents {
-		t.Fatalf("first invoice amountDue=%d amountPaid=%d, want %v/%v", inv.AmountDue, inv.AmountPaid, proCents, proCents)
+	if float64(inv.AmountPaid) != devCents || float64(inv.AmountDue) != devCents {
+		t.Fatalf("first invoice amountDue=%d amountPaid=%d, want %v/%v", inv.AmountDue, inv.AmountPaid, devCents, devCents)
 	}
 
 	// The plan FEE must NOT have been credited to the spendable AI-credit wallet —
@@ -247,12 +247,12 @@ func TestSubscribeWithCardBindsStore(t *testing.T) {
 
 	m := squareMock("cust_store", "ccof_store", "sqpay_store")
 	withFakeSquare(t, m)
-	body := fmt.Sprintf(`{"sourceId":"cnon:store","planId":"pro","storeId":%q}`, store.Id())
+	body := fmt.Sprintf(`{"sourceId":"cnon:store","planId":"dev","storeId":%q}`, store.Id())
 	resp := invokeSubscribeCard(org, ctx, body, map[string]string{"X-Idempotency-Key": "store-a-first-period"})
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("status=%d body=%s", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
-	sub := parentSub(t, db, "substore", "pro")
+	sub := parentSub(t, db, "substore", "dev")
 	if sub == nil || sub.StoreId != store.Id() {
 		t.Fatalf("subscription store = %v, want %q", sub, store.Id())
 	}
@@ -295,7 +295,7 @@ func TestSubscribeWithCard_ForeignCurrencyRejected(t *testing.T) {
 	m := squareMock("cust_j", "ccof_j", "sqpay_j")
 	withFakeSquare(t, m)
 
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"pro","currency":"jpy"}`, nil)
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev","currency":"jpy"}`, nil)
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s, want 400 (foreign currency rejected)", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
@@ -306,7 +306,7 @@ func TestSubscribeWithCard_ForeignCurrencyRejected(t *testing.T) {
 		t.Fatalf("CreateCustomer calls=%d for a rejected currency, want 0 (reject BEFORE vaulting)", m.createCustomerCalls)
 	}
 	db := datastore.New(org.Namespaced(ctx))
-	if sub := parentSub(t, db, "sc-jpy", "pro"); sub != nil {
+	if sub := parentSub(t, db, "sc-jpy", "dev"); sub != nil {
 		t.Fatal("a rejected-currency request must NOT create a subscription")
 	}
 }
@@ -322,7 +322,7 @@ func TestSubscribeWithCard_Idempotent(t *testing.T) {
 	withFakeSquare(t, m)
 
 	hdr := map[string]string{"X-Idempotency-Key": "sub-key-1"}
-	body := `{"sourceId":"cnon:ok","planId":"pro"}`
+	body := `{"sourceId":"cnon:ok","planId":"dev"}`
 
 	r1 := invokeSubscribeCard(org, ctx, body, hdr)
 	if r1.StatusCode != http.StatusCreated {
@@ -349,7 +349,7 @@ func TestSubscribeWithCard_Idempotent(t *testing.T) {
 
 	// Exactly one paid invoice for the subject's subscription (no duplicate).
 	db := datastore.New(org.Namespaced(ctx))
-	sub := parentSub(t, db, "sc-idem", "pro")
+	sub := parentSub(t, db, "sc-idem", "dev")
 	if sub == nil {
 		t.Fatal("subscription not created")
 	}
@@ -368,7 +368,7 @@ func TestSubscribeWithCard_DeclinedNoSubscription(t *testing.T) {
 	m.chargeErr = errors.New("CARD_DECLINED")
 	withFakeSquare(t, m)
 
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:bad","planId":"pro"}`, nil)
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:bad","planId":"dev"}`, nil)
 	if resp.StatusCode != http.StatusPaymentRequired {
 		t.Fatalf("status=%d, want 402 (declined)", resp.StatusCode)
 	}
@@ -377,7 +377,7 @@ func TestSubscribeWithCard_DeclinedNoSubscription(t *testing.T) {
 	}
 
 	db := datastore.New(org.Namespaced(ctx))
-	if sub := parentSub(t, db, "sc-decline", "pro"); sub != nil {
+	if sub := parentSub(t, db, "sc-decline", "dev"); sub != nil {
 		t.Fatal("a declined card must NOT create a subscription")
 	}
 	if pms := pmsFor(t, db, "sc-decline"); len(pms) != 0 {
@@ -501,7 +501,7 @@ func TestRenewSubscription_ChargesVaultedCard(t *testing.T) {
 	withFakeSquare(t, m)
 
 	db := datastore.New(org.Namespaced(ctx))
-	sub := seedCardBackedSub(t, db, "sc-renew", "pro", "ccof_r", "cust_r")
+	sub := seedCardBackedSub(t, db, "sc-renew", "dev", "ccof_r", "cust_r")
 
 	resp := invokeRenew(org, ctx, sub.Id())
 	if resp.StatusCode != http.StatusOK {
@@ -516,8 +516,8 @@ func TestRenewSubscription_ChargesVaultedCard(t *testing.T) {
 	if m.lastChargeCustomer != "cust_r" {
 		t.Fatalf("renewal charge customer=%q, want cust_r", m.lastChargeCustomer)
 	}
-	if int64(m.lastChargeAmount) != lookupPlan("pro").Price {
-		t.Fatalf("renewal charged amount=%d, want %d (catalog pro price)", m.lastChargeAmount, lookupPlan("pro").Price)
+	if int64(m.lastChargeAmount) != lookupPlan("dev").Price {
+		t.Fatalf("renewal charged amount=%d, want %d (catalog pro price)", m.lastChargeAmount, lookupPlan("dev").Price)
 	}
 
 	invs := invoicesForSub(t, db, sub.Id())
@@ -541,7 +541,7 @@ func TestRenewSubscription_DeclineLeavesOpenNoDoubleCharge(t *testing.T) {
 	withFakeSquare(t, m)
 
 	db := datastore.New(org.Namespaced(ctx))
-	sub := seedCardBackedSub(t, db, "sc-renew-decline", "pro", "ccof_rd", "cust_rd")
+	sub := seedCardBackedSub(t, db, "sc-renew-decline", "dev", "ccof_rd", "cust_rd")
 
 	// First renew: declines → invoice OPEN, subscription PastDue, charged once.
 	if resp := invokeRenew(org, ctx, sub.Id()); resp.StatusCode != http.StatusOK {
@@ -592,7 +592,7 @@ func TestRenewSubscription_ParallelExactlyOneCharge(t *testing.T) {
 	withFakeSquare(t, m)
 
 	db := datastore.New(org.Namespaced(ctx))
-	sub := seedCardBackedSub(t, db, "sc-par-renew", "pro", "ccof_pr", "cust_pr")
+	sub := seedCardBackedSub(t, db, "sc-par-renew", "dev", "ccof_pr", "cust_pr")
 	charger := chargeProviderForOrg(org)
 
 	const N = 8
@@ -633,7 +633,7 @@ func TestPayInvoice_ConcurrentCollect_OneCharge(t *testing.T) {
 	withFakeSquare(t, m)
 
 	db := datastore.New(org.Namespaced(ctx))
-	sub := seedCardBackedSub(t, db, "sc-par-pay", "pro", "ccof_pp", "cust_pp")
+	sub := seedCardBackedSub(t, db, "sc-par-pay", "dev", "ccof_pp", "cust_pp")
 	inv := seedOpenInvoice(t, db, sub, 2000)
 
 	charger := chargeProviderForOrg(org)
@@ -672,12 +672,12 @@ func TestSubscribeWithCard_NewNonceRetry_OneCharge(t *testing.T) {
 	withFakeSquare(t, m)
 
 	// First attempt (nonce A), no X-Idempotency-Key → guard falls back to (subject, plan).
-	r1 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:A","planId":"pro"}`, nil)
+	r1 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:A","planId":"dev"}`, nil)
 	if r1.StatusCode != http.StatusCreated {
 		t.Fatalf("first status=%d, want 201", r1.StatusCode)
 	}
 	// Retry with a FRESH nonce B (re-tokenized), still no header.
-	r2 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:B","planId":"pro"}`, nil)
+	r2 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:B","planId":"dev"}`, nil)
 	if r2.StatusCode != http.StatusOK {
 		t.Fatalf("new-nonce retry status=%d, want 200 (idempotent replay on (subject,planId))", r2.StatusCode)
 	}
@@ -717,10 +717,10 @@ func TestSubscribeWithCard_PerSeatQuantity(t *testing.T) {
 		t.Fatalf("status=%d body=%s, want 201", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
 	out := jsonBody(t, resp)
-	if out["amountCents"].(float64) != 5000 {
-		t.Fatalf("response amountCents=%v, want 5000 (2500 x 2 seats)", out["amountCents"])
+	if out["amountCents"].(float64) != 4800 {
+		t.Fatalf("response amountCents=%v, want 4800 (2400 x 2 seats)", out["amountCents"])
 	}
-	if m.lastChargeAmount != 5000 {
+	if m.lastChargeAmount != 4800 {
 		t.Fatalf("charged amount=%d, want 5000 (Price x quantity)", m.lastChargeAmount)
 	}
 
@@ -733,7 +733,7 @@ func TestSubscribeWithCard_PerSeatQuantity(t *testing.T) {
 	if len(invs) != 1 {
 		t.Fatalf("invoices=%d, want 1", len(invs))
 	}
-	if invs[0].AmountDue != 5000 || invs[0].AmountPaid != 5000 {
+	if invs[0].AmountDue != 4800 || invs[0].AmountPaid != 4800 {
 		t.Fatalf("invoice amountDue=%d amountPaid=%d, want 5000/5000 (charge must equal the recorded paid amount)", invs[0].AmountDue, invs[0].AmountPaid)
 	}
 }
@@ -752,7 +752,7 @@ func TestPayInvoice_DeclineThenRetryReCollects(t *testing.T) {
 	withFakeSquare(t, m)
 
 	db := datastore.New(org.Namespaced(ctx))
-	sub := seedCardBackedSub(t, db, "sc-pay-dun", "pro", "ccof_dun", "cust_dun")
+	sub := seedCardBackedSub(t, db, "sc-pay-dun", "dev", "ccof_dun", "cust_dun")
 	inv := seedOpenInvoice(t, db, sub, 2000)
 
 	// First pay: declines → invoice stays OPEN, guard released (not sealed).
@@ -794,7 +794,7 @@ func TestPayInvoice_DeclineThenRetryReCollects(t *testing.T) {
 // idempotency guard is not a permanent per-plan LOCK. A first attempt that took no
 // money must leave nothing wedged, so a fresh key genuinely subscribes.
 //
-// It used to prove that by subscribing TWICE successfully to "pro" and asserting two
+// It used to prove that by subscribing TWICE successfully to "dev" and asserting two
 // charges and two parent subscriptions — which is the double-billing this endpoint now
 // refuses (see TestSubscribeWithCard_SecondPaidTierRefusedBeforeCharge). The
 // property worth protecting was never "sell the same plan twice"; it was "a spent
@@ -808,14 +808,14 @@ func TestSubscribeWithCard_DistinctKeyRetriesAFailedAttempt(t *testing.T) {
 	m.chargeErr = errors.New("CARD_DECLINED")
 	withFakeSquare(t, m)
 
-	r1 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:A","planId":"pro"}`, map[string]string{"X-Idempotency-Key": "attempt-1"})
+	r1 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:A","planId":"dev"}`, map[string]string{"X-Idempotency-Key": "attempt-1"})
 	if r1.StatusCode != http.StatusPaymentRequired {
 		t.Fatalf("first subscribe status=%d, want 402 (declined)", r1.StatusCode)
 	}
 
 	// A real card, a new checkout attempt (fresh key) → this one must go through.
 	m.chargeErr = nil
-	r2 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:B","planId":"pro"}`, map[string]string{"X-Idempotency-Key": "attempt-2"})
+	r2 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:B","planId":"dev"}`, map[string]string{"X-Idempotency-Key": "attempt-2"})
 	if r2.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(r2.Body)
 		t.Fatalf("re-subscribe status=%d body=%s, want 201 (a spent key must not brick the plan)", r2.StatusCode, string(body))

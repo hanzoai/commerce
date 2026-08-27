@@ -325,10 +325,13 @@ type Limits struct {
 	// max invited guests on the holder's hanzo.team workspace (-1 = unlimited).
 	TeamGuests *int `json:"teamGuests,omitempty"`
 
-	// Agents and Bots are the roster the plan INCLUDES — the back-compat source
-	// for the ai.agents / ai.bots entitlements. A seat past the included count is
-	// charged at the flat rate in the catalog's seats.json, so these two numbers
-	// are the whole subtraction: what is included here, what is billed there.
+	// Agents and Bots are how many of each the plan may RUN — the back-compat
+	// source for the ai.agents / ai.bots entitlements. They are a CAPACITY, not
+	// an allowance of runtime: the hours those agents run meter separately at
+	// the catalog's hourly rate (seats.json runtime.agentHourUSD). Reading an
+	// included count as included hours is the expensive mistake in both
+	// directions — it either bills a customer for what they were promised or
+	// hands out a resident bot's month for nothing.
 	//
 	// -1 is unlimited, as it is for MaxMembers. A present 0 means the plan
 	// includes NONE of that kind and is enforceable; nil means no one has said,

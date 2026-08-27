@@ -37,71 +37,12 @@
     }
   },
   {
-    "id": "go",
-    "name": "Go",
-    "category": "personal",
-    "description": "Omnichannel agent hosting and the Hanzo desktop app, for builders getting started.",
-    "priceMonthly": 9,
-    "priceAnnual": 8.25,
-    "features": [
-      "Hanzo Bot Gateway — host local agents across WhatsApp, Telegram, Discord and Slack",
-      "Hanzo Chat & UI — desktop app layout with instant global model context"
-    ],
-    "limits": {
-      "requestsPerMinute": 60,
-      "tokensPerMinute": 100000,
-      "includedCreditUsd": 5,
-      "requestsPerHour": 150,
-      "requestsPerDay": 1000,
-      "requestsPerWeek": 5000,
-      "requestsPerMonth": 15000,
-      "agents": 5,
-      "bots": 0
-    },
-    "payouts": {
-      "idleResalePercent": 20,
-      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
-    },
-    "entitlements": {
-      "ai.requests_per_min": 60,
-      "ai.tokens_per_min": 100000,
-      "ai.models": [
-        "tier:starter"
-      ],
-      "commerce.support_tier": "community",
-      "commerce.idle_resale_percent": 20,
-      "ai.requests_per_hour": 150,
-      "ai.requests_per_day": 1000,
-      "ai.requests_per_week": 5000,
-      "ai.requests_per_month": 15000,
-      "ai.agents": 5,
-      "ai.bots": 0
-    },
-    "price_ref": {
-      "currency": "USD",
-      "recurring": {
-        "monthly_usd": 9,
-        "annual_usd": 8.25,
-        "per_seat": false,
-        "stripe_lookup_key": "hanzo_go_9"
-      },
-      "metered": [
-        {
-          "entitlement": "ai.tokens_per_min",
-          "unit": "per_mtok",
-          "source": "zen-gateway",
-          "included": -1
-        }
-      ]
-    }
-  },
-  {
     "id": "dev",
     "name": "Dev",
     "category": "personal",
     "description": "Terminal-native pair programming in your own repository shell.",
     "priceMonthly": 19,
-    "priceAnnual": 16.5,
+    "priceAnnual": 15.58,
     "features": [
       "Hanzo Dev — full terminal-native pair programmer inside your local repo shell",
       "Medium reasoning dial — balanced latency-to-depth for standard code generation",
@@ -146,76 +87,9 @@
       "currency": "USD",
       "recurring": {
         "monthly_usd": 19,
-        "annual_usd": 16.5,
+        "annual_usd": 15.58,
         "per_seat": false,
         "stripe_lookup_key": "hanzo_dev_19"
-      },
-      "metered": [
-        {
-          "entitlement": "ai.tokens_per_min",
-          "unit": "per_mtok",
-          "source": "zen-gateway",
-          "included": -1
-        }
-      ]
-    }
-  },
-  {
-    "id": "pro",
-    "name": "Pro",
-    "category": "personal",
-    "popular": true,
-    "description": "Multi-agent orchestration, background review, and maximum reasoning depth.",
-    "priceMonthly": 49,
-    "priceAnnual": 41.5,
-    "features": [
-      "Auto Drive orchestration — multi-agent teams executing repo milestones (/plan, /code, /solve)",
-      "Auto Review — background watcher running changes in hidden git worktrees to suggest fixes silently",
-      "High and XHigh reasoning dials — maximum context processing depth",
-      "Headless browser CDP — the agent tests and screenshots its own front-end work"
-    ],
-    "payouts": {
-      "idleResalePercent": 20,
-      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
-    },
-    "entitlements": {
-      "ai.requests_per_min": 2500,
-      "ai.tokens_per_min": 5000000,
-      "ai.priority_inference": true,
-      "ai.models": [
-        "tier:max"
-      ],
-      "licensing.product_ids": [
-        "team"
-      ],
-      "commerce.support_tier": "priority",
-      "commerce.idle_resale_percent": 20,
-      "team.guests": 3,
-      "ai.requests_per_hour": 1000,
-      "ai.requests_per_day": 6000,
-      "ai.requests_per_week": 30000,
-      "ai.requests_per_month": 100000,
-      "ai.agents": 10,
-      "ai.bots": 0
-    },
-    "limits": {
-      "requestsPerMinute": 2500,
-      "tokensPerMinute": 5000000,
-      "teamGuests": 3,
-      "requestsPerHour": 1000,
-      "requestsPerDay": 6000,
-      "requestsPerWeek": 30000,
-      "requestsPerMonth": 100000,
-      "agents": 10,
-      "bots": 0
-    },
-    "price_ref": {
-      "currency": "USD",
-      "recurring": {
-        "monthly_usd": 49,
-        "annual_usd": 41.5,
-        "per_seat": false,
-        "stripe_lookup_key": "hanzo_pro_49"
       },
       "metered": [
         {
@@ -233,7 +107,7 @@
     "category": "personal",
     "description": "Enso orchestration, unlimited managed agents, and shared team workspaces.",
     "priceMonthly": 99,
-    "priceAnnual": 83.25,
+    "priceAnnual": 81.18,
     "prices": [
       99,
       199,
@@ -304,7 +178,7 @@
       "currency": "USD",
       "recurring": {
         "monthly_usd": 99,
-        "annual_usd": 83.25,
+        "annual_usd": 81.18,
         "per_seat": false,
         "stripe_lookup_key": "hanzo_max_99"
       },
@@ -322,11 +196,11 @@
     "id": "team",
     "name": "Team",
     "description": "For teams building together. Org workspaces, SSO via Hanzo IAM, and one unified bill.",
-    "priceMonthly": 25,
-    "priceAnnual": 20.0,
+    "priceMonthly": 24,
+    "priceAnnual": 19.68,
     "category": "team",
     "features": [
-      "$25 per user per month, or $20 billed annually — minimum 2 seats",
+      "$24 per user per month, or $19.68 billed annually — minimum 2 seats",
       "Org workspaces with shared history and projects",
       "SSO via Hanzo IAM",
       "One unified bill for everyone",
@@ -348,10 +222,10 @@
     "price_ref": {
       "currency": "USD",
       "recurring": {
-        "monthly_usd": 25,
-        "annual_usd": 20.0,
+        "monthly_usd": 24,
+        "annual_usd": 19.68,
         "per_seat": true,
-        "stripe_lookup_key": "hanzo_team_25"
+        "stripe_lookup_key": "hanzo_team_24"
       },
       "metered": [
         {

@@ -57,19 +57,19 @@ func TestCatalogConverges_OldStoreToPublishedLadder(t *testing.T) {
 	}
 
 	// The published ladder is what is offered, at the published prices.
-	for slug, want := range map[string]int64{"free": 0, "go": 900, "dev": 1900, "pro": 4900, "max": 9900} {
+	for slug, want := range map[string]int64{"free": 0, "dev": 1900, "max": 9900, "team": 2400} {
 		if got[slug] != want {
 			t.Errorf("public %q = %d cents, want %d", slug, got[slug], want)
 		}
 	}
 	// The retired tiers are gone from the offer.
-	for _, slug := range []string{"developer", "plus", "world-pro"} {
+	for _, slug := range []string{"developer", "plus", "world-pro", "pro"} {
 		if _, still := got[slug]; still {
 			t.Errorf("retired %q is still on sale", slug)
 		}
 	}
 	// But their ROWS survive, so anything that recorded the slug still resolves.
-	for _, slug := range []string{"developer", "plus", "world-pro"} {
+	for _, slug := range []string{"developer", "plus", "world-pro", "pro"} {
 		p := plan.New(db)
 		if found, err := p.Query().Filter("Slug=", slug).Get(); err != nil || !found {
 			t.Errorf("retired %q was DESTROYED (found=%v err=%v); history cannot resolve it", slug, found, err)
