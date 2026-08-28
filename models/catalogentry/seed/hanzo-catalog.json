@@ -138,6 +138,72 @@
     }
   },
   {
+    "id": "images",
+    "name": "Images",
+    "category": "AI",
+    "brandColor": "pink",
+    "iconKey": "Image",
+    "slug": "images",
+    "route": "/cloud/images",
+    "docsUrl": "https://docs.hanzo.ai/docs/services/images",
+    "apiPath": "/v1/images",
+    "apiRoute": "api.hanzo.ai/v1/images",
+    "githubUrl": "https://github.com/hanzoai/ai",
+    "repo": "hanzoai/ai",
+    "gcp": "Imagen",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "videos",
+    "name": "Videos",
+    "category": "AI",
+    "brandColor": "amber",
+    "iconKey": "Video",
+    "slug": "videos",
+    "route": "/cloud/videos",
+    "docsUrl": "https://docs.hanzo.ai/docs/services/videos",
+    "apiPath": "/v1/videos",
+    "apiRoute": "api.hanzo.ai/v1/videos",
+    "githubUrl": "https://github.com/hanzoai/ai",
+    "repo": "hanzoai/ai",
+    "gcp": "Veo",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "audio",
+    "name": "Audio",
+    "category": "AI",
+    "brandColor": "teal",
+    "iconKey": "AudioLines",
+    "slug": "audio",
+    "route": "/cloud/audio",
+    "docsUrl": "https://docs.hanzo.ai/docs/services/audio",
+    "apiPath": "/v1/audio",
+    "apiRoute": "api.hanzo.ai/v1/audio",
+    "githubUrl": "https://github.com/hanzoai/ai",
+    "repo": "hanzoai/ai",
+    "gcp": "Text-to-Speech",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null
+  },
+  {
     "id": "evals",
     "name": "Evals",
     "category": "Science",
