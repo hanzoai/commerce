@@ -17,8 +17,8 @@
   },
   "pnpm": {
     "overrides": {
-      "@hanzo/ui": "8.3.0",
-      "@hanzo/gui": "8.1.1",
+      "@hanzo/ui": "8.25.0",
+      "@hanzo/gui": "8.3.0",
       "@hanzogui/*": "8.1.1"
     }
   }
