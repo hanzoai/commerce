@@ -10,11 +10,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hanzo/data": "^1.2.3",
-    "@hanzo/font": "^1.8.0",
-    "@hanzo/gui": "^8.1.1",
-    "@hanzo/iam": "^0.21.6",
-    "@hanzo/ui": "^8.3.0",
+    "@hanzo/data": "1.2.4",
+    "@hanzo/font": "1.9.2",
+    "@hanzo/gui": "8.3.0",
+    "@hanzo/iam": "0.21.17",
+    "@hanzo/ui": "8.25.0",
     "@hanzogui/config": "^8.1.1",
     "@hanzogui/core": "^8.1.1",
     "@hanzogui/lucide-icons-2": "^8.1.1",
