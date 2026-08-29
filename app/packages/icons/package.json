@@ -20,17 +20,17 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@atomico/rollup-plugin-sizes": "^1.1.4",
-    "@rollup/plugin-node-resolve": "^15.2.3",
-    "@rollup/plugin-replace": "^5.0.5",
-    "esbuild": "^0.19.8",
-    "react": "^18.3.1",
-    "rollup": "^4.9.1",
-    "rollup-plugin-esbuild": "^6.1.0",
-    "rollup-plugin-visualizer": "^5.12.0",
-    "typescript": "^5.9.0"
+    "@atomico/rollup-plugin-sizes": "catalog:",
+    "@rollup/plugin-node-resolve": "catalog:",
+    "@rollup/plugin-replace": "catalog:",
+    "esbuild": "catalog:",
+    "react": "catalog:",
+    "rollup": "catalog:",
+    "rollup-plugin-esbuild": "catalog:",
+    "rollup-plugin-visualizer": "catalog:",
+    "typescript": "catalog:"
   },
   "peerDependencies": {
-    "react": "^18.3.1"
+    "react": ">=19.2.8"
   }
 }

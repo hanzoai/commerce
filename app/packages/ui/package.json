@@ -17,18 +17,18 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hanzo/data": "1.2.4",
-    "@hanzo/gui": "8.3.0",
-    "@hanzo/ui": "8.25.0",
-    "clsx": "^2.1.0",
-    "tailwind-merge": "^2.2.1"
+    "@hanzo/data": "catalog:",
+    "@hanzo/gui": "catalog:",
+    "@hanzo/ui": "catalog:",
+    "clsx": "catalog:",
+    "tailwind-merge": "catalog:"
   },
   "devDependencies": {
-    "@types/react": "19.0.3",
-    "typescript": "^5.9.3"
+    "@types/react": "catalog:",
+    "typescript": "catalog:"
   },
   "peerDependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react": ">=19.2.8",
+    "react-dom": ">=19.2.8"
   }
 }

@@ -19,6 +19,6 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "typescript": "^5.9.0"
+    "typescript": "catalog:"
   }
 }
