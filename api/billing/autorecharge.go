@@ -2,6 +2,7 @@ package billing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -58,24 +59,164 @@ func defaultPaymentMethod(db *datastore.Datastore, customerId string) *paymentme
 	return pms[0]
 }
 
-func autoRechargeResponse(cfg *autorecharge.AutoRecharge, userId string) map[string]any {
+// AutoRecharge is one org's auto-recharge rule as its readers see it: whether it
+// fires, the balance it fires below, the amount it charges, and when it last fired.
+//
+// Stored is not on the wire — it records whether a ROW exists. An org that never
+// set the rule reads as the disabled one, which is exactly how the sweep already
+// treats it, so the values alone cannot tell "never configured" from "configured
+// and switched off". Anything that must tell those apart asks here rather than
+// inferring it from a zero, which would make the two indistinguishable the day a
+// customer legitimately sets an amount of nothing.
+type AutoRecharge struct {
+	Subject         string `json:"subject"`
+	Enabled         bool   `json:"enabled"`
+	ThresholdCents  int64  `json:"thresholdCents"`
+	AmountCents     int64  `json:"amountCents"`
+	Currency        string `json:"currency"`
+	LastRechargedAt string `json:"lastRechargedAt"`
+
+	Stored bool `json:"-"`
+}
+
+// AutoRechargeEdit is what a caller may change about the rule. Every field is a
+// plain value, not a pointer: a write states the WHOLE rule, because there is one
+// small row and no field whose absence could mean anything but its zero.
+type AutoRechargeEdit struct {
+	Enabled        bool   `json:"enabled"`
+	ThresholdCents int64  `json:"thresholdCents"`
+	AmountCents    int64  `json:"amountCents"`
+	Currency       string `json:"currency,omitempty"`
+}
+
+// The three refusals WriteAutoRecharge makes, each its own sentinel so a caller
+// separates a mistake it can fix from a store that failed us WITHOUT reading the
+// message. A caller matching on text is a caller that breaks when the text is
+// reworded, and the endpoint below still hands these strings to the customer, so
+// the wording is a customer-facing value rather than a private one.
+//
+// All three bite only when the rule is ARMED: a disabled rule charges nobody, so
+// a zero amount or a card not yet on file is a customer part-way through setting
+// up, not an error.
+var (
+	ErrAmountNotPositive      = errors.New("amountCents must be positive")
+	ErrThresholdNegative      = errors.New("thresholdCents must not be negative")
+	ErrNoDefaultPaymentMethod = errors.New("a default payment method is required to enable auto-recharge")
+)
+
+// autoRechargeView renders a loaded row — or the absence of one — as the rule its
+// readers see. An org with no row has the DISABLED rule in usd, which is the rule
+// the sweep reads it as; that agreement is the point, since a reader shown one
+// default and a sweep applying another is two rules again.
+func autoRechargeView(cfg *autorecharge.AutoRecharge, subject string) AutoRecharge {
 	if cfg == nil {
-		return map[string]any{
-			"userId":         userId,
-			"enabled":        false,
-			"thresholdCents": 0,
-			"amountCents":    0,
-			"currency":       "usd",
+		return AutoRecharge{Subject: subject, Currency: "usd"}
+	}
+	return AutoRecharge{
+		Subject:         cfg.UserId,
+		Enabled:         cfg.Enabled,
+		ThresholdCents:  cfg.ThresholdCents,
+		AmountCents:     cfg.AmountCents,
+		Currency:        cfg.Currency,
+		LastRechargedAt: cfg.LastRechargedAt,
+		Stored:          true,
+	}
+}
+
+// autoRechargeResponse is this endpoint's wire, and stays a map on purpose: map
+// keys are emitted in sorted order, so serialising the view struct instead would
+// reorder every field of a response clients have parsed since it shipped.
+//
+// The subject rides as "userId" — the name the rule was keyed under before the
+// key became the org — and lastRechargedAt is present for a stored row even when
+// it is empty, absent entirely when there is no row. That is what Stored buys:
+// the quirk is a question about the ROW, and a view that only carried values
+// could not answer it.
+func autoRechargeResponse(v AutoRecharge) map[string]any {
+	out := map[string]any{
+		"userId":         v.Subject,
+		"enabled":        v.Enabled,
+		"thresholdCents": v.ThresholdCents,
+		"amountCents":    v.AmountCents,
+		"currency":       v.Currency,
+	}
+	if v.Stored {
+		out["lastRechargedAt"] = v.LastRechargedAt
+	}
+	return out
+}
+
+// ReadAutoRecharge is the org's auto-recharge rule — the QUERY, with no HTTP in it.
+//
+// It takes values rather than a request so a caller that is not a request can ask.
+// The console's auto-reload switch, the sweep that fires the rule and a peer that
+// holds no datastore all need the same answer, and a peer re-deriving the lookup
+// would be a second statement of one money rule — which is two rules, drifting
+// from the day the second one is written.
+func ReadAutoRecharge(ctx context.Context, org *organization.Organization) (AutoRecharge, error) {
+	if org == nil {
+		return AutoRecharge{}, errors.New("auto-recharge: no organization")
+	}
+	db := datastore.New(org.Namespaced(ctx))
+	return autoRechargeView(loadAutoRecharge(db, org.Name), org.Name), nil
+}
+
+// WriteAutoRecharge sets the org's auto-recharge rule — the WRITE, with no HTTP in
+// it. It upserts: there is one rule per org, so a second write edits the first.
+//
+// It takes values rather than a request for the reason ReadAutoRecharge does, and
+// more sharply: this is the write that decides when an off-session card charge
+// fires, so the endpoint and any peer must arm it under the SAME conditions. A
+// peer with its own copy of "you need a card on file first" is a peer that can
+// arm a rule this one would refuse.
+//
+// A refusal of the caller's own values is one of the three sentinels above;
+// anything else is the store failing us. Which status each becomes is the
+// endpoint's business, not this one's.
+func WriteAutoRecharge(ctx context.Context, org *organization.Organization, in AutoRechargeEdit) (AutoRecharge, error) {
+	if org == nil {
+		return AutoRecharge{}, errors.New("auto-recharge: no organization")
+	}
+	db := datastore.New(org.Namespaced(ctx))
+
+	if in.Enabled {
+		if in.AmountCents <= 0 {
+			return AutoRecharge{}, ErrAmountNotPositive
+		}
+		if in.ThresholdCents < 0 {
+			return AutoRecharge{}, ErrThresholdNegative
+		}
+		if defaultPaymentMethod(db, org.Name) == nil {
+			return AutoRecharge{}, ErrNoDefaultPaymentMethod
 		}
 	}
-	return map[string]any{
-		"userId":          cfg.UserId,
-		"enabled":         cfg.Enabled,
-		"thresholdCents":  cfg.ThresholdCents,
-		"amountCents":     cfg.AmountCents,
-		"currency":        cfg.Currency,
-		"lastRechargedAt": cfg.LastRechargedAt,
+
+	cur := strings.ToLower(strings.TrimSpace(in.Currency))
+	if cur == "" {
+		cur = "usd"
 	}
+
+	cfg := loadAutoRecharge(db, org.Name)
+	if cfg == nil {
+		cfg = autorecharge.New(db)
+		cfg.UserId = org.Name
+	}
+	cfg.Enabled = in.Enabled
+	cfg.ThresholdCents = in.ThresholdCents
+	cfg.AmountCents = in.AmountCents
+	cfg.Currency = cur
+
+	var err error
+	if cfg.Id() == "" {
+		err = cfg.Create()
+	} else {
+		err = cfg.Update()
+	}
+	if err != nil {
+		return AutoRecharge{}, err
+	}
+
+	return autoRechargeView(cfg, org.Name), nil
 }
 
 // GetAutoRecharge returns the org's auto-recharge config (or disabled defaults).
@@ -83,16 +224,12 @@ func autoRechargeResponse(cfg *autorecharge.AutoRecharge, userId string) map[str
 //	GET /v1/billing/recharge
 func GetAutoRecharge(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c.Context()))
-	cfg := loadAutoRecharge(db, org.Name)
-	return c.JSON(200, autoRechargeResponse(cfg, org.Name))
-}
-
-type autoRechargeRequest struct {
-	Enabled        bool   `json:"enabled"`
-	ThresholdCents int64  `json:"thresholdCents"`
-	AmountCents    int64  `json:"amountCents"`
-	Currency       string `json:"currency,omitempty"`
+	v, err := ReadAutoRecharge(c.Context(), org)
+	if err != nil {
+		log.Error("Failed to read auto-recharge config for org %q: %v", org.Name, err, c)
+		return jsonhttp.Fail(c, 500, "failed to read auto-recharge config", err)
+	}
+	return c.JSON(200, autoRechargeResponse(v))
 }
 
 // SetAutoRecharge upserts the org's auto-recharge config.
@@ -103,52 +240,25 @@ type autoRechargeRequest struct {
 // charged off-session when the balance runs low).
 func SetAutoRecharge(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c.Context()))
 
-	var req autoRechargeRequest
-	if err := c.Bind(&req); err != nil {
+	var in AutoRechargeEdit
+	if err := c.Bind(&in); err != nil {
 		return jsonhttp.Fail(c, 400, "invalid request body", err)
 	}
 
-	if req.Enabled {
-		if req.AmountCents <= 0 {
-			return jsonhttp.Fail(c, 400, "amountCents must be positive", nil)
-		}
-		if req.ThresholdCents < 0 {
-			return jsonhttp.Fail(c, 400, "thresholdCents must not be negative", nil)
-		}
-		if defaultPaymentMethod(db, org.Name) == nil {
-			return jsonhttp.Fail(c, 400, "a default payment method is required to enable auto-recharge", nil)
-		}
-	}
-
-	cur := strings.ToLower(strings.TrimSpace(req.Currency))
-	if cur == "" {
-		cur = "usd"
-	}
-
-	cfg := loadAutoRecharge(db, org.Name)
-	if cfg == nil {
-		cfg = autorecharge.New(db)
-		cfg.UserId = org.Name
-	}
-	cfg.Enabled = req.Enabled
-	cfg.ThresholdCents = req.ThresholdCents
-	cfg.AmountCents = req.AmountCents
-	cfg.Currency = cur
-
-	var err error
-	if cfg.Id() == "" {
-		err = cfg.Create()
-	} else {
-		err = cfg.Update()
-	}
+	v, err := WriteAutoRecharge(c.Context(), org, in)
 	if err != nil {
+		switch {
+		case errors.Is(err, ErrAmountNotPositive),
+			errors.Is(err, ErrThresholdNegative),
+			errors.Is(err, ErrNoDefaultPaymentMethod):
+			return jsonhttp.Fail(c, 400, err.Error(), nil)
+		}
 		log.Error("Failed to save auto-recharge config for org %q: %v", org.Name, err, c)
 		return jsonhttp.Fail(c, 500, "failed to save auto-recharge config", err)
 	}
 
-	return c.JSON(200, autoRechargeResponse(cfg, org.Name))
+	return c.JSON(200, autoRechargeResponse(v))
 }
 
 // RechargeResult is one organization's outcome in a sweep — charged, skipped,
