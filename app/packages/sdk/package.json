@@ -29,8 +29,8 @@
     "@hanzo/commerce-types": "workspace:*"
   },
   "dependencies": {
-    "fetch-event-stream": "^0.1.5",
-    "qs": "^6.12.1"
+    "fetch-event-stream": "catalog:",
+    "qs": "catalog:"
   },
   "scripts": {
     "build": "echo '@hanzo/commerce-sdk is consumed as TS source (exports -> ./src); no compile step'",

@@ -10,26 +10,26 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hanzo/data": "1.2.4",
-    "@hanzo/font": "1.9.2",
-    "@hanzo/gui": "8.3.0",
-    "@hanzo/iam": "0.21.17",
-    "@hanzo/ui": "8.25.0",
-    "@hanzogui/config": "^8.1.1",
-    "@hanzogui/core": "^8.1.1",
-    "@hanzogui/lucide-icons-2": "^8.1.1",
-    "@hanzogui/next-theme": "^8.1.1",
-    "@hanzogui/web": "^8.1.1",
-    "next": "^15.1.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-native-web": "^0.21.0"
+    "@hanzo/data": "catalog:",
+    "@hanzo/font": "catalog:",
+    "@hanzo/gui": "catalog:",
+    "@hanzo/iam": "catalog:",
+    "@hanzo/ui": "catalog:",
+    "@hanzogui/config": "catalog:",
+    "@hanzogui/core": "catalog:",
+    "@hanzogui/lucide-icons-2": "catalog:",
+    "@hanzogui/next-theme": "catalog:",
+    "@hanzogui/web": "catalog:",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-native-web": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "typescript": "^5.7.2",
-    "react-native": "0.86.2"
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "typescript": "catalog:",
+    "react-native": "catalog:"
   }
 }

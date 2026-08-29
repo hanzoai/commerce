@@ -34,13 +34,13 @@
     "test": "exit 0"
   },
   "dependencies": {
-    "bignumber.js": "^9.1.2"
+    "bignumber.js": "catalog:"
   },
   "devDependencies": {
-    "@mikro-orm/core": "^6.6.10",
-    "@types/jsonwebtoken": "^9.0.6",
-    "awilix": "^12.0.4",
-    "rimraf": "^5.0.5",
-    "typescript": "^5.4.5"
+    "@mikro-orm/core": "catalog:",
+    "@types/jsonwebtoken": "catalog:",
+    "awilix": "catalog:",
+    "rimraf": "catalog:",
+    "typescript": "catalog:"
   }
 }
