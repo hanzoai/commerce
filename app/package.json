@@ -9,7 +9,7 @@
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
-    "turbo": "^2.3.0"
+    "turbo": "catalog:"
   },
   "packageManager": "pnpm@9.15.9",
   "engines": {
@@ -17,7 +17,7 @@
   },
   "pnpm": {
     "overrides": {
-      "@hanzo/ui": "8.25.0",
+      "@hanzo/ui": "8.27.0",
       "@hanzo/gui": "8.3.0",
       "@hanzogui/*": "8.1.1"
     }
