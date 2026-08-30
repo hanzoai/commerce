@@ -105,7 +105,7 @@ catalog:
   '@hanzo/gui': '8.3.1'
   '@hanzo/iam': '0.21.17'
   '@hanzo/logo': '1.0.26'
-  '@hanzo/ui': '8.27.0'
+  '@hanzo/ui': '8.27.2'
   '@hanzogui/config': '8.3.1'
   '@hanzogui/core': '8.3.1'
   '@hanzogui/lucide-icons-2': '8.3.1'
