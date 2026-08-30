@@ -860,7 +860,7 @@ live in `models/contributor/`; the executor is `cron/payout/contributor/`.
   `GET /payouts/preview` shows the allocation without paying.
 - **TESTNET-FIRST**: deployed config points at Hanzo testnet (chainId 36962,
   HUSD = "Lux Dollar" `0xc57b7eCE…4D66`, 18 decimals,
-  `http://hanzod.hanzo-testnet.svc.cluster.local:9630/v1/bc/C/rpc`).
+  `http://hanzod.hanzo-testnet.svc.cluster.local:9630/v1/chain/C/rpc`).
   Proven on testnet 2026-06-27: tx
   `0xe5cf03378e2d9dd121dfc5631fa112b2ea03717c9928167d54195ae785866978`
   (treasury → contributor, 25.50 HUSD, status 0x1, block 9).
@@ -868,7 +868,7 @@ live in `models/contributor/`; the executor is `cron/payout/contributor/`.
 - **MAINNET SWITCH (OFF; requires sign-off + funded mainnet treasury)**:
   `HUSD_TOKEN_ADDRESS=0xe9e32EF8aaECB68794Da3E1E9191b0a64CeC2c83`,
   `HUSD_CHAIN_ID=36963`,
-  `HUSD_RPC_URL=http://hanzod.hanzo-mainnet.svc.cluster.local:9630/v1/bc/C/rpc`,
+  `HUSD_RPC_URL=http://hanzod.hanzo-mainnet.svc.cluster.local:9630/v1/chain/C/rpc`,
   and re-point `HUSD_TREASURY_KEY` to a funded mainnet treasury.
 - **Gas note**: `thirdparty/ethereum` `GasPrice()` queries `eth_gasPrice`
   (respects the chain's 25 gwei `minBaseFee`); the old hardcoded `1` wei caused
@@ -1068,7 +1068,7 @@ read-only indexer of on-chain balances. No commerce code path can create money.
 - Provisioned a fresh HUSD test token `0xe7f1725e7734ce288f8367e1bb143e90bb3f0512`
   (the ephemeral testnet had reset — no token, unfunded treasury; funded treasury
   `0xe6da…a51a` from the genesis hardhat account `0xf39F…2266`, minted 1M HUSD to
-  treasury). Node serves the new `/v1/bc/C/rpc` surface (post `/ext→/v1` cutover).
+  treasury). Node serves the new `/v1/chain/C/rpc` surface (post `/ext→/v1` cutover).
 - Live mint tx `0xd01bc1c1733e83c93a5143552af1ba7e3ac045b2433c2fecff07a29685cf976a`
   (status 0x1, block 25): `treasury.Mint($12.34, credit)` → treasury → derived
   org addr `0x3560…9950`. Org `balanceOf` == 1234c; treasury balance dropped by
@@ -1151,7 +1151,7 @@ land step 7's deletion. Testnet-first is complete; mainnet is the sign-off.
 Config: `HUSD_TOKEN_ADDRESS`, `HUSD_CHAIN_ID`, `HUSD_RPC_URL`, `HUSD_TOKEN_DECIMALS`,
 `HUSD_TREASURY_KEY`, `HUSD_ORG_DERIVATION_SEED` (all KMS), `HUSD_INDEX_CONFIRMATIONS`
 (default 1), `HUSD_SETTLE_THRESHOLD_CENTS` (default 1). Testnet proof env: token
-`0xe7f1725e…0512`, chainId 36962, RPC `…/v1/bc/C/rpc`, treasury `0xe6dad4…a51a`.
+`0xe7f1725e…0512`, chainId 36962, RPC `…/v1/chain/C/rpc`, treasury `0xe6dad4…a51a`.
 
 ## Crypto deposit watcher — the half of the crypto rail that credits (2026-08)
 
