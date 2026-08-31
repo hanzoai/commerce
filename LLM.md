@@ -920,8 +920,8 @@ pipeline, decomplected into orthogonal pieces.
 ### The pipeline (one way, all images)
 
 ```
-arcd build  --syft-->  CycloneDX SBOM  --normalize-->  POST /v1/billing/sbom
-  (deploy)             (per image digest)               (ZAP 0x20 OR HTTP)
+image build  --syft-->  CycloneDX SBOM  --normalize-->  POST /v1/billing/sbom
+                       (per image digest)               (ZAP 0x20 OR HTTP)
                                                               |
 org usage  -->  RecordUsage  --go-->  engine.AccrueOSSPayout  v
 (charge)        (existing)            (mirrors TrackRevenueShare)
@@ -947,7 +947,7 @@ org usage  -->  RecordUsage  --go-->  engine.AccrueOSSPayout  v
 | **Accrual engine** | `billing/engine/osspayout.go` | `AccrueOSSPayout(...)` — fire-and-forget hook in `RecordUsage`, structural twin of `TrackRevenueShare`. Unions SBOM components, runs `ossattr.Attribute`, resolves funding, writes lines. |
 | **HTTP surface** | `api/billing/osspayout.go` | `POST /sbom`, `GET /sbom`, `GET /oss-accruals`, `GET /oss-payout/summary` (admin-token). |
 | **ZAP-native path** | `infra/zap_osspayout.go` | `OpSBOMIngest = 0x20` on the existing ZAP node; `RegisterSBOMIngest(store)` wired in commerce.go to the SAME `sbomrecord.Ingest`. |
-| **SBOM emit (build side)** | `arc/cmd/arcd/sbom.go` | `dockerBuilder.emitSBOM` after `docker push`: `syft <digest> -o cyclonedx-json` -> `normalizeSBOM` (pure; direct/transitive from the dep graph) -> POST. Env: `SBOM_INGEST_URL/TOKEN/ORG`. Best-effort (never fails the build). |
+| **SBOM emit (build side)** | — | **No producer reaches commerce.** `hanzoai/.github` `docker-build.yml` has an `sbom` job (`syft` -> SPDX + CycloneDX, `cosign attach sbom`, best-effort) that attaches the document to the image in the registry, retrievable by `cosign download sbom <ref>`; `hanzoai/ci` `build.yml` — the reusable the fleet imports — emits none. Nothing normalizes direct-vs-transitive or POSTs to `/v1/billing/sbom`, so the ingest below has no caller. Closing it means either a `normalizeSBOM` + POST step in the build path, or a consumer that pulls with `cosign download sbom`. |
 
 ### The 25% math
 
@@ -969,8 +969,6 @@ whole pool **held**, never invented or lost.
   react transitive=250c->**held**; idempotent (2 fires -> 1 line); no-SBOM no-op.
 - `api/billing` (HTTP, real router): ingest -> summary rollup; cap + held +
   resolution proven over the wire.
-- `arc/cmd/arcd`: `normalizeSBOM` CycloneDX->ingest with direct/transitive
-  graph tagging + PURL-less drop.
 
 ### Money-out (designed, creds-gated — NO fake payouts)
 
