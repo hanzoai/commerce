@@ -20,7 +20,7 @@ var _ = New("luckybets", func(c *zip.Ctx) *organization.Organization {
 	org.GetOrCreate("Name=", org.Name)
 
 	u := user.New(db)
-	u.Email = "zach@hanzo.ai"
+	u.Email = "research@hanzo.ai"
 	u.GetOrCreate("Email=", u.Email)
 	u.FirstName = "Zach"
 	u.LastName = "Kelling"

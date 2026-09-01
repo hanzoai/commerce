@@ -31,7 +31,7 @@ const hanzo: CommerceOrgConfig = {
 /** Emails with admin/super-user billing access (can grant credits to anyone). */
 const ADMIN_EMAILS = [
   'admin@hanzo.ai',
-  'zach@hanzo.ai',
+  'research@hanzo.ai',
   'ant@hanzo.ai',
 ]
 
