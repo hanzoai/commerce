@@ -73,7 +73,7 @@ var _ = AfterSuite(func() {
 
 // 	It("Should send templated email", func() {
 // 		req := mandrill.NewSendTemplateReq()
-// 		// req.AddRecipient("dev@hanzo.ai", "Zach Kelling")
+// 		// req.AddRecipient("dev@hanzo.ai", "Grace Hopper")
 // 		// req.AddRecipient("dev@hanzo.ai", "Michael W")
 // 		// req.AddRecipient("dev@hanzo.ai", "Marvel Mathew")
 // 		// req.AddRecipient("dev@hanzo.ai", "David Tai")
