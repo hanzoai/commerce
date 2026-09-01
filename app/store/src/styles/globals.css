@@ -24,7 +24,7 @@
    touching font-size, which is what every rem in this app is measured against.
    Zen Mono replaces Geist Mono — same lineage, same metrics, no correction. */
 @font-face {
-  font-family: "Zen";
+  font-family: Zen, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-weight: 497;
   font-style: normal;
   font-display: swap;
@@ -33,7 +33,7 @@
 }
 
 @font-face {
-  font-family: "Zen";
+  font-family: Zen, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-weight: 606;
   font-style: normal;
   font-display: swap;
@@ -42,7 +42,7 @@
 }
 
 @font-face {
-  font-family: "Zen Mono";
+  font-family: Zen Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
@@ -52,9 +52,9 @@
 /* The two names the component layer reads (@hanzo/ui declares them, this rebinds
    them to Zen). Tailwind's own `font-sans`/`font-mono` come from the preset. */
 :root {
-  --font-sans: "Zen", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-display: var(--font-sans);
-  --font-mono: "Zen Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: Zen, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: Zen, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: Zen Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
 @layer utilities {
