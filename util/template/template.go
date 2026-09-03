@@ -14,6 +14,7 @@ import (
 	"github.com/hanzoai/commerce/models/types/thankyou"
 	"github.com/hanzoai/commerce/util/fs"
 	"github.com/hanzoai/commerce/util/json"
+	"sync"
 )
 
 var cwd, _ = os.Getwd()
@@ -70,22 +71,29 @@ func createTemplateSet() *pongo2.TemplateSet {
 		CurrencyTypes      []currency.Type
 		ThankYouTypes      []thankyou.Type
 	}{
-		CountriesByISOCode: country.ByISO3166_2,
-		Countries:          country.Countries,
+		CountriesByISOCode: country.ByISO(),
+		Countries:          country.All(),
 		CurrencyTypes:      currency.Types,
 		ThankYouTypes:      thankyou.Types,
 	}
 	return set
 }
 
-var templateSet = createTemplateSet()
+// templateSet is built on FIRST RENDER, not at init.
+//
+// It was a package-level var, so every process linking this package built the whole
+// global environment before it could listen — including a `constants` global holding
+// all 249 countries, which forced 5.1 MB of YAML through a parser (121 ms, measured)
+// for a value no template in this repository reads. A template set is what renders a
+// template; a process that renders none needs none.
+var templateSet = sync.OnceValue(createTemplateSet)
 
 func getTemplate(path string) *pongo2.Template {
 	// All templates are expected to be in templates dir
 	templatePath := cwd + "/templates/" + path
 
 	// Get template from cache
-	template, err := templateSet.FromCache(templatePath)
+	template, err := templateSet().FromCache(templatePath)
 	if err != nil {
 		log.Panic("Unable to fetch template: %v\n\n%v", templatePath, err)
 	}
