@@ -47,11 +47,15 @@ func Verbose() bool {
 }
 
 func Debug(formatOrError interface{}, args ...interface{}) {
-	args = std.parseArgs(args...)
-
+	// ASK FIRST. parseArgs is not free and it is not pure: it type-switches every
+	// argument and it MUTATES the backend's context as a side effect, so running it
+	// ahead of this check meant a debug line nobody would print still cost its
+	// arguments and still moved shared state. Measured on the commerce plugin's
+	// boot, that is 394 discarded calls before the process can listen.
 	if !std.Verbose() {
 		return
 	}
+	args = std.parseArgs(args...)
 
 	switch v := formatOrError.(type) {
 	case error:
