@@ -77,7 +77,7 @@ func orderMessage(settings email.Setting, ord *order.Order, usr *user.User, pay 
 	m := userMessage(settings, usr, org)
 
 	currencyCode := strings.ToUpper(ord.Currency.Code())
-	countryName := country.ByISO3166_2[ord.ShippingAddress.Country].Name.Common
+	countryName := country.ByISO()[ord.ShippingAddress.Country].Name.Common
 	stateName := ord.ShippingAddress.State
 	if len(stateName) <= 2 {
 		stateName = strings.ToUpper(stateName)
