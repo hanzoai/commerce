@@ -10,14 +10,14 @@ import (
 )
 
 var _ = Describe("models/types/country", func() {
-	Context("Countries", func() {
+	Context("All()", func() {
 		It("should be populated", func() {
-			Expect(len(Countries)).To(Equal(249))
+			Expect(len(All())).To(Equal(249))
 		})
 
 		It("should be sorted", func() {
 			cs := make([]string, 0)
-			for _, c := range Countries {
+			for _, c := range All() {
 				cs = append(cs, c.Name.Common)
 			}
 
