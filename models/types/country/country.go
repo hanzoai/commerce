@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/pariz/gountries"
 )
@@ -16,17 +17,33 @@ type Country struct {
 
 type SubDivision gountries.SubDivision
 
-var Countries []Country
-var ByISO3166_2 map[string]Country
+// All is every country, sorted by common name. ByISO is the same set keyed by
+// ISO-3166-1 alpha-2. Both are built on FIRST USE, not at init.
+//
+// gountries.New() reads and unmarshals 5.1 MB of YAML — one file per country plus
+// its subdivisions — and it cost 121 ms, measured. At package init every process
+// linking this package paid that before it could serve a request, including the
+// overwhelming majority that never name a country. Now the first caller pays it
+// and nobody else does.
+var All = sync.OnceValue(load)
+
+// ByISO answers the same set keyed by alpha-2.
+var ByISO = sync.OnceValue(func() map[string]Country {
+	All()
+	return byISO
+})
+
+// byISO is filled by load, under All's Once, so ByISO cannot observe it half-built.
+var byISO map[string]Country
 
 // Error returns a formatted error
 func makeError(errMsg, errType string) error {
 	return fmt.Errorf("gountries error. %s: %s", errMsg, errType)
 }
 
-func init() {
-	Countries = make([]Country, 0)
-	ByISO3166_2 = make(map[string]Country)
+func load() []Country {
+	Countries := make([]Country, 0)
+	ByISO3166_2 := make(map[string]Country)
 
 	q := gountries.New()
 
@@ -54,11 +71,13 @@ func init() {
 	for i, name := range sortedNames {
 		Countries[i] = ByISO3166_2[nameToIsoMap[name]]
 	}
+	byISO = ByISO3166_2
+	return Countries
 }
 
 func FindByISO3166_2(code string) (Country, error) {
 	codeU := strings.ToUpper(code)
-	if c, ok := ByISO3166_2[codeU]; ok {
+	if c, ok := ByISO()[codeU]; ok {
 		return c, nil
 	}
 

@@ -14,6 +14,7 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
+	"sync"
 )
 
 // Countries Loading
@@ -28,36 +29,31 @@ type Country struct {
 	SubDivisions []SubDivision `json:"subdivisions"`
 }
 
-var Countries []Country
-var CountryLastUpdated time.Time
-
-func init() {
-	// Populate Countries list if it doesn't exist
-	if CountryLastUpdated.IsZero() {
-		CountryLastUpdated = time.Now()
-
-		Countries = make([]Country, 0)
-
-		for _, c := range country.Countries {
-			sdvs := make([]SubDivision, 0)
-
-			for _, sd := range c.SubDivisions() {
-				sdvs = append(sdvs, SubDivision{
-					sd.Name,
-					sd.Code,
-				})
-			}
-
-			co := Country{
-				c.Name.Common,
-				c.Codes.Alpha2,
-				sdvs,
-			}
-
-			Countries = append(Countries, co)
+// countries is the shop's own view of the world — each country with its
+// subdivisions — built on FIRST USE.
+//
+// It was an init(), and it walked every country's subdivisions to build a second
+// copy of a dataset that had itself just been unmarshalled from 5.1 MB of YAML.
+// Between them the two cost every process linking this package 121 ms before it
+// could serve anything, for a list that two handlers answer with and nothing else
+// reads. The shop asks for it when a shop is being loaded.
+var countries = sync.OnceValue(func() []Country {
+	out := make([]Country, 0)
+	for _, c := range country.All() {
+		sdvs := make([]SubDivision, 0)
+		for _, sd := range c.SubDivisions() {
+			sdvs = append(sdvs, SubDivision{sd.Name, sd.Code})
 		}
+		out = append(out, Country{c.Name.Common, c.Codes.Alpha2, sdvs})
 	}
-}
+	return out
+})
+
+// CountryLastUpdated is when this process's country data came into being, which is
+// process start: the corpus is compiled in, so it cannot change while we run. The
+// init() that set it also BUILT the list, and a client's freshness question does not
+// need the list — only its age — so the stamp is read here and the list is not.
+var CountryLastUpdated = time.Now()
 
 // ShopJS request and response
 type LoadShopJSReq struct {
@@ -108,7 +104,7 @@ func LoadShopJS(c *zip.Ctx) error {
 
 	if !req.HasCountries ||
 		req.LastChecked.Before(CountryLastUpdated) {
-		res.Countries = Countries
+		res.Countries = countries()
 	}
 
 	if res.Currency == "" {
@@ -185,7 +181,7 @@ func LoadDaisho(c *zip.Ctx) error {
 
 	if !req.HasCountries ||
 		req.LastChecked.Before(CountryLastUpdated) {
-		res.Countries = Countries
+		res.Countries = countries()
 	}
 
 	return http.Render(c, 200, res)

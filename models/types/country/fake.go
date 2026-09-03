@@ -6,5 +6,6 @@ import (
 )
 
 func Fake() string {
-	return strings.ToLower(Countries[rand.Intn(len(Countries))].Codes.Alpha2)
+	all := All()
+	return strings.ToLower(all[rand.Intn(len(all))].Codes.Alpha2)
 }
