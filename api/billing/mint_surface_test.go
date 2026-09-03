@@ -872,7 +872,6 @@ type mintRoute struct{ method, path, handler string }
 
 // TestMintSurface_EveryMintRouteGatedOrProvablyUserSafe is the enumeration guard.
 func TestMintSurface_EveryMintRouteGatedOrProvablyUserSafe(t *testing.T) {
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 
 	reaches := mintReachingFuncs(t)
 

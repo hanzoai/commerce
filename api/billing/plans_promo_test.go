@@ -14,9 +14,7 @@ import (
 	"github.com/hanzoai/commerce/api/promo"
 	"github.com/hanzoai/commerce/datastore"
 	promotionModel "github.com/hanzoai/commerce/models/promotion"
-	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/nscontext"
-	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
@@ -35,7 +33,7 @@ func TestPlans_SurfaceActivePromo(t *testing.T) {
 
 	a := zip.New(zip.Config{DisableStartupMessage: true})
 	a.Use(zip.H(func(c *zip.Ctx) error {
-		c.Locals("permissions", bit.Field(permission.Admin|permission.Live)) // SuperAdmin
+		platformApp(c) // the platform, as its own application
 		return c.Next()
 	}))
 	a.Put("/v1/platform/promo", promo.PutPromo)

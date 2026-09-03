@@ -31,7 +31,6 @@ import (
 // MintRoutes() as the set of paths its service-token bridge must never forward:
 // a declaration that did not enforce would be worse than no declaration at all.
 func TestMintRegistry_DeclarationImpliesEnforcement(t *testing.T) {
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 
 	eng := orgAdminEngine(t) // registers the real Route() → populates the registry
 	routes := middleware.MintRoutes()
@@ -82,7 +81,6 @@ func TestMintRegistry_DeclarationImpliesEnforcement(t *testing.T) {
 // registry is what protects them, which is precisely why the two checks are
 // worth keeping independent: neither derivation can see everything the other does.
 func TestMintRegistry_AgreesWithASTSurface(t *testing.T) {
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 
 	reaches := mintReachingFuncs(t)
 	astRoutes := registeredMintRoutes(t, reaches) // registers → also populates the registry

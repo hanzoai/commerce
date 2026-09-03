@@ -65,7 +65,7 @@ const (
 // Header carrying the tenant org slug for commerce namespace resolution.
 // Commerce's service-token auth reads the org from X-Org-Id
 // (commerce/middleware/accesstoken.go TokenRequired: c.GetHeader("X-Org-Id"));
-// without it commerce falls back to COMMERCE_SERVICE_ORG, then "hanzo" — which
+// without it commerce falls back to "hanzo" — which
 // would silently debit the wrong tenant.
 const headerOrg = "X-Org-Id"
 

@@ -56,19 +56,20 @@ func iamIdentity(claims *auth.IAMClaims) func(*zip.Ctx) {
 	}
 }
 
-// TestSyncGate_AdmitsTheServiceToken is the regression. The sync endpoints were
+// TestSyncGate_AdmitsThePlatformApp is the regression. The sync endpoints were
 // gated on SuperAdmin CLAIMS, which the internal service token does not carry,
 // so the scheduled run this catalog depends on could only ever 403 — and the
 // model rows were in fact empty in production. A sync a human has to start is a
 // catalog that goes stale.
-func TestSyncGate_AdmitsTheServiceToken(t *testing.T) {
+func TestSyncGate_AdmitsThePlatformApp(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
 
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "s3cret-service-token")
-	status, admitted := probeGate(t, requirePlatform, nil, "s3cret-service-token")
+	app := &auth.IAMClaims{Owner: "admin"}
+	app.Subject = "app_catalog_sync"
+	status, admitted := probeGate(t, requirePlatform, iamIdentity(app), "")
 	if status != http.StatusOK || !admitted {
-		t.Fatalf("service token on the sync gate: status=%d admitted=%v, want 200 & admitted", status, admitted)
+		t.Fatalf("platform app on the sync gate: status=%d admitted=%v, want 200 & admitted", status, admitted)
 	}
 }
 
@@ -79,7 +80,6 @@ func TestSyncGate_RefusesAnOrgAdmin(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
 
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 	orgAdmin := &auth.IAMClaims{Owner: "acme", IsAdmin: true}
 	status, admitted := probeGate(t, requirePlatform, iamIdentity(orgAdmin), "")
 	if status != http.StatusForbidden || admitted {
@@ -87,19 +87,21 @@ func TestSyncGate_RefusesAnOrgAdmin(t *testing.T) {
 	}
 }
 
-// TestEditGate_RefusesTheServiceToken is the other half of the widening, and the
-// one that keeps it honest: the token may land upstream COST on the sync endpoint and
+// TestEditGate_RefusesAnOpaqueBearer is the other half of the widening, and the
+// one that keeps it honest: a bearer that is not a validated identity lands nowhere,
+// on the sync endpoint or here. Editing an entry — which is how a retail price is
+// set — takes an admin-org identity like the sync does, and the difference between
+// a person and the platform's application is IAM's to draw, not a secret's.
 // nothing more. Editing an entry — which is how a retail price is set — stays a
 // named human in the admin org, so possession of a service credential can never
 // change what a customer is charged.
-func TestEditGate_RefusesTheServiceToken(t *testing.T) {
+func TestEditGate_RefusesAnOpaqueBearer(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
 
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "s3cret-service-token")
-	status, admitted := probeGate(t, requireSuperAdmin, nil, "s3cret-service-token")
-	if status != http.StatusForbidden || admitted {
-		t.Fatalf("service token on the entry-edit gate: status=%d admitted=%v, want 403 & refused", status, admitted)
+	status, admitted := probeGate(t, requireSuperAdmin, nil, "not-an-identity")
+	if status == http.StatusOK || admitted {
+		t.Fatalf("opaque bearer on the entry-edit gate: status=%d admitted=%v, want refused", status, admitted)
 	}
 }
 
@@ -109,7 +111,6 @@ func TestSyncGate_AdmitsASuperAdmin(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
 
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 	superAdmin := &auth.IAMClaims{Owner: "admin", IsAdmin: true}
 	status, admitted := probeGate(t, requirePlatform, iamIdentity(superAdmin), "")
 	if status != http.StatusOK || !admitted {

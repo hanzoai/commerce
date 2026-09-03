@@ -56,9 +56,15 @@ func orgAdmin(c *zip.Ctx) {
 
 // mintPrincipal is the internal service token (cloud-api → commerce): carries the
 // Admin permission AND the verified service-token marker → MayMintMoney true.
+// mintPrincipal is the platform's own application: an IAM identity minted under
+// the reserved admin org, which IsSuperAdmin() admits. It stands where a shared
+// service token used to.
 func mintPrincipal(c *zip.Ctx) {
+	c.Locals("iam_authenticated", true)
 	c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
-	c.Locals("service_token_verified", true)
+	cl := &auth.IAMClaims{Owner: "admin"}
+	cl.Subject = "app_platform"
+	c.Locals("iam_claims", cl)
 }
 
 func moneyOrg(name string) *organization.Organization {

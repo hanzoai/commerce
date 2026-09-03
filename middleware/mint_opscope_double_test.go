@@ -7,6 +7,8 @@ import (
 
 	"github.com/zap-proto/zip"
 
+	"github.com/hanzoai/commerce/auth"
+	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
@@ -29,14 +31,15 @@ import (
 // This asserts the COUNT, because "reached" cannot tell one run from two, and on
 // a ledger path that difference is the whole point.
 func TestMintOpScope_AuthorizedOpRunsHandlerOnce(t *testing.T) {
-	const tok = "svc-secret-xyz"
-	t.Setenv("COMMERCE_SERVICE_TOKEN", tok)
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
 	runs := 0
+	platform := &auth.IAMClaims{Owner: "admin"}
+	platform.Subject = "app_platform"
+	identity := iamIdentity(bit.Field(permission.Admin|permission.Live), platform)
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Use(zip.H(func(c *zip.Ctx) error { c.SetContext(ctx); return c.Next() }))
+	app.Use(zip.H(func(c *zip.Ctx) error { c.SetContext(ctx); identity(c); return c.Next() }))
 	app.Use(TokenRequired(permission.Admin))
 
 	// Register the way a TYPED OP does: take the gated router's OpScope and let
@@ -50,7 +53,6 @@ func TestMintOpScope_AuthorizedOpRunsHandlerOnce(t *testing.T) {
 	app.Post("/x", h)
 
 	req := httptest.NewRequest(http.MethodPost, "/x", nil)
-	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Org-Id", "svc-org")
 	resp, err := app.Test(req)
 	if err != nil {
@@ -70,7 +72,6 @@ func TestMintOpScope_AuthorizedOpRunsHandlerOnce(t *testing.T) {
 // handler must not run at all. A double-execution fix that also opened the gate
 // would trade one defect for a worse one.
 func TestMintOpScope_UnauthorizedOpNeverReachesHandler(t *testing.T) {
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "svc-secret-xyz")
 	ctx := ae.NewContext()
 	defer ctx.Close()
 

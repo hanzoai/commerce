@@ -89,7 +89,7 @@ func ZapDispatch(c *zip.Ctx) error {
 		if !middleware.MayMintMoney(c) {
 			return httperr.Fail(c, 403,
 				"This operation requires platform-administrator or internal-service credentials.",
-				errors.New("ZAP money-mint method: caller is neither the internal service token nor a platform global admin"))
+				errors.New("ZAP money-mint method: caller is not a platform admin"))
 		}
 		// Proven mint principal → authorize the ledger sink so zapDeposit's write
 		// passes mintauth.Enforce (its datastore is built after this via

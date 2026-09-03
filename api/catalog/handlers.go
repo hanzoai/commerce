@@ -61,7 +61,7 @@ func requireSuperAdmin(c *zip.Ctx) bool {
 func requirePlatform(c *zip.Ctx) bool {
 	if !middleware.IsPlatform(c) {
 		http.Fail(c, 403, "platform administrator or internal-service credentials required to sync the catalog",
-			errors.New("caller is neither the internal service token nor a platform admin"))
+			errors.New("caller is not a platform admin"))
 		return false
 	}
 	return true
