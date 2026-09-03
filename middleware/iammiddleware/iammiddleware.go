@@ -193,9 +193,7 @@ func IAMTokenRequired() zip.Handler {
 		// Nothing legitimate loses access, because this branch was never how the
 		// credentialed callers authenticate:
 		//   - the internal service token is checked FIRST, ahead of the IAM branch
-		//     (middleware/accesstoken.go) — its comment even notes that an S2S call
-		//     "carries no X-User-Permissions" yet IAMTokenRequired stamped it
-		//     authenticated anyway, which is this bug seen from the other side;
+		//     (middleware/accesstoken.go);
 		//   - a legacy per-org access token is verified in its own later branch;
 		//   - a real user always carries X-User-Id, minted from their validated JWT.
 		// What is refused is precisely the credential-less org selector.
@@ -237,6 +235,18 @@ func IAMTokenRequired() zip.Handler {
 		// no Live. The gateway is the trust boundary; this binary
 		// trusts the bits it provides and nothing else.
 		perms := parsePermissionsHeader(c.Header(HeaderUserPermissions))
+		// The platform principal — home owner "admin", a SuperAdmin or the
+		// platform's own application — holds the Admin bit by what it IS, not by
+		// a permissions header. The gateway mints no X-User-Permissions for it,
+		// and a shared service token used to supply these bits in a branch of
+		// its own; that token is gone, so the claim supplies them.
+		if strings.EqualFold(strings.TrimSpace(c.Header(HeaderUserOwner)), "admin") {
+			if liveFromHeaders(c) {
+				perms |= bit.Field(permission.Admin | permission.Live)
+			} else {
+				perms |= bit.Field(permission.Admin | permission.Test)
+			}
+		}
 
 		// An ORG-level admin (gateway/EdgeAuth-minted X-User-IsAdmin=="true", e.g.
 		// an org owner like maxpower) additionally carries org-SCOPED merchant
