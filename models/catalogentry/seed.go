@@ -433,18 +433,37 @@ func SeedEnsoModels(db *datastore.Datastore) (created int, err error) {
 	return created, nil
 }
 
-// SeedEnsoModelsIfEmpty seeds the Enso family only when NO enso row is present
-// yet, so it is safe on every bootstrap (mirrors SeedInfraIfEmpty). Gated on the
-// enso category alone — per-family, so seeding Enso is independent of Zen, of
-// the third-party mirror, and of the product catalog. Once any enso row exists
-// it never re-runs, leaving CMS state (including deletions) authoritative.
+// SeedEnsoModelsIfEmpty seeds the Enso family only when this seed has never been
+// applied, so it is safe on every bootstrap (mirrors SeedInfraIfEmpty). Gated
+// per-family, so seeding Enso is independent of Zen, of the third-party mirror,
+// and of the product catalog. Once the seed has run it never re-runs, leaving CMS
+// state — INCLUDING DELETIONS — authoritative.
+//
+// "Has this seed been applied" is asked of the SEED'S OWN SLUGS, not of the enso
+// category. It used to count category rows, which answers a different question
+// and got it wrong in production: a deployment carried one enso row that this
+// seed does not contain (enso-free, created by another path), the count came back
+// non-zero, and the five SKUs the enso service actually sells — enso, enso-flash,
+// enso-ultra and the two vision rows — were never created. The catalog served a
+// single free tier while every paid tier 400'd as an unknown model, and the guard
+// read as working correctly the whole time.
+//
+// A foreign row cannot answer whether we have seeded, so it no longer votes. A
+// row we DID seed still does, which is what keeps a deletion authoritative.
 func SeedEnsoModelsIfEmpty(db *datastore.Datastore) (created int, err error) {
-	n, cerr := Query(db).Filter("Category=", CategoryEnso).Count()
-	if cerr != nil {
-		return 0, cerr
+	rows, err := EnsoSeedRows()
+	if err != nil {
+		return 0, err
 	}
-	if n > 0 {
-		return 0, nil
+	for _, r := range rows {
+		e := New(db)
+		ok, qerr := e.Query().Filter("Slug=", r.Slug).Get()
+		if qerr != nil {
+			return 0, qerr
+		}
+		if ok {
+			return 0, nil // the seed has run; curation wins from here
+		}
 	}
 	return SeedEnsoModels(db)
 }
