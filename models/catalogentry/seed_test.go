@@ -1,6 +1,7 @@
 package catalogentry
 
 import (
+	"github.com/hanzoai/commerce/util/test/ae"
 	"strings"
 	"testing"
 )
@@ -251,5 +252,74 @@ func TestEnsoSeedKeepsTheVisionEnginesUnlisted(t *testing.T) {
 		if !internal[r.Slug] && !r.Published {
 			t.Errorf("%s is seeded unpublished — the three public SKUs must be listed for discovery", r.Slug)
 		}
+	}
+}
+
+// TestEnsoSeedIsNotBlockedByAForeignRow is the production defect, pinned.
+//
+// A deployment carried one enso-category row this seed does not contain
+// (enso-free, created by another path). The old guard counted CATEGORY rows, saw
+// one, and skipped — so enso, enso-flash and enso-ultra were never created and
+// every paid tier answered as an unknown model while the catalog served a lone
+// free tier. Nothing went red: the guard was doing exactly what it said.
+func TestEnsoSeedIsNotBlockedByAForeignRow(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	// A row in the enso category that the seed does not contain.
+	foreign := New(db)
+	foreign.Slug = "enso-free"
+	foreign.Name = "Enso Free"
+	foreign.Category = CategoryEnso
+	if err := foreign.Put(); err != nil {
+		t.Fatalf("seeding the foreign row: %v", err)
+	}
+
+	created, err := SeedEnsoModelsIfEmpty(db)
+	if err != nil {
+		t.Fatalf("SeedEnsoModelsIfEmpty: %v", err)
+	}
+	if created == 0 {
+		t.Fatal("a foreign enso row blocked the seed — the paid tiers would never exist")
+	}
+	for _, slug := range []string{"enso", "enso-flash", "enso-ultra"} {
+		e := New(db)
+		ok, qerr := e.Query().Filter("Slug=", slug).Get()
+		if qerr != nil {
+			t.Fatalf("query %s: %v", slug, qerr)
+		}
+		if !ok {
+			t.Errorf("%s was not seeded", slug)
+		}
+	}
+}
+
+// TestEnsoSeedRespectsCuration is the half the guard exists for: once the seed
+// HAS run, a deletion is authoritative and re-running must not resurrect it.
+func TestEnsoSeedRespectsCuration(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	if _, err := SeedEnsoModelsIfEmpty(db); err != nil {
+		t.Fatalf("first seed: %v", err)
+	}
+	// An admin retires one SKU.
+	e := New(db)
+	ok, err := e.Query().Filter("Slug=", "enso-ultra").Get()
+	if err != nil || !ok {
+		t.Fatalf("enso-ultra missing after the seed: ok=%v err=%v", ok, err)
+	}
+	if err := e.Delete(); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+
+	created, err := SeedEnsoModelsIfEmpty(db)
+	if err != nil {
+		t.Fatalf("second seed: %v", err)
+	}
+	if created != 0 {
+		t.Errorf("re-seeded %d rows after the seed had run — a deletion must stay deleted", created)
 	}
 }
