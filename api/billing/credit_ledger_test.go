@@ -127,13 +127,11 @@ func ledgerEngine(t *testing.T, seed func(*zip.Ctx)) *zip.App {
 // the endpoint calls CreditLedger.Credit with the exact CreditInput, and
 // GET /billing/balance?user=<org> reflects it via the SAME org account.
 func TestCredit_InjectedLedger_RoutesAndReflects(t *testing.T) {
-	const tok = "svc-ledger"
-	t.Setenv("COMMERCE_SERVICE_TOKEN", tok)
 	fake := newFakeLedger()
 	injectLedger(t, fake)
 
-	eng := ledgerEngine(t, nil)
-	resp := postCredit(eng, tok, "acme", `{"org":"acme","amountCents":500,"reason":"welcome","tag":"starter-credit","currency":"usd"}`)
+	eng := ledgerEngine(t, platformApp)
+	resp := postCredit(eng, "", "acme", `{"org":"acme","amountCents":500,"reason":"welcome","tag":"starter-credit","currency":"usd"}`)
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("service-token credit (ledger): status=%d body=%s, want 201", resp.StatusCode, respBodyStr(resp))
 	}
@@ -156,7 +154,7 @@ func TestCredit_InjectedLedger_RoutesAndReflects(t *testing.T) {
 	}
 
 	// GET balance reads the SAME org account → reflects the credit (one ledger).
-	if bal := getBalanceCents(t, eng, tok, "acme"); bal != 500 {
+	if bal := getBalanceCents(t, eng, "", "acme"); bal != 500 {
 		t.Fatalf("GET balance for acme=%d, want 500 (credit must be visible on the same account)", bal)
 	}
 }
@@ -165,7 +163,6 @@ func TestCredit_InjectedLedger_RoutesAndReflects(t *testing.T) {
 // a ledger injected: an org admin is 403 and the ledger is NEVER called (a user can
 // still not credit itself, even through the injected ledger).
 func TestCredit_InjectedLedger_OrgAdminStill403(t *testing.T) {
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 	fake := newFakeLedger()
 	injectLedger(t, fake)
 
@@ -182,20 +179,18 @@ func TestCredit_InjectedLedger_OrgAdminStill403(t *testing.T) {
 // TestCredit_InjectedLedger_Idempotent proves idempotency is honored through the
 // interface: same idempotencyKey ⇒ one credit, same tx id, balance not doubled.
 func TestCredit_InjectedLedger_Idempotent(t *testing.T) {
-	const tok = "svc-ledger-idem"
-	t.Setenv("COMMERCE_SERVICE_TOKEN", tok)
 	fake := newFakeLedger()
 	injectLedger(t, fake)
 
-	eng := ledgerEngine(t, nil)
+	eng := ledgerEngine(t, platformApp)
 	body := `{"org":"idem","amountCents":250,"reason":"promo","idempotencyKey":"once"}`
 
-	first := decodeJSON(t, postCredit(eng, tok, "idem", body))
-	second := decodeJSON(t, postCredit(eng, tok, "idem", body))
+	first := decodeJSON(t, postCredit(eng, "", "idem", body))
+	second := decodeJSON(t, postCredit(eng, "", "idem", body))
 	if first["id"] != second["id"] || first["id"] == "" {
 		t.Fatalf("idempotent replay: first id=%v second id=%v, want equal non-empty", first["id"], second["id"])
 	}
-	if bal := getBalanceCents(t, eng, tok, "idem"); bal != 250 {
+	if bal := getBalanceCents(t, eng, "", "idem"); bal != 250 {
 		t.Fatalf("after two same-key credits, balance=%d, want 250 (one grant)", bal)
 	}
 }
@@ -203,13 +198,11 @@ func TestCredit_InjectedLedger_Idempotent(t *testing.T) {
 // TestCredit_InjectedLedger_MultiCurrency proves currency flows through to the
 // ledger and keys a distinct per-currency account.
 func TestCredit_InjectedLedger_MultiCurrency(t *testing.T) {
-	const tok = "svc-ledger-cur"
-	t.Setenv("COMMERCE_SERVICE_TOKEN", tok)
 	fake := newFakeLedger()
 	injectLedger(t, fake)
 
-	eng := ledgerEngine(t, nil)
-	if resp := postCredit(eng, tok, "fx", `{"org":"fx","amountCents":900,"reason":"eur grant","currency":"eur"}`); resp.StatusCode != http.StatusCreated {
+	eng := ledgerEngine(t, platformApp)
+	if resp := postCredit(eng, "", "fx", `{"org":"fx","amountCents":900,"reason":"eur grant","currency":"eur"}`); resp.StatusCode != http.StatusCreated {
 		t.Fatalf("eur credit: status=%d body=%s", resp.StatusCode, respBodyStr(resp))
 	}
 	if fake.lastIn.Currency != "eur" {
@@ -217,7 +210,6 @@ func TestCredit_InjectedLedger_MultiCurrency(t *testing.T) {
 	}
 	// usd account is untouched; eur holds the grant.
 	req := httptest.NewRequest(http.MethodGet, "/v1/billing/balance?user=fx&currency=eur", nil)
-	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Org-Id", "fx")
 	resp, _ := eng.Test(req)
 	if bc, _ := decodeJSON(t, resp)["balance"].(float64); int64(bc) != 900 {

@@ -81,7 +81,6 @@ func TestGroupUseIsMembershipScopedNotPrefix(t *testing.T) {
 // declaration: the route is recorded with the full path fiber routes on, and the
 // gate is really in its chain (an ungated caller is refused before the handler).
 func TestMintRecordsFullPathAndGates(t *testing.T) {
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 
 	app := zip.New(zip.Config{DisableStartupMessage: true})
 	api := app.Group("/v1").Group("billing")

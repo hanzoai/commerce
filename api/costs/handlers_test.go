@@ -65,8 +65,8 @@ func TestRequireCostsAdmin(t *testing.T) {
 		{"superadmin (owner==home==admin)", iamUser("u1", "admin", false, false), adminPerms(), true},
 		// The trusted M2M service token: Admin bit AND no IAM user identity (empty
 		// Subject). This is the console's own global-admin-gated proxy forwarding.
-		{"service token (Admin bit, no IAM user)", &auth.IAMClaims{}, adminPerms(), true},
-		{"service token (no claims at all, Admin bit)", nil, adminPerms(), true},
+		{"legacy token (Admin bit, no IAM user) — REJECT", &auth.IAMClaims{}, adminPerms(), false},
+		{"no claims at all, Admin bit — REJECT", nil, adminPerms(), false},
 
 		// ── The attacks that MUST be refused ──
 		// An org-level admin tenant: the gateway mints permission.Admin from IsAdmin

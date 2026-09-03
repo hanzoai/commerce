@@ -31,6 +31,18 @@ import (
 // orgAdminSeed sets the exact C1 adversary: an org-level admin (org-level
 // isAdmin, NOT a SuperAdmin) — a gateway-minted org owner or legacy per-org
 // Admin token. NOT the internal service token, NOT a platform global admin.
+// platformApp stamps the identity the platform's own service work carries: an
+// application IAM minted under the reserved admin org (client_credentials), which
+// IsSuperAdmin() admits because its home owner is "admin". It stands where a shared
+// COMMERCE_SERVICE_TOKEN used to, and it is the same locals the boundary mints.
+func platformApp(c *zip.Ctx) {
+	c.Locals("iam_authenticated", true)
+	c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
+	cl := &auth.IAMClaims{Owner: "admin"}
+	cl.Subject = "app_platform"
+	c.Locals("iam_claims", cl)
+}
+
 func orgAdminSeed(c *zip.Ctx) {
 	c.Locals("iam_authenticated", true)
 	c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
@@ -49,7 +61,6 @@ func respBodyStr(r *http.Response) string {
 }
 
 func TestZapDeposit_OrgAdminDenied(t *testing.T) {
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 	eng := engineWithSeed(orgAdminSeed)
 
 	body := `{"method":"billing.deposit","params":{"user":"acme","amount":100000000,"currency":"usd"}}`
@@ -65,20 +76,17 @@ func TestZapDeposit_OrgAdminDenied(t *testing.T) {
 	}
 }
 
-// TestZapDeposit_ServiceTokenMints proves the legitimate path still mints: the
+// TestZapDeposit_PlatformAppMints proves the legitimate path still mints: the
 // internal service token reaches zapDeposit and creates the deposit (200 with a
 // result). cloud-api authenticates exactly this way.
-func TestZapDeposit_ServiceTokenMints(t *testing.T) {
-	const tok = "svc-zap-mint"
-	t.Setenv("COMMERCE_SERVICE_TOKEN", tok)
+func TestZapDeposit_PlatformAppMints(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
-	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx) })
+	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx); platformApp(c) })
 	body := `{"method":"billing.deposit","id":"z1","params":{"user":"zapmintorg","amount":250,"currency":"usd"}}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/zap", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Org-Id", "zapmintorg")
 	resp, terr := eng.Test(req)
 	if terr != nil {
@@ -108,7 +116,6 @@ func TestZapDeposit_ServiceTokenMints(t *testing.T) {
 // admin can still call the ZAP read method (billing.getBalance) — only the mint
 // method is gated.
 func TestZapReads_OrgAdminNotBlocked(t *testing.T) {
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
@@ -144,7 +151,6 @@ func TestZapReads_OrgAdminNotBlocked(t *testing.T) {
 // subject with NO matching subscription is clamped to their real entitlement
 // (0 cents) — they cannot mint the higher tier's allotment for free.
 func TestAllotment_OrgAdminCannotInflatePlan(t *testing.T) {
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
@@ -190,7 +196,6 @@ func TestAllotment_OrgAdminCannotInflatePlan(t *testing.T) {
 // provider or invoiced), never a zero-payment internal Active sub — proven by
 // TestSubscriptionPlanSlug_PaymentBackedOnly + TestPlanForGrant_OrgAdminCannotAnchorOnForgedSub.
 func TestAllotment_OrgAdminMatchingSubscriptionHonored(t *testing.T) {
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
@@ -238,20 +243,17 @@ func TestAllotment_OrgAdminMatchingSubscriptionHonored(t *testing.T) {
 	}
 }
 
-// TestAllotment_ServiceTokenMayNameAnyPlan proves the privileged override is
-// preserved: the internal service token (comps/backfills) may name "team" and
+// TestAllotment_PlatformAppMayNameAnyPlan proves the privileged override is
+// preserved: the platform's own application (comps/backfills) may name "team" and
 // mint its declared $100/mo (10000 cents).
-func TestAllotment_ServiceTokenMayNameAnyPlan(t *testing.T) {
-	const tok = "svc-allot"
-	t.Setenv("COMMERCE_SERVICE_TOKEN", tok)
+func TestAllotment_PlatformAppMayNameAnyPlan(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
-	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx) })
+	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx); platformApp(c) })
 	body := `{"user":"allotorg","plan":"team"}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/allotment/grant", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Org-Id", "allotorg")
 	resp, terr := eng.Test(req)
 	if terr != nil {

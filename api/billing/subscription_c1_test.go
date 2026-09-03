@@ -35,18 +35,16 @@ func invokeSub(org *organization.Organization, ctx context.Context, identity fun
 }
 
 // c1OrgAdmin models the adversary: an org owner (org-level isAdmin) who is NOT a
-// platform global admin and NOT the internal service token → MayMintMoney false.
+// platform global admin and NOT the platform's application → MayMintMoney false.
 func c1OrgAdmin(c *zip.Ctx) {
 	c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
 	c.Locals("iam_authenticated", true)
 	c.Locals("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: true})
 }
 
-// c1MintPrincipal models cloud-api's internal service token → MayMintMoney true.
-func c1MintPrincipal(c *zip.Ctx) {
-	c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
-	c.Locals("service_token_verified", true)
-}
+// c1MintPrincipal models the platform's own application — an IAM identity under
+// the reserved admin org — → MayMintMoney true.
+func c1MintPrincipal(c *zip.Ctx) { platformApp(c) }
 
 // TestCreateSubscription_OrgAdminPaidTier_Denied is C1-a: an org admin must NOT
 // self-create a PAID-tier ("max": $200/mo, $100/mo included allotment) Active

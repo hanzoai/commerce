@@ -73,7 +73,7 @@ func Create(c *zip.Ctx) error {
 		if !middleware.MayMintMoney(c) {
 			return http.Fail(c, 403,
 				"minting spendable balance requires platform-administrator or internal-service credentials",
-				errors.New("transaction mint: caller is neither the internal service token nor a platform global admin"))
+				errors.New("transaction mint: caller is not a platform admin"))
 		}
 		trans.SetContext(mintauth.WithAuthorized(trans.Context()))
 	}

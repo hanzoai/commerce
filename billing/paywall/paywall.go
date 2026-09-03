@@ -156,12 +156,7 @@ func isTrialCreditTag(tags string) bool {
 // Require is the per-request access gate. Mount it as a sibling to
 // middleware.TokenRequired, AFTER it, on the commerce admin route surface.
 func Require(c *zip.Ctx) error {
-	// Internal platform callers are never paywalled: the service token is the
-	// trusted cloud→commerce dispatch, and a platform superadmin administrates
-	// across orgs. Both bypass the org subscription gate.
-	if middleware.IsServiceToken(c) {
-		return c.Next()
-	}
+	// A platform superadmin administrates across orgs and is never paywalled.
 	if claims := iammiddleware.GetIAMClaims(c); claims != nil && claims.IsSuperAdmin() {
 		return c.Next()
 	}

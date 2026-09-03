@@ -4,7 +4,6 @@ import (
 	"context"
 	"math"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -127,7 +126,7 @@ func HandleProviderWebhook(c *zip.Ctx) error {
 }
 
 // resolveWebhookOrg determines which org a sessionless provider webhook
-// belongs to. Order: X-Org-Id header, COMMERCE_SERVICE_ORG env, then the
+// belongs to. Order: X-Org-Id header, then the
 // default "hanzo" org. Mirrors the service-token resolution in
 // middleware/accesstoken.go so webhooks and service calls agree on scope.
 func resolveWebhookOrg(c *zip.Ctx) *organization.Organization {
@@ -140,9 +139,6 @@ func resolveWebhookOrg(c *zip.Ctx) *organization.Organization {
 	}
 	db := datastore.New(c.Context())
 	orgName := strings.TrimSpace(c.Header("X-Org-Id"))
-	if orgName == "" {
-		orgName = strings.TrimSpace(os.Getenv("COMMERCE_SERVICE_ORG"))
-	}
 	if orgName == "" {
 		orgName = "hanzo"
 	}

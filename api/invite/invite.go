@@ -77,7 +77,7 @@ func Redeem(c *zip.Ctx) error {
 // subscription-free access, so an org-level admin must never mint one.
 func Mint(c *zip.Ctx) error {
 	claims := iammiddleware.GetIAMClaims(c)
-	if !middleware.IsServiceToken(c) && (claims == nil || !claims.IsSuperAdmin()) {
+	if claims == nil || !claims.IsSuperAdmin() {
 		return http.Fail(c, 403, "platform admin required to mint an invite code", errors.New("not a global admin"))
 	}
 

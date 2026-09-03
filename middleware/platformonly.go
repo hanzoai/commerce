@@ -36,12 +36,14 @@ func AuthorizeMint(c *zip.Ctx) {
 // PlatformOnly restricts a route to the ONLY two principals allowed to MINT
 // money / spendable balance:
 //
-//  1. the internal service (cloud-api → commerce), authenticated by a bearer
-//     equal to COMMERCE_SERVICE_TOKEN — recorded by TokenRequired's service-token
-//     branch as IsServiceToken(c); and
-//  2. a Hanzo PLATFORM SuperAdmin — auth.IAMClaims.IsSuperAdmin(): membership in the
-//     reserved "admin" org (HOME owner=="admin", from the gateway/EdgeAuth X-User-Owner
-//     header), NOT any spoofable boolean.
+// a Hanzo PLATFORM SuperAdmin — auth.IAMClaims.IsSuperAdmin(): membership in the
+// reserved "admin" org (HOME owner=="admin", from the gateway/EdgeAuth X-User-Owner
+// header or the validated JWT), NOT any spoofable boolean. The platform's own
+// service work is the same principal in machine form: an application IAM minted
+// under the admin org, presenting a client_credentials token.
+//
+// There used to be a second one — a bearer equal to COMMERCE_SERVICE_TOKEN,
+// verified here. That was commerce doing IAM's job with a secret of its own.
 //
 // It deliberately does NOT admit the org-level Admin bit (permission.Admin). An
 // org OWNER carries org-level IsAdmin=true within their own org (IAM), which the
@@ -54,8 +56,7 @@ func AuthorizeMint(c *zip.Ctx) {
 // actions (checkout tenant admin, the edge billing ?org override).
 //
 // MOUNT IT AFTER TokenRequired(permission.Admin): TokenRequired resolves the org
-// (service-token + legacy paths), sets c["permissions"], and stamps the
-// service-token marker; PlatformOnly then NARROWS who may proceed to the handler.
+// and sets c["permissions"]; PlatformOnly then NARROWS who may proceed to the handler.
 // It never widens access — a caller already rejected by TokenRequired (401) never
 // reaches here.
 //
@@ -87,28 +88,21 @@ func PlatformOnlyMW(next zip.Handler) zip.Handler {
 			return next(c)
 		}
 		return http.Fail(c, 403,
-			"This operation requires platform-administrator or internal-service credentials.",
-			errors.New("money-mint route: caller is neither the internal service token nor a platform global admin"))
+			"This operation requires platform-administrator credentials.",
+			errors.New("money-mint route: caller is not a platform admin"))
 	}
 }
 
-// IsPlatform is THE definition of the PLATFORM PRINCIPAL — the two callers that
-// act for the platform itself rather than for a tenant:
-//
-//  1. the verified internal service token (cloud-api → commerce, a scheduled
-//     job), IsServiceToken(c); and
-//  2. a Hanzo PLATFORM SuperAdmin, auth.IAMClaims.IsSuperAdmin() — the
-//     reserved "admin" org membership (owner=="admin").
+// IsPlatform is THE definition of the PLATFORM PRINCIPAL — a caller acting for
+// the platform itself rather than for a tenant: a Hanzo PLATFORM SuperAdmin,
+// auth.IAMClaims.IsSuperAdmin(), the reserved "admin" org membership
+// (owner=="admin"). A scheduled job is the same principal as a machine — an
+// application IAM minted under the admin org — so it needs no door of its own.
 //
 // It deliberately does NOT admit the org-level Admin bit (an org OWNER's IAM
 // isAdmin, or a legacy per-org access token).
-//
-// It answers WHO IS CALLING and nothing else. Asking grants no capability — the
-// capability gates are built ON it (MayMintMoney for money, the catalog sync for
-// upstream cost), so who-may-act is defined once and each capability names
-// itself. Fail-closed: neither signal present → false.
 func IsPlatform(c *zip.Ctx) bool {
-	return IsServiceToken(c) || iammiddleware.GetIAMClaims(c).IsSuperAdmin()
+	return iammiddleware.GetIAMClaims(c).IsSuperAdmin()
 }
 
 // MayMintMoney is THE single predicate for "may this caller MINT money /

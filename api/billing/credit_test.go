@@ -54,16 +54,14 @@ func decodeJSON(t *testing.T, resp *http.Response) map[string]any {
 
 // ── the money assertion: only a mint principal may credit ────────────────────
 
-// TestCredit_ServiceTokenGrants proves the legitimate money path: the internal
+// TestCredit_PlatformAppGrants proves the legitimate money path: the internal
 // service token (cloud-api → commerce) appends a grant (201) end-to-end.
-func TestCredit_ServiceTokenGrants(t *testing.T) {
-	const tok = "svc-credit-ok"
-	t.Setenv("COMMERCE_SERVICE_TOKEN", tok)
+func TestCredit_PlatformAppGrants(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
-	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx) })
-	resp := postCredit(eng, tok, "creditorg", `{"org":"creditorg","amountCents":500,"reason":"welcome","tag":"starter-credit"}`)
+	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx); platformApp(c) })
+	resp := postCredit(eng, "", "creditorg", `{"org":"creditorg","amountCents":500,"reason":"welcome","tag":"starter-credit"}`)
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("service-token credit: status=%d body=%s, want 201", resp.StatusCode, respBodyStr(resp))
 	}
@@ -79,7 +77,6 @@ func TestCredit_ServiceTokenGrants(t *testing.T) {
 // TestCredit_GlobalAdminGrants proves the human superadmin (owner=="admin") may
 // credit any org named in the body — no X-Org-Id needed; the org is the account.
 func TestCredit_GlobalAdminGrants(t *testing.T) {
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
@@ -99,7 +96,6 @@ func TestCredit_GlobalAdminGrants(t *testing.T) {
 // NOT a global admin, NOT the service token) is 403 — it can never self-credit,
 // even though it holds the org Admin bit and passes TokenRequired(Admin).
 func TestCredit_OrgAdminDenied(t *testing.T) {
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 	eng := engineWithSeed(orgAdminSeed) // owner="acme", IsAdmin=true (org-level)
 	resp := postCredit(eng, "", "", `{"org":"acme","amountCents":100000,"reason":"self-credit-attempt"}`)
 	if resp.StatusCode != http.StatusForbidden {
@@ -111,7 +107,6 @@ func TestCredit_OrgAdminDenied(t *testing.T) {
 // TestCredit_PlainUserDenied proves a normal authenticated user (no Admin bit) is
 // refused (never a 2xx grant).
 func TestCredit_PlainUserDenied(t *testing.T) {
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 	eng := engineWithSeed(func(c *zip.Ctx) {
 		c.Locals("iam_authenticated", true)
 		c.Locals("permissions", bit.Field(permission.None))
@@ -126,7 +121,6 @@ func TestCredit_PlainUserDenied(t *testing.T) {
 
 // TestCredit_NoAuthDenied proves an unauthenticated request never grants.
 func TestCredit_NoAuthDenied(t *testing.T) {
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 	eng := engineWithSeed(nil)
 	resp := postCredit(eng, "", "", `{"org":"acme","amountCents":500,"reason":"x"}`)
 	if resp.StatusCode < 400 {
@@ -140,21 +134,19 @@ func TestCredit_NoAuthDenied(t *testing.T) {
 // the second call replays the first grant (200, same id) and the balance holds
 // exactly one grant.
 func TestCredit_IdempotentOnKey(t *testing.T) {
-	const tok = "svc-credit-idem"
-	t.Setenv("COMMERCE_SERVICE_TOKEN", tok)
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
-	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx) })
+	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx); platformApp(c) })
 	body := `{"org":"idemorg","amountCents":250,"reason":"promo","idempotencyKey":"once-2026"}`
 
-	first := postCredit(eng, tok, "idemorg", body)
+	first := postCredit(eng, "", "idemorg", body)
 	if first.StatusCode != http.StatusCreated {
 		t.Fatalf("first credit: status=%d body=%s, want 201", first.StatusCode, respBodyStr(first))
 	}
 	firstID, _ := decodeJSON(t, first)["id"].(string)
 
-	second := postCredit(eng, tok, "idemorg", body)
+	second := postCredit(eng, "", "idemorg", body)
 	if second.StatusCode != http.StatusOK {
 		t.Fatalf("replayed credit: status=%d body=%s, want 200 (idempotent replay)", second.StatusCode, respBodyStr(second))
 	}
@@ -164,7 +156,7 @@ func TestCredit_IdempotentOnKey(t *testing.T) {
 	}
 
 	// The money invariant: balance == exactly ONE grant, never doubled.
-	if bal := getBalanceCents(t, eng, tok, "idemorg"); bal != 250 {
+	if bal := getBalanceCents(t, eng, "", "idemorg"); bal != 250 {
 		t.Fatalf("after two same-key credits, balance=%d cents, want exactly 250 (no double-grant)", bal)
 	}
 }
@@ -175,17 +167,15 @@ func TestCredit_IdempotentOnKey(t *testing.T) {
 // parameterized call driven by the billing/credit constants, and it lands and is
 // readable by the balance path (spendable).
 func TestCredit_StarterComposition(t *testing.T) {
-	const tok = "svc-credit-starter"
-	t.Setenv("COMMERCE_SERVICE_TOKEN", tok)
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
-	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx) })
+	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx); platformApp(c) })
 	expiry := time.Now().AddDate(0, 0, credit.StarterCreditDays).UTC().Format(time.RFC3339)
 	body := fmt.Sprintf(`{"org":"starterorg","amountCents":%d,"reason":"welcome","tag":%q,"expiresAt":%q}`,
 		credit.StarterCreditCents, credit.StarterCreditTag, expiry)
 
-	resp := postCredit(eng, tok, "starterorg", body)
+	resp := postCredit(eng, "", "starterorg", body)
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("starter credit: status=%d body=%s, want 201", resp.StatusCode, respBodyStr(resp))
 	}
@@ -195,7 +185,7 @@ func TestCredit_StarterComposition(t *testing.T) {
 	}
 
 	// Readable by the balance path = spendable.
-	if bal := getBalanceCents(t, eng, tok, "starterorg"); bal != int64(credit.StarterCreditCents) {
+	if bal := getBalanceCents(t, eng, "", "starterorg"); bal != int64(credit.StarterCreditCents) {
 		t.Fatalf("starter credit not visible in balance: got %d cents, want %d", bal, credit.StarterCreditCents)
 	}
 }
@@ -203,16 +193,14 @@ func TestCredit_StarterComposition(t *testing.T) {
 // TestCredit_LedgerReadableByBalance proves a plain (non-starter) grant nets into
 // the org balance the gateway gate reads.
 func TestCredit_LedgerReadableByBalance(t *testing.T) {
-	const tok = "svc-credit-ledger"
-	t.Setenv("COMMERCE_SERVICE_TOKEN", tok)
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
-	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx) })
-	if resp := postCredit(eng, tok, "ledgerorg", `{"org":"ledgerorg","amountCents":700,"reason":"grant"}`); resp.StatusCode != http.StatusCreated {
+	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx); platformApp(c) })
+	if resp := postCredit(eng, "", "ledgerorg", `{"org":"ledgerorg","amountCents":700,"reason":"grant"}`); resp.StatusCode != http.StatusCreated {
 		t.Fatalf("credit: status=%d body=%s, want 201", resp.StatusCode, respBodyStr(resp))
 	}
-	if bal := getBalanceCents(t, eng, tok, "ledgerorg"); bal != 700 {
+	if bal := getBalanceCents(t, eng, "", "ledgerorg"); bal != 700 {
 		t.Fatalf("credit not readable by balance: got %d cents, want 700", bal)
 	}
 }
@@ -221,7 +209,6 @@ func TestCredit_LedgerReadableByBalance(t *testing.T) {
 func getBalanceCents(t *testing.T, eng *zip.App, tok, orgID string) int64 {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, "/v1/billing/balance?user="+orgID+"&currency=usd", nil)
-	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Org-Id", orgID)
 	resp, terr := eng.Test(req)
 	if terr != nil {

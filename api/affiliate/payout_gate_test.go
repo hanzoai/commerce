@@ -45,7 +45,6 @@ func mountAffiliate(t *testing.T, seed func(*zip.Ctx), pathSuffix string) (*zip.
 // TestPayoutExecute_OrgAdminDenied is the acceptance test: an org admin POSTing
 // the payout executor is 403 — it can no longer disburse the treasury.
 func TestPayoutExecute_OrgAdminDenied(t *testing.T) {
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 	app, path := mountAffiliate(t, func(c *zip.Ctx) {
 		c.Locals("iam_authenticated", true)
 		c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
@@ -68,7 +67,6 @@ func TestPayoutExecute_OrgAdminDenied(t *testing.T) {
 // TestPayoutCalculate_OrgAdminDenied proves the sibling payout-family write is
 // gated too (RED grouped calculate/sbom with execute).
 func TestPayoutCalculate_OrgAdminDenied(t *testing.T) {
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 	app, path := mountAffiliate(t, func(c *zip.Ctx) {
 		c.Locals("iam_authenticated", true)
 		c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
@@ -91,18 +89,23 @@ func TestPayoutCalculate_OrgAdminDenied(t *testing.T) {
 // TestPayoutExecute_ServiceTokenReaches proves the legitimate CronJob / cloud-api
 // path is preserved: the internal service token passes the gate (NOT 403). The
 // dry-run executor runs behind it.
-func TestPayoutExecute_ServiceTokenReaches(t *testing.T) {
-	const tok = "svc-payout"
-	t.Setenv("COMMERCE_SERVICE_TOKEN", tok)
+func TestPayoutExecute_PlatformAppReaches(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
-	app, path := mountAffiliate(t, func(c *zip.Ctx) { c.SetContext(ctx) }, "/payouts/execute")
+	platform := func(c *zip.Ctx) {
+		c.SetContext(ctx)
+		c.Locals("iam_authenticated", true)
+		c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
+		cl := &auth.IAMClaims{Owner: "admin"}
+		cl.Subject = "app_platform"
+		c.Locals("iam_claims", cl)
+	}
+	app, path := mountAffiliate(t, platform, "/payouts/execute")
 
-	// dry-run (no ?execute=true) — the gate must ADMIT the service token.
+	// dry-run (no ?execute=true) — the gate must ADMIT the platform's application.
 	req := httptest.NewRequest(http.MethodPost, path, bytes.NewBufferString(`{}`))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Org-Id", "payoutorg")
 	resp, err := app.Test(req)
 	if err != nil {

@@ -69,7 +69,6 @@ func engineWithSeed(seed func(*zip.Ctx)) *zip.App {
 // admitted this principal and the handler minted a client-supplied amount → a live
 // self-credit-unlimited-balance hole.
 func TestC1_OrgAdminDeniedOnEveryMintRoute(t *testing.T) {
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
@@ -106,20 +105,17 @@ func TestC1_OrgAdminDeniedOnEveryMintRoute(t *testing.T) {
 	}
 }
 
-// TestC1_ServiceTokenMintsDeposit proves the legitimate money path STILL WORKS:
+// TestC1_PlatformAppMintsDeposit proves the legitimate money path STILL WORKS:
 // the internal service token reaches Deposit and mints (201) end-to-end against a
 // real datastore. cloud-api authenticates exactly this way (Bearer COMMERCE_SERVICE_TOKEN).
-func TestC1_ServiceTokenMintsDeposit(t *testing.T) {
-	const tok = "svc-secret-abc"
-	t.Setenv("COMMERCE_SERVICE_TOKEN", tok)
+func TestC1_PlatformAppMintsDeposit(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
-	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx) })
+	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx); platformApp(c) })
 	body := `{"user":"acmeorg/alice","amount":250}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/deposit", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Org-Id", "acmeorg")
 	// Money-in names the event that caused it; this test is about AUTHZ, so it
 	// supplies a settlement id and asserts the token is what decides the outcome.
@@ -146,7 +142,6 @@ func TestC1_ServiceTokenMintsDeposit(t *testing.T) {
 // NOT 403 on a non-mint admin read (GET /balance). The fix narrows ONLY the
 // money-mint routes; it must not break the rest of the admin billing surface.
 func TestC1_NonMintRouteNotOverBlocked(t *testing.T) {
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
