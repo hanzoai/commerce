@@ -188,7 +188,6 @@ func TestAllowed_InviteForAnotherOrgRejected(t *testing.T) {
 // with no access and asserts the 402 status and the {code:"subscription_required"}
 // body contract the console reads.
 func TestRequire_Denies402Shape(t *testing.T) {
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 	ctx := ae.NewContext()
 	defer ctx.Close()
 

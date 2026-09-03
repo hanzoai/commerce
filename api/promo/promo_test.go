@@ -12,6 +12,7 @@ import (
 
 	"github.com/zap-proto/zip"
 
+	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/datastore"
 	promotionModel "github.com/hanzoai/commerce/models/promotion"
 	"github.com/hanzoai/commerce/util/bit"
@@ -27,14 +28,16 @@ func warmPlatformNS() {
 	_, _ = promotionModel.Query(db).Count()
 }
 
-// superApp mounts the promo routes behind a seed that grants the platform-admin
-// permission bit with NO IAM subject — the service-token principal MayReadPlatform
-// admits. notSuper omits the bit so RequirePlatformAdmin refuses (403).
+// app mounts the promo routes behind a seed that, when super, stamps a platform
+// SuperAdmin identity — the reserved admin org — which MayReadPlatform admits.
+// Otherwise the caller carries nothing and RequirePlatformAdmin refuses (403).
 func app(super bool) *zip.App {
 	a := zip.New(zip.Config{DisableStartupMessage: true})
 	a.Use(zip.H(func(c *zip.Ctx) error {
 		if super {
+			c.Locals("iam_authenticated", true)
 			c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
+			c.Locals("iam_claims", &auth.IAMClaims{Owner: "admin"})
 		}
 		return c.Next()
 	}))

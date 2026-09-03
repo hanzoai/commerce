@@ -22,10 +22,10 @@ import (
 // zip chain. EdgeAuth mutates the underlying fasthttp request in place (strips /
 // mints identity headers); the probe — running AFTER EdgeAuth via c.Next() —
 // observes exactly what the downstream chain sees: the captured request headers,
-// the stashed opaque-bearer org, and whether it was reached at all (EdgeAuth
+// and whether it was reached at all (EdgeAuth
 // never aborts a non-JWT bearer). The *Ctx is pooled and reset once the request
 // returns, so every observation is taken inside the probe, never after.
-func runEdgeAuth(t *testing.T, req *http.Request, captureHeaders ...string) (reached bool, headers map[string]string, stashedOrg string) {
+func runEdgeAuth(t *testing.T, req *http.Request, captureHeaders ...string) (reached bool, headers map[string]string) {
 	t.Helper()
 	headers = map[string]string{}
 	app := zip.New(zip.Config{DisableStartupMessage: true})
@@ -35,7 +35,6 @@ func runEdgeAuth(t *testing.T, req *http.Request, captureHeaders ...string) (rea
 		for _, k := range captureHeaders {
 			headers[k] = c.Header(k)
 		}
-		stashedOrg = clientOrgFromContext(c)
 		return c.NoContent(http.StatusOK)
 	})
 	if _, err := app.Test(req); err != nil {
@@ -56,7 +55,7 @@ func TestEdgeAuth_StripsSpoofedIdentity(t *testing.T) {
 	req.Header.Set("X-User-IsAdmin", "true")
 
 	keys := []string{"X-Org-Id", "X-User-Permissions", "X-User-IsAdmin"}
-	_, headers, _ := runEdgeAuth(t, req, keys...)
+	_, headers := runEdgeAuth(t, req, keys...)
 	for _, k := range keys {
 		if got := headers[k]; got != "" {
 			t.Fatalf("EdgeAuth(enabled) must strip spoofed %s, got %q", k, got)
@@ -82,7 +81,7 @@ func TestEdgeAuth_StripsSuperAdminSpoof(t *testing.T) {
 	req.Header.Set("X-User-IsAdmin", "true")
 
 	keys := []string{"X-Org-Id", "X-User-Owner", "X-User-IsGlobalAdmin", "X-User-IsAdmin"}
-	_, headers, _ := runEdgeAuth(t, req, keys...)
+	_, headers := runEdgeAuth(t, req, keys...)
 	for _, k := range keys {
 		if got := headers[k]; got != "" {
 			t.Fatalf("EdgeAuth must strip spoofed %s, got %q", k, got)
@@ -90,38 +89,29 @@ func TestEdgeAuth_StripsSuperAdminSpoof(t *testing.T) {
 	}
 }
 
-// TestEdgeAuth_OpaqueBearerStashesOrgNotHeader proves the bypass fix AND that
-// per-org billing survives it. An opaque (non-JWT) bearer — a service token —
-// names its org via X-Org-Id. EdgeAuth must:
-//
-//	(a) STRIP X-Org-Id from the trusted header, so IAMTokenRequired (which runs
-//	    BEFORE the token is validated) can never mistake it for a verified IAM
-//	    identity — restoring the header was the complete auth bypass (opaque
-//	    bearer + X-Org-Id ⇒ forged principal for any org); and
-//	(b) stash the org in a PRIVATE ctx key that ONLY TokenRequired's
-//	    service-token branch reads, AFTER it verifies the token — so per-org
-//	    billing/checkout still resolves the caller's own org.
+// TestEdgeAuth_OpaqueBearerStripsOrg: an opaque (non-JWT) bearer never gets its
+// client-supplied X-Org-Id back. Restoring it let IAMTokenRequired treat an
+// unvalidated token as a verified identity (opaque bearer + X-Org-Id ⇒ forged
+// principal for any org). There used to be a private stash of that selector for
+// a shared service token to read once verified; the token is gone, so the
+// selector is simply dropped and an opaque bearer resolves no org.
 //
 // EdgeAuth never aborts an opaque bearer (not a JWT ⇒ minting skipped).
-func TestEdgeAuth_OpaqueBearerStashesOrgNotHeader(t *testing.T) {
+func TestEdgeAuth_OpaqueBearerStripsOrg(t *testing.T) {
 	t.Setenv("COMMERCE_EDGE_AUTH", "true")
 
 	req := httptest.NewRequest("POST", "/v1/billing/usage", nil)
 	req.Header.Set("Authorization", "Bearer st_opaque_service_token_not_a_jwt")
 	req.Header.Set("X-Org-Id", "maxpower")
 
-	reached, headers, stashedOrg := runEdgeAuth(t, req, "X-Org-Id")
+	reached, headers := runEdgeAuth(t, req, "X-Org-Id")
 
 	if !reached {
-		t.Fatal("EdgeAuth must NOT abort an opaque service-token request (money path)")
+		t.Fatal("EdgeAuth must NOT abort an opaque bearer (money path)")
 	}
-	// (a) X-Org-Id MUST be stripped — never re-exposed to the trust boundary.
+	// X-Org-Id MUST be stripped — never re-exposed to the trust boundary.
 	if got := headers["X-Org-Id"]; got != "" {
 		t.Fatalf("opaque bearer: X-Org-Id must stay stripped (bypass fix), got %q", got)
-	}
-	// (b) org preserved out-of-band for the validated-service-token branch.
-	if stashedOrg != "maxpower" {
-		t.Fatalf("opaque bearer org must be stashed for per-org billing, got %q", stashedOrg)
 	}
 }
 
@@ -131,8 +121,7 @@ func TestEdgeAuth_OpaqueBearerStashesOrgNotHeader(t *testing.T) {
 // token check) → the checkout money surface minted for the attacker's chosen
 // org. After the fix, X-Org-Id is stripped and NEVER put back on the header for
 // a non-service opaque bearer, so IAMTokenRequired resolves no org and the
-// request cannot forge an IAM principal. The stash is inert unless the token
-// later proves to be COMMERCE_SERVICE_TOKEN, which "redteamprobe" is not.
+// request cannot forge an IAM principal.
 func TestEdgeAuth_ClosesOpaqueBearerBypass(t *testing.T) {
 	t.Setenv("COMMERCE_EDGE_AUTH", "true")
 
@@ -144,7 +133,7 @@ func TestEdgeAuth_ClosesOpaqueBearerBypass(t *testing.T) {
 		req.Header.Set("Authorization", "Bearer redteamprobe")
 		req.Header.Set("X-Org-Id", "hanzo")
 
-		_, headers, _ := runEdgeAuth(t, req, "X-Org-Id")
+		_, headers := runEdgeAuth(t, req, "X-Org-Id")
 
 		if got := headers["X-Org-Id"]; got != "" {
 			t.Fatalf("%s: bypass vector X-Org-Id must be stripped, got %q", path, got)
@@ -160,7 +149,7 @@ func TestEdgeAuth_DisabledIsNoOp(t *testing.T) {
 	req := httptest.NewRequest("GET", "/v1/billing/balance", nil)
 	req.Header.Set("X-Org-Id", "hanzo")
 
-	_, headers, _ := runEdgeAuth(t, req, "X-Org-Id")
+	_, headers := runEdgeAuth(t, req, "X-Org-Id")
 
 	if got := headers["X-Org-Id"]; got != "hanzo" {
 		t.Fatalf("EdgeAuth(disabled) must be a no-op, X-Org-Id=%q", got)
@@ -177,7 +166,7 @@ func TestEdgeAuth_NilClientNeverMints(t *testing.T) {
 	req.Header.Set("Authorization", "Bearer a.b.c")
 	req.Header.Set("X-Org-Id", "evil")
 
-	_, headers, _ := runEdgeAuth(t, req, "X-Org-Id")
+	_, headers := runEdgeAuth(t, req, "X-Org-Id")
 
 	if got := headers["X-Org-Id"]; got != "" {
 		t.Fatalf("nil verifier must not mint identity, X-Org-Id=%q", got)

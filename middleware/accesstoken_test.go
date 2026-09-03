@@ -10,8 +10,6 @@ import (
 
 	"github.com/zap-proto/zip"
 
-	"github.com/hanzoai/commerce/datastore"
-	orgpkg "github.com/hanzoai/commerce/pkg/org"
 	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/permission"
 )
@@ -22,7 +20,6 @@ import (
 // is cleared so only the IAM branch under test is exercised.
 func runGate(t *testing.T, masks []bit.Mask, seed func(*zip.Ctx)) (int, bool) {
 	t.Helper()
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 
 	reached := false
 	app := zip.New(zip.Config{DisableStartupMessage: true})
@@ -90,7 +87,6 @@ func TestTokenRequired_IAMBranchEnforcesMasks(t *testing.T) {
 // as an IAM principal — it falls through to token auth and 401s. Before the fix,
 // the bare header alone satisfied IsIAMAuthenticated and reached the handler.
 func TestTokenRequired_BareOrgHeaderIsNotAuthenticated(t *testing.T) {
-	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 
 	reached := false
 	app := zip.New(zip.Config{DisableStartupMessage: true})
@@ -109,47 +105,5 @@ func TestTokenRequired_BareOrgHeaderIsNotAuthenticated(t *testing.T) {
 
 	if resp.StatusCode != http.StatusUnauthorized || reached {
 		t.Fatalf("bare X-Org-Id must not authenticate: status=%d reached=%v, want 401,false", resp.StatusCode, reached)
-	}
-}
-
-// TestTokenRequired_ServiceTokenResolveFailsFast is the money-critical regression
-// for the 2026-07-04 wedge: when the bearer IS the verified service token but the
-// backing store cannot resolve the org, the branch must fail CLOSED and RETRYABLE
-// (503) — NOT fall through to the legacy per-org-token path (which Peeks the
-// 64-hex service token as a JWT → "Invalid Segments" → a misleading 401 that made
-// cloud-api treat a transient DB hiccup as a bad credential and 402 customers).
-// A nil default datastore forces orgpkg.Resolve to error deterministically.
-func TestTokenRequired_ServiceTokenResolveFailsFast(t *testing.T) {
-	const svc = "svc-token-abc123"
-	t.Setenv("COMMERCE_SERVICE_TOKEN", svc)
-
-	// No default DB installed → GetOrCreate inside orgpkg.Resolve errors, so we
-	// exercise the resolve-failure branch. Use a distinct org slug so this test's
-	// failure is never masked by another test's cached success.
-	datastore.SetDefaultDB(nil)
-	orgpkg.Invalidate("failorg")
-
-	reached := false
-	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Use(TokenRequired()) // no-mask billing-style gate
-	app.Post("/x", func(c *zip.Ctx) error {
-		reached = true
-		return c.NoContent(http.StatusOK)
-	})
-
-	req := httptest.NewRequest(http.MethodPost, "/x", nil)
-	req.Header.Set("Authorization", "Bearer "+svc)
-	req.Header.Set("X-Org-Id", "failorg")
-	resp, err := app.Test(req)
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
-
-	if reached {
-		t.Fatalf("handler must NOT be reached when service-token org resolve fails")
-	}
-	if resp.StatusCode != http.StatusServiceUnavailable {
-		t.Fatalf("verified-service-token resolve failure must be 503 (retryable), got %d; "+
-			"a 401 means it fell through to the legacy Peek path (the wedge)", resp.StatusCode)
 	}
 }

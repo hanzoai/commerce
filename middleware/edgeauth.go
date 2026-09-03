@@ -64,12 +64,12 @@ var identityHeaders = []string{
 //     subject lands under an arbitrary key that every read (forced to the
 //     slug) can never see — silently orphaning the record.
 //
-// Service tokens (COMMERCE_SERVICE_TOKEN) and sk- API keys are not JWTs,
-// so step 2 skips them. Their client-supplied X-Org-Id is NOT restored to the
-// trusted header (that would let IAMTokenRequired treat an unvalidated token as
-// a verified identity — the bypass this boundary now closes); it is stashed in a
-// PRIVATE context key that ONLY TokenRequired's service-token branch reads, after
-// it has verified the bearer equals COMMERCE_SERVICE_TOKEN.
+// An opaque bearer (an sk- API key, a legacy org access token) is not a JWT, so
+// step 2 skips it, and its client-supplied X-Org-Id is simply stripped: restoring
+// it would let IAMTokenRequired treat an unvalidated token as a verified identity,
+// the bypass this boundary closes. There used to be a private stash of that
+// selector for a shared service token to read once verified; the token and the
+// stash are gone, and an opaque bearer resolves no org here.
 //
 // ORDER: EdgeAuth MUST run BEFORE pkg/auth.Zip (both installed by Bootstrap
 // via server.go installIdentityBoundary, ahead of every route group).
@@ -90,12 +90,6 @@ func EdgeAuth() zip.Handler {
 		req := c.Fiber().Request()
 
 		// (1) Never trust client-supplied identity at a directly-exposed edge.
-		// Capture the caller-supplied org selector before stripping so the
-		// validated-service-token branch (below) can honor it via a private ctx
-		// key — WITHOUT re-exposing it on the trusted X-Org-Id header, which
-		// IAMTokenRequired would otherwise mistake for a verified identity.
-		clientOrg := string(req.Header.Peek("X-Org-Id"))
-
 		for _, h := range identityHeaders {
 			req.Header.Del(h)
 		}
@@ -111,7 +105,7 @@ func EdgeAuth() zip.Handler {
 			case err != nil:
 				// Invalid JWT → leave identity unset; downstream
 				// TokenRequired returns a clean 401. Do NOT 401 here so
-				// service-token / legacy-token requests still flow through.
+				// legacy-token requests still flow through.
 				log.Debug("EdgeAuth: JWT rejected: %v", err)
 			case claims == nil || claims.Owner == "":
 				log.Debug("EdgeAuth: validated JWT has no owner claim")
@@ -154,42 +148,8 @@ func EdgeAuth() zip.Handler {
 			}
 		}
 
-		// Opaque (non-JWT) bearer: a service token or a legacy org access token.
-		// Its client-supplied org selector MUST NOT go back on the trusted
-		// X-Org-Id header. IAMTokenRequired runs BEFORE the token is validated and
-		// treats a present X-Org-Id as a verified IAM identity (iam_authenticated
-		// =true, no token check) — restoring the header was a complete auth bypass
-		// (opaque bearer + X-Org-Id ⇒ forged principal for any org). Stash it in a
-		// PRIVATE ctx key instead; TokenRequired's service-token branch reads it
-		// ONLY after verifying the bearer == COMMERCE_SERVICE_TOKEN. X-Org-Id stays
-		// stripped, so an unvalidated token can never resolve an org.
-		if tok != "" && !looksLikeJWT(tok) && clientOrg != "" {
-			c.Locals(ctxKeyClientOrg, clientOrg)
-		}
-
 		return c.Next()
 	}
-}
-
-// ctxKeyClientOrg is the PRIVATE request-local key under which EdgeAuth stashes an
-// opaque bearer's client-supplied org selector (the pre-strip X-Org-Id). It is
-// read ONLY by TokenRequired's service-token branch, and only after that branch
-// has verified the bearer equals COMMERCE_SERVICE_TOKEN — so an unvalidated
-// token's org selector never reaches org resolution. Deliberately NOT the
-// X-Org-Id header: leaving that header stripped stops IAMTokenRequired (which
-// runs first) from mistaking an unvalidated value for a verified IAM identity.
-const ctxKeyClientOrg = "edge_client_org"
-
-// clientOrgFromContext returns the org selector EdgeAuth stashed for an opaque
-// bearer, or "" when absent. Consumed by TokenRequired's service-token branch
-// (middleware/accesstoken.go) only after the service token is verified.
-func clientOrgFromContext(c *zip.Ctx) string {
-	if v := c.Locals(ctxKeyClientOrg); v != nil {
-		if s, ok := v.(string); ok {
-			return s
-		}
-	}
-	return ""
 }
 
 // bearerToken returns the token from an "Authorization: Bearer <tok>"
