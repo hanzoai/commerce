@@ -151,7 +151,7 @@ var _ = Describe("library", func() {
 			res := libraryApi.LoadShopJSRes{}
 
 			log.Debug("Response %s", cl.Post("/library/shopjs", req, &res))
-			Expect(len(res.Countries)).To(Equal(len(country.Countries)))
+			Expect(len(res.Countries)).To(Equal(len(country.All())))
 			Expect(res.ShippingRates.StoreId).To(Equal(org.DefaultStore))
 			Expect(len(res.ShippingRates.GeoRates)).To(Equal(3))
 			Expect(res.TaxRates.StoreId).To(Equal(org.DefaultStore))
@@ -184,7 +184,7 @@ var _ = Describe("library", func() {
 			res := libraryApi.LoadShopJSRes{}
 
 			log.Debug("Response %s", cl.Post("/library/shopjs", req, &res))
-			Expect(len(res.Countries)).To(Equal(len(country.Countries)))
+			Expect(len(res.Countries)).To(Equal(len(country.All())))
 			Expect(res.ShippingRates.StoreId).To(Equal(org.DefaultStore))
 			Expect(len(res.ShippingRates.GeoRates)).To(Equal(3))
 			Expect(res.TaxRates.StoreId).To(Equal(org.DefaultStore))
