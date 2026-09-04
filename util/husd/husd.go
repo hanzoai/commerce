@@ -25,7 +25,7 @@ const (
 	// from KMS.
 	DefaultChainID int64 = 36963
 	// DefaultRPCURL is the Hanzo EVM mainnet C-chain JSON-RPC endpoint.
-	DefaultRPCURL = "https://api.hanzo.network/v1/chain/C/rpc"
+	DefaultRPCURL = "https://api.hanzo.network/v1/chain/hanzo"
 	// DefaultDecimals is the HUSD token's decimals (18, standard ERC-20).
 	DefaultDecimals = 18
 )
