@@ -81,7 +81,7 @@ func (f *fakeTransfer) count() int { f.mu.Lock(); defer f.mu.Unlock(); return le
 
 var testCfg = husd.Config{
 	ChainID:      36962,
-	RPCURL:       "http://localhost:19630/v1/chain/C/rpc",
+	RPCURL:       "http://localhost:19630/v1/chain/c",
 	TokenAddress: "0xc57b7eCE2Ce2E74ef3Bc08Cfd5f5Fb41B6Ad4D66",
 	TreasuryKey:  "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
 	Decimals:     18,
