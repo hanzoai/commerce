@@ -6,45 +6,13 @@
   "tiers": [
     {
       "id": "starter",
-      "name": "Starter",
+      "name": "Starter Affiliate",
       "minReferrals": 0,
       "maxReferrals": 9,
       "rewards": {
         "referrerCreditCents": 2000,
         "refereeCreditCents": 2000,
-        "revenueSharePercent": 0,
-        "creditCurrency": "USD"
-      },
-      "limits": {
-        "maxTotalCreditsCents": 2000000,
-        "creditExpiryDays": 90
-      }
-    },
-    {
-      "id": "growth",
-      "name": "Growth",
-      "minReferrals": 10,
-      "maxReferrals": 49,
-      "rewards": {
-        "referrerCreditCents": 3000,
-        "refereeCreditCents": 2000,
-        "revenueSharePercent": 2.5,
-        "creditCurrency": "USD"
-      },
-      "limits": {
-        "maxTotalCreditsCents": 2000000,
-        "creditExpiryDays": 180
-      }
-    },
-    {
-      "id": "pro",
-      "name": "Pro",
-      "minReferrals": 50,
-      "maxReferrals": 199,
-      "rewards": {
-        "referrerCreditCents": 5000,
-        "refereeCreditCents": 2000,
-        "revenueSharePercent": 5,
+        "revenueSharePercent": 15,
         "creditCurrency": "USD"
       },
       "limits": {
@@ -53,24 +21,67 @@
       }
     },
     {
+      "id": "growth",
+      "name": "Growth Affiliate",
+      "minReferrals": 10,
+      "maxReferrals": 49,
+      "rewards": {
+        "referrerCreditCents": 3000,
+        "refereeCreditCents": 2000,
+        "revenueSharePercent": 15,
+        "creditCurrency": "USD"
+      },
+      "limits": {
+        "maxTotalCreditsCents": 5000000,
+        "creditExpiryDays": 365
+      }
+    },
+    {
+      "id": "pro",
+      "name": "Pro Partner",
+      "minReferrals": 50,
+      "maxReferrals": 199,
+      "rewards": {
+        "referrerCreditCents": 5000,
+        "refereeCreditCents": 2000,
+        "revenueSharePercent": 20,
+        "creditCurrency": "USD"
+      },
+      "limits": {
+        "maxTotalCreditsCents": 10000000,
+        "creditExpiryDays": 365
+      }
+    },
+    {
       "id": "partner",
-      "name": "Partner",
+      "name": "Strategic Partner",
       "minReferrals": 200,
       "maxReferrals": null,
       "rewards": {
         "referrerCreditCents": 10000,
-        "refereeCreditCents": 5000,
-        "revenueSharePercent": 7.5,
+        "refereeCreditCents": 2000,
+        "revenueSharePercent": 25,
         "creditCurrency": "USD"
       },
       "limits": {
-        "maxTotalCreditsCents": 15000000,
+        "maxTotalCreditsCents": 50000000,
         "creditExpiryDays": -1
       }
     }
   ],
+  "templateKickback": {
+    "baseCommissionPercent": 15,
+    "supportBonusPercent": 10,
+    "totalKickbackPercent": 25,
+    "poolStatus": "active",
+    "heldPoolEnabled": true,
+    "minPayoutCreditsCents": 1,
+    "minPayoutCashCents": 5000,
+    "payoutChannels": ["credits", "crypto", "stripe_connect"]
+  },
   "ossContributors": {
     "revenueSharePercent": 25,
+    "basePoolFraction": 0.25,
     "componentWeights": {
       "@hanzo/bot": 2.0,
       "@hanzo/agents": 2.0,
