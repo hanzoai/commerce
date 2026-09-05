@@ -11,8 +11,8 @@ func TestTierForReferralCount_Starter(t *testing.T) {
 	if tier.Id != "starter" {
 		t.Fatalf("expected starter tier for 0 referrals, got %s", tier.Id)
 	}
-	if tier.Rewards.RevenueSharePercent != 0 {
-		t.Fatalf("expected 0%% revenue share for starter, got %.2f%%", tier.Rewards.RevenueSharePercent)
+	if tier.Rewards.RevenueSharePercent != 15 {
+		t.Fatalf("expected 15%% revenue share for starter, got %.2f%%", tier.Rewards.RevenueSharePercent)
 	}
 }
 
@@ -21,8 +21,8 @@ func TestTierForReferralCount_Growth(t *testing.T) {
 	if tier.Id != "growth" {
 		t.Fatalf("expected growth tier for 10 referrals, got %s", tier.Id)
 	}
-	if tier.Rewards.RevenueSharePercent != 2.5 {
-		t.Fatalf("expected 2.5%% revenue share for growth, got %.2f%%", tier.Rewards.RevenueSharePercent)
+	if tier.Rewards.RevenueSharePercent != 15 {
+		t.Fatalf("expected 15%% revenue share for growth, got %.2f%%", tier.Rewards.RevenueSharePercent)
 	}
 }
 
@@ -31,8 +31,8 @@ func TestTierForReferralCount_Pro(t *testing.T) {
 	if tier.Id != "pro" {
 		t.Fatalf("expected pro tier for 50 referrals, got %s", tier.Id)
 	}
-	if tier.Rewards.RevenueSharePercent != 5 {
-		t.Fatalf("expected 5%% revenue share for pro, got %.2f%%", tier.Rewards.RevenueSharePercent)
+	if tier.Rewards.RevenueSharePercent != 20 {
+		t.Fatalf("expected 20%% revenue share for pro, got %.2f%%", tier.Rewards.RevenueSharePercent)
 	}
 }
 
@@ -41,8 +41,8 @@ func TestTierForReferralCount_Partner(t *testing.T) {
 	if tier.Id != "partner" {
 		t.Fatalf("expected partner tier for 200 referrals, got %s", tier.Id)
 	}
-	if tier.Rewards.RevenueSharePercent != 7.5 {
-		t.Fatalf("expected 7.5%% revenue share for partner, got %.2f%%", tier.Rewards.RevenueSharePercent)
+	if tier.Rewards.RevenueSharePercent != 25 {
+		t.Fatalf("expected 25%% revenue share for partner, got %.2f%%", tier.Rewards.RevenueSharePercent)
 	}
 }
 
