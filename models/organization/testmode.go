@@ -41,3 +41,25 @@ func (o Organization) SquareEnvironment() string {
 	}
 	return "production"
 }
+
+// Production is the one environment that transacts for real. An org has exactly
+// one of it; every other name an org invents is a sandbox, and it may invent as
+// many as it likes — a sandbox costs nothing to make, holds its own data, and
+// charges test credentials, so there is no reason to ration them.
+const Production = "production"
+
+// In returns this org as it transacts in one of its environments.
+//
+// The environment decides live-vs-test, and this is where it decides it — once,
+// on the value, rather than at each of the sixty places that ask. Live already
+// selects the credential pair, the ledger's books and pay.Live, so setting it
+// here carries the environment to all of them without any of them learning a new
+// word. The receiver is a value: the org this returns is a copy scoped to one
+// request, and the stored record is never touched.
+//
+// Unknown names are sandboxes, which is the fail-closed direction: a typo
+// charges test credentials, and only the exact word production charges a card.
+func (o Organization) In(env string) Organization {
+	o.Live = env == Production
+	return o
+}
