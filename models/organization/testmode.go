@@ -36,30 +36,80 @@ func (o Organization) TestMode() bool {
 // SquareEnvironment returns "sandbox" or "production" — the value the Square SDK
 // uses to select its API base URL — derived from TestMode (one authority).
 func (o Organization) SquareEnvironment() string {
-	if o.TestMode() {
-		return "sandbox"
-	}
-	return "production"
+	return o.kind().Word("square")
 }
 
-// Production is the one environment that transacts for real. An org has exactly
-// one of it; every other name an org invents is a sandbox, and it may invent as
-// many as it likes — a sandbox costs nothing to make, holds its own data, and
-// charges test credentials, so there is no reason to ration them.
-const Production = "production"
+// A Kind is what an environment transacts with. There are two of them, and
+// every payment processor has the same two under a different name — which is
+// the whole reason to state them once here. Stripe says live and test, Square
+// says production and sandbox, Braintree says production and sandbox, Adyen
+// says live and test. Spelling a processor's word at each of the places that
+// talks to it is how a sandbox key comes to be sent to a live endpoint.
+type Kind string
 
-// In returns this org as it transacts in one of its environments.
+const (
+	Live Kind = "live"
+	Test Kind = "test"
+)
+
+// An org may hold as many environments as it likes, and each one CHOOSES its
+// kind. That is the point of choosing rather than deriving it from the name: a
+// team can run an experimental build of its platform against real money while a
+// stable one keeps serving customers, and can keep several test environments
+// beside both. Deriving the kind from the name would have allowed exactly one
+// live environment, which is the arrangement this replaces.
+
+// word is what each processor calls the two kinds, live first. This table is
+// the only place in commerce that knows a processor's spelling; everything else
+// asks for the Kind and lets the processor's own edge translate it.
+var word = map[string][2]string{
+	"stripe":       {"live", "test"},
+	"square":       {"production", "sandbox"},
+	"authorizenet": {"production", "sandbox"},
+	"paypal":       {"live", "sandbox"},
+	"adyen":        {"live", "test"},
+	"braintree":    {"production", "sandbox"},
+	"lemonsqueezy": {"live", "test"},
+	"mercury":      {"production", "sandbox"},
+}
+
+// Word is how one processor spells this kind. A processor nobody has taught us
+// about gets our own word, which is wrong in a way that is visible at its edge
+// rather than wrong in a way that charges the wrong merchant.
+func (k Kind) Word(processor string) string {
+	w, ok := word[processor]
+	if !ok {
+		return string(k)
+	}
+	if k == Live {
+		return w[0]
+	}
+	return w[1]
+}
+
+// kind reports what this org transacts with as it stands. Unexported because
+// the ORM's entity interface already claims the name Kind for the storage kind,
+// and two different answers to "what kind is this" is how the wrong one gets
+// read.
+func (o Organization) kind() Kind {
+	if o.Live {
+		return Live
+	}
+	return Test
+}
+
+// In returns this org as it transacts in an environment of one kind.
 //
 // The environment decides live-vs-test, and this is where it decides it — once,
 // on the value, rather than at each of the sixty places that ask. Live already
 // selects the credential pair, the ledger's books and pay.Live, so setting it
-// here carries the environment to all of them without any of them learning a new
-// word. The receiver is a value: the org this returns is a copy scoped to one
-// request, and the stored record is never touched.
+// here carries the environment to all of them without any of them learning a
+// new word. The receiver is a value: the org this returns is a copy scoped to
+// one request, and the stored record is never touched.
 //
-// Unknown names are sandboxes, which is the fail-closed direction: a typo
-// charges test credentials, and only the exact word production charges a card.
-func (o Organization) In(env string) Organization {
-	o.Live = env == Production
+// Anything that is not exactly Live is Test, so an environment that arrives
+// with no kind, or with a kind nobody recognises, charges test credentials.
+func (o Organization) In(k Kind) Organization {
+	o.Live = k == Live
 	return o
 }
