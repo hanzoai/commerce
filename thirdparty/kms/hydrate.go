@@ -13,18 +13,29 @@ type secretMapping struct {
 	set  func(org *organization.Organization, val string)
 }
 
+// Path is where a tenant's credentials for one payment provider live in KMS.
+//
+// The client already scopes every read and write to its own org, so what this
+// has to name is the TENANT commerce is charging for, not the org holding the
+// vault. Seeding and hydrating both call it, because a credential written to an
+// address nobody reads is the same as no credential at all, and says nothing
+// while it fails.
+func Path(tenant, provider string) string {
+	return "/tenants/" + tenant + "/" + provider
+}
+
 // mappings returns all provider credential mappings for a given org name.
 func mappings(orgName string) []secretMapping {
-	stripe := "/tenants/" + orgName + "/stripe"
-	square := "/tenants/" + orgName + "/square"
-	authnet := "/tenants/" + orgName + "/authorizenet"
-	paypal := "/tenants/" + orgName + "/paypal"
-	adyen := "/tenants/" + orgName + "/adyen"
-	braintree := "/tenants/" + orgName + "/braintree"
-	recurly := "/tenants/" + orgName + "/recurly"
-	lemon := "/tenants/" + orgName + "/lemonsqueezy"
-	wire := "/tenants/" + orgName + "/wire"
-	merc := "/tenants/" + orgName + "/mercury"
+	stripe := Path(orgName, "stripe")
+	square := Path(orgName, "square")
+	authnet := Path(orgName, "authorizenet")
+	paypal := Path(orgName, "paypal")
+	adyen := Path(orgName, "adyen")
+	braintree := Path(orgName, "braintree")
+	recurly := Path(orgName, "recurly")
+	lemon := Path(orgName, "lemonsqueezy")
+	wire := Path(orgName, "wire")
+	merc := Path(orgName, "mercury")
 
 	return []secretMapping{
 		// Stripe — Live

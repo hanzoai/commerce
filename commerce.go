@@ -467,7 +467,7 @@ func (app *App) seedOrganization(orgName string) error {
 	// Write payment credentials to KMS (if enabled)
 	if app.KMS != nil {
 		client := app.KMS.Client()
-		squarePath := "/orgs/" + orgName + "/square"
+		squarePath := kms.Path(orgName, "square")
 
 		seedSecrets := []struct{ path, name, envVar string }{
 			// Square — Production
