@@ -34,6 +34,7 @@ import (
 	"github.com/zap-proto/zip"
 	zipmw "github.com/zap-proto/zip/middleware"
 
+	commerceApi "github.com/hanzoai/commerce/api"
 	billingPkg "github.com/hanzoai/commerce/api/billing"
 	catalogapi "github.com/hanzoai/commerce/api/catalog"
 	currencyapi "github.com/hanzoai/commerce/api/currency"
@@ -1232,9 +1233,18 @@ func (app *App) setupRoutes() {
 		api.Get("/deposits", billingPkg.DepositWatcherStatus)
 	}
 
-	// SPA fallback — the least-specific catch-all; standalone only. A host
-	// binary owns its own root surface.
+	// Standalone-only routes: the full /v1 API bundle and the SPA catch-all.
+	// In the co-resident cloud binary, the host binary owns its own root surface
+	// and routes /v1/billing through its own controllers.
 	if !embedded {
+		// Wire the full Commerce API routes (billing, checkout, store, …)
+		// on /v1 ahead of the SPA catch-all. zip/fiber evaluates routes in
+		// registration order; MountSPA's wildcard /* must be registered LAST
+		// so concrete API routes are matched first.
+		apiGroup := app.Router.Group("/v1")
+		apiGroup.Use(iammiddleware.IAMTokenRequired())
+		commerceApi.Route(apiGroup)
+
 		checkout.MountSPA(app.Router)
 	}
 }

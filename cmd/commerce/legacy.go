@@ -12,8 +12,6 @@ import (
 	"time"
 
 	commerce "github.com/hanzoai/commerce"
-	api "github.com/hanzoai/commerce/api"
-	"github.com/hanzoai/commerce/middleware/iammiddleware"
 )
 
 // bootLegacy is the historical direct-Gin boot path — the shape the
@@ -44,32 +42,6 @@ func bootLegacy(dataDir, httpAddr string, dev, requireIdentity bool) error {
 		defer cancel()
 		_ = srv.Stop(shutdownCtx)
 	}()
-
-	// Wire the full Commerce API routes (billing, checkout, store, …)
-	// directly on the live router.
-	//
-	// Previously this attempted to bind OnRouteSetup AFTER Bootstrap had
-	// already fired — which silently no-ops, so /v1/billing/* returned 404
-	// for the entire life of commerce. The fix is to mount routes
-	// imperatively on the live zip app the moment Embed returns.
-	apiGroup := srv.App().Router.Group("/v1")
-	// EdgeAuth (the standalone-edge trust boundary that strips/mints identity)
-	// is installed by Bootstrap (server.go installIdentityBoundary) BEFORE
-	// pkg/auth.Gin and ahead of every route group, so it covers /v1 here too
-	// (this group is registered after Bootstrap returns). See middleware/edgeauth.go.
-	//
-	// IAM gateway-trust shim: every /v1/* handler that calls
-	// middleware.GetOrganization(c) needs the "organization" gin key
-	// populated. The store-backed setupRoutes path only wires
-	// IAMTokenRequired() on /v1/commerce/* (commerce.go:823); when the
-	// gateway hits /v1/billing/me/balance (or any other /v1/billing/*
-	// path) with X-Org-Id headers, accesstoken middleware skips
-	// (gateway-trusted, no DB token), the organization key never gets
-	// set, and middleware.GetOrganization panics with "key organization
-	// does not exist". Pin IAMTokenRequired on the /v1 root so the
-	// header → org resolution runs for everything api.Route() registers.
-	apiGroup.Use(iammiddleware.IAMTokenRequired())
-	api.Route(apiGroup)
 
 	addr := srv.App().Config().HTTPAddr
 
