@@ -2,6 +2,12 @@ package billing
 
 import (
 	"testing"
+
+	"github.com/hanzoai/commerce/billing/engine"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/subscription"
+	types "github.com/hanzoai/commerce/types"
+	"github.com/hanzoai/commerce/util/test/ae"
 )
 
 // indexBySlug builds a slug → plan map so tests never depend on the positional
@@ -183,4 +189,55 @@ func firstNonNilPositive(vals ...*int) *int {
 		}
 	}
 	return nil
+}
+
+// TestCatalogIntervalIsTheConstant: the interval the catalog projects is the one
+// the rest of billing reads, spelled the one way it is declared.
+//
+// Every consumer of Plan.Interval matches on types.Monthly ("month"), and the two
+// that bill reach their monthly answer by a DIFFERENT route when handed anything
+// else: advancePeriod through the default arm of its switch, MonthlyNormalizedCents
+// through the default arm of its own. Both arms exist to be generous about what a
+// stored row might hold, and neither is a place for the catalog's own value to
+// land — an answer reached through a fallback is one nothing asserts, and the next
+// case added above the default takes it silently.
+//
+// PeriodsRemaining is the reading of the same field with no default to catch it:
+// it answers the YEAR difference for anything that is not types.Monthly.
+func TestCatalogIntervalIsTheConstant(t *testing.T) {
+	for _, sp := range catalog {
+		if types.Interval(sp.Interval) != types.Monthly {
+			t.Errorf("catalog plan %q carries interval %q, want %q",
+				sp.Slug, sp.Interval, types.Monthly)
+		}
+	}
+}
+
+// TestCatalogMonthlyPlanGetsAMonth reads the projected interval the way billing
+// does — through the engine that sets the period and the normalizer that reports
+// the revenue — so what is pinned is the period a subscriber actually gets rather
+// than the spelling of a string.
+func TestCatalogMonthlyPlanGetsAMonth(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+
+	for _, slug := range []string{"dev", "max", "team"} {
+		// The stored authority row: StartSubscription records the plan's id, so the
+		// period under test is the one a real purchase gets.
+		row, err := resolveSubscriptionPlan(datastore.New(ctx), slug)
+		if err != nil {
+			t.Fatalf("resolve %s: %v", slug, err)
+		}
+
+		sub := &subscription.Subscription{}
+		engine.StartSubscription(sub, row)
+		if want := sub.PeriodStart.AddDate(0, 1, 0); !sub.PeriodEnd.Equal(want) {
+			t.Errorf("%s bills every %s..%s, want a month ending %s",
+				slug, sub.PeriodStart, sub.PeriodEnd, want)
+		}
+
+		if got := MonthlyNormalizedCents(int64(row.Price), string(row.Interval), row.IntervalCount); got != int64(row.Price) {
+			t.Errorf("%s normalizes to %d, want its own monthly price %d", slug, got, row.Price)
+		}
+	}
 }

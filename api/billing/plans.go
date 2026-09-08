@@ -12,6 +12,7 @@ import (
 
 	"github.com/hanzoai/commerce/api/promo"
 	"github.com/hanzoai/commerce/models/plan"
+	types "github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -190,7 +191,7 @@ func parsePlans(data []byte) ([]staticPlan, error) {
 			Description:   cp.Description,
 			Category:      cp.Category,
 			Currency:      "usd",
-			Interval:      "monthly",
+			Interval:      string(types.Monthly),
 			IntervalCount: 1,
 			ContactSales:  cp.ContactSales,
 			Popular:       cp.Popular,
