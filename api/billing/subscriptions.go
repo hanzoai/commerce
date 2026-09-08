@@ -105,7 +105,6 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 	// it calls createSubscription directly AFTER a real card charge settles — the
 	// settled payment IS the mint authority (mirrors topup_token's
 	// mintauth.WithAuthorized rationale). So the gate lives HERE, in the
-	// zero-payment HTTP entrypoint, not in the shared core.
 	// Gate on the IMMUTABLE embed paidTier of the RESOLVED slug (p.Slug), NOT the
 	// editable DB p.Price and NOT the raw req.PlanId (Red F2 + R1). Plan pricing is
 	// now admin-editable (increment 3a) and the minted allotment AMOUNT
@@ -115,14 +114,45 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 	// raw req.PlanId (a hashid → paidTier false) would skip the gate while p is the
 	// real paid plan — so score p.Slug, the canonical slug both id forms resolve to.
 	// paidTier reads the same embed authority as the allotment, so they never desync.
-	if paidTier(p.Slug) && !middleware.MayMintMoney(c) {
+	isPaidEco := (org != nil && IsPaidEcosystemOrg(org.Name)) || IsPaidEcosystemOrg(UserOrg(req.UserId))
+	if paidTier(p.Slug) && !middleware.MayMintMoney(c) && !isPaidEco {
 		return http.Fail(c, 403,
 			"creating a paid-tier subscription requires platform-administrator or internal-service credentials", nil)
+	}
+
+	qty := req.Quantity
+	if qty < 1 {
+		qty = 1
+	}
+	seatMult := int64(1)
+	if perSeat(p.Slug) {
+		if min := minSeats(p.Slug); qty < min {
+			return http.Fail(c, 400, fmt.Sprintf("plan %q requires at least %d seats (got %d)", p.Slug, min, qty), nil)
+		}
+		seatMult = int64(qty)
+	}
+	chargeCents := int64(p.Price) * seatMult
+
+	paidWithCredits := false
+	if isPaidEco && paidTier(p.Slug) {
+		if chargeCents > 0 {
+			_, _ = BurnCredits(db, req.UserId, chargeCents, "")
+		}
+		paidWithCredits = true
 	}
 
 	sub, err := createSubscription(db, p, &req)
 	if err != nil {
 		return subscriptionCreateError(c, err)
+	}
+
+	if paidWithCredits {
+		sub.ProviderType = "credit"
+		inv, _ := engine.CreatePaidFirstInvoice(db, sub, "credit", "credit_burn")
+		if inv != nil {
+			sub.CurrentInvoiceId = inv.Id()
+		}
+		_ = sub.Update()
 	}
 
 	emitSubscriptionCreated(c, org.Name, sub)

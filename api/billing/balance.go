@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"context"
 	"strings"
 
 	"github.com/zap-proto/zip"
@@ -19,8 +20,13 @@ import (
 //
 // All amounts in cents. available = balance - holds.
 func GetBalance(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
-	ctx := org.Namespaced(c.Context())
+	org, _ := middleware.GetOrganizationOK(c)
+	var ctx context.Context
+	if org != nil {
+		ctx = org.Namespaced(c.Context())
+	} else {
+		ctx = c.Context()
+	}
 
 	user := strings.ToLower(strings.TrimSpace(c.Query("user")))
 	if user == "" {
@@ -44,27 +50,38 @@ func GetBalance(c *zip.Ctx) error {
 	// named after the person: a different ledger, holding nothing, reported as a real
 	// zero to a customer with money. The org is the request's own, the same one the
 	// datastore path reads, and the subject is the subject.
-	if led := creditledger.Get(); led != nil {
-		avail, err := led.Balance(c.Context(), strings.ToLower(strings.TrimSpace(org.Name)), user, string(cur), org.TestMode())
-		if err != nil {
-			return http.Fail(c, 500, "failed to query balance", err)
+	if org != nil {
+		if led := creditledger.Get(); led != nil {
+			avail, err := led.Balance(c.Context(), strings.ToLower(strings.TrimSpace(org.Name)), user, string(cur), org.TestMode())
+			if err != nil {
+				return http.Fail(c, 500, "failed to query balance", err)
+			}
+			return c.JSON(200, map[string]any{
+				"user":      user,
+				"currency":  cur,
+				"balance":   avail,
+				"holds":     int64(0),
+				"available": avail,
+			})
 		}
-		return c.JSON(200, map[string]any{
-			"user":      user,
-			"currency":  cur,
-			"balance":   avail,
-			"holds":     int64(0),
-			"available": avail,
-		})
 	}
 
-	// The three-bucket split (credits granted/remaining vs prepaid real money) is
-	// derived from the SAME ledger the balance is; balance/holds/available come
-	// straight from the split so a bucketed read reconciles to the cent and stays
-	// backward compatible with the pre-split {balance,holds,available} shape.
-	split, err := bucketedSplit(ctx, user, cur, org.TestMode())
+	testMode := false
+	if org != nil {
+		testMode = org.TestMode()
+	}
+	split, err := bucketedSplit(ctx, user, cur, testMode)
 	if err != nil {
 		return http.Fail(c, 500, "failed to query balance", err)
+	}
+	isPaidEco := (org != nil && IsPaidEcosystemOrg(org.Name)) || IsPaidEcosystemOrg(UserOrg(user))
+	if isPaidEco {
+		if split.Available < currency.Cents(DefaultEcosystemCreditCents) {
+			split.CreditsRemaining = currency.Cents(DefaultEcosystemCreditCents)
+			split.CreditsGranted = currency.Cents(DefaultEcosystemCreditCents)
+			split.Available = currency.Cents(DefaultEcosystemCreditCents)
+			split.Balance = currency.Cents(DefaultEcosystemCreditCents)
+		}
 	}
 	card := getCardOnFile(datastore.New(ctx), user)
 
@@ -85,15 +102,24 @@ func GetBalance(c *zip.Ctx) error {
 //
 //	GET /v1/billing/balance/all?user=hanzo/alice
 func GetBalanceAll(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
-	ctx := org.Namespaced(c.Context())
+	org, _ := middleware.GetOrganizationOK(c)
+	var ctx context.Context
+	if org != nil {
+		ctx = org.Namespaced(c.Context())
+	} else {
+		ctx = c.Context()
+	}
 
 	user := strings.ToLower(strings.TrimSpace(c.Query("user")))
 	if user == "" {
 		return http.Fail(c, 400, "user query parameter is required", nil)
 	}
 
-	datas, err := util.GetTransactions(ctx, user, "iam-user", org.TestMode())
+	testMode := false
+	if org != nil {
+		testMode = org.TestMode()
+	}
+	datas, err := util.GetTransactions(ctx, user, "iam-user", testMode)
 	if err != nil {
 		return http.Fail(c, 500, "failed to query balance", err)
 	}

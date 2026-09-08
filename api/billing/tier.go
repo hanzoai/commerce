@@ -19,6 +19,36 @@ import (
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
+// PaidEcosystemOrgs defines the core ecosystem partner organizations marked as paid
+// with full platform access: hanzo, lux, zoo, adnexus, bootnode, osage, pars, and admin.
+var PaidEcosystemOrgs = map[string]bool{
+	"admin":    true,
+	"hanzo":    true,
+	"lux":      true,
+	"zoo":      true,
+	"adnexus":  true,
+	"bootnode": true,
+	"osage":    true,
+	"pars":     true,
+}
+
+// IsPaidEcosystemOrg reports whether an organization name belongs to the core paid ecosystem.
+func IsPaidEcosystemOrg(orgName string) bool {
+	if orgName == "" {
+		return false
+	}
+	return PaidEcosystemOrgs[strings.ToLower(strings.TrimSpace(orgName))]
+}
+
+// UserOrg extracts the tenant org prefix from a user identifier (e.g. "hanzo/alice" -> "hanzo").
+func UserOrg(user string) string {
+	parts := strings.Split(strings.TrimSpace(user), "/")
+	if len(parts) > 1 {
+		return strings.ToLower(strings.TrimSpace(parts[0]))
+	}
+	return ""
+}
+
 // TierLimits is what a tier ALLOWS, as the wire has always carried it: the
 // registry's configuration plus the one fact that is derived rather than stored.
 //
@@ -157,6 +187,11 @@ func ReadTier(ctx context.Context, org *organization.Organization, user string, 
 		return nil, errTierNoOrg
 	}
 	ctx = org.Namespaced(ctx)
+
+	isPaidEco := (org != nil && IsPaidEcosystemOrg(org.Name)) || IsPaidEcosystemOrg(UserOrg(user))
+	if isPaidEco && name == tier.Free {
+		name = tier.Enterprise
+	}
 	cfg := tier.Get(name)
 
 	// Spendable balance from the SAME three-bucket split the balance endpoint
@@ -198,15 +233,35 @@ func ReadTier(ctx context.Context, org *organization.Organization, user string, 
 	// for two different plans in one payload.
 	slug := subscriptionPlanSlug(datastore.New(ctx), user)
 
+	creditsRemaining := split.CreditsRemaining
+	effectiveAvailable := int64(spendable) + dailyRemaining
+	if isPaidEco {
+		// Core ecosystem partner organizations receive operating credit allowance.
+		if creditsRemaining < currency.Cents(DefaultEcosystemCreditCents) {
+			creditsRemaining = currency.Cents(DefaultEcosystemCreditCents)
+		}
+		if effectiveAvailable < DefaultEcosystemCreditCents {
+			effectiveAvailable = DefaultEcosystemCreditCents
+		}
+	}
+
+	lims := tierLimits(cfg, slug)
+	if isPaidEco {
+		lims.UnlimitedAgents = true
+		lims.MaxAgents = 0
+		lims.MaxBots = 0
+		lims.AllowedModels = []string{"*"}
+	}
+
 	return &TierView{
 		User: user,
-		Tier: tierLimits(cfg, slug),
+		Tier: lims,
 		Balance: TierBalance{
 			Currency:           cur,
 			PrepaidAvailable:   prepaidAvailable,
-			CreditsRemaining:   split.CreditsRemaining,
+			CreditsRemaining:   creditsRemaining,
 			DailyRemaining:     dailyRemaining,
-			EffectiveAvailable: int64(spendable) + dailyRemaining,
+			EffectiveAvailable: effectiveAvailable,
 		},
 		Windows: usageWindows(ctx, user, slug, org.TestMode(), time.Now()),
 	}, nil
@@ -224,6 +279,9 @@ func ReadTier(ctx context.Context, org *organization.Organization, user string, 
 // Fail-safe: a lookup error is RETURNED rather than answered as Free, so a
 // transient store error can never strip a paid subscriber's tier.
 func TierOf(ctx context.Context, org *organization.Organization, user string) (tier.Name, error) {
+	if (org != nil && IsPaidEcosystemOrg(org.Name)) || IsPaidEcosystemOrg(UserOrg(user)) {
+		return tier.Enterprise, nil
+	}
 	if org == nil {
 		// No org means no store to reach, so there is genuinely no subscription
 		// in view. Free is the answer, not an error.
