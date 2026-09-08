@@ -93,6 +93,8 @@ func TestRoutes_WiredInProduction(t *testing.T) {
 		body   []byte
 	}{
 		{name: "public_org_lookup", method: http.MethodGet, path: "/v1/commerce/org", host: "pay.example.test"},
+		{name: "billing_plans", method: http.MethodGet, path: "/v1/billing/plans", host: "pay.example.test"},
+		{name: "billing_settings", method: http.MethodGet, path: "/v1/billing/settings", host: "pay.example.test"},
 	}
 
 	for _, tc := range cases {
