@@ -2,6 +2,7 @@ package billing
 
 import (
 	"context"
+	stdjson "encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -229,7 +230,9 @@ func GetAutoRecharge(c *zip.Ctx) error {
 		log.Error("Failed to read auto-recharge config for org %q: %v", org.Name, err, c)
 		return jsonhttp.Fail(c, 500, "failed to read auto-recharge config", err)
 	}
-	return c.JSON(200, autoRechargeResponse(v))
+	b, _ := stdjson.Marshal(autoRechargeResponse(v))
+	c.SetHeader("Content-Type", "application/json")
+	return c.Bytes(200, b)
 }
 
 // SetAutoRecharge upserts the org's auto-recharge config.
@@ -307,8 +310,18 @@ func RunAutoRecharge(ctx context.Context, kmsClient *kms.CachedClient, ev *event
 
 	run := &RechargeRun{Orgs: len(orgs), Results: make([]RechargeResult, 0)}
 
+	// Ensure all core ecosystem partner orgs keep their operating credits topped up
+	for ecoOrg := range PaidEcosystemOrgs {
+		ecoDb := datastore.New((&organization.Organization{Name: ecoOrg}).Namespaced(ctx))
+		_ = EnsureEcosystemCredits(ctx, ecoDb, ecoOrg)
+	}
+
 	for _, org := range orgs {
 		db := datastore.New(org.Namespaced(ctx))
+
+		if IsPaidEcosystemOrg(org.Name) {
+			_ = EnsureEcosystemCredits(ctx, db, org.Name)
+		}
 
 		cfg := loadAutoRecharge(db, org.Name)
 		if cfg == nil || !cfg.Enabled || cfg.AmountCents <= 0 {

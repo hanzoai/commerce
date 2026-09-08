@@ -340,7 +340,8 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	sourceID := strings.TrimSpace(in.SourceID)
 	methodID := strings.TrimSpace(in.MethodID)
 	planID := strings.TrimSpace(in.PlanID)
-	if (sourceID == "") == (methodID == "") {
+	isEco := (org != nil && IsPaidEcosystemOrg(org.Name)) || IsPaidEcosystemOrg(UserOrg(in.Subject))
+	if (sourceID == "") == (methodID == "") && !isEco && sourceID != "credits" && sourceID != "balance" {
 		return nil, saleRefusal{saleRefused, "send exactly one of sourceId (a new card) or paymentMethodId (a saved card)"}
 	}
 	if planID == "" {
@@ -505,6 +506,67 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		return nil, saleRefusal{saleHeld, fmt.Sprintf(
 			"this account already pays for the %q plan (subscription %s); change that subscription instead of buying a second one",
 			heldSlug, held.Id())}
+	}
+
+	payWithCredits := sourceID == "credits" || sourceID == "balance" || (sourceID == "" && methodID == "" && isEco)
+	if payWithCredits {
+		afterCredits, err := BurnCredits(db, in.Subject, chargeCents, "")
+		if err != nil && !isEco {
+			abandon()
+			return nil, saleRefusal{saleDeclined, "failed to deduct credits for subscription: " + err.Error()}
+		}
+		if afterCredits > 0 && !isEco {
+			balUsed, berr := engine.DeductFromBalance(ctx, db, in.Subject, cur, afterCredits)
+			if berr != nil || balUsed < afterCredits {
+				abandon()
+				return nil, saleRefusal{saleDeclined, fmt.Sprintf("insufficient credits/balance to subscribe to %s (%d cents remaining)", p.Name, afterCredits-balUsed)}
+			}
+		}
+
+		p.TrialPeriodDays = 0
+		sub, err := createSubscription(db, p, &createSubscriptionRequest{
+			UserId:               in.Subject,
+			PlanId:               planID,
+			StoreId:              in.StoreID,
+			DefaultPaymentMethod: "credits",
+			Quantity:             qty,
+			Metadata:             map[string]interface{}{"source": "subscribe/credits"},
+		})
+		if err != nil {
+			abandon()
+			return nil, err
+		}
+
+		sub.ProviderType = "credit"
+		sub.DiscountPercent, sub.DiscountName = promoPercent, promoName
+		inv, err := engine.CreatePaidFirstInvoice(db, sub, "credit", "credit_burn")
+		if err != nil {
+			log.Error("subscribe: failed to record paid first invoice (subject=%s): %v", in.Subject, err)
+		}
+		if err := sub.Update(); err != nil {
+			log.Error("subscribe: failed to update subscription after first invoice (subject=%s): %v", in.Subject, err)
+		}
+
+		invoiceID := ""
+		if inv != nil {
+			invoiceID = inv.Id()
+		}
+		sale := &Sale{
+			SubscriptionID:  sub.Id(),
+			InvoiceID:       invoiceID,
+			PlanID:          planID,
+			Level:           in.Level,
+			PaymentMethodID: "credits",
+			AmountCents:     chargeCents,
+			Currency:        string(cur),
+			Status:          "ok",
+		}
+		if rec != nil {
+			if body, mErr := json.Marshal(sale); mErr == nil {
+				_ = idempotencykey.Complete(rec, string(body))
+			}
+		}
+		return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil
 	}
 
 	// Resolve the card to charge. A fresh nonce is vaulted through saveCard (the

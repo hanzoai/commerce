@@ -73,7 +73,7 @@ func CollectInvoice(ctx context.Context, db *datastore.Datastore, inv *billingin
 
 	// Step 2: Deduct from transaction balance
 	if remaining > 0 {
-		balanceUsed, err := deductFromBalance(ctx, db, inv.UserId, inv.Currency, remaining)
+		balanceUsed, err := DeductFromBalance(ctx, db, inv.UserId, inv.Currency, remaining)
 		if err != nil {
 			// Non-fatal: continue to external provider
 			_ = err
@@ -140,9 +140,9 @@ func CollectInvoice(ctx context.Context, db *datastore.Datastore, inv *billingin
 	return result, nil
 }
 
-// deductFromBalance withdraws the specified amount from the user's
+// DeductFromBalance withdraws the specified amount from the user's
 // transaction balance if sufficient funds exist.
-func deductFromBalance(ctx context.Context, db *datastore.Datastore, userId string, cur currency.Type, amount int64) (int64, error) {
+func DeductFromBalance(ctx context.Context, db *datastore.Datastore, userId string, cur currency.Type, amount int64) (int64, error) {
 	if cur == "" {
 		cur = "usd"
 	}

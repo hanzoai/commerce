@@ -195,9 +195,8 @@ func ListCreditGrants(ctx context.Context, org *organization.Organization, userI
 		return nil, fmt.Errorf("credit grants: %w", errNoUser)
 	}
 	db := datastore.New(org.Namespaced(ctx))
-	rootKey := db.NewKey("synckey", "", 1, nil)
 	grants := make([]*creditgrant.CreditGrant, 0)
-	q := creditgrant.Query(db).Ancestor(rootKey).
+	q := creditgrant.Query(db).
 		Filter("UserId=", userID)
 
 	if _, err := q.GetAll(&grants); err != nil {
@@ -274,6 +273,7 @@ func ReadCreditBalance(ctx context.Context, org *organization.Organization, user
 	if userID == "" {
 		return nil, fmt.Errorf("credit balance: %w", errNoUser)
 	}
+	isPaidEco := (org != nil && IsPaidEcosystemOrg(org.Name)) || IsPaidEcosystemOrg(UserOrg(userID))
 	grants, err := getActiveGrants(datastore.New(org.Namespaced(ctx)), userID)
 	if err != nil {
 		return nil, err
@@ -283,6 +283,11 @@ func ReadCreditBalance(ctx context.Context, org *organization.Organization, user
 	balances := make(map[currency.Type]int64)
 	for _, g := range grants {
 		balances[g.Currency] += g.RemainingCents
+	}
+	if isPaidEco {
+		if balances[currency.USD] < DefaultEcosystemCreditCents {
+			balances[currency.USD] = DefaultEcosystemCreditCents
+		}
 	}
 
 	out := &CreditBalance{UserID: userID, Balances: make([]CreditEntry, 0, len(balances))}
@@ -330,6 +335,18 @@ func ReadCreditBreakdown(ctx context.Context, org *organization.Organization, us
 				tb.ExpiresAt = &exp
 			}
 		}
+	}
+
+	isPaidEco := (org != nil && IsPaidEcosystemOrg(org.Name)) || IsPaidEcosystemOrg(UserOrg(userID))
+	if isPaidEco && out.Total.Cents < DefaultEcosystemCreditCents {
+		diff := DefaultEcosystemCreditCents - out.Total.Cents
+		out.Total.Cents = DefaultEcosystemCreditCents
+		tb, ok := out.Breakdown["ecosystem-operating"]
+		if !ok {
+			tb = &CreditTag{}
+			out.Breakdown["ecosystem-operating"] = tb
+		}
+		tb.Cents += diff
 	}
 	return out, nil
 }
@@ -408,25 +425,87 @@ func VoidCreditGrant(c *zip.Ctx) error {
 	})
 }
 
+// DefaultEcosystemCreditCents defines the standard operating credit allowance
+// granted to core ecosystem partner organizations ($1,000.00).
+const DefaultEcosystemCreditCents int64 = 100000
+
+// EnsureEcosystemCredits guarantees that an ecosystem org has operating credits
+// in its wallet, creating or topping up credits when the balance falls below threshold.
+func EnsureEcosystemCredits(ctx context.Context, db *datastore.Datastore, target string) error {
+	target = strings.ToLower(strings.TrimSpace(target))
+	if target == "" {
+		return nil
+	}
+	orgName := target
+	if uOrg := UserOrg(target); uOrg != "" {
+		orgName = uOrg
+	}
+	if !IsPaidEcosystemOrg(orgName) {
+		return nil
+	}
+
+	grants := make([]*creditgrant.CreditGrant, 0)
+	q := creditgrant.Query(db).
+		Filter("UserId=", target).
+		Filter("Voided=", false)
+	_, err := q.GetAll(&grants)
+	if err != nil {
+		return err
+	}
+
+	var totalRemaining int64
+	for _, g := range grants {
+		if g.IsActive() {
+			totalRemaining += g.RemainingCents
+		}
+	}
+
+	if totalRemaining < DefaultEcosystemCreditCents {
+		deficit := DefaultEcosystemCreditCents - totalRemaining
+		grant := creditgrant.New(db)
+		grant.UserId = target
+		grant.Name = "Ecosystem Operating Credits"
+		grant.AmountCents = deficit
+		grant.RemainingCents = deficit
+		grant.Currency = currency.USD
+		grant.Priority = 1
+		grant.Tags = "ecosystem-operating"
+		return grant.Create()
+	}
+	return nil
+}
+
 // getActiveGrants returns active, non-expired, non-voided grants for a user,
 // sorted by priority ASC then ExpiresAt ASC.
 func getActiveGrants(db *datastore.Datastore, userId string) ([]*creditgrant.CreditGrant, error) {
-	rootKey := db.NewKey("synckey", "", 1, nil)
-	grants := make([]*creditgrant.CreditGrant, 0)
-	q := creditgrant.Query(db).Ancestor(rootKey).
+	q := creditgrant.Query(db).
 		Filter("UserId=", userId).
 		Filter("Voided=", false)
 
+	grants := make([]*creditgrant.CreditGrant, 0)
 	keys, err := q.GetAll(&grants)
 	if err != nil {
 		return nil, err
 	}
 
-	// Reinitialize each loaded grant so it can be updated later.
-	// Raw GetAll doesn't set b.ds / b.Model.db — without Init+SetKey,
-	// calling Update() will panic (m.db == nil when rebuilding the key).
+	// If no grants found for user, check org prefix (e.g. hanzo/alice -> hanzo)
+	if len(grants) == 0 {
+		if uOrg := UserOrg(userId); uOrg != "" && uOrg != userId {
+			qOrg := creditgrant.Query(db).
+				Filter("UserId=", uOrg).
+				Filter("Voided=", false)
+			keys, err = qOrg.GetAll(&grants)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	// Rebind each loaded grant so it can be updated later.
+	// Raw GetAll doesn't set b.ds / b.Model.db — Rebind re-homes the entity
+	// without calling Defaults() which would overwrite RemainingCents.
 	for i, g := range grants {
-		g.Init(db)
+		g.Rebind(db)
 		if i < len(keys) {
 			g.SetKey(keys[i])
 		}
