@@ -26,6 +26,7 @@ import (
 	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/thirdparty/kms"
+	types "github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -103,6 +104,12 @@ type subscribeCardRequest struct {
 	// no field here an amount could be written in, so underpaying is not a check
 	// that can be forgotten — it is a request that cannot be expressed.
 	Level int `json:"level,omitempty"`
+	// Interval picks which of the plan's published billing periods to buy at.
+	// Empty (the default) and "month" both buy the recurring price, so every
+	// client that predates annual billing keeps buying exactly what it bought
+	// before; "year" buys the catalog's annual price, charged for the whole year
+	// at once. planAtInterval says what that amounts to.
+	Interval types.Interval `json:"interval,omitempty"`
 }
 
 // SubscribeIn is the whole input of a card subscription. Every field is a VALUE
@@ -129,6 +136,9 @@ type SubscribeIn struct {
 	// Level picks which of the plan's published prices to buy at — an INDEX into
 	// the catalog's prices, never an amount.
 	Level int
+	// Interval picks which of the plan's published billing periods to buy at.
+	// Empty means the plan's recurring price; types.Yearly buys the year at once.
+	Interval types.Interval
 	// Currency is honored only when it matches the plan's own; a mismatch is
 	// refused rather than charged in a weaker unit.
 	Currency string
@@ -165,6 +175,9 @@ type Sale struct {
 	PlanID string `json:"planId"`
 	// Level is which of the plan's published prices it was bought at.
 	Level int `json:"level"`
+	// Interval is the period bought, and the period this subscription renews on:
+	// "month" for the recurring price, "year" when AmountCents is the whole year.
+	Interval types.Interval `json:"interval"`
 	// PaymentMethodID is the vaulted card that paid, and that renewals charge.
 	PaymentMethodID string `json:"paymentMethodId"`
 	// AmountCents is what the card was actually charged for the first period —
@@ -366,10 +379,10 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		return nil, saleRefusal{saleMissing, "plan not found"}
 	}
 	// The price this card is charged, chosen from what the catalog publishes. A
-	// level the plan does not publish is refused here — before the card is
-	// touched, before the idempotency guard is taken, and without ever consulting
-	// an amount the client sent, because the client sends none.
-	p, err = planAtLevel(p, in.Level)
+	// level or a period the plan does not publish is refused here — before the card
+	// is touched, before the idempotency guard is taken, and without ever
+	// consulting an amount the client sent, because the client sends none.
+	p, err = planAt(p, in.Level, in.Interval)
 	if err != nil {
 		return nil, saleRefusal{saleRefused, err.Error()}
 	}
@@ -443,9 +456,16 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// the first attempt's key, and the server would REPLAY the $99 charge and hand
 	// back its receipt — selling the wrong thing quietly. Scoping by level keeps
 	// the retry guard doing its job without letting it mask a genuine change.
+	//
+	// The PERIOD is one of those facts too, and the same size of one: a buyer who
+	// switched Dev from monthly to annual inside the window would replay the $19
+	// charge and be handed a receipt for a year. It is the RESOLVED period that
+	// scopes the key, not the field as sent, because an absent interval and "month"
+	// are the same purchase and must share a key rather than charge twice.
 	guard := in.IdempotencyKey
 	if guard == "" {
-		guard = windowKey("store:" + in.StoreID + ":plan:" + planID + ":level:" + strconv.Itoa(in.Level))
+		guard = windowKey("store:" + in.StoreID + ":plan:" + planID +
+			":level:" + strconv.Itoa(in.Level) + ":interval:" + string(p.Interval))
 	}
 	// The Square idempotency key is derived from the SAME stable guard key (never the
 	// single-use nonce), so Square itself de-dups the money move even if the local
@@ -556,6 +576,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			InvoiceID:       invoiceID,
 			PlanID:          planID,
 			Level:           in.Level,
+			Interval:        p.Interval,
 			PaymentMethodID: "credits",
 			AmountCents:     chargeCents,
 			Currency:        string(cur),
@@ -683,6 +704,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		InvoiceID:       invoiceID,
 		PlanID:          planID,
 		Level:           in.Level,
+		Interval:        p.Interval,
 		PaymentMethodID: pm.Id(),
 		AmountCents:     chargeCents,
 		Currency:        string(cur),
@@ -756,6 +778,7 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		StoreID:        req.StoreID,
 		Quantity:       req.Quantity,
 		Level:          req.Level,
+		Interval:       req.Interval,
 		Currency:       req.Currency,
 		Email:          iamEmail,
 		IdempotencyKey: strings.TrimSpace(c.Header("X-Idempotency-Key")),

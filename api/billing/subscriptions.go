@@ -34,6 +34,10 @@ type createSubscriptionRequest struct {
 	// the catalog's `prices`, never an amount. 0 (the default) is the plan's base
 	// price. See plan.LevelPrice for why the wire carries a choice and not a sum.
 	Level int `json:"level,omitempty"`
+	// Interval picks which of the plan's published billing periods to open at.
+	// Empty (the default) and "month" both open at the recurring price; "year"
+	// opens at the catalog's annual one. See planAtInterval.
+	Interval types.Interval `json:"interval,omitempty"`
 	// Members are the seat holders of a per-seat subscription. Each gets a
 	// zero-price bundle-child subscription row so the monthly allotment run
 	// grants their own per-user included credit. Never more than Quantity.
@@ -84,8 +88,8 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 	}
 
 	// The price this subscription opens at, chosen from what the catalog
-	// publishes. A level the plan does not publish is refused outright.
-	p, err = planAtLevel(p, req.Level)
+	// publishes. A level or a period the plan does not publish is refused outright.
+	p, err = planAt(p, req.Level, req.Interval)
 	if err != nil {
 		return http.Fail(c, 400, err.Error(), nil)
 	}
@@ -269,6 +273,69 @@ func planAtLevel(p *plan.Plan, level int) (*plan.Plan, error) {
 	return &at, nil
 }
 
+// planAtInterval returns p billed over the period the purchase chose — a COPY,
+// always, at a price the catalog publishes for that period. A period the plan is
+// not sold over is refused here, before any card is touched.
+//
+// Price is collected in FULL once per period, and advancePeriod makes a yearly
+// plan's period a year, so a yearly subscription's Price is the whole year's
+// money. PriceAnnual is published per month — Dev's $15.58 against a $19 list —
+// so the year is that twelve times, and $186.96 is what the card is charged.
+// Carrying PriceAnnual itself would sell a year of Dev for $15.58.
+//
+// The identity holding the two halves together is that MonthlyNormalizedCents
+// reads PriceAnnual x 12 straight back to PriceAnnual: the price the revenue
+// board reports is the price the catalog advertises, and neither side knows the
+// other exists.
+//
+// A plan carrying no annual price is not sold annually. The free tier's is $0 and
+// a contact-sales tier has no price at all, so twelve times it is a $0 charge —
+// which a card rail answers as a decline, blaming the buyer's card for a plan that
+// was never on sale. Naming the real reason is the whole difference.
+func planAtInterval(p *plan.Plan, interval types.Interval) (*plan.Plan, error) {
+	at := *p
+	switch interval {
+	case "", types.Monthly:
+		// The plan exactly as published. Every client that predates this field
+		// sends nothing and keeps buying what it bought before.
+		return &at, nil
+	case types.Yearly:
+		if p.PriceAnnual <= 0 {
+			return nil, fmt.Errorf("plan %q is not sold annually", p.Slug)
+		}
+		at.Price = p.PriceAnnual * 12
+		at.Interval = types.Yearly
+		at.IntervalCount = 1
+		return &at, nil
+	}
+	return nil, fmt.Errorf("plan %q is not sold by the %q; choose %q or %q",
+		p.Slug, interval, types.Monthly, types.Yearly)
+}
+
+// planAt returns the plan this purchase opens at: one of the levels the catalog
+// publishes, over one of the periods it publishes. It is the single answer to
+// "what was bought", so the card path and the self-serve path price a purchase
+// identically rather than by two call sites agreeing.
+//
+// A level and an annual period cannot be combined, because the catalog prices no
+// such thing: `prices` is a ladder of the plan's RECURRING prices and priceAnnual
+// is one figure standing against the base one. Max publishes ten rungs and a
+// single $81.18, so Max at level 3 has a published monthly price ($299) and no
+// published annual price whatsoever. The alternative is deriving one from the
+// discount the other rungs happen to carry, which invents a price and charges a
+// year of it up front. Refusing is the rule levels already follow — sell only what
+// is published — and it is answered before any card is touched.
+func planAt(p *plan.Plan, level int, interval types.Interval) (*plan.Plan, error) {
+	at, err := planAtLevel(p, level)
+	if err != nil {
+		return nil, err
+	}
+	if interval == types.Yearly && level != 0 {
+		return nil, fmt.Errorf("plan %q is sold annually at its base price only, not at level %d", p.Slug, level)
+	}
+	return planAtInterval(at, interval)
+}
+
 // createSubscription is the reusable CORE of subscription creation: seat gate →
 // create the row → expand bundles → provision member seats. It does NOT enforce
 // the C1-a paid-tier mint gate — that is the caller's job (the HTTP
@@ -281,9 +348,10 @@ func planAtLevel(p *plan.Plan, level int) (*plan.Plan, error) {
 // rendered the result — it reads the collector off the request — so each
 // entrypoint fires its own once this hands back the row.
 //
-// p is ALREADY priced at the chosen level (planAtLevel), because the card path
-// has to know the amount before it charges. So req.Level is the wire field, and
-// p.Price is the answer — this core reads the price and never re-derives it.
+// p is ALREADY priced at the chosen level and period (planAt), because the card
+// path has to know the amount before it charges. So req.Level and req.Interval are
+// the wire fields, and p.Price and p.Interval are the answer — this core reads
+// them and never re-derives either.
 func createSubscription(db *datastore.Datastore, p *plan.Plan, req *createSubscriptionRequest) (*subscription.Subscription, error) {
 	// Seat gate: the catalog is the sole authority for per-seat-ness and the
 	// seat floor. A per-seat plan bills Price × quantity, never below
