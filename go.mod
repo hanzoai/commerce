@@ -1,6 +1,6 @@
 module github.com/hanzoai/commerce
 
-go 1.26.5
+go 1.26.8
 
 require github.com/zap-proto/zip v1.34.2
 
