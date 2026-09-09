@@ -72,7 +72,7 @@ FROM ${PAY_IMAGE} AS pay-dist
 FROM ${BILLING_IMAGE} AS billing-dist
 
 # ── Stage 4: Build Go binary (with embedded admin + pay + billing SPAs) ──
-FROM golang:1.26.5-alpine AS builder
+FROM golang:1.26.8-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev
@@ -104,7 +104,7 @@ COPY go.mod go.sum ./
 # mount was warm. That is the worst kind of green: the fleet scaled 10 → 20
 # runners today, and every new one has a cold cache.
 #
-# GOTOOLCHAIN=local pins the builder's own golang:1.26.5 toolchain so go does
+# GOTOOLCHAIN=local pins the builder's own golang:1.26.8 toolchain so go does
 # NOT try to download+verify a toolchain module (which fails as a sumdb
 # "SECURITY ERROR").
 # GOWORK=off is critical: the repo commits a go.work (use . ./metering).
