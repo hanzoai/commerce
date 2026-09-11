@@ -25,7 +25,7 @@ require (
 	github.com/hanzoai/orm v0.6.26
 	github.com/hanzoai/pubsub-go v1.0.0
 	github.com/hanzoai/search-go v0.36.0
-	github.com/hanzoai/sendgrid-go v3.4.2-0.20180724185151-733a05184a8d+incompatible
+	github.com/hanzoai/sendgrid-go v1.2.1-0.20260728181054-2fdddb0d8dba
 	github.com/hanzoai/tasks v1.52.9
 	github.com/hanzokv/go/v9 v9.22.0
 	github.com/huandu/facebook v2.3.1+incompatible
