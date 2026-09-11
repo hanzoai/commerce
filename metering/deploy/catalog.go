@@ -123,7 +123,7 @@ var Catalog = map[string]Product{
 		Meterable:    true,
 	},
 
-	// Base (PocketBase fork): per-tenant SQLite backend. Billed per record
+	// Base: per-tenant SQLite backend. Billed per record
 	// write (create/update/delete). Reads are free to encourage adoption.
 	// Base hosts its own metering via a core.ServeEvent hook (its router is not
 	// net/http), so the proxy sidecar is NOT used — Meterable=false here means

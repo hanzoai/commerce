@@ -76,7 +76,7 @@ renderer. No product reimplements billing; no second balance gate exists.
 |---------|-------|------|---------|--------|
 | **vector** (Qdrant) | hanzoai/vector | vector op (write 2c / read 1c) | meter-proxy | **PROVEN live** |
 | **search** (Meili) | hanzoai/search | document (index 3c / query 1c) | meter-proxy | **PROVEN live** |
-| **base** (PocketBase) | hanzoai/base | record write (1c) | in-process plugin | **PROVEN (gate loop)** |
+| **base** | hanzoai/base | record write (1c) | in-process plugin | **PROVEN (gate loop)** |
 | gateway/LLM | hanzoai/gateway+ai | tokens | (existing LLM gate) | already live |
 | functions | hanzoai/functions | compute-second | Middleware (imperative) | needs price hook |
 | sign/esign | hanzoai/sign | request / envelope | Middleware | needs wrap |
