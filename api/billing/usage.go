@@ -49,6 +49,47 @@ type usageRequest struct {
 	ClientIP         string `json:"clientIp"`
 }
 
+// meterUsage records this act on the "api-usage" meter, for an org whose plan
+// prices usage from a meter rather than from the debit RecordUsage writes. No
+// such meter → nothing to record.
+//
+// A METER EVENT'S VALUE IS A QUANTITY, AND A CHARGE IS NOT ONE. AggregateUsage
+// sums Value and hands the sum to PricingRule.CalculateCost, so a value that is
+// already money comes back out multiplied by a unit price — the invoice line
+// charges for the charge. This wrote req.Amount, the debit in cents, which was
+// wrong twice from one field: non-zero it double-charged, and on the preferred
+// amountMicros path `amount` is absent, so the value was 0 and the line vanished.
+// The quantity a token charge prices is the tokens; a count-aggregated meter
+// ignores the value and counts the row.
+//
+// IT RUNS BEFORE THE ROUNDING. A charge under half a cent rounds to $0.00 and
+// RecordUsage acknowledges it without a debit — statistically fair for money, and
+// silent erasure for work. Per-token pricing makes most single calls sub-half-cent,
+// so a meter placed after that short-circuit sees almost nothing, which is the
+// exact opposite of what a meter is for: accumulating small quantities so they can
+// be priced in bulk at the end of the period.
+//
+// One act, one row: [engine.IngestUsageEvent] already dedups on the idempotency
+// key, so a retry of the same requestId counts the tokens once. This used to be a
+// hand-rolled second copy of that function without the dedup.
+func meterUsage(db *datastore.Datastore, req usageRequest) {
+	if req.TotalTokens <= 0 && req.AmountMicros <= 0 && req.Amount <= 0 {
+		return // nothing happened worth metering
+	}
+	rootKey := db.NewKey("synckey", "", 1, nil)
+	meters := make([]*meter.Meter, 0, 1)
+	q := meter.Query(db).Ancestor(rootKey).Filter("EventName=", "api-usage").Limit(1)
+	if _, err := q.GetAll(&meters); err != nil || len(meters) == 0 {
+		return
+	}
+	if _, _, err := engine.IngestUsageEvent(db, meters[0].Id(), req.User,
+		int64(req.TotalTokens), req.RequestID, time.Now(),
+		map[string]any{"model": req.Model, "provider": req.Provider},
+	); err != nil {
+		log.Error("Failed to record usage meter event: %v", err)
+	}
+}
+
 // GetUsage returns usage transactions for an IAM user, filtered by tag "api-usage".
 //
 //	GET /v1/billing/usage?user=hanzo/alice&currency=usd
@@ -131,6 +172,11 @@ func RecordUsage(c *zip.Ctx) error {
 	if req.User == "" {
 		return http.Fail(c, 400, "user is required", nil)
 	}
+
+	// THE QUANTITY IS NOT THE MONEY, and it is recorded before the money is, because
+	// everything below this line is about rounding a charge and any of it can drop
+	// one. See meterUsage.
+	go meterUsage(db, req)
 
 	// Lossless sub-cent handling. `amountMicros` (micro-USD, 1e6=$1) carries full
 	// precision over the wire; `amount` (cents) is the back-compat fallback.
@@ -236,31 +282,6 @@ func RecordUsage(c *zip.Ctx) error {
 		log.Error("Failed to record usage transaction: %v", err, c)
 		return http.Fail(c, 500, "failed to record usage", err)
 	}
-
-	// Also create a MeterEvent for backward compatibility with the new
-	// meter-based billing system. Look for a meter with eventName "api-usage".
-	go func() {
-		rootKey := db.NewKey("synckey", "", 1, nil)
-		meters := make([]*meter.Meter, 0, 1)
-		q := meter.Query(db).Ancestor(rootKey).
-			Filter("EventName=", "api-usage").
-			Limit(1)
-		if _, err := q.GetAll(&meters); err == nil && len(meters) > 0 {
-			evt := meter.NewEvent(db)
-			evt.MeterId = meters[0].Id()
-			evt.UserId = req.User
-			evt.Value = req.Amount
-			evt.Timestamp = time.Now()
-			evt.Idempotency = req.RequestID
-			evt.Dimensions = Map{
-				"model":    req.Model,
-				"provider": req.Provider,
-			}
-			if err := evt.Create(); err != nil {
-				log.Error("Failed to create backward-compat meter event: %v", err)
-			}
-		}
-	}()
 
 	// Track referral revenue share: if this user was referred, create an
 	// affiliate Fee for the referrer's commission. Fire-and-forget — usage
