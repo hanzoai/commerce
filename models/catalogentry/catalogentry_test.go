@@ -102,7 +102,7 @@ func TestProject_ConformsToContract(t *testing.T) {
 	if m.BrandColor != "violet" { // swatch KEY, not hex
 		t.Fatalf("models.brandColor = %q, want swatch key 'violet'", m.BrandColor)
 	}
-	if m.Route != "/models" || m.DocsUrl != "https://docs.hanzo.ai/docs/services/models" {
+	if m.Route != "/models" || m.DocsUrl != "https://docs.hanzo.ai/docs/models" {
 		t.Fatalf("models route/docs = %q / %q", m.Route, m.DocsUrl)
 	}
 	// Every capability carries the enriched taxonomy fields.

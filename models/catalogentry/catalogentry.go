@@ -9,7 +9,7 @@
 //   - iconKey  is a @hanzogui/lucide-icons-2 export NAME ("Brain") — never a component.
 //   - brandColor is a swatch KEY ("violet") — never hex. @hanzo/products maps key→css.
 //   - category is EXACTLY one of the 10 canonical categories (others are dropped by scope).
-//   - route is "/<slug>", apiPath is /v1-prefixed, docsUrl is /docs/services/<slug>.
+//   - route is "/<slug>", apiPath is /v1-prefixed, docsUrl is a page docs.hanzo.ai serves.
 //   - pricingId is a pricing plans/<key>.json key, or null.
 //   - brands is a category-derived convenience — NOT a hand-authored filter; the
 //     server scopes by CATEGORY (categoriesForBrand), matching @hanzo/products
@@ -114,7 +114,7 @@ type CatalogEntry struct {
 	BrandColor string `json:"brandColor"` // swatch key, e.g. "blue"
 
 	Route     string `json:"route"`               // marketing "/<slug>"
-	DocsUrl   string `json:"docsUrl"`             // https://docs.hanzo.ai/docs/services/<slug>
+	DocsUrl   string `json:"docsUrl"`             // a page on docs.hanzo.ai
 	ApiPath   string `json:"apiPath"`             // /v1-prefixed path, "/v1/<slug>"
 	ApiRoute  string `json:"apiRoute,omitempty"`  // host-qualified "api.hanzo.ai/v1/<slug>"
 	GithubUrl string `json:"githubUrl,omitempty"` // source runtime repo URL
