@@ -9,6 +9,7 @@
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
+    "tsgo": "npm:typescript@7.0.2",
     "turbo": "catalog:"
   },
   "packageManager": "pnpm@9.15.9",

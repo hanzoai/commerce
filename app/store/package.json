@@ -14,7 +14,8 @@
     "start": "next start -p 8000",
     "lint": "next lint",
     "analyze": "ANALYZE=true next build",
-    "e2e:css": "node e2e/css-check.mjs"
+    "e2e:css": "node e2e/css-check.mjs",
+    "typecheck": "../node_modules/tsgo/bin/tsc --noEmit --incremental false"
   },
   "dependencies": {
     "@hanzo/commerce-icons": "workspace:*",
