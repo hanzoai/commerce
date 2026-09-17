@@ -61,7 +61,7 @@ require (
 	github.com/square/square-go-sdk/v3 v3.0.1
 	github.com/valyala/fasthttp v1.72.0
 	github.com/zap-proto/fiber/v3 v3.2.1
-	github.com/zap-proto/zip v1.37.1
+	github.com/zap-proto/zip v1.37.3
 	golang.org/x/crypto v0.54.0
 	golang.org/x/sync v0.22.0
 )
@@ -160,7 +160,6 @@ require (
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
-	github.com/sendgrid/sendgrid-go v3.16.1+incompatible // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/smartystreets/goconvey v1.8.1 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
