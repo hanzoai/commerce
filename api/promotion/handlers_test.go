@@ -26,7 +26,7 @@ import (
 func evalOver(t *testing.T, ns string, body evalRequest) evalResponse {
 	t.Helper()
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Post("/promotion/evaluate", func(c *zip.Ctx) error {
+	app.Raw(http.MethodPost, "/promotion/evaluate", func(c *zip.Ctx) error {
 		c.SetContext(nscontext.WithNamespace(context.Background(), ns))
 		return c.Next()
 	}, Evaluate)

@@ -10,6 +10,7 @@ import (
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/user"
+
 	// mandrill "github.com/hanzoai/commerce/thirdparty/mandrill/tasks"
 	"github.com/hanzoai/commerce/thirdparty/woopra"
 )

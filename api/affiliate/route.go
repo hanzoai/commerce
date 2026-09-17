@@ -13,7 +13,7 @@ import (
 // Route registers affiliate and contributor routes.
 // This builds on top of the referral base layer: revenue share,
 // commissions, payouts, OSS contributor attribution.
-func Route(r zip.Router, args ...zip.Handler) {
+func Route(r *zip.Group, args ...zip.Handler) {
 	tokenRequired := middleware.TokenRequired()
 	adminRequired := middleware.TokenRequired(permission.Admin)
 

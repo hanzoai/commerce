@@ -183,7 +183,7 @@ func (stubReader) BlockNumber(context.Context) (uint64, error) { return 100, nil
 func (stubReader) TransfersTo(context.Context, []string, uint64, uint64) ([]depositwatch.Transfer, error) {
 	return nil, nil
 }
-func (stubReader) Decimals(context.Context) (int, error) { return 6, nil }
+func (stubReader) Decimals(context.Context) (int, error)  { return 6, nil }
 func (stubReader) Symbol(context.Context) (string, error) { return "USDC", nil }
 
 type stubStore struct{}

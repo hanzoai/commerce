@@ -18,6 +18,7 @@ package catalog
 
 import (
 	"errors"
+	nethttp "net/http"
 
 	"github.com/zap-proto/zip"
 
@@ -69,25 +70,25 @@ func requirePlatform(c *zip.Ctx) bool {
 
 // PublicRoute wires the public, unauthenticated catalog projection. Mount on the
 // commerce public group so it serves GET /v1/commerce/catalog.
-func PublicRoute(r zip.Router) {
-	r.Get("/catalog", Public)
+func PublicRoute(r *zip.Group) {
+	r.Raw(nethttp.MethodGet, "/catalog", Public)
 }
 
 // AdminCatalogRoute wires the owner=="admin" margin projection. Mount on an
 // IAM-gated commerce group so it serves GET /v1/commerce/admin/catalog; the
 // handler ALSO enforces IsSuperAdmin() (defense in depth).
-func AdminCatalogRoute(r zip.Router) {
-	r.Get("/admin/catalog", AdminCatalog)
+func AdminCatalogRoute(r *zip.Group) {
+	r.Raw(nethttp.MethodGet, "/admin/catalog", AdminCatalog)
 }
 
 // AdminRoute wires the platform-admin catalog CRUD + seed on the /v1 bundle.
-func AdminRoute(r zip.Router, args ...zip.Handler) {
+func AdminRoute(r *zip.Group, args ...zip.Handler) {
 	g := r.Group("/catalog")
 	// args carry the bundle's tokenRequired/adminRequired; each handler ALSO
 	// enforces IsSuperAdmin() explicitly (defense in depth — a token gate is not
 	// a platform-admin gate).
-	g.Get("/entries", append(args, ListEntries)...)
-	g.Post("/entries", append(args, CreateEntry)...)
+	g.Raw(nethttp.MethodGet, "/entries", append(args, ListEntries)...)
+	g.Raw(nethttp.MethodPost, "/entries", append(args, CreateEntry)...)
 	// The slug is a WILDCARD, not a segment param, because a model's slug IS its
 	// callable id and those contain a slash ("anthropic/claude-opus-5"). A :slug
 	// param stops at the slash, so every model row would be listed and
@@ -95,11 +96,11 @@ func AdminRoute(r zip.Router, args ...zip.Handler) {
 	// rows. Measured on this router: fiber's `+` param does not bind here, `*`
 	// does, and it matches a single-segment slug identically, so the infra-tier
 	// edits are byte-for-byte unchanged.
-	g.Put("/entries/*", append(args, UpdateEntry)...)
-	g.Delete("/entries/*", append(args, DeleteEntry)...)
-	g.Post("/seed", append(args, SeedCatalog)...)
-	g.Post("/models", append(args, SyncModels)...)
-	g.Post("/models/refresh", append(args, RefreshModels)...)
+	g.Raw(nethttp.MethodPut, "/entries/*", append(args, UpdateEntry)...)
+	g.Raw(nethttp.MethodDelete, "/entries/*", append(args, DeleteEntry)...)
+	g.Raw(nethttp.MethodPost, "/seed", append(args, SeedCatalog)...)
+	g.Raw(nethttp.MethodPost, "/models", append(args, SyncModels)...)
+	g.Raw(nethttp.MethodPost, "/models/refresh", append(args, RefreshModels)...)
 }
 
 // entrySlug reads the addressed slug from the wildcard path.

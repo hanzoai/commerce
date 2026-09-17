@@ -3,6 +3,7 @@ package square
 import (
 	"context"
 	"errors"
+
 	"github.com/hanzoai/money"
 
 	"github.com/hanzoai/commerce/log"

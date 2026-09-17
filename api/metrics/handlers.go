@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"net/http"
 	"strconv"
 
 	"github.com/zap-proto/zip"
@@ -18,13 +19,13 @@ import (
 // External (gateway) path: GET /v1/commerce/metrics/saas. Internal (this bundle):
 // GET /v1/metrics/saas — where the cloud admin proxy and the console's
 // global-admin-gated commerce proxy reach it with the service token.
-func Route(r zip.Router, args ...zip.Handler) {
+func Route(r *zip.Group, args ...zip.Handler) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
 	api := r.Group("metrics")
 	api.Use(adminRequired)
 
-	api.Get("/saas", GetSaaS)
+	api.Raw(http.MethodGet, "/saas", GetSaaS)
 }
 
 // GetSaaS returns the whole-business SaaS snapshot — revenue (MRR/ARR + new/churn),

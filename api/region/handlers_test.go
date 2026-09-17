@@ -37,9 +37,9 @@ func newRegionAPI(ns string) *regionAPI {
 		c.Locals("organization", org)
 		return c.Next()
 	}
-	app.Get("/:regionid/countries", seed, ListCountries)
-	app.Post("/:regionid/countries", seed, AddCountry)
-	app.Delete("/:regionid/countries/:countryCode", seed, RemoveCountry)
+	app.Raw(http.MethodGet, "/:regionid/countries", seed, ListCountries)
+	app.Raw(http.MethodPost, "/:regionid/countries", seed, AddCountry)
+	app.Raw(http.MethodDelete, "/:regionid/countries/:countryCode", seed, RemoveCountry)
 
 	return &regionAPI{app: app, db: db}
 }

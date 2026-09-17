@@ -39,7 +39,7 @@ type defaultsFunc func(c *http.Request)
 // reading it afterward panics. A test that needs the resolved context state
 // reads it INSIDE the handler it registers (where the Ctx is live).
 type Client struct {
-	Router zip.Router
+	Router *zip.Group
 
 	app          *zip.App
 	defaultsFn   defaultsFunc
@@ -78,7 +78,7 @@ func newApp(ctx context.Context) *zip.App {
 func New(ctx ae.Context) *Client {
 	cl := new(Client)
 	cl.app = newApp(ctx)
-	// Mount routes on a root group so cl.Router satisfies zip.Router (which
+	// Mount routes on a root group so cl.Router satisfies *zip.Group (which
 	// *zip.App does not — its Fiber() returns *fiber.App, not fiber.Router).
 	cl.Router = cl.app.Group("")
 	cl.Defaults(func(r *http.Request) {})
@@ -93,21 +93,21 @@ func (cl *Client) IgnoreErrors(ignore bool) {
 func (cl *Client) Handle(method, path string, handler zip.Handler) {
 	switch strings.ToUpper(method) {
 	case http.MethodGet:
-		cl.Router.Get(path, handler)
+		cl.Router.Raw(http.MethodGet, path, handler)
 	case http.MethodPost:
-		cl.Router.Post(path, handler)
+		cl.Router.Raw(http.MethodPost, path, handler)
 	case http.MethodPut:
-		cl.Router.Put(path, handler)
+		cl.Router.Raw(http.MethodPut, path, handler)
 	case http.MethodPatch:
-		cl.Router.Patch(path, handler)
+		cl.Router.Raw(http.MethodPatch, path, handler)
 	case http.MethodDelete:
-		cl.Router.Delete(path, handler)
+		cl.Router.Raw(http.MethodDelete, path, handler)
 	case http.MethodHead:
-		cl.Router.Head(path, handler)
+		cl.Router.Raw(http.MethodHead, path, handler)
 	case http.MethodOptions:
-		cl.Router.Options(path, handler)
+		cl.Router.Raw(http.MethodOptions, path, handler)
 	default:
-		cl.Router.All(path, handler)
+		cl.Router.Raw(zip.MethodAll, path, handler)
 	}
 }
 

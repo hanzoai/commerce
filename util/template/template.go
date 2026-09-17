@@ -7,6 +7,8 @@ import (
 	"github.com/flosch/pongo2"
 	"github.com/zap-proto/zip"
 
+	"sync"
+
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/types/country"
@@ -14,7 +16,6 @@ import (
 	"github.com/hanzoai/commerce/models/types/thankyou"
 	"github.com/hanzoai/commerce/util/fs"
 	"github.com/hanzoai/commerce/util/json"
-	"sync"
 )
 
 var cwd, _ = os.Getwd()

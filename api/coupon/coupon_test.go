@@ -30,7 +30,7 @@ func callRedeem(t *testing.T, ns, uid, code string) (int, []byte) {
 		c.SetContext(nscontext.WithNamespace(context.Background(), ns))
 		return c.Next()
 	}
-	app.Post("/coupon/redeem", seed, redeemCoupon)
+	app.Raw(http.MethodPost, "/coupon/redeem", seed, redeemCoupon)
 
 	body, _ := json.Marshal(map[string]string{"code": code})
 	req := httptest.NewRequest(http.MethodPost, "/coupon/redeem", bytes.NewReader(body))

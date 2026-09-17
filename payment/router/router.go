@@ -21,12 +21,13 @@ package router
 import (
 	"context"
 	"fmt"
-	"github.com/hanzoai/money"
 	"math/rand"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/hanzoai/money"
 
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"

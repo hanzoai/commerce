@@ -41,7 +41,7 @@ func TestClaimReferral_MintsNoCredit(t *testing.T) {
 	}
 
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Post("/referral/claim", func(c *zip.Ctx) error {
+	app.Raw(http.MethodPost, "/referral/claim", func(c *zip.Ctx) error {
 		org := &organization.Organization{}
 		org.Name = ns
 		c.Locals("organization", org)

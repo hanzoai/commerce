@@ -26,7 +26,7 @@ func callAdjust(t *testing.T, ns, levelID, body string) (int, []byte) {
 		c.SetContext(nscontext.WithNamespace(context.Background(), ns))
 		return c.Next()
 	}
-	app.Post("/inventory/level/:inventorylevelid/adjust", seed, AdjustStock)
+	app.Raw(http.MethodPost, "/inventory/level/:inventorylevelid/adjust", seed, AdjustStock)
 
 	req := httptest.NewRequest(http.MethodPost, "/inventory/level/"+levelID+"/adjust", bytes.NewReader([]byte(body)))
 	req.Header.Set("Content-Type", "application/json")

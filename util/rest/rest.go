@@ -3,6 +3,7 @@ package rest
 import (
 	"errors"
 	"fmt"
+	nethttp "net/http"
 	"strconv"
 	"strings"
 
@@ -125,30 +126,30 @@ func New(entityOrPrefix interface{}, args ...interface{}) *Rest {
 var Namespaced = middleware.Namespace()
 
 // handle registers one route chain (middleware…, handler LAST) under the
-// zip.Router method matching the HTTP verb — the single place the generic CRUD
+// *zip.Group method matching the HTTP verb — the single place the generic CRUD
 // scaffold maps a method string onto zip's typed router surface.
-func handle(group zip.Router, method, url string, handlers ...zip.Handler) {
+func handle(group *zip.Group, method, url string, handlers ...zip.Handler) {
 	switch method {
 	case "GET":
-		group.Get(url, handlers...)
+		group.Raw(nethttp.MethodGet, url, handlers...)
 	case "POST":
-		group.Post(url, handlers...)
+		group.Raw(nethttp.MethodPost, url, handlers...)
 	case "PUT":
-		group.Put(url, handlers...)
+		group.Raw(nethttp.MethodPut, url, handlers...)
 	case "PATCH":
-		group.Patch(url, handlers...)
+		group.Raw(nethttp.MethodPatch, url, handlers...)
 	case "DELETE":
-		group.Delete(url, handlers...)
+		group.Raw(nethttp.MethodDelete, url, handlers...)
 	case "HEAD":
-		group.Head(url, handlers...)
+		group.Raw(nethttp.MethodHead, url, handlers...)
 	case "OPTIONS":
-		group.Options(url, handlers...)
+		group.Raw(nethttp.MethodOptions, url, handlers...)
 	default:
 		log.Panic("rest: unsupported method %q", method)
 	}
 }
 
-func (r *Rest) Route(api zip.Router, mw ...zip.Handler) {
+func (r *Rest) Route(api *zip.Group, mw ...zip.Handler) {
 	prefix := r.Prefix + r.Kind
 	prefix = "/" + strings.TrimLeft(prefix, "/")
 

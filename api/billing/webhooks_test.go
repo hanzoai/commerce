@@ -170,7 +170,7 @@ func TestGlobalRegistryPopulated(t *testing.T) {
 // tests exercise routing + handler exactly as production does.
 func newTestEngine() *zip.App {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Post("/v1/billing/webhooks/:provider", HandleProviderWebhook)
+	app.Raw(http.MethodPost, "/v1/billing/webhooks/:provider", HandleProviderWebhook)
 	return app
 }
 

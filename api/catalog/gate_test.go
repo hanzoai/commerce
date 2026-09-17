@@ -29,7 +29,7 @@ func probeGate(t *testing.T, gate func(*zip.Ctx) bool, seed func(*zip.Ctx), bear
 		app.Use(zip.H(func(c *zip.Ctx) error { seed(c); return c.Next() }))
 	}
 	app.Use(middleware.TokenRequired(permission.Admin))
-	app.Post("/x", func(c *zip.Ctx) error {
+	app.Raw(http.MethodPost, "/x", func(c *zip.Ctx) error {
 		if !gate(c) {
 			return nil
 		}

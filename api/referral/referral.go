@@ -1,6 +1,8 @@
 package referral
 
 import (
+	"net/http"
+
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
@@ -18,7 +20,7 @@ func loadProgramConfig() *config.ReferralProgram {
 // Route registers referral and referrer routes.
 // This is the base layer: tracking referral codes, claims, credits, fraud.
 // Affiliate/contributor routes are registered separately via api/affiliate.
-func Route(r zip.Router, args ...zip.Handler) {
+func Route(r *zip.Group, args ...zip.Handler) {
 	tokenRequired := middleware.TokenRequired()
 
 	// --- Referral model auto-CRUD ---
@@ -27,7 +29,7 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// --- Referral claim ---
 	claimGroup := r.Group("referral")
 	claimGroup.Use(tokenRequired)
-	claimGroup.Post("/claim", ClaimReferral)
+	claimGroup.Raw(http.MethodPost, "/claim", ClaimReferral)
 
 	// --- Referrer CRUD + custom endpoints ---
 	referrerRest := rest.New(referrer.Referrer{})

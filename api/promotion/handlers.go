@@ -18,7 +18,7 @@ import (
 	"github.com/hanzoai/commerce/util/rest"
 )
 
-func Route(router zip.Router, args ...zip.Handler) {
+func Route(router *zip.Group, args ...zip.Handler) {
 	namespaced := middleware.Namespace()
 
 	rest.New(promotionModel.Promotion{}).Route(router, args...)

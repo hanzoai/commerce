@@ -1,8 +1,9 @@
 package transaction
 
 import (
-	"github.com/hanzoai/commerce/models/types/currency"
 	"math/rand"
+
+	"github.com/hanzoai/commerce/models/types/currency"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/util/fake"

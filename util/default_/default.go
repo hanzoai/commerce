@@ -1,11 +1,14 @@
 package default_
 
 import (
+	nethttp "net/http"
+
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+
 	// "github.com/hanzoai/commerce/util/exec"
 	hashid "github.com/hanzoai/commerce/util/hashid/http"
 	"github.com/hanzoai/commerce/util/router"
@@ -29,17 +32,17 @@ func Init(app *zip.App) {
 
 	// Index, development has nice index with links
 	if config.IsDevelopment {
-		router.Get("/", func(c *zip.Ctx) error {
+		router.Raw(nethttp.MethodGet, "/", func(c *zip.Ctx) error {
 			return template.Render(c, "index.html")
 		})
 	} else {
-		router.Get("/", func(c *zip.Ctx) error {
+		router.Raw(nethttp.MethodGet, "/", func(c *zip.Ctx) error {
 			return c.String(200, "ok")
 		})
 	}
 
 	// Monitoring test
-	router.Get("/wake-up", func(c *zip.Ctx) error {
+	router.Raw(nethttp.MethodGet, "/wake-up", func(c *zip.Ctx) error {
 		log.Panic("I think I heard, I think I heard a shot.")
 		return nil
 	})
@@ -56,6 +59,6 @@ func Init(app *zip.App) {
 	}
 
 	// Static assets
-	router.Get("/static/*file", middleware.Static("static/"))
-	router.Get("/assets/*file", middleware.Static("assets/"))
+	router.Raw(nethttp.MethodGet, "/static/*file", middleware.Static("static/"))
+	router.Raw(nethttp.MethodGet, "/assets/*file", middleware.Static("assets/"))
 }

@@ -1,6 +1,8 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -21,7 +23,7 @@ func setOrg(c *zip.Ctx) error {
 	return c.Next()
 }
 
-func Route(r zip.Router, args ...zip.Handler) {
+func Route(r *zip.Group, args ...zip.Handler) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
@@ -35,7 +37,7 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// verified — never from the path. Restore this route together with that
 	// verification, not before.
 
-	api.Post("/return/:orderid", adminRequired, createReturn)
-	api.Post("/order/:orderid", adminRequired, createOrder)
-	api.Post("/rate", publishedRequired, rate)
+	api.Raw(http.MethodPost, "/return/:orderid", adminRequired, createReturn)
+	api.Raw(http.MethodPost, "/order/:orderid", adminRequired, createOrder)
+	api.Raw(http.MethodPost, "/rate", publishedRequired, rate)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 	"net/http"
+	nethttp "net/http"
 	"strings"
 	"time"
 
@@ -60,7 +61,7 @@ func HandleProviderWebhook(c *zip.Ctx) error {
 	}
 	signature := pickSignatureHeader(reqHeaders, providerHint)
 	if signature == "" {
-		return jsonhttp.Fail(c, http.StatusBadRequest, "missing webhook signature header", nil)
+		return jsonhttp.Fail(c, nethttp.StatusBadRequest, "missing webhook signature header", nil)
 	}
 
 	ctx, cancel := context.WithTimeout(c.Context(), 15*time.Second)
@@ -69,7 +70,7 @@ func HandleProviderWebhook(c *zip.Ctx) error {
 	event, err := tryValidateWebhook(ctx, providerHint, payload, signature)
 	if err != nil || event == nil {
 		log.Warn("webhook signature validation failed (provider hint=%s): %v", providerHint, err)
-		return jsonhttp.Fail(c, http.StatusUnauthorized, "invalid webhook signature", err)
+		return jsonhttp.Fail(c, nethttp.StatusUnauthorized, "invalid webhook signature", err)
 	}
 
 	// Persist the raw event so the app has an audit trail independent of
@@ -77,7 +78,7 @@ func HandleProviderWebhook(c *zip.Ctx) error {
 	// the owning org the same way service-token calls do.
 	org := resolveWebhookOrg(c)
 	if org == nil {
-		return jsonhttp.Fail(c, http.StatusServiceUnavailable, "organization context unavailable", nil)
+		return jsonhttp.Fail(c, nethttp.StatusServiceUnavailable, "organization context unavailable", nil)
 	}
 	db := datastore.New(org.Namespaced(c.Context()))
 
@@ -85,7 +86,7 @@ func HandleProviderWebhook(c *zip.Ctx) error {
 	// 72h until it gets a 2xx). If we already recorded this event ID, ack
 	// without re-applying side effects.
 	if event.ID != "" && eventAlreadyProcessed(db, providerHint, event.ID) {
-		return c.JSON(http.StatusOK, map[string]any{
+		return c.JSON(nethttp.StatusOK, map[string]any{
 			"received":  true,
 			"type":      event.Type,
 			"id":        event.ID,
@@ -118,7 +119,7 @@ func HandleProviderWebhook(c *zip.Ctx) error {
 		applySettlementEvent(ctx, db, org, event)
 	}
 
-	return c.JSON(http.StatusOK, map[string]any{
+	return c.JSON(nethttp.StatusOK, map[string]any{
 		"received": true,
 		"type":     event.Type,
 		"id":       event.ID,

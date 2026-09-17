@@ -136,7 +136,7 @@ func TestMintRegistry_AgreesWithASTSurface(t *testing.T) {
 
 // restRegisteredMintRoutes are mint routes registered through util/rest's
 // deferred route table (rest.Rest.POST/PUT → rest.Route → handle(group,…))
-// rather than through a zip.Router verb. middleware.Mint decorates a zip.Router,
+// rather than through a *zip.Group verb. middleware.Mint decorates a *zip.Group,
 // so it cannot record these: rest builds its OWN group and registers each custom
 // sub-route's chain itself, and wrapping the router handed to rest.Route would
 // gate every route in the group, not the mint ones. They carry the SAME gate

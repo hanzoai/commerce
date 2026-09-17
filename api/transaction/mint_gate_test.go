@@ -27,7 +27,7 @@ import (
 // models via the request locals, exactly as the auth chain does.
 func invokeCreate(org *organization.Organization, ctx context.Context, identity func(*zip.Ctx), body string) (*http.Response, string) {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Post("/v1/transaction", func(c *zip.Ctx) error {
+	app.Raw(http.MethodPost, "/v1/transaction", func(c *zip.Ctx) error {
 		c.Locals("organization", org)
 		c.SetContext(ctx)
 		identity(c)

@@ -29,7 +29,7 @@ import (
 // fiber populates the :orderid param exactly as production does.
 func refundApp(org *organization.Organization, base context.Context, ns string) *zip.App {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Post("/v1/order/:orderid/refund", func(c *zip.Ctx) error {
+	app.Raw(http.MethodPost, "/v1/order/:orderid/refund", func(c *zip.Ctx) error {
 		c.Locals("organization", org)
 		c.SetContext(base)
 		c.Locals("iam_authenticated", true)

@@ -13,6 +13,7 @@ package promo
 
 import (
 	"context"
+	nethttp "net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -34,11 +35,11 @@ import (
 // metrics god-view the route-level token gate is a NO-OP on the IAM path, so each
 // handler re-enforces RequirePlatformAdmin — the real boundary. cloud's
 // /v1/admin/promos (core.Guard) proxies here with the service token.
-func Route(r zip.Router, args ...zip.Handler) {
+func Route(r *zip.Group, args ...zip.Handler) {
 	api := r.Group("platform")
 	api.Use(middleware.TokenRequired(permission.Admin))
-	api.Get("/promo", GetPromo)
-	api.Put("/promo", PutPromo)
+	api.Raw(nethttp.MethodGet, "/promo", GetPromo)
+	api.Raw(nethttp.MethodPut, "/promo", PutPromo)
 }
 
 const (

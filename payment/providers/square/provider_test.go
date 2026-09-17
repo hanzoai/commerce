@@ -2,8 +2,9 @@ package square
 
 import (
 	"context"
-	"github.com/hanzoai/money"
 	"testing"
+
+	"github.com/hanzoai/money"
 
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"

@@ -32,7 +32,7 @@ func callRequireAccess(t *testing.T, ns, storeID string) int {
 		return c.Next()
 	}
 	sentinel := func(c *zip.Ctx) error { return c.String(http.StatusOK, "ok") }
-	app.Get("/protected", seed, RequireAccess, sentinel)
+	app.Raw(http.MethodGet, "/protected", seed, RequireAccess, sentinel)
 
 	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
 	if storeID != "" {

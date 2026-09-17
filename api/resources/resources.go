@@ -55,7 +55,7 @@ import (
 // productEvents is the storefront's product.created/updated publisher. It is a
 // parameter because it belongs to the standalone's event loop, not to the
 // table: an embed that publishes nowhere passes nil and still gets its CRUD.
-func Route(api zip.Router, tokenRequired, adminRequired, requireAccess, productEvents zip.Handler) {
+func Route(api *zip.Group, tokenRequired, adminRequired, requireAccess, productEvents zip.Handler) {
 	productMW := []zip.Handler{tokenRequired, requireAccess}
 	if productEvents != nil {
 		productMW = append(productMW, productEvents)

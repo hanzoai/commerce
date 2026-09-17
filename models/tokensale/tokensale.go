@@ -3,6 +3,7 @@ package tokensale
 import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
+
 	// "github.com/hanzoai/commerce/models/payment"
 	// "github.com/hanzoai/commerce/models/types/pricing"
 	"github.com/hanzoai/commerce/models/wallet"

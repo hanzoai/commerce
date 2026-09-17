@@ -1047,7 +1047,7 @@ func (app *App) setupRoutes() {
 	// Health check
 	embedded := app.config.SharedApp != nil
 	if !embedded {
-		app.Router.Get("/healthz", func(c *zip.Ctx) error {
+		app.Router.Raw(http.MethodGet, "/healthz", func(c *zip.Ctx) error {
 			return c.JSON(http.StatusOK, map[string]any{
 				"status":  "ok",
 				"service": "commerce",
@@ -1067,10 +1067,10 @@ func (app *App) setupRoutes() {
 	// /admin/billing subtree wins over /admin/* declaratively.
 	if !embedded {
 		billingUIMount := "/admin/billing"
-		app.Router.Get(billingUIMount+"/*", billingUI.UIHandler(billingUIMount, iammiddleware.Client()))
+		app.Router.Raw(http.MethodGet, billingUIMount+"/*", billingUI.UIHandler(billingUIMount, iammiddleware.Client()))
 		adminSPA := zip.Static(ui.FS(), zip.WithIndex("index.html"), zip.WithFallback("index.html"))
-		app.Router.Get("/admin", adminSPA)
-		app.Router.Get("/admin/*", adminSPA)
+		app.Router.Raw(http.MethodGet, "/admin", adminSPA)
+		app.Router.Raw(http.MethodGet, "/admin/*", adminSPA)
 	}
 
 	// API routes
@@ -1189,10 +1189,10 @@ func (app *App) setupRoutes() {
 			"before anyone has signed in. An unknown host is a plain 404 that does " +
 			"not echo the host back, so it cannot be used to discover which orgs exist.",
 	})
-	public.Get("/org", checkout.OrgJSON(orgResolver))
+	public.Raw(http.MethodGet, "/org", checkout.OrgJSON(orgResolver))
 	// Public platform product catalog projection (the CMS SOT other surfaces —
 	// docs, console sidebar, pricing — consume). Public + brand-scoped (?brand).
-	public.Get("/catalog", catalogapi.Public)
+	public.Raw(http.MethodGet, "/catalog", catalogapi.Public)
 	// Public currency reference list (the store/settings + product/price pickers
 	// read this instead of a hardcoded array). Global default-namespace set.
 	currencyapi.PublicRoute(public)
@@ -1230,7 +1230,7 @@ func (app *App) setupRoutes() {
 		// The crypto deposit rail's runtime state. Read-only and superadmin
 		// only — see api/billing.DepositWatcherStatus for why arming an asset
 		// stays a CRYPTO_DEPOSIT_* act and never a button.
-		api.Get("/deposits", billingPkg.DepositWatcherStatus)
+		api.Raw(http.MethodGet, "/deposits", billingPkg.DepositWatcherStatus)
 	}
 
 	// Standalone-only routes: the full /v1 API bundle and the SPA catch-all.

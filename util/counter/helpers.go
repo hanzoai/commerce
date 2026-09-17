@@ -9,7 +9,7 @@ import (
 	"github.com/hanzoai/commerce/models/lineitem"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/product"
-	"github.com/hanzoai/commerce/models/return"
+	return_ "github.com/hanzoai/commerce/models/return"
 )
 
 var incrementSep = "."

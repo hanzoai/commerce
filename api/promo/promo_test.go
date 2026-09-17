@@ -41,8 +41,8 @@ func app(super bool) *zip.App {
 		}
 		return c.Next()
 	}))
-	a.Get("/v1/platform/promo", GetPromo)
-	a.Put("/v1/platform/promo", PutPromo)
+	a.Raw(http.MethodGet, "/v1/platform/promo", GetPromo)
+	a.Raw(http.MethodPut, "/v1/platform/promo", PutPromo)
 	return a
 }
 

@@ -22,6 +22,7 @@ import (
 	_ "github.com/hanzoai/commerce/payment/providers/paypal"
 	_ "github.com/hanzoai/commerce/payment/providers/recurly"
 	_ "github.com/hanzoai/commerce/payment/providers/solanapay"
+
 	// Unified Square provider — follows the braintree/ shape so BD can
 	// resolve it via processor.Get(processor.Square) and Configure()
 	// per-request from payment_providers creds. This init() wins the

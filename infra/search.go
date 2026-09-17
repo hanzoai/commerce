@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hanzoai/search-go"
+	meilisearch "github.com/hanzoai/search-go"
 )
 
 // SearchConfig holds Meilisearch configuration

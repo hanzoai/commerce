@@ -71,6 +71,7 @@ func respBody(r *http.Response) string {
 	b, _ := io.ReadAll(r.Body)
 	return string(b)
 }
+
 // TestStandaloneMoneyPath_NotBlockedByBoundary proves the boundary does not
 // regress the service-token money path. require=false means a service-token-
 // shaped request is NOT 401'd by the boundary — it reaches the per-route handler.

@@ -5,6 +5,8 @@ import (
 
 	"github.com/zap-proto/zip"
 
+	"sync"
+
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/shippingrates"
@@ -14,7 +16,6 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
-	"sync"
 )
 
 // Countries Loading

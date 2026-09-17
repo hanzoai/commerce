@@ -443,7 +443,7 @@ type transaction struct {
 	Lt           string `json:"lt"`
 	McBlockSeqno uint64 `json:"mc_block_seqno"`
 	InMsg        *struct {
-		Source         string `json:"source"`
+		Source      string `json:"source"`
 		Destination string `json:"destination"`
 		Opcode      string `json:"opcode"`
 		Bounced     bool   `json:"bounced"`

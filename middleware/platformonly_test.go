@@ -33,7 +33,7 @@ func runMintGate(t *testing.T, seed func(*zip.Ctx), reqSetup func(*http.Request)
 	}
 	app.Use(TokenRequired(permission.Admin))
 	app.Use(PlatformOnly())
-	app.Post("/x", func(c *zip.Ctx) error { reached = true; return c.NoContent(http.StatusOK) })
+	app.Raw(http.MethodPost, "/x", func(c *zip.Ctx) error { reached = true; return c.NoContent(http.StatusOK) })
 
 	req := httptest.NewRequest(http.MethodPost, "/x", nil)
 	if reqSetup != nil {
@@ -128,7 +128,7 @@ func TestPlatformOnly_AdminBitAloneDenied(t *testing.T) {
 			app := zip.New(zip.Config{DisableStartupMessage: true})
 			app.Use(zip.H(func(c *zip.Ctx) error { tc.seed(c); return c.Next() }))
 			app.Use(PlatformOnly())
-			app.Post("/x", func(c *zip.Ctx) error {
+			app.Raw(http.MethodPost, "/x", func(c *zip.Ctx) error {
 				reached = true
 				return c.NoContent(http.StatusOK)
 			})

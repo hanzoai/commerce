@@ -30,11 +30,11 @@ func depositMaxCents() int64 {
 }
 
 type depositRequest struct {
-	User      string `json:"user"`
-	Currency  string `json:"currency"`
-	Amount    int64  `json:"amount"` // cents
-	Notes     string `json:"notes"`
-	Tags      string `json:"tags"`
+	User     string `json:"user"`
+	Currency string `json:"currency"`
+	Amount   int64  `json:"amount"` // cents
+	Notes    string `json:"notes"`
+	Tags     string `json:"tags"`
 	// ExpiresIn is days until expiry. Unset takes credit.LifetimeDays. A caller
 	// may name a shorter promotion; nothing may outlive the policy.
 	ExpiresIn int `json:"expiresIn"`

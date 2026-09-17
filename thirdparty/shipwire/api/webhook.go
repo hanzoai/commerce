@@ -7,6 +7,7 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 
 	. "encoding/json"
+
 	. "github.com/hanzoai/commerce/thirdparty/shipwire/types"
 )
 

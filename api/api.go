@@ -1,14 +1,16 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/api/resources"
-	"github.com/hanzoai/commerce/models/site"
 	"github.com/hanzoai/commerce/billing/paywall"
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/site"
 	"github.com/hanzoai/commerce/models/token"
 
 	// "github.com/hanzoai/commerce/models/transaction"
@@ -80,7 +82,7 @@ import (
 	_ "github.com/hanzoai/commerce/models/referrer/tasks"
 )
 
-func Route(api zip.Router) {
+func Route(api *zip.Group) {
 	tokenRequired := middleware.TokenRequired()
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
@@ -95,15 +97,15 @@ func Route(api zip.Router) {
 
 	// Index
 	if config.IsDevelopment {
-		api.Get("/", middleware.ParseToken, rest.ListRoutes())
+		api.Raw(http.MethodGet, "/", middleware.ParseToken, rest.ListRoutes())
 	} else {
-		api.Get("/", router.Ok)
-		api.Head("/", router.Empty)
+		api.Raw(http.MethodGet, "/", router.Ok)
+		api.Raw(http.MethodHead, "/", router.Empty)
 	}
 
 	// Use permissive CORS policy for all API routes.
 	api.Use(middleware.AccessControl("*"))
-	api.Options("*wildcard", func(c *zip.Ctx) error {
+	api.Raw(http.MethodOptions, "*wildcard", func(c *zip.Ctx) error {
 		return c.Next()
 	})
 

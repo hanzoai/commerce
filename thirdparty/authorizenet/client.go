@@ -13,7 +13,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 
-	"github.com/hanzoai/goauthorizenet"
+	authorizenet "github.com/hanzoai/goauthorizenet"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/order"

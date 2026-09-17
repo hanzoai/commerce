@@ -73,7 +73,7 @@ type storeResp struct {
 func callCurrent(t *testing.T, org string) storeResp {
 	t.Helper()
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Get("/v1/store/current",
+	app.Raw(http.MethodGet, "/v1/store/current",
 		func(c *zip.Ctx) error {
 			if org != "" {
 				c.Locals("organization", &organization.Organization{Name: org})

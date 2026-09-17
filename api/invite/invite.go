@@ -10,6 +10,7 @@ package invite
 
 import (
 	"errors"
+	nethttp "net/http"
 
 	"github.com/zap-proto/zip"
 
@@ -23,10 +24,10 @@ import (
 // Route mounts the invite surface under /v1/commerce/invite. args carry the
 // bundle's tokenRequired (identity resolution); redeem needs an authenticated org
 // and mint additionally enforces platform-superadmin inside the handler.
-func Route(r zip.Router, args ...zip.Handler) {
+func Route(r *zip.Group, args ...zip.Handler) {
 	g := r.Group("/commerce/invite")
-	g.Post("/redeem", append(append([]zip.Handler{}, args...), Redeem)...)
-	g.Post("", append(append([]zip.Handler{}, args...), Mint)...)
+	g.Raw(nethttp.MethodPost, "/redeem", append(append([]zip.Handler{}, args...), Redeem)...)
+	g.Raw(nethttp.MethodPost, "", append(append([]zip.Handler{}, args...), Mint)...)
 }
 
 type request struct {

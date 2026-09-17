@@ -313,7 +313,7 @@ func redeemCoupon(c *zip.Ctx) error {
 	})
 }
 
-func Route(router zip.Router, args ...zip.Handler) {
+func Route(router *zip.Group, args ...zip.Handler) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	tokenRequired := middleware.TokenRequired(permission.User)
 	namespaced := middleware.Namespace()

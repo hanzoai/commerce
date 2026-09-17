@@ -22,7 +22,7 @@ import (
 var _ = taxprovider.TaxProvider{}
 var _ = taxraterule.TaxRateRule{}
 
-func Route(router zip.Router, args ...zip.Handler) {
+func Route(router *zip.Group, args ...zip.Handler) {
 	namespaced := middleware.Namespace()
 
 	// CRUD for tax models

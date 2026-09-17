@@ -147,4 +147,3 @@ func TestRoutes_PublicTenantResolvesOrg(t *testing.T) {
 		t.Fatalf("org JSON missing square block (card form needs it): %v", body)
 	}
 }
-

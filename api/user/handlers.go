@@ -10,7 +10,7 @@ import (
 	"github.com/hanzoai/commerce/util/rest"
 )
 
-func Route(router zip.Router, args ...zip.Handler) {
+func Route(router *zip.Group, args ...zip.Handler) {
 	readUserRequired := middleware.TokenRequired(permission.Admin, permission.ReadUser)
 	writeUserRequired := middleware.TokenRequired(permission.Admin, permission.WriteUser)
 	readOrderOrSubscriptionRequired := middleware.TokenRequired(permission.Admin, permission.ReadOrder)

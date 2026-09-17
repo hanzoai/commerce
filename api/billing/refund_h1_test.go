@@ -32,7 +32,7 @@ func invokeMoneyHandler(org *organization.Organization, ctx context.Context, h z
 	// here skips that middleware, so authorize the datastore context to faithfully
 	// reproduce the post-gate state; the GATE itself (org-admin → 403 / ledger-sink
 	// refusal) is proven separately in mint_surface_test.go and the C1 tests.
-	app.Post("/v1/billing/x", func(c *zip.Ctx) error {
+	app.Raw(http.MethodPost, "/v1/billing/x", func(c *zip.Ctx) error {
 		c.Locals("organization", org)
 		c.SetContext(mintauth.WithAuthorized(ctx))
 		return c.Next()
@@ -57,7 +57,7 @@ func invokeMoneyHandler(org *organization.Organization, ctx context.Context, h z
 // gin CreateTestContext + handler(c) used to express.
 func driveSeeded(seed func(*zip.Ctx), routePattern string, req *http.Request, handler zip.Handler) *http.Response {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.All(routePattern, func(c *zip.Ctx) error {
+	app.Raw(zip.MethodAll, routePattern, func(c *zip.Ctx) error {
 		if seed != nil {
 			seed(c)
 		}

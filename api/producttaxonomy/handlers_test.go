@@ -38,7 +38,7 @@ func wire(t *testing.T, base context.Context, ns string) *zip.App {
 			t.Fatalf("producttaxonomy.Route panicked at wiring (sibling wildcard?): %v", rec)
 		}
 	}()
-	Route(r) // no token middleware — exercise the handlers directly
+	Route(r.Group("")) // no token middleware — exercise the handlers directly
 	return app
 }
 

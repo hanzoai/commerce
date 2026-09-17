@@ -1,9 +1,10 @@
 package catalogentry
 
 import (
-	"github.com/hanzoai/commerce/util/test/ae"
 	"strings"
 	"testing"
+
+	"github.com/hanzoai/commerce/util/test/ae"
 )
 
 // clientProducts is the exact set of catalog rows that CONSUME the API rather

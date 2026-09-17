@@ -40,8 +40,8 @@ func newCartAPI(ns string) *cartAPI {
 		c.Locals("organization", org)
 		return c.Next()
 	}
-	app.Post("/:cartid/set", seed, Set)
-	app.Post("/:cartid/discard", seed, Discard)
+	app.Raw(http.MethodPost, "/:cartid/set", seed, Set)
+	app.Raw(http.MethodPost, "/:cartid/discard", seed, Discard)
 
 	return &cartAPI{app: app, org: org, db: db}
 }

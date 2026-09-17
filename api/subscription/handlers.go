@@ -1,6 +1,8 @@
 package subscription
 
 import (
+	nethttp "net/http"
+
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
@@ -125,7 +127,7 @@ func Unsubscribe(c *zip.Ctx) error {
 	return http.Render(c, 200, sub)
 }
 
-func Route(router zip.Router, args ...zip.Handler) {
+func Route(router *zip.Group, args ...zip.Handler) {
 	api := router.Group("")
 	api.Use(zip.H(func(c *zip.Ctx) error {
 		c.SetHeader("Access-Control-Allow-Origin", "*")
@@ -135,8 +137,8 @@ func Route(router zip.Router, args ...zip.Handler) {
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
 	// Charge Payment API
-	api.Post("/subscribe", publishedRequired, Subscribe)
-	api.Get("/subscribe/:subscriptionid", publishedRequired, GetSubscribe)
-	api.Patch("/subscribe/:subscriptionid", publishedRequired, UpdateSubscribe)
-	api.Delete("/subscribe/:subscriptionid", publishedRequired, Unsubscribe)
+	api.Raw(nethttp.MethodPost, "/subscribe", publishedRequired, Subscribe)
+	api.Raw(nethttp.MethodGet, "/subscribe/:subscriptionid", publishedRequired, GetSubscribe)
+	api.Raw(nethttp.MethodPatch, "/subscribe/:subscriptionid", publishedRequired, UpdateSubscribe)
+	api.Raw(nethttp.MethodDelete, "/subscribe/:subscriptionid", publishedRequired, Unsubscribe)
 }

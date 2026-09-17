@@ -3,6 +3,7 @@ package checkout
 import (
 	"encoding/json"
 	"errors"
+	nethttp "net/http"
 	"strings"
 	"sync"
 
@@ -259,7 +260,7 @@ func Confirm(c *zip.Ctx) error {
 	return http.Render(c, 200, ord)
 }
 
-func route(router zip.Router, prefix string) {
+func route(router *zip.Group, prefix string) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
@@ -272,33 +273,33 @@ func route(router zip.Router, prefix string) {
 	// path to mint a payment link — the org is taken from the validated token,
 	// never the request body.
 	if prefix == "/checkout" {
-		api.Post("/sessions", publishedRequired, Sessions)
+		api.Raw(nethttp.MethodPost, "/sessions", publishedRequired, Sessions)
 	}
 
 	// Auth and Capture Flow (Two-step Payment)
-	api.Post("/authorize", publishedRequired, Authorize)
-	api.Post("/authorize/:orderid", publishedRequired, Authorize)
-	api.Post("/capture/:orderid", publishedRequired, Capture)
+	api.Raw(nethttp.MethodPost, "/authorize", publishedRequired, Authorize)
+	api.Raw(nethttp.MethodPost, "/authorize/:orderid", publishedRequired, Authorize)
+	api.Raw(nethttp.MethodPost, "/capture/:orderid", publishedRequired, Capture)
 
 	// Charge Flow (implicit Auth+Capture)
-	api.Post("/charge", publishedRequired, Charge)
+	api.Raw(nethttp.MethodPost, "/charge", publishedRequired, Charge)
 
 	// Confirm / Cancel Flow
-	api.Post("/confirm/:orderid", publishedRequired, Confirm)
-	api.Post("/cancel/:orderid", publishedRequired, Cancel)
+	api.Raw(nethttp.MethodPost, "/confirm/:orderid", publishedRequired, Confirm)
+	api.Raw(nethttp.MethodPost, "/cancel/:orderid", publishedRequired, Cancel)
 
 	// Deprecated (should use normal authorization flow to initiate)
-	api.Post("/paypal", publishedRequired, Authorize)
-	api.Post("/paypal/pay", publishedRequired, Authorize)
+	api.Raw(nethttp.MethodPost, "/paypal", publishedRequired, Authorize)
+	api.Raw(nethttp.MethodPost, "/paypal/pay", publishedRequired, Authorize)
 
-	api.Get("/ethereum/lookup/:proxyaddress", adminRequired, ethereum.Lookup)
+	api.Raw(nethttp.MethodGet, "/ethereum/lookup/:proxyaddress", adminRequired, ethereum.Lookup)
 
 	// Wire transfer endpoints
-	api.Get("/wire/instructions", wire.Instructions)
-	api.Post("/wire/credit", adminRequired, wire.Credit)
+	api.Raw(nethttp.MethodGet, "/wire/instructions", wire.Instructions)
+	api.Raw(nethttp.MethodPost, "/wire/credit", adminRequired, wire.Credit)
 }
 
-func Route(router zip.Router, args ...zip.Handler) {
+func Route(router *zip.Group, args ...zip.Handler) {
 	route(router, "") // Deprecated
 	route(router, "/checkout")
 }

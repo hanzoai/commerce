@@ -30,7 +30,7 @@ func runEdgeAuth(t *testing.T, req *http.Request, captureHeaders ...string) (rea
 	headers = map[string]string{}
 	app := zip.New(zip.Config{DisableStartupMessage: true})
 	app.Use(EdgeAuth())
-	app.All("/*", func(c *zip.Ctx) error {
+	app.Raw(zip.MethodAll, "/*", func(c *zip.Ctx) error {
 		reached = true
 		for _, k := range captureHeaders {
 			headers[k] = c.Header(k)

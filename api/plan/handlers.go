@@ -20,6 +20,7 @@ package plan
 
 import (
 	"errors"
+	nethttp "net/http"
 
 	"github.com/zap-proto/zip"
 
@@ -58,13 +59,13 @@ func requireSuperAdmin(c *zip.Ctx) bool {
 // carry the bundle's token/admin middleware; each handler ALSO enforces
 // IsSuperAdmin() explicitly (defense in depth — a token gate is not a
 // platform-admin gate). seed is the injected embed source.
-func AdminRoute(r zip.Router, seed SeedSource, args ...zip.Handler) {
+func AdminRoute(r *zip.Group, seed SeedSource, args ...zip.Handler) {
 	g := r.Group("/plans")
-	g.Get("/entries", append(args, ListEntries)...)
-	g.Post("/entries", append(args, CreateEntry)...)
-	g.Put("/entries/:slug", append(args, UpdateEntry)...)
-	g.Delete("/entries/:slug", append(args, DeleteEntry)...)
-	g.Post("/seed", append(args, seedHandler(seed))...)
+	g.Raw(nethttp.MethodGet, "/entries", append(args, ListEntries)...)
+	g.Raw(nethttp.MethodPost, "/entries", append(args, CreateEntry)...)
+	g.Raw(nethttp.MethodPut, "/entries/:slug", append(args, UpdateEntry)...)
+	g.Raw(nethttp.MethodDelete, "/entries/:slug", append(args, DeleteEntry)...)
+	g.Raw(nethttp.MethodPost, "/seed", append(args, seedHandler(seed))...)
 }
 
 // ListEntries returns the raw plan authority rows (admin view). Platform admin only.
@@ -144,7 +145,7 @@ func UpdateEntry(c *zip.Ctx) error {
 	if err := json.DecodeBytes(c.Body(), p); err != nil {
 		return http.Fail(c, 400, "failed to decode request body", err)
 	}
-	p.Slug = slug    // identity is immutable — the path slug wins over any body value
+	p.Slug = slug // identity is immutable — the path slug wins over any body value
 	// Same: this value is now a human's decision, and the reconciling seed leaves
 	// it alone — including the archive sweep, since a plan an admin added on
 	// purpose is not "missing from the catalog", it is theirs.

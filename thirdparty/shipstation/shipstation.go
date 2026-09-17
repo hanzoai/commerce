@@ -1,6 +1,8 @@
 package shipstation
 
 import (
+	"net/http"
+
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
@@ -32,11 +34,11 @@ func setOrg(c *zip.Ctx) error {
 	return c.Next()
 }
 
-func Route(router zip.Router, args ...zip.Handler) {
+func Route(router *zip.Group, args ...zip.Handler) {
 	api := router.Group("shipstation")
 
 	basicAuth := middleware.BasicAuth()
 
-	api.Get("/:organization", basicAuth, setOrg, export.Export)
-	api.Post("/:organization", basicAuth, setOrg, shipnotify.ShipNotify)
+	api.Raw(http.MethodGet, "/:organization", basicAuth, setOrg, export.Export)
+	api.Raw(http.MethodPost, "/:organization", basicAuth, setOrg, shipnotify.ShipNotify)
 }

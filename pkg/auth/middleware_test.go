@@ -108,7 +108,7 @@ func TestRequireIdentity(t *testing.T) {
 func TestIdentity(t *testing.T) {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
 	app.Use(Identity(true))
-	app.Get("/x", func(c *zip.Ctx) error {
+	app.Raw(http.MethodGet, "/x", func(c *zip.Ctx) error {
 		return c.String(http.StatusOK, OrgID(c.Context())+":"+UserID(c.Context()))
 	})
 

@@ -37,7 +37,7 @@ func newSubScopeAPI(ns string) *subScopeAPI {
 		c.Locals("organization", org)
 		return c.Next()
 	}
-	app.Get("/subscribe/:subscriptionid", seed, GetSubscribe)
+	app.Raw(http.MethodGet, "/subscribe/:subscriptionid", seed, GetSubscribe)
 
 	return &subScopeAPI{app: app, db: db}
 }

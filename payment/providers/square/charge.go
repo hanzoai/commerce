@@ -3,6 +3,7 @@ package square
 import (
 	"context"
 	"fmt"
+
 	"github.com/hanzoai/money"
 
 	"github.com/hanzoai/commerce/payment/processor"

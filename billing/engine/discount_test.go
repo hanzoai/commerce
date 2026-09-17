@@ -41,8 +41,8 @@ func TestDiscountCents_ChargeEqualsInvoice(t *testing.T) {
 	for subtotal := int64(1); subtotal <= 5000; subtotal++ {
 		for _, pct := range []int{0, 1, 17, 25, 50, 99, 100} {
 			d := DiscountCents(subtotal, pct)
-			charge := subtotal - d           // what api/billing charges the card
-			amountDue := subtotal - d        // what Finalize() computes for the invoice
+			charge := subtotal - d    // what api/billing charges the card
+			amountDue := subtotal - d // what Finalize() computes for the invoice
 			if charge != amountDue {
 				t.Fatalf("charge %d != amountDue %d at subtotal=%d pct=%d", charge, amountDue, subtotal, pct)
 			}

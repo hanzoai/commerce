@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/billing/tier"
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 

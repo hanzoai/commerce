@@ -2,9 +2,10 @@ package organization
 
 import (
 	"context"
-	"github.com/hanzoai/orm"
 	"strings"
 	"time"
+
+	"github.com/hanzoai/orm"
 
 	"github.com/ryanuber/go-glob"
 

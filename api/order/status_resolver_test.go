@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
@@ -98,7 +99,7 @@ func TestStatus_ResolverInstalled_FindsPerOrgOrder(t *testing.T) {
 	org.Name = ns
 
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Get("/order/:orderid/status", func(c *zip.Ctx) error {
+	app.Raw(http.MethodGet, "/order/:orderid/status", func(c *zip.Ctx) error {
 		c.Locals("organization", org)
 		return c.Next()
 	}, Status)

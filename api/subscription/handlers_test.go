@@ -43,10 +43,10 @@ func newSubAPI(ns string) *subAPI {
 		c.Locals("organization", org)
 		return c.Next()
 	}
-	app.Post("/subscribe", seed, Subscribe)
-	app.Get("/subscribe/:subscriptionid", seed, GetSubscribe)
-	app.Patch("/subscribe/:subscriptionid", seed, UpdateSubscribe)
-	app.Delete("/subscribe/:subscriptionid", seed, Unsubscribe)
+	app.Raw(http.MethodPost, "/subscribe", seed, Subscribe)
+	app.Raw(http.MethodGet, "/subscribe/:subscriptionid", seed, GetSubscribe)
+	app.Raw(http.MethodPatch, "/subscribe/:subscriptionid", seed, UpdateSubscribe)
+	app.Raw(http.MethodDelete, "/subscribe/:subscriptionid", seed, Unsubscribe)
 
 	return &subAPI{app: app, org: org, db: db}
 }

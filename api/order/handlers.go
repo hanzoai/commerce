@@ -10,7 +10,7 @@ import (
 	"github.com/hanzoai/commerce/util/rest"
 )
 
-func Route(router zip.Router, args ...zip.Handler) {
+func Route(router *zip.Group, args ...zip.Handler) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 	namespaced := middleware.Namespace()

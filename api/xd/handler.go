@@ -1,13 +1,15 @@
 package xd
 
 import (
+	"net/http"
+
 	"github.com/zap-proto/zip"
 )
 
-func Route(router zip.Router, args ...zip.Handler) {
+func Route(router *zip.Group, args ...zip.Handler) {
 	api := router.Group("/xd")
 
-	api.Get("/:domain/proxy.html", func(c *zip.Ctx) error {
+	api.Raw(http.MethodGet, "/:domain/proxy.html", func(c *zip.Ctx) error {
 		c.SetHeader("Access-Control-Allow-Origin", "*")
 		c.SetHeader("Content-Type", "text/html; charset=utf-8")
 

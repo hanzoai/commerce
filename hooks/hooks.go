@@ -172,7 +172,7 @@ func (e *AppEvent) Next() error {
 // RouteEvent is emitted when setting up routes
 type RouteEvent struct {
 	App    interface{}
-	Router zip.Router
+	Router *zip.Group
 	chain  *handlerChain[*RouteEvent]
 }
 
@@ -329,7 +329,7 @@ func (r *Registry) TriggerTerminate(app interface{}) error {
 }
 
 // TriggerRouteSetup triggers the route setup hook
-func (r *Registry) TriggerRouteSetup(router zip.Router) error {
+func (r *Registry) TriggerRouteSetup(router *zip.Group) error {
 	event := &RouteEvent{Router: router}
 	return r.onRouteSetup.Trigger(event, nil)
 }

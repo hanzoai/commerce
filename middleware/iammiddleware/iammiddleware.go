@@ -19,7 +19,7 @@ package iammiddleware
 
 import (
 	"context"
-	"net/http"
+	nethttp "net/http"
 	"strconv"
 	"strings"
 	"sync"
@@ -213,7 +213,7 @@ func IAMTokenRequired() zip.Handler {
 		o, err := org.Resolve(dbCtx, ownerID)
 		if err != nil {
 			log.Warn("iammiddleware: org resolve failed for %q: %v", ownerID, err)
-			return jsonhttp.Fail(c, http.StatusServiceUnavailable,
+			return jsonhttp.Fail(c, nethttp.StatusServiceUnavailable,
 				"Unable to resolve organization: "+err.Error(), err)
 		}
 

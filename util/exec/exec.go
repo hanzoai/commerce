@@ -1,11 +1,12 @@
 package exec
 
 import (
-	"github.com/hanzoai/commerce/config"
 	"log"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/hanzoai/commerce/config"
 )
 
 var conf = config.Get()

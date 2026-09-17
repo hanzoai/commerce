@@ -30,7 +30,7 @@ func callCatalog(t *testing.T, claims *auth.IAMClaims, method, target string, bo
 		}
 		return c.Next()
 	}
-	app.All("/*", seed, h)
+	app.Raw(zip.MethodAll, "/*", seed, h)
 
 	var reader io.Reader
 	if body != nil {
@@ -61,7 +61,7 @@ func callPut(t *testing.T, claims *auth.IAMClaims, pattern, target string, body 
 		}
 		return c.Next()
 	}
-	app.Put(pattern, seed, h)
+	app.Raw(http.MethodPut, pattern, seed, h)
 
 	var reader io.Reader
 	if body != nil {

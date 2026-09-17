@@ -26,6 +26,7 @@ package rate
 
 import (
 	"errors"
+	nethttp "net/http"
 	"strings"
 
 	"github.com/zap-proto/zip"
@@ -59,17 +60,17 @@ func SuperAdmin(c *zip.Ctx) error {
 
 // AdminRoute wires the rate CRUD and the bulk import on the /v1 bundle. args
 // carry the bundle's own middleware; SuperAdmin gates the whole group.
-func AdminRoute(r zip.Router, args ...zip.Handler) {
+func AdminRoute(r *zip.Group, args ...zip.Handler) {
 	g := r.Group("/rates", append(args, SuperAdmin)...)
-	g.Get("/entries", ListEntries)
-	g.Post("/entries", CreateEntry)
+	g.Raw(nethttp.MethodGet, "/entries", ListEntries)
+	g.Raw(nethttp.MethodPost, "/entries", CreateEntry)
 	// ADDRESSED BY THE PARTS, because the identity IS the parts: a slug is
 	// product + "/" + meter, so it carries a slash and can never be one path
 	// segment. Mounted at ":slug" these two matched nothing that exists — every
 	// real rate 404'd, on both verbs, for every caller.
-	g.Put("/entries/:product/:meter", UpdateEntry)
-	g.Delete("/entries/:product/:meter", DeleteEntry)
-	g.Post("/import", ImportEntries)
+	g.Raw(nethttp.MethodPut, "/entries/:product/:meter", UpdateEntry)
+	g.Raw(nethttp.MethodDelete, "/entries/:product/:meter", DeleteEntry)
+	g.Raw(nethttp.MethodPost, "/import", ImportEntries)
 }
 
 // ListEntries returns the authority rows. Optionally narrowed by ?product= so

@@ -151,7 +151,7 @@ func (gateReader) BlockNumber(ctx context.Context) (uint64, error) { return 1, n
 func (gateReader) TransfersTo(ctx context.Context, _ []string, _, _ uint64) ([]depositwatch.Transfer, error) {
 	return nil, nil
 }
-func (gateReader) Decimals(ctx context.Context) (int, error) { return 6, nil }
+func (gateReader) Decimals(ctx context.Context) (int, error)  { return 6, nil }
 func (gateReader) Symbol(ctx context.Context) (string, error) { return "USDC", nil }
 
 type gateStore struct{}

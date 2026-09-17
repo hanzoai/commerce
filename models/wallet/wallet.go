@@ -1,8 +1,9 @@
 package wallet
 
 import (
-	"github.com/hanzoai/commerce/datastore"
 	"time"
+
+	"github.com/hanzoai/commerce/datastore"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/blockchains"

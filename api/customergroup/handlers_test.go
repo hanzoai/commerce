@@ -38,9 +38,9 @@ func newCustomerGroupAPI(ns string) *customergroupAPI {
 		c.Locals("organization", org)
 		return c.Next()
 	}
-	app.Post("/:customergroupid/members", seed, AddMember)
-	app.Delete("/:customergroupid/members/:userId", seed, RemoveMember)
-	app.Get("/:customergroupid/members", seed, ListMembers)
+	app.Raw(http.MethodPost, "/:customergroupid/members", seed, AddMember)
+	app.Raw(http.MethodDelete, "/:customergroupid/members/:userId", seed, RemoveMember)
+	app.Raw(http.MethodGet, "/:customergroupid/members", seed, ListMembers)
 
 	return &customergroupAPI{app: app, db: db}
 }

@@ -1,6 +1,8 @@
 package costs
 
 import (
+	"net/http"
+
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
@@ -11,14 +13,14 @@ import (
 // god-view (what WE pay our vendors across the whole business), so on top of the
 // route-level token gate every handler ALSO enforces requireCostsAdmin — see its
 // doc for why the middleware alone is not enough.
-func Route(r zip.Router, args ...zip.Handler) {
+func Route(r *zip.Group, args ...zip.Handler) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
 	api := r.Group("costs")
 	api.Use(adminRequired)
 
-	api.Get("", GetCosts)
-	api.Get("/margin", GetMargin)
+	api.Raw(http.MethodGet, "", GetCosts)
+	api.Raw(http.MethodGet, "/margin", GetMargin)
 }
 
 // requireCostsAdmin is the in-handler gate for the vendor-cost god-view. It fails

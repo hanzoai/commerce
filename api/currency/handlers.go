@@ -11,6 +11,8 @@
 package currency
 
 import (
+	nethttp "net/http"
+
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -22,7 +24,7 @@ import (
 // Route wires the admin CRUD on the /v1 bundle. Currencies use the DEFAULT
 // namespace (a global reference set), so DefaultNamespace is set — the generic
 // REST scaffold then serves /currency (list/get/create/update/delete).
-func Route(router zip.Router, args ...zip.Handler) {
+func Route(router *zip.Group, args ...zip.Handler) {
 	api := rest.New(currencyModel.Currency{})
 	api.DefaultNamespace = true
 	api.Route(router, args...)
@@ -30,8 +32,8 @@ func Route(router zip.Router, args ...zip.Handler) {
 
 // PublicRoute wires the unauthenticated list projection. Mount on the commerce
 // public group so it serves GET /v1/commerce/currencies.
-func PublicRoute(r zip.Router) {
-	r.Get("/currencies", List)
+func PublicRoute(r *zip.Group) {
+	r.Raw(nethttp.MethodGet, "/currencies", List)
 }
 
 // List returns every reference currency (default namespace). Public + cacheable.

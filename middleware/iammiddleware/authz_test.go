@@ -72,7 +72,7 @@ func TestIsIAMAuthenticated(t *testing.T) {
 func TestIAMTokenRequired_NeedsValidatedPrincipal(t *testing.T) {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
 	app.Use(IAMTokenRequired())
-	app.Get("/probe", func(c *zip.Ctx) error {
+	app.Raw(http.MethodGet, "/probe", func(c *zip.Ctx) error {
 		if IsIAMAuthenticated(c) {
 			return c.String(http.StatusOK, "authenticated")
 		}

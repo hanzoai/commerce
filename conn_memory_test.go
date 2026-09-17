@@ -54,7 +54,7 @@ func TestConnMemory(t *testing.T) {
 		AppName:               "commerce",
 	})
 
-	app.Get("/healthz", func(c *zip.Ctx) error {
+	app.Raw(http.MethodGet, "/healthz", func(c *zip.Ctx) error {
 		return c.JSON(http.StatusOK, map[string]any{
 			"status":  "ok",
 			"service": "commerce",
@@ -64,7 +64,7 @@ func TestConnMemory(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	var holding atomic.Int64
-	app.Get("/hold", func(c *zip.Ctx) error {
+	app.Raw(http.MethodGet, "/hold", func(c *zip.Ctx) error {
 		holding.Add(1)
 		defer holding.Add(-1)
 		<-ctx.Done()

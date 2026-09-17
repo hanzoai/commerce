@@ -25,6 +25,7 @@
 package payables
 
 import (
+	nethttp "net/http"
 	"strings"
 	"time"
 
@@ -46,12 +47,12 @@ import (
 // PLATFORM god-view, so on top of the route-level token gate each handler calls
 // middleware.RequirePlatformAdmin — that route gate is a no-op on the IAM path
 // and must never be trusted alone.
-func Route(r zip.Router, args ...zip.Handler) {
+func Route(r *zip.Group, args ...zip.Handler) {
 	api := r.Group("payables")
 	api.Use(middleware.TokenRequired(permission.Admin))
 
-	api.Get("", List)
-	api.Post("/:feeid/payments", RecordPayment)
+	api.Raw(nethttp.MethodGet, "", List)
+	api.Raw(nethttp.MethodPost, "/:feeid/payments", RecordPayment)
 }
 
 // Payable is one thing we owe.

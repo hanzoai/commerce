@@ -38,8 +38,8 @@ func newFulfillmentAPI(ns string) *fulfillmentAPI {
 		c.Locals("organization", org)
 		return c.Next()
 	}
-	app.Post("/:fulfillmentid/ship", seed, Ship)
-	app.Post("/:fulfillmentid/cancel", seed, Cancel)
+	app.Raw(http.MethodPost, "/:fulfillmentid/ship", seed, Ship)
+	app.Raw(http.MethodPost, "/:fulfillmentid/cancel", seed, Cancel)
 
 	return &fulfillmentAPI{app: app, db: db}
 }

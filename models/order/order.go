@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"github.com/hanzoai/orm"
 	"strconv"
 	"time"
+
+	"github.com/hanzoai/orm"
 
 	"github.com/dustin/go-humanize"
 

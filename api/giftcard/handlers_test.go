@@ -38,7 +38,7 @@ func callGiftcard(t *testing.T, ns string, admin bool, cardID string, body []byt
 		c.Locals("iam_claims", &auth.IAMClaims{Owner: ns, IsAdmin: admin})
 		return c.Next()
 	}
-	app.Post("/giftcard/:giftcardid", seed, h)
+	app.Raw(http.MethodPost, "/giftcard/:giftcardid", seed, h)
 
 	req := httptest.NewRequest(http.MethodPost, "/giftcard/"+cardID, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")

@@ -24,6 +24,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 
 	"github.com/zap-proto/zip"
 )
@@ -66,7 +67,7 @@ func Mount(app *zip.App, dataDir string, log Log) error {
 	// /v1 like everything else commerce answers: a probe path outside it is a
 	// second address rule for one subsystem, and hosts already spell it
 	// /v1/commerce/health.
-	app.Get("/v1/commerce/health", func(c *zip.Ctx) error {
+	app.Raw(http.MethodGet, "/v1/commerce/health", func(c *zip.Ctx) error {
 		return c.JSON(200, map[string]string{
 			"status":  "ok",
 			"service": "commerce",

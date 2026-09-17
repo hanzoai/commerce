@@ -16,7 +16,7 @@ import (
 // over this wildcard regardless of registration order.
 func MountSPA(app *zip.App) {
 	spa := SPAHandler("")
-	app.All("/*", func(c *zip.Ctx) error {
+	app.Raw(zip.MethodAll, "/*", func(c *zip.Ctx) error {
 		// Any API path that fell through is a 404, not the SPA. Serving
 		// index.html for a missing API endpoint would mask routing bugs
 		// and let attackers probe namespaces by watching 200 vs 404.

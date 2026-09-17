@@ -59,7 +59,7 @@ func do(t *testing.T, app *zip.App, method, path string, body any) (int, []byte)
 func callList(t *testing.T, ns string) (int, ListResponse) {
 	t.Helper()
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Get("/payables", seed(ns), List)
+	app.Raw(http.MethodGet, "/payables", seed(ns), List)
 	code, body := do(t, app, http.MethodGet, "/payables", nil)
 	var out ListResponse
 	_ = json.Unmarshal(body, &out)
@@ -69,7 +69,7 @@ func callList(t *testing.T, ns string) (int, ListResponse) {
 func callPay(t *testing.T, ns, id string, req paymentRequest) (int, []byte) {
 	t.Helper()
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Post("/payables/:feeid/payments", seed(ns), RecordPayment)
+	app.Raw(http.MethodPost, "/payables/:feeid/payments", seed(ns), RecordPayment)
 	return do(t, app, http.MethodPost, "/payables/"+id+"/payments", req)
 }
 

@@ -39,7 +39,7 @@ func callComplete(t *testing.T, ns string, admin bool, draftID string) (int, []b
 		c.Locals("iam_claims", &auth.IAMClaims{Owner: ns, IsAdmin: admin})
 		return c.Next()
 	}
-	app.Post("/draftorder/:draftorderid/complete", seed, Complete)
+	app.Raw(http.MethodPost, "/draftorder/:draftorderid/complete", seed, Complete)
 
 	req := httptest.NewRequest(http.MethodPost, "/draftorder/"+draftID+"/complete", bytes.NewReader(nil))
 	req.Header.Set("Content-Type", "application/json")

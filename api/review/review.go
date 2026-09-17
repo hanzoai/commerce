@@ -145,7 +145,7 @@ func post(r *rest.Rest) func(c *zip.Ctx) error {
 	}
 }
 
-func Route(router zip.Router, args ...zip.Handler) {
+func Route(router *zip.Group, args ...zip.Handler) {
 	api := rest.New(review.Review{})
 
 	api.Update = forced404

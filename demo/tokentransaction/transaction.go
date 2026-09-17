@@ -1,8 +1,9 @@
 package tokentransaction
 
 import (
-	"github.com/hanzoai/commerce/models/mixin"
 	"time"
+
+	"github.com/hanzoai/commerce/models/mixin"
 )
 
 // Datastructure for Bitcoin Transaction

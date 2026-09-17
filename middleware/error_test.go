@@ -24,7 +24,7 @@ func driveErrorRenderer(t *testing.T, handler zip.Handler) (int, string) {
 	t.Helper()
 	app := zip.New(zip.Config{DisableStartupMessage: true})
 	app.Use(ErrorHandlerJSON())
-	app.Get("/x", handler)
+	app.Raw(http.MethodGet, "/x", handler)
 
 	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/x", nil))
 	if err != nil {

@@ -172,7 +172,7 @@ func Webhook(c *zip.Ctx) error {
 	return c.String(200, "")
 }
 
-func Route(router zip.Router, args ...zip.Handler) {
+func Route(router *zip.Group, args ...zip.Handler) {
 	api := router.Group("paypal")
-	api.Post("/ipn/:organization", Webhook)
+	api.Raw(http.MethodPost, "/ipn/:organization", Webhook)
 }

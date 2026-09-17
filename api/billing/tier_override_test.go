@@ -20,7 +20,7 @@ func resolveOverride(t *testing.T, req *http.Request) tier.Name {
 	t.Helper()
 	var got tier.Name
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.All("/t", func(c *zip.Ctx) error {
+	app.Raw(zip.MethodAll, "/t", func(c *zip.Ctx) error {
 		n, err := resolveTierName(c, "alice")
 		if err != nil {
 			return err

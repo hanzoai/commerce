@@ -3,6 +3,7 @@ package reamaze
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+	"net/http"
 	"net/url"
 
 	"github.com/zap-proto/zip"
@@ -50,8 +51,8 @@ func setOrg(c *zip.Ctx) error {
 	return c.Next()
 }
 
-func Route(router zip.Router, args ...zip.Handler) {
+func Route(router *zip.Group, args ...zip.Handler) {
 	api := router.Group("reamaze")
 
-	api.Get("/custommodule", setOrg, verifyHMAC, custommodule.Serve)
+	api.Raw(http.MethodGet, "/custommodule", setOrg, verifyHMAC, custommodule.Serve)
 }

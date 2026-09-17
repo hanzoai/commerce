@@ -174,7 +174,6 @@ func TestSeed_ConcurrentNoDuplicate(t *testing.T) {
 	}
 }
 
-
 // The seed must be able to correct ITS OWN prior output. This is the property
 // Managed made impossible: it was set by the seed and by the admin CRUD alike, so
 // once a row existed nothing could tell a stale seeded price from a deliberate

@@ -140,11 +140,11 @@ var _ = Describe("billing IDOR scoping", Ordered, ContinueOnFailure, func() {
 
 		idorCl = zipclient.New(ctx)
 		idorCl.Router.Use(zip.H(idorShim))
-		idorCl.Router.Get("/billing/methods", billingApi.ListPaymentMethods)
-		idorCl.Router.Get("/billing/methods/:id", billingApi.GetPaymentMethod)
-		idorCl.Router.Patch("/billing/methods/:id", billingApi.UpdatePaymentMethod)
-		idorCl.Router.Delete("/billing/methods/:id", billingApi.DetachPaymentMethod)
-		idorCl.Router.Post("/billing/customers/:id/default-payment-method", billingApi.SetDefaultPaymentMethod)
+		idorCl.Router.Raw(http.MethodGet, "/billing/methods", billingApi.ListPaymentMethods)
+		idorCl.Router.Raw(http.MethodGet, "/billing/methods/:id", billingApi.GetPaymentMethod)
+		idorCl.Router.Raw(http.MethodPatch, "/billing/methods/:id", billingApi.UpdatePaymentMethod)
+		idorCl.Router.Raw(http.MethodDelete, "/billing/methods/:id", billingApi.DetachPaymentMethod)
+		idorCl.Router.Raw(http.MethodPost, "/billing/customers/:id/default-payment-method", billingApi.SetDefaultPaymentMethod)
 
 		realCl = zipclient.New(ctx)
 		// A non-admin authenticated IAM member: iam_authenticated + zero permissions.

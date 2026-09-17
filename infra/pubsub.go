@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hanzoai/pubsub-go"
+	nats "github.com/hanzoai/pubsub-go"
 	"github.com/hanzoai/pubsub-go/jetstream"
 )
 

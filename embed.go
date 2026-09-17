@@ -16,8 +16,9 @@ package commerce
 import (
 	"context"
 	"fmt"
-	"github.com/hanzoai/commerce/secrets"
 	"log/slog"
+
+	"github.com/hanzoai/commerce/secrets"
 
 	"github.com/zap-proto/zip"
 

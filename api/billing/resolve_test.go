@@ -24,7 +24,7 @@ func subjectFor(t *testing.T, org, user, claim string) string {
 
 	var got string
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Get("/x", func(c *zip.Ctx) error {
+	app.Raw(http.MethodGet, "/x", func(c *zip.Ctx) error {
 		if org != "" {
 			c.Locals("organization", &organization.Organization{Name: org})
 		}

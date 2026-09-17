@@ -8,7 +8,7 @@ import (
 // in-tree — typically sub-modules like luxfi/cevm which would
 // otherwise transitively pull heavy deps (geth, warp, etc.) into consumers
 // that don't need them.
-type RouteFn func(r zip.Router, args ...zip.Handler)
+type RouteFn func(r *zip.Group, args ...zip.Handler)
 
 var extraRoutes []RouteFn
 
@@ -20,7 +20,7 @@ func RegisterRoute(fn RouteFn) {
 	extraRoutes = append(extraRoutes, fn)
 }
 
-func applyExtraRoutes(r zip.Router, args ...zip.Handler) {
+func applyExtraRoutes(r *zip.Group, args ...zip.Handler) {
 	for _, fn := range extraRoutes {
 		fn(r, args...)
 	}

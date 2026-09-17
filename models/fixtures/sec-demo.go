@@ -8,6 +8,7 @@ import (
 
 	"github.com/hanzoai/commerce/auth/password"
 	"github.com/hanzoai/commerce/datastore"
+
 	// "github.com/hanzoai/commerce/demo/disclosure"
 	// "github.com/hanzoai/commerce/demo/tokentransaction"
 	// "github.com/hanzoai/commerce/log"

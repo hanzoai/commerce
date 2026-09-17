@@ -1,6 +1,8 @@
 package organization
 
 import (
+	"net/http"
+
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/api/organization/analytics"
@@ -14,7 +16,7 @@ import (
 	. "github.com/hanzoai/commerce/api/organization/newroutes"
 )
 
-func Route(router zip.Router, args ...zip.Handler) {
+func Route(router *zip.Group, args ...zip.Handler) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 	namespaced := middleware.Namespace()
@@ -45,5 +47,5 @@ func Route(router zip.Router, args ...zip.Handler) {
 
 	// Newer stuff
 	api2 := router.Group("organization")
-	api2.Get("/publicwithdrawableaccounts", publishedRequired, GetWithdrawableAccounts)
+	api2.Raw(http.MethodGet, "/publicwithdrawableaccounts", publishedRequired, GetWithdrawableAccounts)
 }

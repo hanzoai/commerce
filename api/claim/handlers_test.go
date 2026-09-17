@@ -42,7 +42,7 @@ func seed(ns string, admin bool) zip.Handler {
 func callCreate(t *testing.T, ns string, body []byte) (int, []byte) {
 	t.Helper()
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Post("/claim", seed(ns, true), Create)
+	app.Raw(http.MethodPost, "/claim", seed(ns, true), Create)
 	return do(t, app, http.MethodPost, "/claim", body)
 }
 
@@ -50,7 +50,7 @@ func callCreate(t *testing.T, ns string, body []byte) (int, []byte) {
 func callAction(t *testing.T, ns string, admin bool, id, action string, h zip.Handler) (int, []byte) {
 	t.Helper()
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Post("/claim/:claimid/"+action, seed(ns, admin), h)
+	app.Raw(http.MethodPost, "/claim/:claimid/"+action, seed(ns, admin), h)
 	return do(t, app, http.MethodPost, "/claim/"+id+"/"+action, nil)
 }
 

@@ -1,8 +1,9 @@
 package meter
 
 import (
-	"github.com/hanzoai/orm"
 	"time"
+
+	"github.com/hanzoai/orm"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"

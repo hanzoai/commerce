@@ -30,7 +30,7 @@ import (
 func TestFallthroughWithoutHeaders(t *testing.T) {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
 	app.Use(iammiddleware.IAMTokenRequired())
-	app.Get("/x", func(c *zip.Ctx) error { return c.String(http.StatusOK, "ok") })
+	app.Raw(http.MethodGet, "/x", func(c *zip.Ctx) error { return c.String(http.StatusOK, "ok") })
 
 	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/x", nil))
 	if err != nil {

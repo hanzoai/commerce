@@ -76,8 +76,8 @@ func TestEmbeddedBillingUI_HasNextBundle(t *testing.T) {
 // admin SPA's existence. iam=nil simulates IAM disabled.
 func TestUIHandler_NoAuth_Returns404(t *testing.T) {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Get("/admin/billing", UIHandler("/admin/billing", nil))
-	app.Get("/admin/billing/*", UIHandler("/admin/billing", nil))
+	app.Raw(http.MethodGet, "/admin/billing", UIHandler("/admin/billing", nil))
+	app.Raw(http.MethodGet, "/admin/billing/*", UIHandler("/admin/billing", nil))
 
 	cases := []string{
 		"/admin/billing",
@@ -102,7 +102,7 @@ func TestUIHandler_NoAuth_Returns404(t *testing.T) {
 // not a valid "Bearer <token>" header.
 func TestUIHandler_MalformedBearer_Returns404(t *testing.T) {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Get("/admin/billing/*", UIHandler("/admin/billing", nil))
+	app.Raw(http.MethodGet, "/admin/billing/*", UIHandler("/admin/billing", nil))
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/billing/plans", nil)
 	req.Header.Set("Authorization", "Basic dXNlcjpwYXNz")

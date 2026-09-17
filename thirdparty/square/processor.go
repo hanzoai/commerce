@@ -7,9 +7,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/hanzoai/money"
 	"strings"
 	"time"
+
+	"github.com/hanzoai/money"
 
 	"github.com/google/uuid"
 	square "github.com/square/square-go-sdk/v3"

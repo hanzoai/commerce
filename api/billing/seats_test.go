@@ -25,7 +25,7 @@ import (
 // per-seat billing, minSeats 2, and the teamGuests limit on paid personal tiers.
 func TestPlans_TeamCommercialModel(t *testing.T) {
 	a := zip.New(zip.Config{DisableStartupMessage: true})
-	a.Get("/v1/billing/plans", ListPlans)
+	a.Raw(http.MethodGet, "/v1/billing/plans", ListPlans)
 
 	resp, err := a.Test(httptest.NewRequest(http.MethodGet, "/v1/billing/plans", nil))
 	if err != nil || resp.StatusCode != 200 {

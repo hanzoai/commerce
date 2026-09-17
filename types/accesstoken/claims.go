@@ -2,6 +2,7 @@ package accesstoken
 
 import (
 	"encoding/json"
+
 	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/jwt"
 )

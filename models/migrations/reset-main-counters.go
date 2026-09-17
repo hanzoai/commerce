@@ -8,7 +8,7 @@ import (
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/product"
-	"github.com/hanzoai/commerce/models/return"
+	return_ "github.com/hanzoai/commerce/models/return"
 	"github.com/hanzoai/commerce/models/subscriber"
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/util/counter"

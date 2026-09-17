@@ -71,14 +71,14 @@ func SetStorage(s Storer) {
 // Route mounts the admin upload surface. args are the route-level guards
 // (adminRequired) shared with the rest of the /v1 admin bundle; the handler
 // re-checks admin internally.
-func Route(router zip.Router, args ...zip.Handler) {
+func Route(router *zip.Group, args ...zip.Handler) {
 	namespaced := middleware.Namespace()
 	api := router.Group("upload")
 
 	handler := append(append([]zip.Handler{}, args...), namespaced, Images)
-	api.Post("/images", handler...)
-	api.Post("/image", handler...)
-	api.Post("", handler...)
+	api.Raw(http.MethodPost, "/images", handler...)
+	api.Raw(http.MethodPost, "/image", handler...)
+	api.Raw(http.MethodPost, "", handler...)
 }
 
 type uploadResponse struct {

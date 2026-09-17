@@ -88,7 +88,7 @@ func callUpload(t *testing.T, ns string, admin bool, body *bytes.Buffer, content
 		c.Locals("iam_claims", &auth.IAMClaims{Owner: ns, IsAdmin: admin})
 		return c.Next()
 	}
-	app.Post("/upload/images", seed, Images)
+	app.Raw(http.MethodPost, "/upload/images", seed, Images)
 
 	req := httptest.NewRequest(http.MethodPost, "/upload/images", body)
 	req.Header.Set("Content-Type", contentType)

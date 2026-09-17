@@ -53,11 +53,11 @@ func TestGroupUseIsMembershipScopedNotPrefix(t *testing.T) {
 		sawPaths = append(sawPaths, c.Path())
 		return c.Next()
 	}))
-	sub.Post("/deposit", func(c *zip.Ctx) error { return c.JSON(http.StatusOK, "deposit") })
+	sub.Raw(http.MethodPost, "/deposit", func(c *zip.Ctx) error { return c.JSON(http.StatusOK, "deposit") })
 
 	// A sibling NON-mint read, registered on the PARENT group. It must not be
 	// touched by the sub-group's middleware.
-	api.Get("/balance", func(c *zip.Ctx) error { return c.JSON(http.StatusOK, "balance") })
+	api.Raw(http.MethodGet, "/balance", func(c *zip.Ctx) error { return c.JSON(http.StatusOK, "balance") })
 
 	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/v1/billing/balance", nil))
 	if err != nil {
@@ -77,88 +77,18 @@ func TestGroupUseIsMembershipScopedNotPrefix(t *testing.T) {
 	t.Logf("membership-scoped: the sub-group's middleware saw only its own routes (%v)", sawPaths)
 }
 
-// TestMintRecordsFullPathAndGates proves the two halves of the single
-// declaration: the route is recorded with the full path fiber routes on, and the
-// gate is really in its chain (an ungated caller is refused before the handler).
-func TestMintRecordsFullPathAndGates(t *testing.T) {
-
+// Mint gates every route beneath it, raw and typed alike, and the typed one is
+// still a whole operation: one declaration, every projection.
+func TestMintGatesEveryRouteBeneathIt(t *testing.T) {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	api := app.Group("/v1").Group("billing")
+	billing := app.Group("/v1").Group("billing")
+	mint := Mint(billing, "/v1/billing")
 
 	reached := false
-	Mint(api, "/v1/billing").Post("/mint-probe", func(c *zip.Ctx) error {
+	mint.Raw(http.MethodPost, "/mint-probe", func(c *zip.Ctx) error {
 		reached = true
 		return c.JSON(http.StatusOK, "minted")
 	})
-
-	// Recorded with the full path fiber routes on.
-	want := MintRoute{Method: http.MethodPost, Path: "/v1/billing/mint-probe"}
-	found := false
-	for _, r := range MintRoutes() {
-		if r == want {
-			found = true
-		}
-	}
-	if !found {
-		t.Fatalf("MintRoutes() does not contain %+v; got %+v", want, MintRoutes())
-	}
-
-	// Gated: no service token and no SuperAdmin claim → 403, handler never runs.
-	resp, err := app.Test(httptest.NewRequest(http.MethodPost, "/v1/billing/mint-probe", nil))
-	if err != nil {
-		t.Fatalf("Test: %v", err)
-	}
-	if resp.StatusCode != http.StatusForbidden {
-		t.Fatalf("status=%d, want 403 — Mint must gate every route it registers", resp.StatusCode)
-	}
-	if reached {
-		t.Fatal("handler ran despite the gate — Mint's gate is not first in the chain")
-	}
-}
-
-// TestMintRegistryIsASet proves re-registering the same route is idempotent.
-// Route() runs once in production but many times across the test suite, and a
-// consumer comparing against the registry must not see duplicates.
-func TestMintRegistryIsASet(t *testing.T) {
-	register := func() {
-		app := zip.New(zip.Config{DisableStartupMessage: true})
-		Mint(app.Group("/v1").Group("billing"), "/v1/billing").Post("/set-probe", func(c *zip.Ctx) error { return nil })
-	}
-	register()
-	register()
-
-	n := 0
-	for _, r := range MintRoutes() {
-		if r.Path == "/v1/billing/set-probe" {
-			n++
-		}
-	}
-	if n != 1 {
-		t.Fatalf("registered the same route twice → %d entries, want 1 (the registry is a set)", n)
-	}
-}
-
-// TestMintUseIsRefused pins the boot-time refusal: Use on a Mint router would
-// delegate to the underlying group and leak the gate onto its neighbours (see
-// TestGroupUseIsPrefixScopedNotMembership), so it panics rather than silently
-// widening authz.
-func TestMintUseIsRefused(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Fatal("Mint(...).Use did not panic — it must refuse rather than widen the gate to the parent group")
-		}
-	}()
-	app := zip.New(zip.Config{DisableStartupMessage: true})
-	Mint(app.Group("/v1").Group("billing"), "/v1/billing").Use(zip.H(func(c *zip.Ctx) error { return nil }))
-}
-
-// A TYPED op declared on a mint router is gated exactly as an untyped one is.
-// zip asks a Router where an op should land; a decorator that answered with the
-// inner router's scope would register a money route with no gate at all — this
-// router's whole purpose, skipped silently.
-func TestMintGatesATypedOp(t *testing.T) {
-	app := zip.New(zip.Config{DisableStartupMessage: true})
-	mint := Mint(app.Group("/v1/billing"), "/v1/billing")
 
 	type depositIn struct {
 		Cents int `json:"cents"`
@@ -166,33 +96,50 @@ func TestMintGatesATypedOp(t *testing.T) {
 	type depositOut struct {
 		OK bool `json:"ok"`
 	}
-	MintOp(mint, http.MethodPost, "/deposit",
-		func(context.Context, *depositIn) (*depositOut, error) { return &depositOut{OK: true}, nil })
+	mint.Post("/deposit", func(context.Context, *depositIn) (*depositOut, error) {
+		return &depositOut{OK: true}, nil
+	})
 
-	// Registered, and recorded — one declaration, both effects, same as Route.
-	var recorded bool
-	for _, r := range MintRoutes() {
-		if r.Method == http.MethodPost && r.Path == "/v1/billing/deposit" {
-			recorded = true
-		}
+	// A read declared on the PARENT is not mint and stays reachable, which is the
+	// property a prefix-scoped gate would break.
+	open := false
+	billing.Raw(http.MethodGet, "/balance", func(c *zip.Ctx) error {
+		open = true
+		return c.JSON(http.StatusOK, "balance")
+	})
+
+	// No service token and no SuperAdmin claim: the gate answers and the handler
+	// never runs.
+	resp, err := app.Test(httptest.NewRequest(http.MethodPost, "/v1/billing/mint-probe", nil))
+	if err != nil {
+		t.Fatalf("Test: %v", err)
 	}
-	if !recorded {
-		t.Fatalf("typed mint op is not in MintRoutes(): %+v", MintRoutes())
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("raw mint route answered %d, want 403", resp.StatusCode)
+	}
+	if reached {
+		t.Fatal("handler ran despite the gate")
 	}
 
-	// Gated: no platform principal, no deposit.
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/deposit", strings.NewReader(`{"cents":1}`))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := app.Test(req)
+	resp, err = app.Test(req)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusOK {
-		t.Fatalf("ungated typed mint op answered %d — PlatformOnly did not run", resp.StatusCode)
+		t.Fatalf("typed mint op answered %d — the gate did not run", resp.StatusCode)
 	}
 
-	// And it is a real op: one declaration, every projection.
+	resp, err = app.Test(httptest.NewRequest(http.MethodGet, "/v1/billing/balance", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK || !open {
+		t.Fatalf("the parent's read answered %d — the gate reached a route that mints nothing", resp.StatusCode)
+	}
+
 	if len(app.Commands()) != 1 || app.Commands()[0].Path != "/v1/billing/deposit" {
 		t.Fatalf("commands = %+v, want the one op", app.Commands())
 	}

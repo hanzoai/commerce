@@ -1,6 +1,8 @@
 package accesstoken
 
 import (
+	"net/http"
+
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
@@ -44,11 +46,11 @@ func Delete(c *zip.Ctx) error {
 	return deleteAccessToken(c)
 }
 
-func Route(router zip.Router, args ...zip.Handler) {
+func Route(router *zip.Group, args ...zip.Handler) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
 	api := router.Group("/access")
-	api.Get("/:mode/:id", Get)
-	api.Post("/:mode/:id", adminRequired, Delete)
-	api.Delete("/:mode/:id", adminRequired, Delete)
+	api.Raw(http.MethodGet, "/:mode/:id", Get)
+	api.Raw(http.MethodPost, "/:mode/:id", adminRequired, Delete)
+	api.Raw(http.MethodDelete, "/:mode/:id", adminRequired, Delete)
 }

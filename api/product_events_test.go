@@ -21,8 +21,8 @@ func driveProduct(t *testing.T, method, path, body string, fn func(*zip.Ctx)) {
 		fn(c)
 		return c.NoContent(204)
 	}
-	app.All("/v1/product", h)
-	app.All("/v1/product/:productid", h)
+	app.Raw(zip.MethodAll, "/v1/product", h)
+	app.Raw(zip.MethodAll, "/v1/product/:productid", h)
 
 	req := httptest.NewRequest(method, path, strings.NewReader(body))
 	if _, err := app.Test(req); err != nil {

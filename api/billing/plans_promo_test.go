@@ -36,8 +36,8 @@ func TestPlans_SurfaceActivePromo(t *testing.T) {
 		platformApp(c) // the platform, as its own application
 		return c.Next()
 	}))
-	a.Put("/v1/platform/promo", promo.PutPromo)
-	a.Get("/v1/billing/plans", ListPlans)
+	a.Raw(http.MethodPut, "/v1/platform/promo", promo.PutPromo)
+	a.Raw(http.MethodGet, "/v1/billing/plans", ListPlans)
 
 	// Admin configures a live 50% promo scoped to the "dev" plan.
 	putReq := httptest.NewRequest(http.MethodPut, "/v1/platform/promo",

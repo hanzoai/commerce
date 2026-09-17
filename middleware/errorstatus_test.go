@@ -35,7 +35,7 @@ func TestReturnedErrorKeepsItsStatus(t *testing.T) {
 	// with the error middleware never having run. Composition says what wraps what.
 	store := app.Group("/v1/store")
 	store.Use(zip.H(ErrorHandlerJSON()))
-	store.Get("/x", func(c *zip.Ctx) error {
+	store.Raw(http.MethodGet, "/x", func(c *zip.Ctx) error {
 		return zip.ErrForbidden("X-Org-Id required")
 	})
 
@@ -51,7 +51,7 @@ func TestPanicRecoversAs500(t *testing.T) {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
 	store := app.Group("/v1/store")
 	store.Use(zip.H(ErrorHandlerJSON()))
-	store.Get("/boom", func(c *zip.Ctx) error { panic("boom") })
+	store.Raw(http.MethodGet, "/boom", func(c *zip.Ctx) error { panic("boom") })
 
 	res, body := do(t, app, "/v1/store/boom")
 	if res.StatusCode != 500 {
