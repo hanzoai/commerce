@@ -959,24 +959,12 @@ func TestMintSurface_EveryMintRouteGatedOrProvablyUserSafe(t *testing.T) {
 	}
 }
 
-// registeredMintRoutes registers the real billing + affiliate Route()s and
-// returns every SERVED route whose terminal handler reaches a mint sink.
-//
-// The address and the handler come from the router itself. A middleware wrapped
-// around every leaf sees both at once — the path the router MATCHED and the
-// terminal handler it was about to call — so the pairing is what the router
-// would really do, not what a wrapper was told at registration. It answers
-// before the handler runs, so nothing is executed to find out.
-//
-// This replaced a recording router. Registration cannot be intercepted any more:
-// Route() takes the concrete *zip.Group and there is no interface left to stand
-// in front of it, which is the point of that design and not a gap in it.
+// registeredMintRoutes returns each served route whose handler reaches a mint
+// sink. A probe on every leaf records the matched path and the handler's name.
 func registeredMintRoutes(t *testing.T, reaches map[string]bool) []mintRoute {
 	t.Helper()
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	// The same identity the org-admin probe seeds. A group's own middleware runs
-	// before the leaf and some of it reads the caller, so a request with nobody
-	// on it never reaches the wrapper at all.
+	// Group middleware reads the caller, so the probe carries one.
 	app.Use(zip.H(func(c *zip.Ctx) error {
 		c.Locals("iam_authenticated", true)
 		c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
@@ -1001,18 +989,11 @@ func registeredMintRoutes(t *testing.T, reaches map[string]bool) []mintRoute {
 
 	for _, r := range app.Routes() {
 		if strings.Contains(r.Pattern, "*") || strings.Contains(r.Pattern, ":") {
-			// A parameterised address needs a value to be matched at all; the
-			// segment's name is not one the router would accept.
 			continue
 		}
 		resp, err := app.Test(httptest.NewRequest(r.Method, r.Pattern, nil))
 		if err != nil {
-			// Not every declared address is reachable through this group's chain:
-			// util/rest builds its own group and installs each custom sub-route's
-			// chain itself, so the leaf there is the real handler and driving it
-			// without a datastore is not a probe. Those routes were invisible to
-			// the recorder this replaced for the same reason, and the guard
-			// accounts for them separately — see restRegisteredMintRoutes.
+			// util/rest installs its own chain; those routes are listed separately.
 			t.Logf("UNPROBED   %-6s %s (%v)", r.Method, r.Pattern, err)
 			continue
 		}
@@ -1021,9 +1002,6 @@ func registeredMintRoutes(t *testing.T, reaches map[string]bool) []mintRoute {
 
 	var out []mintRoute
 	for _, f := range found {
-		// f.handler is the runtime's fully-qualified name
-		// (github.com/hanzoai/commerce/api/billing.SyncHUSD); the graph is keyed by
-		// the module-relative form, so the two meet with no name guessing.
 		if qual := strings.TrimPrefix(f.handler, modulePath+"/"); reaches[qual] {
 			out = append(out, mintRoute{f.method, f.path, qual})
 		}

@@ -77,8 +77,7 @@ func TestGroupUseIsMembershipScopedNotPrefix(t *testing.T) {
 	t.Logf("membership-scoped: the sub-group's middleware saw only its own routes (%v)", sawPaths)
 }
 
-// Mint gates every route beneath it, raw and typed alike, and the typed one is
-// still a whole operation: one declaration, every projection.
+// Mint gates raw and typed routes, and leaves the parent's routes open.
 func TestMintGatesEveryRouteBeneathIt(t *testing.T) {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
 	billing := app.Group("/v1").Group("billing")
@@ -100,16 +99,12 @@ func TestMintGatesEveryRouteBeneathIt(t *testing.T) {
 		return &depositOut{OK: true}, nil
 	})
 
-	// A read declared on the PARENT is not mint and stays reachable, which is the
-	// property a prefix-scoped gate would break.
 	open := false
 	billing.Raw(http.MethodGet, "/balance", func(c *zip.Ctx) error {
 		open = true
 		return c.JSON(http.StatusOK, "balance")
 	})
 
-	// No service token and no SuperAdmin claim: the gate answers and the handler
-	// never runs.
 	resp, err := app.Test(httptest.NewRequest(http.MethodPost, "/v1/billing/mint-probe", nil))
 	if err != nil {
 		t.Fatalf("Test: %v", err)

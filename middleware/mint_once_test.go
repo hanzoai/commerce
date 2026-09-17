@@ -13,21 +13,7 @@ import (
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
-// A route beneath Mint must run its handler EXACTLY ONCE.
-//
-// The gate is PlatformOnly, a fiber handler that continues by calling c.Next()
-// and then returns nil. Wrapped as
-//
-//	if err := gate(c); err != nil { return err }
-//	return next(c)
-//
-// that is two continuations for one request: c.Next() inside the gate, and
-// next(c) after it. On the 403 path the error short-circuits and it does not
-// matter. On the AUTHORIZED path both reach the handler, and a money route
-// executes twice per request — a double deposit, a double refund.
-//
-// So this asserts the COUNT. "Reached" cannot tell one run from two, and on a
-// ledger path that is the whole difference.
+// An authorized money route runs its handler once.
 func TestMintRunsTheHandlerOnce(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -60,9 +46,7 @@ func TestMintRunsTheHandlerOnce(t *testing.T) {
 	}
 }
 
-// And the gate must still refuse an unauthorized caller, with the handler not
-// running at all. A double-execution fix that also opened the gate would trade
-// one defect for a worse one.
+// An unauthorized caller never reaches the handler.
 func TestMintRefusesAnUnauthorizedCaller(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()

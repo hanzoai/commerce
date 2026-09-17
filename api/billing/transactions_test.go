@@ -8,16 +8,7 @@ import (
 	"github.com/zap-proto/zip"
 )
 
-// ── route introspection ─────────────────────────────────────────────────────
-//
-// The router publishes its own declaration — every method and pattern it will
-// answer — so the guards below read that instead of recording registrations
-// through a wrapper. It is the surface as SERVED rather than as observed by a
-// decorator, and it needs nothing to be threaded through Route().
-//
-// What the declaration does not carry is which function a raw route is bound to.
-// TestTransactionsRouteNot404 covers that from the other side: it drives the
-// address and requires a real answer from the chain.
+// The guards read the router's own declaration.
 
 // ── route registration guards ────────────────────────────────────────────────
 
