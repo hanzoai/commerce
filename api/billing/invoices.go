@@ -2,7 +2,9 @@ package billing
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -81,13 +83,19 @@ func CreateInvoice(c *zip.Ctx) error {
 // Empty userID, status or subscriptionID means "do not filter on it", which is
 // what an absent query parameter has always meant here.
 //
+// The list is paged: newest first, bounded by (limit, offset). A page that
+// states no limit gets [PageParams] default, and no page — from this query or
+// any other caller of it — ever returns more than the max, so one answer
+// cannot grow with the org's whole billing history.
+//
 // The rows come back as the same view the HTTP endpoints render, so a peer reads the
 // fields it already knows. The ENVELOPE around them is each endpoint's own; putting
 // it here would make every future caller inherit one endpoint's shape.
-func ListInvoices(ctx context.Context, org *organization.Organization, userID, status, subscriptionID string) ([]Invoice, error) {
+func ListInvoices(ctx context.Context, org *organization.Organization, userID, status, subscriptionID string, limit, offset int) ([]Invoice, error) {
 	if org == nil {
 		return nil, fmt.Errorf("invoices: %w", errNoOrg)
 	}
+	limit, offset = PageParams(limit, offset)
 	db := datastore.New(org.Namespaced(ctx))
 	q := billinginvoice.Query(db).Ancestor(db.NewKey("synckey", "", 1, nil))
 	if userID != "" {
@@ -99,6 +107,7 @@ func ListInvoices(ctx context.Context, org *organization.Organization, userID, s
 	if subscriptionID != "" {
 		q = q.Filter("SubscriptionId=", subscriptionID)
 	}
+	q = q.Order("-CreatedAt").Limit(limit).Offset(offset)
 
 	invoices := make([]*billinginvoice.BillingInvoice, 0)
 	if _, err := q.GetAll(&invoices); err != nil {
@@ -112,9 +121,60 @@ func ListInvoices(ctx context.Context, org *organization.Organization, userID, s
 	return items, nil
 }
 
-// ListBillingInvoices lists billing invoices, optionally filtered by userId and status.
+// Invoice page shape: one answer holds at most InvoicePageMax rows, and a
+// missing limit is the default, not "everything".
+const (
+	InvoicePageDefault = 50
+	InvoicePageMax     = 200
+)
+
+// PageParams normalizes a page request the way this listing answers it:
+// an absent limit is the default, a limit past the max is the max, and a
+// negative offset is zero. One rule, so the HTTP surface and every peer
+// reader of ListInvoices cannot agree on two.
+func PageParams(limit, offset int) (int, int) {
+	switch {
+	case limit <= 0:
+		limit = InvoicePageDefault
+	case limit > InvoicePageMax:
+		limit = InvoicePageMax
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	return limit, offset
+}
+
+// PageCursor encodes the page a reader resumes from: the next row's offset,
+// base64 (URL-safe, no padding) so it round-trips through a query string
+// untouched. The cursor is opaque to the reader — a position, not a promise
+// about how the rows are ordered.
+func PageCursor(offset int) string {
+	return base64.RawURLEncoding.EncodeToString([]byte(strconv.Itoa(offset)))
+}
+
+// PageOffset decodes a [PageCursor]; an absent cursor is offset zero, and a
+// malformed one is a refused page, not a guess.
+func PageOffset(cursor string) (int, error) {
+	if cursor == "" {
+		return 0, nil
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(cursor)
+	if err != nil {
+		return 0, fmt.Errorf("invoices: cursor does not decode: %w", err)
+	}
+	offset, err := strconv.Atoi(string(raw))
+	if err != nil || offset < 0 {
+		return 0, fmt.Errorf("invoices: cursor names no row position")
+	}
+	return offset, nil
+}
+
+// ListBillingInvoices lists billing invoices, filtered by userId/status/
+// subscriptionId and paged: ?limit= (default 50, max 200) and ?cursor=
+// (the page a previous answer returned — absent starts at the newest row).
 //
-//	GET /v1/billing/invoices?userId=...&status=...
+//	GET /v1/billing/invoices?userId=...&status=...&limit=...&cursor=...
 func ListBillingInvoices(c *zip.Ctx) error {
 	// #146 class: never panic on a missing org. On the co-resident cloud embed path
 	// this read can run with no "organization" local (IAMTokenRequired no-ops with no
@@ -124,19 +184,31 @@ func ListBillingInvoices(c *zip.Ctx) error {
 		return c.JSON(200, map[string]any{"invoices": []map[string]any{}, "count": 0})
 	}
 
+	limit := 0
+	if s := c.Query("limit"); s != "" {
+		limit, _ = strconv.Atoi(s) // a malformed limit is the default, not a 500
+	}
+	offset, err := PageOffset(c.Query("cursor"))
+	if err != nil {
+		return http.Fail(c, 400, "failed to list invoices", err)
+	}
+
 	items, err := ListInvoices(c.Context(), org,
 		strings.TrimSpace(c.Query("userId")),
 		strings.TrimSpace(c.Query("status")),
-		strings.TrimSpace(c.Query("subscriptionId")))
+		strings.TrimSpace(c.Query("subscriptionId")),
+		limit, offset)
 	if err != nil {
 		log.Error("Failed to list invoices: %v", err, c)
 		return http.Fail(c, 500, "failed to list invoices", err)
 	}
 
-	return c.JSON(200, map[string]any{
-		"invoices": items,
-		"count":    len(items),
-	})
+	resp := map[string]any{"invoices": items, "count": len(items)}
+	// A full page is the only shape that may hold a next page.
+	if eff, _ := PageParams(limit, offset); len(items) == eff {
+		resp["cursor"] = PageCursor(offset + eff)
+	}
+	return c.JSON(200, resp)
 }
 
 // GetInvoice returns a single billing invoice by ID.
