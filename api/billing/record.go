@@ -166,6 +166,10 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 	if held := billingSubscription(db, subject, org.TestMode()); held != nil {
 		return extendRecorded(ctx, org, held, in, planID, p.Interval, reference, start, end)
 	}
+	// A payment recorded after its external plan lapsed extends that plan.
+	if held := lapsedExternal(db, subject, org.TestMode()); held != nil {
+		return extendRecorded(ctx, org, held, in, planID, p.Interval, reference, start, end)
+	}
 
 	qty := in.Quantity
 	if qty < 1 {
@@ -191,6 +195,7 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 	if err != nil {
 		return nil, err
 	}
+	retireLapsed(ctx, org, db, sub)
 	emitSale(ctx, in.Events, org.Name, sub, nil)
 	return &Recorded{Subscription: *viewSubscription(sub), Outcome: RecordCreated}, nil
 }
@@ -246,6 +251,23 @@ func extendRecorded(ctx context.Context, org *organization.Organization, held *s
 		go ev.EmitSubscriptionRenewed(context.WithoutCancel(ctx), subscriptionEvent(org.Name, sub))
 	}
 	return &Recorded{Subscription: *viewSubscription(sub), Outcome: RecordExtended}, nil
+}
+
+// lapsedExternal is the subject's externally collected plan whose recorded
+// period ended past the grace window (engine.Lapsed), or nil: the plan a late
+// payment extends.
+func lapsedExternal(db *datastore.Datastore, subject string, test bool) *subscription.Subscription {
+	subs, err := userSubscriptions(db, subject, test)
+	if err != nil {
+		return nil
+	}
+	now := time.Now()
+	for _, s := range subs {
+		if s.Type == subscription.External && !isBundleRow(s) && engine.Lapsed(s, now) {
+			return s
+		}
+	}
+	return nil
 }
 
 // priceMatches refuses a payment that is not what the plan costs for the period.
@@ -315,26 +337,6 @@ const processorBalance = "balance"
 // ends on February 28 by the calendar and on March 3 by Advance.
 const monthEnd = 3 * 24 * time.Hour
 
-// holding is the paid plan that keeps a subject from opening one paid from the
-// balance: the one it pays for now, or one gone past due. A past-due plan still
-// owes its period, and paying that invoice brings it back, so a second plan beside
-// it would renew from the same balance twice.
-func holding(db *datastore.Datastore, subject string, test bool) *subscription.Subscription {
-	if held := billingSubscription(db, subject, test); held != nil {
-		return held
-	}
-	subs, err := userSubscriptions(db, subject, test)
-	if err != nil {
-		return nil
-	}
-	for _, s := range subs {
-		if s.Status == subscription.PastDue && !strings.EqualFold(strings.TrimSpace(s.ProviderType), "bundle") && paidRow(s) {
-			return s
-		}
-	}
-	return nil
-}
-
 // recordFromBalance opens the plan on a period paid now from the subject's
 // prepaid money, as a regular subscription the engine renews from the same
 // money.
@@ -383,7 +385,7 @@ func recordFromBalance(ctx context.Context, org *organization.Organization, db *
 	}
 	abandon := func() { _ = rec.Delete() }
 
-	if held := holding(db, subject, org.TestMode()); held != nil {
+	if held := billingSubscription(db, subject, org.TestMode()); held != nil {
 		abandon()
 		heldSlug := held.Plan.Slug
 		if heldSlug == "" {
@@ -425,6 +427,7 @@ func recordFromBalance(ctx context.Context, org *organization.Organization, db *
 			"a period was drawn from the balance and no subscription was opened: "+err.Error(), in.PriceCents, false)
 		return nil, err
 	}
+	retireLapsed(ctx, org, db, sub)
 
 	// The draw and the invoice it paid are the reference.
 	paid := make(map[string]string, len(reference)+2)

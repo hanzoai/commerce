@@ -166,6 +166,7 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 	if err != nil {
 		return subscriptionCreateError(c, err)
 	}
+	retireLapsed(c.Context(), org, db, sub)
 
 	if paidWithCredits {
 		sub.ProviderType = "credit"
@@ -588,7 +589,11 @@ func hasMemberSub(db *datastore.Datastore, planSlug, member string) bool {
 // subscription governs what, so this refuses the sale instead of corrupting the
 // entitlement.
 //
-// Two exclusions, each for its own reason, and neither is the other's:
+// A row still being paid for counts: active or trialing, and past_due or unpaid
+// too — its renewal is being retried, or a payment attempt on it has no known
+// outcome, and a second plan beside it would renew from the same money twice.
+//
+// Three exclusions, each for its own reason, and none is another's:
 //
 //	FREE tiers do not count. Nothing bills, so nothing double-bills, and a free
 //	row must never block the customer who is finally paying — free → paid is the
@@ -596,6 +601,9 @@ func hasMemberSub(db *datastore.Datastore, planSlug, member string) bool {
 //	NOT-payment-backed paid rows do not count either. A zero-payment internal row
 //	collects nothing, so it cannot double-charge, and counting it would trap the
 //	holder of a forged Active row outside any endpoint that could fix it.
+//	LAPSED rows (engine.Lapsed) do not count. Their paid period is over and
+//	nothing renews them; the customer subscribing again is how they act, and the
+//	new subscription replaces the lapsed one (retireLapsed).
 //
 // It answers a different question from subscriptionPlanSlug ("what may this
 // subject's allotment anchor on") and shares its filters by coincidence of
@@ -610,14 +618,15 @@ func billingSubscription(db *datastore.Datastore, subject string, test bool) *su
 		// Square idempotency key and the guard still bound.
 		return nil
 	}
+	now := time.Now()
 	for _, s := range subs {
 		switch s.Status {
-		case subscription.Active, subscription.Trialing:
+		case subscription.Active, subscription.Trialing, subscription.PastDue, subscription.Unpaid:
 		default:
 			continue
 		}
 		// A bundle child is an entitlement row the parent minted, not a purchase.
-		if strings.EqualFold(strings.TrimSpace(s.ProviderType), "bundle") {
+		if strings.EqualFold(strings.TrimSpace(s.ProviderType), "bundle") || engine.Lapsed(s, now) {
 			continue
 		}
 		if paidRow(s) && subscriptionPaymentBacked(s) {
@@ -625,6 +634,37 @@ func billingSubscription(db *datastore.Datastore, subject string, test bool) *su
 		}
 	}
 	return nil
+}
+
+// retireLapsed ends the subject's lapsed subscriptions (engine.Lapsed) once a
+// new one, fresh, has opened for it: the customer subscribing again is how they
+// act on a plan they stopped paying for. Each ends at its paid period's end,
+// charged nothing for the time since, and an invoice it still carries is voided
+// (engine.VoidOpen). A failure is logged: the new subscription stands.
+func retireLapsed(ctx context.Context, org *organization.Organization, db *datastore.Datastore, fresh *subscription.Subscription) {
+	subs, err := userSubscriptions(db, fresh.UserId, fresh.Test)
+	if err != nil {
+		log.Error("billing: read %s's subscriptions to retire lapsed ones: %v", fresh.UserId, err)
+		return
+	}
+	now := time.Now()
+	for _, s := range subs {
+		if s.Id() == fresh.Id() || isBundleRow(s) || !engine.Lapsed(s, now) {
+			continue
+		}
+		row := subscription.New(db)
+		if err := row.GetById(s.Id()); err != nil || !engine.Lapsed(row, now) {
+			continue
+		}
+		engine.End(row, row.PeriodEnd, now, engine.Replaced)
+		if err := row.Update(); err != nil {
+			log.Error("billing: retire lapsed subscription %s of %s: %v", row.Id(), row.UserId, err)
+			continue
+		}
+		if err := engine.VoidOpen(ctx, db, row, prepaidFor(ctx, org), now); err != nil {
+			log.Error("billing: void the invoices of retired subscription %s: %v", row.Id(), err)
+		}
+	}
 }
 
 // ListSubscriptions is the org's subscriptions, filtered — the QUERY, with no
@@ -1118,12 +1158,14 @@ func RenewBillingSubscription(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(ctx))
 
+	// The row is read under the org's cycle lock, so a renewal that ran while
+	// this request waited is what this one sees.
+	unlock := lockOrgCycle(org.Name)
 	sub := subscription.New(db)
 	if err := sub.GetById(c.Param("id")); err != nil {
+		unlock()
 		return http.Fail(c, 404, "subscription not found", err)
 	}
-
-	unlock := lockOrgCycle(org.Name)
 	run := engine.Run{Now: time.Now(), Asked: true, Prepaid: prepaidFor(ctx, org)}
 	res := settleOne(ctx, org, db, sub, run, eventsOf(c), cardFor(kmsOf(c), org))
 	unlock()

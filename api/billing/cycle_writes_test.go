@@ -11,6 +11,7 @@ import (
 
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/billingevent"
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/thirdparty/kms"
@@ -88,6 +89,24 @@ func TestVoid_ReturnsWhatThePartPaymentTook(t *testing.T) {
 	}
 	if bal := walletOf(t, ctx, org, "void-return"); bal != 300 {
 		t.Fatalf("balance %d after a second return, want 300", bal)
+	}
+	// Each return to the balance is an item for operations to review as a
+	// refund, recorded once.
+	evs := make([]*billingevent.BillingEvent, 0)
+	if _, err := billingevent.Query(db).Filter("ObjectId=", inv.Id()).GetAll(&evs); err != nil {
+		t.Fatalf("read events: %v", err)
+	}
+	returned := 0
+	for _, e := range evs {
+		if e.Type == "invoice.returned" {
+			returned++
+			if e.Data["balanceCents"] != float64(300) {
+				t.Fatalf("invoice.returned %v, want the 300 cents returned to the balance", e.Data)
+			}
+		}
+	}
+	if returned != 1 {
+		t.Fatalf("%d invoice.returned events, want 1", returned)
 	}
 }
 

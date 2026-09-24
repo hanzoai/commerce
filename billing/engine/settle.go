@@ -103,6 +103,9 @@ const (
 	// until the customer renews it (Run.Asked), cancels it or changes it, and the
 	// time it was not renewed for is never billed.
 	Overdue Action = "overdue"
+	// Replaced: a lapsed subscription whose customer subscribed again. Ended at
+	// its paid period's end, nothing charged for the time since.
+	Replaced Action = "replaced"
 	// Skipped: due, but nothing can be done on this pass. Step.Reason says why.
 	Skipped Action = "skipped"
 )
@@ -209,6 +212,79 @@ func Live(sub *subscription.Subscription) bool {
 	return false
 }
 
+// Lapsed reports whether sub no longer confers its plan at now though no step
+// has ended it: an active row whose paid period ended more than RenewalGrace
+// ago (overdue), or a past_due one past the grace window and the whole retry
+// schedule after it. Nothing is charged for the time since; its customer
+// renews it, or subscribes again and the new subscription replaces it.
+func Lapsed(sub *subscription.Subscription, now time.Time) bool {
+	if sub.PeriodEnd.IsZero() {
+		return false
+	}
+	switch sub.Status {
+	case subscription.Active:
+		return now.Sub(sub.PeriodEnd) > RenewalGrace
+	case subscription.PastDue:
+		return now.Sub(sub.PeriodEnd) > RenewalGrace+RetrySchedule[len(RetrySchedule)-1]
+	}
+	return false
+}
+
+// ResolveCanceled repeats, under its key, a payment attempt with no known
+// outcome that a canceled subscription's invoice still carries, so money that
+// may have moved is never left unlooked-at. The answer decides the invoice as a
+// cancel during a renewal does (canceledMeanwhile): a payment that landed is
+// kept and reported for a refund, a decline voids the invoice, and one still
+// unknown stays recorded and is reported again on the next run. A subscription
+// that is not canceled, or carries no such attempt, is left alone. A dry run
+// reports the attempt it would repeat and moves nothing.
+func ResolveCanceled(ctx context.Context, db *datastore.Datastore, sub *subscription.Subscription, run Run, c Collection) (*Step, error) {
+	if sub.Status != subscription.Canceled {
+		return &Step{}, nil
+	}
+	invs, err := invoicesOf(db, sub)
+	if err != nil {
+		return nil, fmt.Errorf("look up invoices: %w", err)
+	}
+	for _, listed := range invs {
+		if listed.Status != billinginvoice.Open || listed.PendingKey == "" {
+			continue
+		}
+		s := &settlement{ctx: ctx, db: db, sub: sub, now: run.Now, c: c, run: run}
+		if run.DryRun {
+			return &Step{Action: Skipped, Invoice: listed,
+				Reason: "canceled with a payment attempt of unknown outcome; the live run repeats it under its key"}, nil
+		}
+		release, err := LockInvoice(db, listed.Id())
+		if errors.Is(err, ErrInvoiceBusy) {
+			return &Step{Action: Skipped, Invoice: listed, Reason: "a payment or change on its invoice is in progress"}, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		defer release()
+		inv, err := loadInvoice(db, listed.Id())
+		if err != nil {
+			return nil, fmt.Errorf("read invoice %s under its lock: %w", listed.Id(), err)
+		}
+		if inv.Status != billinginvoice.Open || inv.PendingKey == "" {
+			return &Step{}, nil
+		}
+		if c.Pay == nil {
+			return s.canceledMeanwhile(inv, 0)
+		}
+		res, err := Pay(ctx, db, inv, c, run.Now)
+		if err != nil {
+			return nil, err
+		}
+		if err := inv.Update(); err != nil {
+			return nil, fmt.Errorf("record the repeated attempt on invoice %s: %w", inv.Id(), err)
+		}
+		return s.canceledMeanwhile(inv, res.AmountCharged)
+	}
+	return &Step{}, nil
+}
+
 // settle decides and takes the step for a due subscription.
 func settle(ctx context.Context, db *datastore.Datastore, sub *subscription.Subscription, invs []*billinginvoice.BillingInvoice, run Run, c Collection) (*Step, error) {
 	now := run.Now
@@ -217,7 +293,7 @@ func settle(ctx context.Context, db *datastore.Datastore, sub *subscription.Subs
 		start: sub.PeriodEnd,
 		end:   Advance(sub.PeriodEnd, &sub.Plan),
 	}
-	defer lockPeriod(sub.Id(), s.start)()
+	defer lockSubscription(sub.Id())()
 
 	pick, stale := renewalInvoice(invs, s.start, s.end)
 	if !run.DryRun {
@@ -276,12 +352,14 @@ func settle(ctx context.Context, db *datastore.Datastore, sub *subscription.Subs
 		return s.comp(inv)
 	case c.Pay == nil:
 		return s.void(inv, EndedNoCard, c.Reason)
+	case late && run.Asked && (inv == nil || !attempted(inv) || !now.Before(inv.PeriodEnd)):
+		// The customer renews a row that is overdue — its missed period, even one
+		// whose renewal once declined, is over and never billed: renew from now.
+		return s.carry(inv)
 	case inv != nil && attempted(inv):
 		// A charge was attempted: from here the retry schedule decides, never the
 		// grace window, so an invoice whose charge may have landed is never voided.
 		return s.retry(inv)
-	case late && run.Asked:
-		return s.carry(inv)
 	case late:
 		return &Step{Action: Overdue, Invoice: inv, Reason: fmt.Sprintf(
 			"paid through %s, more than %s ago, and never renewed; nothing is charged until the customer renews it",
@@ -324,19 +402,50 @@ type settlement struct {
 // carry renews an overdue subscription its customer asked to renew. The time it
 // was not renewed for is never billed: the row is carried to now, charging
 // nothing for it, and the period from now is invoiced and collected. An invoice
-// left unattempted for the missed period is voided.
+// left for the missed period is voided.
+//
+// A missed period end is carried once. Its guard (keyed by the period end it
+// carries from) stops a second process, and the row is carried only when it
+// still ends where this step read it — a renewal that moved it meanwhile wins,
+// and this one charges nothing.
 func (s *settlement) carry(inv *billinginvoice.BillingInvoice) (*Step, error) {
+	from := s.sub.PeriodEnd
+	if !s.run.DryRun {
+		rec, replay, err := idempotencykey.Begin(s.db, "billing-carry:"+s.sub.Id(), "from:"+strconv.FormatInt(from.Unix(), 10))
+		if err != nil {
+			return nil, fmt.Errorf("take the carry guard of subscription %s: %w", s.sub.Id(), err)
+		}
+		if replay {
+			return &Step{Action: Skipped, Reason: "a renewal of this subscription from " + from.UTC().Format(time.RFC3339) + " is under way or done"}, nil
+		}
+		step, err := s.carryFrom(inv, from)
+		if err != nil {
+			_ = rec.Delete()
+			return nil, err
+		}
+		_ = idempotencykey.Complete(rec, string(step.Action))
+		return step, nil
+	}
+	return s.carryFrom(inv, from)
+}
+
+// carryFrom moves the row from the period end it was read at to now, then
+// renews it. See carry.
+func (s *settlement) carryFrom(inv *billinginvoice.BillingInvoice, from time.Time) (*Step, error) {
+	now := s.now
+	unmoved := func(row *subscription.Subscription) bool { return row.PeriodEnd.Unix() == from.Unix() }
+	switch err := s.saveWhen(unmoved, func(row *subscription.Subscription) { row.PeriodStart, row.PeriodEnd = now, now }); {
+	case errors.Is(err, errCanceled):
+		return s.canceledMeanwhile(nil, 0)
+	case errors.Is(err, errMoved):
+		return &Step{Action: Skipped, Reason: "renewed meanwhile; nothing more is charged"}, nil
+	case err != nil:
+		return nil, fmt.Errorf("carry subscription %s to now: %w", s.sub.Id(), err)
+	}
 	if err := s.voidInvoice(inv); err != nil {
 		return nil, err
 	}
-	now := s.now
-	if err := s.save(func(row *subscription.Subscription) { row.PeriodStart, row.PeriodEnd = now, now }); errors.Is(err, errCanceled) {
-		return s.canceledMeanwhile(nil, 0)
-	} else if err != nil {
-		return nil, fmt.Errorf("carry subscription %s to now: %w", s.sub.Id(), err)
-	}
 	s.start, s.end = now, Advance(now, &s.sub.Plan)
-	defer lockPeriod(s.sub.Id(), s.start)()
 	return s.renew()
 }
 
@@ -549,9 +658,9 @@ func (s *settlement) escalate(inv *billinginvoice.BillingInvoice, reason string)
 		}
 		return &Step{Action: Skipped, Invoice: inv, Reason: "escalated; the attempt still has no known outcome: " + reason}, nil
 	}
-	log.Error("billing cycle: ALERT subscription %s: the payment attempt %s on invoice %s has no known outcome; "+
-		"the subscription is unpaid until the processor answers or an operator voids the invoice: %s", s.sub.Id(), inv.PendingKey, inv.Id(), reason)
 	if !s.run.DryRun {
+		log.Error("billing cycle: ALERT subscription %s: the payment attempt %s on invoice %s has no known outcome; "+
+			"the subscription is unpaid until the processor answers or an operator voids the invoice: %s", s.sub.Id(), inv.PendingKey, inv.Id(), reason)
 		if err := inv.Update(); err != nil {
 			return nil, fmt.Errorf("record the unresolved attempt on invoice %s: %w", inv.Id(), err)
 		}
@@ -679,19 +788,35 @@ func (s *settlement) close(action Action, inv *billinginvoice.BillingInvoice, at
 // is never moved out of Canceled: nothing is written and the answer is
 // errCanceled. A dry run applies to the row in hand only.
 func (s *settlement) save(apply func(*subscription.Subscription)) error {
+	return s.saveWhen(nil, apply)
+}
+
+// saveWhen is save, made only when the stored row still satisfies when; a row
+// another writer moved meanwhile is left as it is, and the answer is errMoved.
+func (s *settlement) saveWhen(when func(*subscription.Subscription) bool, apply func(*subscription.Subscription)) error {
 	if s.run.DryRun {
 		apply(s.sub)
 		return nil
 	}
-	return save(s.db, s.sub, apply)
+	return saveWhen(s.db, s.sub, when, apply)
 }
 
 // errCanceled is a subscription the customer canceled while a step was under
 // way on it.
 var errCanceled = errors.New("the subscription was canceled meanwhile")
 
+// errMoved is a subscription another writer moved while a step was under way on
+// it.
+var errMoved = errors.New("the subscription was moved meanwhile")
+
 // save writes apply onto a fresh read of sub's stored row (see settlement.save).
 func save(db *datastore.Datastore, sub *subscription.Subscription, apply func(*subscription.Subscription)) error {
+	return saveWhen(db, sub, nil, apply)
+}
+
+// saveWhen writes apply onto a fresh read of sub's stored row when that row
+// satisfies when (nil: always).
+func saveWhen(db *datastore.Datastore, sub *subscription.Subscription, when func(*subscription.Subscription) bool, apply func(*subscription.Subscription)) error {
 	row := subscription.New(db)
 	if err := row.GetById(sub.Id()); err != nil {
 		return err
@@ -699,6 +824,9 @@ func save(db *datastore.Datastore, sub *subscription.Subscription, apply func(*s
 	if row.Status == subscription.Canceled {
 		sub.Status, sub.Canceled, sub.CanceledAt, sub.Ended, sub.EndCancel = row.Status, row.Canceled, row.CanceledAt, row.Ended, row.EndCancel
 		return errCanceled
+	}
+	if when != nil && !when(row) {
+		return errMoved
 	}
 	apply(row)
 	if err := row.Update(); err != nil {

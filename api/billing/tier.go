@@ -10,6 +10,7 @@ import (
 
 	"github.com/hanzoai/commerce/billing/bucket"
 	"github.com/hanzoai/commerce/billing/creditledger"
+	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/billing/tier"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -582,7 +583,9 @@ func tierOfName(raw string) tier.Name {
 //   - a past_due PAID plan → the same as active: its renewal declined and the
 //     billing cycle is retrying it, and the subscriber keeps the tier until the
 //     last retry fails and the subscription ends
-//   - no such sub, a $0 / unknown plan, or a canceled/unpaid subscription → Free
+//   - a lapsed subscription (engine.Lapsed: overdue past its paid period and the
+//     grace after it), no such sub, a $0 / unknown plan, or a canceled/unpaid
+//     subscription → Free
 //
 // A plan's paid-ness and tier are read from the embedded catalog by slug
 // (paidTier/lookupPlan), never the subscription's spoofable stored plan copy, so a
@@ -604,9 +607,12 @@ func deriveTier(db *datastore.Datastore, user string, test bool) (tier.Name, err
 	if err != nil {
 		return tier.Free, err
 	}
-	best := tier.Free
+	best, now := tier.Free, time.Now()
 	for _, s := range subs {
 		var t tier.Name
+		if engine.Lapsed(s, now) {
+			continue // its paid period, and the grace after it, are over
+		}
 		switch s.Status {
 		case subscription.Trialing:
 			t = tier.Starter

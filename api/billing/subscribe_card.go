@@ -552,6 +552,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 				chargeCents, false)
 			return nil, err
 		}
+		retireLapsed(ctx, org, db, sub)
 
 		invoiceID := ""
 		if inv != nil {
@@ -662,6 +663,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			chargeCents, false)
 		return nil, err
 	}
+	retireLapsed(ctx, org, db, sub)
 
 	// Mark the FIRST period PAID by the card charge — a paid BillingInvoice
 	// referencing the processor ref — and keep the row on that period. This also makes

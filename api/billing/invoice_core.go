@@ -270,9 +270,12 @@ type operatorVoid struct {
 // it cannot void an invoice a payment is at the processor for, and it gives
 // back what the invoice collected (engine.ReturnPaid). It refuses one whose last
 // payment attempt has no known outcome, since that money may have moved, unless
-// op is an operator taking the attempt over (unresolvedAttempt). An operator's
-// void is written to the billing event ledger before the invoice changes; a void
-// that cannot be recorded is not made.
+// op is an operator taking the attempt over (unresolvedAttempt).
+//
+// An operator's void records who, why and the abandoned attempt on the invoice
+// itself, in the same write that voids it, and then in the billing event ledger
+// under a key derived from the invoice (invoice.operator_void). An operator
+// retrying a void whose event was not written writes it then, once.
 func voidInvoice(ctx context.Context, org *organization.Organization, id string, ev *events.Client, op *operatorVoid) (*billinginvoice.BillingInvoice, *PaymentFault) {
 	inv, db, f := loadInvoice(ctx, org, id)
 	if f != nil {
@@ -289,6 +292,12 @@ func voidInvoice(ctx context.Context, org *organization.Organization, id string,
 	if err := inv.GetById(inv.Id()); err != nil {
 		return nil, fault(404, "invoice not found", err)
 	}
+	if recorded := operatorVoidOf(inv); op != nil && inv.Status == billinginvoice.Void && recorded != nil {
+		if f := recordOperatorVoid(db, inv, recorded); f != nil {
+			return nil, f
+		}
+		return inv, nil
+	}
 	if inv.PendingKey != "" {
 		if op == nil {
 			return nil, fault(409, "a payment attempt on this invoice has no known outcome yet; it cannot be voided until it resolves", nil)
@@ -301,15 +310,15 @@ func voidInvoice(ctx context.Context, org *organization.Organization, id string,
 	if err := inv.MarkVoid(); err != nil {
 		return nil, fault(400, err.Error(), nil)
 	}
+	var recorded types.Map
 	if op != nil {
 		inv.PendingMethod, inv.PendingAmount, inv.PendingKey, inv.PendingRef = "", 0, "", ""
-		data := types.Map{"actor": op.Actor, "reason": op.Reason, "subscriptionId": inv.SubscriptionId,
+		recorded = types.Map{"actor": op.Actor, "reason": op.Reason, "subscriptionId": inv.SubscriptionId,
 			"amountDue": inv.AmountDue, "amountPaid": inv.AmountPaid, "attempt": attempt}
-		if _, err := engine.EmitBillingEvent(db, "invoice.operator_void", "invoice", inv.Id(), inv.UserId, data, nil); err != nil {
-			return nil, fault(500, "failed to record the void; the invoice is unchanged", err)
+		if inv.Metadata == nil {
+			inv.Metadata = types.Map{}
 		}
-		log.Info("billing: operator %s voided invoice %s (subscription %s), leaving payment attempt %v with the processor: %s",
-			op.Actor, inv.Id(), inv.SubscriptionId, attempt, op.Reason)
+		inv.Metadata["operatorVoid"] = recorded
 	}
 	if err := engine.ReturnPaid(ctx, db, inv, prepaidFor(ctx, org), inv.VoidedAt); err != nil {
 		log.Error("Failed to return what invoice %s collected: %v", inv.Id(), err)
@@ -319,8 +328,36 @@ func voidInvoice(ctx context.Context, org *organization.Organization, id string,
 		log.Error("Failed to void invoice: %v", err)
 		return nil, fault(500, "failed to void invoice", err)
 	}
+	if op != nil {
+		log.Info("billing: operator %s voided invoice %s (subscription %s), leaving payment attempt %v with the processor: %s",
+			op.Actor, inv.Id(), inv.SubscriptionId, attempt, op.Reason)
+		if f := recordOperatorVoid(db, inv, recorded); f != nil {
+			return nil, f
+		}
+	}
 	emitInvoiceCtx(ctx, ev, org.Name, inv, evInvoiceVoid)
 	return inv, nil
+}
+
+// operatorVoidOf is the operator's void recorded on inv, or nil.
+func operatorVoidOf(inv *billinginvoice.BillingInvoice) types.Map {
+	switch v := inv.Metadata["operatorVoid"].(type) {
+	case types.Map:
+		return v
+	case map[string]interface{}:
+		return types.Map(v)
+	}
+	return nil
+}
+
+// recordOperatorVoid writes the operator's void of inv to the billing event
+// ledger, once per invoice.
+func recordOperatorVoid(db *datastore.Datastore, inv *billinginvoice.BillingInvoice, recorded types.Map) *PaymentFault {
+	if _, err := engine.EmitBillingEventOnce(db, "invoice.operator_void:"+inv.Id(), "invoice.operator_void", "invoice", inv.Id(), inv.UserId, recorded); err != nil {
+		log.Error("billing: ALERT invoice %s was voided by an operator and the billing event was not written; retry the void to write it: %v", inv.Id(), err)
+		return fault(500, "the invoice is void and its billing event was not written; retry to record it", err)
+	}
+	return nil
 }
 
 // unresolvedAttempt allows an operator to take over a payment attempt with no

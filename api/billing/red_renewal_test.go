@@ -367,8 +367,9 @@ func TestRed_UnrecognizedDryRunChargesCards(t *testing.T) {
 // TestRed_RealignEndsSubscribersMidPeriod: a subscriber sits on [P1, P2] with
 // its first invoice paying [P0, P1]. The cycle never realigns it on its own. An
 // operator's realignment moves it back onto [P0, P1], which ended ten days
-// before the next run: that run finds it overdue, charges nothing and leaves it
-// as it is — it is not ended and keeps its plan until the customer renews it.
+// before the next run: that run finds it overdue, charges nothing and does not
+// end it. It confers nothing (lapsed) until the customer renews it or
+// subscribes again.
 func TestRed_RealignEndsSubscribersMidPeriod(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -394,8 +395,8 @@ func TestRed_RealignEndsSubscribersMidPeriod(t *testing.T) {
 		t.Fatalf("a realigned subscriber ten days past its paid period is %s (%v) after %d charges; want it left as it is and nothing charged",
 			got.Status, got.Metadata["endReason"], m.chargeCalls)
 	}
-	if n := tierOf(t, ctx, org, "red-realign"); n != tier.Pro {
-		t.Fatalf("tier %s, want the plan kept until the customer acts", n)
+	if !engine.Lapsed(got, p1.Add(10*24*time.Hour)) {
+		t.Fatalf("row %s through %s is not lapsed ten days past its paid period; it would serve a plan nobody paid for", got.Status, got.PeriodEnd)
 	}
 }
 

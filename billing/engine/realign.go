@@ -62,6 +62,13 @@ func Realign(db *datastore.Datastore, sub *subscription.Subscription, dryRun boo
 	return r, nil
 }
 
+// RealignPending reports whether Realign's rule holds for sub: it sits a period
+// ahead of the invoice that paid for it and has not been realigned.
+func RealignPending(db *datastore.Datastore, sub *subscription.Subscription) (bool, error) {
+	inv, err := realignInvoice(db, sub)
+	return inv != nil, err
+}
+
 // realignInvoice is the invoice sub is realigned onto under Realign's rule, or
 // nil when the rule does not hold.
 func realignInvoice(db *datastore.Datastore, sub *subscription.Subscription) (*billinginvoice.BillingInvoice, error) {
