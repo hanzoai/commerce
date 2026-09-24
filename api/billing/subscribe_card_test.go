@@ -227,12 +227,64 @@ func TestSubscribeWithCard_VaultChargeCreateInvoice(t *testing.T) {
 	if float64(inv.AmountPaid) != devCents || float64(inv.AmountDue) != devCents {
 		t.Fatalf("first invoice amountDue=%d amountPaid=%d, want %v/%v", inv.AmountDue, inv.AmountPaid, devCents, devCents)
 	}
+	heldIsPaid(t, sub, inv, 0, 1)
 
 	// The plan FEE must NOT have been credited to the spendable AI-credit wallet —
 	// a subscription is not a top-up. The wallet the LLM gate reads stays $0.
 	if bal := balanceOf(t, ctx, org, "subcard"); bal != 0 {
 		t.Fatalf("spendable wallet balance=%d, want 0 — the plan fee must NEVER credit the AI-credit wallet", bal)
 	}
+}
+
+// heldIsPaid holds a new subscription to the period its first charge paid for:
+// the row and the paid invoice name the same period, it began at the purchase,
+// and it runs one interval (years, months) from there. A row that moved on past
+// the invoice at purchase is a free period for every subscriber.
+func heldIsPaid(t *testing.T, sub *subscription.Subscription, inv *billinginvoice.BillingInvoice, years, months int) {
+	t.Helper()
+	if !sub.PeriodStart.Equal(inv.PeriodStart) || !sub.PeriodEnd.Equal(inv.PeriodEnd) {
+		t.Fatalf("row holds %s..%s, first invoice paid %s..%s; want the row on the paid period",
+			sub.PeriodStart, sub.PeriodEnd, inv.PeriodStart, inv.PeriodEnd)
+	}
+	if since := time.Since(sub.PeriodStart); since < 0 || since > time.Minute {
+		t.Fatalf("period starts %s, %s from now; want the purchase", sub.PeriodStart, -since)
+	}
+	if want := sub.PeriodStart.AddDate(years, months, 0); !sub.PeriodEnd.Equal(want) {
+		t.Fatalf("period ends %s, want %s: one interval after the purchase", sub.PeriodEnd, want)
+	}
+}
+
+// TestSubscribeWithCard_AnnualHoldsThePaidYear: a year bought by card is charged
+// the annual total once, and the row holds that year from the purchase.
+func TestSubscribeWithCard_AnnualHoldsThePaidYear(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("subyear")
+	m := squareMock("cust_y", "ccof_y", "sqpay_y")
+	withFakeSquare(t, m)
+
+	year := lookupPlan("dev").AnnualTotal
+	if year <= 0 {
+		t.Fatal("the dev plan publishes no annual total")
+	}
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev","interval":"year"}`, nil)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("status=%d body=%s, want 201", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
+	}
+	if m.chargeCalls != 1 || int64(m.lastChargeAmount) != int64(year) {
+		t.Fatalf("charged %d time(s), last %d; want once for the annual total %d", m.chargeCalls, m.lastChargeAmount, year)
+	}
+
+	db := datastore.New(org.Namespaced(ctx))
+	sub := parentSub(t, db, "subyear", "dev")
+	if sub == nil {
+		t.Fatal("no subscription created for the annual purchase")
+	}
+	invs := invoicesForSub(t, db, sub.Id())
+	if len(invs) != 1 || invs[0].Status != billinginvoice.Paid {
+		t.Fatalf("invoices=%d, want exactly one paid first invoice", len(invs))
+	}
+	heldIsPaid(t, sub, invs[0], 1, 0)
 }
 
 func TestSubscribeWithCardBindsStore(t *testing.T) {

@@ -675,7 +675,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	}
 
 	// Mark the FIRST period PAID by the card charge — a paid BillingInvoice
-	// referencing the processor ref — and advance to the next period. This also makes
+	// referencing the processor ref — and keep the row on that period. This also makes
 	// the subscription payment-backed (Square provider + a linked invoice), so its
 	// INCLUDED monthly allotment flows (subscriptionPaymentBacked).
 	sub.ProviderType = string(processor.Square)
