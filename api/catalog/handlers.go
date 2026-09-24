@@ -22,6 +22,7 @@ import (
 
 	"github.com/zap-proto/zip"
 
+	"github.com/hanzoai/commerce/checkout"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
@@ -107,11 +108,12 @@ func AdminRoute(r *zip.Group, args ...zip.Handler) {
 func entrySlug(c *zip.Ctx) string { return c.Param("*") }
 
 // Public returns the brand-scoped catalog projection. Public + cacheable.
-// Brand from ?brand (default hanzo).
+// Brand from ?brand, else the brand the request's host resolves to — the same
+// table the org endpoint reads, so pay.lux.cloud's catalog is Lux's.
 func Public(c *zip.Ctx) error {
 	brand := c.Query("brand")
 	if brand == "" {
-		brand = "hanzo"
+		brand = checkout.BrandSlugForHost(checkout.RequestHost(c))
 	}
 	cat, err := catalogentry.Project(catalogDB(c), brand)
 	if err != nil {

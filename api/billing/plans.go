@@ -340,6 +340,13 @@ func Sells(host string) bool {
 	return checkout.BrandSlugForHost(host) == Seller
 }
 
+// sold is the purchase side of Sells: a plan bought on a host whose brand does
+// not sell the catalog is a plan that is not there — the same 404 as a slug that
+// never existed, before anything is charged or recorded.
+func sold(c *zip.Ctx) bool {
+	return Sells(checkout.RequestHost(c))
+}
+
 // ReadPlans is what this service sells on a host, optionally narrowed to one
 // category and annotated with a live promo — the QUESTION, with no HTTP in it.
 //

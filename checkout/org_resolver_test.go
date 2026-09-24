@@ -1,6 +1,10 @@
 package checkout
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/hanzoai/commerce/models/organization"
+)
 
 // brandForHost is exact-suffix: a host maps to a brand only when it equals the
 // brand domain or is a real subdomain of it. Cross-brand spoofs
@@ -26,6 +30,10 @@ func TestBrandForHost(t *testing.T) {
 		{"pay.zoo.cloud", "zoo"},
 		{"zoo.cloud", "zoo"},
 		{"pay.zoo.ngo", "zoo"},
+		// Zoo's identity origin is zoolabs.id (brandZoo.iamIssuer); zoo.id is
+		// not Zoo's domain and resolves nowhere in particular.
+		{"zoolabs.id", "zoo"},
+		{"zoo.id", "hanzo"},
 		{"pay.pars.network", "pars"},
 		// Unknown host → deployment default (hanzo).
 		{"pay.example.test", "hanzo"},
@@ -189,7 +197,7 @@ func TestOrgResolver_ReturnAllowlistCarriesLuxTel(t *testing.T) {
 // when explicitly disabled; crypto + wire are always present; Stripe never is.
 func TestEnabledProviders_SquareOffWhenDisabled(t *testing.T) {
 	t.Setenv("COMMERCE_DISABLED_PROCESSORS", "square")
-	for _, p := range enabledProviders() {
+	for _, p := range enabledProviders(true) {
 		if p.Name == "square" {
 			t.Errorf("square surfaced despite COMMERCE_DISABLED_PROCESSORS=square")
 		}
@@ -244,5 +252,69 @@ func TestBrandLogosAreNotShared(t *testing.T) {
 func TestTenantPayloadCarriesTheBrandLogo(t *testing.T) {
 	if got := brandForHost("pay.hanzo.ai"); got.logoURL != brandHanzo.logoURL {
 		t.Fatalf("pay.hanzo.ai resolved to logoURL %q, want %q", got.logoURL, brandHanzo.logoURL)
+	}
+}
+
+// The deployment's Square credentials are its default brand's account. A brand
+// with no account of its own publishes no card: no Square block and no square
+// provider, so its pay host never tokenizes against another brand's merchant.
+func TestOrgResolver_SquareIsTheBrandsOwn(t *testing.T) {
+	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-DEPLOY")
+	t.Setenv("SQUARE_LOCATION_ID", "LOCDEPLOY")
+
+	hasSquare := func(o Org) bool {
+		for _, p := range o.Providers {
+			if p.Name == "square" && p.Enabled {
+				return true
+			}
+		}
+		return false
+	}
+
+	r := NewOrgResolver(nil)
+	for _, host := range []string{"pay.lux.cloud", "pay.lux.tel", "pay.zoo.cloud", "pay.pars.network"} {
+		o, err := r.Resolve(host)
+		if err != nil {
+			t.Fatalf("Resolve(%q): %v", host, err)
+		}
+		if o.Square.ApplicationID != "" || o.Square.LocationID != "" {
+			t.Errorf("%s publishes Square %+v, the deployment's account", host, o.Square)
+		}
+		if hasSquare(o) {
+			t.Errorf("%s surfaces the square provider with no account of its own", host)
+		}
+	}
+
+	o, _ := r.Resolve("pay.hanzo.ai")
+	if o.Square.ApplicationID != "sq0idp-DEPLOY" || !hasSquare(o) {
+		t.Errorf("pay.hanzo.ai lost its card: %+v %+v", o.Square, o.Providers)
+	}
+
+	// A brand that holds an account of its own publishes it.
+	own := NewOrgResolver(func(slug string) (*organization.Organization, bool) {
+		org := &organization.Organization{}
+		org.Name = slug
+		org.Square.Sandbox.ApplicationId = "sq0idb-LUX"
+		org.Square.Sandbox.LocationId = "LOCLUX"
+		return org, true
+	})
+	o, _ = own.Resolve("pay.lux.cloud")
+	if o.Square.ApplicationID != "sq0idb-LUX" || !hasSquare(o) {
+		t.Errorf("lux with its own account: %+v %+v", o.Square, o.Providers)
+	}
+}
+
+// Zoo's sign-up returns through its own identity origin, and never through a
+// domain Zoo does not hold.
+func TestReturnHosts_ZooIsZoolabsID(t *testing.T) {
+	hosts := map[string]bool{}
+	for _, h := range returnHostsFor("zoo") {
+		hosts[h] = true
+	}
+	if !hosts["https://zoolabs.id"] {
+		t.Errorf("zoo return allowlist %v lacks https://zoolabs.id", returnHostsFor("zoo"))
+	}
+	if hosts["https://zoo.id"] {
+		t.Errorf("zoo return allowlist carries https://zoo.id")
 	}
 }

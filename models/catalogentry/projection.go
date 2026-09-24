@@ -407,6 +407,9 @@ func scoped(db *datastore.Datastore, brand string) (string, []Category, map[stri
 		if _, ok := catRank[e.Category]; !ok {
 			continue // category not surfaced by this brand
 		}
+		if len(e.Brands) > 0 && !slices.Contains(e.Brands, brand) {
+			continue // an entry that names its brands is sold under those alone
+		}
 		kept = append(kept, e)
 	}
 	slices.SortStableFunc(kept, func(a, b *CatalogEntry) int {

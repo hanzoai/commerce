@@ -755,6 +755,10 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		return http.Fail(c, 401, "sign in to subscribe", nil)
 	}
 
+	if !sold(c) {
+		return http.Fail(c, 404, "plan not found", nil)
+	}
+
 	var req subscribeCardRequest
 	if err := c.Bind(&req); err != nil {
 		return http.Fail(c, 400, "invalid request body", err)

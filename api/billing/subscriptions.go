@@ -82,6 +82,9 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 	if req.PlanId == "" {
 		return http.Fail(c, 400, "planId is required", nil)
 	}
+	if !sold(c) {
+		return http.Fail(c, 404, "plan not found", nil)
+	}
 
 	p, err := resolveSubscriptionPlan(db, req.PlanId)
 	if err != nil {
@@ -786,6 +789,9 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 		// NOT touch the subscription or mint anything, so nothing anchors before the
 		// 403 below. It also reads the admin-edited price + inherits the embed
 		// fallback — never a bare per-org-ns miss.
+		if !sold(c) {
+			return http.Fail(c, 404, "new plan not found", nil)
+		}
 		newPlan, err := resolveSubscriptionPlan(db, req.PlanId)
 		if err != nil {
 			return http.Fail(c, 404, "new plan not found", err)

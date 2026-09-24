@@ -180,8 +180,10 @@ type CatalogEntry struct {
 	Repo   string `json:"repo,omitempty"`               // source repo, e.g. "hanzoai/ai"
 	Admin  bool   `json:"admin,omitempty"`              // admin-gated surface
 
-	// Brands is a category-derived convenience preserved from the seed (the
-	// server filters by category, not by this list). Stored as a noindex blob.
+	// Brands names the brands an entry is sold under; empty is every brand its
+	// category admits. The projection honours both, as the console does
+	// (entryInBrandScope), so a Hanzo service never lists under Lux or Zoo.
+	// Stored as a noindex blob.
 	Brands  []string `json:"brands,omitempty" datastore:"-"`
 	Brands_ string   `json:"-" datastore:",noindex"`
 
