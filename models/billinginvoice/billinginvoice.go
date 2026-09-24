@@ -98,6 +98,19 @@ type BillingInvoice struct {
 	PaymentMethod string `json:"paymentMethod,omitempty"` // "balance", "stripe", "credit"
 	PaymentRef    string `json:"paymentRef,omitempty"`    // e.g. Stripe PaymentIntent ID
 
+	// The card attempt whose outcome the processor has not stated: the amount, the
+	// card and the processor's customer it was sent with. The next attempt resends
+	// exactly this under the same idempotency key until the processor answers it
+	// definitely. Only the collector and the renewal charger write these; no endpoint
+	// binds them from a request or renders them.
+	//
+	// They are the same record as the renewals collector's Pending* fields, and fold
+	// into them when the two meet, keeping its PendingRef lookup through
+	// GetTransaction.
+	UnresolvedCents    int64  `json:"unresolvedCents,omitempty"`
+	UnresolvedCard     string `json:"unresolvedCard,omitempty"`
+	UnresolvedCustomer string `json:"unresolvedCustomer,omitempty"`
+
 	// Invoice number (auto-increment per org)
 	Number    int    `json:"number"`
 	NumberStr string `json:"numberStr"` // "INV-0042"

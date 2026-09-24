@@ -15,9 +15,20 @@ func declineOn(code string) *processor.Decline {
 	return &processor.Decline{Processor: processor.Square, Category: "PAYMENT_METHOD_ERROR", Code: code}
 }
 
-// unanswered is a Square failure that is not a refusal: the processor never looked
-// at the card.
-var unanswered = processor.NewPaymentError(processor.Square, "ACCESS_TOKEN_EXPIRED", "square answered 401 AUTHENTICATION_ERROR ACCESS_TOKEN_EXPIRED", nil)
+// answeredWith is a Square failure that is not a refusal, as [thirdparty/square]
+// scrubs it: the HTTP status, the category and the code.
+func answeredWith(status int, category, code string) *processor.PaymentError {
+	pe := processor.NewPaymentError(processor.Square, code, fmt.Sprintf("square answered %d %s %s", status, category, code), nil)
+	pe.Status = status
+	return pe
+}
+
+// unanswered is a Square failure that is not a refusal and not the buyer's: the
+// merchant's own token has expired, and the processor never looked at the card.
+var unanswered = answeredWith(401, "AUTHENTICATION_ERROR", "ACCESS_TOKEN_EXPIRED")
+
+// rejected is Square refusing the request itself: a spent card token.
+var rejected = answeredWith(400, "INVALID_REQUEST_ERROR", "CARD_TOKEN_USED")
 
 // saveCardAs saves a fresh card for subject through CreateMethod, the card-save path.
 func saveCardAs(ctx context.Context, org string, subject, nonce string) error {
@@ -33,7 +44,7 @@ func refusalsOf(ctx context.Context, org, subject string) int {
 // TestRefusal_CardSaveIsHeldAndCountedLikeACharge — vaulting a card validates it, so a
 // card save is a card attempt: a refusal is counted against the wallet, a wallet at
 // its ceiling has no card vaulted, and a processor that failed to answer is a
-// processor failure, never a decline, and is counted as a failed attempt.
+// processor failure, never a decline, and is not counted; a rejected token is.
 func TestRefusal_CardSaveIsHeldAndCountedLikeACharge(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -61,14 +72,21 @@ func TestRefusal_CardSaveIsHeldAndCountedLikeACharge(t *testing.T) {
 	if !IsProcessorFailed(err) || IsCardDeclined(err) {
 		t.Errorf("a vault the processor failed answered %v (declined %v)", err, IsCardDeclined(err))
 	}
+	if n := refusalsOf(ctx, "save-co2", "save-co2"); n != 0 {
+		t.Errorf("a processor failure on card save counted %d failed attempts", n)
+	}
+	m.addCardErr = rejected
+	if err := saveCardAs(ctx, "save-co2", "save-co2", "cnon:spent"); !IsProcessorFailed(err) || IsCardDeclined(err) {
+		t.Errorf("a vault that rejected the token answered %v", err)
+	}
 	if n := refusalsOf(ctx, "save-co2", "save-co2"); n != 1 {
-		t.Errorf("a processor failure on card save counted %d failed attempts, want 1", n)
+		t.Errorf("a rejected token on card save counted %d failed attempts, want 1", n)
 	}
 }
 
 // TestRefusal_TheSavedCardTopUpIsHeldAndCounted — the buyer's saved-card top-up is a
-// card attempt: a refusal counts, the ceiling holds, and a processor failure is
-// neither a decline nor a refusal but counts as a failed attempt.
+// card attempt: a refusal and a rejected request count, the ceiling holds, and a
+// processor failure is neither a decline nor a refusal and is not counted.
 func TestRefusal_TheSavedCardTopUpIsHeldAndCounted(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -88,8 +106,17 @@ func TestRefusal_TheSavedCardTopUpIsHeldAndCounted(t *testing.T) {
 	if _, ok := DeclineOf(topup(101)); ok {
 		t.Error("a processor failure on the saved-card top-up read as a decline")
 	}
+	if n := refusalsOf(ctx, "saved-co", "saved-co"); n != 0 {
+		t.Fatalf("processor failures counted %d failed attempts", n)
+	}
+	m.chargeErr = rejected
+	for i := 102; i < 104; i++ {
+		if err := topup(i); !IsProcessorFailed(err) {
+			t.Fatalf("a saved-card charge Square rejected answered %v", err)
+		}
+	}
 	if n := refusalsOf(ctx, "saved-co", "saved-co"); n != 2 {
-		t.Fatalf("two processor failures counted %d failed attempts, want 2", n)
+		t.Fatalf("two rejected requests counted %d failed attempts, want 2", n)
 	}
 
 	m.chargeErr = declineOn("CARD_DECLINED")
@@ -207,11 +234,13 @@ func TestRefusal_APendingPaymentIsProcessingNotADecline(t *testing.T) {
 	}
 }
 
-// TestRefusal_AProcessorFailureIsCountedOnEveryBuyerPath — an attempt the processor
-// turns away without a refusal holds the wallet's reservation as long as a refused
-// one, so on every buyer path it spends the wallet's ceiling; a settled payment does
-// not.
-func TestRefusal_AProcessorFailureIsCountedOnEveryBuyerPath(t *testing.T) {
+// TestRefusal_ARejectedRequestIsCountedOnEveryBuyerPath — a request the processor
+// rejects (a spent or malformed token) holds the wallet's reservation as long as a
+// refused card, so on every buyer path it spends the wallet's ceiling. A settled
+// payment does not, and neither does anything that is not the buyer's doing: the
+// processor unreachable, a 5xx, a 429, the merchant's own credentials refused, or a
+// reused idempotency key.
+func TestRefusal_ARejectedRequestIsCountedOnEveryBuyerPath(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	m := squareMock("cust_pf", "ccof_pf", "sqpay_pf")
@@ -224,20 +253,39 @@ func TestRefusal_AProcessorFailureIsCountedOnEveryBuyerPath(t *testing.T) {
 		t.Errorf("a settled payment counted %d failed attempts", n)
 	}
 
-	m.chargeErr = unanswered
-	if _, f := TakePayment(ctx, moneyOrg("pf-token"), TakePaymentIn{SourceID: "cnon:t", AmountCents: 500, Subject: "pf-token"}); f == nil || !IsProcessorFailed(f.Err) {
-		t.Errorf("a token top-up the processor failed answered %+v", f)
+	for i, failure := range []error{
+		fmt.Errorf("read tcp: connection reset by peer"),
+		answeredWith(500, "API_ERROR", "INTERNAL_SERVER_ERROR"),
+		answeredWith(503, "API_ERROR", "SERVICE_UNAVAILABLE"),
+		answeredWith(429, "RATE_LIMIT_ERROR", "RATE_LIMITED"),
+		unanswered,
+		answeredWith(403, "AUTHENTICATION_ERROR", "INSUFFICIENT_SCOPES"),
+		answeredWith(400, "INVALID_REQUEST_ERROR", processor.KeyReused),
+	} {
+		m.chargeErr = failure
+		wallet := fmt.Sprintf("pf-outage-%d", i)
+		if _, f := TakePayment(ctx, moneyOrg(wallet), TakePaymentIn{SourceID: "cnon:o", AmountCents: 500, Subject: wallet}); f == nil || f.Status != 502 || !IsProcessorFailed(f.Err) {
+			t.Errorf("%v: a token top-up answered %+v", failure, f)
+		}
+		if n := refusalsOf(ctx, wallet, wallet); n != 0 {
+			t.Errorf("%v: counted %d failed attempts against the buyer", failure, n)
+		}
+	}
+
+	m.chargeErr = rejected
+	if _, f := TakePayment(ctx, moneyOrg("pf-token"), TakePaymentIn{SourceID: "cnon:t", AmountCents: 500, Subject: "pf-token"}); f == nil || f.Status != 502 || !IsProcessorFailed(f.Err) {
+		t.Errorf("a token top-up Square rejected answered %+v", f)
 	}
 	if _, err := SubscribeCard(ctx, moneyOrg("pf-sale"), SubscribeIn{SourceID: "cnon:s", PlanID: "dev", Subject: "pf-sale"}); !IsProcessorFailed(err) {
-		t.Errorf("a plan sale the processor failed answered %v", err)
+		t.Errorf("a plan sale Square rejected answered %v", err)
 	}
-	m.chargeErr, m.addCardErr = nil, unanswered
+	m.chargeErr, m.addCardErr = nil, rejected
 	if _, err := SubscribeCard(ctx, moneyOrg("pf-vault"), SubscribeIn{SourceID: "cnon:v", PlanID: "dev", Subject: "pf-vault"}); !IsProcessorFailed(err) {
-		t.Errorf("a plan sale whose vault the processor failed answered %v", err)
+		t.Errorf("a plan sale whose vault Square rejected answered %v", err)
 	}
 	for _, wallet := range []string{"pf-token", "pf-sale", "pf-vault"} {
 		if n := refusalsOf(ctx, wallet, wallet); n != 1 {
-			t.Errorf("%s: a processor failure counted %d failed attempts, want 1", wallet, n)
+			t.Errorf("%s: a rejected request counted %d failed attempts, want 1", wallet, n)
 		}
 	}
 }

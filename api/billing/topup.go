@@ -421,7 +421,7 @@ func TopupCard(ctx context.Context, org *organization.Organization, in TopupCard
 	}
 
 	// A buyer's attempt: one at a time for the wallet, held at its ceiling, and a
-	// refusal or a processor failure counted against it ([attempt], [failedAttempt]).
+	// refusal or a rejected request counted against it ([attempt], [failedAttempt]).
 	release, err := attempt(db, org.Name, in.Subject)
 	if err != nil {
 		return nil, err
@@ -429,7 +429,7 @@ func TopupCard(ctx context.Context, org *organization.Organization, in TopupCard
 	defer release()
 	txID, balanceCents, err := chargeAndCredit(ctx, in.Events, org, db, pm, in.AmountCents, cur, in.Subject, idemKey, desc)
 	if err != nil {
-		if d, ok := DeclineOf(err); (ok && !d.Processing()) || IsProcessorFailed(err) {
+		if d, ok := DeclineOf(err); (ok && !d.Processing()) || errors.Is(err, errRequestRejected) {
 			tally(db, in.Subject)
 		}
 		return nil, err

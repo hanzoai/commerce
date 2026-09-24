@@ -112,13 +112,17 @@ func CollectInvoice(ctx context.Context, db *datastore.Datastore, inv *billingin
 	}
 	rest := owed - fromPrepaid
 	// A card attempt whose outcome the provider has not stated is resent exactly as it
-	// was sent ([pinnedCard]): same key, same amount, whatever prepaid holds now. The
-	// provider answers a key only for the request it first saw, so a recomputed amount
-	// under it is refused forever; resending the same request can only be answered
-	// with the first payment, never a second one. Prepaid covers what the card does not.
-	if pin, ok := pinnedCard(inv); ok {
-		rest = pin
-		fromPrepaid = min(avail, max(owed-pin, 0))
+	// was sent (UnresolvedCents): same key, same amount, whatever prepaid holds now.
+	// The provider answers a key only for the request it first saw, so a recomputed
+	// amount under it is refused forever; resending the same request can only be
+	// answered with the first payment, never a second one. Prepaid covers what the
+	// card does not. The card is never asked for more than the invoice still owes: an
+	// invoice paid down while the attempt was unresolved sends the smaller amount,
+	// which the provider takes if the first request never reached it and refuses as a
+	// reused key, still unresolved, if it did.
+	if pin := inv.UnresolvedCents; pin > 0 {
+		rest = min(pin, owed)
+		fromPrepaid = min(avail, owed-rest)
 	}
 
 	if rest > 0 {
@@ -137,15 +141,16 @@ func CollectInvoice(ctx context.Context, db *datastore.Datastore, inv *billingin
 				// attempt count is part of the gateway key, so it is left where it
 				// is, and the amount is pinned, so the next attempt resends this
 				// request under the same key and is answered with this payment
-				// instead of taking a second.
-				pinCard(inv, rest)
+				// instead of taking a second. The renewals collector names this
+				// outcome ErrChargeUnknown; the two are one sentinel when they meet.
+				inv.UnresolvedCents = rest
 				inv.LastAttemptAt = time.Now()
 				return result, nil
 			}
-			unpinCard(inv)
+			inv.UnresolvedCents = 0
 			return unpaid(inv, result, owed)
 		}
-		unpinCard(inv)
+		inv.UnresolvedCents = 0
 		result.ProviderUsed, result.ProviderRef = rest, charged
 	}
 
@@ -196,29 +201,6 @@ func CollectInvoice(ctx context.Context, db *datastore.Datastore, inv *billingin
 	}
 	return result, nil
 }
-
-// cardPin names the invoice metadata entry holding the card amount of an attempt
-// whose outcome the provider has not stated.
-const cardPin = "unresolvedCardCents"
-
-// pinnedCard is the card amount of the invoice's unresolved attempt, if it has one.
-func pinnedCard(inv *billinginvoice.BillingInvoice) (int64, bool) {
-	v, _ := inv.Metadata[cardPin].(string)
-	n, err := strconv.ParseInt(v, 10, 64)
-	return n, err == nil && n > 0
-}
-
-// pinCard records the card amount of an attempt whose outcome the provider has not
-// stated, so the next attempt resends it.
-func pinCard(inv *billinginvoice.BillingInvoice, cents int64) {
-	if inv.Metadata == nil {
-		inv.Metadata = map[string]interface{}{}
-	}
-	inv.Metadata[cardPin] = strconv.FormatInt(cents, 10)
-}
-
-// unpinCard clears the pin once the provider has answered the attempt definitely.
-func unpinCard(inv *billinginvoice.BillingInvoice) { delete(inv.Metadata, cardPin) }
 
 // unpaid records an attempt that moved no money and says what is still owed.
 func unpaid(inv *billinginvoice.BillingInvoice, result *CollectionResult, owed int64) (*CollectionResult, error) {

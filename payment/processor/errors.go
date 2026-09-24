@@ -58,6 +58,8 @@ type PaymentError struct {
 	Code      string
 	Message   string
 	Err       error
+	// Status is the HTTP status the processor answered with; 0 when it did not answer.
+	Status int
 }
 
 func (e *PaymentError) Error() string {

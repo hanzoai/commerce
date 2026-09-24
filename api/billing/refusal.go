@@ -52,26 +52,43 @@ func (e declinedCard) Unwrap() error { return e.decline }
 // processor.ErrUnknownOutcome, so a later attempt keeps the gateway key.
 var errProcessorFailed = fmt.Errorf("the payment processor could not take the card: %w", processor.ErrUnknownOutcome)
 
+// errRequestRejected marks a card money move whose request the processor refused
+// outside a card decline ([processor.Rejected]): a spent or malformed token, a saved
+// card that no longer exists. No payment was taken, so its outcome is known. A buyer
+// is answered as for any processor failure.
+var errRequestRejected = errors.New("the payment processor rejected the card request")
+
 // IsProcessorFailed reports whether err is a card money move the processor failed
-// to answer, as distinct from a card it refused.
-func IsProcessorFailed(err error) bool { return errors.Is(err, errProcessorFailed) }
+// to answer or rejected, as distinct from a card it refused.
+func IsProcessorFailed(err error) bool {
+	return errors.Is(err, errProcessorFailed) || errors.Is(err, errRequestRejected)
+}
 
 // processorSentence is what a buyer reads when the processor failed to answer.
 const processorSentence = "The payment processor could not take the card. Try again in a moment."
 
-// processorFailure is a card money move the processor failed to answer. It is logged
-// here with the processor's own error, which [thirdparty/square] has already reduced
-// to a status and a code, and answers only [processorSentence].
+// processorFailure is a card money move the processor failed to answer or rejected.
+// It is logged here with the processor's own error, which [thirdparty/square] has
+// already reduced to a status and a code, and answers only [processorSentence]:
+// errRequestRejected for a rejected request, errProcessorFailed for anything else.
 func processorFailure(what, subject string, err error) error {
 	log.Error("%s: the payment processor failed (subject=%s): %v", what, subject, err)
+	if processor.Rejected(err) {
+		return errRequestRejected
+	}
 	return errProcessorFailed
 }
 
-// failedAttempt is [processorFailure] for a buyer's attempt, which is also counted
-// against the wallet's window ([tally]).
+// failedAttempt is [processorFailure] for a buyer's attempt. A rejected request is
+// the buyer's (a spent or malformed token) and is counted against the wallet's window
+// ([tally]); a processor that failed to answer, answered 5xx or 429, or refused the
+// merchant's own credentials is not, and an outage never spends a buyer's ceiling.
 func failedAttempt(db *datastore.Datastore, what, subject string, err error) error {
-	tally(db, subject)
-	return processorFailure(what, subject, err)
+	failure := processorFailure(what, subject, err)
+	if failure == errRequestRejected {
+		tally(db, subject)
+	}
+	return failure
 }
 
 // ── the gateway key a retry reaches the gateway under ─────────────────────────
@@ -111,12 +128,12 @@ func attemptKey(db *datastore.Datastore, base string) string {
 // the charge would credit, which is the org for a tenant and the person in the shared
 // signup org, so one stranger's refusals never lock out the rest of that org.
 //
-// A failed attempt is one the processor refused or failed to answer ([failedAttempt]):
-// every outcome but a settled payment and one still processing. An attempt the
-// processor turns away without a refusal (a spent or malformed token) holds the
-// reservation as long as a refused one, so counting only refusals would let one
-// member hold the wallet from every other member indefinitely. The cost is that an
-// outage at the processor spends a wallet's ceiling as its buyers retry.
+// A failed attempt is a card the processor refused, or a request it rejected
+// ([failedAttempt]): a spent or malformed token holds the reservation as long as a
+// refused card, so counting only refusals would let one member hold the wallet from
+// every other member indefinitely. A processor that failed to answer, answered 5xx or
+// 429, or refused the merchant's credentials is not counted, so an outage never locks
+// a buyer out; a settled payment and one still processing are not counted either.
 //
 // ONE ATTEMPT AT A TIME is what makes the ceiling a ceiling. The count is read before
 // a charge and written after it fails, so attempts that overlap all read the same

@@ -99,3 +99,37 @@ func TestDecline_APaymentStillProcessingIsNotARefusal(t *testing.T) {
 		t.Error("a PAYMENT_METHOD_ERROR was read as a payment still processing")
 	}
 }
+
+// TestRejected_OnlyTheBuyersRequest — a request the processor refused outside a card
+// decline is a known outcome only when it is a client error that is not about the
+// merchant's credentials, a rate limit or a reused key; anything the processor did
+// not answer, or answered 5xx, is not.
+func TestRejected_OnlyTheBuyersRequest(t *testing.T) {
+	answered := func(status int, code string) error {
+		pe := NewPaymentError(Square, code, "square answered", nil)
+		pe.Status = status
+		return fmt.Errorf("charge: %w", pe)
+	}
+	for _, tc := range []struct {
+		err  error
+		want bool
+	}{
+		{answered(400, "CARD_TOKEN_USED"), true},
+		{answered(404, "NOT_FOUND"), true},
+		{answered(422, "INVALID_VALUE"), true},
+		{answered(400, KeyReused), false},
+		{answered(401, "ACCESS_TOKEN_EXPIRED"), false},
+		{answered(403, "INSUFFICIENT_SCOPES"), false},
+		{answered(429, "RATE_LIMITED"), false},
+		{answered(500, "INTERNAL_SERVER_ERROR"), false},
+		{answered(503, "SERVICE_UNAVAILABLE"), false},
+		{answered(0, "HTTP_0"), false},
+		{errors.New("dial tcp: connection refused"), false},
+		{&Decline{Processor: Square, Category: "PAYMENT_METHOD_ERROR", Code: "CARD_DECLINED"}, false},
+		{nil, false},
+	} {
+		if got := Rejected(tc.err); got != tc.want {
+			t.Errorf("%v: rejected %v, want %v", tc.err, got, tc.want)
+		}
+	}
+}
