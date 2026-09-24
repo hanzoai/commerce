@@ -86,7 +86,7 @@ func TestAnnualPriceIsTheCatalogs(t *testing.T) {
 	if _, _, err := SeedPlans(c); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	plans, err := ReadPlans(c, "", nil)
+	plans, err := ReadPlans(c, "", "", nil)
 	if err != nil {
 		t.Fatalf("read plans: %v", err)
 	}

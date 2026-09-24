@@ -65,7 +65,7 @@ func TestPrivatePlan_HiddenFromEveryoneButStaff(t *testing.T) {
 	org := moneyOrg("webby")
 
 	// Not in the public catalog, by list or by slug.
-	rows, err := ReadPlans(ctx, "", nil)
+	rows, err := ReadPlans(ctx, "", "", nil)
 	if err != nil {
 		t.Fatalf("read plans: %v", err)
 	}
