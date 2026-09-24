@@ -68,9 +68,8 @@ func PortalInvoices(c *zip.Ctx) error {
 		return http.Fail(c, 400, "customerId is required", nil)
 	}
 
-	rootKey := db.NewKey("synckey", "", 1, nil)
 	invoices := make([]*billinginvoice.BillingInvoice, 0)
-	q := billinginvoice.Query(db).Ancestor(rootKey).
+	q := billinginvoice.Query(db).
 		Filter("UserId=", customerId).
 		Order("-Created")
 	_, _ = q.GetAll(&invoices)

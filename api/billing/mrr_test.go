@@ -42,7 +42,7 @@ func TestMonthlyNormalizedCents(t *testing.T) {
 }
 
 // TestMonthlyNormalizedCentsHonorsIntervalCount pins the multiplier the
-// billing engine already applies. advancePeriod (billing/engine/lifecycle.go)
+// billing engine already applies. Advance (billing/engine/lifecycle.go)
 // advances a period by AddDate(0, IntervalCount, 0), and the invoice charges
 // the full Plan.Price ONCE per that period — so Interval×IntervalCount is the
 // period, and a $50 plan on month/3 bills $50 every three months.

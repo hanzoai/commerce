@@ -128,13 +128,14 @@ func TestRecordedPlanIsNeverChargedOrRenewedByTheProcessor(t *testing.T) {
 	if engine.IsDue(s, afterEnd) {
 		t.Fatal("an externally collected plan answered due; the cycle would invoice and collect it")
 	}
-	burned, charged := 0, 0
-	burn := func(*datastore.Datastore, string, int64, string) (int64, error) { burned++; return 0, nil }
+	charged := 0
+	burn := &countingPrepaid{}
 	charge := func(context.Context, *datastore.Datastore, *billinginvoice.BillingInvoice, int64) (string, error) {
 		charged++
 		return "ref", nil
 	}
 	inv, _, err := engine.RenewSubscription(ctx, db, s, burn, charge)
+	burned := burn.calls
 	if err != nil {
 		t.Fatalf("renew: %v", err)
 	}

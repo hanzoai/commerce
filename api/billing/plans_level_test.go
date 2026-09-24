@@ -235,8 +235,8 @@ func TestRenewalChargesTheChosenLevel(t *testing.T) {
 	if err := fresh.GetById(sub.Id()); err != nil {
 		t.Fatalf("re-read subscription: %v", err)
 	}
-	fresh.PeriodStart = time.Now().AddDate(0, -2, 0)
-	fresh.PeriodEnd = time.Now().AddDate(0, -1, 0)
+	fresh.PeriodStart = time.Now().AddDate(0, -1, -1)
+	fresh.PeriodEnd = time.Now().AddDate(0, 0, -1)
 	if err := fresh.Update(); err != nil {
 		t.Fatalf("age subscription: %v", err)
 	}
@@ -266,7 +266,7 @@ func TestRenewalChargesTheChosenLevel(t *testing.T) {
 	invs := invoicesForSub(t, db, sub.Id())
 	var renewal *billinginvoice.BillingInvoice
 	for _, inv := range invs {
-		if inv.PeriodStart.Equal(fresh.PeriodStart) {
+		if inv.PeriodStart.Unix() == fresh.PeriodEnd.Unix() {
 			renewal = inv
 		}
 	}
