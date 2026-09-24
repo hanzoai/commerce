@@ -700,7 +700,16 @@ func ListBillingSubscriptions(c *zip.Ctx) error {
 	if !ok || org == nil {
 		return c.JSON(200, map[string]any{"subscriptions": []map[string]any{}, "count": 0})
 	}
-	subs, err := ListSubscriptions(c.Context(), org, strings.TrimSpace(c.Query("userId")), strings.TrimSpace(c.Query("status")))
+	// A caller that holds only its own wallet lists only that wallet's rows, whatever
+	// userId it names.
+	userID := strings.TrimSpace(c.Query("userId"))
+	if holder := callerHolder(c); holder != AnyHolder {
+		userID = holder
+		if userID == "" {
+			return c.JSON(200, map[string]any{"subscriptions": []map[string]any{}, "count": 0})
+		}
+	}
+	subs, err := ListSubscriptions(c.Context(), org, userID, strings.TrimSpace(c.Query("status")))
 	if err != nil {
 		log.Error("Failed to list subscriptions: %v", err, c)
 		return http.Fail(c, 500, "failed to list subscriptions", err)
@@ -726,7 +735,7 @@ func GetBillingSubscription(c *zip.Ctx) error {
 
 	id := c.Param("id")
 	sub := subscription.New(db)
-	if err := sub.GetById(id); err != nil {
+	if err := sub.GetById(id); err != nil || !Holds(callerHolder(c), sub.UserId) {
 		return http.Fail(c, 404, "subscription not found", err)
 	}
 
@@ -742,7 +751,7 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 
 	id := c.Param("id")
 	sub := subscription.New(db)
-	if err := sub.GetById(id); err != nil {
+	if err := sub.GetById(id); err != nil || !Holds(callerHolder(c), sub.UserId) {
 		return http.Fail(c, 404, "subscription not found", err)
 	}
 
@@ -948,6 +957,47 @@ func viewSubscription(sub *subscription.Subscription) *Subscription {
 	return v
 }
 
+// AnyHolder is the holder a caller with the org's own authority acts as — an
+// administrator of the org, an operator's service token — and it reaches every
+// subscription in the org. Every other caller names the wallet it pays from as its
+// holder, and reaches only the subscriptions that wallet holds.
+const AnyHolder = "*"
+
+// Holds reports whether holder may act on a subscription owned by owner (its
+// UserId): AnyHolder holds every one, a wallet holds its own, and an empty holder
+// holds none.
+func Holds(holder, owner string) bool {
+	holder = strings.TrimSpace(holder)
+	if holder == AnyHolder {
+		return true
+	}
+	return holder != "" && strings.EqualFold(holder, strings.TrimSpace(owner))
+}
+
+// heldSubscription reads one subscription the holder may act on. A row another
+// wallet holds is not found rather than refused, so an id cannot be probed for
+// existence inside a shared org.
+func heldSubscription(ctx context.Context, org *organization.Organization, holder, id string) (*subscription.Subscription, error) {
+	sub, err := loadSubscription(ctx, org, id)
+	if err != nil {
+		return nil, err
+	}
+	if !Holds(holder, sub.UserId) {
+		return nil, fmt.Errorf("%w: held by another wallet", errSubscriptionNotFound)
+	}
+	return sub, nil
+}
+
+// callerHolder is the holder an HTTP caller acts as: AnyHolder for a privileged
+// billing caller ([isPrivilegedBillingCaller]), and the wallet it pays from
+// otherwise.
+func callerHolder(c *zip.Ctx) string {
+	if isPrivilegedBillingCaller(c) {
+		return AnyHolder
+	}
+	return userBillingKey(c)
+}
+
 // loadSubscription reads one subscription inside the org's own namespace, and
 // answers errSubscriptionNotFound when there is none. The namespace does the
 // scoping by construction: an id from another org is not found rather than found
@@ -974,8 +1024,11 @@ func loadSubscription(ctx context.Context, org *organization.Organization, id st
 // The lifecycle belongs to the engine, so a move it will not make comes back as
 // the caller's own refusal (IsSubscriptionRefused) rather than being re-checked
 // here: one state machine, in one place.
-func CancelSubscription(ctx context.Context, org *organization.Organization, id string, atPeriodEnd bool) (*Subscription, error) {
-	sub, err := cancelSubscription(ctx, org, id, atPeriodEnd)
+//
+// holder is whose subscriptions the caller may change ([AnyHolder] or the wallet it
+// pays from). A subscription it does not hold is not found (IsSubscriptionNotFound).
+func CancelSubscription(ctx context.Context, org *organization.Organization, holder, id string, atPeriodEnd bool) (*Subscription, error) {
+	sub, err := cancelSubscription(ctx, org, holder, id, atPeriodEnd)
 	if err != nil {
 		return nil, err
 	}
@@ -989,8 +1042,8 @@ func CancelSubscription(ctx context.Context, org *organization.Organization, id 
 //
 // The emit stays at the endpoint on purpose — it reads the collector off the
 // request, and nothing that needs a request belongs in here.
-func cancelSubscription(ctx context.Context, org *organization.Organization, id string, atPeriodEnd bool) (*subscription.Subscription, error) {
-	sub, err := loadSubscription(ctx, org, id)
+func cancelSubscription(ctx context.Context, org *organization.Organization, holder, id string, atPeriodEnd bool) (*subscription.Subscription, error) {
+	sub, err := heldSubscription(ctx, org, holder, id)
 	if err != nil {
 		return nil, err
 	}
@@ -1014,9 +1067,10 @@ func cancelSubscription(ctx context.Context, org *organization.Organization, id 
 // answers with the row as it now stands. Values rather than a request for the
 // reason CancelSubscription gives, and with more force: reactivation is the act
 // least likely to come from a browser, since what asks for it is usually a
-// recovered payment method or a support tool.
-func ReactivateSubscription(ctx context.Context, org *organization.Organization, id string) (*Subscription, error) {
-	sub, err := reactivateSubscription(ctx, org, id)
+// recovered payment method or a support tool. holder is as [CancelSubscription]
+// takes it.
+func ReactivateSubscription(ctx context.Context, org *organization.Organization, holder, id string) (*Subscription, error) {
+	sub, err := reactivateSubscription(ctx, org, holder, id)
 	if err != nil {
 		return nil, err
 	}
@@ -1024,8 +1078,8 @@ func ReactivateSubscription(ctx context.Context, org *organization.Organization,
 }
 
 // reactivateSubscription is the worker. See cancelSubscription.
-func reactivateSubscription(ctx context.Context, org *organization.Organization, id string) (*subscription.Subscription, error) {
-	sub, err := loadSubscription(ctx, org, id)
+func reactivateSubscription(ctx context.Context, org *organization.Organization, holder, id string) (*subscription.Subscription, error) {
+	sub, err := heldSubscription(ctx, org, holder, id)
 	if err != nil {
 		return nil, err
 	}
@@ -1057,7 +1111,7 @@ func CancelBillingSubscription(c *zip.Ctx) error {
 		req.AtPeriodEnd = true
 	}
 
-	sub, err := cancelSubscription(c.Context(), org, c.Param("id"), req.AtPeriodEnd)
+	sub, err := cancelSubscription(c.Context(), org, callerHolder(c), c.Param("id"), req.AtPeriodEnd)
 	if err != nil {
 		switch {
 		case IsSubscriptionNotFound(err):
@@ -1087,7 +1141,7 @@ func ReactivateBillingSubscription(c *zip.Ctx) error {
 	if !ok || org == nil {
 		return http.Fail(c, 401, "sign in to change your subscription", nil)
 	}
-	sub, err := reactivateSubscription(c.Context(), org, c.Param("id"))
+	sub, err := reactivateSubscription(c.Context(), org, callerHolder(c), c.Param("id"))
 	if err != nil {
 		switch {
 		case IsSubscriptionNotFound(err):
@@ -1116,7 +1170,7 @@ func RenewBillingSubscription(c *zip.Ctx) error {
 
 	id := c.Param("id")
 	sub := subscription.New(db)
-	if err := sub.GetById(id); err != nil {
+	if err := sub.GetById(id); err != nil || !Holds(callerHolder(c), sub.UserId) {
 		return http.Fail(c, 404, "subscription not found", err)
 	}
 
