@@ -133,7 +133,7 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 	// fails CLOSED: if the store is unavailable we cannot tell a first attempt
 	// from a retry, and refusing costs a retry while proceeding costs the
 	// customer a duplicate charge on their statement.
-	rec, replay, gerr := idemBegin(db, "billing-charge:"+userId, idemKey)
+	rec, replay, gerr := idemBegin(db, chargeScope+userId, idemKey)
 	if gerr != nil {
 		return "", 0, fmt.Errorf("%w: %v", errGuardUnavailable, gerr)
 	}
@@ -196,9 +196,10 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 	result, err := proc.Charge(ctx, chargeReq)
 	if err != nil || result == nil || !result.Success {
 		abandon()
-		// A refusal moves the next attempt onto its own gateway key. It is not counted
-		// against the wallet here: this core also runs the auto-recharge sweep, which
-		// is off-session, and [TopupCard] counts a buyer's refusal itself.
+		// A refusal moves the next attempt onto its own gateway key. Neither a refusal
+		// nor a processor failure is counted against the wallet here: this core also
+		// runs the auto-recharge sweep, which is off-session, and [TopupCard] counts a
+		// buyer's failed attempt itself.
 		if d := refusalOf(result, err); d != nil {
 			answered(db, "saved-card charge", userId, base, d)
 			return "", 0, declinedCard{d}
@@ -267,6 +268,16 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 	}
 	seal(rec, trans.Id(), balanceCents)
 	return trans.Id(), balanceCents, nil
+}
+
+// chargeScope namespaces a saved-card charge's idempotency guard to its subject.
+const chargeScope = "billing-charge:"
+
+// chargeReceipt is the answer a completed saved-card charge stored on its guard.
+func chargeReceipt(db *datastore.Datastore, userId, idemKey string) (receipt, bool) {
+	var prev receipt
+	body, ok := idempotencykey.Answered(db, chargeScope+userId, idemKey)
+	return prev, ok && json.Unmarshal([]byte(body), &prev) == nil
 }
 
 // seal records the successful charge's answer on its idempotency guard so a
@@ -403,8 +414,14 @@ func TopupCard(ctx context.Context, org *organization.Organization, in TopupCard
 		desc = fmt.Sprintf("Top-up %d %s for %s", in.AmountCents, cur, in.Subject)
 	}
 
-	// A buyer's attempt: one at a time for the wallet, held at its refusal ceiling, and
-	// a refusal counted against it ([attempt]).
+	// A retry of a top-up that completed moves no money, so it is answered with its
+	// receipt before the wallet is reserved or its ceiling read.
+	if prev, ok := chargeReceipt(db, in.Subject, idemKey); ok {
+		return &TopupCardOut{TransactionID: prev.TransactionId, BalanceCents: prev.BalanceCents, Status: "ok"}, nil
+	}
+
+	// A buyer's attempt: one at a time for the wallet, held at its ceiling, and a
+	// refusal or a processor failure counted against it ([attempt], [failedAttempt]).
 	release, err := attempt(db, org.Name, in.Subject)
 	if err != nil {
 		return nil, err
@@ -412,7 +429,7 @@ func TopupCard(ctx context.Context, org *organization.Organization, in TopupCard
 	defer release()
 	txID, balanceCents, err := chargeAndCredit(ctx, in.Events, org, db, pm, in.AmountCents, cur, in.Subject, idemKey, desc)
 	if err != nil {
-		if d, ok := DeclineOf(err); ok && !d.Processing() {
+		if d, ok := DeclineOf(err); (ok && !d.Processing()) || IsProcessorFailed(err) {
 			tally(db, in.Subject)
 		}
 		return nil, err

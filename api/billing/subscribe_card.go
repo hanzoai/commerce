@@ -653,7 +653,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 				refused(db, "plan sale", in.Subject, "", d)
 				return nil, declinedSale(d)
 			}
-			return nil, processorFailure("plan sale", in.Subject, err)
+			return nil, failedAttempt(db, "plan sale", in.Subject, err)
 		}
 	}
 
@@ -675,7 +675,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			refused(db, "plan sale", in.Subject, base, d)
 			return nil, declinedSale(d)
 		}
-		return nil, processorFailure("plan sale", in.Subject, err)
+		return nil, failedAttempt(db, "plan sale", in.Subject, err)
 	}
 
 	// The charged card is the subscription's default from here on.
@@ -912,20 +912,9 @@ func chargeProviderForOrg(org *organization.Organization) engine.ProviderCharger
 		if inv.SubscriptionId == "" {
 			return "", fmt.Errorf("invoice %s has no subscription; no card on file to charge", inv.Id())
 		}
-		sub := subscription.New(db)
-		if err := sub.GetById(inv.SubscriptionId); err != nil {
-			return "", fmt.Errorf("subscription %s not found: %w", inv.SubscriptionId, err)
-		}
-		if strings.TrimSpace(sub.DefaultPaymentMethod) == "" {
-			return "", fmt.Errorf("subscription %s has no default payment method", sub.Id())
-		}
-		pm := paymentmethod.New(db)
-		if err := pm.GetById(sub.DefaultPaymentMethod); err != nil {
-			return "", fmt.Errorf("payment method %s not found: %w", sub.DefaultPaymentMethod, err)
-		}
-		cardID := strings.TrimSpace(pm.ProviderRef)
-		if cardID == "" {
-			return "", fmt.Errorf("payment method %s has no card-on-file token", pm.Id())
+		cardID, customerID, err := renewalCard(db, inv)
+		if err != nil {
+			return "", err
 		}
 		cur := inv.Currency
 		if cur == "" {
@@ -941,21 +930,79 @@ func chargeProviderForOrg(org *organization.Organization) engine.ProviderCharger
 			":period:" + strconv.FormatInt(inv.PeriodStart.Unix(), 10) +
 			":attempt:" + strconv.Itoa(inv.AttemptCount)
 		reg := processorsForOrg(org)
-		res, err := chargeSavedCard(ctx, reg, cardID, squareCustomerIDOf(pm), amountCents, cur, squareKey,
+		res, err := chargeSavedCard(ctx, reg, cardID, customerID, amountCents, cur, squareKey,
 			fmt.Sprintf("Subscription renewal invoice %s", inv.NumberStr))
 		if err != nil || res == nil || !res.Success {
 			// A refusal keeps the processor's Decline beneath the sentence dunning
 			// records; anything else is the processor failing to answer. The key
 			// already rotates per attempt (AttemptCount), and a renewal is off-session,
 			// so it is neither counted against the wallet nor held by its ceiling.
-			if d := refusalOf(res, err); d != nil {
+			// Until Square states an outcome, the card this key was sent with is
+			// pinned on the invoice and the next attempt resends it.
+			d := refusalOf(res, err)
+			if d == nil || d.Processing() {
+				pinRenewalCard(inv, cardID, customerID)
+			} else {
+				unpinRenewalCard(inv)
+			}
+			if d != nil {
 				answered(db, "renewal "+inv.Id(), inv.UserId, "", d)
 				return "", declinedCard{d}
 			}
 			return "", processorFailure("renewal", inv.UserId, err)
 		}
+		unpinRenewalCard(inv)
 		return res.ProcessorRef, nil
 	}
+}
+
+// The invoice metadata entries holding the card and Square customer a renewal
+// attempt was sent with while Square has not stated its outcome.
+const (
+	pinnedCardKey     = "unresolvedCard"
+	pinnedCustomerKey = "unresolvedSquareCustomer"
+)
+
+// renewalCard is the card a renewal of inv charges: the one its unresolved attempt
+// was sent with, so the retry under the same key is the same request, else the
+// subscription's default payment method.
+func renewalCard(db *datastore.Datastore, inv *billinginvoice.BillingInvoice) (card, customer string, err error) {
+	if card, _ = inv.Metadata[pinnedCardKey].(string); card != "" {
+		customer, _ = inv.Metadata[pinnedCustomerKey].(string)
+		return card, customer, nil
+	}
+	sub := subscription.New(db)
+	if err := sub.GetById(inv.SubscriptionId); err != nil {
+		return "", "", fmt.Errorf("subscription %s not found: %w", inv.SubscriptionId, err)
+	}
+	if strings.TrimSpace(sub.DefaultPaymentMethod) == "" {
+		return "", "", fmt.Errorf("subscription %s has no default payment method", sub.Id())
+	}
+	pm := paymentmethod.New(db)
+	if err := pm.GetById(sub.DefaultPaymentMethod); err != nil {
+		return "", "", fmt.Errorf("payment method %s not found: %w", sub.DefaultPaymentMethod, err)
+	}
+	card = strings.TrimSpace(pm.ProviderRef)
+	if card == "" {
+		return "", "", fmt.Errorf("payment method %s has no card-on-file token", pm.Id())
+	}
+	return card, squareCustomerIDOf(pm), nil
+}
+
+// pinRenewalCard records the card and customer an unresolved renewal attempt was
+// sent with.
+func pinRenewalCard(inv *billinginvoice.BillingInvoice, card, customer string) {
+	if inv.Metadata == nil {
+		inv.Metadata = map[string]interface{}{}
+	}
+	inv.Metadata[pinnedCardKey] = card
+	inv.Metadata[pinnedCustomerKey] = customer
+}
+
+// unpinRenewalCard clears the pin once Square has answered the attempt definitely.
+func unpinRenewalCard(inv *billinginvoice.BillingInvoice) {
+	delete(inv.Metadata, pinnedCardKey)
+	delete(inv.Metadata, pinnedCustomerKey)
 }
 
 // squareCustomerIDOf reads the Square customer id stored on a vaulted payment
