@@ -1,12 +1,12 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/credit"
 	"github.com/hanzoai/commerce/models/plan"
@@ -1739,11 +1739,7 @@ func TestCheckThreshold_RequiresDatastore(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestCollectInvoice_RequiresDatastore(t *testing.T) {
-	t.Skip("requires datastore: deductFromBalance + BurnCredits need live db")
-}
-
-func TestDeductFromBalance_RequiresDatastore(t *testing.T) {
-	t.Skip("requires datastore: txutil.GetTransactionsByCurrency + transaction.Create need live db")
+	t.Skip("requires datastore: the prepaid draw reads credit grants and the ledger")
 }
 
 // ---------------------------------------------------------------------------
@@ -1892,33 +1888,6 @@ func TestLifecycle_ReactivateThenCancel(t *testing.T) {
 
 	if sub.Status != subscription.Canceled {
 		t.Fatalf("expected Canceled, got %s", sub.Status)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// CreditBurner type test
-// ---------------------------------------------------------------------------
-
-func TestCreditBurnerType(t *testing.T) {
-	// Verify CreditBurner function signature can be satisfied
-	var burner CreditBurner = func(db *datastore.Datastore, userId string, amount int64, meterId string) (int64, error) {
-		return amount - 100, nil
-	}
-
-	remaining, err := burner(nil, "user_test", 500, "meter_test")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if remaining != 400 {
-		t.Fatalf("expected 400 remaining, got %d", remaining)
-	}
-}
-
-func TestCreditBurnerType_NilBurner(t *testing.T) {
-	// Nil CreditBurner should be a valid state (means no credit system)
-	var burner CreditBurner
-	if burner != nil {
-		t.Fatal("nil CreditBurner should be nil")
 	}
 }
 
@@ -2265,24 +2234,15 @@ func TestCollectInvoice_ZeroAmountDue(t *testing.T) {
 	}
 }
 
-func TestCollectInvoice_WithCreditBurner_FullCoverage(t *testing.T) {
+func TestCollectInvoice_PrepaidCoversInFull(t *testing.T) {
 	inv := &billinginvoice.BillingInvoice{}
 	inv.Status = billinginvoice.Open
 	inv.AmountDue = 1000
 	inv.UserId = "user_credit"
+	inv.Id_ = "inv_user_credit" // every invoice the collector sees is stored
 
-	// CreditBurner covers full amount
-	burner := CreditBurner(func(db *datastore.Datastore, userId string, amount int64, meterId string) (int64, error) {
-		if userId != "user_credit" {
-			t.Fatalf("unexpected userId: %s", userId)
-		}
-		if amount != 1000 {
-			t.Fatalf("unexpected amount: %d", amount)
-		}
-		return 0, nil // fully covered by credits
-	})
-
-	result, err := CollectInvoice(nil, nil, inv, burner, nil)
+	pre := &purse{credit: 1000}
+	result, err := CollectInvoice(context.Background(), nil, inv, pre, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -2306,71 +2266,72 @@ func TestCollectInvoice_WithCreditBurner_FullCoverage(t *testing.T) {
 	}
 }
 
-func TestCollectInvoice_CreditBurnerError(t *testing.T) {
+func TestCollectInvoice_PrepaidUnreadable(t *testing.T) {
 	inv := &billinginvoice.BillingInvoice{}
 	inv.Status = billinginvoice.Open
 	inv.AmountDue = 500
 	inv.UserId = "user_err"
+	inv.Id_ = "inv_user_err" // every invoice the collector sees is stored
 
-	burner := CreditBurner(func(db *datastore.Datastore, userId string, amount int64, meterId string) (int64, error) {
-		return 0, fmt.Errorf("credit system unavailable")
-	})
-
-	// Credit burner error is non-fatal; should still try balance
-	result, err := CollectInvoice(nil, nil, inv, burner, nil)
+	// An unreadable balance is unknown, not zero: it covers nothing, nothing is
+	// drawn, and with no card the attempt fails and says why.
+	pre := &purse{credit: 500, readErr: fmt.Errorf("ledger unavailable")}
+	result, err := CollectInvoice(context.Background(), nil, inv, pre, nil)
 	if err != nil {
-		t.Fatalf("credit error should be non-fatal: %v", err)
+		t.Fatalf("an unreadable balance must be non-fatal: %v", err)
 	}
-	// But since no balance available either, it fails
 	if result.Success {
-		t.Fatal("expected failure when credits error and no balance")
+		t.Fatal("expected failure when the balance cannot be read and there is no card")
 	}
-	if result.CreditUsed != 0 {
-		t.Fatalf("expected 0 credit used on error, got %d", result.CreditUsed)
+	if result.CreditUsed != 0 || len(pre.draws) != 0 {
+		t.Fatalf("drew %v (credit used %d); nothing may be drawn on an unreadable balance", pre.draws, result.CreditUsed)
 	}
-	if !strings.Contains(result.Error, "insufficient funds") {
-		t.Fatalf("expected insufficient funds error, got: %s", result.Error)
+	if !strings.Contains(result.Error, "unreadable") {
+		t.Fatalf("expected the read failure in the error, got: %s", result.Error)
 	}
 }
 
-func TestCollectInvoice_PartialCredit(t *testing.T) {
+// TestCollectInvoice_ShortPrepaidDrawsNothing: prepaid money covers 600 of 1000
+// and there is no card. The attempt fails and takes NOTHING — a partial draw
+// against an invoice that stays unpaid is money the next attempt takes again.
+func TestCollectInvoice_ShortPrepaidDrawsNothing(t *testing.T) {
 	inv := &billinginvoice.BillingInvoice{}
 	inv.Status = billinginvoice.Open
 	inv.AmountDue = 1000
 	inv.UserId = "user_partial"
+	inv.Id_ = "inv_user_partial" // every invoice the collector sees is stored
 
-	burner := CreditBurner(func(db *datastore.Datastore, userId string, amount int64, meterId string) (int64, error) {
-		// Only cover 600 out of 1000
-		return 400, nil
-	})
-
-	result, err := CollectInvoice(nil, nil, inv, burner, nil)
+	pre := &purse{credit: 600}
+	result, err := CollectInvoice(context.Background(), nil, inv, pre, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// 400 remaining, no balance/provider, so fails
 	if result.Success {
-		t.Fatal("expected failure with partial credit and no balance")
+		t.Fatal("expected failure with 600 of 1000 and no card")
 	}
-	if result.CreditUsed != 600 {
-		t.Fatalf("expected 600 credit used, got %d", result.CreditUsed)
+	if result.CreditUsed != 0 || result.AmountCharged != 0 || pre.credit != 600 || len(pre.draws) != 0 {
+		t.Fatalf("credit used %d, charged %d, credit left %d, draws %v; a short collection takes nothing",
+			result.CreditUsed, result.AmountCharged, pre.credit, pre.draws)
 	}
-	if result.AmountCharged != 600 {
-		t.Fatalf("expected 600 charged, got %d", result.AmountCharged)
+	if inv.Status != billinginvoice.Open || inv.AmountPaid != 0 {
+		t.Fatalf("invoice %s paid %d, want open and unpaid", inv.Status, inv.AmountPaid)
+	}
+	if !strings.Contains(result.Error, "insufficient funds: 1000 cents") {
+		t.Fatalf("expected the whole amount owed in the error, got: %s", result.Error)
 	}
 }
 
-func TestCollectInvoice_NilBurner(t *testing.T) {
+func TestCollectInvoice_NilPrepaid(t *testing.T) {
 	inv := &billinginvoice.BillingInvoice{}
 	inv.Status = billinginvoice.Open
 	inv.AmountDue = 500
 
-	result, err := CollectInvoice(nil, nil, inv, nil, nil)
+	result, err := CollectInvoice(context.Background(), nil, inv, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if result.Success {
-		t.Fatal("expected failure with nil burner and positive amount")
+		t.Fatal("expected failure with no prepaid money, no card and a positive amount")
 	}
 	if result.CreditUsed != 0 {
 		t.Fatalf("expected 0 credit, got %d", result.CreditUsed)
@@ -2386,21 +2347,40 @@ func TestCollectInvoice_PaymentMethod_CreditOnly(t *testing.T) {
 	inv.Status = billinginvoice.Open
 	inv.AmountDue = 100
 	inv.UserId = "user_method"
+	inv.Id_ = "inv_user_method" // every invoice the collector sees is stored
 
-	burner := CreditBurner(func(db *datastore.Datastore, userId string, amount int64, meterId string) (int64, error) {
-		return 0, nil
-	})
-
-	result, err := CollectInvoice(nil, nil, inv, burner, nil)
+	result, err := CollectInvoice(context.Background(), nil, inv, &purse{credit: 100}, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !result.Success {
 		t.Fatal("expected success")
 	}
-	// Invoice should be marked paid with method "credit"
-	if inv.AmountPaid != 100 {
-		t.Fatalf("expected AmountPaid=100, got %d", inv.AmountPaid)
+	if inv.AmountPaid != 100 || inv.PaymentMethod != "credit" {
+		t.Fatalf("expected AmountPaid=100 by credit, got %d by %q", inv.AmountPaid, inv.PaymentMethod)
+	}
+}
+
+// TestCollectInvoice_RetryCollectsTheRemainder: what one attempt collected stays
+// collected, and the next attempt asks only for what is still owed.
+func TestCollectInvoice_RetryCollectsTheRemainder(t *testing.T) {
+	inv := &billinginvoice.BillingInvoice{}
+	inv.Status = billinginvoice.Open
+	inv.AmountDue = 2500
+	inv.AmountPaid = 1000 // an earlier attempt's card payment
+	inv.UserId = "user_retry"
+	inv.Id_ = "inv_user_retry" // every invoice the collector sees is stored
+
+	pre := &purse{balance: 5000}
+	result, err := CollectInvoice(context.Background(), nil, inv, pre, nil)
+	if err != nil || !result.Success {
+		t.Fatalf("result=%+v err=%v, want success", result, err)
+	}
+	if result.BalanceUsed != 1500 || pre.balance != 3500 {
+		t.Fatalf("drew %d leaving %d, want the 1500 still owed and 3500 left", result.BalanceUsed, pre.balance)
+	}
+	if inv.AmountPaid != 2500 || inv.PaymentMethod != "balance" {
+		t.Fatalf("invoice paid %d by %q, want 2500 by balance", inv.AmountPaid, inv.PaymentMethod)
 	}
 }
 

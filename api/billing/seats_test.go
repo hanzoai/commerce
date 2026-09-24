@@ -65,8 +65,8 @@ func TestPlans_TeamCommercialModel(t *testing.T) {
 	// The wire carries a real annual discount, not a copy of the monthly price —
 	// stated as a relationship so it survives a reprice and still fails the thing
 	// that actually went wrong once: annual silently equal to monthly.
-	if dev.PriceAnnual <= 0 || dev.PriceAnnual >= dev.Price {
-		t.Errorf("dev priceAnnual = %d cents, monthly = %d; annual must be a discount", dev.PriceAnnual, dev.Price)
+	if dev.annual() <= 0 || dev.annual() >= dev.Price {
+		t.Errorf("dev priceAnnual = %d cents, monthly = %d; annual must be a discount", dev.annual(), dev.Price)
 	}
 }
 

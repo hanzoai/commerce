@@ -536,16 +536,52 @@ func getActiveGrants(db *datastore.Datastore, userId string) ([]*creditgrant.Cre
 }
 
 // BurnCredits applies the credit burn-down algorithm: deducts amount from
-// active grants in priority order. Returns the remaining amount (overage)
-// and the grants that were modified.
+// active grants in priority order. Returns the remaining amount (overage).
 func BurnCredits(db *datastore.Datastore, userId string, amount int64, meterId string) (int64, error) {
+	b, err := burnGrants(db, userId, amount, meterId)
+	return amount - b.total(), err
+}
+
+// burned is what one burn took from each grant, so it can be put back.
+type burned []burn
+
+type burn struct {
+	grant *creditgrant.CreditGrant
+	cents int64
+}
+
+func (b burned) total() int64 {
+	var n int64
+	for _, x := range b {
+		n += x.cents
+	}
+	return n
+}
+
+// restore puts back every cent the burn took.
+func (b burned) restore() {
+	for _, x := range b {
+		x.grant.RemainingCents += x.cents
+		if err := x.grant.Update(); err != nil {
+			log.Error("RECONCILE: could not restore %d cents to credit grant %s: %v", x.cents, x.grant.Id(), err)
+		}
+	}
+}
+
+// burnGrants deducts up to amount from the subject's active grants in priority
+// order and says what it took from each. A grant that fails to save is not in
+// the answer, so what the answer says was taken was taken.
+func burnGrants(db *datastore.Datastore, userId string, amount int64, meterId string) (burned, error) {
+	var out burned
+	if amount <= 0 {
+		return out, nil
+	}
 	grants, err := getActiveGrants(db, userId)
 	if err != nil {
-		return amount, err
+		return out, err
 	}
 
 	remaining := amount
-
 	for _, g := range grants {
 		if remaining <= 0 {
 			break
@@ -562,12 +598,13 @@ func BurnCredits(db *datastore.Datastore, userId string, amount int64, meterId s
 		}
 
 		g.RemainingCents -= deduct
-		remaining -= deduct
-
 		if err := g.Update(); err != nil {
-			return remaining, err
+			g.RemainingCents += deduct
+			return out, err
 		}
+		remaining -= deduct
+		out = append(out, burn{grant: g, cents: deduct})
 	}
 
-	return remaining, nil
+	return out, nil
 }

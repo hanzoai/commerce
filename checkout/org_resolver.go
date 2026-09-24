@@ -357,11 +357,15 @@ func parseBrandDomains(raw string) []domainBrand {
 
 // BrandSlugForHost resolves a customer-facing host to the serving brand's org
 // slug — the RECEIVING side of a deposit (whose bank account, whose KMS wire
-// path, whose custody vault). Exported for the /v1/billing wire + crypto
-// top-up surface, which shares this one host→brand table with the org
-// endpoint rather than growing a second.
+// path, whose custody vault) and the SELLING side of the plan catalog.
+// Exported for the /v1/billing surface, which shares this one host→brand table
+// with the org endpoint rather than growing a second.
+//
+// It takes the host as a request carries it: port and case are dropped exactly
+// as Resolve drops them, so "pay.lux.cloud:443" is Lux here as it is on the org
+// endpoint, rather than an unknown host that falls to the default brand.
 func BrandSlugForHost(host string) string {
-	return brandForHost(host).slug
+	return brandForHost(normalizeHost(host)).slug
 }
 
 // defaultBrand is the deployment's fallback org. It is brandHanzo unless

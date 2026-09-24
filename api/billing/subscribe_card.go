@@ -530,21 +530,23 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 
 	payWithCredits := sourceID == "credits" || sourceID == "balance" || (sourceID == "" && methodID == "" && isEco)
 	if payWithCredits {
-		afterCredits, err := BurnCredits(db, in.Subject, chargeCents, "")
-		if err != nil && !isEco {
+		// The first period is paid from prepaid money, all or nothing, before the
+		// row exists. A partner ecosystem org holds an operating allowance rather
+		// than a balance, so for one a short draw opens the plan undrawn.
+		drawn, err := prepaidFor(ctx, org).Draw(ctx, in.Subject, cur, chargeCents, "subscribe:"+in.Subject+":"+guard)
+		switch {
+		case err == nil:
+		case isEco:
+			drawn = engine.Drawn{} // the draw moved nothing; the allowance opens the plan
+		case errors.Is(err, errShort):
 			abandon()
-			return nil, saleRefusal{saleDeclined, "failed to deduct credits for subscription: " + err.Error()}
-		}
-		if afterCredits > 0 && !isEco {
-			balUsed, berr := engine.DeductFromBalance(ctx, db, in.Subject, cur, afterCredits)
-			if berr != nil || balUsed < afterCredits {
-				abandon()
-				return nil, saleRefusal{saleDeclined, fmt.Sprintf("insufficient credits/balance to subscribe to %s (%d cents remaining)", p.Name, afterCredits-balUsed)}
-			}
+			return nil, saleRefusal{saleDeclined, fmt.Sprintf("insufficient credits/balance to subscribe to %s: %v", p.Name, err)}
+		default:
+			abandon()
+			return nil, err
 		}
 
-		p.TrialPeriodDays = 0
-		sub, err := createSubscription(db, p, &createSubscriptionRequest{
+		sub, inv, err := openPaid(db, p, &createSubscriptionRequest{
 			UserId:               in.Subject,
 			PlanId:               planID,
 			StoreId:              in.StoreID,
@@ -552,20 +554,14 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			Quantity:             qty,
 			Metadata:             map[string]interface{}{"source": "subscribe/credits"},
 			Test:                 org.TestMode(),
-		})
+		}, promoPercent, promoName, drawn)
 		if err != nil {
-			abandon()
+			// The money moved and no subscription holds it. Leave the guard
+			// STARTED so a retry replays rather than drawing again.
+			uncredited(ctx, in.Events, org.Name, in.Subject, drawn.Ref,
+				"the first period was drawn from prepaid money and no subscription was opened: "+err.Error(),
+				chargeCents, false)
 			return nil, err
-		}
-
-		sub.ProviderType = "credit"
-		sub.DiscountPercent, sub.DiscountName = promoPercent, promoName
-		inv, err := engine.CreatePaidFirstInvoice(db, sub, "credit", "credit_burn")
-		if err != nil {
-			log.Error("subscribe: failed to record paid first invoice (subject=%s): %v", in.Subject, err)
-		}
-		if err := sub.Update(); err != nil {
-			log.Error("subscribe: failed to update subscription after first invoice (subject=%s): %v", in.Subject, err)
 		}
 
 		invoiceID := ""

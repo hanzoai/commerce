@@ -11,6 +11,7 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/api/promo"
+	"github.com/hanzoai/commerce/checkout"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
 	types "github.com/hanzoai/commerce/types"
@@ -111,8 +112,12 @@ type PlanView struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Category    string `json:"category"`
-	Price       int64  `json:"price"`       // monthly price in cents (0 = free)
-	PriceAnnual int64  `json:"priceAnnual"` // annual price in cents per month, for display
+	Price       int64  `json:"price"` // monthly price in cents (0 = free)
+	// PriceAnnual is the annual price in cents per month, for display, and null
+	// where the catalog states none: a plan sold by the month only (advisory,
+	// dedicated) or a sales call. Null is not $0 — a $0 annual price on a plan
+	// that charges would advertise a free year of it.
+	PriceAnnual *int64 `json:"priceAnnual"`
 	// AnnualTotal is what a year of the plan charges, in cents (plan.AnnualTotal).
 	// Absent for a plan not sold by the year.
 	AnnualTotal int64 `json:"annualTotal,omitempty"`
@@ -247,7 +252,8 @@ func parsePlans(data []byte) ([]staticPlan, error) {
 			sp.Price = int64(math.Round(*cp.PriceMonthly * 100))
 		}
 		if cp.PriceAnnual != nil {
-			sp.PriceAnnual = int64(math.Round(*cp.PriceAnnual * 100))
+			annual := int64(math.Round(*cp.PriceAnnual * 100))
+			sp.PriceAnnual = &annual
 		}
 		for _, d := range cp.Prices {
 			sp.Prices = append(sp.Prices, int64(math.Round(d*100)))
@@ -265,7 +271,7 @@ func parsePlans(data []byte) ([]staticPlan, error) {
 		// price — the dns rows, whose per-month figures are whole dollars. The
 		// catalog states the total wherever twelve months would not add up to it.
 		if sp.AnnualTotal == 0 {
-			sp.AnnualTotal = sp.PriceAnnual * 12
+			sp.AnnualTotal = sp.annual() * 12
 		}
 		sp.Limits = cp.Limits
 		sp.Licensing = licensingOf(&canonical[i])
@@ -274,6 +280,16 @@ func parsePlans(data []byte) ([]staticPlan, error) {
 	}
 
 	return plans, nil
+}
+
+// annual is the plan's annual price as the row stores it: zero where the catalog
+// states none. The row keeps money non-nullable, as it does Price beside
+// ContactSales, and annualOf reads that zero back as null.
+func (p *PlanView) annual() int64 {
+	if p.PriceAnnual == nil {
+		return 0
+	}
+	return *p.PriceAnnual
 }
 
 // withPromo returns a COPY of the catalog (never the shared catalog var) with
@@ -306,23 +322,45 @@ func withPromo(pr *promo.Promo, plans []staticPlan) []staticPlan {
 	return out
 }
 
-// ReadPlans is what this service sells, optionally narrowed to one category and
-// annotated with a live promo — the QUESTION, with no HTTP in it.
+// Seller is the brand this catalog is sold under. @hanzo/plans is the Hanzo
+// product's ladder — its rungs are rooms in the hanzo.ai app and Hanzo's models —
+// so it is on sale where the request's host resolves to Hanzo and nowhere else.
+//
+// Every brand's pay host reads the one endpoint below, and each of them listed
+// this ladder under its own name: pay.lux.cloud and pay.zoo.cloud offered Pro
+// and Max as if Lux and Zoo sold them. A brand that publishes no catalog of its
+// own sells nothing, which is an empty list and never somebody else's.
+const Seller = "hanzo"
+
+// Sells reports whether the brand a host resolves to sells this catalog. The
+// host is reduced by the org endpoint's own table (checkout.BrandSlugForHost),
+// so the brand a checkout page wears and the catalog it lists cannot disagree;
+// an empty or unknown host is the deployment's default brand, as it is there.
+func Sells(host string) bool {
+	return checkout.BrandSlugForHost(host) == Seller
+}
+
+// ReadPlans is what this service sells on a host, optionally narrowed to one
+// category and annotated with a live promo — the QUESTION, with no HTTP in it.
 //
 // It takes values rather than a request so a caller that is not a request can
 // ask: the same catalog is read over the internal plane by a peer that holds no
 // plan authority, and a copy of it there would be a second answer to "what do we
 // sell and for how much" — the answer a customer is charged against.
 //
-// An empty category means "everything", which is what an absent query parameter
-// has always meant here.
+// The host is the customer-facing one (see Sells): a brand that is not Seller
+// gets an empty list. An empty category means "everything", which is what an
+// absent query parameter has always meant here.
 //
 // The list is freshly allocated, never the shared catalog, so a caller may
 // annotate its own copy without editing what the next reader sees. The error is
 // the shape every core on this plane answers in; this read has no failure of its
 // own, because an unreadable or empty plan authority falls back to the embedded
 // catalog — loudly (planAuthorityRows logs) — rather than serving a blank list.
-func ReadPlans(ctx context.Context, category string, pr *promo.Promo) ([]PlanView, error) {
+func ReadPlans(ctx context.Context, host, category string, pr *promo.Promo) ([]PlanView, error) {
+	if !Sells(host) {
+		return []PlanView{}, nil
+	}
 	// The DB plan authority (admin-editable) is the source of truth; the embed is a
 	// LOUD-failing fallback (planAuthorityRows logs when it fires) so a failed seed
 	// or query serves the known catalog, never a silently blank list.
@@ -349,7 +387,7 @@ func ReadPlans(ctx context.Context, category string, pr *promo.Promo) ([]PlanVie
 //	GET /v1/billing/plans
 //	GET /v1/billing/plans?category=dns
 func ListPlans(c *zip.Ctx) error {
-	plans, err := ReadPlans(c.Context(), c.Query("category"), promo.Active(c))
+	plans, err := ReadPlans(c.Context(), checkout.RequestHost(c), c.Query("category"), promo.Active(c))
 	if err != nil {
 		return http.Fail(c, 500, "failed to list plans", err)
 	}
@@ -361,6 +399,10 @@ func ListPlans(c *zip.Ctx) error {
 //	GET /v1/billing/plans/:id
 func GetPlan(c *zip.Ctx) error {
 	id := c.Param("id")
+	// A plan is found only where the catalog is on sale (see Seller).
+	if !Sells(checkout.RequestHost(c)) {
+		return http.Fail(c, 404, "plan not found", nil)
+	}
 	// DB authority first; embed is the loud-failing fallback (see ListPlans).
 	plans, ok := planAuthorityRows(c.Context())
 	if !ok {
@@ -630,7 +672,7 @@ func toPlan(p *staticPlan) Plan {
 		Description: p.Description,
 		Category:    p.Category,
 		PriceMonth:  p.Price,
-		PriceYear:   p.PriceAnnual,
+		PriceYear:   p.annual(),
 		Currency:    p.Currency,
 	}
 }

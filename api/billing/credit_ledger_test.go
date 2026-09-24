@@ -31,6 +31,7 @@ type fakeLedger struct {
 	mu     sync.Mutex
 	lastIn creditledger.CreditInput
 	posted []creditledger.CreditInput
+	debits []creditledger.DebitInput
 	calls  int
 	bal    map[string]int64
 	seen   map[string]string
@@ -82,6 +83,27 @@ func (f *fakeLedger) Balance(_ context.Context, org, subject, cur string, test b
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.bal[f.account(org, subject, cur, test)], nil
+}
+
+// Debit draws a payment from the WHOLE address, all or nothing, exactly once per
+// ref within one ledger — the real ledger's contract.
+func (f *fakeLedger) Debit(_ context.Context, in creditledger.DebitInput) (string, int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	k := f.account(in.Org, in.Subject, in.Currency, in.Test)
+	scope := f.scope(in.Org, in.Test, "debit:"+in.Ref)
+	if id, ok := f.seen[scope]; ok {
+		return id, f.bal[k], nil
+	}
+	if f.bal[k] < in.AmountCents {
+		return "", f.bal[k], creditledger.ErrShort
+	}
+	f.nextID++
+	id := fmt.Sprintf("debit_%d", f.nextID)
+	f.bal[k] -= in.AmountCents
+	f.debits = append(f.debits, in)
+	f.seen[scope] = id
+	return id, f.bal[k], nil
 }
 
 // credits returns the credits actually POSTED (replays excluded), for the tests that

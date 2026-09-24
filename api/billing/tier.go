@@ -8,6 +8,8 @@ import (
 
 	"github.com/zap-proto/zip"
 
+	"github.com/hanzoai/commerce/billing/bucket"
+	"github.com/hanzoai/commerce/billing/creditledger"
 	"github.com/hanzoai/commerce/billing/tier"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -220,7 +222,7 @@ func ReadTier(ctx context.Context, org *organization.Organization, user string, 
 	// purely by a starter/promo grant, 402-gating orgs that hold real spendable
 	// credit.
 	cur := currency.Type("usd")
-	split, err := bucketedSplit(ctx, user, cur, org.TestMode())
+	split, err := tierSplit(ctx, org, user, cur)
 	if err != nil {
 		return nil, err
 	}
@@ -285,6 +287,34 @@ func ReadTier(ctx context.Context, org *organization.Organization, user string, 
 			EffectiveAvailable: effectiveAvailable,
 		},
 		Windows: usageWindows(ctx, user, slug, org.TestMode(), time.Now()),
+	}, nil
+}
+
+// tierSplit is the subject's money as the tier reads it, from the one ledger.
+//
+// With a host ledger injected the balance lives there — where an admin grant,
+// a settled card and the AI gate all address it — and it is one wallet, so it
+// is all prepaid; the subject's credit grants are its credits. That is the same
+// money, split the same way, that a draw spends. Standalone it is commerce's own
+// ledger, split into buckets.
+func tierSplit(ctx context.Context, org *organization.Organization, user string, cur currency.Type) (bucket.Split, error) {
+	if creditledger.Get() == nil {
+		return bucketedSplit(ctx, user, cur, org.TestMode())
+	}
+	pre := prepaidFor(ctx, org)
+	bal, err := pre.balance(ctx, user, cur)
+	if err != nil {
+		return bucket.Split{}, err
+	}
+	credits, err := creditsAvailable(pre.db, user)
+	if err != nil {
+		return bucket.Split{}, err
+	}
+	b, c := currency.Cents(bal), currency.Cents(credits)
+	return bucket.Split{
+		CreditsRemaining: c,
+		PrepaidBalance:   b, PrepaidAvailable: b,
+		Balance: b + c, Available: b + c,
 	}, nil
 }
 

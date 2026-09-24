@@ -247,7 +247,7 @@ func resolveSubscriptionPlan(db *datastore.Datastore, planId string) (*plan.Plan
 		p.Description = staticP.Description
 		p.Category = staticP.Category
 		p.Price = currency.Cents(staticP.Price)
-		p.PriceAnnual = currency.Cents(staticP.PriceAnnual)
+		p.PriceAnnual = currency.Cents(staticP.annual())
 		p.AnnualTotal = currency.Cents(staticP.AnnualTotal)
 		p.Prices = centsOf(staticP.Prices)
 		p.ContactSales = staticP.ContactSales
@@ -291,7 +291,7 @@ func planAtLevel(p *plan.Plan, level int) (*plan.Plan, error) {
 // always, at a price the catalog publishes for that period. A period the plan is
 // not sold over is refused here, before any card is touched.
 //
-// Price is collected in FULL once per period, and advancePeriod makes a yearly
+// Price is collected in FULL once per period, and Advance makes a yearly
 // plan's period a year, so a yearly subscription's Price is the whole year's
 // money: AnnualTotal, the year the catalog states — Dev's $199. PriceAnnual is
 // that year shown per month ($16.58) and is never multiplied back up: twelve of
@@ -994,6 +994,13 @@ func cancelSubscription(ctx context.Context, org *organization.Organization, id 
 	if err := sub.Update(); err != nil {
 		return nil, err
 	}
+	// Ended now, the row is served no further period, so an invoice it still owes
+	// for one is void rather than left to be paid onto a canceled plan.
+	if !atPeriodEnd {
+		if err := engine.VoidOpen(datastore.New(org.Namespaced(ctx)), sub); err != nil {
+			return nil, err
+		}
+	}
 	return sub, nil
 }
 
@@ -1107,7 +1114,7 @@ func RenewBillingSubscription(c *zip.Ctx) error {
 		return http.Fail(c, 404, "subscription not found", err)
 	}
 
-	inv, result, err := engine.RenewSubscription(c.Context(), db, sub, BurnCredits, chargeProviderForOrg(org))
+	inv, result, err := engine.RenewSubscription(c.Context(), db, sub, prepaidFor(c.Context(), org), chargeProviderForOrg(org))
 	if err != nil {
 		log.Error("Failed to renew subscription: %v", err, c)
 		return http.Fail(c, 500, "failed to renew subscription", err)

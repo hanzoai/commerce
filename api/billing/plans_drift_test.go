@@ -121,6 +121,8 @@ func TestVendoredPlanPrices(t *testing.T) {
 	for _, p := range catalog {
 		bySlug[p.Slug] = p
 	}
+	// none is an annual price the catalog does not state: null on the wire, never $0.
+	const none = -1
 	type want struct {
 		monthly, annual, year int64
 		contactSales          bool
@@ -135,9 +137,9 @@ func TestVendoredPlanPrices(t *testing.T) {
 		"max-5x":         {10000, 8333, 100000, false},
 		"max-20x":        {20000, 16667, 200000, false},
 		"team":           {2500, 2000, 24000, false}, // per seat
-		"advisory":       {499900, 0, 0, false},      // agency, monthly only
-		"dedicated":      {999900, 0, 0, false},
-		"enterprise":     {0, 0, 0, true}, // null price → 0 + contactSales
+		"advisory":       {499900, none, 0, false},   // agency, monthly only
+		"dedicated":      {999900, none, 0, false},
+		"enterprise":     {0, none, 0, true}, // null price → 0 + contactSales
 		"dns-free":       {0, 0, 0, false},
 		"dns-pro":        {500, 400, 4800, false}, // dns states no total: a year is twelve annual months
 		"dns-enterprise": {2500, 2000, 24000, false},
@@ -147,9 +149,13 @@ func TestVendoredPlanPrices(t *testing.T) {
 		if !ok {
 			t.Fatalf("plan %q missing from embed", slug)
 		}
-		if p.Price != w.monthly || p.PriceAnnual != w.annual || p.AnnualTotal != w.year {
-			t.Errorf("plan %q price = %d/%d/%d cents, want %d/%d/%d (monthly/annual tag/year)",
-				slug, p.Price, p.PriceAnnual, p.AnnualTotal, w.monthly, w.annual, w.year)
+		annual := int64(none)
+		if p.PriceAnnual != nil {
+			annual = *p.PriceAnnual
+		}
+		if p.Price != w.monthly || annual != w.annual || p.AnnualTotal != w.year {
+			t.Errorf("plan %q price = %d/%d/%d cents, want %d/%d/%d (monthly/annual tag, %d for none/year)",
+				slug, p.Price, annual, p.AnnualTotal, w.monthly, w.annual, none, w.year)
 		}
 		if p.ContactSales != w.contactSales {
 			t.Errorf("plan %q contactSales = %v, want %v (free-vs-null distinction)", slug, p.ContactSales, w.contactSales)
