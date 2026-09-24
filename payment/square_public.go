@@ -65,3 +65,14 @@ func SquarePublicConfig(org *organization.Organization) SquarePublic {
 		Live:          org.Live,
 	}
 }
+
+// SquareOwned reports whether the org holds Square credentials of its own —
+// the same test SquarePublicConfig makes before it falls back to the
+// deployment's env credentials, which belong to the deployment's own brand.
+func SquareOwned(org *organization.Organization) bool {
+	if org == nil {
+		return false
+	}
+	sq := org.SquareConfig(org.TestMode())
+	return sq.ApplicationId != "" && sq.LocationId != ""
+}

@@ -2,6 +2,7 @@ package catalogentry
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -194,6 +195,41 @@ func TestProject_CategoryScopedByBrand(t *testing.T) {
 	hanzo, _ := Project(db, "hanzo")
 	if len(hanzo.Products) <= len(lux.Products) {
 		t.Fatalf("hanzo products (%d) should exceed lux (%d)", len(hanzo.Products), len(lux.Products))
+	}
+}
+
+// An entry that names its brands is sold under those alone. The seed marks the
+// Hanzo platform services (DNS, KMS, the CLI…) brands:["hanzo"] and they sit in
+// categories Lux admits, so a category-only scope listed them — docs.hanzo.ai
+// links and all — in Lux's catalog.
+func TestProject_EntryScopedByItsBrands(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+	if _, err := Seed(db); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	for _, brand := range []string{"lux", "zoo", "pars"} {
+		cat, err := Project(db, brand)
+		if err != nil {
+			t.Fatalf("project %s: %v", brand, err)
+		}
+		if len(cat.Products) == 0 {
+			t.Fatalf("%s projection is empty", brand)
+		}
+		for _, p := range cat.Products {
+			if len(p.Brands) > 0 && !slices.Contains(p.Brands, brand) {
+				t.Errorf("%s projection lists %q, sold under %v", brand, p.ID, p.Brands)
+			}
+		}
+	}
+	hanzo, _ := Project(db, "hanzo")
+	var dns bool
+	for _, p := range hanzo.Products {
+		dns = dns || p.ID == "dns"
+	}
+	if !dns {
+		t.Error("hanzo projection lost its own dns entry")
 	}
 }
 

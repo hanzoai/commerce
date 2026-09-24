@@ -72,7 +72,14 @@ func (r *OrgResolver) Resolve(host string) (Org, error) {
 		org.Name = b.slug
 	}
 
-	sq := payment.SquarePublicConfig(org)
+	// The deployment's Square credentials are its default brand's account. Any
+	// other brand takes cards only with an account of its own; resolved onto the
+	// default's, its buyers would pay that merchant under this brand's name.
+	card := b.slug == defaultBrand().slug || payment.SquareOwned(org)
+	var sq payment.SquarePublic
+	if card {
+		sq = payment.SquarePublicConfig(org)
+	}
 
 	return Org{
 		Name: b.slug,
@@ -88,7 +95,7 @@ func (r *OrgResolver) Resolve(host string) (Org, error) {
 			Issuer:   b.iamIssuer,
 			ClientID: b.iamClientID,
 		},
-		Providers:          enabledProviders(),
+		Providers:          enabledProviders(card),
 		ReturnURLAllowlist: returnHostsFor(b.slug),
 		Square: SquarePublic{
 			ApplicationID: sq.ApplicationID,
@@ -162,7 +169,9 @@ func returnHostsFor(slug string) []string {
 		return []string{
 			"https://zoo.ngo",
 			"https://zoo.network",
-			"https://zoo.id",
+			// zoolabs.id — Zoo's identity origin (brandZoo.iamIssuer), where
+			// sign-up sends a new customer here and expects them back.
+			"https://zoolabs.id",
 		}
 	case "pars":
 		return []string{
@@ -176,13 +185,13 @@ func returnHostsFor(slug string) []string {
 }
 
 // enabledProviders is the payment-method surface the pay SPA renders, honoring
-// the deploy-wide disabled policy. Square is the fiat card processor (gated on
-// the Stripe-off policy so "Square-only fiat" stays consistent with the charge
-// path); crypto (MPC) and bank wire are always available. Stripe is NEVER
-// surfaced for new charges.
-func enabledProviders() []Provider {
+// the deploy-wide disabled policy. Square is the fiat card processor, surfaced
+// where the brand has a card account (`card`) and the policy allows it; crypto
+// (MPC) and bank wire are always available. Stripe is NEVER surfaced for new
+// charges.
+func enabledProviders(card bool) []Provider {
 	out := make([]Provider, 0, 3)
-	if !processor.DisabledByPolicy(processor.Square) {
+	if card && !processor.DisabledByPolicy(processor.Square) {
 		out = append(out, Provider{Name: "square", Enabled: true})
 	}
 	out = append(out, Provider{Name: "crypto", Enabled: true})
@@ -244,7 +253,7 @@ var brandDomains = []domainBrand{
 	{"lux.tel", brandLux},
 	{"zoo.ngo", brandZoo},
 	{"zoo.network", brandZoo},
-	{"zoo.id", brandZoo},
+	{"zoolabs.id", brandZoo},
 	{"zoo.cloud", brandZoo},
 	{"pars.network", brandPars},
 	{"pars.id", brandPars},
