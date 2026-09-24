@@ -21,6 +21,7 @@ require (
 	github.com/gorilla/sessions v1.4.0
 	github.com/hanzo-ds/go v1.0.1
 	github.com/hanzoai/account v0.2.0
+	github.com/hanzoai/authz v1.10.29
 	github.com/hanzoai/base v1.5.18
 	github.com/hanzoai/cek v0.2.3
 	github.com/hanzoai/decimal v0.1.2
@@ -107,7 +108,6 @@ require (
 	github.com/gtank/merlin v0.1.1 // indirect
 	github.com/gtank/ristretto255 v0.2.0 // indirect
 	github.com/hanzo-ds/native v0.71.0 // indirect
-	github.com/hanzoai/authz v1.10.29 // indirect
 	github.com/hanzoai/csqlite v0.1.2 // indirect
 	github.com/hanzoai/dbx v1.17.2 // indirect
 	github.com/hanzoai/sqlcipher v0.1.1 // indirect

@@ -770,10 +770,15 @@ func SubscribeWithCard(c *zip.Ctx) error {
 	if subject == "" {
 		return http.Fail(c, 401, "missing identity headers", nil)
 	}
-	// The org's own account is the org's to subscribe: its admins, a platform
-	// SuperAdmin or a service. A member subscribes their own account (userId).
-	if subject == orgBillingKey(c) && !mayActForOrg(c) {
-		return http.Fail(c, 403, "only an admin of this organization may subscribe it; subscribe your own account instead", nil)
+	// A member subscribes, and pays from, their own account whatever userId names.
+	// The org's own account, and another member's, are the org's to subscribe: its
+	// admins, a platform SuperAdmin or a service.
+	if !mayActForOrg(c) {
+		own := userBillingKey(c)
+		if own == "" || own == orgBillingKey(c) {
+			return http.Fail(c, 403, "only an admin of this organization may subscribe it", nil)
+		}
+		subject = own
 	}
 
 	iamEmail, _ := c.Locals("iam_email").(string)

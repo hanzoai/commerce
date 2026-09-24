@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/hanzoai/authz"
 	"net/url"
 	"os"
 	"strconv"
@@ -22,20 +23,13 @@ import (
 	"github.com/hanzoai/commerce/util/permission"
 )
 
-// identityHeaders are the gateway-minted identity headers commerce trusts
-// downstream (see middleware/iammiddleware). At a directly-exposed edge —
-// one not behind hanzoai/gateway — a client can set
-// these by hand and impersonate any org — IsIAMAuthenticated only checks
-// that X-Org-Id is present. EdgeAuth strips them unconditionally and only
-// re-mints them from a cryptographically-verified IAM JWT.
-var identityHeaders = []string{
-	"X-Org-Id", "X-User-Id", "X-User-Email", "X-User-IsAdmin",
-	// X-User-Owner is the HOME-org (platform-sudo) anchor — stripped on ingress so a
-	// client can NEVER forge `X-User-Owner: admin` to become a SuperAdmin; re-minted
-	// below only from a verified JWT. X-User-IsGlobalAdmin is the RETIRED boolean —
-	// no longer minted, but still stripped so a stale client copy never survives.
-	"X-User-Owner", "X-User-IsGlobalAdmin", "X-User-Permissions", "X-Roles", "X-Phone-Number",
-}
+// identityHeaders are every identity header an edge writes and commerce trusts
+// downstream (see middleware/iammiddleware), plus the retired names a consumer may
+// still read. At a directly-exposed edge a client can set any of them by hand, so
+// EdgeAuth strips them all unconditionally and re-mints only from a verified IAM
+// JWT. The list is authz's own: one list of what an edge writes is one list of
+// what it must strip, so a new authority header cannot be missed here.
+var identityHeaders = append(append([]string{}, authz.Headers...), authz.Retired...)
 
 // EdgeAuth is the standalone-edge trust boundary for a directly-exposed
 // commerce-api. It is a NO-OP unless COMMERCE_EDGE_AUTH=true, so
@@ -144,6 +138,11 @@ func EdgeAuth() zip.Handler {
 					}
 					lockBillingSubject(req, subject)
 					lockBillingSubjectBody(req, subject)
+				}
+				// An admin of the token's own org administers the org the request
+				// acts in only while that org is still its own.
+				if claims.IsAdmin && strings.EqualFold(string(req.Header.Peek("X-Org-Id")), claims.Owner) {
+					req.Header.Set(iammiddleware.HeaderUserIsOrgAdmin, "true")
 				}
 			}
 		}
