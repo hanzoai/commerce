@@ -67,6 +67,13 @@ func processorFailure(what, subject string, err error) error {
 	return errProcessorFailed
 }
 
+// failedAttempt is [processorFailure] for a buyer's attempt, which is also counted
+// against the wallet's window ([tally]).
+func failedAttempt(db *datastore.Datastore, what, subject string, err error) error {
+	tally(db, subject)
+	return processorFailure(what, subject, err)
+}
+
 // ── the gateway key a retry reaches the gateway under ─────────────────────────
 
 // A gateway stores its answer under the idempotency key it was sent, a refusal
@@ -93,19 +100,26 @@ func attemptKey(db *datastore.Datastore, base string) string {
 	return base
 }
 
-// ── the refusals a wallet may collect ─────────────────────────────────────────
+// ── the failed attempts a wallet may collect ──────────────────────────────────
 
 // A buyer's card attempts are held per wallet: one attempt at a time, and a wallet
-// that has collected [declineCeiling] refusals in [declineWindow] has no more cards
-// tried until the window turns, refused before the processor is asked. Testing
+// that has collected [declineCeiling] failed attempts in [declineWindow] has no more
+// cards tried until the window turns, refused before the processor is asked. Testing
 // stolen cards is a run of refusals against one account, so this bounds what one
 // account can learn and what it costs the merchant at the processor, and a buyer
 // whose own card is refused a few times is not affected. It is keyed on the wallet
 // the charge would credit, which is the org for a tenant and the person in the shared
 // signup org, so one stranger's refusals never lock out the rest of that org.
 //
+// A failed attempt is one the processor refused or failed to answer ([failedAttempt]):
+// every outcome but a settled payment and one still processing. An attempt the
+// processor turns away without a refusal (a spent or malformed token) holds the
+// reservation as long as a refused one, so counting only refusals would let one
+// member hold the wallet from every other member indefinitely. The cost is that an
+// outage at the processor spends a wallet's ceiling as its buyers retry.
+//
 // ONE ATTEMPT AT A TIME is what makes the ceiling a ceiling. The count is read before
-// a charge and written after its refusal, so attempts that overlap all read the same
+// a charge and written after it fails, so attempts that overlap all read the same
 // count and all reach the processor. commerce is the single writer for each tenant,
 // so this process holds every attempt a wallet makes, and a reservation in memory is
 // the whole of what serialising them takes.
@@ -118,17 +132,17 @@ func attemptKey(db *datastore.Datastore, base string) string {
 // been asked (a single-use token names no card), and counting it afterwards would
 // mean keeping card identifiers the processor's answer is otherwise scrubbed of.
 
-// declineCeiling is how many refusals one wallet may collect in [declineWindow].
+// declineCeiling is how many failed attempts one wallet may collect in [declineWindow].
 const declineCeiling = 5
 
 // declineWindow is the span declineCeiling counts over.
 const declineWindow = time.Hour
 
-// walletScope names a wallet's refusal count for one window.
+// walletScope names a wallet's failed-attempt count for one window.
 const walletScope = "declined-wallet:"
 
 // errDeclineCeiling marks a charge refused before the processor was asked, because
-// the wallet has collected declineCeiling refusals in this window.
+// the wallet has collected declineCeiling failed attempts in this window.
 var errDeclineCeiling = errors.New("too many declined card attempts; try again later")
 
 // IsDeclineCeiling reports whether err is that refusal.
@@ -224,12 +238,12 @@ func rotate(db *datastore.Datastore, base string) {
 	}
 }
 
-// tally counts a refusal against wallet subject's window.
+// tally counts a failed attempt against wallet subject's window.
 func tally(db *datastore.Datastore, subject string) {
 	add(db, walletScope+subject, windowOf())
 }
 
-// count reads a refusal count, zero when none is recorded or the store cannot say.
+// count reads a count, zero when none is recorded or the store cannot say.
 // The store failing open here is deliberate: a count that cannot be read costs a
 // retry its fresh key or lifts the ceiling for one attempt, and refusing every
 // charge whenever the store blinks would cost every buyer their purchase.
@@ -242,11 +256,11 @@ func count(db *datastore.Datastore, scope, key string) int {
 	return n
 }
 
-// counts serialises every refusal count's read-and-write in this process, the single
-// writer for each tenant, so two refusals recorded at once are two.
+// counts serialises every count's read-and-write in this process, the single writer
+// for each tenant, so two attempts recorded at once are two.
 var counts sync.Mutex
 
-// add increments a refusal count.
+// add increments a count.
 func add(db *datastore.Datastore, scope, key string) {
 	counts.Lock()
 	defer counts.Unlock()
@@ -257,6 +271,6 @@ func add(db *datastore.Datastore, scope, key string) {
 	rec.Status = "declined"
 	rec.Response = strconv.Itoa(count(db, scope, key) + 1)
 	if err := rec.Put(); err != nil {
-		log.Error("recording a card refusal (%s%s): %v", scope, key, err)
+		log.Error("recording a failed card attempt (%s%s): %v", scope, key, err)
 	}
 }

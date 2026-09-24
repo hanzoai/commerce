@@ -150,6 +150,17 @@ func Begin(db *datastore.Datastore, scope, key string) (rec *IdempotencyKey, rep
 	return rec, false, nil
 }
 
+// Answered is the stored response of a completed guard for (scope, key), read by
+// its exact storage key as Begin reads it. It records nothing, so a caller can answer
+// a replay before it takes anything a first attempt would need.
+func Answered(db *datastore.Datastore, scope, key string) (string, bool) {
+	k := New(db)
+	if k.Get(db.NewKey(k.Kind(), DeterministicID(scope, key), 0, nil)) != nil || k.Status != StatusCompleted {
+		return "", false
+	}
+	return k.Response, k.Response != ""
+}
+
 // DeterministicID derives the stable storage id for a (scope, key) pair. Same
 // inputs → same id → the second concurrent Create upserts onto the first's row.
 func DeterministicID(scope, key string) string {

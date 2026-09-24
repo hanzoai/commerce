@@ -244,7 +244,7 @@ func CreateMethod(ctx context.Context, org *organization.Organization, email str
 					refused(db, "card save", in.CustomerId, "", d)
 					return nil, false, declineError{d.Sentence(), d}
 				}
-				return nil, false, processorFailure("card save", in.CustomerId, err)
+				return nil, false, failedAttempt(db, "card save", in.CustomerId, err)
 			}
 			// Caller-supplied extras land on whichever row answered.
 			if in.BillingAddress != nil {

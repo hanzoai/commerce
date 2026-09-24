@@ -25,7 +25,7 @@ func saveCardAs(ctx context.Context, org string, subject, nonce string) error {
 	return err
 }
 
-// refusalsOf is the wallet's refusal count for this window.
+// refusalsOf is the wallet's failed-attempt count for this window.
 func refusalsOf(ctx context.Context, org, subject string) int {
 	return count(datastore.New(moneyOrg(org).Namespaced(ctx)), walletScope+subject, windowOf())
 }
@@ -33,7 +33,7 @@ func refusalsOf(ctx context.Context, org, subject string) int {
 // TestRefusal_CardSaveIsHeldAndCountedLikeACharge — vaulting a card validates it, so a
 // card save is a card attempt: a refusal is counted against the wallet, a wallet at
 // its ceiling has no card vaulted, and a processor that failed to answer is a
-// processor failure that counts nothing.
+// processor failure, never a decline, and is counted as a failed attempt.
 func TestRefusal_CardSaveIsHeldAndCountedLikeACharge(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -61,14 +61,14 @@ func TestRefusal_CardSaveIsHeldAndCountedLikeACharge(t *testing.T) {
 	if !IsProcessorFailed(err) || IsCardDeclined(err) {
 		t.Errorf("a vault the processor failed answered %v (declined %v)", err, IsCardDeclined(err))
 	}
-	if n := refusalsOf(ctx, "save-co2", "save-co2"); n != 0 {
-		t.Errorf("a processor failure on card save counted %d refusals", n)
+	if n := refusalsOf(ctx, "save-co2", "save-co2"); n != 1 {
+		t.Errorf("a processor failure on card save counted %d failed attempts, want 1", n)
 	}
 }
 
 // TestRefusal_TheSavedCardTopUpIsHeldAndCounted — the buyer's saved-card top-up is a
 // card attempt: a refusal counts, the ceiling holds, and a processor failure is
-// neither a decline nor a refusal.
+// neither a decline nor a refusal but counts as a failed attempt.
 func TestRefusal_TheSavedCardTopUpIsHeldAndCounted(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -88,12 +88,12 @@ func TestRefusal_TheSavedCardTopUpIsHeldAndCounted(t *testing.T) {
 	if _, ok := DeclineOf(topup(101)); ok {
 		t.Error("a processor failure on the saved-card top-up read as a decline")
 	}
-	if n := refusalsOf(ctx, "saved-co", "saved-co"); n != 0 {
-		t.Fatalf("processor failures counted %d refusals", n)
+	if n := refusalsOf(ctx, "saved-co", "saved-co"); n != 2 {
+		t.Fatalf("two processor failures counted %d failed attempts, want 2", n)
 	}
 
 	m.chargeErr = declineOn("CARD_DECLINED")
-	for i := range declineCeiling {
+	for i := range declineCeiling - 2 {
 		if _, ok := DeclineOf(topup(i)); !ok {
 			t.Fatalf("refusal %d was not a decline", i)
 		}
@@ -192,9 +192,52 @@ func TestRefusal_APendingPaymentIsProcessingNotADecline(t *testing.T) {
 	if n := refusalsOf(ctx, "pending-co", "pending-co"); n != 0 {
 		t.Errorf("a pending payment counted %d refusals", n)
 	}
+	saved := moneyOrg("pending-saved")
+	pm := seedSavedCard(t, datastore.New(saved.Namespaced(ctx)), "pending-saved", "ccof_pp", "cust_pp")
+	if _, err := TopupCard(ctx, saved, TopupCardIn{MethodID: pm.Id(), AmountCents: 500, Subject: "pending-saved"}); err == nil {
+		t.Error("a pending saved-card top-up answered as settled")
+	}
+	if n := refusalsOf(ctx, "pending-saved", "pending-saved"); n != 0 {
+		t.Errorf("a pending saved-card top-up counted %d failed attempts", n)
+	}
 
 	_, err := SubscribeCard(ctx, moneyOrg("pending-sale"), SubscribeIn{SourceID: "cnon:s", PlanID: "dev", Subject: "pending-sale"})
 	if !IsSaleConflict(err) || IsSaleDeclined(err) {
 		t.Errorf("a sale whose payment is pending answered %v (conflict %v, declined %v)", err, IsSaleConflict(err), IsSaleDeclined(err))
+	}
+}
+
+// TestRefusal_AProcessorFailureIsCountedOnEveryBuyerPath — an attempt the processor
+// turns away without a refusal holds the wallet's reservation as long as a refused
+// one, so on every buyer path it spends the wallet's ceiling; a settled payment does
+// not.
+func TestRefusal_AProcessorFailureIsCountedOnEveryBuyerPath(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	m := squareMock("cust_pf", "ccof_pf", "sqpay_pf")
+	withFakeSquare(t, m)
+
+	if _, f := TakePayment(ctx, moneyOrg("pf-ok"), TakePaymentIn{SourceID: "cnon:ok", AmountCents: 500, Subject: "pf-ok"}); f != nil {
+		t.Fatalf("a settled token top-up answered %+v", f)
+	}
+	if n := refusalsOf(ctx, "pf-ok", "pf-ok"); n != 0 {
+		t.Errorf("a settled payment counted %d failed attempts", n)
+	}
+
+	m.chargeErr = unanswered
+	if _, f := TakePayment(ctx, moneyOrg("pf-token"), TakePaymentIn{SourceID: "cnon:t", AmountCents: 500, Subject: "pf-token"}); f == nil || !IsProcessorFailed(f.Err) {
+		t.Errorf("a token top-up the processor failed answered %+v", f)
+	}
+	if _, err := SubscribeCard(ctx, moneyOrg("pf-sale"), SubscribeIn{SourceID: "cnon:s", PlanID: "dev", Subject: "pf-sale"}); !IsProcessorFailed(err) {
+		t.Errorf("a plan sale the processor failed answered %v", err)
+	}
+	m.chargeErr, m.addCardErr = nil, unanswered
+	if _, err := SubscribeCard(ctx, moneyOrg("pf-vault"), SubscribeIn{SourceID: "cnon:v", PlanID: "dev", Subject: "pf-vault"}); !IsProcessorFailed(err) {
+		t.Errorf("a plan sale whose vault the processor failed answered %v", err)
+	}
+	for _, wallet := range []string{"pf-token", "pf-sale", "pf-vault"} {
+		if n := refusalsOf(ctx, wallet, wallet); n != 1 {
+			t.Errorf("%s: a processor failure counted %d failed attempts, want 1", wallet, n)
+		}
 	}
 }

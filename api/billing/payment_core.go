@@ -258,7 +258,7 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 			refused(db, "token top-up", in.Subject, base, d)
 			return nil, fault(declineStatus(d), d.Sentence(), d)
 		}
-		return nil, fault(502, processorSentence, processorFailure("token top-up", in.Subject, err))
+		return nil, fault(502, processorSentence, failedAttempt(db, "token top-up", in.Subject, err))
 	}
 
 	// Credit the canonical balance for the subject the caller's endpoint bounded.
