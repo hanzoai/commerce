@@ -11,6 +11,7 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/api/promo"
+	"github.com/hanzoai/commerce/checkout"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
 	types "github.com/hanzoai/commerce/types"
@@ -321,23 +322,45 @@ func withPromo(pr *promo.Promo, plans []staticPlan) []staticPlan {
 	return out
 }
 
-// ReadPlans is what this service sells, optionally narrowed to one category and
-// annotated with a live promo — the QUESTION, with no HTTP in it.
+// Seller is the brand this catalog is sold under. @hanzo/plans is the Hanzo
+// product's ladder — its rungs are rooms in the hanzo.ai app and Hanzo's models —
+// so it is on sale where the request's host resolves to Hanzo and nowhere else.
+//
+// Every brand's pay host reads the one endpoint below, and each of them listed
+// this ladder under its own name: pay.lux.cloud and pay.zoo.cloud offered Pro
+// and Max as if Lux and Zoo sold them. A brand that publishes no catalog of its
+// own sells nothing, which is an empty list and never somebody else's.
+const Seller = "hanzo"
+
+// Sells reports whether the brand a host resolves to sells this catalog. The
+// host is reduced by the org endpoint's own table (checkout.BrandSlugForHost),
+// so the brand a checkout page wears and the catalog it lists cannot disagree;
+// an empty or unknown host is the deployment's default brand, as it is there.
+func Sells(host string) bool {
+	return checkout.BrandSlugForHost(host) == Seller
+}
+
+// ReadPlans is what this service sells on a host, optionally narrowed to one
+// category and annotated with a live promo — the QUESTION, with no HTTP in it.
 //
 // It takes values rather than a request so a caller that is not a request can
 // ask: the same catalog is read over the internal plane by a peer that holds no
 // plan authority, and a copy of it there would be a second answer to "what do we
 // sell and for how much" — the answer a customer is charged against.
 //
-// An empty category means "everything", which is what an absent query parameter
-// has always meant here.
+// The host is the customer-facing one (see Sells): a brand that is not Seller
+// gets an empty list. An empty category means "everything", which is what an
+// absent query parameter has always meant here.
 //
 // The list is freshly allocated, never the shared catalog, so a caller may
 // annotate its own copy without editing what the next reader sees. The error is
 // the shape every core on this plane answers in; this read has no failure of its
 // own, because an unreadable or empty plan authority falls back to the embedded
 // catalog — loudly (planAuthorityRows logs) — rather than serving a blank list.
-func ReadPlans(ctx context.Context, category string, pr *promo.Promo) ([]PlanView, error) {
+func ReadPlans(ctx context.Context, host, category string, pr *promo.Promo) ([]PlanView, error) {
+	if !Sells(host) {
+		return []PlanView{}, nil
+	}
 	// The DB plan authority (admin-editable) is the source of truth; the embed is a
 	// LOUD-failing fallback (planAuthorityRows logs when it fires) so a failed seed
 	// or query serves the known catalog, never a silently blank list.
@@ -364,7 +387,7 @@ func ReadPlans(ctx context.Context, category string, pr *promo.Promo) ([]PlanVie
 //	GET /v1/billing/plans
 //	GET /v1/billing/plans?category=dns
 func ListPlans(c *zip.Ctx) error {
-	plans, err := ReadPlans(c.Context(), c.Query("category"), promo.Active(c))
+	plans, err := ReadPlans(c.Context(), checkout.RequestHost(c), c.Query("category"), promo.Active(c))
 	if err != nil {
 		return http.Fail(c, 500, "failed to list plans", err)
 	}
@@ -376,6 +399,10 @@ func ListPlans(c *zip.Ctx) error {
 //	GET /v1/billing/plans/:id
 func GetPlan(c *zip.Ctx) error {
 	id := c.Param("id")
+	// A plan is found only where the catalog is on sale (see Seller).
+	if !Sells(checkout.RequestHost(c)) {
+		return http.Fail(c, 404, "plan not found", nil)
+	}
 	// DB authority first; embed is the loud-failing fallback (see ListPlans).
 	plans, ok := planAuthorityRows(c.Context())
 	if !ok {
