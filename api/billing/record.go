@@ -82,11 +82,15 @@ type RecordIn struct {
 	Events *events.Client
 }
 
-// The three things recording a payment can do.
+// The four things recording a payment can do.
 const (
 	RecordCreated   = "created"   // the subject had no plan; this opened one
 	RecordExtended  = "extended"  // the subject's external plan moved to the next period
 	RecordUnchanged = "unchanged" // this period was already recorded; a retry changes nothing
+	// RecordUnapplied: the external plan the payment is for was replaced by a
+	// checkout purchase before it arrived. The payment is recorded for a refund
+	// review and moves no plan.
+	RecordUnapplied = "unapplied"
 )
 
 // Recorded is what recording a payment did.
@@ -164,6 +168,9 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 	}
 
 	if held := billingSubscription(db, subject, org.TestMode()); held != nil {
+		if old := replacedExternal(db, subject, planID, org.TestMode()); old != nil && held.Type != subscription.External {
+			return recordUnapplied(ctx, org, db, old, held, in, processor, reference, start, end)
+		}
 		return extendRecorded(ctx, org, held, in, planID, p.Interval, reference, start, end)
 	}
 	// A payment recorded after its external plan lapsed extends that plan.
@@ -195,7 +202,7 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 	if err != nil {
 		return nil, err
 	}
-	retireLapsed(ctx, org, db, sub)
+	retireLapsed(ctx, org, db, sub, in.Events)
 	emitSale(ctx, in.Events, org.Name, sub, nil)
 	return &Recorded{Subscription: *viewSubscription(sub), Outcome: RecordCreated}, nil
 }
@@ -251,6 +258,51 @@ func extendRecorded(ctx context.Context, org *organization.Organization, held *s
 		go ev.EmitSubscriptionRenewed(context.WithoutCancel(ctx), subscriptionEvent(org.Name, sub))
 	}
 	return &Recorded{Subscription: *viewSubscription(sub), Outcome: RecordExtended}, nil
+}
+
+// replacedExternal is the subject's externally collected plan on planID that a
+// checkout purchase replaced after it lapsed (engine.Replaced), the latest one,
+// or nil.
+func replacedExternal(db *datastore.Datastore, subject, planID string, test bool) *subscription.Subscription {
+	subs, err := userSubscriptions(db, subject, test)
+	if err != nil {
+		return nil
+	}
+	var last *subscription.Subscription
+	for _, s := range subs {
+		reason, _ := s.Metadata["endReason"].(string)
+		if s.Type != subscription.External || s.Status != subscription.Canceled || reason != string(engine.Replaced) || planOf(s) != planID {
+			continue
+		}
+		if last == nil || s.PeriodEnd.After(last.PeriodEnd) {
+			last = s
+		}
+	}
+	return last
+}
+
+// recordUnapplied records a payment for old, an external plan a checkout
+// purchase (held) replaced before the payment arrived: the payment is checked
+// against old's price as bought, kept once per period as a payment.unapplied
+// billing event carrying its facts for a refund review, and moves no plan.
+func recordUnapplied(ctx context.Context, org *organization.Organization, db *datastore.Datastore, old, held *subscription.Subscription, in RecordIn, processor string, reference map[string]string, start, end time.Time) (*Recorded, error) {
+	seatMult := int64(1)
+	if old.Plan.PerSeat && old.Quantity > 1 {
+		seatMult = int64(old.Quantity)
+	}
+	if err := priceMatches(planOf(old), int64(old.Plan.Price)*seatMult, in.PriceCents); err != nil {
+		return nil, err
+	}
+	key := "payment.unapplied:" + old.Id() + ":" + strconv.FormatInt(start.Unix(), 10) + ":" + strconv.FormatInt(end.Unix(), 10)
+	data := types.Map{"subscriptionId": old.Id(), "replacedBy": held.Id(), "amountCents": in.PriceCents,
+		"currency": string(old.Plan.Currency), "processor": processor, "reference": reference,
+		"periodStart": start.Format(time.RFC3339), "periodEnd": end.Format(time.RFC3339)}
+	if _, err := engine.EmitBillingEventOnce(db, key, "payment.unapplied", "subscription", old.Id(), old.UserId, data); err != nil {
+		return nil, fmt.Errorf("record the payment for replaced subscription %s: %w", old.Id(), err)
+	}
+	log.Warn("billing: REFUND REVIEW %s paid %d cents through %s for subscription %s, which subscription %s replaced; the payment moves no plan",
+		old.UserId, in.PriceCents, processor, old.Id(), held.Id())
+	return &Recorded{Subscription: *viewSubscription(old), Outcome: RecordUnapplied}, nil
 }
 
 // lapsedExternal is the subject's externally collected plan whose recorded
@@ -427,7 +479,7 @@ func recordFromBalance(ctx context.Context, org *organization.Organization, db *
 			"a period was drawn from the balance and no subscription was opened: "+err.Error(), in.PriceCents, false)
 		return nil, err
 	}
-	retireLapsed(ctx, org, db, sub)
+	retireLapsed(ctx, org, db, sub, in.Events)
 
 	// The draw and the invoice it paid are the reference.
 	paid := make(map[string]string, len(reference)+2)

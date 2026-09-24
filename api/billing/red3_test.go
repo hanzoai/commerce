@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -209,8 +210,10 @@ func grantedThisMonthAt(t *testing.T, db *datastore.Datastore, subject string, a
 }
 
 // A charge Square took and answered 502 for leaves the renewal invoice pending.
-// The customer then cancels immediately: VoidOpen skips the pending invoice, the
-// row is no longer Live, and no run looks at the attempt again.
+// The customer then cancels immediately. No run asks for the money again: the
+// attempt is looked up, Square cannot say it never landed (a completed payment
+// cannot be canceled by its key), so every run reports it for an operator and
+// the invoice keeps the attempt until one reconciles it.
 func TestRed3_ImmediateCancelOrphansAPendingCharge(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -232,19 +235,19 @@ func TestRed3_ImmediateCancelOrphansAPendingCharge(t *testing.T) {
 		t.Fatal(err)
 	}
 	d.dark = false
+	charges := len(d.landed)
 	for _, at := range []time.Time{now.Add(time.Hour), now.AddDate(0, 0, 8), now.AddDate(0, 1, 0)} {
-		if r := cycleAt(t, ctx, org, at, false); len(acted(r)) != 0 {
-			t.Logf("at %s: %+v", at, acted(r))
+		res := only(t, cycleAt(t, ctx, org, at, false), engine.Skipped)
+		if !strings.Contains(res.Reason, "operator reconciles it") {
+			t.Fatalf("at %s the attempt was reported as %q, want it reported for an operator", at, res.Reason)
 		}
 	}
-	var captured int64
-	for _, v := range d.landed {
-		captured += v
+	if len(d.landed) != charges {
+		t.Fatalf("a run asked Square for money again after the cancel (%d keys, want %d)", len(d.landed), charges)
 	}
 	for _, inv := range invoicesForSub(t, db, sub.Id()) {
-		t.Logf("invoice %s status=%s pendingKey=%q paid=%d", inv.Id(), inv.Status, inv.PendingKey, inv.AmountPaid)
-		if inv.Status == billinginvoice.Open && inv.PendingKey != "" && captured > 0 {
-			t.Fatalf("Square holds %d cents for a canceled subscription; its invoice is still pending and no run will ever resolve or report it", captured)
+		if inv.Status != billinginvoice.Open || inv.PendingKey == "" {
+			t.Fatalf("invoice %s is %s with attempt %q; want the attempt kept until an operator reconciles it", inv.Id(), inv.Status, inv.PendingKey)
 		}
 	}
 }
@@ -312,7 +315,7 @@ func TestRed3_CarrySelfDeadlocksOnAStripeCollision(t *testing.T) {
 	done := make(chan CycleResult, 1)
 	go func() {
 		s := reloadSub(t, db, sub.Id())
-		done <- settleOne(context.WithoutCancel(ctx), org, db, s, engine.Run{Now: now, Asked: true, Prepaid: prepaidFor(ctx, org)}, nil, chargeProviderForOrg(org))
+		done <- settleOne(context.WithoutCancel(ctx), org, db, s, engine.Run{Now: now, Asked: true, Prepaid: prepaidFor(ctx, org)}, nil, railOf(org))
 	}()
 	select {
 	case r := <-done:

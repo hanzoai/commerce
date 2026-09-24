@@ -586,6 +586,9 @@ func tierOfName(raw string) tier.Name {
 //   - a lapsed subscription (engine.Lapsed: overdue past its paid period and the
 //     grace after it), no such sub, a $0 / unknown plan, or a canceled/unpaid
 //     subscription → Free
+//   - a seat or bundle row (another subscription pays for it) stands as its
+//     paying row stands (seatStanding): its status and paid period are the
+//     parent's, whatever the cycle last copied onto the seat
 //
 // A plan's paid-ness and tier are read from the embedded catalog by slug
 // (paidTier/lookupPlan), never the subscription's spoofable stored plan copy, so a
@@ -608,7 +611,9 @@ func deriveTier(db *datastore.Datastore, user string, test bool) (tier.Name, err
 		return tier.Free, err
 	}
 	best, now := tier.Free, time.Now()
+	parents := make(map[string]*subscription.Subscription)
 	for _, s := range subs {
+		s = seatStanding(db, s, parents)
 		var t tier.Name
 		if engine.Lapsed(s, now) {
 			continue // its paid period, and the grace after it, are over
@@ -626,6 +631,22 @@ func deriveTier(db *datastore.Datastore, user string, test bool) (tier.Name, err
 		}
 	}
 	return best, nil
+}
+
+// seatStanding is s as the tier reads it. A seat or bundle row that is not
+// canceled answers with its paying row's status and paid period, read from that
+// row; any other row answers as it is.
+func seatStanding(db *datastore.Datastore, s *subscription.Subscription, parents map[string]*subscription.Subscription) *subscription.Subscription {
+	if !isBundleRow(s) || s.Status == subscription.Canceled {
+		return s
+	}
+	parent := parentOf(db, bundleParentOf(s), parents)
+	if parent == nil {
+		return s
+	}
+	seat := *s
+	seat.Status, seat.PeriodStart, seat.PeriodEnd = parent.Status, parent.PeriodStart, parent.PeriodEnd
+	return &seat
 }
 
 // activeTier is the tier an ACTIVE subscription confers.

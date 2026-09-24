@@ -99,7 +99,7 @@ func TestRed2_CatchUpChargeThenExpired(t *testing.T) {
 		t.Fatalf("shift: %v", err)
 	}
 
-	only(t, cycleAt(t, ctx, org, now, false), realignPending) // the first run ever
+	only(t, refusedAt(t, ctx, org, now), realignPending) // the first run ever
 	if r := Realign(ctx, []*organization.Organization{org}, false); r.Realigned != 1 {
 		t.Fatalf("realigned %d rows, want the one", r.Realigned)
 	}
@@ -151,7 +151,7 @@ func TestRed2_HungProcessorStallsTheCycle(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		cycleOrg(context.WithoutCancel(ctx), org, db, d, false, nil, chargeProviderForOrg(org), "", newCycleReport(d, false))
+		cycleOrg(context.WithoutCancel(ctx), org, db, d, false, nil, railOf(org), "", newCycleReport(d, false))
 	}()
 	select {
 	case <-done:
@@ -179,6 +179,15 @@ func (d *darkSquare) Charge(ctx context.Context, req processor.PaymentRequest) (
 		return &processor.PaymentResult{Success: false, Error: err, ErrorMessage: err.Error()}, err
 	}
 	return &processor.PaymentResult{Success: true, ProcessorRef: "sqpay_" + req.IdempotencyKey, TransactionID: "sqpay_" + req.IdempotencyKey, Status: "COMPLETED"}, nil
+}
+
+// CancelByKey is Square's cancel by idempotency key: a payment it took under the
+// key has completed and cannot be canceled; with none, nothing is done.
+func (d *darkSquare) CancelByKey(ctx context.Context, key string) error {
+	if _, ok := d.landed[key]; ok {
+		return errors.New("the payment under this key has completed and cannot be canceled")
+	}
+	return nil
 }
 
 // TestRed2_EscalatedThenPaidStaysUnpaid: a renewal charge lands and Square

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/hanzoai/commerce/api/billing"
+	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/subscription"
@@ -183,9 +184,12 @@ func foldSubs(a *acc, orgName string, subs []*subscription.Subscription, test bo
 
 		// Whether this subscription is revenue is subscription.Status's
 		// question, not this fold's — see Status.CountsTowardMRR. It is true
-		// for active only, so a trial adds headcount here and no money.
+		// for active only, so a trial adds headcount here and no money. An
+		// active row that lapsed (engine.Lapsed: its paid period and the grace
+		// after it are over, nothing renewed it) is not revenue either.
+		revenue := s.Status.CountsTowardMRR() && !engine.Lapsed(s, a.now)
 		switch {
-		case s.Status.CountsTowardMRR():
+		case revenue:
 			a.activeSubs++
 			a.mrrCents += mrr
 			a.catMRR[cat] += mrr
@@ -224,10 +228,10 @@ func foldSubs(a *acc, orgName string, subs []*subscription.Subscription, test bo
 		// here while the run-rate above books none of it was the same trialing
 		// disagreement, inside a single function: net-new claimed revenue that
 		// MRR itself never showed.
-		if inWindow(s.CreatedAt, a.start, a.now) && (s.Status.CountsTowardMRR() || s.Status == subscription.Trialing) {
+		if inWindow(s.CreatedAt, a.start, a.now) && (revenue || s.Status == subscription.Trialing) {
 			a.newSubs++
 			delta := int64(0)
-			if s.Status.CountsTowardMRR() {
+			if revenue {
 				delta = mrr
 			}
 			a.newMRR += delta

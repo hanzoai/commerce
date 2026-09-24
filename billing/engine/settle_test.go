@@ -1143,6 +1143,8 @@ func TestLapsed_EndsEntitlementAfterTheGrace(t *testing.T) {
 		{subscription.Active, end.Add(RenewalGrace + time.Second), true},
 		{subscription.PastDue, end.Add(RenewalGrace + last), false},
 		{subscription.PastDue, end.Add(RenewalGrace + last + time.Second), true},
+		{subscription.Unpaid, end.Add(RenewalGrace + last), false},
+		{subscription.Unpaid, end.Add(RenewalGrace + last + time.Second), true},
 		{subscription.Canceled, end.AddDate(1, 0, 0), false},
 	} {
 		sub := &subscription.Subscription{Status: tc.status, PeriodEnd: end}

@@ -134,6 +134,17 @@ func (m *MockSquareProcessor) Refund(ctx context.Context, req processor.RefundRe
 	return nil, errors.New("not implemented")
 }
 
+// CancelByKey answers as Square does: an error for a key it charged, nil for a
+// key it never saw.
+func (m *MockSquareProcessor) CancelByKey(ctx context.Context, key string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if res, ok := m.chargedKeys[key]; ok && res != nil && res.Success {
+		return errors.New("the payment under this key has completed and cannot be canceled")
+	}
+	return nil
+}
+
 func (m *MockSquareProcessor) GetTransaction(ctx context.Context, txID string) (*processor.Transaction, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

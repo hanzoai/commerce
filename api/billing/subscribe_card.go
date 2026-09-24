@@ -552,7 +552,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 				chargeCents, false)
 			return nil, err
 		}
-		retireLapsed(ctx, org, db, sub)
+		retireLapsed(ctx, org, db, sub, in.Events)
 
 		invoiceID := ""
 		if inv != nil {
@@ -663,7 +663,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			chargeCents, false)
 		return nil, err
 	}
-	retireLapsed(ctx, org, db, sub)
+	retireLapsed(ctx, org, db, sub, in.Events)
 
 	// Mark the FIRST period PAID by the card charge — a paid BillingInvoice
 	// referencing the processor ref — and keep the row on that period. This also makes
@@ -936,6 +936,51 @@ func chargeProviderForOrg(org *organization.Organization) engine.ProviderCharger
 			return unknown(ref, cerr)
 		}
 		return ref, cerr
+	}
+}
+
+// lookProviderForOrg returns an engine.Looker bound to org: what became of an
+// invoice's recorded card attempt whose answer was lost, found without charging.
+// A payment id the processor gave (PendingRef) is read back; without one, the
+// processor is asked to cancel whatever it made under the attempt's key
+// (processor.KeyCanceler), and a cancel it accepts means no money moved. Any
+// other answer is not known. org MUST already be KMS-hydrated (cardFor).
+func lookProviderForOrg(org *organization.Organization) engine.Looker {
+	return func(ctx context.Context, db *datastore.Datastore, inv *billinginvoice.BillingInvoice) (engine.Looked, error) {
+		ctx, cancel := context.WithTimeout(ctx, chargeTimeout)
+		defer cancel()
+		cur := inv.Currency
+		if cur == "" {
+			cur = currency.USD
+		}
+		proc, err := processorsForOrg(org).SelectProcessor(ctx, processor.PaymentRequest{
+			Amount: currency.Cents(inv.PendingAmount), Currency: cur, IdempotencyKey: inv.PendingKey,
+		})
+		if err != nil {
+			return engine.Looked{}, fmt.Errorf("no payment processor to look the attempt up: %w", err)
+		}
+		if ref := inv.PendingRef; ref != "" {
+			tx, err := proc.GetTransaction(ctx, ref)
+			if err != nil || tx == nil {
+				return engine.Looked{}, err
+			}
+			switch status := strings.ToUpper(strings.TrimSpace(tx.Status)); {
+			case processor.Settled(status):
+				return engine.Looked{Known: true, Landed: true, Ref: ref}, nil
+			case status == "FAILED" || status == "CANCELED":
+				return engine.Looked{Known: true}, nil
+			}
+			return engine.Looked{}, nil
+		}
+		kc, ok := proc.(processor.KeyCanceler)
+		if !ok || inv.PendingKey == "" {
+			return engine.Looked{}, nil
+		}
+		if err := kc.CancelByKey(ctx, inv.PendingKey); err != nil {
+			log.Error("billing: the payment attempt %s on invoice %s could not be canceled by its key: %v", inv.PendingKey, inv.Id(), err)
+			return engine.Looked{}, nil
+		}
+		return engine.Looked{Known: true}, nil
 	}
 }
 

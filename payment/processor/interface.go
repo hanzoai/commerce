@@ -43,6 +43,15 @@ type PaymentProcessor interface {
 	IsAvailable(ctx context.Context) bool
 }
 
+// KeyCanceler is a processor that can cancel a payment by the idempotency key
+// it was requested under, for a request whose answer was lost. It answers nil
+// when no payment moved money under the key — none was made, or the one made
+// was voided — and an error otherwise, including when a payment under the key
+// has completed.
+type KeyCanceler interface {
+	CancelByKey(ctx context.Context, key string) error
+}
+
 // CryptoProcessor extends PaymentProcessor with crypto-specific methods
 type CryptoProcessor interface {
 	PaymentProcessor

@@ -17,6 +17,7 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/billinginvoice"
+	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/thirdparty/kms"
@@ -30,8 +31,8 @@ const (
 	// renewedOutside: a processor outside Hanzo renews it; nothing here charges it.
 	renewedOutside engine.Action = "external"
 	// realignPending: it sits a period ahead of its paid invoice
-	// (engine.RealignPending). The realignment moves it back; until it runs, no
-	// live cycle runs (ErrRealignPending).
+	// (awaitingRealign). The realignment moves it back; until it runs, no live
+	// cycle runs in its org (ErrRealignPending).
 	realignPending engine.Action = "realign_pending"
 )
 
@@ -122,20 +123,17 @@ func (r *CycleReport) add(res CycleResult) {
 // written or emitted; a card charge is reported as if the card accepted it, and a
 // prepaid payment as the money stands.
 //
-// A live run is refused (ErrRealignPending), before anything is charged, while
-// a subscription still sits a period ahead of its paid invoice; a dry run
-// reports each such subscription as realign_pending. A failure in one org is
-// that org's entry in Errors; the run continues. Only failing to list the
+// A live run skips an org, before anything in it is charged, while one of its
+// subscriptions still sits a period ahead of its paid invoice (awaitingRealign):
+// each such subscription is reported as realign_pending and the org's refusal
+// (ErrRealignPending) is its entry in Errors. A dry run reports each such
+// subscription the same way and settles the rest. A failure in one org is that
+// org's entry in Errors; the run continues. Only failing to list the
 // organizations ends it.
 func RunSubscriptionCycle(ctx context.Context, kmsClient *kms.CachedClient, ev *events.Client, now time.Time, dryRun bool) (*CycleReport, error) {
 	orgs := make([]*organization.Organization, 0)
 	if _, err := organization.Query(datastore.New(ctx)).GetAll(&orgs); err != nil {
 		return nil, err
-	}
-	if !dryRun {
-		if err := refuseUnrealigned(ctx, orgs, ""); err != nil {
-			return nil, err
-		}
 	}
 	report := newCycleReport(now, dryRun)
 	report.Orgs = len(orgs)
@@ -146,40 +144,53 @@ func RunSubscriptionCycle(ctx context.Context, kmsClient *kms.CachedClient, ev *
 	return report, nil
 }
 
-// ErrRealignPending is a live cycle refused because subscriptions still sit a
-// period ahead of their paid invoice (engine.RealignPending): renewed by the
-// dates they hold, each would be served that period without paying for it. The
-// realignment (POST /v1/billing/realign/run-all?dryRun=false) runs first.
+// ErrRealignPending is an org's live cycle refused because its subscriptions
+// still sit a period ahead of their paid invoice (awaitingRealign): renewed by
+// the dates they hold, each would be served that period without paying for it.
+// The org's realignment (POST /v1/billing/realign/run?dryRun=false) runs first.
 var ErrRealignPending = errors.New("subscriptions sit a period ahead of their paid invoice; run the realignment before a live cycle")
 
 // refuseUnrealigned answers ErrRealignPending, naming how many, when a live
-// subscription in orgs — one subscriber's, when user is set — is pending
+// subscription in orgs — one subscriber's, when user is set — awaits
 // realignment.
 func refuseUnrealigned(ctx context.Context, orgs []*organization.Organization, user string) error {
 	n := 0
 	for _, org := range orgs {
 		db := datastore.New(org.Namespaced(ctx))
-		subs, err := orgSubscriptions(db, user)
+		ahead, _, err := unrealigned(org, db, user)
 		if err != nil {
-			return fmt.Errorf("list subscriptions of %q: %w", org.Name, err)
+			return fmt.Errorf("%q: %w", org.Name, err)
 		}
-		for _, s := range subs {
-			if isBundleRow(s) || !engine.Live(s) {
-				continue
-			}
-			ahead, err := engine.RealignPending(db, s)
-			if err != nil {
-				return fmt.Errorf("subscription %s of %q: %w", s.Id(), org.Name, err)
-			}
-			if ahead {
-				n++
-			}
-		}
+		n += len(ahead)
 	}
 	if n > 0 {
 		return fmt.Errorf("%w (%d)", ErrRealignPending, n)
 	}
 	return nil
+}
+
+// unrealigned lists the subscriptions in org — one subscriber's, when user is
+// set — that await realignment, and answers the org's realignment cutover.
+func unrealigned(org *organization.Organization, db *datastore.Datastore, user string) ([]*subscription.Subscription, time.Time, error) {
+	cutover, err := realignCutover(db)
+	if err != nil {
+		return nil, time.Time{}, fmt.Errorf("read the realignment's cutover: %w", err)
+	}
+	subs, err := orgSubscriptions(db, user)
+	if err != nil {
+		return nil, cutover, fmt.Errorf("list subscriptions: %w", err)
+	}
+	ahead := make([]*subscription.Subscription, 0)
+	for _, s := range subs {
+		pending, err := awaitingRealign(org, db, s, cutover)
+		if err != nil {
+			return nil, cutover, fmt.Errorf("subscription %s: %w", s.Id(), err)
+		}
+		if pending {
+			ahead = append(ahead, s)
+		}
+	}
+	return ahead, cutover, nil
 }
 
 // cycleFault is the HTTP answer to a cycle that could not start.
@@ -212,13 +223,40 @@ var orgCycleBudget = 10 * time.Minute
 
 // cycleOrg runs the cycle for one org into report. user, when set, narrows the
 // run to that subscriber.
-func cycleOrg(ctx context.Context, org *organization.Organization, db *datastore.Datastore, now time.Time, dryRun bool, ev *events.Client, charge engine.ProviderCharger, user string, report *CycleReport) {
+func cycleOrg(ctx context.Context, org *organization.Organization, db *datastore.Datastore, now time.Time, dryRun bool, ev *events.Client, charge rail, user string, report *CycleReport) {
 	defer lockOrgCycle(org.Name)()
 
 	fail := func(what string, err error) {
 		log.Error("billing cycle: %s for %q: %v", what, org.Name, err)
 		report.Errors = append(report.Errors, fmt.Sprintf("%s: %s: %v", org.Name, what, err))
 	}
+	// Realignment comes first. A live run in an org with subscriptions awaiting it
+	// settles nothing there; one in an org with none records that the org's
+	// realignment is done, so no invoice issued from here on makes a candidate.
+	ahead, cutover, err := unrealigned(org, db, user)
+	if err != nil {
+		fail("check realignment", err)
+		return
+	}
+	pending := make(map[string]bool, len(ahead))
+	for _, s := range ahead {
+		pending[s.Id()] = true
+		res := resultOf(org, s)
+		res.Action, res.Reason = realignPending, "a period ahead of its paid invoice; the realignment moves it back before a live run"
+		report.add(res)
+	}
+	switch {
+	case dryRun:
+	case len(ahead) > 0:
+		fail("live cycle refused", fmt.Errorf("%w (%d)", ErrRealignPending, len(ahead)))
+		return
+	case user == "" && cutover.IsZero():
+		if err := markRealigned(db, time.Now()); err != nil {
+			fail("record the realignment's cutover", err)
+			return
+		}
+	}
+
 	run := engine.Run{Now: now, DryRun: dryRun, Prepaid: prepaidFor(ctx, org)}
 	subs, err := orgSubscriptions(db, user)
 	if err != nil {
@@ -233,7 +271,7 @@ func cycleOrg(ctx context.Context, org *organization.Organization, db *datastore
 	settled := make(map[string]*subscription.Subscription)
 	started := time.Now()
 	for i, s := range subs {
-		if isBundleRow(s) || !engine.Live(s) {
+		if isBundleRow(s) || !engine.Live(s) || pending[s.Id()] {
 			continue
 		}
 		if spent := time.Since(started); spent > orgCycleBudget {
@@ -244,15 +282,6 @@ func cycleOrg(ctx context.Context, org *organization.Organization, db *datastore
 		if err := sub.GetById(s.Id()); err != nil {
 			res := resultOf(org, s)
 			res.Error = err.Error()
-			report.add(res)
-			continue
-		}
-		if ahead, err := engine.RealignPending(db, sub); err != nil || ahead {
-			res := resultOf(org, sub)
-			res.Action, res.Reason = realignPending, "a period ahead of its paid invoice; the realignment moves it back before a live run"
-			if err != nil {
-				res.Action, res.Error = "", err.Error()
-			}
 			report.add(res)
 			continue
 		}
@@ -317,11 +346,13 @@ func followParent(db *datastore.Datastore, s, parent *subscription.Subscription,
 	return row.Update()
 }
 
-// resolveCanceled repeats the payment attempts of unknown outcome that canceled
-// subscriptions' invoices still carry (engine.ResolveCanceled), each through the
-// source its subscription was bought from, and answers a report line for each.
-// A subscription this run already settled is left for the next run.
-func resolveCanceled(ctx context.Context, org *organization.Organization, db *datastore.Datastore, subs []*subscription.Subscription, settled map[string]*subscription.Subscription, run engine.Run, charge engine.ProviderCharger) []CycleResult {
+// resolveCanceled settles what canceled subscriptions' invoices still hold
+// (engine.ResolveCanceled): a payment attempt of unknown outcome, looked up or
+// given back through the source its subscription was bought from, and money a
+// replaced subscription's invoice collected toward a period it is never served.
+// It answers a report line for each. A subscription this run already settled is
+// left for the next run.
+func resolveCanceled(ctx context.Context, org *organization.Organization, db *datastore.Datastore, subs []*subscription.Subscription, settled map[string]*subscription.Subscription, run engine.Run, charge rail) []CycleResult {
 	open := make([]*billinginvoice.BillingInvoice, 0)
 	if _, err := billinginvoice.Query(db).Filter("Status=", billinginvoice.Open).GetAll(&open); err != nil {
 		return []CycleResult{{Org: org.Name, Error: "list open invoices: " + err.Error()}}
@@ -334,7 +365,8 @@ func resolveCanceled(ctx context.Context, org *organization.Organization, db *da
 	}
 	out := make([]CycleResult, 0)
 	for _, s := range subs {
-		if _, now := settled[s.Id()]; now || s.Status != subscription.Canceled || !pending[s.Id()] {
+		replaced, _ := s.Metadata["endReason"].(string)
+		if _, now := settled[s.Id()]; now || s.Status != subscription.Canceled || (!pending[s.Id()] && replaced != string(engine.Replaced)) {
 			continue
 		}
 		res := resultOf(org, s)
@@ -393,7 +425,7 @@ func seatCount(sub *subscription.Subscription) int64 {
 // settleOne takes the cycle's step for one subscription, bound to db: the
 // engine's decision (engine.Settle), after the rules only this package knows —
 // the org's mode, who bills the subscription, and how it was bought (renewalOf).
-func settleOne(ctx context.Context, org *organization.Organization, db *datastore.Datastore, sub *subscription.Subscription, run engine.Run, ev *events.Client, charge engine.ProviderCharger) CycleResult {
+func settleOne(ctx context.Context, org *organization.Organization, db *datastore.Datastore, sub *subscription.Subscription, run engine.Run, ev *events.Client, charge rail) CycleResult {
 	dryRun := run.DryRun
 	res := resultOf(org, sub)
 	if !engine.Live(sub) {
@@ -444,8 +476,29 @@ func settleOne(ctx context.Context, org *organization.Organization, db *datastor
 	}
 	if !dryRun {
 		emitStep(ctx, ev, org.Name, sub, step)
+		if engine.Live(sub) && engine.Lapsed(sub, run.Now) {
+			emitLapsed(ctx, ev, db, org.Name, sub)
+		}
 	}
 	return res
+}
+
+// emitLapsed fires subscription_lapsed for sub once per paid period it lapsed
+// past: the first run to see it lapsed takes the guard, keyed by the period
+// end, and every later run finds it taken. A nil collector is a no-op and takes
+// no guard.
+func emitLapsed(ctx context.Context, ev *events.Client, db *datastore.Datastore, orgName string, sub *subscription.Subscription) {
+	if ev == nil {
+		return
+	}
+	rec, replay, err := idempotencykey.Begin(db, "billing-lapsed:"+sub.Id(), "end:"+strconv.FormatInt(sub.PeriodEnd.Unix(), 10))
+	if err != nil || replay {
+		return
+	}
+	_ = idempotencykey.Complete(rec, "emitted")
+	e := subscriptionEvent(orgName, sub)
+	e.Status = "lapsed"
+	go ev.EmitSubscriptionLapsed(context.WithoutCancel(ctx), e)
 }
 
 // endWithParent ends a seat or bundle row whose paying subscription has ended.
@@ -522,18 +575,31 @@ func orgSubscriptions(db *datastore.Datastore, user string) ([]*subscription.Sub
 	return subs, nil
 }
 
-// cardFor is org's renewal charger. It reads the org's payment credentials from
-// KMS the first time a renewal charges a card, so a run that charges no one in
-// an org never reads its secrets. When that read fails, no card is charged at
-// all: the processor would fall back to the deployment's own credentials, which
-// are not the org's. Every charge then answers engine.ErrChargeUnknown, so it is
-// repeated on a later run rather than counted against the customer, and the
+// rail is an org's saved-card processor as renewals reach it: charge a card,
+// and look up what became of a charge whose answer was lost.
+type rail struct {
+	charge engine.ProviderCharger
+	look   engine.Looker
+}
+
+// railOf is org's rail with its payment credentials read as they stand.
+func railOf(org *organization.Organization) rail {
+	return rail{charge: chargeProviderForOrg(org), look: lookProviderForOrg(org)}
+}
+
+// cardFor is org's renewal rail. It reads the org's payment credentials from
+// KMS the first time a renewal charges a card or looks a charge up, so a run
+// that touches no card in an org never reads its secrets. When that read fails,
+// no card is charged or looked up at all: the processor would fall back to the
+// deployment's own credentials, which are not the org's. Every charge then
+// answers engine.ErrChargeUnknown, so it is repeated on a later run rather than
+// counted against the customer, every look-up answers not known, and the
 // failure is logged for an operator.
-func cardFor(kmsClient *kms.CachedClient, org *organization.Organization) engine.ProviderCharger {
-	charge := chargeProviderForOrg(org)
+func cardFor(kmsClient *kms.CachedClient, org *organization.Organization) rail {
+	r := railOf(org)
 	var once sync.Once
 	var hydrateErr error
-	return func(ctx context.Context, db *datastore.Datastore, inv *billinginvoice.BillingInvoice, amountCents int64) (string, error) {
+	hydrate := func() error {
 		once.Do(func() {
 			if kmsClient == nil {
 				return
@@ -542,10 +608,21 @@ func cardFor(kmsClient *kms.CachedClient, org *organization.Organization) engine
 				log.Error("billing: ALERT the payment credentials of org %q could not be read from KMS; no card in it is charged until they can: %v", org.Name, hydrateErr)
 			}
 		})
-		if hydrateErr != nil {
-			return "", fmt.Errorf("%w: the org's payment credentials could not be read from KMS: %v", engine.ErrChargeUnknown, hydrateErr)
-		}
-		return charge(ctx, db, inv, amountCents)
+		return hydrateErr
+	}
+	return rail{
+		charge: func(ctx context.Context, db *datastore.Datastore, inv *billinginvoice.BillingInvoice, amountCents int64) (string, error) {
+			if err := hydrate(); err != nil {
+				return "", fmt.Errorf("%w: the org's payment credentials could not be read from KMS: %v", engine.ErrChargeUnknown, err)
+			}
+			return r.charge(ctx, db, inv, amountCents)
+		},
+		look: func(ctx context.Context, db *datastore.Datastore, inv *billinginvoice.BillingInvoice) (engine.Looked, error) {
+			if err := hydrate(); err != nil {
+				return engine.Looked{}, fmt.Errorf("the org's payment credentials could not be read from KMS: %w", err)
+			}
+			return r.look(ctx, db, inv)
+		},
 	}
 }
 

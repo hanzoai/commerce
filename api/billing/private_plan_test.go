@@ -200,7 +200,7 @@ func renewedFree(t *testing.T, ctx context.Context, org *organization.Organizati
 		t.Fatalf("set period: %v", err)
 	}
 	report := newCycleReport(time.Now(), false)
-	cycleOrg(ctx, org, db, report.Now, false, nil, chargeProviderForOrg(org), subject, report)
+	cycleOrg(ctx, org, db, report.Now, false, nil, railOf(org), subject, report)
 	if actionsOf(report)[id] != engine.Renewed {
 		t.Fatalf("renew: %+v %v", report.Results, report.Errors)
 	}
