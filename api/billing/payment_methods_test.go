@@ -57,7 +57,7 @@ func TestVerifyCardWithPreAuth_Success(t *testing.T) {
 }
 
 func TestVerifyCardWithPreAuth_CardDeclined(t *testing.T) {
-	mock := newMockSquare(errors.New("CARD_DECLINED"), "", nil)
+	mock := newMockSquare(cardDeclined, "", nil)
 	cleanup := registerMockSquare(t, mock)
 	defer cleanup()
 
@@ -150,7 +150,7 @@ func TestAttachSquareCardOnFile_ReusesExistingCustomer(t *testing.T) {
 func TestAttachSquareCardOnFile_DeclinedCard(t *testing.T) {
 	m := newMockSquare(nil, "", nil)
 	m.createdCustomerID = "cust_decline"
-	m.addCardErr = errors.New("CARD_DECLINED")
+	m.addCardErr = cardDeclined
 
 	if _, err := attachSquareCardOnFile(context.Background(), m, "", "", "acme", "cnon:bad"); err == nil {
 		t.Fatal("expected an error when the card is declined, got nil")

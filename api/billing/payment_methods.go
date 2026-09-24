@@ -59,10 +59,12 @@ func verifyCardWithPreAuth(ctx context.Context, reg *processor.Registry, nonce, 
 		Token:       nonce,
 		Description: "Card verification hold (will be voided immediately)",
 	})
-	if err != nil || !result.Success {
-		// Return a clean, user-friendly error instead of raw API responses.
-		reason := parseCardDeclineReason(result, err)
-		return fmt.Errorf("%s", reason)
+	if err != nil || result == nil || !result.Success {
+		if d := refusalOf(result, err); d != nil {
+			log.Warn("card verification declined (subject=%s): %s %s", customerID, d.Category, d.Code)
+			return declineError{d.Sentence(), d}
+		}
+		return processorFailure("card verification", customerID, err)
 	}
 
 	// Immediately void the authorization — we only needed to verify the card.
@@ -75,47 +77,14 @@ func verifyCardWithPreAuth(ctx context.Context, reg *processor.Registry, nonce, 
 	return nil
 }
 
-// parseCardDeclineReason returns a single clean sentence explaining why the card was declined.
-//
-// A refusal the processor classified ([processor.Decline]) answers with its own
-// sentence, which is one of a closed set. Only a processor that states no code falls
-// back to reading its message, and that reading lands on the same closed set. The
-// message is never searched when a code exists: Square's refusal carries the
-// payment's card_details beside it, whose cvv_status field made every Square
-// decline read as a security-code mismatch.
+// parseCardDeclineReason is the sentence a buyer reads for a card money move that did
+// not settle: the refusal's own sentence ([refusalOf]), or [processorSentence] when the
+// processor failed to answer rather than refused. No message is read.
 func parseCardDeclineReason(result *processor.PaymentResult, err error) string {
-	if d, ok := declineOf(result, err); ok {
+	if d := refusalOf(result, err); d != nil {
 		return d.Sentence()
 	}
-	if result == nil && err != nil {
-		if strings.Contains(err.Error(), "timeout") {
-			return "Card verification timed out. Please try again."
-		}
-		return "Unable to verify card. Please try again or use a different card."
-	}
-
-	msg := ""
-	if result != nil {
-		msg = result.ErrorMessage
-	}
-	lower := strings.ToLower(msg)
-
-	code := ""
-	switch {
-	case strings.Contains(lower, "insufficient_funds"):
-		code = processor.ReasonInsufficientFunds
-	case strings.Contains(lower, "address_verification_failure") || strings.Contains(lower, "avs_rejected"):
-		code = processor.ReasonAddress
-	case strings.Contains(lower, "cvv") || strings.Contains(lower, "cvc"):
-		code = processor.ReasonCVV
-	case strings.Contains(lower, "expired"):
-		code = processor.ReasonExpired
-	case msg != "":
-		code = processor.ReasonDeclined
-	default:
-		return "Unable to verify card. Please try again or use a different card."
-	}
-	return (&processor.Decline{Code: code}).Sentence()
+	return processorSentence
 }
 
 // declineOf finds the processor's classified refusal of a charge, in its error or
@@ -169,9 +138,21 @@ func IsMethodRefused(err error) bool {
 // declineError marks a card the processor refused. Its msg is already the
 // customer-facing sentence parseCardDeclineReason produced, which is why the endpoint
 // sends it verbatim rather than writing a second one.
-type declineError struct{ msg string }
+type declineError struct {
+	msg     string
+	decline *processor.Decline
+}
 
 func (e declineError) Error() string { return e.msg }
+
+// Unwrap is the processor's refusal beneath the sentence, for a caller that answers
+// with its code.
+func (e declineError) Unwrap() error {
+	if e.decline == nil {
+		return nil
+	}
+	return e.decline
+}
 
 // IsCardDeclined reports whether err is the bank's answer rather than ours —
 // neither of the other two is true of it: the request was well formed and nothing
@@ -250,9 +231,18 @@ func CreateMethod(ctx context.Context, org *organization.Organization, email str
 	if in.ProviderRef != "" {
 		reg := payment.ProcessorsForOrg(org)
 		if cp, ok := squareCustomerProcessorFrom(reg); ok {
+			if err := ceiling(db, in.CustomerId); err != nil {
+				return nil, false, err
+			}
 			pm, created, err := saveCard(ctx, db, cp, in.CustomerId, strings.TrimSpace(email), in.ProviderRef)
 			if err != nil {
-				return nil, false, declineError{parseCardDeclineReason(&processor.PaymentResult{ErrorMessage: err.Error()}, err)}
+				// Vaulting validates the card, so a refusal here is the card's and is
+				// counted against the wallet like a refused charge.
+				if d := refusalOf(nil, err); d != nil {
+					refused(db, "card save", in.CustomerId, "", d)
+					return nil, false, declineError{d.Sentence(), d}
+				}
+				return nil, false, processorFailure("card save", in.CustomerId, err)
 			}
 			// Caller-supplied extras land on whichever row answered.
 			if in.BillingAddress != nil {
@@ -271,8 +261,9 @@ func CreateMethod(ctx context.Context, org *organization.Organization, email str
 			return &m, created, nil
 		} else if err := verifyCardWithPreAuth(ctx, reg, in.ProviderRef, in.CustomerId); err != nil {
 			// Square not available as a customer processor — fall back to the
-			// legacy verify-only flow (the saved card is NOT reusable).
-			return nil, false, declineError{err.Error()}
+			// legacy verify-only flow (the saved card is NOT reusable). The error is
+			// already a declineError or a processor failure.
+			return nil, false, err
 		}
 	}
 
@@ -376,6 +367,10 @@ func CreatePaymentMethod(c *zip.Ctx) error {
 			return http.Fail(c, 400, err.Error(), nil)
 		case IsCardDeclined(err):
 			return http.Fail(c, 402, err.Error(), nil)
+		case IsDeclineCeiling(err):
+			return http.Fail(c, 429, "Too many declined card attempts. Try again later.", nil)
+		case IsProcessorFailed(err):
+			return http.Fail(c, 502, processorSentence, nil)
 		}
 		log.Error("Failed to create payment method: %v", err, c)
 		return http.Fail(c, 500, "failed to create payment method", err)

@@ -59,9 +59,15 @@ const (
 
 // reasons maps a processor code onto the reason a buyer is told. A code not
 // listed is [ReasonDeclined].
+//
+// Square names the same checks two ways: CVV_FAILURE and ADDRESS_VERIFICATION_FAILURE
+// when a payment is taken, VERIFY_CVV_FAILURE and VERIFY_AVS_FAILURE when a card is
+// vaulted. Both read the same to a buyer.
 var reasons = map[string]string{
 	"CVV_FAILURE":                  ReasonCVV,
+	"VERIFY_CVV_FAILURE":           ReasonCVV,
 	"ADDRESS_VERIFICATION_FAILURE": ReasonAddress,
+	"VERIFY_AVS_FAILURE":           ReasonAddress,
 	"EXPIRATION_FAILURE":           ReasonExpired,
 	"CARD_EXPIRED":                 ReasonExpired,
 	"INSUFFICIENT_FUNDS":           ReasonInsufficientFunds,
