@@ -175,3 +175,26 @@ func TestBegin_StaleStartedRecovers(t *testing.T) {
 		t.Fatalf("post-recovery replay: replay=%v status=%q resp=%q", replay3, got.Status, got.Response)
 	}
 }
+
+// TestBegin_AReleasedGuardIsTakenAgainAndHolds: a guard released by its holder
+// (Delete) is taken afresh by the next Begin, and that new hold is seen by the
+// Begin after it — a guard with a deterministic id is released and taken many
+// times over its life, and each hold must count.
+func TestBegin_AReleasedGuardIsTakenAgainAndHolds(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := nsDB(c, "acme")
+
+	for round := range 3 {
+		rec, replay, err := Begin(db, "invoice-lock", "inv_1")
+		if err != nil || replay {
+			t.Fatalf("round %d: take: replay=%v err=%v, want a fresh hold", round, replay, err)
+		}
+		if _, replay, err := Begin(db, "invoice-lock", "inv_1"); err != nil || !replay {
+			t.Fatalf("round %d: a second Begin while held: replay=%v err=%v, want the hold honored", round, replay, err)
+		}
+		if err := rec.Delete(); err != nil {
+			t.Fatalf("round %d: release: %v", round, err)
+		}
+	}
+}

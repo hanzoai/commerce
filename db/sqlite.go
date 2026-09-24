@@ -334,7 +334,7 @@ func (db *SQLiteDB) Get(ctx context.Context, key Key, dst any) error {
 	return nil
 }
 
-// Put stores an entity. A Put on the key of a deleted entity stores it again.
+// Put stores an entity
 func (db *SQLiteDB) Put(ctx context.Context, key Key, src any) (Key, error) {
 	if key == nil {
 		return nil, ErrInvalidKey
@@ -361,7 +361,7 @@ func (db *SQLiteDB) Put(ctx context.Context, key Key, src any) (Key, error) {
 		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 		ON CONFLICT(id, kind, namespace) DO UPDATE SET
 			parent_id = excluded.parent_id,
-			data = excluded.data, deleted = 0, updated_at = CURRENT_TIMESTAMP
+			data = excluded.data, updated_at = CURRENT_TIMESTAMP
 	`, key.Encode(), key.Kind(), ns, parentID, data)
 
 	if err != nil {
@@ -507,7 +507,7 @@ func (db *SQLiteDB) PutMulti(ctx context.Context, keys []Key, src any) ([]Key, e
 		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 		ON CONFLICT(id, kind, namespace) DO UPDATE SET
 			parent_id = excluded.parent_id,
-			data = excluded.data, deleted = 0, updated_at = CURRENT_TIMESTAMP
+			data = excluded.data, updated_at = CURRENT_TIMESTAMP
 	`)
 	if err != nil {
 		return nil, err
@@ -877,7 +877,7 @@ func (t *sqliteTransaction) Put(key Key, src any) (Key, error) {
 		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 		ON CONFLICT(id, kind, namespace) DO UPDATE SET
 			parent_id = excluded.parent_id,
-			data = excluded.data, deleted = 0, updated_at = CURRENT_TIMESTAMP
+			data = excluded.data, updated_at = CURRENT_TIMESTAMP
 	`, key.Encode(), key.Kind(), ns, parentID, data)
 
 	return key, err

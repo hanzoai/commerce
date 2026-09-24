@@ -165,7 +165,6 @@ func (db *PostgresDB) prepareStatements() error {
 		ON CONFLICT (id, kind, tenant_id) DO UPDATE SET
 			parent_id = EXCLUDED.parent_id,
 			data = EXCLUDED.data,
-			deleted = FALSE,
 			updated_at = NOW()
 	`)
 	if err != nil {
@@ -401,7 +400,7 @@ func (db *PostgresDB) Get(ctx context.Context, key Key, dst interface{}) error {
 	return json.Unmarshal(data, dst)
 }
 
-// Put stores an entity. A Put on the key of a deleted entity stores it again.
+// Put stores an entity
 func (db *PostgresDB) Put(ctx context.Context, key Key, src interface{}) (Key, error) {
 	if key == nil {
 		return nil, ErrInvalidKey
@@ -526,7 +525,6 @@ func (db *PostgresDB) PutMulti(ctx context.Context, keys []Key, src interface{})
 		ON CONFLICT (id, kind, tenant_id) DO UPDATE SET
 			parent_id = EXCLUDED.parent_id,
 			data = EXCLUDED.data,
-			deleted = FALSE,
 			updated_at = NOW()
 	`)
 	if err != nil {
@@ -831,7 +829,6 @@ func (t *postgresTransaction) Put(key Key, src interface{}) (Key, error) {
 		ON CONFLICT (id, kind, tenant_id) DO UPDATE SET
 			parent_id = EXCLUDED.parent_id,
 			data = EXCLUDED.data,
-			deleted = FALSE,
 			updated_at = NOW()
 	`, key.Encode(), key.Kind(), t.tenant, parentID, data)
 
