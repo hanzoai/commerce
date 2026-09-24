@@ -33,6 +33,27 @@ func (d *Decline) Error() string { return "card declined (" + d.Code + ")" }
 // second.
 var ErrUnknownOutcome = errors.New("the charge's outcome is not known yet")
 
+// Rejected reports whether err is the processor refusing the request itself rather
+// than the card: a client error that is not about the merchant's own credentials
+// (401, 403), a rate limit (429) or an idempotency key sent again with a different
+// request. A spent or malformed token, or a saved card that no longer exists, is
+// answered this way, and the processor takes no payment for it, so its outcome is
+// known. A reused key is not, because a payment may exist under it.
+func Rejected(err error) bool {
+	var pe *PaymentError
+	if !errors.As(err, &pe) || pe.Status < 400 || pe.Status >= 500 {
+		return false
+	}
+	switch pe.Status {
+	case 401, 403, 429:
+		return false
+	}
+	return pe.Code != KeyReused
+}
+
+// KeyReused is Square's code for an idempotency key sent again with a different request.
+const KeyReused = "IDEMPOTENCY_KEY_REUSED"
+
 // StatusCategory is the category of a Decline built from a payment the processor
 // answered and did not settle, named by the payment's status.
 const StatusCategory = "PAYMENT_STATUS"

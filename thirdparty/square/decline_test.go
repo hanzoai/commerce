@@ -121,6 +121,36 @@ func TestCharge_AFailureThatIsNotARefusalIsScrubbed(t *testing.T) {
 	}
 }
 
+// TestCharge_ARejectedRequestIsAKnownOutcome — a client error Square answers outside a
+// card refusal is a request it rejected, and it took no payment for it: a spent token,
+// a saved card that no longer exists. The merchant's own credentials and a reused
+// idempotency key are not rejections ([processor.Rejected] covers the rest).
+func TestCharge_ARejectedRequestIsAKnownOutcome(t *testing.T) {
+	for _, tc := range []struct {
+		status   int
+		body     string
+		rejected bool
+	}{
+		{http.StatusBadRequest, `{"errors":[{"category":"INVALID_REQUEST_ERROR","code":"CARD_TOKEN_USED"}]}`, true},
+		{http.StatusNotFound, `{"errors":[{"category":"INVALID_REQUEST_ERROR","code":"NOT_FOUND"}]}`, true},
+		{http.StatusUnauthorized, `{"errors":[{"category":"AUTHENTICATION_ERROR","code":"ACCESS_TOKEN_EXPIRED"}]}`, false},
+		{http.StatusForbidden, `{"errors":[{"category":"AUTHENTICATION_ERROR","code":"INSUFFICIENT_SCOPES"}]}`, false},
+		{http.StatusBadRequest, `{"errors":[{"category":"INVALID_REQUEST_ERROR","code":"IDEMPOTENCY_KEY_REUSED"}]}`, false},
+	} {
+		_, err := squareAnswering(t, tc.status, tc.body).Charge(context.Background(), charge)
+		if got := processor.Rejected(err); got != tc.rejected {
+			t.Errorf("%d %s: rejected %v, want %v", tc.status, tc.body, got, tc.rejected)
+		}
+		var pe *processor.PaymentError
+		if !errors.As(err, &pe) || pe.Status != tc.status {
+			t.Errorf("%d: %v does not carry the status Square answered", tc.status, err)
+		}
+		if errors.Is(err, processor.ErrUnknownOutcome) && tc.rejected {
+			t.Errorf("%d: a rejected request reads as an unknown outcome", tc.status)
+		}
+	}
+}
+
 // TestCharge_ACardRefusalAmongOtherErrorsIsTheDecline — Square can list several errors
 // for one request, and the card refusal is the one that decides the answer wherever it
 // sits in the list.

@@ -169,7 +169,7 @@ type slowFailing struct {
 func (s *slowFailing) Charge(context.Context, processor.PaymentRequest) (*processor.PaymentResult, error) {
 	s.calls.Add(1)
 	time.Sleep(s.delay)
-	err := processor.NewPaymentError(processor.Square, "CARD_TOKEN_USED", "square answered 400 INVALID_REQUEST_ERROR CARD_TOKEN_USED", nil)
+	err := answeredWith(400, "INVALID_REQUEST_ERROR", "CARD_TOKEN_USED")
 	return &processor.PaymentResult{Success: false, Error: err, ErrorMessage: err.Error()}, err
 }
 

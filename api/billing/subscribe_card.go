@@ -934,42 +934,40 @@ func chargeProviderForOrg(org *organization.Organization) engine.ProviderCharger
 			fmt.Sprintf("Subscription renewal invoice %s", inv.NumberStr))
 		if err != nil || res == nil || !res.Success {
 			// A refusal keeps the processor's Decline beneath the sentence dunning
-			// records; anything else is the processor failing to answer. The key
-			// already rotates per attempt (AttemptCount), and a renewal is off-session,
-			// so it is neither counted against the wallet nor held by its ceiling.
-			// Until Square states an outcome, the card this key was sent with is
-			// pinned on the invoice and the next attempt resends it.
-			d := refusalOf(res, err)
-			if d == nil || d.Processing() {
-				pinRenewalCard(inv, cardID, customerID)
-			} else {
-				unpinRenewalCard(inv)
-			}
-			if d != nil {
+			// records; anything else is the processor failing to answer or rejecting
+			// the request. The key already rotates per attempt (AttemptCount), and a
+			// renewal is off-session, so it is neither counted against the wallet nor
+			// held by its ceiling.
+			var failure error
+			if d := refusalOf(res, err); d != nil {
 				answered(db, "renewal "+inv.Id(), inv.UserId, "", d)
-				return "", declinedCard{d}
+				failure = declinedCard{d}
+			} else {
+				failure = processorFailure("renewal", inv.UserId, err)
 			}
-			return "", processorFailure("renewal", inv.UserId, err)
+			// Until Square states an outcome, the card this key was sent with stays on
+			// the invoice and the next attempt resends it. A refusal, a payment that
+			// failed and a rejected request (a card since deleted: no payment exists
+			// under the key) are outcomes, and the next attempt charges the
+			// subscription's card as it is then.
+			if errors.Is(failure, processor.ErrUnknownOutcome) {
+				inv.UnresolvedCard, inv.UnresolvedCustomer = cardID, customerID
+			} else {
+				inv.UnresolvedCard, inv.UnresolvedCustomer = "", ""
+			}
+			return "", failure
 		}
-		unpinRenewalCard(inv)
+		inv.UnresolvedCard, inv.UnresolvedCustomer = "", ""
 		return res.ProcessorRef, nil
 	}
 }
-
-// The invoice metadata entries holding the card and Square customer a renewal
-// attempt was sent with while Square has not stated its outcome.
-const (
-	pinnedCardKey     = "unresolvedCard"
-	pinnedCustomerKey = "unresolvedSquareCustomer"
-)
 
 // renewalCard is the card a renewal of inv charges: the one its unresolved attempt
 // was sent with, so the retry under the same key is the same request, else the
 // subscription's default payment method.
 func renewalCard(db *datastore.Datastore, inv *billinginvoice.BillingInvoice) (card, customer string, err error) {
-	if card, _ = inv.Metadata[pinnedCardKey].(string); card != "" {
-		customer, _ = inv.Metadata[pinnedCustomerKey].(string)
-		return card, customer, nil
+	if inv.UnresolvedCard != "" {
+		return inv.UnresolvedCard, inv.UnresolvedCustomer, nil
 	}
 	sub := subscription.New(db)
 	if err := sub.GetById(inv.SubscriptionId); err != nil {
@@ -987,22 +985,6 @@ func renewalCard(db *datastore.Datastore, inv *billinginvoice.BillingInvoice) (c
 		return "", "", fmt.Errorf("payment method %s has no card-on-file token", pm.Id())
 	}
 	return card, squareCustomerIDOf(pm), nil
-}
-
-// pinRenewalCard records the card and customer an unresolved renewal attempt was
-// sent with.
-func pinRenewalCard(inv *billinginvoice.BillingInvoice, card, customer string) {
-	if inv.Metadata == nil {
-		inv.Metadata = map[string]interface{}{}
-	}
-	inv.Metadata[pinnedCardKey] = card
-	inv.Metadata[pinnedCustomerKey] = customer
-}
-
-// unpinRenewalCard clears the pin once Square has answered the attempt definitely.
-func unpinRenewalCard(inv *billinginvoice.BillingInvoice) {
-	delete(inv.Metadata, pinnedCardKey)
-	delete(inv.Metadata, pinnedCustomerKey)
 }
 
 // squareCustomerIDOf reads the Square customer id stored on a vaulted payment

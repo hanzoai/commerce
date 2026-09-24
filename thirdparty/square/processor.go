@@ -239,8 +239,10 @@ func scrub(err error) error {
 	if code == "" {
 		code = "HTTP_" + strconv.Itoa(api.StatusCode)
 	}
-	return processor.NewPaymentError(processor.Square, code,
+	pe := processor.NewPaymentError(processor.Square, code,
 		fmt.Sprintf("square answered %d %s %s", api.StatusCode, category, code), nil)
+	pe.Status = api.StatusCode
+	return pe
 }
 
 // classify reads the first error's category and code out of a Square API error's

@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -50,28 +51,37 @@ func TestCollectInvoice_AnUnknownOutcomeKeepsTheAttemptsKey(t *testing.T) {
 // TestCollectInvoice_AnUnresolvedAttemptIsResentAsSent — the provider answers a key
 // only for the request it first saw. While an attempt's outcome is unknown the key is
 // kept, so the next attempt must ask for the amount the first asked for, whatever the
-// prepaid balance holds by then; prepaid covers only what that amount leaves owed. A
-// definite answer clears the pin and the next attempt is computed afresh.
+// prepaid balance holds by then; prepaid covers only what that amount leaves owed. It
+// never asks for more than the invoice still owes. A definite answer clears the pin
+// and the next attempt is computed afresh.
 func TestCollectInvoice_AnUnresolvedAttemptIsResentAsSent(t *testing.T) {
 	pending := &processor.Decline{Processor: processor.Square, Category: processor.StatusCategory, Code: "PENDING"}
 	refused := &processor.Decline{Processor: processor.Square, Category: "PAYMENT_METHOD_ERROR", Code: "CARD_DECLINED"}
+	rejected := errors.New("the payment processor rejected the card request")
 	for _, tc := range []struct {
-		name     string
-		balances []int64 // the prepaid balance before each attempt
-		answers  []error // the provider's answer to each attempt; nil settles
-		asked    []int64 // what each attempt asked the card for
-		paid     bool
-		drawn    int64
+		name       string
+		pin        int64   // the unresolved card amount before the first attempt
+		amountPaid int64   // what the invoice had been paid before the first attempt
+		balances   []int64 // the prepaid balance before each attempt
+		answers    []error // the provider's answer to each attempt; nil settles
+		asked      []int64 // what each attempt asked the card for
+		paid       bool
+		drawn      int64
 	}{
-		{"the balance grew while the payment settled", []int64{0, 100}, []error{pending, nil}, []int64{1900, 1900}, true, 0},
-		{"the balance shrank while the payment settled", []int64{400, 0}, []error{pending, nil}, []int64{1500, 1500}, false, 0},
-		{"prepaid still covers the part the card was not asked for", []int64{400, 1000}, []error{pending, nil}, []int64{1500, 1500}, true, 400},
-		{"it stays pinned across unknown answers", []int64{0, 100, 300}, []error{pending, pending, nil}, []int64{1900, 1900, 1900}, true, 0},
-		{"a refusal releases the amount", []int64{0, 0, 100}, []error{pending, refused, nil}, []int64{1900, 1900, 1800}, true, 100},
+		{"the balance grew while the payment settled", 0, 0, []int64{0, 100}, []error{pending, nil}, []int64{1900, 1900}, true, 0},
+		{"the balance shrank while the payment settled", 0, 0, []int64{400, 0}, []error{pending, nil}, []int64{1500, 1500}, false, 0},
+		{"prepaid still covers the part the card was not asked for", 0, 0, []int64{400, 1000}, []error{pending, nil}, []int64{1500, 1500}, true, 400},
+		{"it stays pinned across unknown answers", 0, 0, []int64{0, 100, 300}, []error{pending, pending, nil}, []int64{1900, 1900, 1900}, true, 0},
+		{"a refusal releases the amount", 0, 0, []int64{0, 0, 100}, []error{pending, refused, nil}, []int64{1900, 1900, 1800}, true, 100},
+		{"a rejected request releases the amount", 0, 0, []int64{0, 0, 100}, []error{pending, rejected, nil}, []int64{1900, 1900, 1800}, true, 100},
+		{"a pin above what is owed asks only for what is owed", 5000, 0, []int64{0}, []error{nil}, []int64{1900}, true, 0},
+		{"an invoice paid down while unresolved asks for the rest", 1900, 900, []int64{300}, []error{nil}, []int64{1000}, true, 0},
 	} {
 		inv := &billinginvoice.BillingInvoice{}
 		inv.Status = billinginvoice.Open
 		inv.AmountDue = 1900
+		inv.AmountPaid = tc.amountPaid
+		inv.UnresolvedCents = tc.pin
 		inv.SubscriptionId = "sub_pinned"
 		pre := &purse{}
 		var asked []int64
@@ -97,8 +107,11 @@ func TestCollectInvoice_AnUnresolvedAttemptIsResentAsSent(t *testing.T) {
 		if drawn := sum(pre.draws); drawn != tc.drawn {
 			t.Errorf("%s: prepaid drew %d, want %d", tc.name, drawn, tc.drawn)
 		}
-		if _, pinned := pinnedCard(inv); pinned {
-			t.Errorf("%s: the pin outlived a definite answer: %v", tc.name, inv.Metadata)
+		if tc.paid && inv.AmountPaid != inv.AmountDue {
+			t.Errorf("%s: the invoice records %d paid of %d", tc.name, inv.AmountPaid, inv.AmountDue)
+		}
+		if inv.UnresolvedCents != 0 {
+			t.Errorf("%s: the pin outlived a definite answer: %d", tc.name, inv.UnresolvedCents)
 		}
 	}
 }
