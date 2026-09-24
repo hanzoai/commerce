@@ -3,6 +3,7 @@ package billing
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 	"time"
 
@@ -112,6 +113,18 @@ func due(t *testing.T, db *datastore.Datastore, id string) {
 	}
 }
 
+// sweep runs the billing cycle over org at now and answers the subscriptions it
+// took a step on.
+func sweep(t *testing.T, ctx context.Context, org *organization.Organization, now time.Time) []CycleResult {
+	t.Helper()
+	return acted(cycleAt(t, ctx, org, now, false))
+}
+
+// settled reports whether a cycle step paid for the period it billed.
+func settled(res CycleResult) bool {
+	return res.Action == engine.Renewed || res.Action == engine.Retried
+}
+
 func reload(t *testing.T, db *datastore.Datastore, id string) *subscription.Subscription {
 	t.Helper()
 	s := subscription.New(db)
@@ -184,9 +197,9 @@ func TestRecordFromBalance_RenewalDrawsThePeriodFromTheBalance(t *testing.T) {
 	due(t, db, got.Subscription.ID)
 	before := reload(t, db, got.Subscription.ID)
 
-	out := renewDue(ctx, org, "")
-	if len(out) != 1 || !out[0].Success {
-		t.Fatalf("cycle = %+v, want the one due row renewed", out)
+	out := sweep(t, ctx, org, time.Now())
+	if len(out) != 1 || !settled(out[0]) || out[0].Source != sourcePrepaid {
+		t.Fatalf("cycle = %+v, want the one due row renewed from prepaid money", out)
 	}
 	if b := walletOf(t, ctx, org, balSubject); b != 20000-2*balPrice {
 		t.Fatalf("balance = %d, want another %d drawn", b, balPrice)
@@ -257,24 +270,27 @@ func TestRecordFromBalance_ExhaustedBalanceLeavesTheRowPastDue(t *testing.T) {
 	}
 	due(t, db, got.Subscription.ID)
 
-	out := renewDue(ctx, org, "")
-	if len(out) != 1 || out[0].Success {
+	now := time.Now()
+	out := sweep(t, ctx, org, now)
+	if len(out) != 1 || out[0].Action != engine.RenewalFailed {
 		t.Fatalf("cycle = %+v, want the renewal refused", out)
 	}
 	s := reload(t, db, got.Subscription.ID)
 	if s.Status != subscription.PastDue {
 		t.Fatalf("status = %s, want past_due", s.Status)
 	}
-	if tr, _ := deriveTier(db, balSubject, org.TestMode()); tr != tier.Free {
-		t.Fatalf("tier = %q, want free once the period is unpaid", tr)
+	// The plan is kept through the retries; it drops to free after the last.
+	if tr, _ := deriveTier(db, balSubject, org.TestMode()); tr != tier.Pro {
+		t.Fatalf("tier = %q, want pro kept while the renewal is retried", tr)
 	}
 	if b := walletOf(t, ctx, org, balSubject); b != 500 {
 		t.Fatalf("balance = %d, want the 500 left untouched by a renewal it cannot cover", b)
 	}
 
-	// The next sweep neither charges again nor lets the row back up.
-	if out := renewDue(ctx, org, ""); len(out) != 1 || out[0].Success {
-		t.Fatalf("second sweep = %+v, want still unpaid", out)
+	// The next sweep before the first retry neither charges again nor lets the
+	// row back up.
+	if out := sweep(t, ctx, org, now.Add(time.Hour)); len(out) != 1 || out[0].Action != engine.Skipped {
+		t.Fatalf("second sweep = %+v, want still unpaid, waiting for the retry", out)
 	}
 	if s := reload(t, db, got.Subscription.ID); s.Status != subscription.PastDue {
 		t.Fatalf("status after a second sweep = %s, want past_due", s.Status)
@@ -345,10 +361,11 @@ func TestRecordFromBalance_AShorterMonthMayEndThePeriodEarly(t *testing.T) {
 	}
 }
 
-// TestRenewDue_AMissedRowPaysOnlyThePeriodRunningNow: a row the sweep missed for
-// whole periods is billed once, for the period running now. The periods that ended
-// in between are not billed after the fact.
-func TestRenewDue_AMissedRowPaysOnlyThePeriodRunningNow(t *testing.T) {
+// TestCycle_AMissedRowIsBilledOnlyWhenItsCustomerRenews: a row the cycle
+// missed for whole periods is overdue. No sweep bills it, the missed periods or
+// the one running now. When its customer renews it, one period is drawn, the one
+// starting then.
+func TestCycle_AMissedRowIsBilledOnlyWhenItsCustomerRenews(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	org, db := balanceSetup(t, ctx, "bal-behind", 20000)
@@ -362,19 +379,28 @@ func TestRenewDue_AMissedRowPaysOnlyThePeriodRunningNow(t *testing.T) {
 		t.Fatalf("save: %v", err)
 	}
 
-	out := renewDue(ctx, org, "")
-	if len(out) != 1 || !out[0].Success {
-		t.Fatalf("sweep = %+v, want the row renewed once", out)
+	for i := 0; i < 2; i++ {
+		out := sweep(t, ctx, org, time.Now())
+		if len(out) != 1 || out[0].Action != engine.Overdue {
+			t.Fatalf("sweep %d = %+v, want the row left overdue", i, out)
+		}
+	}
+	if b := walletOf(t, ctx, org, balSubject); b != 20000-balPrice {
+		t.Fatalf("balance = %d, want nothing drawn for the missed periods", b)
+	}
+
+	if resp := invokeRenew(org, ctx, s.Id()); resp.StatusCode != http.StatusOK {
+		t.Fatalf("renew status=%d", resp.StatusCode)
 	}
 	if b := walletOf(t, ctx, org, balSubject); b != 20000-2*balPrice {
 		t.Fatalf("balance = %d, want one more period drawn, not one for every period missed", b)
 	}
 	r := reload(t, db, got.Subscription.ID)
 	if now := time.Now(); r.Status != subscription.Active || r.PeriodStart.After(now) || !r.PeriodEnd.After(now) {
-		t.Fatalf("row %s on %s..%s, want active on the period running now", r.Status, r.PeriodStart, r.PeriodEnd)
+		t.Fatalf("row %s on %s..%s, want active on the period from the renewal", r.Status, r.PeriodStart, r.PeriodEnd)
 	}
-	if out := renewDue(ctx, org, ""); len(out) != 0 {
-		t.Fatalf("a second sweep renewed again: %+v", out)
+	if out := sweep(t, ctx, org, time.Now()); len(out) != 0 {
+		t.Fatalf("a sweep after the renewal acted again: %+v", out)
 	}
 }
 
@@ -393,7 +419,7 @@ func TestRenewDue_CanceledAtPeriodEndIsNotCharged(t *testing.T) {
 	}
 	due(t, db, got.Subscription.ID)
 
-	if out := renewDue(ctx, org, ""); len(out) != 1 || out[0].Success || out[0].InvoiceId != "" {
+	if out := sweep(t, ctx, org, time.Now()); len(out) != 1 || out[0].Action != engine.CanceledAtPeriodEnd || out[0].InvoiceId != "" {
 		t.Fatalf("sweep = %+v, want the row ended, not renewed", out)
 	}
 	if b := walletOf(t, ctx, org, balSubject); b != 20000-balPrice {
@@ -402,14 +428,15 @@ func TestRenewDue_CanceledAtPeriodEndIsNotCharged(t *testing.T) {
 	if s := reload(t, db, got.Subscription.ID); s.Status != subscription.Canceled || s.Ended.IsZero() {
 		t.Fatalf("row %s ended %s, want canceled as of its period's end", s.Status, s.Ended)
 	}
-	if out := renewDue(ctx, org, ""); len(out) != 0 {
+	if out := sweep(t, ctx, org, time.Now()); len(out) != 0 {
 		t.Fatalf("a canceled row was swept again: %+v", out)
 	}
 }
 
-// TestRenewDue_PayingThePastDueInvoiceBringsThePlanBack: the balance runs out, the
-// row goes past due, the org is funded and the invoice paid. The next sweep reads
-// the paid invoice and puts the plan back on its next period.
+// TestRenewDue_PayingThePastDueInvoiceBringsThePlanBack: the balance runs out
+// and the row goes past due. The org is funded and the customer pays the
+// renewal invoice themselves; the next sweep reads the paid invoice, puts the
+// row on the period it paid for, and takes nothing more.
 func TestRenewDue_PayingThePastDueInvoiceBringsThePlanBack(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -419,42 +446,26 @@ func TestRenewDue_PayingThePastDueInvoiceBringsThePlanBack(t *testing.T) {
 		t.Fatalf("record: %v", err)
 	}
 	due(t, db, got.Subscription.ID)
-	out := renewDue(ctx, org, "")
-	if len(out) != 1 || out[0].Success || out[0].InvoiceId == "" {
+	out := sweep(t, ctx, org, time.Now())
+	if len(out) != 1 || out[0].Action != engine.RenewalFailed || out[0].InvoiceId == "" {
 		t.Fatalf("sweep = %+v, want an unpaid invoice", out)
 	}
-	dry := reload(t, db, got.Subscription.ID)
-	if dry.Status != subscription.PastDue {
+	owed := out[0]
+	if dry := reload(t, db, got.Subscription.ID); dry.Status != subscription.PastDue {
 		t.Fatalf("status = %s, want past_due", dry.Status)
 	}
 
-	// Twenty days go by past due, with no plan served, before the customer pays.
-	owedInv := billinginvoice.New(db)
-	if err := owedInv.GetById(out[0].InvoiceId); err != nil {
-		t.Fatalf("load invoice: %v", err)
-	}
-	owedInv.PeriodStart, owedInv.PeriodEnd = time.Now().AddDate(0, 0, -20), time.Now().AddDate(0, 0, 10)
-	if err := owedInv.Update(); err != nil {
-		t.Fatalf("save invoice: %v", err)
-	}
-	dry.PeriodStart, dry.PeriodEnd = dry.PeriodStart.AddDate(0, 0, -20), owedInv.PeriodStart
-	if err := dry.Update(); err != nil {
-		t.Fatalf("save row: %v", err)
-	}
-
 	deposit(t, db, balSubject, balPrice)
-	paid, f := CollectInvoice(ctx, org, out[0].InvoiceId, nil, nil)
+	paid, f := CollectInvoice(ctx, org, owed.InvoiceId, nil, nil)
 	if f != nil || !paid.Paid || paid.BalanceUsedCents != balPrice {
 		t.Fatalf("pay the invoice: %+v, %v", paid, f)
 	}
-	if out := renewDue(ctx, org, ""); len(out) != 1 || !out[0].Success {
-		t.Fatalf("sweep after paying = %+v, want the paid period read back", out)
+	if out := sweep(t, ctx, org, time.Now().Add(time.Minute)); len(out) != 1 || !settled(out[0]) || out[0].AmountCents != 0 {
+		t.Fatalf("sweep after paying = %+v, want the paid period read back and nothing charged", out)
 	}
-	// The payment buys a whole period from when it was made, not the ten days left
-	// of the invoice's.
 	s := reload(t, db, got.Subscription.ID)
-	if now := time.Now(); s.Status != subscription.Active || now.Sub(s.PeriodStart) > time.Minute || s.PeriodEnd.Before(now.AddDate(0, 0, 27)) {
-		t.Fatalf("row %s on %s..%s, want active on a whole period from the payment", s.Status, s.PeriodStart, s.PeriodEnd)
+	if s.Status != subscription.Active || !s.PeriodStart.Equal(owed.BillStart) || !s.PeriodEnd.Equal(owed.BillEnd) {
+		t.Fatalf("row %s on %s..%s, want active on the paid period %s..%s", s.Status, s.PeriodStart, s.PeriodEnd, owed.BillStart, owed.BillEnd)
 	}
 	if tr, _ := deriveTier(db, balSubject, org.TestMode()); tr != tier.Pro {
 		t.Fatalf("tier = %q, want pro", tr)
@@ -470,12 +481,7 @@ func TestRenewDue_PayingThePastDueInvoiceBringsThePlanBack(t *testing.T) {
 		t.Fatalf("invoices listed = %d (err %v), want the first period's and the one paid by hand", len(listed), err)
 	}
 	deposit(t, db, balSubject, balPrice)
-	next := reload(t, db, got.Subscription.ID)
-	next.PeriodStart, next.PeriodEnd = time.Now().AddDate(0, -1, -2), time.Now().Add(-2*time.Hour)
-	if err := next.Update(); err != nil {
-		t.Fatalf("save: %v", err)
-	}
-	if out := renewDue(ctx, org, ""); len(out) != 1 || !out[0].Success {
+	if out := sweep(t, ctx, org, s.PeriodEnd); len(out) != 1 || !settled(out[0]) {
 		t.Fatalf("next renewal = %+v", out)
 	}
 	numbers := map[string]bool{}
@@ -491,7 +497,8 @@ func TestRenewDue_PayingThePastDueInvoiceBringsThePlanBack(t *testing.T) {
 }
 
 // TestRenewDue_ASandboxRowIsNotPaidFromLiveMoney: an org's prepaid money is its
-// own mode's, so a sandbox row in a live org is not renewed from it.
+// own mode's, so a sandbox row in a live org is not renewed from it: nothing on
+// this org's books pays it, and it ends at its period end.
 func TestRenewDue_ASandboxRowIsNotPaidFromLiveMoney(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -506,8 +513,8 @@ func TestRenewDue_ASandboxRowIsNotPaidFromLiveMoney(t *testing.T) {
 	if err := s.Update(); err != nil {
 		t.Fatalf("save: %v", err)
 	}
-	if out := renewDue(ctx, org, ""); len(out) != 0 {
-		t.Fatalf("sweep = %+v, want the sandbox row left alone", out)
+	if out := sweep(t, ctx, org, time.Now()); len(out) != 1 || out[0].Action != engine.EndedOtherMode {
+		t.Fatalf("sweep = %+v, want the sandbox row ended, not renewed", out)
 	}
 	if b := walletOf(t, ctx, org, balSubject); b != 20000-balPrice {
 		t.Fatalf("live balance = %d; a sandbox row drew from it", b)
@@ -526,7 +533,7 @@ func TestRecordFromBalance_APastDuePlanBlocksASecond(t *testing.T) {
 		t.Fatalf("record: %v", err)
 	}
 	due(t, db, got.Subscription.ID)
-	renewDue(ctx, org, "")
+	sweep(t, ctx, org, time.Now())
 	deposit(t, db, balSubject, 20000)
 
 	second := balanceIn()
@@ -562,9 +569,9 @@ func TestCollectInvoice_ADrawThatLandedIsNotTakenTwice(t *testing.T) {
 	due(t, db, got.Subscription.ID)
 
 	led.lose = true // the renewal's debit lands, and its answer does not
-	out := renewDue(ctx, org, "")
-	if len(out) != 1 || out[0].Success {
-		t.Fatalf("sweep = %+v, want the lost answer read as unpaid", out)
+	out := sweep(t, ctx, org, time.Now())
+	if len(out) != 1 || out[0].Action != engine.Skipped || out[0].InvoiceId == "" {
+		t.Fatalf("sweep = %+v, want the lost answer left to be repeated under its key", out)
 	}
 	// Credit arrives before the retry, so a split measured anew would differ from
 	// the one already posted. The retry posts the recorded one.
@@ -607,8 +614,8 @@ func lapsed(t *testing.T, ctx context.Context, org *organization.Organization, d
 		t.Fatalf("record: %v", err)
 	}
 	due(t, db, got.Subscription.ID)
-	out := renewDue(ctx, org, "")
-	if len(out) != 1 || out[0].Success {
+	out := sweep(t, ctx, org, time.Now())
+	if len(out) != 1 || out[0].Action != engine.RenewalFailed {
 		t.Fatalf("sweep = %+v, want the renewal unpaid", out)
 	}
 	inv := billinginvoice.New(db)
@@ -629,8 +636,8 @@ func lapsed(t *testing.T, ctx context.Context, org *organization.Organization, d
 }
 
 // TestRenewDue_APeriodThatWentByUnpaidIsNotOwed: a past-due row's unpaid period
-// passed with no plan served. It is owed no longer — its invoice is void — and the
-// sweep bills the period running now.
+// passed before its next retry. It is owed no longer — its invoice is void, and
+// nothing is drawn for it or for the period running now — and the row ends.
 func TestRenewDue_APeriodThatWentByUnpaidIsNotOwed(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -638,19 +645,19 @@ func TestRenewDue_APeriodThatWentByUnpaidIsNotOwed(t *testing.T) {
 	s, stale := lapsed(t, ctx, org, db)
 
 	deposit(t, db, balSubject, balPrice)
-	if out := renewDue(ctx, org, ""); len(out) != 1 || !out[0].Success || out[0].InvoiceId == stale.Id() {
-		t.Fatalf("sweep = %+v, want the running period billed and paid", out)
+	out := sweep(t, ctx, org, time.Now().Add(25*time.Hour))
+	if len(out) != 1 || out[0].Action != engine.ExpiredOverdue || out[0].InvoiceId != stale.Id() {
+		t.Fatalf("sweep = %+v, want the lapsed period's invoice voided and the row ended", out)
 	}
 	old := billinginvoice.New(db)
 	if err := old.GetById(stale.Id()); err != nil || old.Status != billinginvoice.Void {
 		t.Fatalf("the lapsed period's invoice is %s (err %v), want void", old.Status, err)
 	}
-	if b := walletOf(t, ctx, org, balSubject); b != 0 {
-		t.Fatalf("balance = %d, want one period drawn for the period running now, none for the one gone by", b)
+	if b := walletOf(t, ctx, org, balSubject); b != balPrice {
+		t.Fatalf("balance = %d, want nothing drawn for a period gone by", b)
 	}
-	r := reload(t, db, s.Id())
-	if now := time.Now(); r.Status != subscription.Active || r.PeriodStart.After(now) || !r.PeriodEnd.After(now) {
-		t.Fatalf("row %s on %s..%s, want active on the period running now", r.Status, r.PeriodStart, r.PeriodEnd)
+	if r := reload(t, db, s.Id()); r.Status != subscription.Canceled {
+		t.Fatalf("row %s, want ended", r.Status)
 	}
 }
 
@@ -667,7 +674,7 @@ func TestRenewDue_APeriodPaidAfterItEndedBuysTheNextOne(t *testing.T) {
 	if paid, f := CollectInvoice(ctx, org, stale.Id(), nil, nil); f != nil || !paid.Paid {
 		t.Fatalf("pay the lapsed invoice: %+v, %v", paid, f)
 	}
-	if out := renewDue(ctx, org, ""); len(out) != 1 || !out[0].Success || out[0].InvoiceId != stale.Id() {
+	if out := sweep(t, ctx, org, time.Now()); len(out) != 1 || !settled(out[0]) || out[0].InvoiceId != stale.Id() {
 		t.Fatalf("sweep = %+v, want the paid invoice read back", out)
 	}
 	if b := walletOf(t, ctx, org, balSubject); b != 0 {
@@ -677,7 +684,7 @@ func TestRenewDue_APeriodPaidAfterItEndedBuysTheNextOne(t *testing.T) {
 	if now := time.Now(); r.Status != subscription.Active || r.PeriodStart.After(now) || !r.PeriodEnd.After(now) {
 		t.Fatalf("row %s on %s..%s, want active on the period the late payment bought", r.Status, r.PeriodStart, r.PeriodEnd)
 	}
-	if out := renewDue(ctx, org, ""); len(out) != 0 {
+	if out := sweep(t, ctx, org, time.Now()); len(out) != 0 {
 		t.Fatalf("a second sweep billed again: %+v", out)
 	}
 }
@@ -693,8 +700,8 @@ func TestCollectInvoice_OnePeriodIsDrawnOnce(t *testing.T) {
 		t.Fatalf("record: %v", err)
 	}
 	due(t, db, got.Subscription.ID)
-	out := renewDue(ctx, org, "")
-	if len(out) != 1 || !out[0].Success {
+	out := sweep(t, ctx, org, time.Now())
+	if len(out) != 1 || !settled(out[0]) {
 		t.Fatalf("sweep = %+v", out)
 	}
 	first := billinginvoice.New(db)
@@ -798,7 +805,7 @@ func TestRecordFromBalance_TheGrantedLedgerPaysAndTheTierSeesIt(t *testing.T) {
 	}
 
 	due(t, db, got.Subscription.ID)
-	if out := renewDue(ctx, org, ""); len(out) != 1 || !out[0].Success {
+	if out := sweep(t, ctx, org, time.Now()); len(out) != 1 || !settled(out[0]) {
 		t.Fatalf("renewal = %+v, want paid from the ledger", out)
 	}
 	if bal, _ := led.Balance(ctx, org.Name, subject, "usd", false); bal != 20000-2*balPrice {
@@ -857,4 +864,9 @@ func (c *countingPrepaid) Available(context.Context, string, currency.Type) (int
 func (c *countingPrepaid) Draw(context.Context, string, currency.Type, int64, string) (engine.Drawn, error) {
 	c.calls++
 	return engine.Drawn{}, creditledger.ErrShort
+}
+
+func (c *countingPrepaid) Return(context.Context, string, currency.Type, int64, string) (string, error) {
+	c.calls++
+	return "", nil
 }

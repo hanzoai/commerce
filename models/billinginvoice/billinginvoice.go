@@ -102,10 +102,21 @@ type BillingInvoice struct {
 	Number    int    `json:"number"`
 	NumberStr string `json:"numberStr"` // "INV-0042"
 
-	// Dunning retry tracking
+	// Retry tracking: how many attempts declined, when the last was made and
+	// when the next is due.
 	AttemptCount  int       `json:"attemptCount"`
 	LastAttemptAt time.Time `json:"lastAttemptAt,omitempty"`
 	NextAttemptAt time.Time `json:"nextAttemptAt,omitempty"`
+
+	// The payment attempt in flight, written before the card or the ledger is
+	// asked and cleared once its outcome is known. An attempt that finds it
+	// repeats it exactly — the same instrument, amount and idempotency key — so
+	// an answer that was lost can never become a second charge. PendingRef is
+	// the processor's payment id when it answered without settling.
+	PendingMethod string `json:"pendingMethod,omitempty"`
+	PendingAmount int64  `json:"pendingAmount,omitempty"`
+	PendingKey    string `json:"pendingKey,omitempty"`
+	PendingRef    string `json:"pendingRef,omitempty"`
 
 	// Line items (JSON-serialized)
 	LineItems  []LineItem `json:"lineItems,omitempty" datastore:"-"`

@@ -3,6 +3,7 @@ package billing
 import (
 	"context"
 	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -68,11 +69,33 @@ func subscriptionPlanSlug(db *datastore.Datastore, user string, test bool) strin
 	if err != nil {
 		return ""
 	}
+	return planSlugOf(subs, false)
+}
 
+// servedPlanSlug is the plan `user` is served as: subscriptionPlanSlug's answer,
+// and also a past_due subscription's plan. A past_due subscriber keeps the tier
+// through the retry window (deriveTier), so they keep the plan's bounds with it.
+// It never mints: grants read subscriptionPlanSlug.
+func servedPlanSlug(db *datastore.Datastore, user string, test bool) string {
+	subs, err := userSubscriptions(db, user, test)
+	if err != nil {
+		return ""
+	}
+	return planSlugOf(subs, true)
+}
+
+// planSlugOf is the plan of the newest of one subject's subscriptions that
+// speaks for them: active or trialing — and past_due when pastDue is set — and,
+// for a paid plan, payment-backed. "" when none does.
+func planSlugOf(subs []*subscription.Subscription, pastDue bool) string {
 	var best *subscription.Subscription
 	for _, s := range subs {
 		switch s.Status {
 		case subscription.Active, subscription.Trialing:
+		case subscription.PastDue:
+			if !pastDue {
+				continue
+			}
 		default:
 			continue
 		}
@@ -217,19 +240,19 @@ func GrantAllotment(c *zip.Ctx) error {
 	})
 }
 
-// grantOrgAllotments grants the monthly included allotment to every user with
-// an active/trialing subscription in the given org datastore, for the UTC month
-// containing `now`. Idempotent per (user, period). Returns a result per user.
-// Shared by the standalone allotment-run endpoint and the billing cycle.
-func grantOrgAllotments(c *zip.Ctx, db *datastore.Datastore, now time.Time, live bool) (granted, skipped int, results []map[string]any) {
-	rootKey := db.NewKey("synckey", "", 1, nil)
-
-	subs := make([]*subscription.Subscription, 0)
-	if _, err := subscription.Query(db).Ancestor(rootKey).GetAll(&subs); err != nil {
-		log.Error("Failed to list subscriptions for allotment run: %v", err, c)
-		return 0, 0, nil
-	}
-
+// grantOrgAllotments grants the month's included allotment, for the UTC month
+// containing now, to every subscriber in subs holding an active or trialing
+// subscription paid through now, at the plan of the newest such subscription. A
+// seat row is a subscription too, which is how each member of a per-seat plan is
+// granted their own allotment. A past_due subscriber keeps the tier through the
+// retry window but is not granted a new month, and neither is one whose paid
+// period is over. Idempotent per (user, month).
+//
+// subs are the org's rows as the caller holds them, so the billing cycle grants
+// against the statuses its own run just settled, and a dry run reports exactly
+// the grants the real run makes. With dryRun nothing is written, and a
+// subscriber already granted this month counts as skipped.
+func grantOrgAllotments(db *datastore.Datastore, subs []*subscription.Subscription, now time.Time, live, dryRun bool) (granted, skipped int, results []map[string]any) {
 	// Collapse to one plan per user (newest active/trialing wins), so each
 	// user is granted exactly once per run regardless of subscription count.
 	planByUser := make(map[string]string)
@@ -243,22 +266,42 @@ func grantOrgAllotments(c *zip.Ctx, db *datastore.Datastore, now time.Time, live
 		if s.UserId == "" || !speaks(s, !live) {
 			continue
 		}
-		slug := s.Plan.Slug
-		if slug == "" {
-			slug = s.PlanId
+		if !s.PeriodEnd.IsZero() && !now.Before(s.PeriodEnd) {
+			continue // its paid period is over: no month is granted on a period nobody paid for
 		}
 		if prev, ok := startByUser[s.UserId]; !ok || s.PeriodStart.After(prev) {
-			planByUser[s.UserId] = slug
+			planByUser[s.UserId] = planOf(s)
 			startByUser[s.UserId] = s.PeriodStart
 		}
 	}
 
+	users := make(map[string]bool, len(planByUser))
+	for u := range planByUser {
+		users[u] = true
+	}
 	results = make([]map[string]any, 0, len(planByUser))
-	for user, plan := range planByUser {
+	for _, user := range sortedUsers(users) {
+		plan := planByUser[user]
 		cents := IncludedMonthlyCents(plan)
+		if dryRun {
+			reason := ""
+			switch {
+			case cents <= 0:
+				reason = "no_included_allotment"
+			case allotment.GrantedCents(db, user, now, !live) > 0:
+				reason = "already_granted"
+			}
+			if reason == "" {
+				granted++
+			} else {
+				skipped++
+			}
+			results = append(results, map[string]any{"user": user, "plan": plan, "granted": reason == "", "reason": reason, "amountCents": cents})
+			continue
+		}
 		res, err := allotment.Grant(db, user, plan, cents, now, !live)
 		if err != nil {
-			log.Error("allotment run: grant failed for %s: %v", user, err, c)
+			log.Error("allotment run: grant failed for %s: %v", user, err)
 			results = append(results, map[string]any{"user": user, "plan": plan, "granted": false, "error": err.Error()})
 			continue
 		}
@@ -278,19 +321,35 @@ func grantOrgAllotments(c *zip.Ctx, db *datastore.Datastore, now time.Time, live
 	return granted, skipped, results
 }
 
+// sortedUsers returns the keys of a user set in a stable order, so a run's
+// grants and its report read the same way every time.
+func sortedUsers(set map[string]bool) []string {
+	out := make([]string, 0, len(set))
+	for u := range set {
+		out = append(out, u)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // RunAllotments grants the monthly included allotment to every user with an
 // active/trialing subscription in the request's organization, for the current
-// UTC month. Idempotent per (user, period). Intended for the platform
-// scheduler to invoke at period start (alongside the billing cycle).
+// UTC month. Idempotent per (user, period). The billing cycle runs the same
+// grants; this endpoint runs them alone.
 //
 //	POST /v1/billing/allotment/run
 func RunAllotments(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c.Context()))
 
+	subs, err := orgSubscriptions(db, "")
+	if err != nil {
+		log.Error("Failed to list subscriptions for allotment run: %v", err, c)
+		return http.Fail(c, 500, "failed to list subscriptions", err)
+	}
 	now := time.Now()
 	// live = !TestMode: allotment grants land in the SAME bucket as charges/usage.
-	granted, skipped, results := grantOrgAllotments(c, db, now, !org.TestMode())
+	granted, skipped, results := grantOrgAllotments(db, subs, now, !org.TestMode(), false)
 
 	return c.JSON(200, map[string]any{
 		"period":  allotment.Period(now),

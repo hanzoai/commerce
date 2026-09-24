@@ -268,9 +268,22 @@ func Route(r *zip.Group, args ...zip.Handler) {
 	// cycle charges cards across orgs — money-MINT bar (service-token /
 	// global-admin ONLY), never an org owner's Admin bit. run-all sweeps EVERY
 	// org, so it is emphatically platform-only.
+	// Each is a dry run that reports and writes nothing unless the request says
+	// dryRun=false.
 	mint.Raw(http.MethodPost, "/cycle/run", RunBillingCycle)
 	mint.Raw(http.MethodPost, "/cycle/run-user", RunBillingCycleUser)
 	mint.Raw(http.MethodPost, "/cycle/run-all", RunBillingCycleAllOrgs)
+
+	// Correcting the dates of subscriptions a period ahead of their paid invoice
+	// rewrites what the cycle bills next — platform-only, like the cycle, and a
+	// dry run unless the request says dryRun=false.
+	mint.Raw(http.MethodPost, "/realign/run", RealignSubscriptions)
+	mint.Raw(http.MethodPost, "/realign/run-all", RealignSubscriptionsAllOrgs)
+
+	// An invoice whose payment attempt has no known outcome is voided only by a
+	// platform operator who has settled the attempt with the processor, and the
+	// act is recorded in the billing event ledger.
+	mint.Raw(http.MethodPost, "/invoices/:id/void-unresolved", VoidUnresolvedInvoice)
 
 	// Auto-recharge sweep (called by the platform scheduler / CronJob): charge
 	// the default card for orgs whose balance dropped below their threshold.

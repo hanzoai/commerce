@@ -55,6 +55,11 @@ type MockSquareProcessor struct {
 	lastChargeCustomer string
 	lastChargeAmount   int64
 	chargedKeys        map[string]*processor.PaymentResult
+	// chargeStatus, when set, is the status a charge answers with instead of a
+	// settled COMPLETED: a payment Square took and did not settle.
+	chargeStatus string
+	// txStatus is the status GetTransaction reports for a payment id.
+	txStatus map[string]string
 }
 
 // NewMockSquareProcessor creates a mock Square processor that vaults to (customerID, cardID)
@@ -96,6 +101,9 @@ func (m *MockSquareProcessor) Charge(ctx context.Context, req processor.PaymentR
 			ref = "sqpay_test"
 		}
 		res = &processor.PaymentResult{Success: true, TransactionID: ref, ProcessorRef: ref, Status: "COMPLETED"}
+		if m.chargeStatus != "" {
+			res = &processor.PaymentResult{Success: false, TransactionID: ref, ProcessorRef: ref, Status: m.chargeStatus}
+		}
 	}
 	if req.IdempotencyKey != "" {
 		if m.chargedKeys == nil {
@@ -127,6 +135,11 @@ func (m *MockSquareProcessor) Refund(ctx context.Context, req processor.RefundRe
 }
 
 func (m *MockSquareProcessor) GetTransaction(ctx context.Context, txID string) (*processor.Transaction, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if status, ok := m.txStatus[txID]; ok {
+		return &processor.Transaction{ID: txID, ProcessorRef: txID, Status: status}, nil
+	}
 	return nil, errors.New("not implemented")
 }
 

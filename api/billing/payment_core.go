@@ -113,7 +113,7 @@ type TakePaymentOut struct {
 // PaymentFault is a money-path failure carrying the status the endpoint must answer
 // with. The core cannot write an HTTP response — it has no request — but the
 // status is part of the money contract (402 declined is not 500 broken, and a
-// dunning workflow reads the difference), so it travels with the failure instead
+// retrying caller reads the difference), so it travels with the failure instead
 // of being re-derived per endpoint.
 type PaymentFault struct {
 	// Status is the HTTP status this failure means.

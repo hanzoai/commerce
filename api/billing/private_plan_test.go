@@ -196,10 +196,15 @@ func renewedFree(t *testing.T, ctx context.Context, org *organization.Organizati
 		t.Fatalf("load: %v", err)
 	}
 	s.PeriodStart, s.PeriodEnd = time.Now().AddDate(0, -1, -1), time.Now().Add(-time.Hour)
-	if _, res, err := engine.RenewSubscription(ctx, db, s, prepaidFor(ctx, org), nil); err != nil || !res.Success {
-		t.Fatalf("renew: %+v, %v", res, err)
+	if err := s.Update(); err != nil {
+		t.Fatalf("set period: %v", err)
 	}
-	if err := s.Update(); err != nil || !subscriptionPaymentBacked(s) {
+	report := newCycleReport(time.Now(), false)
+	cycleOrg(ctx, org, db, report.Now, false, nil, chargeProviderForOrg(org), subject, report)
+	if actionsOf(report)[id] != engine.Renewed {
+		t.Fatalf("renew: %+v %v", report.Results, report.Errors)
+	}
+	if err := s.GetById(id); err != nil || !subscriptionPaymentBacked(s) {
 		t.Fatalf("a $0 renewal left the row unbacked (err=%v); the precondition this test needs is gone", err)
 	}
 	return s

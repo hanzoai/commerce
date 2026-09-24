@@ -220,6 +220,8 @@ type purse struct {
 	credit, balance int64
 	readErr         error
 	draws           []int64
+	// returned is what Return put back, by ref.
+	returned map[string]int64
 }
 
 func (p *purse) Available(context.Context, string, currency.Type) (int64, error) {
@@ -234,7 +236,7 @@ func (p *purse) Draw(_ context.Context, _ string, _ currency.Type, amount int64,
 		return Drawn{}, fmt.Errorf("no ref")
 	}
 	if p.credit+p.balance < amount {
-		return Drawn{}, fmt.Errorf("short")
+		return Drawn{}, fmt.Errorf("%w: holds %d, the draw is %d", ErrPrepaidShort, p.credit+p.balance, amount)
 	}
 	d := Drawn{Credit: min(p.credit, amount)}
 	d.Balance = amount - d.Credit
@@ -245,4 +247,15 @@ func (p *purse) Draw(_ context.Context, _ string, _ currency.Type, amount int64,
 	p.balance -= d.Balance
 	p.draws = append(p.draws, amount)
 	return d, nil
+}
+
+func (p *purse) Return(_ context.Context, _ string, _ currency.Type, amount int64, ref string) (string, error) {
+	if p.returned == nil {
+		p.returned = map[string]int64{}
+	}
+	if _, done := p.returned[ref]; !done {
+		p.returned[ref] = amount
+		p.balance += amount
+	}
+	return "led_return_" + ref, nil
 }

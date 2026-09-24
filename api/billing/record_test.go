@@ -1,7 +1,6 @@
 package billing
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -114,36 +113,49 @@ func TestRecordSubscription_OpensTheExternalPlanAndMovesNoMoney(t *testing.T) {
 	}
 }
 
+// TestRecordedPlanIsNeverChargedOrRenewedByTheProcessor: a plan collected
+// outside Hanzo renews as it was bought — its processor collects the next period
+// and recording that payment moves the row on. The cycle charges nothing for it,
+// from prepaid money or from a card, even one on file, and neither moves nor
+// ends the row.
 func TestRecordedPlanIsNeverChargedOrRenewedByTheProcessor(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	org := moneyOrg("rec-never")
+	m := squareMock("", "", "sqpay_never")
+	withFakeSquare(t, m)
 	db := datastore.New(org.Namespaced(ctx))
 	if _, err := RecordSubscription(ctx, org, recordDev(t, db)); err != nil {
 		t.Fatalf("record: %v", err)
 	}
-	s := subsOf(t, db, "acme")[0]
+	s := reloadSub(t, db, subsOf(t, db, "acme")[0].Id())
+	s.DefaultPaymentMethod = seedSavedCard(t, db, "acme", "ccof_never", "cust_never").Id()
+	if err := s.Update(); err != nil {
+		t.Fatalf("attach card: %v", err)
+	}
+	seedCredit(db, "acme", 50000, "topup", time.Time{})
 
 	afterEnd := recEnd.Add(24 * time.Hour)
 	if engine.IsDue(s, afterEnd) {
 		t.Fatal("an externally collected plan answered due; the cycle would invoice and collect it")
 	}
-	charged := 0
+	for _, dry := range []bool{true, false} {
+		res := only(t, cycleAt(t, ctx, org, afterEnd, dry), renewedOutside)
+		if res.Source != sourceExternal || res.AmountCents != 0 {
+			t.Fatalf("dry=%v: %+v, want it left to its processor with nothing charged", dry, res)
+		}
+	}
 	burn := &countingPrepaid{}
-	charge := func(context.Context, *datastore.Datastore, *billinginvoice.BillingInvoice, int64) (string, error) {
-		charged++
-		return "ref", nil
+	step, err := engine.Settle(ctx, db, reloadSub(t, db, s.Id()), engine.Run{Now: afterEnd, Prepaid: burn}, engine.PrepaidPayer(burn))
+	if err != nil || step.Action != "" || burn.calls != 0 {
+		t.Fatalf("settle: %+v (err %v), %d prepaid calls; it must do nothing", step, err, burn.calls)
 	}
-	inv, _, err := engine.RenewSubscription(ctx, db, s, burn, charge)
-	burned := burn.calls
-	if err != nil {
-		t.Fatalf("renew: %v", err)
+	invs := make([]*billinginvoice.BillingInvoice, 0)
+	if _, err := billinginvoice.Query(db).Filter("UserId=", "acme").GetAll(&invs); err != nil || len(invs) != 0 {
+		t.Fatalf("invoices=%d (err %v); there is nothing here to bill", len(invs), err)
 	}
-	if inv != nil || burned != 0 || charged != 0 {
-		t.Fatalf("renewal built invoice=%v, burned credits %d time(s), charged %d time(s); it must do none", inv != nil, burned, charged)
-	}
-	if !s.PeriodEnd.Equal(recEnd) || s.Status != subscription.Active {
-		t.Fatalf("renewal moved the row to %s %s; only a recorded payment moves it", s.Status, s.PeriodEnd)
+	if got := reloadSub(t, db, s.Id()); !got.PeriodEnd.Equal(recEnd) || got.Status != subscription.Active || m.chargeCalls != 0 {
+		t.Fatalf("row %s through %s after %d charges; only a recorded payment moves it", got.Status, got.PeriodEnd, m.chargeCalls)
 	}
 }
 

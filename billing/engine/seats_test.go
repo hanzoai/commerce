@@ -52,15 +52,24 @@ func TestBuildPeriodInvoice_Seats(t *testing.T) {
 			}
 			sub.Quantity = tc.quantity
 			sub.Status = subscription.Active
-			sub.PeriodStart = now.AddDate(0, -1, -i) // distinct periods per case
-			sub.PeriodEnd = now.AddDate(0, 0, -1-i)
+			// Paid through a few hours ago (distinct per case), inside the grace window.
+			sub.PeriodEnd = now.Add(-time.Duration(i+1) * time.Hour)
+			sub.PeriodStart = sub.PeriodEnd.AddDate(0, -1, 0)
 			if err := sub.Create(); err != nil {
 				t.Fatalf("create sub: %v", err)
 			}
 
-			inv, _, err := RenewSubscription(context.Background(), db, sub, nil, nil)
+			cc := &card{}
+			step, err := Settle(context.Background(), db, sub, Run{Now: now}, CardPayer(cc.charger()))
 			if err != nil {
-				t.Fatalf("renew: %v", err)
+				t.Fatalf("settle: %v", err)
+			}
+			inv := step.Invoice
+			if inv == nil {
+				t.Fatalf("settle = %+v, want a renewal invoice", step)
+			}
+			if len(cc.amounts) != 1 || cc.amounts[0] != tc.want {
+				t.Fatalf("charged %v, want one charge of %d", cc.amounts, tc.want)
 			}
 			if len(inv.LineItems) == 0 {
 				t.Fatal("invoice has no line items")

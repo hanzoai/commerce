@@ -2,204 +2,554 @@ package billing
 
 import (
 	"context"
+	"fmt"
+	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
+// The report's actions for a live subscription the cycle took no step on.
+const (
+	// notDue: its paid period is still running.
+	notDue engine.Action = "not_due"
+	// renewedOutside: a processor outside Hanzo renews it; nothing here charges it.
+	renewedOutside engine.Action = "external"
+)
+
+// CycleResult is what one run of the subscription cycle did to one
+// subscription, or in a dry run would do.
+type CycleResult struct {
+	Org            string `json:"org"`
+	SubscriptionId string `json:"subscriptionId"`
+	UserId         string `json:"userId"`
+	Plan           string `json:"plan"`
+	// Interval is the period the subscription was bought on: month or year, and
+	// how many of them (sub.Plan, the plan as bought).
+	Interval      string `json:"interval"`
+	IntervalCount int    `json:"intervalCount"`
+	// PeriodStart and PeriodEnd are the period the subscription had paid for
+	// when the run found it.
+	PeriodStart time.Time `json:"periodStart"`
+	PeriodEnd   time.Time `json:"periodEnd"`
+	// BillStart and BillEnd are the period the action invoiced, retried or ended
+	// on, when there is one.
+	BillStart time.Time `json:"billStart,omitzero"`
+	BillEnd   time.Time `json:"billEnd,omitzero"`
+	// PriceCents is what one period costs as bought: the plan's price times its
+	// seats, before any promo.
+	PriceCents int64  `json:"priceCents"`
+	Currency   string `json:"currency"`
+	// AmountCents is what was collected, or in a dry run what would be.
+	AmountCents int64 `json:"amountCents"`
+	// Source is what renews the subscription, from how it was bought: card,
+	// prepaid, external, gift, comped or none.
+	Source    string        `json:"source,omitempty"`
+	Action    engine.Action `json:"action"`
+	InvoiceId string        `json:"invoiceId,omitempty"`
+	Reason    string        `json:"reason,omitempty"`
+	Error     string        `json:"error,omitempty"`
+}
+
+// CycleAllotments counts the month's included-credit grants a run made, or in
+// a dry run would make.
+type CycleAllotments struct {
+	Granted int `json:"granted"`
+	Skipped int `json:"skipped"`
+	Failed  int `json:"failed"`
+}
+
+// CycleReport is one run of the subscription cycle. Results lists every live
+// subscription the run considered, in the order it took them, with what it did
+// to each: renewed, retried, ended, left overdue, not yet due. Actions counts
+// Results by action, and ChargedCents sums what was collected: in a dry run,
+// what would be.
+type CycleReport struct {
+	Now          time.Time             `json:"now"`
+	DryRun       bool                  `json:"dryRun"`
+	Orgs         int                   `json:"orgs"`
+	ChargedCents int64                 `json:"chargedCents"`
+	Actions      map[engine.Action]int `json:"actions"`
+	Results      []CycleResult         `json:"results"`
+	Allotments   CycleAllotments       `json:"allotments"`
+	Errors       []string              `json:"errors,omitempty"`
+}
+
+func newCycleReport(now time.Time, dryRun bool) *CycleReport {
+	return &CycleReport{Now: now, DryRun: dryRun, Actions: map[engine.Action]int{}, Results: make([]CycleResult, 0)}
+}
+
+func (r *CycleReport) add(res CycleResult) {
+	r.Results = append(r.Results, res)
+	if res.Action != "" {
+		r.Actions[res.Action]++
+	}
+	r.ChargedCents += res.AmountCents
+}
+
+// RunSubscriptionCycle is the billing cycle, for every organization, at now: it
+// renews each subscription whose paid period has ended from the source it was
+// bought from (renewalOf: its card, its prepaid money, never for a comped plan),
+// retries declined renewals on engine.RetrySchedule and ends the subscription
+// after the last, ends subscriptions canceled at period end or with nothing on
+// file to pay them, leaves an overdue one as it is until its customer acts, ends
+// seat and bundle rows whose paying subscription ended, and grants each
+// subscriber the month's included allotment. It is the one entry point for the
+// platform scheduler, and the HTTP endpoints call it too.
+//
+// It takes values because its caller is a schedule, not a person. Each org's
+// payment credentials are read from KMS the first time one of its renewals
+// charges a card, and the org's mode picks the Square sandbox or production.
+// With dryRun every decision is made and reported, and nothing is charged,
+// written or emitted; a card charge is reported as if the card accepted it, and a
+// prepaid payment as the money stands.
+//
+// A failure in one org is that org's entry in Errors; the run continues. Only
+// failing to list the organizations ends it.
+func RunSubscriptionCycle(ctx context.Context, kmsClient *kms.CachedClient, ev *events.Client, now time.Time, dryRun bool) (*CycleReport, error) {
+	orgs := make([]*organization.Organization, 0)
+	if _, err := organization.Query(datastore.New(ctx)).GetAll(&orgs); err != nil {
+		return nil, err
+	}
+	report := newCycleReport(now, dryRun)
+	report.Orgs = len(orgs)
+	for _, org := range orgs {
+		db := datastore.New(org.Namespaced(ctx))
+		cycleOrg(ctx, org, db, now, dryRun, ev, cardFor(kmsClient, org), "", report)
+	}
+	return report, nil
+}
+
+// cycleLocks serializes runs of one org's cycle within the process, and a
+// manual renew with them: overlapping runs take turns, and each reads the
+// subscriptions the one before it left.
+var cycleLocks sync.Map
+
+func lockOrgCycle(org string) func() {
+	mu, _ := cycleLocks.LoadOrStore(org, &sync.Mutex{})
+	m := mu.(*sync.Mutex)
+	m.Lock()
+	return m.Unlock
+}
+
+// orgCycleBudget bounds how long one org's cycle starts new subscriptions, on
+// the wall clock, so an org whose processor answers slowly cannot hold back the
+// orgs after it. A subscription under way is settled to the end; the ones not
+// yet started are settled by the next run, and the report carries the stop as
+// an error.
+var orgCycleBudget = 10 * time.Minute
+
+// cycleOrg runs the cycle for one org into report. user, when set, narrows the
+// run to that subscriber.
+func cycleOrg(ctx context.Context, org *organization.Organization, db *datastore.Datastore, now time.Time, dryRun bool, ev *events.Client, charge engine.ProviderCharger, user string, report *CycleReport) {
+	defer lockOrgCycle(org.Name)()
+
+	fail := func(what string, err error) {
+		log.Error("billing cycle: %s for %q: %v", what, org.Name, err)
+		report.Errors = append(report.Errors, fmt.Sprintf("%s: %s: %v", org.Name, what, err))
+	}
+	run := engine.Run{Now: now, DryRun: dryRun, Prepaid: prepaidFor(ctx, org)}
+	subs, err := orgSubscriptions(db, user)
+	if err != nil {
+		fail("list subscriptions", err)
+		return
+	}
+
+	// Paying subscriptions first, so a seat or bundle row sees its parent end in
+	// the same run. Each settled row replaces its listed one, so what follows —
+	// the seat rows and the allotment grants — reads this run's outcome, in a dry
+	// run as in a real one.
+	ended := make(map[string]bool)
+	started := time.Now()
+	for i, s := range subs {
+		if isBundleRow(s) || !engine.Live(s) {
+			continue
+		}
+		if spent := time.Since(started); spent > orgCycleBudget {
+			fail("settle subscriptions", fmt.Errorf("stopped after %s; the subscriptions not yet settled are left for the next run", spent.Round(time.Millisecond)))
+			break
+		}
+		sub := subscription.New(db)
+		if err := sub.GetById(s.Id()); err != nil {
+			res := resultOf(org, s)
+			res.Error = err.Error()
+			report.add(res)
+			continue
+		}
+		report.add(settleOne(ctx, org, db, sub, run, ev, charge))
+		if sub.Status == subscription.Canceled {
+			ended[sub.Id()] = true
+		}
+		subs[i] = sub
+	}
+	for _, s := range subs {
+		if !isBundleRow(s) || !grantsTier(s.Status) {
+			continue
+		}
+		parent := bundleParentOf(s)
+		if parent == "" || !parentEnded(db, parent, ended) {
+			continue
+		}
+		report.add(endWithParent(ctx, org, db, s, now, dryRun, ev))
+	}
+
+	granted, skipped, results := grantOrgAllotments(db, subs, now, !org.TestMode(), dryRun)
+	report.Allotments.Granted += granted
+	report.Allotments.Skipped += skipped
+	for _, r := range results {
+		if _, failed := r["error"]; failed {
+			report.Allotments.Failed++
+		}
+	}
+}
+
+// resultOf is the report line for sub before a step is taken on it.
+func resultOf(org *organization.Organization, sub *subscription.Subscription) CycleResult {
+	count := sub.Plan.IntervalCount
+	if count <= 0 {
+		count = 1
+	}
+	cur := string(sub.Plan.Currency)
+	if cur == "" {
+		cur = "usd"
+	}
+	return CycleResult{
+		Org: org.Name, SubscriptionId: sub.Id(), UserId: sub.UserId, Plan: planOf(sub),
+		Interval: string(sub.Plan.Interval), IntervalCount: count,
+		PeriodStart: sub.PeriodStart, PeriodEnd: sub.PeriodEnd,
+		PriceCents: int64(sub.Plan.Price) * seatCount(sub), Currency: cur,
+	}
+}
+
+// seatCount is the number of seats a subscription's price is multiplied by.
+func seatCount(sub *subscription.Subscription) int64 {
+	if !sub.Plan.PerSeat || sub.Quantity < 1 {
+		return 1
+	}
+	return int64(sub.Quantity)
+}
+
+// settleOne takes the cycle's step for one subscription, bound to db: the
+// engine's decision (engine.Settle), after the rules only this package knows —
+// the org's mode, who bills the subscription, and how it was bought (renewalOf).
+func settleOne(ctx context.Context, org *organization.Organization, db *datastore.Datastore, sub *subscription.Subscription, run engine.Run, ev *events.Client, charge engine.ProviderCharger) CycleResult {
+	dryRun := run.DryRun
+	res := resultOf(org, sub)
+	if !engine.Live(sub) {
+		return res
+	}
+	// An outside processor that bills a subscription renews it, and its webhooks
+	// keep the row's status: it is not the cycle's.
+	if billedElsewhere(sub) {
+		res.Source, res.Action = sourceExternal, renewedOutside
+		res.Reason = "billed by " + sub.ProviderType + ", which renews it"
+		return res
+	}
+	c, source, err := renewalOf(org, db, sub, charge, run.Prepaid)
+	if err != nil {
+		log.Error("billing cycle: how subscription %s in %q is paid: %v", sub.Id(), org.Name, err)
+		res.Error = err.Error()
+		return res
+	}
+	if sub.Test != org.TestMode() {
+		// Bought in the org's other mode: nothing on this org's processor or books
+		// pays it, and a live row would otherwise keep serving its tier to every
+		// reader.
+		c = engine.Collection{End: engine.EndedOtherMode,
+			Reason: "bought in the org's other mode (test " + strconv.FormatBool(sub.Test) + "); nothing on this org's processor pays it"}
+		source = sourceNone
+	}
+	res.Source = source
+	if source == sourceExternal {
+		res.Action, res.Reason = renewedOutside, c.Reason
+		return res
+	}
+
+	step, err := engine.Settle(ctx, db, sub, run, c)
+	if err != nil {
+		log.Error("billing cycle: settle subscription %s in %q: %v", sub.Id(), org.Name, err)
+		res.Error = err.Error()
+		return res
+	}
+	res.Action, res.AmountCents, res.Reason = step.Action, step.AmountCharged, step.Reason
+	if res.Action == "" {
+		res.Action = notDue
+	}
+	if inv := step.Invoice; inv != nil {
+		res.BillStart, res.BillEnd = inv.PeriodStart, inv.PeriodEnd
+		if !dryRun {
+			res.InvoiceId = inv.Id()
+		}
+	}
+	if !dryRun {
+		emitStep(ctx, ev, org.Name, sub, step)
+	}
+	return res
+}
+
+// endWithParent ends a seat or bundle row whose paying subscription has ended.
+// It charges nothing: the row never carried a price of its own.
+func endWithParent(ctx context.Context, org *organization.Organization, db *datastore.Datastore, s *subscription.Subscription, now time.Time, dryRun bool, ev *events.Client) CycleResult {
+	res := resultOf(org, s)
+	res.Action, res.Reason = engine.EndedWithParent, "its paying subscription "+bundleParentOf(s)+" ended"
+	engine.End(s, now, now, engine.EndedWithParent) // the listed row, which the allotment grants read next
+	if dryRun {
+		return res
+	}
+	sub := subscription.New(db)
+	if err := sub.GetById(s.Id()); err != nil {
+		res.Error = err.Error()
+		return res
+	}
+	if sub.Status == subscription.Canceled {
+		res.Action, res.Reason = engine.Skipped, "canceled meanwhile"
+		return res
+	}
+	engine.End(sub, now, now, engine.EndedWithParent)
+	if err := sub.Update(); err != nil {
+		res.Error = err.Error()
+		return res
+	}
+	emitStep(ctx, ev, org.Name, sub, &engine.Step{Action: engine.EndedWithParent})
+	return res
+}
+
+// emitStep fires the analytics events a settled step produces, on the events
+// the collector names: a renewal is subscription_renewed (and invoice_paid when
+// the step collected), and every end — whatever ended it — is
+// subscription_canceled carrying the action as its reason (and invoice_void when
+// it voided the renewal invoice), so a notification can hang off an end. A
+// payment that landed after the customer canceled is invoice_paid alone; the
+// cancel emitted its own event. A declined attempt, a comped period and a
+// skipped row have no event name and emit nothing.
+// Fire-and-forget: a nil collector is a no-op.
+func emitStep(ctx context.Context, ev *events.Client, orgName string, sub *subscription.Subscription, step *engine.Step) {
+	if ev == nil {
+		return
+	}
+	detached := context.WithoutCancel(ctx)
+	switch {
+	case step.Action == engine.Renewed || step.Action == engine.Retried:
+		go ev.EmitSubscriptionRenewed(detached, subscriptionEvent(orgName, sub))
+		if step.Invoice != nil && step.AmountCharged > 0 {
+			go ev.EmitInvoicePaid(detached, invoiceEvent(orgName, step.Invoice))
+		}
+	case step.Action == engine.ChargedAfterCancel:
+		go ev.EmitInvoicePaid(detached, invoiceEvent(orgName, step.Invoice))
+	case sub.Status == subscription.Canceled && step.Action != engine.Skipped:
+		e := subscriptionEvent(orgName, sub)
+		e.Reason = string(step.Action)
+		go ev.EmitSubscriptionCanceled(detached, e)
+		if step.Invoice != nil && step.Invoice.Status == billinginvoice.Void {
+			go ev.EmitInvoiceVoid(detached, invoiceEvent(orgName, step.Invoice))
+		}
+	}
+}
+
+// orgSubscriptions lists the org's subscriptions, or one subscriber's.
+// Subscriptions are stored without an ancestor (see userSubscriptions), so they
+// are read by namespace alone; the namespace is the tenant boundary.
+func orgSubscriptions(db *datastore.Datastore, user string) ([]*subscription.Subscription, error) {
+	q := subscription.Query(db)
+	if user != "" {
+		q = q.Filter("UserId=", user)
+	}
+	subs := make([]*subscription.Subscription, 0)
+	if _, err := q.GetAll(&subs); err != nil {
+		return nil, err
+	}
+	return subs, nil
+}
+
+// cardFor is org's renewal charger. It reads the org's payment credentials from
+// KMS the first time a renewal charges a card, so a run that charges no one in
+// an org never reads its secrets. When that read fails, no card is charged at
+// all: the processor would fall back to the deployment's own credentials, which
+// are not the org's. Every charge then answers engine.ErrChargeUnknown, so it is
+// repeated on a later run rather than counted against the customer, and the
+// failure is logged for an operator.
+func cardFor(kmsClient *kms.CachedClient, org *organization.Organization) engine.ProviderCharger {
+	charge := chargeProviderForOrg(org)
+	var once sync.Once
+	var hydrateErr error
+	return func(ctx context.Context, db *datastore.Datastore, inv *billinginvoice.BillingInvoice, amountCents int64) (string, error) {
+		once.Do(func() {
+			if kmsClient == nil {
+				return
+			}
+			if hydrateErr = kms.Hydrate(kmsClient, org); hydrateErr != nil {
+				log.Error("billing: ALERT the payment credentials of org %q could not be read from KMS; no card in it is charged until they can: %v", org.Name, hydrateErr)
+			}
+		})
+		if hydrateErr != nil {
+			return "", fmt.Errorf("%w: the org's payment credentials could not be read from KMS: %v", engine.ErrChargeUnknown, hydrateErr)
+		}
+		return charge(ctx, db, inv, amountCents)
+	}
+}
+
+// isBundleRow reports whether s is a seat or bundle row: an entitlement another
+// subscription pays for, never billed itself.
+func isBundleRow(s *subscription.Subscription) bool {
+	return strings.EqualFold(strings.TrimSpace(s.ProviderType), "bundle")
+}
+
+// bundleParentOf is the subscription a seat or bundle row belongs to, from the
+// link createSubscription and provisionMembers store on it; "" for a row stored
+// before subscription metadata was kept.
+func bundleParentOf(s *subscription.Subscription) string {
+	id, _ := s.Metadata["bundleParent"].(string)
+	return strings.TrimSpace(id)
+}
+
+// parentEnded reports whether the paying subscription id has ended, from this
+// run's outcomes or, for a parent the run did not list, from the store.
+func parentEnded(db *datastore.Datastore, id string, ended map[string]bool) bool {
+	if e, ok := ended[id]; ok {
+		return e
+	}
+	parent := subscription.New(db)
+	if err := parent.GetById(id); err != nil {
+		return false
+	}
+	e := parent.Status == subscription.Canceled
+	ended[id] = e
+	return e
+}
+
+// grantsTier reports whether a subscription in this status still confers its
+// plan.
+func grantsTier(s subscription.Status) bool {
+	switch s {
+	case subscription.Active, subscription.Trialing, subscription.PastDue:
+		return true
+	}
+	return false
+}
+
+// billedElsewhere reports whether an outside processor runs the subscription's
+// billing, so the cycle must never charge it: the processor renews it and
+// charges the customer itself.
+func billedElsewhere(s *subscription.Subscription) bool {
+	if s.Type == subscription.External {
+		return false // a payment recorded by hand: renewalOf answers it
+	}
+	switch strings.ToLower(strings.TrimSpace(s.ProviderType)) {
+	case "stripe", "paypal", "authorizenet", "authorize.net", "braintree":
+		return true
+	}
+	return false
+}
+
+// planOf is the plan slug a subscription holds.
+func planOf(s *subscription.Subscription) string {
+	if s.Plan.Slug != "" {
+		return s.Plan.Slug
+	}
+	return s.PlanId
+}
+
+// dryRunOf reads ?dryRun= off a request to the cycle or the realignment. A run
+// is a dry run unless the request says dryRun=false: the live run is always a
+// deliberate, separate invocation. Any other query parameter (a misspelled
+// dryrun, dry_run) or a dryRun that is not true or false is an error, and the
+// endpoint refuses rather than guessing.
+func dryRunOf(c *zip.Ctx) (bool, error) {
+	for name := range c.Fiber().Queries() {
+		if name != "dryRun" {
+			return true, fmt.Errorf("unknown query parameter %q; this endpoint takes only dryRun", name)
+		}
+	}
+	raw, ok := c.Fiber().Queries()["dryRun"]
+	if !ok {
+		return true, nil
+	}
+	v, err := strconv.ParseBool(raw)
+	if err != nil {
+		return true, fmt.Errorf("dryRun must be true or false, not %q", raw)
+	}
+	return v, nil
+}
+
+// RunBillingCycle runs the subscription cycle for the request's organization.
+// It is a dry run unless the request says dryRun=false. The run is not tied to
+// the request: a caller that stops waiting does not stop a run that may already
+// have charged a card.
+//
+//	POST /v1/billing/cycle/run[?dryRun=false]
+func RunBillingCycle(c *zip.Ctx) error {
+	ctx := context.WithoutCancel(c.Context())
+	org := middleware.GetOrganization(c)
+	dryRun, err := dryRunOf(c)
+	if err != nil {
+		return http.Fail(c, 400, err.Error(), nil)
+	}
+	report := newCycleReport(time.Now(), dryRun)
+	report.Orgs = 1
+	db := datastore.New(org.Namespaced(ctx))
+	cycleOrg(ctx, org, db, report.Now, report.DryRun, eventsOf(c), cardFor(kmsOf(c), org), "", report)
+	return c.JSON(200, report)
+}
+
 type cycleUserRequest struct {
 	UserId string `json:"userId"`
 }
 
-// RunBillingCycle processes all subscriptions whose current period has ended
-// for the request's organization. It generates invoices and attempts collection
-// for each due subscription.
+// RunBillingCycleUser runs the subscription cycle for one subscriber in the
+// request's organization: a dry run unless the request says dryRun=false, and
+// not tied to the request (see RunBillingCycle).
 //
-//	POST /v1/billing/cycle/run
-func RunBillingCycle(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
-	hydratePaymentCreds(c, org)
-	db := datastore.New(org.Namespaced(c.Context()))
-
-	results := renewDue(c.Context(), org, "")
-
-	// Top up each active subscriber's included monthly allotment for the
-	// current period (idempotent per user+month).
-	allotGranted, allotSkipped, _ := grantOrgAllotments(c, db, time.Now(), !org.TestMode())
-
-	return c.JSON(200, map[string]any{
-		"processed": len(results),
-		"results":   results,
-		"allotments": map[string]any{
-			"granted": allotGranted,
-			"skipped": allotSkipped,
-		},
-	})
-}
-
-// RunBillingCycleUser processes due subscriptions for a single user within the
-// request's organization.
-//
-//	POST /v1/billing/cycle/run-user
+//	POST /v1/billing/cycle/run-user[?dryRun=false]  {"userId": "..."}
 func RunBillingCycleUser(c *zip.Ctx) error {
+	ctx := context.WithoutCancel(c.Context())
 	org := middleware.GetOrganization(c)
-	hydratePaymentCreds(c, org)
+	dryRun, err := dryRunOf(c)
+	if err != nil {
+		return http.Fail(c, 400, err.Error(), nil)
+	}
 
 	var req cycleUserRequest
 	if err := c.Bind(&req); err != nil {
 		return http.Fail(c, 400, "invalid request body", err)
 	}
-
 	if req.UserId == "" {
 		return http.Fail(c, 400, "userId is required", nil)
 	}
 
-	results := renewDue(c.Context(), org, req.UserId)
-
-	return c.JSON(200, map[string]any{
-		"user":      req.UserId,
-		"processed": len(results),
-		"results":   results,
-	})
+	report := newCycleReport(time.Now(), dryRun)
+	report.Orgs = 1
+	db := datastore.New(org.Namespaced(ctx))
+	cycleOrg(ctx, org, db, report.Now, report.DryRun, eventsOf(c), cardFor(kmsOf(c), org), req.UserId, report)
+	return c.JSON(200, report)
 }
 
-// RunBillingCycleAllOrgs iterates every organization and processes due
-// subscriptions across all of them, then grants each org's included allotments.
+// RunBillingCycleAllOrgs runs the subscription cycle for every organization: a
+// dry run unless the request says dryRun=false, and not tied to the request (see
+// RunBillingCycle).
 //
-//	POST /v1/billing/cycle/run-all
+//	POST /v1/billing/cycle/run-all[?dryRun=false]
 func RunBillingCycleAllOrgs(c *zip.Ctx) error {
-	run, err := RenewDue(c.Context(), kmsOf(c))
+	dryRun, err := dryRunOf(c)
+	if err != nil {
+		return http.Fail(c, 400, err.Error(), nil)
+	}
+	report, err := RunSubscriptionCycle(context.WithoutCancel(c.Context()), kmsOf(c), eventsOf(c), time.Now(), dryRun)
 	if err != nil {
 		log.Error("Failed to list organizations for billing cycle: %v", err, c)
 		return http.Fail(c, 500, "failed to list organizations", err)
 	}
-
-	rootDb := datastore.New(c.Context())
-	orgs := make([]*organization.Organization, 0)
-	if _, err := organization.Query(rootDb).GetAll(&orgs); err == nil {
-		now := time.Now()
-		for _, org := range orgs {
-			grantOrgAllotments(c, datastore.New(org.Namespaced(c.Context())), now, !org.TestMode())
-		}
-	}
-
-	return c.JSON(200, run)
-}
-
-// Renewal is what renewing one due subscription did.
-type Renewal struct {
-	OrgName        string `json:"orgName"`
-	UserId         string `json:"userId"`
-	SubscriptionId string `json:"subscriptionId"`
-	InvoiceId      string `json:"invoiceId,omitempty"`
-	Success        bool   `json:"success"`
-	Error          string `json:"error,omitempty"`
-}
-
-// RenewalRun is one sweep: how many organizations were considered, how many
-// subscriptions were due, and what renewing each one did.
-type RenewalRun struct {
-	Orgs    int       `json:"orgs"`
-	Due     int       `json:"due"`
-	Renewed int       `json:"renewed"`
-	Results []Renewal `json:"results"`
-}
-
-// RenewDue renews every due subscription in every organization: it invoices the
-// period that ended and collects it through the one waterfall — prepaid money
-// first, the card on file for the rest — moving the row on when it is paid and
-// leaving it past due when it is not.
-//
-// It takes values because the caller is a SCHEDULE, not a person. A failure to
-// collect one subscription is that subscription's result, not the sweep's: the
-// loop continues. Only the population read failing ends the run.
-func RenewDue(ctx context.Context, kmsClient *kms.CachedClient) (*RenewalRun, error) {
-	orgs := make([]*organization.Organization, 0)
-	if _, err := organization.Query(datastore.New(ctx)).GetAll(&orgs); err != nil {
-		return nil, err
-	}
-	run := &RenewalRun{Orgs: len(orgs), Results: make([]Renewal, 0)}
-	for _, org := range orgs {
-		// Hydrate each org's payment creds so a due renewal can charge its
-		// subscribers' vaulted cards through that org's own processor.
-		if kmsClient != nil {
-			if err := kms.Hydrate(kmsClient, org); err != nil {
-				log.Error("KMS hydration failed for org %q during renewal: %v", org.Name, err)
-			}
-		}
-		for _, r := range renewDue(ctx, org, "") {
-			run.Due++
-			if r.Success {
-				run.Renewed++
-			}
-			run.Results = append(run.Results, r)
-		}
-	}
-	return run, nil
-}
-
-// renewDue renews org's due subscriptions — one subject's when user is set. A row
-// the sweep missed for whole periods is billed the period running now, never every
-// period since (engine.RenewSubscription).
-func renewDue(ctx context.Context, org *organization.Organization, user string) []Renewal {
-	// Subscriptions are stored ancestor-less, so they are read the way every
-	// other reader reads them. An Ancestor(synckey) filter matches none of them,
-	// which left this sweep renewing nothing.
-	subs, err := ListSubscriptions(ctx, org, user, "")
-	if err != nil {
-		log.Error("Failed to query subscriptions for renewal in org %q: %v", org.Name, err)
-		return nil
-	}
-	db := datastore.New(org.Namespaced(ctx))
-
-	now := time.Now()
-	pre, charge := prepaidFor(ctx, org), chargeProviderForOrg(org)
-	out := make([]Renewal, 0)
-	for _, sub := range subs {
-		// A row renews from the books of its own mode, and the org's prepaid money
-		// is the org's mode: a sandbox row is never paid from live money, nor a
-		// live row from sandbox money.
-		if sub.Test != org.TestMode() || !engine.IsDue(sub, now) {
-			continue
-		}
-		out = append(out, renewOne(ctx, db, org.Name, sub, pre, charge))
-	}
-	return out
-}
-
-// renewOne invoices and collects one subscription's due period, then persists
-// the row as the collection left it.
-func renewOne(ctx context.Context, db *datastore.Datastore, orgName string, sub *subscription.Subscription, pre engine.Prepaid, charge engine.ProviderCharger) Renewal {
-	// A row read by query is not bound to the store, so the write goes through a
-	// fresh read of the same id.
-	row := subscription.New(db)
-	if err := row.GetById(sub.Id()); err != nil {
-		return Renewal{OrgName: orgName, UserId: sub.UserId, SubscriptionId: sub.Id(), Error: err.Error()}
-	}
-	r := Renewal{OrgName: orgName, UserId: row.UserId, SubscriptionId: row.Id()}
-	inv, result, err := engine.RenewSubscription(ctx, db, row, pre, charge)
-	if inv != nil {
-		r.InvoiceId = inv.Id()
-	}
-	if err != nil {
-		log.Error("Billing cycle: failed to renew subscription %s: %v", row.Id(), err)
-		r.Error = err.Error()
-		return r
-	}
-	if err := row.Update(); err != nil {
-		log.Error("Billing cycle: failed to update subscription %s after renewal: %v", row.Id(), err)
-		r.Error = err.Error()
-		return r
-	}
-	r.Success, r.Error = result.Success, result.Error
-	return r
+	return c.JSON(200, report)
 }

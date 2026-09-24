@@ -1775,7 +1775,10 @@ paths:
       tags: [Invoices]
       summary: Void an invoice
       operationId: voidInvoice
-      description: Voids a draft or open invoice. Cannot void paid invoices.
+      description: >-
+        Voids a draft or open invoice and returns what it collected to the
+        customer's prepaid money. Cannot void paid invoices, or one whose last
+        payment attempt has no known outcome yet (409).
       parameters:
         - $ref: '#/components/parameters/ResourceId'
       responses:
@@ -1789,6 +1792,110 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          description: A payment on the invoice is in progress, or its last attempt has no known outcome
+
+  /invoices/{id}/void-unresolved:
+    post:
+      tags: [Invoices]
+      summary: Void an invoice whose payment attempt has no known outcome
+      operationId: voidUnresolvedInvoice
+      description: >-
+        Platform operators only. Voids an open invoice whose payment attempt has
+        no known outcome once the retry schedule has escalated it, its
+        subscription has ended, or it has none, after the operator has settled
+        that attempt with the processor. The operator, the reason and the
+        attempt are recorded as an invoice.operator_void billing event. The next
+        billing cycle ends the subscription on its voided invoice.
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+                  maxLength: 1000
+      responses:
+        '200':
+          description: Invoice voided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingInvoice'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The billing cycle is still repeating the attempt, or a payment on the invoice is in progress
+
+  /cycle/run-all:
+    post:
+      tags: [Subscriptions]
+      summary: Run the subscription billing cycle for every organization
+      operationId: runBillingCycleAllOrgs
+      description: >-
+        Platform operators and services only. Renews each subscription whose
+        paid period has ended from the source it was bought from (its card, or
+        its prepaid money), at the interval and price it was bought at; retries
+        a declined renewal 1, 3 and 7 days after the decline and ends the
+        subscription after the last; leaves a subscription overdue by more than
+        72 hours as it is, charging nothing, until its customer renews it; and
+        grants the month's included allotments. A dry run unless dryRun=false:
+        the dry run reports, for every live subscription, its org, plan,
+        interval, periods, amount, source and the action the live run would
+        take, and writes nothing. /cycle/run runs the same for the request's
+        organization, /cycle/run-user for one subscriber in it.
+      parameters:
+        - name: dryRun
+          in: query
+          required: false
+          description: false runs the cycle for real; absent or true is a dry run. Any other value, or any other query parameter, is refused.
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: The cycle's report
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /realign/run-all:
+    post:
+      tags: [Subscriptions]
+      summary: Move subscriptions a period ahead of their paid invoice back onto it
+      operationId: realignSubscriptionsAllOrgs
+      description: >-
+        Platform operators only. A live subscription whose period starts where
+        its current invoice's paid period ends is moved back onto that invoice's
+        period, so it renews when that period ends. The cycle never does this
+        on its own. A dry run unless dryRun=false: the dry run reports every
+        subscription it would move, from and to, and writes nothing.
+        /realign/run runs the same for the request's organization.
+      parameters:
+        - name: dryRun
+          in: query
+          required: false
+          description: false writes the moves; absent or true is a dry run.
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: The realignment report
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   # =====================================================================
   # K) BILLING - CREDIT NOTES
