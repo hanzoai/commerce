@@ -252,8 +252,10 @@ func ReadTier(ctx context.Context, org *organization.Organization, user string, 
 
 	// ONE slug resolution, for both the usage windows and the plan's roster. It was
 	// already resolved for the windows; reading it twice is two chances to answer
-	// for two different plans in one payload.
-	slug := subscriptionPlanSlug(datastore.New(ctx), user, org.TestMode())
+	// for two different plans in one payload. It is the plan the subject is served
+	// as, which a past_due subscriber keeps along with the tier deriveTier gives
+	// them.
+	slug := servedPlanSlug(datastore.New(ctx), user, org.TestMode())
 
 	creditsRemaining := split.CreditsRemaining
 	effectiveAvailable := int64(spendable) + dailyRemaining
@@ -422,7 +424,7 @@ func TierCheck(c *zip.Ctx) error {
 	// silent, and `capacity` serves without a bound rather than refusing on nothing.
 	slug := ""
 	if org, ok := middleware.GetOrganizationOK(c); ok && org != nil {
-		slug = subscriptionPlanSlug(datastore.New(org.Namespaced(c.Context())), user, org.TestMode())
+		slug = servedPlanSlug(datastore.New(org.Namespaced(c.Context())), user, org.TestMode())
 	}
 	lim := tierLimits(cfg, slug)
 	resp := map[string]any{
@@ -573,12 +575,14 @@ func tierOfName(raw string) tier.Name {
 }
 
 // deriveTier resolves a subject's REAL billing tier from their subscriptions: the
-// HIGHEST tier any active/trialing subscription confers.
+// HIGHEST tier any active, past_due or trialing subscription confers.
 //
 //   - a trialing subscription → Starter (the entry on-ramp)
 //   - an active PAID plan → Enterprise (enterprise-category plan) else Pro
-//   - no active/trialing sub, a $0 / unknown plan, or a canceled/past_due/unpaid
-//     subscription → Free
+//   - a past_due PAID plan → the same as active: its renewal declined and the
+//     billing cycle is retrying it, and the subscriber keeps the tier until the
+//     last retry fails and the subscription ends
+//   - no such sub, a $0 / unknown plan, or a canceled/unpaid subscription → Free
 //
 // A plan's paid-ness and tier are read from the embedded catalog by slug
 // (paidTier/lookupPlan), never the subscription's spoofable stored plan copy, so a
@@ -606,10 +610,10 @@ func deriveTier(db *datastore.Datastore, user string, test bool) (tier.Name, err
 		switch s.Status {
 		case subscription.Trialing:
 			t = tier.Starter
-		case subscription.Active:
+		case subscription.Active, subscription.PastDue:
 			t = activeTier(s)
 		default:
-			continue // past_due / unpaid / canceled confer no tier
+			continue // unpaid / canceled confer no tier
 		}
 		if tierRank(t) > tierRank(best) {
 			best = t

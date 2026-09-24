@@ -668,14 +668,6 @@ func TestAggregateUsage_RequiresDatastore(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// lifecycle.go — RenewSubscription requires datastore
-// ---------------------------------------------------------------------------
-
-func TestRenewSubscription_RequiresDatastore(t *testing.T) {
-	t.Skip("requires datastore: billinginvoice.New(db) + AggregateUsage needs live db")
-}
-
-// ---------------------------------------------------------------------------
 // Param struct construction tests
 // ---------------------------------------------------------------------------
 

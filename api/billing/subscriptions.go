@@ -13,6 +13,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
@@ -277,7 +278,7 @@ func resolveSubscriptionPlan(db *datastore.Datastore, planId string) (*plan.Plan
 //
 // Where the choice then lives is what makes it survive: StartSubscription
 // snapshots the plan it is handed onto sub.Plan, the snapshot persists with the
-// subscription, and buildPeriodInvoice invoices sub.Plan.Price — so a
+// subscription, and draftPeriodInvoice invoices sub.Plan.Price — so a
 // subscription opened at a level renews at that level for its whole life,
 // without the renewal path knowing levels exist.
 func planAtLevel(p *plan.Plan, level int) (*plan.Plan, error) {
@@ -1001,9 +1002,10 @@ func cancelSubscription(ctx context.Context, org *organization.Organization, id 
 		return nil, err
 	}
 	// Ended now, the row is served no further period, so an invoice it still owes
-	// for one is void rather than left to be paid onto a canceled plan.
+	// for one is void rather than left to be paid onto a canceled plan, and what
+	// that invoice collected goes back.
 	if !atPeriodEnd {
-		if err := engine.VoidOpen(datastore.New(org.Namespaced(ctx)), sub); err != nil {
+		if err := engine.VoidOpen(ctx, datastore.New(org.Namespaced(ctx)), sub, prepaidFor(ctx, org), time.Now()); err != nil {
 			return nil, err
 		}
 	}
@@ -1102,44 +1104,43 @@ func ReactivateBillingSubscription(c *zip.Ctx) error {
 	return c.JSON(200, subscriptionResponse(sub))
 }
 
-// RenewBillingSubscription manually triggers a billing cycle renewal.
-// Normally this would be automated by Temporal, but this endpoint allows
-// manual triggering for testing and for deployments without Temporal.
+// RenewBillingSubscription is the customer renewing one subscription now, by
+// the cycle's own rules (settleOne) with the customer asking: a due subscription
+// is renewed for one period from the source it was bought from, and one overdue
+// is renewed for the period from now and never billed for the time it was not
+// renewed. A past-due one waits for its next retry (its invoice is paid now
+// through POST /v1/billing/invoices/:id/pay), and one that is not due is left
+// alone; neither is charged here.
 //
 //	POST /v1/billing/subscriptions/:id/renew
 func RenewBillingSubscription(c *zip.Ctx) error {
+	ctx := context.WithoutCancel(c.Context())
 	org := middleware.GetOrganization(c)
-	// Hydrate the org's payment credentials so the renewal can re-charge the
-	// subscription's vaulted card via the per-org Square processor.
-	hydratePaymentCreds(c, org)
-	db := datastore.New(org.Namespaced(c.Context()))
+	db := datastore.New(org.Namespaced(ctx))
 
-	id := c.Param("id")
 	sub := subscription.New(db)
-	if err := sub.GetById(id); err != nil {
+	if err := sub.GetById(c.Param("id")); err != nil {
 		return http.Fail(c, 404, "subscription not found", err)
 	}
 
-	inv, result, err := engine.RenewSubscription(c.Context(), db, sub, prepaidFor(c.Context(), org), chargeProviderForOrg(org))
-	if err != nil {
-		log.Error("Failed to renew subscription: %v", err, c)
-		return http.Fail(c, 500, "failed to renew subscription", err)
-	}
-
-	if err := sub.Update(); err != nil {
-		log.Error("Failed to update subscription after renewal: %v", err, c)
-		return http.Fail(c, 500, "failed to update subscription", err)
+	unlock := lockOrgCycle(org.Name)
+	run := engine.Run{Now: time.Now(), Asked: true, Prepaid: prepaidFor(ctx, org)}
+	res := settleOne(ctx, org, db, sub, run, eventsOf(c), cardFor(kmsOf(c), org))
+	unlock()
+	if res.Error != "" {
+		log.Error("Failed to renew subscription %s: %s", sub.Id(), res.Error, c)
+		return http.Fail(c, 500, "failed to renew subscription", nil)
 	}
 
 	resp := map[string]any{
 		"subscription": subscriptionResponse(sub),
-		"collection":   result,
+		"result":       res,
 	}
-	// inv is nil when the period was not due (or a concurrent renewal is already in
-	// flight): no invoice was generated and nothing was charged.
-	if inv != nil {
-		emitSubscriptionRenewed(c, org.Name, sub)
-		resp["invoice"] = invoiceResponse(inv)
+	if res.InvoiceId != "" {
+		inv := billinginvoice.New(db)
+		if err := inv.GetById(res.InvoiceId); err == nil {
+			resp["invoice"] = invoiceResponse(inv)
+		}
 	}
 	return c.JSON(200, resp)
 }

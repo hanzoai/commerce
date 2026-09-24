@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
+	squarecore "github.com/square/square-go-sdk/v3/core"
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/api/promo"
@@ -34,22 +36,9 @@ import (
 // through which saved-card subscription code reaches the payment provider. It is a
 // package var so tests can inject a registry with a fake Square processor;
 // production is payment.ProcessorsForOrg (built from the org's KMS-hydrated
-// credentials). Callers MUST hydrate the org's creds first (hydratePaymentCreds).
+// credentials). Callers MUST hydrate the org's creds first (kms.Hydrate, which
+// cardFor does before a renewal's first charge).
 var processorsForOrg = payment.ProcessorsForOrg
-
-// hydratePaymentCreds loads the org's payment-provider credentials from KMS (via
-// the request-scoped cached client in c.Locals) so processorsForOrg sees real
-// Square credentials. Best-effort + non-fatal — mirrors TopupWithToken /
-// CreatePaymentMethod. A no-op when KMS is not wired (dev/tests / env-var creds).
-func hydratePaymentCreds(c *zip.Ctx, org *organization.Organization) {
-	if v := c.Locals("kms"); v != nil {
-		if kmsClient, ok := v.(*kms.CachedClient); ok {
-			if err := kms.Hydrate(kmsClient, org); err != nil {
-				log.Error("KMS hydration failed for org %q: %v", org.Name, err, c)
-			}
-		}
-	}
-}
 
 // inOrgSubject narrows a requested billing subject to the caller's OWN org: it
 // returns the requested subject only when it is the org slug or a <org>/<user>
@@ -394,7 +383,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	}
 	// Billable seats: a per-seat plan charges Price × quantity (floored at the
 	// catalog's minSeats); a flat plan is always ×1. This MUST match
-	// buildPeriodInvoice's seat math so the first charge equals the invoice's
+	// draftPeriodInvoice's seat math so the first charge equals the invoice's
 	// AmountDue — never under-collect a per-seat plan yet record it paid in full.
 	qty := in.Quantity
 	if qty < 1 {
@@ -679,7 +668,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// the subscription payment-backed (Square provider + a linked invoice), so its
 	// INCLUDED monthly allotment flows (subscriptionPaymentBacked).
 	sub.ProviderType = string(processor.Square)
-	// Stamp the promo BEFORE the invoice is built — buildPeriodInvoice prices the
+	// Stamp the promo BEFORE the invoice is built — draftPeriodInvoice prices the
 	// discount off the subscription, so setting it after would invoice the first
 	// period at full price against a discounted charge.
 	sub.DiscountPercent, sub.DiscountName = promoPercent, promoName
@@ -858,13 +847,31 @@ func chargeSavedCard(ctx context.Context, reg *processor.Registry, cardID, custo
 // chargeProviderForOrg returns an engine.ProviderCharger bound to org: given an
 // open invoice, it resolves the invoice's subscription → DefaultPaymentMethod →
 // the vaulted card (paymentmethod.ProviderRef = card-on-file id, Metadata
-// squareCustomerId) and charges the remaining amount on it via the org's Square
+// squareCustomerId) and charges the amount on it via the org's Square
 // processor, returning the processor ref. org MUST already be KMS-hydrated by the
-// caller (as TopupWithToken / auto-recharge do) so processorsForOrg sees real
-// credentials. A resolution/charge failure returns an error → CollectInvoice
-// leaves the invoice OPEN (no double-charge on retry).
+// caller (cardFor) so processorsForOrg sees its real credentials.
+//
+// The Square idempotency key is engine.AttemptKey: the attempt recorded on the
+// invoice before the charge, scoped to (subscription, billed period, attempt
+// number). A repeat of an attempt whose answer was lost carries the same key and
+// gets Square's first answer back.
+//
+// A failure is sorted by what Square said, never by HTTP status alone (see
+// cardOutcome): only a refusal of the card is a decline. Everything else — the
+// store unreadable, no processor, our credentials or location rejected, a reused
+// key, a 5xx, a payment taken and not settled — wraps engine.ErrChargeUnknown, so
+// the attempt is repeated under its key instead of being counted against the
+// customer, and it is logged for an operator. A processor that has not answered
+// within chargeTimeout is one of these.
 func chargeProviderForOrg(org *organization.Organization) engine.ProviderCharger {
 	return func(ctx context.Context, db *datastore.Datastore, inv *billinginvoice.BillingInvoice, amountCents int64) (string, error) {
+		ctx, cancel := context.WithTimeout(ctx, chargeTimeout)
+		defer cancel()
+		key := engine.AttemptKey(inv)
+		unknown := func(ref string, err error) (string, error) {
+			log.Error("billing: the card charge for invoice %s (key %s) has no known outcome; it is repeated under the same key: %v", inv.Id(), key, err)
+			return ref, fmt.Errorf("%w: %v", engine.ErrChargeUnknown, err)
+		}
 		if amountCents <= 0 {
 			return "", fmt.Errorf("nothing to charge")
 		}
@@ -873,14 +880,20 @@ func chargeProviderForOrg(org *organization.Organization) engine.ProviderCharger
 		}
 		sub := subscription.New(db)
 		if err := sub.GetById(inv.SubscriptionId); err != nil {
-			return "", fmt.Errorf("subscription %s not found: %w", inv.SubscriptionId, err)
+			if errors.Is(err, datastore.ErrNoSuchEntity) {
+				return "", fmt.Errorf("subscription %s not found: %w", inv.SubscriptionId, err)
+			}
+			return unknown("", err)
 		}
 		if strings.TrimSpace(sub.DefaultPaymentMethod) == "" {
 			return "", fmt.Errorf("subscription %s has no default payment method", sub.Id())
 		}
 		pm := paymentmethod.New(db)
 		if err := pm.GetById(sub.DefaultPaymentMethod); err != nil {
-			return "", fmt.Errorf("payment method %s not found: %w", sub.DefaultPaymentMethod, err)
+			if errors.Is(err, datastore.ErrNoSuchEntity) {
+				return "", fmt.Errorf("payment method %s not found: %w", sub.DefaultPaymentMethod, err)
+			}
+			return unknown("", err)
 		}
 		cardID := strings.TrimSpace(pm.ProviderRef)
 		if cardID == "" {
@@ -890,23 +903,90 @@ func chargeProviderForOrg(org *organization.Organization) engine.ProviderCharger
 		if cur == "" {
 			cur = currency.USD
 		}
-		// Square idempotency key scoped to (subscription, period, attempt). The PERIOD
-		// (not the invoice id) is the shared axis: concurrent renewals each build their
-		// OWN invoice row for the same period, so an invoice-id key would NOT de-dup them
-		// — the period does. AttemptCount makes each dunning RETRY a FRESH key so the
-		// processor lets the re-collection through (a period-only key would make the
-		// gateway replay the first decline forever and wedge dunning).
-		squareKey := "collect:sub:" + inv.SubscriptionId +
-			":period:" + strconv.FormatInt(inv.PeriodStart.Unix(), 10) +
-			":attempt:" + strconv.Itoa(inv.AttemptCount)
-		reg := processorsForOrg(org)
-		res, err := chargeSavedCard(ctx, reg, cardID, squareCustomerIDOf(pm), amountCents, cur, squareKey,
-			fmt.Sprintf("Subscription renewal invoice %s", inv.NumberStr))
-		if err != nil || res == nil || !res.Success {
-			return "", fmt.Errorf("%s", parseCardDeclineReason(res, err))
+		req := processor.PaymentRequest{
+			Token:          cardID,
+			CustomerID:     squareCustomerIDOf(pm),
+			Amount:         currency.Cents(amountCents),
+			Currency:       cur,
+			IdempotencyKey: key,
+			Description:    fmt.Sprintf("Subscription renewal invoice %s", inv.NumberStr),
 		}
-		return res.ProcessorRef, nil
+		proc, err := processorsForOrg(org).SelectProcessor(ctx, req)
+		if err != nil {
+			return unknown("", fmt.Errorf("no payment processor for saved-card charge: %w", err))
+		}
+		// A payment Square took without settling is looked up by its id first.
+		if ref := inv.PendingRef; ref != "" {
+			if tx, err := proc.GetTransaction(ctx, ref); err == nil && tx != nil {
+				switch status := strings.ToUpper(strings.TrimSpace(tx.Status)); {
+				case processor.Settled(status):
+					return ref, nil
+				case status == "FAILED" || status == "CANCELED":
+					return "", fmt.Errorf("the card payment %s was %s", ref, strings.ToLower(status))
+				default:
+					return unknown(ref, fmt.Errorf("payment %s is %s", ref, status))
+				}
+			}
+		}
+		res, err := proc.Charge(ctx, req)
+		ref, known, cerr := cardOutcome(res, err)
+		if !known {
+			return unknown(ref, cerr)
+		}
+		return ref, cerr
 	}
+}
+
+// chargeTimeout bounds one saved-card charge, the lookup of a payment it left
+// pending included. The processor's client has no deadline of its own, and the
+// cycle and the pay handlers run on contexts nothing cancels.
+var chargeTimeout = 30 * time.Second
+
+// cardOutcome sorts a saved-card charge's answer. A settled payment is its
+// processor ref. A decline is the card's refusal: a processor error that is
+// processor.ErrPaymentDeclined, or a Square error in the PAYMENT_METHOD_ERROR
+// category, answered with the sentence the customer reads. Anything else is not
+// known (known is false): a transport failure, a 5xx, an error in any other
+// category (IDEMPOTENCY_KEY_REUSED, our credentials, our location, a rate limit)
+// or a payment the processor took and did not settle, whose id comes back as ref
+// so it can be looked up.
+func cardOutcome(res *processor.PaymentResult, err error) (ref string, known bool, _ error) {
+	if err == nil && res != nil && res.Success {
+		return res.ProcessorRef, true, nil
+	}
+	if err == nil {
+		if res == nil {
+			return "", false, errors.New("the processor answered with no payment")
+		}
+		return res.ProcessorRef, false, fmt.Errorf("payment %s not completed (status %q)", res.ProcessorRef, res.Status)
+	}
+	if category, _ := squareError(err); category == "PAYMENT_METHOD_ERROR" || errors.Is(err, processor.ErrPaymentDeclined) {
+		return "", true, fmt.Errorf("%s", parseCardDeclineReason(res, err))
+	}
+	return "", false, err
+}
+
+// squareError reads the category and code of the first error in a Square API
+// error's body; empty when err carries none.
+func squareError(err error) (category, code string) {
+	var apiErr *squarecore.APIError
+	if !errors.As(err, &apiErr) {
+		return "", ""
+	}
+	inner := errors.Unwrap(apiErr)
+	if inner == nil {
+		return "", ""
+	}
+	var body struct {
+		Errors []struct {
+			Category string `json:"category"`
+			Code     string `json:"code"`
+		} `json:"errors"`
+	}
+	if json.Unmarshal([]byte(inner.Error()), &body) != nil || len(body.Errors) == 0 {
+		return "", ""
+	}
+	return body.Errors[0].Category, body.Errors[0].Code
 }
 
 // squareCustomerIDOf reads the Square customer id stored on a vaulted payment

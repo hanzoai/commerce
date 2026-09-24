@@ -15,6 +15,8 @@ package billing
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -257,6 +259,62 @@ func (p prepaid) debit(ctx context.Context, subject string, cur currency.Type, a
 	return t.Id(), nil
 }
 
+// Return puts amount back on the subject's balance on the one ledger, once per
+// ref. The host ledger's credit is idempotent on its key; on commerce's own
+// ledger the deposit is stored under a key derived from ref, so a second return
+// under the same ref finds the first. It is prepaid money the subject can spend,
+// the same kind a top-up is.
+func (p prepaid) Return(ctx context.Context, subject string, cur currency.Type, amount int64, ref string) (string, error) {
+	if amount <= 0 {
+		return "", nil
+	}
+	if strings.TrimSpace(ref) == "" {
+		return "", errors.New("prepaid return: a ref is required")
+	}
+	if led := creditledger.Get(); led != nil {
+		id, _, err := led.Credit(ctx, creditledger.CreditInput{
+			Org:            ledgerOrg(p.org),
+			Subject:        subject,
+			Currency:       string(cur),
+			Reason:         "returned " + ref,
+			Tag:            returnTag,
+			IdempotencyKey: ref,
+			AmountCents:    amount,
+			Test:           p.org.TestMode(),
+		})
+		return id, err
+	}
+	sum := sha256.Sum256([]byte("prepaid-return\x00" + subject + "\x00" + ref))
+	key := p.db.NewKey("transaction", "rtrn_"+hex.EncodeToString(sum[:16]), 0, p.db.NewKey("synckey", "", 1, nil))
+	t := transaction.New(p.db)
+	switch err := t.Get(key); {
+	case err == nil:
+		return t.Id(), nil
+	case !errors.Is(err, datastore.ErrNoSuchEntity):
+		return "", fmt.Errorf("read the return under %s: %w", ref, err)
+	}
+	t = transaction.New(p.db)
+	if err := t.SetKey(key); err != nil {
+		return "", err
+	}
+	t.Type = transaction.Deposit
+	t.DestinationId = subject
+	t.DestinationKind = transaction.IAMUserKind
+	t.Currency = cur
+	t.Amount = currency.Cents(amount)
+	t.Notes = "returned " + ref
+	t.Tags = returnTag
+	t.Test = p.org.TestMode()
+	if err := t.Create(); err != nil {
+		return "", fmt.Errorf("record the return under %s: %w", ref, err)
+	}
+	return t.Id(), nil
+}
+
+// returnTag tags money given back from an invoice that was voided or written
+// off. It is prepaid money (bucket.DepositKind), like a top-up.
+const returnTag = "invoice-return"
+
 // creditsAvailable is what the subject's active credit grants still hold.
 func creditsAvailable(db *datastore.Datastore, subject string) (int64, error) {
 	grants, err := getActiveGrants(db, subject)
@@ -287,7 +345,7 @@ func openPaid(db *datastore.Datastore, p *plan.Plan, req *createSubscriptionRequ
 		return nil, nil, err
 	}
 	sub.ProviderType = "credit"
-	// Stamped before the invoice is built: buildPeriodInvoice prices the promo
+	// Stamped before the invoice is built: draftPeriodInvoice prices the promo
 	// off the row, so stamping it after would invoice the period at full price.
 	sub.DiscountPercent, sub.DiscountName = promoPercent, promoName
 	method, ref := "credit", drawn.Ref

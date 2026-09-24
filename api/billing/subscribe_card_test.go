@@ -495,10 +495,12 @@ func seedCardBackedSub(t *testing.T, db *datastore.Datastore, subject, planSlug,
 	s.ProviderType = string(processor.Square)
 	s.Quantity = 1
 	engine.StartSubscription(s, p) // sets s.Plan, s.PlanId, Status=Active, current period
-	// Make the current period DUE (already ended) so a renewal actually collects —
-	// the is-due gate only bills an elapsed period (never a future one).
-	s.PeriodStart = time.Now().AddDate(0, -2, 0)
-	s.PeriodEnd = time.Now().AddDate(0, -1, 0)
+	// Paid through an hour ago: due, and inside the renewal grace window, so a
+	// renewal actually collects — the cycle bills only a period that has come due
+	// (never a future one), and leaves one overdue past the grace window to its
+	// customer.
+	s.PeriodEnd = time.Now().Add(-time.Hour)
+	s.PeriodStart = s.PeriodEnd.AddDate(0, -1, 0)
 	if err := s.Create(); err != nil {
 		t.Fatalf("seed subscription: %v", err)
 	}
@@ -585,13 +587,13 @@ func TestRenewSubscription_ChargesVaultedCard(t *testing.T) {
 
 // TestRenewSubscription_DeclineLeavesOpenNoDoubleCharge proves a declined renewal
 // leaves the invoice OPEN (subscription PastDue) and a repeated renew does NOT
-// re-charge (the existing open invoice is returned; dunning, not renew, retries).
+// re-charge (the open invoice waits for its scheduled retry).
 func TestRenewSubscription_DeclineLeavesOpenNoDoubleCharge(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	org := moneyOrg("sc-renew-decline")
 	m := squareMock("", "", "")
-	m.chargeErr = errors.New("CARD_DECLINED")
+	m.chargeErr = squareDecline()
 	withFakeSquare(t, m)
 
 	db := datastore.New(org.Namespaced(ctx))
@@ -648,6 +650,7 @@ func TestRenewSubscription_ParallelExactlyOneCharge(t *testing.T) {
 	db := datastore.New(org.Namespaced(ctx))
 	sub := seedCardBackedSub(t, db, "sc-par-renew", "dev", "ccof_pr", "cust_pr")
 	charger := chargeProviderForOrg(org)
+	id := sub.Id()
 
 	const N = 8
 	var wg sync.WaitGroup
@@ -655,12 +658,14 @@ func TestRenewSubscription_ParallelExactlyOneCharge(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			// Each goroutine renews its OWN loaded instance (no shared struct races).
-			s := subscription.New(db)
-			if err := s.GetById(sub.Id()); err != nil {
+			// Each goroutine renews its OWN loaded instance through its own
+			// datastore, as each request does (no shared struct races).
+			gdb := datastore.New(org.Namespaced(ctx))
+			s := subscription.New(gdb)
+			if err := s.GetById(id); err != nil {
 				return
 			}
-			_, _, _ = engine.RenewSubscription(ctx, db, s, prepaidFor(ctx, org), charger)
+			_, _ = engine.Settle(ctx, gdb, s, engine.Run{Now: time.Now()}, engine.CardPayer(charger))
 		}()
 	}
 	wg.Wait()
@@ -802,7 +807,7 @@ func TestPayInvoice_DeclineThenRetryReCollects(t *testing.T) {
 	defer ctx.Close()
 	org := moneyOrg("sc-pay-dun")
 	m := squareMock("", "", "sqpay_dun")
-	m.chargeErr = errors.New("CARD_DECLINED")
+	m.chargeErr = squareDecline() // Square refusing the card; a bare error is an unknown outcome
 	withFakeSquare(t, m)
 
 	db := datastore.New(org.Namespaced(ctx))

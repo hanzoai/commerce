@@ -212,12 +212,6 @@ func emitSubscriptionCreated(c *zip.Ctx, orgName string, sub *subscription.Subsc
 	})
 }
 
-func emitSubscriptionRenewed(c *zip.Ctx, orgName string, sub *subscription.Subscription) {
-	fireEvent(c, func(ctx context.Context, ev *events.Client) {
-		ev.EmitSubscriptionRenewed(ctx, subscriptionEvent(orgName, sub))
-	})
-}
-
 func emitSubscriptionPlanChanged(c *zip.Ctx, orgName string, sub *subscription.Subscription) {
 	fireEvent(c, func(ctx context.Context, ev *events.Client) {
 		ev.EmitSubscriptionPlanChanged(ctx, subscriptionEvent(orgName, sub))

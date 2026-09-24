@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"strconv"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/billinginvoice"
-	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -26,15 +26,15 @@ const periodLockStripes = 256
 
 var periodLockMu [periodLockStripes]sync.Mutex
 
-// lockPeriod serializes concurrent collection of the SAME (subscription, period)
-// WITHIN a process, returning the unlock func. Commerce is single-writer per tenant
+// lockPeriod serializes work on the SAME (subscription, billed period) WITHIN a
+// process, returning the unlock func. Commerce is single-writer per tenant
 // (ReadWriteOnce PVC, Recreate), so this fully serializes real concurrent renewals
-// (the cron sweep + a manual renew) — one invoice row, one collection — closing the
-// non-atomic findInvoiceForPeriod → buildPeriodInvoice window. The idempotencykey
-// guard + the per-(sub, period, attempt) gateway idempotency key remain the
-// money backstops (a cross-process racer still cannot double-charge).
-func lockPeriod(sub *subscription.Subscription) func() {
-	key := sub.Id() + "|" + strconv.FormatInt(sub.PeriodStart.Unix(), 10)
+// (the cycle + a manual renew) — one invoice row, one charge attempt — closing the
+// non-atomic findInvoiceForPeriod → issuePeriodInvoice window. The idempotencykey
+// guard + the per-(subscription, period, attempt) processor idempotency key remain
+// the money backstops (a cross-process racer still cannot double-charge).
+func lockPeriod(subID string, start time.Time) func() {
+	key := subID + "|" + strconv.FormatInt(start.Unix(), 10)
 	h := fnv.New32a()
 	_, _ = h.Write([]byte(key))
 	mu := &periodLockMu[h.Sum32()%periodLockStripes]
@@ -63,220 +63,70 @@ func StartSubscription(sub *subscription.Subscription, p *plan.Plan) {
 	}
 }
 
-// RenewSubscription bills the period a due subscription owes next — in advance:
-// the row holds the period it has paid for, and when that period ends the next one
-// is invoiced and collected, and the row moves onto it only once it is paid. So a
-// row is never served a period it has not paid for, and one canceled at the end of
-// its period ends with the last period it paid for.
-//
-// It is idempotent per (subscription, period): a PastDue renewal re-runs the
-// SAME period (the row only moves on a successful collection), so this must NEVER
-// mint a second invoice for a period already invoiced. If an invoice for that
-// period already exists it is never charged again here; retrying collection on an
-// unpaid invoice is the dunning workflow's job (billing/workflows/dunning.go), not
-// this generator's. What the existing invoice says still decides the row, because
-// the row may not have been told: a paid one moves the row onto its period, and an
-// unpaid one leaves it past due.
-func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscription.Subscription, prepaid Prepaid, chargeProvider ProviderCharger) (*billinginvoice.BillingInvoice, *CollectionResult, error) {
-	// Serialize concurrent collection of this (subscription, period) in-process so
-	// exactly ONE invoice row is built + collected for the period (books integrity).
-	defer lockPeriod(sub)()
-	now := time.Now()
-
-	// A row canceled at the end of its period ends when that period does, is never
-	// invoiced again, and owes nothing it will not be served.
-	if ended(sub, now) {
-		if err := VoidOpen(db, sub); err != nil {
-			return nil, nil, fmt.Errorf("failed to void the ended subscription's open invoices: %w", err)
-		}
-		return nil, &CollectionResult{Error: "subscription was canceled at the end of its period"}, nil
-	}
-
-	// Idempotency (period): if the owed period already has an invoice, NEVER charge
-	// it again here. Dunning retries collection via PayInvoice, not this generator.
-	next := owed(sub, now)
-
-	// When the period after the held one has already gone by, its invoice still
-	// decides first: paid — however late — it moves the row on; unpaid, the period
-	// was never served, so it is owed no longer and its invoice is void.
-	if after := (period{sub.PeriodEnd, Advance(sub.PeriodEnd, &sub.Plan)}); after.start.Unix() != next.start.Unix() {
-		prior, err := findInvoiceForPeriod(db, sub, after)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to look up the lapsed period's invoice: %w", err)
-		}
-		switch {
-		case prior != nil && prior.Status == billinginvoice.Paid:
-			settle(sub, prior)
-			return prior, resultFromInvoice(prior), nil
-		case prior != nil:
-			if err := VoidOpen(db, sub); err != nil {
-				return nil, nil, fmt.Errorf("failed to void the lapsed period's invoice: %w", err)
-			}
-		}
-	}
-
-	existing, err := findInvoiceForPeriod(db, sub, next)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to look up existing invoice for period: %w", err)
-	}
-	if existing != nil {
-		settle(sub, existing)
-		return existing, resultFromInvoice(existing), nil
-	}
-
-	// Only CREATE (and charge) a new period invoice when the held period is actually
-	// over (its end has passed) or the subscription is already PastDue. This stops a
-	// MANUAL renew from pre-billing periods early — N manual renews must never bill N
-	// periods. The cycle already filters on IsDue; this is the authoritative gate for
-	// every caller.
-	if !IsDue(sub, now) {
-		return nil, &CollectionResult{Error: "subscription period is not due for renewal"}, nil
-	}
-
-	// Atomic per-(subscription, period) guard: two concurrent renews collapse onto
-	// ONE deterministic-id row (storage ON CONFLICT), so only the winner builds +
-	// collects; the loser re-reads the now-existing invoice. The card charge (via
-	// chargeProvider) ALSO carries a stable per-period Square idempotency key, so
-	// even the narrow concurrent-first window can never double-charge.
-	guardKey := "period:" + strconv.FormatInt(next.start.Unix(), 10)
-	rec, replay, gerr := idempotencykey.Begin(db, "billing-renew:"+sub.Id(), guardKey)
-	if gerr == nil && replay {
-		if again, e := findInvoiceForPeriod(db, sub, next); e == nil && again != nil {
-			settle(sub, again)
-			return again, resultFromInvoice(again), nil
-		}
-		// Concurrent in-flight; its invoice is not yet visible. Do NOT run a second
-		// collection alongside it.
-		return nil, &CollectionResult{Error: "renewal already in progress for this period"}, nil
-	}
-
-	// Re-check after winning the guard: a racer in the concurrent-first window may
-	// have persisted this period's invoice between our findInvoiceForPeriod above and
-	// here. If so, use it — never build a second row for the same period.
-	if again, e := findInvoiceForPeriod(db, sub, next); e == nil && again != nil {
-		if rec != nil {
-			_ = idempotencykey.Complete(rec, again.Id())
-		}
-		settle(sub, again)
-		return again, resultFromInvoice(again), nil
-	}
-
-	// Generate a fresh, sequentially-numbered invoice: the owed period's fee in
-	// advance, and the metered usage since the held period began, in arrears.
-	inv, err := buildPeriodInvoice(db, sub, next, period{sub.PeriodStart, next.start})
-	if err != nil {
-		if rec != nil {
-			_ = rec.Delete() // release the guard so a later attempt can rebuild
-		}
-		return inv, nil, err
-	}
-
-	// Attempt collection: prepaid (credits, then the balance), then the vaulted
-	// card (chargeProvider).
-	result, err := CollectInvoice(ctx, db, inv, prepaid, chargeProvider)
-	if err != nil {
-		return inv, result, fmt.Errorf("collection error: %w", err)
-	}
-
-	// Update invoice after collection
-	if err := inv.Update(); err != nil {
-		return inv, result, fmt.Errorf("failed to update invoice: %w", err)
-	}
-
-	settle(sub, inv)
-
-	// The invoice now exists, so findInvoiceForPeriod short-circuits every future
-	// renew BEFORE this guard — seal it (best-effort; it has done its job).
-	if rec != nil {
-		_ = idempotencykey.Complete(rec, inv.Id())
-	}
-
-	return inv, result, nil
-}
-
-// period is one billing period, [start, end).
-type period struct{ start, end time.Time }
-
-// owed is the period a due row pays for next: the one after the period it holds.
-// A row whose next period has already passed — an active one whose renewal was
-// missed, a past-due one that went unpaid through it — owes the period running
-// now, and the periods that ended in between are not billed after the fact: a
-// customer is never charged for a period it was not served, nor at once for every
-// period since.
-func owed(sub *subscription.Subscription, now time.Time) period {
-	p := period{sub.PeriodEnd, Advance(sub.PeriodEnd, &sub.Plan)}
-	if sub.PeriodEnd.IsZero() {
-		return p
-	}
-	for !p.end.After(now) {
-		p = period{p.end, Advance(p.end, &sub.Plan)}
-	}
-	return p
-}
-
-// IsDue reports whether a subscription's current period has elapsed and it is
-// eligible to be (re)invoiced: Active or PastDue with a PeriodEnd in the past.
-// The single definition of "due", shared by the billing-cycle filter and
-// RenewSubscription's new-period gate.
+// IsDue reports whether a subscription has reached the end of the period it has
+// paid for: live (Live), and now at or past PeriodEnd. [PeriodStart, PeriodEnd]
+// is the paid-through period, so a due subscription owes the NEXT one. It is the
+// one definition of "due", shared by the cycle and Settle; how the next period is
+// paid, or whether the subscription ends instead, is the Collection's.
 //
 // An externally collected subscription is never due. Its customer pays the
 // processor directly, so an invoice built here would bill a period nobody owes us
-// for, and collecting it would burn their credits, then their balance, then a card.
-// Its next period is recorded when that payment arrives, not renewed.
+// for. Its next period is recorded when that payment arrives, the way it was
+// bought.
 func IsDue(sub *subscription.Subscription, now time.Time) bool {
 	if sub.Type == subscription.External {
 		return false
 	}
-	switch sub.Status {
-	case subscription.Active, subscription.PastDue:
-		return !sub.PeriodEnd.IsZero() && now.After(sub.PeriodEnd)
-	default:
-		return false
-	}
+	return Live(sub) && !sub.PeriodEnd.IsZero() && !now.Before(sub.PeriodEnd)
 }
 
 // CreatePaidFirstInvoice builds the invoice for the period the subscription holds,
 // marks it PAID by an already-settled charge (method + providerRef) and persists
 // it. The caller has already taken the money for this period, so this only records
 // the invoice as paid — it does NOT charge again. The row stays on the period it
-// paid for; RenewSubscription bills the next one when this one ends. Idempotent per
-// period: if an invoice for the held period already exists it is returned as-is (no
+// paid for; Settle bills the next one when this one ends. Idempotent per period:
+// if an invoice for the held period already exists it is returned as-is (no
 // duplicate, no state change), so a retried subscribe never double-invoices.
 func CreatePaidFirstInvoice(db *datastore.Datastore, sub *subscription.Subscription, method, providerRef string) (*billinginvoice.BillingInvoice, error) {
-	held := period{sub.PeriodStart, sub.PeriodEnd}
-	if existing, err := findInvoiceForPeriod(db, sub, held); err != nil {
+	if existing, err := findInvoiceForPeriod(db, sub, sub.PeriodStart); err != nil {
 		return nil, fmt.Errorf("failed to look up existing invoice for period: %w", err)
 	} else if existing != nil {
 		return existing, nil
 	}
 
-	inv, err := buildPeriodInvoice(db, sub, held, period{})
+	// The first period has no period before it, so no usage rides on it.
+	inv, err := draftPeriodInvoice(db, sub, sub.PeriodStart, sub.PeriodEnd, time.Time{}, time.Time{})
 	if err != nil {
 		return inv, err
 	}
 	if err := inv.MarkPaid(method, providerRef); err != nil {
 		return inv, fmt.Errorf("failed to mark first invoice paid: %w", err)
 	}
-	if err := inv.Update(); err != nil {
-		return inv, fmt.Errorf("failed to persist paid first invoice: %w", err)
+	if err := issuePeriodInvoice(db, inv); err != nil {
+		return inv, err
 	}
 	sub.CurrentInvoiceId = inv.Id()
 	return inv, nil
 }
 
-// buildPeriodInvoice constructs, numbers, finalizes and persists a new invoice
-// for the plan fee of period fee and the metered usage of period use (none when
-// use is empty). The invoice number is a sequential per-org counter, mirroring the
-// credit-note numbering in refunds.go.
-func buildPeriodInvoice(db *datastore.Datastore, sub *subscription.Subscription, fee, use period) (*billinginvoice.BillingInvoice, error) {
+// draftPeriodInvoice builds an OPEN invoice for sub's plan over [start, end] in
+// memory: the plan fee times billable seats, less the subscription's promo, plus
+// the metered usage recorded between usageStart and usageEnd (none when that
+// window is empty). Usage is billed in arrears, for the period that just ended,
+// while the plan fee is billed for the period ahead. Nothing is stored and no
+// number is assigned; issuePeriodInvoice does both.
+//
+// The fee is sub.Plan's: the plan as it was bought, at the price and interval
+// the subscriber bought it at, whatever the catalog sells today.
+func draftPeriodInvoice(db *datastore.Datastore, sub *subscription.Subscription, start, end, usageStart, usageEnd time.Time) (*billinginvoice.BillingInvoice, error) {
 	inv := billinginvoice.New(db)
 	inv.UserId = sub.UserId
 	inv.SubscriptionId = sub.Id()
-	inv.PeriodStart = fee.start
-	inv.PeriodEnd = fee.end
+	inv.PeriodStart = start
+	inv.PeriodEnd = end
 	inv.Currency = sub.Plan.Currency
 
-	// Add subscription line item: plan fee × billable seats (1 for flat plans).
+	// Plan fee × billable seats (1 for flat plans).
 	if sub.Plan.Price > 0 {
 		n := seats(&sub.Plan, sub.Quantity)
 		inv.LineItems = append(inv.LineItems, billinginvoice.LineItem{
@@ -289,24 +139,24 @@ func buildPeriodInvoice(db *datastore.Datastore, sub *subscription.Subscription,
 			UnitPrice:   int64(sub.Plan.Price),
 			Amount:      int64(sub.Plan.Price) * n,
 			Currency:    sub.Plan.Currency,
-			PeriodStart: fee.start,
-			PeriodEnd:   fee.end,
+			PeriodStart: start,
+			PeriodEnd:   end,
 		})
 	}
 
-	// Add usage line items (non-fatal: an aggregation error yields no usage).
-	if use.end.After(use.start) {
-		if usageItems, _, err := AggregateUsage(db, sub.UserId, use.start, use.end); err == nil {
+	// Metered usage (non-fatal: an aggregation error yields no usage). The window
+	// is checked here because AggregateUsage reads a zero bound as unbounded.
+	if !usageStart.IsZero() && usageEnd.After(usageStart) {
+		if usageItems, _, err := AggregateUsage(db, sub.UserId, usageStart, usageEnd); err == nil {
 			inv.LineItems = append(inv.LineItems, usageItems...)
 		}
 	}
 
-	// Calculate totals
 	inv.RecalculateSubtotal()
 
 	// The promo the subscription was bought under, priced off the PLAN fee only —
-	// metered usage above is real consumption and is never discounted by a plan
-	// promo. Finalize() folds Discount into AmountDue, so this must land before it.
+	// metered usage is real consumption and is never discounted by a plan promo.
+	// Finalize() folds Discount into AmountDue, so this must land before it.
 	if inv.Subtotal > 0 && sub.DiscountPercent > 0 {
 		planFee := int64(0)
 		for _, li := range inv.LineItems {
@@ -320,46 +170,129 @@ func buildPeriodInvoice(db *datastore.Datastore, sub *subscription.Subscription,
 		}
 	}
 
-	// Assign a sequential per-org invoice number BEFORE persisting.
-	assignInvoiceNumber(db, inv)
-
 	// Finalize (draft -> open)
 	if err := inv.Finalize(); err != nil {
 		return inv, fmt.Errorf("failed to finalize invoice: %w", err)
 	}
-
-	// Persist invoice
-	if err := inv.Create(); err != nil {
-		return inv, fmt.Errorf("failed to create invoice: %w", err)
-	}
-
 	return inv, nil
 }
 
-// findInvoiceForPeriod returns the existing invoice for this subscription and
-// the exact billing period p, or nil if none exists. Periods are months/years apart,
-// so PeriodStart/PeriodEnd are matched at second precision to be robust against
-// sub-second serialization differences across the storage round-trip.
-//
-// It reads by the subscription alone, under no ancestor: an invoice saved again
-// after it was loaded by id is stored without the synckey parent it was created
-// under, so an ancestor filter loses exactly the invoice a payment settled.
-func findInvoiceForPeriod(db *datastore.Datastore, sub *subscription.Subscription, p period) (*billinginvoice.BillingInvoice, error) {
-	existing := make([]*billinginvoice.BillingInvoice, 0)
-	q := billinginvoice.Query(db).
-		Filter("SubscriptionId=", sub.Id()).
-		Filter("UserId=", sub.UserId)
-	if _, err := q.GetAll(&existing); err != nil {
+// issuePeriodInvoice numbers and stores an invoice draftPeriodInvoice built.
+func issuePeriodInvoice(db *datastore.Datastore, inv *billinginvoice.BillingInvoice) error {
+	assignInvoiceNumber(db, inv)
+	if err := inv.Create(); err != nil {
+		return fmt.Errorf("failed to create invoice: %w", err)
+	}
+	return nil
+}
+
+// findInvoiceForPeriod returns the subscription's invoice for the period that
+// starts at start, or nil if none exists. A period is one invoice however its end
+// is later computed, so it is matched by its start alone, at second precision to
+// be robust against sub-second serialization differences across the storage
+// round-trip. A voided invoice bills nothing and is not the period's.
+func findInvoiceForPeriod(db *datastore.Datastore, sub *subscription.Subscription, start time.Time) (*billinginvoice.BillingInvoice, error) {
+	invs, err := invoicesOf(db, sub)
+	if err != nil {
 		return nil, err
 	}
-	// By the period's start alone, the renewal guard's own key: a period is one
-	// invoice however its end is later computed.
-	for _, inv := range existing {
-		if inv.PeriodStart.Unix() == p.start.Unix() {
+	for _, inv := range invs {
+		if inv.PeriodStart.Unix() == start.Unix() && inv.Status != billinginvoice.Void {
 			return inv, nil
 		}
 	}
 	return nil, nil
+}
+
+// invoicesOf lists every invoice of the subscription. It reads under no
+// ancestor: an invoice saved again after it was loaded by id is stored without
+// the synckey parent it was created under, and missing it would bill its period
+// twice. The namespace is the tenant boundary.
+func invoicesOf(db *datastore.Datastore, sub *subscription.Subscription) ([]*billinginvoice.BillingInvoice, error) {
+	invs := make([]*billinginvoice.BillingInvoice, 0)
+	q := billinginvoice.Query(db).
+		Filter("SubscriptionId=", sub.Id()).
+		Filter("UserId=", sub.UserId)
+	if _, err := q.GetAll(&invs); err != nil {
+		return nil, err
+	}
+	return invs, nil
+}
+
+// loadInvoice reads the invoice with id into a row bound to db, so it can be
+// written back.
+func loadInvoice(db *datastore.Datastore, id string) (*billinginvoice.BillingInvoice, error) {
+	inv := billinginvoice.New(db)
+	if err := inv.GetById(id); err != nil {
+		return nil, err
+	}
+	return inv, nil
+}
+
+// FirstInvoice is the subscription's earliest invoice by period start — the
+// record of how it was bought — or nil when it has none. An invoice with no
+// period (a one-off charge filed against the subscription) bills no period of
+// it and is not considered.
+func FirstInvoice(db *datastore.Datastore, sub *subscription.Subscription) (*billinginvoice.BillingInvoice, error) {
+	invs, err := invoicesOf(db, sub)
+	if err != nil {
+		return nil, err
+	}
+	var first *billinginvoice.BillingInvoice
+	for _, inv := range invs {
+		if inv.PeriodStart.IsZero() || inv.PeriodEnd.IsZero() {
+			continue
+		}
+		if first == nil || inv.PeriodStart.Before(first.PeriodStart) {
+			first = inv
+		}
+	}
+	return first, nil
+}
+
+// renewalInvoice picks, among invs, the invoice for the period starting at
+// start that the renewal settles on, and the open ones it leaves behind. A paid
+// one wins; then one a payment was attempted on — its period may end elsewhere
+// when the plan's interval changed after it was issued, and it is followed to
+// its own end rather than billed again; then an open one for exactly [start,
+// end]; then a void or uncollectible one for exactly that period. Every other
+// open invoice starting at start was never attempted and no longer matches the
+// period being billed: stale, to be voided.
+func renewalInvoice(invs []*billinginvoice.BillingInvoice, start, end time.Time) (pick *billinginvoice.BillingInvoice, stale []*billinginvoice.BillingInvoice) {
+	var paid, tried, exact, closed *billinginvoice.BillingInvoice
+	for _, inv := range invs {
+		if inv.PeriodStart.Unix() != start.Unix() {
+			continue
+		}
+		same := inv.PeriodEnd.Unix() == end.Unix()
+		switch {
+		case inv.Status == billinginvoice.Paid:
+			if paid == nil || same {
+				paid = inv
+			}
+		case inv.Status == billinginvoice.Open && attempted(inv):
+			if tried == nil || same {
+				tried = inv
+			}
+		case inv.Status == billinginvoice.Open && same && exact == nil:
+			exact = inv
+		case inv.Status != billinginvoice.Open && inv.Status != billinginvoice.Draft && same:
+			closed = inv
+		}
+	}
+	for _, c := range []*billinginvoice.BillingInvoice{paid, tried, exact, closed} {
+		if c != nil {
+			pick = c
+			break
+		}
+	}
+	for _, inv := range invs {
+		if inv.PeriodStart.Unix() == start.Unix() && inv.Status == billinginvoice.Open && !attempted(inv) &&
+			(pick == nil || inv.Id() != pick.Id()) {
+			stale = append(stale, inv)
+		}
+	}
+	return pick, stale
 }
 
 // assignInvoiceNumber sets a sequential per-org invoice number: one past the
@@ -375,110 +308,55 @@ func assignInvoiceNumber(db *datastore.Datastore, inv *billinginvoice.BillingInv
 	}
 }
 
-// ended ends a row canceled at the end of its period once that period is over:
-// it is canceled as of the period's end and reports true. Any other row is
-// untouched.
-func ended(sub *subscription.Subscription, now time.Time) bool {
-	if !sub.EndCancel || sub.PeriodEnd.IsZero() || now.Before(sub.PeriodEnd) {
-		return false
-	}
-	if sub.Status != subscription.Active && sub.Status != subscription.PastDue {
-		return false
-	}
-	sub.Status = subscription.Canceled
-	sub.Canceled = true
-	sub.Ended = sub.PeriodEnd
-	return true
-}
-
-// VoidOpen voids the unpaid invoices a subscription still carries. A row that has
-// ended is served no further period, so it owes none; an invoice something was
-// already paid toward is left for a person to settle.
-//
-// Each is voided under the guard a payment of it takes, and read again inside it,
-// so a payment landing at the same moment either finds it void or leaves it paid —
-// never paid and then voided over.
-func VoidOpen(db *datastore.Datastore, sub *subscription.Subscription) error {
-	invs := make([]*billinginvoice.BillingInvoice, 0)
-	keys, err := billinginvoice.Query(db).Filter("SubscriptionId=", sub.Id()).GetAll(&invs)
+// VoidOpen voids the open invoices a subscription still carries, for a row that
+// has ended now: it is served no further period, so it owes none. What one
+// collected is given back (ReturnPaid). Each is voided under its lock and read
+// again inside it, so a payment landing at the same moment either finds it void
+// or leaves it paid. An invoice whose lock another path holds, or whose last
+// payment attempt has no known outcome, is left: the money may have moved, and
+// it is an operator's to settle with the processor.
+func VoidOpen(ctx context.Context, db *datastore.Datastore, sub *subscription.Subscription, p Prepaid, now time.Time) error {
+	invs, err := invoicesOf(db, sub)
 	if err != nil {
 		return err
 	}
-	for i, listed := range invs {
-		if listed.Status != billinginvoice.Open || listed.AmountPaid > 0 || i >= len(keys) {
+	for _, listed := range invs {
+		if listed.Status != billinginvoice.Open || listed.PendingKey != "" {
 			continue
 		}
-		if err := voidUnpaid(db, keys[i]); err != nil {
+		if err := voidIdle(ctx, db, listed.Id(), p, now); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// voidUnpaid voids one invoice if, read under its payment guard, it is still open
-// with nothing paid toward it.
-func voidUnpaid(db *datastore.Datastore, key datastore.Key) error {
-	inv := billinginvoice.New(db)
-	if err := inv.Get(key); err != nil {
-		return err
+// voidIdle voids one invoice if, read under its lock, it is still open with no
+// payment attempt in flight.
+func voidIdle(ctx context.Context, db *datastore.Datastore, id string, p Prepaid, now time.Time) error {
+	release, err := LockInvoice(db, id)
+	if errors.Is(err, ErrInvoiceBusy) {
+		return nil
 	}
-	rec, replay, err := idempotencykey.Begin(db, "billing-pay", "invoice:"+inv.Id())
 	if err != nil {
 		return err
 	}
-	if replay {
-		return nil // a payment of it is in flight or done
-	}
-	defer func() { _ = rec.Delete() }()
-	if err := inv.Get(key); err != nil {
+	defer release()
+	inv, err := loadInvoice(db, id)
+	if err != nil {
 		return err
 	}
-	if inv.Status != billinginvoice.Open || inv.AmountPaid > 0 {
+	if inv.Status != billinginvoice.Open || inv.PendingKey != "" {
 		return nil
 	}
 	if err := inv.MarkVoid(); err != nil {
 		return err
 	}
+	inv.VoidedAt = now
+	if err := ReturnPaid(ctx, db, inv, p, now); err != nil {
+		return err
+	}
 	return inv.Update()
-}
-
-// settle moves the row by what its owed period's invoice says: paid moves it onto
-// that period and makes it active, anything else leaves it past due. Only a row
-// the cycle renews is moved; a canceled or trialing one is not the engine's.
-func settle(sub *subscription.Subscription, inv *billinginvoice.BillingInvoice) {
-	if sub.Status != subscription.Active && sub.Status != subscription.PastDue {
-		return
-	}
-	if inv.Status != billinginvoice.Paid {
-		// The row holds everything before the period it owes, so the period it owes
-		// stays the one this invoice bills, however far a missed renewal moved it.
-		sub.Status = subscription.PastDue
-		sub.PeriodEnd = inv.PeriodStart
-		return
-	}
-	// A row served nothing until it paid — past due, or paying only after the
-	// period was over — is served the whole period it paid for from the moment it
-	// paid, not what was left of the invoice's.
-	sub.CurrentInvoiceId = inv.Id()
-	sub.PeriodStart, sub.PeriodEnd = inv.PeriodStart, inv.PeriodEnd
-	if !inv.PaidAt.IsZero() && (sub.Status == subscription.PastDue || !inv.PaidAt.Before(inv.PeriodEnd)) {
-		sub.PeriodStart, sub.PeriodEnd = inv.PaidAt, Advance(inv.PaidAt, &sub.Plan)
-	}
-	if sub.Status == subscription.PastDue {
-		sub.Status = subscription.Active
-	}
-}
-
-// resultFromInvoice synthesizes a collection result from an invoice's persisted
-// state — used when RenewSubscription returns an already-generated invoice so
-// callers (e.g. the billing cycle) get a non-nil result reflecting whether the
-// period is settled.
-func resultFromInvoice(inv *billinginvoice.BillingInvoice) *CollectionResult {
-	return &CollectionResult{
-		Success:       inv.Status == billinginvoice.Paid,
-		CreditUsed:    inv.CreditApplied,
-		AmountCharged: inv.AmountPaid,
-	}
 }
 
 // TransitionTrialToActive moves a trialing subscription to active.

@@ -253,6 +253,9 @@ type Subscription struct {
 	Trial       bool
 	PeriodStart string // RFC3339
 	PeriodEnd   string // RFC3339
+	// Reason is why a subscription_canceled happened, when the billing cycle
+	// ended it: canceled_at_period_end, uncollectible, ended_no_card, …
+	Reason string
 }
 
 // EmitSubscriptionCreated sends a subscription_created event to the collector.
@@ -331,6 +334,7 @@ func subscriptionEnvelope(event string, s *Subscription) map[string]interface{} 
 			"trial":           s.Trial,
 			"period_start":    s.PeriodStart,
 			"period_end":      s.PeriodEnd,
+			"reason":          s.Reason,
 		},
 	}
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -259,11 +260,54 @@ func PayInvoice(c *zip.Ctx) error {
 //
 //	POST /v1/billing/invoices/:id/void
 func VoidInvoice(c *zip.Ctx) error {
-	inv, f := voidInvoice(c.Context(), middleware.GetOrganization(c), c.Param("id"), eventsOf(c))
+	inv, f := voidInvoice(c.Context(), middleware.GetOrganization(c), c.Param("id"), eventsOf(c), nil)
 	if f != nil {
 		return http.Fail(c, f.Status, f.Message, f.Err)
 	}
 	return c.JSON(200, invoiceResponse(inv))
+}
+
+type voidUnresolvedRequest struct {
+	Reason string `json:"reason"`
+}
+
+// VoidUnresolvedInvoice voids an invoice whose payment attempt has no known
+// outcome, for a platform operator who has settled that attempt with the
+// processor: a charge on a card the processor no longer has, or one escalated
+// after the retry schedule. The reason is required and recorded, with the
+// operator and the attempt, in the billing event ledger (invoice.operator_void).
+// The next billing cycle ends the subscription on its voided invoice.
+//
+//	POST /v1/billing/invoices/:id/void-unresolved  {"reason": "..."}
+func VoidUnresolvedInvoice(c *zip.Ctx) error {
+	var req voidUnresolvedRequest
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
+	}
+	reason := strings.TrimSpace(req.Reason)
+	if reason == "" || len(reason) > 1000 {
+		return http.Fail(c, 400, "a reason of at most 1000 characters is required", nil)
+	}
+	op := &operatorVoid{Actor: operatorOf(c), Reason: reason}
+	inv, f := voidInvoice(context.WithoutCancel(c.Context()), middleware.GetOrganization(c), c.Param("id"), eventsOf(c), op)
+	if f != nil {
+		return http.Fail(c, f.Status, f.Message, f.Err)
+	}
+	return c.JSON(200, invoiceResponse(inv))
+}
+
+// operatorOf names the platform principal making a request, as home org/user.
+func operatorOf(c *zip.Ctx) string {
+	claims := iammiddleware.GetIAMClaims(c)
+	home := claims.HomeOrg
+	if home == "" {
+		home = claims.Owner
+	}
+	name := claims.Name
+	if name == "" {
+		name = claims.Subject
+	}
+	return home + "/" + name
 }
 
 // UpcomingInvoice generates a preview of the next invoice for a subscription.

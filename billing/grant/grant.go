@@ -25,6 +25,10 @@ import (
 	types "github.com/hanzoai/commerce/types"
 )
 
+// ProviderType marks a granted subscription. Nobody pays for it: it ends when
+// its period does, and the billing cycle never charges it.
+const ProviderType = "manual_gift"
+
 // ErrPlanNotFound is returned when the requested plan slug does not exist in
 // the catalog or in the org's datastore.
 var ErrPlanNotFound = errors.New("grant: plan not found")
@@ -158,13 +162,13 @@ func Grant(ctx context.Context, db *datastore.Datastore, catalog PlanCatalog, re
 	// Create new subscription.
 	sub := subscription.New(db)
 	sub.UserId = req.UserId
-	sub.ProviderType = "manual_gift"
+	sub.ProviderType = ProviderType
 	sub.Quantity = 1
 	sub.Metadata = map[string]interface{}{
 		"grant_reason":   req.Reason,
 		"granted_by":     req.GrantedBy,
 		"granted_at":     time.Now().UTC().Format(time.RFC3339),
-		"billing_reason": "manual_gift",
+		"billing_reason": ProviderType,
 	}
 
 	// StartSubscription fills Plan/PlanId/PeriodStart/PeriodEnd/Status from

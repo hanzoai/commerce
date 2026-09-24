@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/zap-proto/zip"
@@ -221,9 +222,23 @@ func CalculateInvoiceTax(c *zip.Ctx) error {
 	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
+	release, err := engine.LockInvoice(db, id)
+	if errors.Is(err, engine.ErrInvoiceBusy) {
+		return http.Fail(c, 409, "a payment on this invoice is in progress", nil)
+	}
+	if err != nil {
+		return http.Fail(c, 500, "failed to lock the invoice", err)
+	}
+	defer release()
 	inv := billinginvoice.New(db)
 	if err := inv.GetById(id); err != nil {
 		return http.Fail(c, 404, "invoice not found", err)
+	}
+	// Tax is set while the invoice is a draft, like every other amount on it. An
+	// issued invoice owes a fixed AmountDue that payments are measured against;
+	// recomputing it would count credits a payment already applied a second time.
+	if inv.Status != billinginvoice.Draft {
+		return http.Fail(c, 400, "tax can only be calculated on a draft invoice", nil)
 	}
 
 	// Build customer address from query parameters

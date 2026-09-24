@@ -16,15 +16,15 @@ package billing
 // resolve the row, ask the model to move, persist, and emit — and where the model
 // says no, that no is the caller's 400.
 //
-// COLLECTION IS NOT A SEPARATE PAYMENT PATH. CollectInvoice runs the same
-// credits → balance → card waterfall the dunning workflow runs, on the same
-// per-org Square processor the card top-up charges. What lives here is the guard
-// and the emit around it, which is exactly what the HTTP handler had; nothing
-// about how money moves is restated.
+// COLLECTION IS NOT A SEPARATE PAYMENT PATH. A subscription's invoice is paid
+// the way the billing cycle pays it — from the source the subscription was
+// bought from, on the attempt recorded on the invoice — and any other invoice by
+// the engine's prepaid waterfall. What lives here is the lock and the emit around
+// it; nothing about how money moves is restated.
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"strings"
 	"time"
 
@@ -33,10 +33,11 @@ import (
 	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/billinginvoice"
-	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/thirdparty/kms"
+	"github.com/hanzoai/commerce/types"
 	"github.com/zap-proto/zip"
 )
 
@@ -250,21 +251,69 @@ func issueInvoice(ctx context.Context, org *organization.Organization, id string
 
 // VoidInvoiceIn cancels a draft or open invoice.
 func VoidInvoiceIn(ctx context.Context, org *organization.Organization, id string, ev *events.Client) (*InvoiceView, *PaymentFault) {
-	inv, f := voidInvoice(ctx, org, id, ev)
+	inv, f := voidInvoice(ctx, org, id, ev, nil)
 	if f != nil {
 		return nil, f
 	}
 	return viewInvoice(inv), nil
 }
 
-// voidInvoice is the worker. See raiseInvoice.
-func voidInvoice(ctx context.Context, org *organization.Organization, id string, ev *events.Client) (*billinginvoice.BillingInvoice, *PaymentFault) {
-	inv, _, f := loadInvoice(ctx, org, id)
+// operatorVoid is a platform operator voiding an invoice whose payment attempt
+// has no known outcome, having settled that attempt with the processor (found it
+// never landed, or refunded it there): who, and why.
+type operatorVoid struct {
+	Actor  string
+	Reason string
+}
+
+// voidInvoice is the worker. See raiseInvoice. It holds the invoice's lock, so
+// it cannot void an invoice a payment is at the processor for, and it gives
+// back what the invoice collected (engine.ReturnPaid). It refuses one whose last
+// payment attempt has no known outcome, since that money may have moved, unless
+// op is an operator taking the attempt over (unresolvedAttempt). An operator's
+// void is written to the billing event ledger before the invoice changes; a void
+// that cannot be recorded is not made.
+func voidInvoice(ctx context.Context, org *organization.Organization, id string, ev *events.Client, op *operatorVoid) (*billinginvoice.BillingInvoice, *PaymentFault) {
+	inv, db, f := loadInvoice(ctx, org, id)
 	if f != nil {
 		return nil, f
 	}
+	release, err := engine.LockInvoice(db, inv.Id())
+	if errors.Is(err, engine.ErrInvoiceBusy) {
+		return nil, fault(409, "a payment on this invoice is in progress", nil)
+	}
+	if err != nil {
+		return nil, fault(500, "failed to lock the invoice", err)
+	}
+	defer release()
+	if err := inv.GetById(inv.Id()); err != nil {
+		return nil, fault(404, "invoice not found", err)
+	}
+	if inv.PendingKey != "" {
+		if op == nil {
+			return nil, fault(409, "a payment attempt on this invoice has no known outcome yet; it cannot be voided until it resolves", nil)
+		}
+		if f := unresolvedAttempt(db, inv); f != nil {
+			return nil, f
+		}
+	}
+	attempt := types.Map{"key": inv.PendingKey, "method": inv.PendingMethod, "amount": inv.PendingAmount, "ref": inv.PendingRef}
 	if err := inv.MarkVoid(); err != nil {
 		return nil, fault(400, err.Error(), nil)
+	}
+	if op != nil {
+		inv.PendingMethod, inv.PendingAmount, inv.PendingKey, inv.PendingRef = "", 0, "", ""
+		data := types.Map{"actor": op.Actor, "reason": op.Reason, "subscriptionId": inv.SubscriptionId,
+			"amountDue": inv.AmountDue, "amountPaid": inv.AmountPaid, "attempt": attempt}
+		if _, err := engine.EmitBillingEvent(db, "invoice.operator_void", "invoice", inv.Id(), inv.UserId, data, nil); err != nil {
+			return nil, fault(500, "failed to record the void; the invoice is unchanged", err)
+		}
+		log.Info("billing: operator %s voided invoice %s (subscription %s), leaving payment attempt %v with the processor: %s",
+			op.Actor, inv.Id(), inv.SubscriptionId, attempt, op.Reason)
+	}
+	if err := engine.ReturnPaid(ctx, db, inv, prepaidFor(ctx, org), inv.VoidedAt); err != nil {
+		log.Error("Failed to return what invoice %s collected: %v", inv.Id(), err)
+		return nil, fault(500, "failed to return what the invoice collected", err)
 	}
 	if err := inv.Update(); err != nil {
 		log.Error("Failed to void invoice: %v", err)
@@ -274,21 +323,40 @@ func voidInvoice(ctx context.Context, org *organization.Organization, id string,
 	return inv, nil
 }
 
-// CollectInvoice attempts to settle an OPEN invoice: credits, then prepaid
-// balance, then the card on file — the same waterfall a renewal runs.
-//
-// The per-invoice idempotency guard is what makes two concurrent collections one
-// collection. A DECLINE deliberately RELEASES the guard rather than sealing it:
-// sealing a decline would wedge dunning behind a replayed failure and, because
-// only a successful collection emits invoicePaid, would also fire phantom revenue
-// if it were ever treated as terminal. Only success is sealed.
+// unresolvedAttempt allows an operator to take over a payment attempt with no
+// known outcome once nothing will settle it: the retry schedule gave up on it
+// (its subscription escalated to unpaid), its subscription ended, or it has none.
+// While the billing cycle is still repeating it under its key, it is refused.
+// What the attempt may have taken at the processor is the operator's to refund
+// there; the void returns only what the invoice recorded as collected.
+func unresolvedAttempt(db *datastore.Datastore, inv *billinginvoice.BillingInvoice) *PaymentFault {
+	if inv.SubscriptionId == "" {
+		return nil
+	}
+	sub := subscription.New(db)
+	if err := sub.GetById(inv.SubscriptionId); err != nil {
+		if errors.Is(err, datastore.ErrNoSuchEntity) {
+			return nil
+		}
+		return fault(500, "failed to read the invoice's subscription", err)
+	}
+	if sub.Status == subscription.Unpaid || sub.Status == subscription.Canceled {
+		return nil
+	}
+	return fault(409, "the billing cycle is still repeating this invoice's payment attempt; it can be voided once the attempt is escalated", nil)
+}
+
+// CollectInvoice is the customer paying an OPEN invoice themselves: a
+// subscription's invoice the way the subscription was bought, any other from
+// prepaid money (see collectInvoice). Two payments on one invoice never run at
+// once: the second is a 409. An invoice already paid answers as paid.
 func CollectInvoice(ctx context.Context, org *organization.Organization, id string, kmsClient *kms.CachedClient, ev *events.Client) (*InvoiceCollection, *PaymentFault) {
 	oc, f := collectInvoice(ctx, org, id, kmsClient, ev)
 	if f != nil {
 		return nil, f
 	}
 	if oc.Replayed != nil {
-		// A replayed collection: the sealed body IS the answer, verbatim.
+		// Already paid: nothing was charged, and this is its receipt.
 		return oc.Replayed, nil
 	}
 	return &InvoiceCollection{
@@ -320,64 +388,68 @@ type collectOutcome struct {
 }
 
 // collectInvoice is the worker. See raiseInvoice.
+//
+// It holds the invoice's lock (engine.LockInvoice) — the one every path that
+// moves money on an invoice holds, the billing cycle included — so a customer's
+// payment and a renewal retry can never both be at the processor for one
+// invoice; a held lock is a 409. Under it the invoice is read again. A
+// subscription's invoice is paid from the source the subscription was bought
+// from (renewalOf), on the attempt recorded on the invoice (engine.PayInvoice);
+// any other invoice from prepaid money, credits then the balance. A paid invoice
+// answers as paid, and nothing is charged.
 func collectInvoice(ctx context.Context, org *organization.Organization, id string, kmsClient *kms.CachedClient, ev *events.Client) (*collectOutcome, *PaymentFault) {
+	ctx = context.WithoutCancel(ctx)
 	inv, db, f := loadInvoice(ctx, org, id)
 	if f != nil {
 		return nil, f
 	}
-	// Hydrate payment creds so an invoice unpaid by credits+balance can be settled
-	// on the subscription's vaulted card via the per-org Square processor.
-	if kmsClient != nil {
-		if err := kms.Hydrate(kmsClient, org); err != nil {
-			log.Error("KMS hydration failed for org %q: %v", org.Name, err)
-		}
-	}
-
-	rec, replay, gerr := idempotencykey.Begin(db, "billing-pay", "invoice:"+inv.Id())
-	if gerr == nil && replay {
-		if rec.Status == idempotencykey.StatusCompleted && rec.Response != "" {
-			var out InvoiceCollection
-			if err := json.Unmarshal([]byte(rec.Response), &out); err == nil {
-				return &collectOutcome{Inv: inv, Replayed: &out}, nil
-			}
-		}
+	release, err := engine.LockInvoice(db, inv.Id())
+	if errors.Is(err, engine.ErrInvoiceBusy) {
 		return nil, fault(409, "invoice payment already in progress", nil)
 	}
-
-	result, err := engine.CollectInvoice(ctx, db, inv, prepaidFor(ctx, org), chargeProviderForOrg(org))
 	if err != nil {
-		if rec != nil {
-			_ = rec.Delete()
-		}
-		log.Error("Failed to collect invoice: %v", err)
-		return nil, fault(500, "failed to collect invoice payment", err)
+		return nil, fault(500, "failed to lock the invoice", err)
 	}
-	if err := inv.Update(); err != nil {
-		log.Error("Failed to update invoice after payment: %v", err)
-		return nil, fault(500, "failed to update invoice", err)
+	defer release()
+	if err := inv.GetById(inv.Id()); err != nil {
+		return nil, fault(404, "invoice not found", err)
+	}
+	if inv.Status == billinginvoice.Paid {
+		return &collectOutcome{Inv: inv, Replayed: &InvoiceCollection{
+			Invoice: viewInvoice(inv), Paid: true, ProcessorRef: inv.PaymentRef,
+		}}, nil
 	}
 
-	out := &InvoiceCollection{
-		Invoice:          viewInvoice(inv),
-		Paid:             result.Success,
-		CreditUsedCents:  result.CreditUsed,
-		BalanceUsedCents: result.BalanceUsed,
-		CardChargedCents: result.ProviderUsed,
-		ProcessorRef:     result.ProviderRef,
-		Reason:           result.Error,
+	pre := prepaidFor(ctx, org)
+	var result *engine.CollectionResult
+	if inv.SubscriptionId != "" {
+		sub := subscription.New(db)
+		if err := sub.GetById(inv.SubscriptionId); err != nil {
+			return nil, fault(404, "the invoice's subscription was not found", err)
+		}
+		c, _, err := renewalOf(org, db, sub, cardFor(kmsClient, org), pre)
+		if err != nil {
+			return nil, fault(500, "failed to read how the subscription is paid", err)
+		}
+		if c.Comped || c.Pay == nil {
+			return nil, fault(422, "nothing on file pays this subscription's invoice", nil)
+		}
+		if result, err = engine.PayInvoice(ctx, db, inv, c, time.Now()); err != nil {
+			log.Error("Failed to collect invoice %s: %v", inv.Id(), err)
+			return nil, fault(500, "failed to collect invoice payment", err)
+		}
+	} else {
+		if result, err = engine.CollectInvoice(ctx, db, inv, pre, nil); err != nil {
+			log.Error("Failed to collect invoice: %v", err)
+			return nil, fault(500, "failed to collect invoice payment", err)
+		}
+		if err := inv.Update(); err != nil {
+			log.Error("Failed to update invoice after payment: %v", err)
+			return nil, fault(500, "failed to update invoice", err)
+		}
 	}
 	if result.Success {
 		emitInvoiceCtx(ctx, ev, org.Name, inv, evInvoicePaid)
-		if rec != nil {
-			if body, mErr := json.Marshal(out); mErr == nil {
-				_ = idempotencykey.Complete(rec, string(body))
-			}
-		}
-	} else if rec != nil {
-		// Declined / partial: the invoice stays OPEN. RELEASE the guard so a later
-		// attempt actually RE-COLLECTS at a higher AttemptCount (fresh gateway key)
-		// instead of replaying a sealed failure.
-		_ = rec.Delete()
 	}
 	return &collectOutcome{Inv: inv, Result: result}, nil
 }
