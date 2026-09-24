@@ -40,7 +40,7 @@ func annual(t *testing.T, slug string) (monthly, perMonth, year currency.Cents) 
 	if sp.AnnualTotal <= 0 {
 		t.Fatalf("plan %q publishes no annual price; these tests need one", slug)
 	}
-	return currency.Cents(sp.Price), currency.Cents(sp.PriceAnnual), currency.Cents(sp.AnnualTotal)
+	return currency.Cents(sp.Price), currency.Cents(sp.annual()), currency.Cents(sp.AnnualTotal)
 }
 
 // TestPlanAtInterval is the rule itself, away from HTTP: a year costs the year the
@@ -140,9 +140,9 @@ func TestAnnualNormalizesToTheAdvertisedPrice(t *testing.T) {
 			t.Errorf("%s: a year charges %d cents, want the stated %d", sp.Slug, year.Price, sp.AnnualTotal)
 		}
 
-		if got := MonthlyNormalizedCents(int64(year.Price), string(year.Interval), year.IntervalCount); got != sp.PriceAnnual {
+		if got := MonthlyNormalizedCents(int64(year.Price), string(year.Interval), year.IntervalCount); got != sp.annual() {
 			t.Errorf("%s: a year at %d cents reports %d/mo of recurring revenue, want the advertised %d",
-				sp.Slug, year.Price, got, sp.PriceAnnual)
+				sp.Slug, year.Price, got, sp.annual())
 		}
 
 		// Through the subscription, which is what actually reaches the revenue
@@ -150,7 +150,7 @@ func TestAnnualNormalizesToTheAdvertisedPrice(t *testing.T) {
 		// snapshotted onto the subscription exactly as StartSubscription does it.
 		sub := &subscription.Subscription{Quantity: 3}
 		sub.Plan = *year
-		if got, want := SubscriptionMRRCents(sub), sp.PriceAnnual*3; got != want {
+		if got, want := SubscriptionMRRCents(sub), sp.annual()*3; got != want {
 			t.Errorf("%s: three annual seats report %d/mo, want %d", sp.Slug, got, want)
 		}
 	}

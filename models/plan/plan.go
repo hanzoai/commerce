@@ -89,7 +89,9 @@ type Plan struct {
 	// PriceAnnual is the per-month price when billed annually, in cents — the
 	// authoritative annual price (previously derived at the read edge from the
 	// embed). Like Price it is a TYPED money field, never an untyped Metadata
-	// value, so a stored/spoofed plan copy can never inflate it.
+	// value, so a stored/spoofed plan copy can never inflate it. Zero on a plan
+	// that charges means the catalog states no annual price (null): a plan sold
+	// by the month only, or a sales call. The wire serves it as null again.
 	PriceAnnual currency.Cents `json:"priceAnnual"`
 	// AnnualTotal is what a year of this plan charges, in cents: the catalog's
 	// price_ref.recurring.annual_total_usd. PriceAnnual is that year divided into

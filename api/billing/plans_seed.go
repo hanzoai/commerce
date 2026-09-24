@@ -55,7 +55,7 @@ func planFromStatic(sp *staticPlan) *plan.Plan {
 		Description:     sp.Description,
 		Category:        sp.Category,
 		Price:           currency.Cents(sp.Price),
-		PriceAnnual:     currency.Cents(sp.PriceAnnual),
+		PriceAnnual:     currency.Cents(sp.annual()),
 		AnnualTotal:     currency.Cents(sp.AnnualTotal),
 		Prices:          centsOf(sp.Prices),
 		Currency:        currency.Type(sp.Currency),
@@ -135,7 +135,7 @@ func staticPlanFromModel(p *plan.Plan) staticPlan {
 		Description:     p.Description,
 		Category:        p.Category,
 		Price:           int64(p.Price),
-		PriceAnnual:     int64(p.PriceAnnual),
+		PriceAnnual:     annualOf(p),
 		AnnualTotal:     int64(p.AnnualTotal),
 		Prices:          plainOf(p.Prices),
 		Currency:        string(p.Currency),
@@ -151,6 +151,18 @@ func staticPlanFromModel(p *plan.Plan) staticPlan {
 		Limits:          p.Limits,
 		Licensing:       p.Licensing,
 	}
+}
+
+// annualOf is a row's annual price on the wire. The row stores "the catalog states
+// no annual price" as zero, and zero is never a real annual price on a plan that
+// charges — by the month or by a sales call — so there it reads back as null, the
+// catalog's own value. Only a plan that charges nothing states an annual $0.
+func annualOf(p *plan.Plan) *int64 {
+	if p.PriceAnnual == 0 && (p.Price > 0 || p.ContactSales) {
+		return nil
+	}
+	annual := int64(p.PriceAnnual)
+	return &annual
 }
 
 // SeedPlans reconciles the subscription + DNS plan authority to the embed
