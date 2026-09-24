@@ -1,0 +1,652 @@
+[
+  {
+    "id": "free",
+    "name": "Free",
+    "category": "personal",
+    "description": "Meet Hanzo. Chat and build with Hanzo's free models.",
+    "priceMonthly": 0,
+    "priceAnnual": 0,
+    "features": [
+      "Hanzo's free models: enso-free and zen-free",
+      "20 messages a day, resetting at midnight UTC",
+      "60 requests a minute",
+      "Chat and the app's core features",
+      "Upgrade any time from inside the app"
+    ],
+    "limits": {
+      "requestsPerMinute": 60,
+      "requestsPerHour": 10,
+      "requestsPerDay": 20,
+      "requestsPerWeek": 100,
+      "requestsPerMonth": 300,
+      "agents": 1,
+      "bots": 0
+    },
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    },
+    "entitlements": {
+      "ai.requests_per_min": 60,
+      "commerce.support_tier": "community",
+      "commerce.idle_resale_percent": 20,
+      "ai.requests_per_hour": 10,
+      "ai.requests_per_day": 20,
+      "ai.requests_per_week": 100,
+      "ai.requests_per_month": 300,
+      "ai.agents": 1,
+      "ai.bots": 0,
+      "ai.included_cents": 0,
+      "ai.weekly_cents": 0,
+      "ai.weekly_premium_cents": 0,
+      "ai.session_cents": 0,
+      "ai.session_hours": 0,
+      "ai.resets": 0,
+      "ai.models": [
+        "enso-auto",
+        "enso-free",
+        "zen-free",
+        "free"
+      ]
+    }
+  },
+  {
+    "id": "dev",
+    "name": "Pro",
+    "category": "personal",
+    "description": "For one person: every room in the hanzo.ai app, with $15 of AI usage each month.",
+    "priceMonthly": 20,
+    "priceAnnual": 16.67,
+    "features": [
+      "Everything in Free and:",
+      "Every room in the hanzo.ai app",
+      "$15 of AI usage each month, with weekly limits",
+      "Usage past the limits billed at cost from prepaid credit",
+      "MCP, the SDK and the CLI are not metered"
+    ],
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    },
+    "entitlements": {
+      "ai.requests_per_min": 500,
+      "ai.tokens_per_min": 1000000,
+      "ai.requests_per_hour": 400,
+      "ai.requests_per_day": 2500,
+      "ai.requests_per_week": 12000,
+      "ai.requests_per_month": 40000,
+      "ai.priority_inference": true,
+      "ai.models": [
+        "tier:max"
+      ],
+      "licensing.product_ids": [
+        "crm",
+        "team"
+      ],
+      "commerce.support_tier": "priority",
+      "commerce.idle_resale_percent": 20,
+      "team.guests": 3,
+      "ai.agents": 10,
+      "ai.bots": 0,
+      "ai.included_cents": 1500,
+      "ai.weekly_cents": 375,
+      "ai.weekly_premium_cents": 94,
+      "ai.session_cents": 75,
+      "ai.session_hours": 5,
+      "ai.resets": 1
+    },
+    "limits": {
+      "requestsPerMinute": 500,
+      "tokensPerMinute": 1000000,
+      "teamGuests": 3,
+      "requestsPerHour": 400,
+      "requestsPerDay": 2500,
+      "requestsPerWeek": 12000,
+      "requestsPerMonth": 40000,
+      "agents": 10,
+      "bots": 0
+    },
+    "price_ref": {
+      "currency": "USD",
+      "recurring": {
+        "monthly_usd": 20,
+        "annual_total_usd": 200,
+        "annual_usd": 16.67,
+        "per_seat": false,
+        "stripe_lookup_key": "hanzo_dev_20"
+      },
+      "metered": [
+        {
+          "entitlement": "ai.tokens_per_min",
+          "unit": "per_mtok",
+          "source": "zen-gateway",
+          "included": -1
+        }
+      ]
+    }
+  },
+  {
+    "id": "max-5x",
+    "replaces": [
+      "max"
+    ],
+    "name": "Max 5x",
+    "category": "personal",
+    "description": "Five times Pro: $75 of AI usage each month, with Enso orchestration, managed agents and a resident bot.",
+    "priceMonthly": 100,
+    "priceAnnual": 83.33,
+    "features": [
+      "Everything in Pro, plus:",
+      "Choose 5x or 20x more usage than Pro",
+      "$75 of AI usage each month, with weekly limits",
+      "Enso orchestration — dedicated routing through Hanzo's foundational framework model",
+      "Managed agents and a resident bot, scheduled in the background",
+      "Priority GPU inference queues"
+    ],
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    },
+    "entitlements": {
+      "ai.requests_per_min": 2500,
+      "ai.tokens_per_min": 5000000,
+      "ai.premium_models": true,
+      "ai.priority_inference": true,
+      "ai.custom_training": true,
+      "ai.models": [
+        "*"
+      ],
+      "licensing.app_ids": [
+        "hanzo"
+      ],
+      "licensing.product_ids": [
+        "crm",
+        "engine",
+        "team"
+      ],
+      "licensing.seats": 1,
+      "licensing.engine_features": [
+        "inference",
+        "embeddings",
+        "vision",
+        "audio"
+      ],
+      "commerce.support_tier": "dedicated",
+      "commerce.idle_resale_percent": 20,
+      "team.guests": 3,
+      "ai.requests_per_hour": 2000,
+      "ai.requests_per_day": 12500,
+      "ai.requests_per_week": 60000,
+      "ai.requests_per_month": 200000,
+      "ai.agents": 10,
+      "ai.bots": 1,
+      "ai.included_cents": 7500,
+      "ai.weekly_cents": 1875,
+      "ai.weekly_premium_cents": 469,
+      "ai.session_cents": 375,
+      "ai.session_hours": 5,
+      "ai.resets": 1
+    },
+    "limits": {
+      "requestsPerMinute": 2500,
+      "tokensPerMinute": 5000000,
+      "teamGuests": 3,
+      "requestsPerHour": 2000,
+      "requestsPerDay": 12500,
+      "requestsPerWeek": 60000,
+      "requestsPerMonth": 200000,
+      "agents": 10,
+      "bots": 1
+    },
+    "price_ref": {
+      "currency": "USD",
+      "recurring": {
+        "monthly_usd": 100,
+        "annual_total_usd": 1000,
+        "annual_usd": 83.33,
+        "per_seat": false,
+        "stripe_lookup_key": "hanzo_max_5x_100"
+      },
+      "metered": [
+        {
+          "entitlement": "ai.tokens_per_min",
+          "unit": "per_mtok",
+          "source": "zen-gateway",
+          "included": -1
+        }
+      ]
+    }
+  },
+  {
+    "id": "max-20x",
+    "name": "Max 20x",
+    "category": "personal",
+    "description": "Twenty times Pro in every session, with $150 of AI usage each month.",
+    "priceMonthly": 200,
+    "priceAnnual": 166.67,
+    "features": [
+      "Everything in Pro, plus:",
+      "Choose 5x or 20x more usage than Pro",
+      "$150 of AI usage each month, with weekly limits",
+      "20x Pro's usage in every 5-hour session",
+      "Enso orchestration — dedicated routing through Hanzo's foundational framework model",
+      "Managed agents and a resident bot, scheduled in the background",
+      "Priority GPU inference queues"
+    ],
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    },
+    "entitlements": {
+      "ai.requests_per_min": 10000,
+      "ai.tokens_per_min": 20000000,
+      "ai.premium_models": true,
+      "ai.priority_inference": true,
+      "ai.custom_training": true,
+      "ai.models": [
+        "*"
+      ],
+      "licensing.app_ids": [
+        "hanzo"
+      ],
+      "licensing.product_ids": [
+        "crm",
+        "engine",
+        "team"
+      ],
+      "licensing.seats": 1,
+      "licensing.engine_features": [
+        "inference",
+        "embeddings",
+        "vision",
+        "audio"
+      ],
+      "commerce.support_tier": "dedicated",
+      "commerce.idle_resale_percent": 20,
+      "team.guests": 3,
+      "ai.requests_per_hour": 8000,
+      "ai.requests_per_day": 50000,
+      "ai.requests_per_week": 240000,
+      "ai.requests_per_month": 800000,
+      "ai.agents": 10,
+      "ai.bots": 1,
+      "ai.included_cents": 15000,
+      "ai.weekly_cents": 3750,
+      "ai.weekly_premium_cents": 938,
+      "ai.session_cents": 1500,
+      "ai.session_hours": 5,
+      "ai.resets": 1
+    },
+    "limits": {
+      "requestsPerMinute": 10000,
+      "tokensPerMinute": 20000000,
+      "teamGuests": 3,
+      "requestsPerHour": 8000,
+      "requestsPerDay": 50000,
+      "requestsPerWeek": 240000,
+      "requestsPerMonth": 800000,
+      "agents": 10,
+      "bots": 1
+    },
+    "price_ref": {
+      "currency": "USD",
+      "recurring": {
+        "monthly_usd": 200,
+        "annual_total_usd": 2000,
+        "annual_usd": 166.67,
+        "per_seat": false,
+        "stripe_lookup_key": "hanzo_max_20x_200"
+      },
+      "metered": [
+        {
+          "entitlement": "ai.tokens_per_min",
+          "unit": "per_mtok",
+          "source": "zen-gateway",
+          "included": -1
+        }
+      ]
+    }
+  },
+  {
+    "id": "team",
+    "name": "Team",
+    "description": "For teams building together: Pro's limits for every member, one org, one bill.",
+    "priceMonthly": 25,
+    "priceAnnual": 20,
+    "category": "team",
+    "features": [
+      "$25 per member per month, or $240 per member per year ($20 a month) — minimum 2 members",
+      "$18.75 of AI usage per member each month ($15 on the annual plan), with weekly limits",
+      "Org workspaces with shared history and projects",
+      "SSO via Hanzo IAM, roles and an audit log",
+      "One bill for the whole org, with KMS-backed credentials"
+    ],
+    "limits": {
+      "requestsPerMinute": 500,
+      "tokensPerMinute": 1000000,
+      "requestsPerHour": 400,
+      "requestsPerDay": 2500,
+      "requestsPerWeek": 12000,
+      "requestsPerMonth": 40000,
+      "agents": 10,
+      "bots": 0,
+      "maxMembers": 100,
+      "minSeats": 2
+    },
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    },
+    "price_ref": {
+      "currency": "USD",
+      "recurring": {
+        "monthly_usd": 25,
+        "annual_total_usd": 240,
+        "annual_usd": 20,
+        "per_seat": true,
+        "stripe_lookup_key": "hanzo_team_25",
+        "annual_entitlements": {
+          "ai.included_cents": 1500,
+          "ai.weekly_cents": 375,
+          "ai.weekly_premium_cents": 94,
+          "ai.session_cents": 75
+        }
+      },
+      "metered": [
+        {
+          "entitlement": "ai.tokens_per_min",
+          "unit": "per_mtok",
+          "source": "zen-gateway",
+          "included": -1
+        }
+      ]
+    },
+    "entitlements": {
+      "ai.requests_per_min": 500,
+      "ai.tokens_per_min": 1000000,
+      "ai.requests_per_hour": 400,
+      "ai.requests_per_day": 2500,
+      "ai.requests_per_week": 12000,
+      "ai.requests_per_month": 40000,
+      "ai.priority_inference": true,
+      "ai.models": [
+        "tier:max"
+      ],
+      "licensing.product_ids": [
+        "crm",
+        "team"
+      ],
+      "commerce.members": 100,
+      "commerce.sso": true,
+      "commerce.shared_billing": true,
+      "commerce.audit_log": true,
+      "commerce.support_tier": "priority",
+      "commerce.idle_resale_percent": 20,
+      "ai.agents": 10,
+      "ai.bots": 0,
+      "ai.included_cents": 1875,
+      "ai.weekly_cents": 469,
+      "ai.weekly_premium_cents": 117,
+      "ai.session_cents": 94,
+      "ai.session_hours": 5,
+      "ai.resets": 1
+    }
+  },
+  {
+    "id": "advisory",
+    "name": "Advisory",
+    "category": "agency",
+    "description": "Human AI advisors, and the team to build what they advise.",
+    "priceMonthly": 4999,
+    "priceAnnual": null,
+    "features": [
+      "$4,999 per month, billed monthly",
+      "1 quarter minimum commitment",
+      "Dedicated Creative Director",
+      "Dedicated Project Manager",
+      "2 specialized creatives simultaneously",
+      "120 hours dedicated per month",
+      "2 custom brand-trained AI agents",
+      "24-hour turnaround for basic requests",
+      "Access to 100+ creative services",
+      "Full copyright ownership",
+      "Unlimited revisions & requests",
+      "4 hours of consultation per month",
+      "Max 20x AI for your org: $150 of AI usage each month, with weekly limits"
+    ],
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    },
+    "entitlements": {
+      "ai.requests_per_min": 10000,
+      "ai.tokens_per_min": 20000000,
+      "ai.premium_models": true,
+      "ai.priority_inference": true,
+      "ai.custom_training": true,
+      "ai.models": [
+        "*"
+      ],
+      "licensing.app_ids": [
+        "hanzo"
+      ],
+      "licensing.product_ids": [
+        "crm",
+        "engine",
+        "team"
+      ],
+      "licensing.seats": 1,
+      "licensing.engine_features": [
+        "inference",
+        "embeddings",
+        "vision",
+        "audio"
+      ],
+      "commerce.support_tier": "dedicated",
+      "commerce.idle_resale_percent": 20,
+      "team.guests": 3,
+      "ai.requests_per_hour": 8000,
+      "ai.requests_per_day": 50000,
+      "ai.requests_per_week": 240000,
+      "ai.requests_per_month": 800000,
+      "ai.agents": 10,
+      "ai.bots": 1,
+      "ai.included_cents": 15000,
+      "ai.weekly_cents": 3750,
+      "ai.weekly_premium_cents": 938,
+      "ai.session_cents": 1500,
+      "ai.session_hours": 5,
+      "ai.resets": 1
+    },
+    "limits": {
+      "requestsPerMinute": 10000,
+      "tokensPerMinute": 20000000,
+      "teamGuests": 3,
+      "requestsPerHour": 8000,
+      "requestsPerDay": 50000,
+      "requestsPerWeek": 240000,
+      "requestsPerMonth": 800000,
+      "agents": 10,
+      "bots": 1
+    },
+    "price_ref": {
+      "currency": "USD",
+      "recurring": {
+        "monthly_usd": 4999,
+        "per_seat": false,
+        "stripe_lookup_key": "hanzo_advisory_4999"
+      },
+      "metered": [
+        {
+          "entitlement": "ai.tokens_per_min",
+          "unit": "per_mtok",
+          "source": "zen-gateway",
+          "included": -1
+        }
+      ]
+    }
+  },
+  {
+    "id": "dedicated",
+    "name": "Dedicated Team",
+    "category": "agency",
+    "description": "Dedicated team, custom AI, priority everything.",
+    "priceMonthly": 9999,
+    "priceAnnual": null,
+    "features": [
+      "$9,999 per month, billed monthly",
+      "Annual contract preferred",
+      "Everything in Advisory, plus:",
+      "Dedicated full-stack team (4+ creatives)",
+      "Unlimited custom AI agents trained on your brand",
+      "240+ hours dedicated per month",
+      "Priority turnaround, same-day for urgent requests",
+      "Video production (up to 4 videos/month)",
+      "3D, AR, and immersive design",
+      "AI consulting and marketing strategy",
+      "8 hours of executive consultation per month",
+      "Max 20x AI for your org: $150 of AI usage each month, with weekly limits"
+    ],
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    },
+    "entitlements": {
+      "ai.requests_per_min": 10000,
+      "ai.tokens_per_min": 20000000,
+      "ai.premium_models": true,
+      "ai.priority_inference": true,
+      "ai.custom_training": true,
+      "ai.models": [
+        "*"
+      ],
+      "licensing.app_ids": [
+        "hanzo"
+      ],
+      "licensing.product_ids": [
+        "crm",
+        "engine",
+        "team"
+      ],
+      "licensing.seats": 1,
+      "licensing.engine_features": [
+        "inference",
+        "embeddings",
+        "vision",
+        "audio"
+      ],
+      "commerce.support_tier": "dedicated",
+      "commerce.idle_resale_percent": 20,
+      "team.guests": 3,
+      "ai.requests_per_hour": 8000,
+      "ai.requests_per_day": 50000,
+      "ai.requests_per_week": 240000,
+      "ai.requests_per_month": 800000,
+      "ai.agents": -1,
+      "ai.bots": 1,
+      "ai.included_cents": 15000,
+      "ai.weekly_cents": 3750,
+      "ai.weekly_premium_cents": 938,
+      "ai.session_cents": 1500,
+      "ai.session_hours": 5,
+      "ai.resets": 1
+    },
+    "limits": {
+      "requestsPerMinute": 10000,
+      "tokensPerMinute": 20000000,
+      "teamGuests": 3,
+      "requestsPerHour": 8000,
+      "requestsPerDay": 50000,
+      "requestsPerWeek": 240000,
+      "requestsPerMonth": 800000,
+      "agents": -1,
+      "bots": 1
+    },
+    "price_ref": {
+      "currency": "USD",
+      "recurring": {
+        "monthly_usd": 9999,
+        "per_seat": false,
+        "stripe_lookup_key": "hanzo_dedicated_9999"
+      },
+      "metered": [
+        {
+          "entitlement": "ai.tokens_per_min",
+          "unit": "per_mtok",
+          "source": "zen-gateway",
+          "included": -1
+        }
+      ]
+    }
+  },
+  {
+    "id": "enterprise",
+    "name": "Enterprise",
+    "category": "enterprise",
+    "description": "Dedicated capacity, on-prem or air-gapped deployment, custom SLAs and model hosting.",
+    "priceMonthly": null,
+    "priceAnnual": null,
+    "contactSales": true,
+    "features": [
+      "Dedicated compute cluster",
+      "On-premise or air-gapped deployment",
+      "Custom SLA",
+      "Custom model training and hosting",
+      "SOC 2 support and compliance review",
+      "White-glove onboarding and 24/7 engineering support"
+    ],
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    },
+    "entitlements": {
+      "ai.requests_per_min": 50000,
+      "ai.tokens_per_min": 100000000,
+      "ai.premium_models": true,
+      "ai.priority_inference": true,
+      "ai.custom_training": true,
+      "ai.models": [
+        "*"
+      ],
+      "licensing.app_ids": [
+        "hanzo"
+      ],
+      "licensing.product_ids": [
+        "crm",
+        "engine",
+        "team"
+      ],
+      "licensing.seats": -1,
+      "licensing.engine_features": [
+        "inference",
+        "embeddings",
+        "vision",
+        "audio",
+        "training"
+      ],
+      "commerce.members": -1,
+      "commerce.sso": true,
+      "commerce.shared_billing": true,
+      "commerce.audit_log": true,
+      "commerce.support_tier": "dedicated",
+      "commerce.sla": "99.99%",
+      "commerce.on_prem": true,
+      "commerce.idle_resale_percent": 20,
+      "ai.agents": -1,
+      "ai.bots": -1,
+      "ai.included_cents": -1,
+      "ai.weekly_cents": -1,
+      "ai.weekly_premium_cents": -1,
+      "ai.session_cents": -1,
+      "ai.session_hours": -1,
+      "ai.resets": -1
+    },
+    "limits": {
+      "requestsPerMinute": 50000,
+      "tokensPerMinute": 100000000,
+      "maxMembers": -1,
+      "agents": -1,
+      "bots": -1
+    }
+  }
+]

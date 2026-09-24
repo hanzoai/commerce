@@ -1,0 +1,541 @@
+[
+  {
+    "slug": "cloud-starter",
+    "name": "Starter",
+    "category": "cloud",
+    "description": "Get started for free. Perfect for side projects, bots, and learning.",
+    "priceCents": 500,
+    "currency": "usd",
+    "order": 0,
+    "metadata": {
+      "id": "starter",
+      "vcpus": 1,
+      "memoryGB": 1,
+      "diskGB": 20,
+      "cpuType": "shared",
+      "maxVMs": 1,
+      "priceMonthly": 5,
+      "features": [
+        "1 VM",
+        "1 vCPU",
+        "1 GB RAM",
+        "20 GB SSD",
+        "500 GB transfer",
+        "Free $5 credit"
+      ],
+      "freeTier": true
+    }
+  },
+  {
+    "slug": "cloud-builder",
+    "name": "Builder",
+    "category": "cloud",
+    "description": "For developers shipping real products. Run bots, APIs, and automation.",
+    "priceCents": 1000,
+    "currency": "usd",
+    "order": 1,
+    "metadata": {
+      "id": "builder",
+      "vcpus": 2,
+      "memoryGB": 2,
+      "diskGB": 40,
+      "cpuType": "shared",
+      "maxVMs": 5,
+      "priceMonthly": 10,
+      "features": [
+        "Up to 5 VMs",
+        "2 vCPU",
+        "2 GB RAM",
+        "40 GB SSD",
+        "1 TB transfer"
+      ]
+    }
+  },
+  {
+    "slug": "cloud-dev",
+    "name": "Dev",
+    "category": "cloud",
+    "description": "The sweet spot. Full dev environment with room to grow.",
+    "priceCents": 1500,
+    "currency": "usd",
+    "order": 2,
+    "metadata": {
+      "id": "dev",
+      "vcpus": 2,
+      "memoryGB": 8,
+      "diskGB": 25,
+      "cpuType": "shared",
+      "maxVMs": 25,
+      "priceMonthly": 15,
+      "features": [
+        "Up to 25 VMs",
+        "2 vCPU",
+        "8 GB RAM",
+        "25 GB SSD",
+        "3 TB transfer"
+      ],
+      "popular": true
+    }
+  },
+  {
+    "slug": "cloud-pro",
+    "name": "Pro",
+    "category": "cloud",
+    "description": "Dedicated CPU. Zero noisy neighbors. Consistent performance, always.",
+    "priceCents": 2500,
+    "currency": "usd",
+    "order": 3,
+    "metadata": {
+      "id": "pro",
+      "vcpus": 2,
+      "memoryGB": 8,
+      "diskGB": 80,
+      "cpuType": "dedicated",
+      "maxVMs": 25,
+      "priceMonthly": 25,
+      "features": [
+        "Up to 25 VMs",
+        "2 dedicated vCPU",
+        "8 GB RAM",
+        "80 GB SSD",
+        "2 TB transfer"
+      ]
+    }
+  },
+  {
+    "slug": "cloud-turbo",
+    "name": "Turbo",
+    "category": "cloud",
+    "description": "4x the power. Browser automation, CI/CD, and heavy workloads.",
+    "priceCents": 3900,
+    "currency": "usd",
+    "order": 4,
+    "metadata": {
+      "id": "turbo",
+      "vcpus": 4,
+      "memoryGB": 16,
+      "diskGB": 160,
+      "cpuType": "shared",
+      "maxVMs": 25,
+      "priceMonthly": 39,
+      "features": [
+        "Up to 25 VMs",
+        "4 vCPU",
+        "16 GB RAM",
+        "160 GB SSD",
+        "4 TB transfer"
+      ]
+    }
+  },
+  {
+    "slug": "cloud-turbo-dedicated",
+    "name": "Turbo Dedicated",
+    "category": "cloud",
+    "description": "All the power of Turbo with dedicated CPU cores. Production-grade.",
+    "priceCents": 4900,
+    "currency": "usd",
+    "order": 5,
+    "metadata": {
+      "id": "turbo-dedicated",
+      "vcpus": 4,
+      "memoryGB": 16,
+      "diskGB": 160,
+      "cpuType": "dedicated",
+      "maxVMs": 25,
+      "priceMonthly": 49,
+      "features": [
+        "Up to 25 VMs",
+        "4 dedicated vCPU",
+        "16 GB RAM",
+        "160 GB SSD",
+        "4 TB transfer"
+      ]
+    }
+  },
+  {
+    "slug": "cloud-business",
+    "name": "Business",
+    "category": "cloud",
+    "description": "Team-scale compute. Run production services, staging environments, and fleets.",
+    "priceCents": 21900,
+    "currency": "usd",
+    "order": 6,
+    "metadata": {
+      "id": "business",
+      "vcpus": 8,
+      "memoryGB": 32,
+      "diskGB": 240,
+      "cpuType": "dedicated",
+      "maxVMs": 50,
+      "priceMonthly": 219,
+      "features": [
+        "Up to 50 VMs",
+        "8 dedicated vCPU",
+        "32 GB RAM",
+        "240 GB SSD",
+        "20 TB transfer"
+      ]
+    }
+  },
+  {
+    "slug": "cloud-enterprise",
+    "name": "Enterprise",
+    "category": "cloud",
+    "description": "Mission-critical infrastructure. Full isolation, maximum throughput.",
+    "priceCents": 42900,
+    "currency": "usd",
+    "order": 7,
+    "metadata": {
+      "id": "enterprise",
+      "vcpus": 16,
+      "memoryGB": 64,
+      "diskGB": 360,
+      "cpuType": "dedicated",
+      "maxVMs": 100,
+      "priceMonthly": 429,
+      "features": [
+        "Up to 100 VMs",
+        "16 dedicated vCPU",
+        "64 GB RAM",
+        "360 GB SSD",
+        "40 TB transfer"
+      ]
+    }
+  },
+  {
+    "slug": "cloud-scale",
+    "name": "Scale",
+    "category": "cloud",
+    "description": "Platform-scale compute. Run hundreds of services across global regions.",
+    "priceCents": 84900,
+    "currency": "usd",
+    "order": 8,
+    "metadata": {
+      "id": "scale",
+      "vcpus": 32,
+      "memoryGB": 128,
+      "diskGB": 600,
+      "cpuType": "dedicated",
+      "maxVMs": 250,
+      "priceMonthly": 849,
+      "features": [
+        "Up to 250 VMs",
+        "32 dedicated vCPU",
+        "128 GB RAM",
+        "600 GB SSD",
+        "50 TB transfer"
+      ]
+    }
+  },
+  {
+    "slug": "cloud-mega",
+    "name": "Mega",
+    "category": "cloud",
+    "description": "Maximum single-node power. ML inference, databases, and HPC workloads.",
+    "priceCents": 129900,
+    "currency": "usd",
+    "order": 9,
+    "metadata": {
+      "id": "mega",
+      "vcpus": 48,
+      "memoryGB": 192,
+      "diskGB": 960,
+      "cpuType": "dedicated",
+      "maxVMs": 500,
+      "priceMonthly": 1299,
+      "features": [
+        "Up to 500 VMs",
+        "48 dedicated vCPU",
+        "192 GB RAM",
+        "960 GB SSD",
+        "60 TB transfer"
+      ]
+    }
+  },
+  {
+    "slug": "cloud-ultra",
+    "name": "Ultra",
+    "category": "cloud",
+    "description": "Extreme compute. Multi-node clusters for the most demanding workloads on Earth.",
+    "priceCents": 399900,
+    "currency": "usd",
+    "order": 10,
+    "metadata": {
+      "id": "ultra",
+      "vcpus": 96,
+      "memoryGB": 384,
+      "diskGB": 1920,
+      "cpuType": "dedicated",
+      "maxVMs": 1000,
+      "priceMonthly": 3999,
+      "features": [
+        "Up to 1000 VMs",
+        "96 dedicated vCPU",
+        "384 GB RAM",
+        "1.9 TB SSD",
+        "120 TB transfer"
+      ]
+    }
+  },
+  {
+    "slug": "gpu-standard",
+    "name": "GPU Standard",
+    "category": "gpu",
+    "description": "1x H100 · 80 GB VRAM",
+    "priceCents": 348,
+    "currency": "usd",
+    "order": 11,
+    "metadata": {
+      "gpu": "1x H100",
+      "vram": "80 GB",
+      "price": 3.48
+    }
+  },
+  {
+    "slug": "gpu-pro",
+    "name": "GPU Pro",
+    "category": "gpu",
+    "description": "2x H100 · 160 GB VRAM",
+    "priceCents": 696,
+    "currency": "usd",
+    "order": 12,
+    "metadata": {
+      "gpu": "2x H100",
+      "vram": "160 GB",
+      "price": 6.96
+    }
+  },
+  {
+    "slug": "gpu-ultra",
+    "name": "GPU Ultra",
+    "category": "gpu",
+    "description": "4x H100 · 320 GB VRAM",
+    "priceCents": 1392,
+    "currency": "usd",
+    "order": 13,
+    "metadata": {
+      "gpu": "4x H100",
+      "vram": "320 GB",
+      "price": 13.92
+    }
+  },
+  {
+    "slug": "datastore-basic",
+    "name": "Basic",
+    "category": "datastore",
+    "description": "For teams getting started with analytics",
+    "priceCents": 6652,
+    "currency": "usd",
+    "order": 14,
+    "metadata": {
+      "id": "basic",
+      "tagline": "For teams getting started with analytics",
+      "replicas": 1,
+      "ramGiB": 8,
+      "vcpu": 2,
+      "storageGB": 1000,
+      "priceMonthly": 66.52,
+      "priceHourly": 0.0922,
+      "billingGranularity": "per_minute",
+      "availabilityZones": 1,
+      "storageLimit": "1TB",
+      "support": {
+        "level": "standard",
+        "responseTime": "next_business_day"
+      },
+      "features": [
+        "async_inserts",
+        "json_each_row",
+        "parquet_ingestion",
+        "http_api",
+        "native_protocol",
+        "automated_backups",
+        "encryption_at_rest"
+      ],
+      "usage": {
+        "storage": {
+          "pricePerGBMonth": 0.0247,
+          "pricePerTBMonth": 25.3,
+          "unit": "compressed_on_disk",
+          "note": "Compressed size of data in tables. Backups billed separately."
+        },
+        "ingestion": {
+          "pricePerGB": 0.04,
+          "label": "Hanzo Pipes",
+          "note": "Kafka, S3, HTTP, Postgres CDC ingestion"
+        },
+        "egress": {
+          "public_internet": {
+            "pricePerGB": 0.1152,
+            "note": "Outbound to public internet"
+          },
+          "cross_region": {
+            "pricePerGB": 0.0312,
+            "note": "Between Hanzo regions"
+          },
+          "intra_region": {
+            "pricePerGB": 0,
+            "note": "Free within same region"
+          }
+        },
+        "compute": {
+          "unit": "8GiB_RAM_increment",
+          "billingGranularity": "per_minute",
+          "note": "Compute billed per minute in 8 GiB RAM increments. Services can scale to zero when idle."
+        }
+      }
+    }
+  },
+  {
+    "slug": "datastore-scale",
+    "name": "Scale",
+    "category": "datastore",
+    "description": "For production workloads with high availability",
+    "priceCents": 49938,
+    "currency": "usd",
+    "order": 15,
+    "metadata": {
+      "id": "scale",
+      "tagline": "For production workloads with high availability",
+      "replicas": 2,
+      "ramGiB": 8,
+      "vcpu": 2,
+      "storageGB": null,
+      "priceMonthly": 499.38,
+      "priceHourly": 0.6936,
+      "billingGranularity": "per_minute",
+      "availabilityZones": 2,
+      "storageLimit": "unlimited",
+      "support": {
+        "level": "priority",
+        "responseTime": "1_hour_critical_24x7"
+      },
+      "features": [
+        "async_inserts",
+        "json_each_row",
+        "parquet_ingestion",
+        "http_api",
+        "native_protocol",
+        "automated_backups",
+        "encryption_at_rest",
+        "auto_scaling",
+        "compute_storage_separation",
+        "read_replicas",
+        "private_endpoints"
+      ],
+      "usage": {
+        "storage": {
+          "pricePerGBMonth": 0.0247,
+          "pricePerTBMonth": 25.3,
+          "unit": "compressed_on_disk",
+          "note": "Compressed size of data in tables. Backups billed separately."
+        },
+        "ingestion": {
+          "pricePerGB": 0.04,
+          "label": "Hanzo Pipes",
+          "note": "Kafka, S3, HTTP, Postgres CDC ingestion"
+        },
+        "egress": {
+          "public_internet": {
+            "pricePerGB": 0.1152,
+            "note": "Outbound to public internet"
+          },
+          "cross_region": {
+            "pricePerGB": 0.0312,
+            "note": "Between Hanzo regions"
+          },
+          "intra_region": {
+            "pricePerGB": 0,
+            "note": "Free within same region"
+          }
+        },
+        "compute": {
+          "unit": "8GiB_RAM_increment",
+          "billingGranularity": "per_minute",
+          "note": "Compute billed per minute in 8 GiB RAM increments. Services can scale to zero when idle."
+        }
+      },
+      "popular": true
+    }
+  },
+  {
+    "slug": "datastore-enterprise",
+    "name": "Enterprise",
+    "category": "datastore",
+    "description": "For mission-critical deployments at scale",
+    "priceCents": 266940,
+    "currency": "usd",
+    "order": 16,
+    "metadata": {
+      "id": "enterprise",
+      "tagline": "For mission-critical deployments at scale",
+      "replicas": 2,
+      "ramGiB": 32,
+      "vcpu": 8,
+      "storageGB": 5000,
+      "priceMonthly": 2669.4,
+      "priceHourly": 3.7075,
+      "billingGranularity": "per_minute",
+      "availabilityZones": 3,
+      "storageLimit": "unlimited",
+      "support": {
+        "level": "enterprise",
+        "responseTime": "30_min_critical",
+        "namedEngineer": true,
+        "sla": true
+      },
+      "features": [
+        "async_inserts",
+        "json_each_row",
+        "parquet_ingestion",
+        "http_api",
+        "native_protocol",
+        "automated_backups",
+        "encryption_at_rest",
+        "auto_scaling",
+        "compute_storage_separation",
+        "read_replicas",
+        "private_endpoints",
+        "private_vpc",
+        "byoc",
+        "hipaa",
+        "pci_dss",
+        "cmek",
+        "sso_saml"
+      ],
+      "usage": {
+        "storage": {
+          "pricePerGBMonth": 0.0247,
+          "pricePerTBMonth": 25.3,
+          "unit": "compressed_on_disk",
+          "note": "Compressed size of data in tables. Backups billed separately."
+        },
+        "ingestion": {
+          "pricePerGB": 0.04,
+          "label": "Hanzo Pipes",
+          "note": "Kafka, S3, HTTP, Postgres CDC ingestion"
+        },
+        "egress": {
+          "public_internet": {
+            "pricePerGB": 0.1152,
+            "note": "Outbound to public internet"
+          },
+          "cross_region": {
+            "pricePerGB": 0.0312,
+            "note": "Between Hanzo regions"
+          },
+          "intra_region": {
+            "pricePerGB": 0,
+            "note": "Free within same region"
+          }
+        },
+        "compute": {
+          "unit": "8GiB_RAM_increment",
+          "billingGranularity": "per_minute",
+          "note": "Compute billed per minute in 8 GiB RAM increments. Services can scale to zero when idle."
+        }
+      },
+      "contactSales": true
+    }
+  }
+]

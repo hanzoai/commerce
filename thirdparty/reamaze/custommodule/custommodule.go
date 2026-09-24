@@ -1,0 +1,51 @@
+package custommodule
+
+import (
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/util/template"
+)
+
+func Serve(c *zip.Ctx) error {
+	email := c.Query("email")
+
+	if email == "" {
+		log.Warn("No email provided", c)
+		return http.Fail(c, 400, "No email provided", errors.New("No email provided"))
+	}
+
+	email = strings.ToLower(email)
+
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c.Context()))
+
+	usr := user.New(db)
+	if err := usr.GetById(email); err != nil {
+		log.Warn("User not found for email: %v", email, c)
+		return http.Fail(c, 400, fmt.Sprintf("User not found for email: %v", email), err)
+	}
+
+	var ords []*order.Order
+	if _, err := order.Query(db).Filter("UserId=", usr.Id()).GetAll(&ords); err != nil {
+		log.Warn("Orders not found for email: %v", email, c)
+		return http.Fail(c, 400, fmt.Sprintf("Orders not found for email: %v", email), err)
+	}
+
+	for _, ord := range ords {
+		ord.Init(db)
+		pays, _ := ord.GetPayments()
+		ord.Payments = pays
+	}
+
+	return template.Render(c, "reamaze/index.html", "usr", usr, "ords", ords)
+}

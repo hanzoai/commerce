@@ -1,0 +1,330 @@
+package account
+
+import (
+	"errors"
+	"regexp"
+	"strings"
+	"time"
+
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/auth/password"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/email"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/form"
+	"github.com/hanzoai/commerce/models/referral"
+	"github.com/hanzoai/commerce/models/referrer"
+	"github.com/hanzoai/commerce/models/subscriber"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/thirdparty/mailchimp"
+	"github.com/hanzoai/commerce/thirdparty/recaptcha"
+	"github.com/hanzoai/commerce/util/counter"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
+)
+
+var emailRegex = regexp.MustCompile(`(\w[-._\w]*@\w[-._\w]*\w\.\w{2,20})`)
+var usernameRegex = regexp.MustCompile(`^[a-z0-9_\-\.]+$`)
+
+type createReq struct {
+	*user.User
+	Email           string `json:"email"`
+	Password        string `json:"password"`
+	PasswordConfirm string `json:"passwordConfirm"`
+	Captcha         string `json:"g-recaptcha-response"`
+	StoreId         string `json:"storeId"`
+}
+
+type createRes struct {
+	*user.User
+	Token string `json:"token,omitempty"`
+}
+
+type Referrent struct {
+	id   string
+	kind string
+}
+
+func (r *Referrent) Id() string {
+	return r.id
+}
+
+func (r *Referrent) Kind() string {
+	return r.kind
+}
+
+func (r *Referrent) Total() currency.Cents {
+	return currency.Cents(1)
+}
+
+func create(c *zip.Ctx) error {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c.Context()))
+
+	req := &createReq{}
+	req.User = user.New(db)
+
+	// Default these fields to exotic unicode character to test if they are set to empty
+	req.Username = "☺"
+	req.Email = "☺"
+	req.FirstName = "☺"
+	req.LastName = "☺"
+	req.FormId = "☺"
+
+	log.Info("Decoding User Creation Request", c)
+	// Decode response body to create new user
+	if err := json.DecodeBytes(c.Body(), req); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
+	}
+
+	// Pull out user
+	usr := req.User
+	usr.Email = req.Email
+
+	log.Info("Fetching User Request: %v", json.Encode(usr), c)
+	// Email is required
+	if usr.Email == "" || usr.Email == "☺" {
+		return http.Fail(c, 400, "Email is required", errors.New("email is required"))
+	}
+
+	// If the username is purposely blank or username is required by the
+	// organization...
+	if usr.Username == "" || (org.SignUpOptions.UsernameRequired && usr.Username == "☺") {
+		return http.Fail(c, 400, "Username is required", errors.New("username is required"))
+	}
+
+	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
+	usr.Username = strings.ToLower(strings.TrimSpace(usr.Username))
+	un := usr.Username
+	uf := usr.FormId
+
+	usr2 := user.New(db)
+	// Email can't already exist or if it does, can't have a password
+	if err := usr2.GetByEmail(usr.Email); err == nil {
+		if len(usr2.PasswordHash) > 0 {
+			return http.Fail(c, 400, "Email is in use", errors.New("email is in use"))
+		} else {
+			// Transfer name from request user to queried out user if successful
+			req.User = usr2
+			if usr.FirstName != "" && usr.FirstName != "☺" {
+				usr2.FirstName = usr.FirstName
+			}
+			if usr.LastName != "" && usr.FirstName != "☺" {
+				usr2.LastName = usr.LastName
+			}
+			// Username isn't set in stone until actually registered
+			if un != "" && un != "☺" {
+				usr2.Username = un
+			}
+			// Username isn't set in stone until actually registered
+			if uf != "" && uf != "☺" {
+				usr2.FormId = uf
+			}
+
+			usr = usr2
+		}
+	}
+
+	if !org.SignUpOptions.NoNameRequired {
+		log.Info("Sign up does require Name: %s/%s", usr.FirstName, usr.LastName, c)
+		if usr.FirstName == "" || usr.FirstName == "☺" {
+			return http.Fail(c, 400, "First name cannot be blank", errors.New("first name cannot be blank"))
+		}
+
+		// if usr.LastName == "" || usr.LastName == "☺" {
+		// 	http.Fail(c, 400, "Last name cannot be blank", errors.New("Last name cannot be blank"))
+		// 	return
+		// }
+	} else {
+		log.Info("Sign up does not require Name", c)
+	}
+
+	if org.SignUpOptions.AllowAffiliateSignup {
+		log.Info("Signing up as Affiliate? %v", req.User.IsAffiliate, c)
+		usr.IsAffiliate = req.User.IsAffiliate
+	}
+
+	if uf == "☺" {
+		usr.FormId = ""
+	}
+
+	if un == "☺" {
+		usr.Username = ""
+	} else {
+		usr3 := user.New(db)
+		// Username can't exist on another user
+		if err := usr3.GetByUsername(usr.Username); err == nil {
+			if usr2.Id() != usr3.Id() {
+				return http.Fail(c, 400, "Username is in use", errors.New("Username is in use"))
+			}
+		}
+
+		// Username must be valid if it exists
+		log.Info("Checking if Username is valid", c)
+		if ok := usernameRegex.MatchString(usr.Username); !ok {
+			return http.Fail(c, 400, "Username '"+usr.Username+"' is not valid", errors.New("Username '"+usr.Username+"' is not valid"))
+		}
+	}
+
+	if usr.Email == "☺" {
+		usr.Email = ""
+	}
+
+	if usr.FirstName == "☺" {
+		usr.FirstName = ""
+	}
+
+	if usr.LastName == "☺" {
+		usr.LastName = ""
+	}
+
+	// Email must be valid
+	log.Info("Checking if User email is valid", c)
+	if ok := emailRegex.MatchString(usr.Email); !ok {
+		return http.Fail(c, 400, "Email '"+usr.Email+"' is not valid", errors.New("email '"+usr.Email+"' is not valid"))
+	}
+
+	if !org.SignUpOptions.NoPasswordRequired {
+		log.Info("Sign up requires password", c)
+		// Password should be at least 6 characters long
+		if len(req.Password) < 6 {
+			return http.Fail(c, 400, "Password needs to be atleast 6 characters", errors.New("password needs to be atleast 6 characters"))
+		}
+
+		// Password confirm must match
+		if req.Password != req.PasswordConfirm { // pragma: allowlist secret
+			return http.Fail(c, 400, "Passwords need to match", errors.New("passwords need to match"))
+		}
+
+		// Hash password
+		if hash, err := password.Hash(req.Password); err != nil { // pragma: allowlist secret
+			return http.Fail(c, 400, "Failed to hash user password", err)
+		} else {
+			usr.PasswordHash = hash
+		}
+	} else {
+		log.Info("Sign up does not require password", c)
+	}
+
+	if org.Recaptcha.Enabled && !recaptcha.Challenge(db.Context, org.Recaptcha.SecretKey, req.Captcha) {
+		return http.Fail(c, 400, "Captcha needs to be completed", errors.New("captcha needs to be completed"))
+	}
+
+	ctx := org.Datastore().Context
+	if err := counter.IncrUsers(ctx, org, time.Now()); err != nil {
+		log.Warn("Redis Error %s", err, ctx)
+	}
+
+	enabled := org.SignUpOptions.AccountsEnabledByDefault || usr.PreApproved
+	// Test key users are automatically confirmed
+	if !org.Live {
+		usr.Enabled = true
+	} else {
+		log.Info("User is enabled? %v", usr.Enabled, enabled, c)
+		usr.Enabled = enabled
+	}
+
+	// Determine store to use
+	storeId := req.StoreId
+	if storeId == "" {
+		storeId = org.DefaultStore
+	}
+
+	usr.StoreId = storeId
+
+	// Save new user
+	log.Info("User is attributed to store: %v", storeId, c)
+	if err := usr.Put(); err != nil {
+		return http.Fail(c, 400, "Failed to create user", err)
+	}
+
+	ref := referrer.New(usr.Datastore())
+
+	// if ReferrerId refers to non-existing token, then remove from order
+	if usr.ReferrerId != "" {
+		log.Info("User is attributed to Referrer %s", usr.ReferrerId, c)
+		if err := ref.GetById(usr.ReferrerId); err != nil {
+			usr.ReferrerId = ""
+		} else {
+			// Try to save referral, save updated referrer
+			if _, err := ref.SaveReferral(org.Datastore().Context, org.Id(), referral.NewUser, &Referrent{
+				usr.Id(),
+				usr.Kind(),
+			}, usr.Id(), !org.Live); err != nil {
+				log.Warn("Unable to save referral: %v", err, c)
+			}
+		}
+	}
+
+	// No signup credit is minted: usage is pre-paid. A new account starts at a zero
+	// balance and the metering gate refuses a metered request until it pre-pays
+	// (POST /v1/billing/deposit / the console top-up), then debits that balance.
+
+	tokStr := ""
+
+	if org.SignUpOptions.ImmediateLogin || usr.PreApproved {
+		log.Info("User is being immediately logged in", c)
+		loginTok := middleware.GetToken(c)
+		loginTok.UserId = usr.Id()
+		loginTok.ExpirationTime = time.Now().Add(time.Hour * 24 * 7).Unix()
+		tokStr = loginTok.Encode(org.SecretKey)
+	}
+
+	counter.IncrUser(usr.Context(), usr.CreatedAt)
+
+	log.Info("Sending Emails", c)
+
+	if usr.FormId != "" {
+		log.Info("Adding User %v To Form %v", usr.Id(), usr.FormId, c)
+		f := form.New(usr.Datastore())
+
+		if err := f.GetById(usr.FormId); err != nil {
+			log.Warn("Form %v does not exist.", usr.FormId, c)
+		}
+
+		s := subscriber.New(db)
+		s.Email = usr.Email
+		s.UserId = usr.Id()
+		s.FirstName = usr.FirstName
+		s.LastName = usr.LastName
+		s.Tags = []string{"account-creation"}
+
+		if err := f.AddSubscriber(s); err != nil {
+			log.Info("Subscriber %v Encountered Non-Fatal Error: %v", usr.Id(), err, c)
+		}
+
+		if f.EmailList.Enabled {
+			email.Subscribe(ctx, f, s, org)
+		}
+	}
+
+	// Send welcome, email confirmation emails
+	if !enabled {
+		email.SendUserConfirmEmail(ctx, org, usr)
+	}
+
+	if usr.IsAffiliate && org.Email.Get(email.AffiliateWelcome).Enabled {
+		email.SendAffiliateWelcome(ctx, org, usr)
+	} else {
+		email.SendUserWelcome(ctx, org, usr)
+	}
+
+	// Save user as customer in Mailchimp if configured
+	if org.Mailchimp.APIKey != "" {
+		log.Info("Saving User to Mailchimp: %v", json.Encode(usr), c)
+		// Create new mailchimp client
+		client := mailchimp.New(ctx, org.Mailchimp)
+
+		// Create customer in mailchimp for this user
+		if err := client.CreateCustomer(storeId, usr); err != nil {
+			log.Warn("Failed to create Mailchimp customer: %v", err, ctx)
+		}
+	} else {
+		log.Info("Skip saving User to Mailchimp: %v", json.Encode(usr), c)
+	}
+
+	return http.Render(c, 201, createRes{User: usr, Token: tokStr})
+}

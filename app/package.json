@@ -1,0 +1,26 @@
+{
+  "name": "@hanzo/commerce-app",
+  "private": true,
+  "license": "MIT OR Apache-2.0",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "tsgo": "npm:typescript@7.0.2",
+    "turbo": "catalog:"
+  },
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20"
+  },
+  "pnpm": {
+    "overrides": {
+      "@hanzo/ui": "8.27.0",
+      "@hanzo/gui": "8.3.0",
+      "@hanzogui/*": "8.1.1"
+    }
+  }
+}

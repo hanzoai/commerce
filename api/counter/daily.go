@@ -1,0 +1,117 @@
+package counter
+
+import (
+	"time"
+
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/util/counter"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
+)
+
+type dailyReq struct {
+	StoreId string `json:"storeId"`
+	Geo     string `json:"geo"`
+
+	After  time.Time `json:"after"`
+	Before time.Time `json:"before"`
+}
+
+type dailyCount struct {
+	Date                           time.Time `json:"date"`
+	ProjectedRevenueAmount         int       `json:"projectedRevenueAmount"`
+	ProjectedRevenueRefundedAmount int       `json:"projectedRevenueRefundedAmount"`
+
+	OrderAmount int `json:"orderAmount"`
+	OrderCount  int `json:"orderCount"`
+
+	OrderRefundedAmount int `json:"orderRefundedAmount"`
+	OrderRefundedCount  int `json:"orderRefundedCount"`
+}
+
+type dailyRes struct {
+	After  time.Time    `json:"after"`
+	Before time.Time    `json:"before"`
+	Counts []dailyCount `json:"counts"`
+}
+
+func daily(c *zip.Ctx) error {
+	org := middleware.GetOrganization(c)
+
+	req := dailyReq{}
+	if err := json.DecodeBytes(c.Body(), &req); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
+	}
+
+	if req.Before.IsZero() {
+		req.Before = time.Now()
+	}
+
+	if req.After.IsZero() {
+		req.After = org.CreatedAt
+	}
+
+	// Get Dailies
+	ctx := c.Context()
+	db := datastore.New(ctx)
+
+	res := dailyRes{
+		Before: req.Before,
+		After:  req.After,
+		Counts: []dailyCount{},
+	}
+
+	start := req.After
+
+	getByTag := func(tag string, start time.Time, end time.Time) int {
+		count := 0
+
+		q := db.Query(counter.ShardKind)
+		// Index Order Is Tag, StoreId, Period, Time, always query in this order
+		q = q.Filter("Tag=", tag).Filter("StoreId=", req.StoreId).Filter("Geo=", req.Geo)
+		q = q.Filter("Period=", counter.Hourly).Filter("Time>", start).Filter("Time<=", end)
+
+		shards := []counter.Shard{}
+
+		log.Warn("Searching for %v", req, c)
+		if _, err := q.GetAll(&shards); err != nil {
+			log.Error("Counter Search Error %v", err, c)
+		} else {
+			log.Warn("Result Count %v", len(shards), c)
+			for _, shard := range shards {
+				count += shard.Count
+			}
+		}
+
+		return count
+	}
+
+	for start.Before(req.Before) {
+		end := start.Add(time.Hour * 24)
+
+		res.Counts = append(res.Counts, dailyCount{
+			Date: start,
+
+			ProjectedRevenueAmount:         getByTag("order.projected.revenue", start, end),
+			ProjectedRevenueRefundedAmount: getByTag("order.projected.refunded.amount", start, end),
+
+			OrderAmount: getByTag("order.revenue", start, end),
+			OrderCount:  getByTag("order.count", start, end),
+
+			OrderRefundedAmount: getByTag("order.refunded.amount", start, end),
+			OrderRefundedCount:  getByTag("order.refunded.count", start, end),
+		})
+
+		start = end
+		startYear, startMonth, startDay := start.Date()
+		start = time.Date(startYear, startMonth, startDay, 0, 0, 0, 0, req.After.Location())
+	}
+
+	// Get Top Lines
+
+	return http.Render(c, 200, res)
+}
