@@ -388,7 +388,7 @@ func TestRenewDue_CanceledAtPeriodEndIsNotCharged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("record: %v", err)
 	}
-	if _, err := CancelSubscription(ctx, org, got.Subscription.ID, true); err != nil {
+	if _, err := CancelSubscription(ctx, org, balSubject, got.Subscription.ID, true); err != nil {
 		t.Fatalf("cancel at period end: %v", err)
 	}
 	due(t, db, got.Subscription.ID)
