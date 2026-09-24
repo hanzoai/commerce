@@ -219,10 +219,15 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 			_ = rec.Delete()
 		}
 	}
-	if err := ceiling(db, in.Subject); err != nil {
+	release, err := attempt(db, org.Name, in.Subject)
+	if err != nil {
 		abandon()
-		return nil, fault(429, "Too many declined card attempts. Try again later.", err)
+		if IsAttemptInFlight(err) {
+			return nil, fault(409, attemptSentence, err)
+		}
+		return nil, fault(429, ceilingSentence, err)
 	}
+	defer release()
 
 	chargeReq := processor.PaymentRequest{
 		Token:          in.SourceID,
@@ -251,7 +256,7 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		// is the processor failing, and its text is never the buyer's.
 		if d := refusalOf(result, err); d != nil {
 			refused(db, "token top-up", in.Subject, base, d)
-			return nil, fault(402, d.Sentence(), d)
+			return nil, fault(declineStatus(d), d.Sentence(), d)
 		}
 		return nil, fault(502, processorSentence, processorFailure("token top-up", in.Subject, err))
 	}

@@ -3,6 +3,7 @@ package billing
 import (
 	"errors"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -87,18 +88,22 @@ func TestRefusal_AWalletAtTheCeilingIsNotTriedAgain(t *testing.T) {
 }
 
 // TestRefusal_AResultThatDidNotSettleNeverEchoesTheProcessor — a processor that
-// answers a charge it did not take, with its own words beside it, is a refusal read
-// by its Decline, or a plain decline when it states none. The words never reach the
-// buyer.
+// answers a charge it did not settle, with its own words beside it, is read by its
+// Decline: still processing, a refusal, or a plain decline when it states none. The
+// words never reach the buyer.
 func TestRefusal_AResultThatDidNotSettleNeverEchoesTheProcessor(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		res  *processor.PaymentResult
 		want string
 	}{
-		{"square's status refusal", &processor.PaymentResult{
+		{"a payment square is still processing", &processor.PaymentResult{
 			ErrorMessage: "payment not completed (status: PENDING)",
-			Error:        &processor.Decline{Processor: processor.Square, Category: "PAYMENT_STATUS", Code: "PENDING"},
+			Error:        &processor.Decline{Processor: processor.Square, Category: processor.StatusCategory, Code: "PENDING"},
+		}, "Your payment is still processing. Please don't pay again."},
+		{"a payment square failed", &processor.PaymentResult{
+			ErrorMessage: "payment not completed (status: FAILED)",
+			Error:        &processor.Decline{Processor: processor.Square, Category: processor.StatusCategory, Code: "FAILED"},
 		}, "Your card was declined by the bank."},
 		{"a refusal with only words", &processor.PaymentResult{ErrorMessage: "cvv mismatch; card 4111 1111 1111 1111 expired"}, "Your card was declined by the bank."},
 	} {
@@ -132,8 +137,34 @@ func TestRefusal_ARenewalKeepsTheDeclineBeneathItsSentence(t *testing.T) {
 
 	m.chargeErr = errors.New("gateway timeout")
 	inv.AttemptCount++
-	if _, err := chargeProviderForOrg(org)(ctx, db, inv, 1900); !IsProcessorFailed(err) {
+	_, err = chargeProviderForOrg(org)(ctx, db, inv, 1900)
+	if !IsProcessorFailed(err) {
 		t.Errorf("a renewal the processor failed to answer answered %v", err)
+	}
+	// And it is an unknown outcome, so the collector keeps the attempt's gateway key.
+	if !errors.Is(err, processor.ErrUnknownOutcome) {
+		t.Errorf("a renewal the processor failed to answer is not an unknown outcome: %v", err)
+	}
+}
+
+// TestRefusal_ConcurrentRefusalsAreEachCounted — refusals recorded at once against one
+// count are each counted: the count's read and write are one step.
+func TestRefusal_ConcurrentRefusalsAreEachCounted(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	db := datastore.New(moneyOrg("count-co").Namespaced(ctx))
+	const n = 40
+	var wg sync.WaitGroup
+	for range n {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			tally(db, "count-co")
+		}()
+	}
+	wg.Wait()
+	if got := count(db, walletScope+"count-co", windowOf()); got != n {
+		t.Errorf("%d refusals recorded at once counted %d", n, got)
 	}
 }
 

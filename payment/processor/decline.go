@@ -26,8 +26,33 @@ type Decline struct {
 
 func (d *Decline) Error() string { return "card declined (" + d.Code + ")" }
 
-// Is reports a Decline as ErrPaymentDeclined.
-func (d *Decline) Is(target error) bool { return target == ErrPaymentDeclined }
+// ErrUnknownOutcome marks a charge whose outcome the processor has not stated: it
+// failed to answer, or it answered with a payment it has not settled. The money may
+// yet move, so another attempt must reach the processor under the same idempotency
+// key, where the processor answers it with the first payment instead of taking a
+// second.
+var ErrUnknownOutcome = errors.New("the charge's outcome is not known yet")
+
+// StatusCategory is the category of a Decline built from a payment the processor
+// answered and did not settle, named by the payment's status.
+const StatusCategory = "PAYMENT_STATUS"
+
+// Processing reports a payment the processor answered and has not settled, which
+// may still settle: Square's PENDING (a hold, or a bank transfer clearing) and
+// APPROVED (authorized, capture pending). It is not a refusal. It is errors.Is
+// ErrUnknownOutcome and never ErrPaymentDeclined.
+func (d *Decline) Processing() bool {
+	return d.Category == StatusCategory && (d.Code == "PENDING" || d.Code == "APPROVED")
+}
+
+// Is reports a Decline as ErrPaymentDeclined, and a payment still processing as
+// ErrUnknownOutcome.
+func (d *Decline) Is(target error) bool {
+	if d.Processing() {
+		return target == ErrUnknownOutcome
+	}
+	return target == ErrPaymentDeclined
+}
 
 // DeclineOf finds the Decline in err's chain.
 func DeclineOf(err error) (*Decline, bool) {
@@ -50,11 +75,13 @@ const (
 	ReasonAddress             = "ADDRESS_VERIFICATION_FAILURE"
 	ReasonExpired             = "EXPIRATION_FAILURE"
 	ReasonInsufficientFunds   = "INSUFFICIENT_FUNDS"
+	ReasonProcessing          = "PAYMENT_PROCESSING"
 	sentenceDeclined          = "Your card was declined by the bank."
 	sentenceCVV               = "The security code (CVV) didn't match."
 	sentenceAddress           = "The billing ZIP code didn't match."
 	sentenceExpired           = "The card has expired."
 	sentenceInsufficientFunds = "Insufficient funds."
+	sentenceProcessing        = "Your payment is still processing. Please don't pay again."
 )
 
 // reasons maps a processor code onto the reason a buyer is told. A code not
@@ -79,10 +106,14 @@ var sentences = map[string]string{
 	ReasonAddress:           sentenceAddress,
 	ReasonExpired:           sentenceExpired,
 	ReasonInsufficientFunds: sentenceInsufficientFunds,
+	ReasonProcessing:        sentenceProcessing,
 }
 
 // Reason is the code a buyer is told: one of the Reason constants.
 func (d *Decline) Reason() string {
+	if d.Processing() {
+		return ReasonProcessing
+	}
 	if r, ok := reasons[d.Code]; ok {
 		return r
 	}

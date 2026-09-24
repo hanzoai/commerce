@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/payment/processor"
 )
 
 // CollectionResult describes the outcome of a payment collection attempt.
@@ -118,6 +120,15 @@ func CollectInvoice(ctx context.Context, db *datastore.Datastore, inv *billingin
 			// all or nothing and nothing prepaid has moved, so the invoice stays
 			// open exactly as it was for the next attempt.
 			result.Error = err.Error()
+			if errors.Is(err, processor.ErrUnknownOutcome) {
+				// The provider did not state an outcome: it failed to answer, or the
+				// payment is still processing, and the money may yet move. The
+				// attempt count is part of the gateway key, so it is left where it
+				// is and the next attempt reaches the provider under the same key,
+				// where it is answered with this payment instead of taking a second.
+				inv.LastAttemptAt = time.Now()
+				return result, nil
+			}
 			return unpaid(inv, result, owed)
 		}
 		result.ProviderUsed, result.ProviderRef = rest, charged

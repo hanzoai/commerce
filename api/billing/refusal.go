@@ -8,7 +8,9 @@ package billing
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -45,9 +47,10 @@ func (e declinedCard) Error() string { return e.decline.Sentence() }
 func (e declinedCard) Unwrap() error { return e.decline }
 
 // errProcessorFailed marks a card money move the processor failed to answer: no
-// refusal, and no charge. It is the processor's fault and never the card's, so it is
-// reported as an outage rather than as a decline.
-var errProcessorFailed = errors.New("the payment processor could not take the card")
+// refusal, and an outcome it did not state. It is the processor's fault and never the
+// card's, so it is reported as an outage rather than as a decline, and it is
+// processor.ErrUnknownOutcome, so a later attempt keeps the gateway key.
+var errProcessorFailed = fmt.Errorf("the payment processor could not take the card: %w", processor.ErrUnknownOutcome)
 
 // IsProcessorFailed reports whether err is a card money move the processor failed
 // to answer, as distinct from a card it refused.
@@ -92,14 +95,24 @@ func attemptKey(db *datastore.Datastore, base string) string {
 
 // ── the refusals a wallet may collect ─────────────────────────────────────────
 
-// Refusals are also counted per wallet, per hour, and a wallet that has collected
-// [declineCeiling] of them has no more cards tried until the hour turns: the charge
-// is refused before the processor is asked. Testing stolen cards is a run of
-// refusals against one account, so this bounds what one account can learn and what
-// it costs the merchant at the processor, and a buyer whose own card is refused a few
-// times is not affected. It is keyed on the wallet the charge would credit, which is
-// the org for a tenant and the person in the shared signup org, so one stranger's
-// refusals never lock out the rest of that org.
+// A buyer's card attempts are held per wallet: one attempt at a time, and a wallet
+// that has collected [declineCeiling] refusals in [declineWindow] has no more cards
+// tried until the window turns, refused before the processor is asked. Testing
+// stolen cards is a run of refusals against one account, so this bounds what one
+// account can learn and what it costs the merchant at the processor, and a buyer
+// whose own card is refused a few times is not affected. It is keyed on the wallet
+// the charge would credit, which is the org for a tenant and the person in the shared
+// signup org, so one stranger's refusals never lock out the rest of that org.
+//
+// ONE ATTEMPT AT A TIME is what makes the ceiling a ceiling. The count is read before
+// a charge and written after its refusal, so attempts that overlap all read the same
+// count and all reach the processor. commerce is the single writer for each tenant,
+// so this process holds every attempt a wallet makes, and a reservation in memory is
+// the whole of what serialising them takes.
+//
+// ONLY A BUYER'S ATTEMPT IS HELD. The off-session charges (auto-recharge and
+// renewals) charge a card the org already chose, are not a buyer testing anything,
+// and must neither spend a buyer's ceiling nor be stopped by one.
 //
 // It is not per card: a card is known to this process only after the processor has
 // been asked (a single-use token names no card), and counting it afterwards would
@@ -126,25 +139,93 @@ func windowOf() string {
 	return strconv.FormatInt(time.Now().Unix()/int64(declineWindow/time.Second), 10)
 }
 
-// ceiling refuses a card money move for a wallet that has collected declineCeiling
-// refusals in this window.
-func ceiling(db *datastore.Datastore, subject string) error {
-	if count(db, walletScope+subject, windowOf()) >= declineCeiling {
-		return errDeclineCeiling
+// errAttemptInFlight marks a buyer's card attempt refused because another attempt
+// for the same wallet is in progress.
+var errAttemptInFlight = errors.New("another card attempt for this account is in progress")
+
+// IsAttemptInFlight reports whether err is that refusal.
+func IsAttemptInFlight(err error) bool { return errors.Is(err, errAttemptInFlight) }
+
+// inFlight is the wallets with a buyer's card attempt in progress in this process.
+var inFlight = struct {
+	sync.Mutex
+	wallets map[string]bool
+}{wallets: map[string]bool{}}
+
+// attempt reserves wallet subject of org for one buyer's card attempt, refusing when
+// another is in progress or the wallet is at its ceiling. The caller releases the
+// reservation once the attempt's refusal, if any, is recorded.
+func attempt(db *datastore.Datastore, org, subject string) (release func(), err error) {
+	key := org + "\x00" + subject
+	inFlight.Lock()
+	if inFlight.wallets[key] {
+		inFlight.Unlock()
+		return nil, errAttemptInFlight
 	}
-	return nil
+	inFlight.wallets[key] = true
+	inFlight.Unlock()
+	release = func() {
+		inFlight.Lock()
+		delete(inFlight.wallets, key)
+		inFlight.Unlock()
+	}
+	if count(db, walletScope+subject, windowOf()) >= declineCeiling {
+		release()
+		return nil, errDeclineCeiling
+	}
+	return release, nil
 }
 
-// refused records a refusal the processor answered under gateway key base for the
-// wallet subject: once against the key, so the next attempt reaches the processor
-// under a key of its own, and once against the wallet's window. An empty base is a
-// refusal answered with no gateway key (a card vaulted), counted against the wallet
-// alone. It logs the processor's category and code and nothing else of the answer.
-func refused(db *datastore.Datastore, what, subject, base string, d *processor.Decline) {
+// answered records the processor's answer to a charge that did not settle, made
+// under gateway key base, and reports whether it was a refusal. A refusal moves the
+// next attempt onto a key of its own ([rotate]); a payment still processing keeps
+// its key, so a retry is answered with that payment rather than taking another. It
+// logs the processor's category and code and nothing else of the answer. An empty
+// base is an answer given with no gateway key (a card vaulted).
+func answered(db *datastore.Datastore, what, subject, base string, d *processor.Decline) bool {
+	if d.Processing() {
+		log.Warn("%s: payment still processing (subject=%s): %s %s", what, subject, d.Category, d.Code)
+		return false
+	}
 	log.Warn("%s: card declined (subject=%s): %s %s", what, subject, d.Category, d.Code)
+	rotate(db, base)
+	return true
+}
+
+// refused is [answered] for a buyer's attempt, and a refusal is also counted against
+// the wallet's window ([tally]).
+func refused(db *datastore.Datastore, what, subject, base string, d *processor.Decline) {
+	if answered(db, what, subject, base, d) {
+		tally(db, subject)
+	}
+}
+
+// declineStatus is the HTTP status a buyer is answered for d: 402 for a refusal, and
+// 409 for a payment still processing, which is neither the buyer's fault nor
+// something another attempt should repeat.
+func declineStatus(d *processor.Decline) int {
+	if d.Processing() {
+		return 409
+	}
+	return 402
+}
+
+// The sentences a buyer reads when an attempt is held.
+const (
+	ceilingSentence = "Too many declined card attempts. Try again later."
+	attemptSentence = "Another card payment for this account is in progress. Try again in a moment."
+)
+
+// rotate moves the next attempt under gateway key base onto a key of its own
+// ([attemptKey]), after a refusal answered under it.
+func rotate(db *datastore.Datastore, base string) {
 	if base != "" {
 		add(db, declinesScope, base)
 	}
+}
+
+// tally counts a refusal against wallet subject's window.
+func tally(db *datastore.Datastore, subject string) {
 	add(db, walletScope+subject, windowOf())
 }
 
@@ -161,8 +242,14 @@ func count(db *datastore.Datastore, scope, key string) int {
 	return n
 }
 
+// counts serialises every refusal count's read-and-write in this process, the single
+// writer for each tenant, so two refusals recorded at once are two.
+var counts sync.Mutex
+
 // add increments a refusal count.
 func add(db *datastore.Datastore, scope, key string) {
+	counts.Lock()
+	defer counts.Unlock()
 	rec := idempotencykey.New(db)
 	rec.SetId(idempotencykey.DeterministicID(scope, key))
 	rec.Scope = scope
