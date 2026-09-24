@@ -28,6 +28,10 @@ package billing
 // every later period from the same money, and when it runs out the row goes
 // past due. The ledger entry and the invoice the draw paid are the reference, so
 // the caller need not name one.
+//
+// A record may TAKE OVER the plan the subject holds, when the caller names it in
+// Replaces. The new plan is recorded — and, from the balance, paid — first; the
+// held plan ends only after, so a refusal at any step leaves it as it was.
 
 import (
 	"context"
@@ -78,6 +82,10 @@ type RecordIn struct {
 	Reference map[string]string
 	// Terms is anything agreed alongside the plan, kept verbatim on the row.
 	Terms string
+	// Replaces is the id of the plan the subject holds that this one takes over.
+	// The held plan ends at once, and only after the new one is recorded and
+	// paid. Empty, a subject holding another plan is refused.
+	Replaces string
 	// Events is the analytics collector. nil records nothing there.
 	Events *events.Client
 }
@@ -94,6 +102,9 @@ type Recorded struct {
 	Subscription Subscription
 	// Outcome is RecordCreated, RecordExtended or RecordUnchanged.
 	Outcome string
+	// Replaced is the plan this record took over, as it now stands; nil when it
+	// took over none.
+	Replaced *Subscription
 }
 
 // collected is the payment a new row opens on: who took it and the period it
@@ -125,14 +136,16 @@ func (c *collected) open(sub *subscription.Subscription) {
 // ONE PAID SUBSCRIPTION PER SUBJECT holds here as it does at checkout. A subject
 // that already pays through checkout is refused; one whose plan is already
 // external on the same plan and period gets its row back unchanged, so a retry
-// is harmless; a later period on the same plan extends that row. Anything else
-// is refused with the reason.
+// is harmless; a later period on the same plan extends that row. A different
+// plan takes over the held one only when Replaces names it. Anything else is
+// refused with the reason.
 func RecordSubscription(ctx context.Context, org *organization.Organization, in RecordIn) (*Recorded, error) {
 	if org == nil {
 		return nil, errors.New("record subscription: no organization")
 	}
 	subject := strings.TrimSpace(in.Subject)
 	planID := strings.TrimSpace(in.PlanID)
+	in.Replaces = strings.TrimSpace(in.Replaces)
 	processor := strings.ToLower(strings.TrimSpace(in.Processor))
 	reference := cleanReference(in.Reference)
 	start, end := in.PeriodStart.UTC(), in.PeriodEnd.UTC()
@@ -163,8 +176,12 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 		return recordFromBalance(ctx, org, db, p, in, subject, planID, reference, start, end)
 	}
 
-	if held := billingSubscription(db, subject, org.TestMode()); held != nil {
+	held := billingSubscription(db, subject, org.TestMode())
+	if held != nil && (in.Replaces == "" || sameRung(held, planID, p.Interval)) {
 		return extendRecorded(ctx, org, held, in, planID, p.Interval, reference, start, end)
+	}
+	if err := takesOver(held, in.Replaces); err != nil {
+		return nil, err
 	}
 
 	qty := in.Quantity
@@ -191,25 +208,96 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 	if err != nil {
 		return nil, err
 	}
+	var replaced *Subscription
+	if held != nil {
+		old, err := retire(ctx, org, held.Id(), in.Events)
+		if err != nil {
+			// Nothing moved, so the new row is withdrawn and the held plan stands.
+			withdraw(db, sub)
+			return nil, fmt.Errorf("record subscription: subscription %s could not be ended, so the new plan was not recorded: %w", held.Id(), err)
+		}
+		replaced = viewSubscription(old)
+	}
 	emitSale(ctx, in.Events, org.Name, sub, nil)
-	return &Recorded{Subscription: *viewSubscription(sub), Outcome: RecordCreated}, nil
+	return &Recorded{Subscription: *viewSubscription(sub), Outcome: RecordCreated, Replaced: replaced}, nil
+}
+
+// sameRung reports whether held is already the plan, at the interval, a record
+// names. A record of the plan the subject holds extends it; nothing is replaced.
+func sameRung(held *subscription.Subscription, planID string, interval types.Interval) bool {
+	return heldSlug(held) == planID && held.Plan.Interval == interval
+}
+
+// heldSlug is the slug of the plan a row holds, its plan id where it names none.
+func heldSlug(held *subscription.Subscription) string {
+	if held.Plan.Slug != "" {
+		return held.Plan.Slug
+	}
+	return held.PlanId
+}
+
+// takesOver refuses a Replaces that does not name the plan the subject holds:
+// a caller must name the row it is ending, and a stale name ends nothing.
+func takesOver(held *subscription.Subscription, replaces string) error {
+	switch {
+	case replaces == "":
+		return nil
+	case held == nil:
+		return saleRefusal{saleRefused, fmt.Sprintf("subscription %s is not a plan this account holds, so there is nothing to replace", replaces)}
+	case held.Id() != replaces:
+		return saleRefusal{saleHeld, fmt.Sprintf(
+			"this account holds the %q plan as subscription %s, not %s; name the plan it holds", heldSlug(held), held.Id(), replaces)}
+	}
+	return nil
+}
+
+// retire ends the plan a record took over, at once, through the one cancel. The
+// row ends before its open invoices are voided; a void that fails after the row
+// ended is logged for reconciliation, since nothing renews an ended row.
+func retire(ctx context.Context, org *organization.Organization, id string, ev *events.Client) (*subscription.Subscription, error) {
+	sub, err := cancelSubscription(ctx, org, AnyHolder, id, false)
+	if err != nil {
+		row, lerr := loadSubscription(ctx, org, id)
+		if lerr != nil || row.Status != subscription.Canceled {
+			return nil, err
+		}
+		log.Error("RECONCILE: subscription %s had ended when a record replaced it, and ending it answered: %v", id, err)
+		sub = row
+	}
+	if ev != nil {
+		go ev.EmitSubscriptionCanceled(context.WithoutCancel(ctx), subscriptionEvent(org.Name, sub))
+	}
+	return sub, nil
+}
+
+// withdraw removes a row this record opened, and the bundle rows opened with it,
+// when the plan it was to replace could not be ended. No money moved for it.
+func withdraw(db *datastore.Datastore, sub *subscription.Subscription) {
+	subs, _ := userSubscriptions(db, sub.UserId, sub.Test)
+	for _, s := range subs {
+		if parent, _ := s.Metadata["bundleParent"].(string); parent == sub.Id() {
+			if err := s.Delete(); err != nil {
+				log.Error("RECONCILE: bundle subscription %s of withdrawn subscription %s was not removed: %v", s.Id(), sub.Id(), err)
+			}
+		}
+	}
+	if err := sub.Delete(); err != nil {
+		log.Error("RECONCILE: subscription %s (subject=%s) was opened to replace a plan that could not be ended, and was not removed: %v", sub.Id(), sub.UserId, err)
+	}
 }
 
 // extendRecorded answers a payment for a subject that already holds a paid plan.
 func extendRecorded(ctx context.Context, org *organization.Organization, held *subscription.Subscription, in RecordIn, planID string, interval types.Interval, reference map[string]string, start, end time.Time) (*Recorded, error) {
-	heldSlug := held.Plan.Slug
-	if heldSlug == "" {
-		heldSlug = held.PlanId
-	}
+	slug := heldSlug(held)
 	if held.Type != subscription.External {
 		return nil, saleRefusal{saleHeld, fmt.Sprintf(
-			"this account already pays for the %q plan through checkout (subscription %s); change that subscription instead",
-			heldSlug, held.Id())}
+			"this account already pays for the %q plan through checkout (subscription %s); name it in replaces to take it over, or change that subscription instead",
+			slug, held.Id())}
 	}
-	if heldSlug != planID || held.Plan.Interval != interval {
+	if slug != planID || held.Plan.Interval != interval {
 		return nil, saleRefusal{saleHeld, fmt.Sprintf(
-			"this account already holds the %q plan by the %s (subscription %s); a payment for another plan cannot extend it",
-			heldSlug, held.Plan.Interval, held.Id())}
+			"this account already holds the %q plan by the %s (subscription %s); a payment for another plan cannot extend it, but may take it over by naming it in replaces",
+			slug, held.Plan.Interval, held.Id())}
 	}
 	if in.Quantity > 0 && in.Quantity != held.Quantity {
 		return nil, saleRefusal{saleRefused, fmt.Sprintf(
@@ -221,7 +309,7 @@ func extendRecorded(ctx context.Context, org *organization.Organization, held *s
 	}
 	// The row keeps the price it was opened at, so a later payment is checked
 	// against that price and not against whatever the catalog sells today.
-	if err := priceMatches(heldSlug, int64(held.Plan.Price)*seatMult, in.PriceCents); err != nil {
+	if err := priceMatches(slug, int64(held.Plan.Price)*seatMult, in.PriceCents); err != nil {
 		return nil, err
 	}
 	if start.Equal(held.PeriodStart.UTC()) && end.Equal(held.PeriodEnd.UTC()) {
@@ -342,7 +430,10 @@ func holding(db *datastore.Datastore, subject string, test bool) *subscription.S
 // Everything that can refuse refuses before money moves, and refusing writes
 // nothing: the period must be one of the plan's and the one running now, the
 // price must be the plan's, the subject must hold no plan — nor one gone past
-// due — and its prepaid money must cover the period. The draw is the one a self-serve purchase makes —
+// due — unless Replaces names it, and its prepaid money must cover the period.
+// A plan it replaces ends only after the new one is open and paid; were ending
+// it to fail then, the answer carries it still active and a retry of the record
+// ends it. The draw is the one a self-serve purchase makes —
 // credits, then the balance on the one ledger — all or nothing.
 func recordFromBalance(ctx context.Context, org *organization.Organization, db *datastore.Datastore, p *plan.Plan, in RecordIn, subject, planID string, reference map[string]string, start, end time.Time) (*Recorded, error) {
 	if one := engine.Advance(start, p); end.After(one) || end.Before(one.Add(-monthEnd)) {
@@ -377,21 +468,31 @@ func recordFromBalance(ctx context.Context, org *organization.Organization, db *
 		if err != nil {
 			return nil, err
 		}
-		return &Recorded{Subscription: *viewSubscription(sub), Outcome: RecordUnchanged}, nil
+		out := &Recorded{Subscription: *viewSubscription(sub), Outcome: RecordUnchanged}
+		if in.Replaces != "" && in.Replaces != sub.Id() {
+			out.Replaced = finish(ctx, org, subject, in.Replaces, sub.CreatedAt, in.Events)
+		}
+		return out, nil
 	case replay:
 		return nil, saleRefusal{saleHeld, "this plan is already being recorded"}
 	}
 	abandon := func() { _ = rec.Delete() }
 
-	if held := holding(db, subject, org.TestMode()); held != nil {
+	held := holding(db, subject, org.TestMode())
+	switch {
+	case held != nil && in.Replaces == "":
 		abandon()
-		heldSlug := held.Plan.Slug
-		if heldSlug == "" {
-			heldSlug = held.PlanId
-		}
 		return nil, saleRefusal{saleHeld, fmt.Sprintf(
-			"this account already holds the %q plan (subscription %s); change that subscription instead of opening a second one",
-			heldSlug, held.Id())}
+			"this account already holds the %q plan (subscription %s); name it in replaces to take it over, or change that subscription instead of opening a second one",
+			heldSlug(held), held.Id())}
+	case held != nil && sameRung(held, planID, p.Interval):
+		abandon()
+		return nil, saleRefusal{saleHeld, fmt.Sprintf(
+			"subscription %s is already the %q plan; a record from the balance opens a plan and cannot replace it with itself", held.Id(), planID)}
+	}
+	if err := takesOver(held, in.Replaces); err != nil {
+		abandon()
+		return nil, err
 	}
 
 	cur := p.Currency
@@ -442,6 +543,32 @@ func recordFromBalance(ctx context.Context, org *organization.Organization, db *
 		log.Error("RECONCILE: subscription %s (subject=%s) was paid from the balance and its reference was not saved: %v", sub.Id(), subject, err)
 	}
 	_ = idempotencykey.Complete(rec, sub.Id())
+	var replaced *Subscription
+	if held != nil {
+		replaced = finish(ctx, org, subject, held.Id(), sub.CreatedAt, in.Events)
+	}
 	emitSale(ctx, in.Events, org.Name, sub, inv)
-	return &Recorded{Subscription: *viewSubscription(sub), Outcome: RecordCreated}, nil
+	return &Recorded{Subscription: *viewSubscription(sub), Outcome: RecordCreated, Replaced: replaced}, nil
+}
+
+// finish ends the plan a balance record took over, once the new plan is open and
+// paid, and answers it as it now stands. The money has moved, so a plan that
+// cannot be ended now is answered still active and logged for reconciliation; a
+// retry of the record ends it. Only a paid plan of the subject's opened before
+// the new one, at opened, is ended: a retry never reaches a plan that came after.
+// One that has already ended is answered as it is.
+func finish(ctx context.Context, org *organization.Organization, subject, id string, opened time.Time, ev *events.Client) *Subscription {
+	row, err := loadSubscription(ctx, org, id)
+	if err != nil || row.UserId != subject || strings.EqualFold(strings.TrimSpace(row.ProviderType), "bundle") || !paidRow(row) || !row.CreatedAt.Before(opened) {
+		return nil
+	}
+	if row.Status == subscription.Canceled {
+		return viewSubscription(row)
+	}
+	old, err := retire(ctx, org, id, ev)
+	if err != nil {
+		log.Error("RECONCILE: subscription %s (subject=%s) was replaced by a plan paid from the balance and could not be ended: %v", id, subject, err)
+		return viewSubscription(row)
+	}
+	return viewSubscription(old)
 }
