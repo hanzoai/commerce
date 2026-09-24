@@ -1,0 +1,161 @@
+// Package tier defines the tiered credit system for Hanzo billing.
+//
+// Each IAM user has a "tier" property stored in hanzo.id (Hanzo IAM) user
+// properties and propagated via JWT claims. The tier determines:
+//   - which model prefixes are allowed
+//   - a daily replenishing credit allowance (the generic mechanism; the
+//     Free tier's allowance is 0, see below)
+//
+// THERE IS NO FREE TIER. A zero-balance account is gated (the metering
+// client refuses when effective available balance <= 0). Onboarding funds an
+// account exactly once via the starter-credit grant (a one-time $100 Deposit,
+// see billing/credit); once that is spent the account is gated until it is
+// topped up. The daily-credit mechanism below is retained (correctly guarded
+// by DailyCreditsCents > 0) but every registered tier sets it to 0, so it
+// never grants a standing balance to anyone. Paid tiers use prepaid balances
+// managed by the existing billing engine.
+package tier
+
+// Name is the canonical tier identifier stored in IAM user properties.
+type Name string
+
+const (
+	Free       Name = "free"
+	Starter    Name = "starter"
+	Pro        Name = "pro"
+	Enterprise Name = "enterprise"
+)
+
+// Config describes the billing limits for a single tier.
+type Config struct {
+	// Name is the canonical tier identifier.
+	Name Name `json:"name"`
+
+	// DisplayName is the human-readable tier label.
+	DisplayName string `json:"displayName"`
+
+	// A tier does NOT say how many agents or bots a customer may run. That is a
+	// CAPACITY and it is published per PLAN, in the catalog — subscription.json
+	// `limits.agents` / `limits.bots`, read through api/billing's AgentsIncluded
+	// and BotsIncluded. This registry used to carry its own MaxAgents beside it,
+	// which was one fact in two homes with no stated precedence, and the two
+	// disagreed by construction: the registry is keyed by TIER NAME and the
+	// catalog by PLAN SLUG, and six slugs collapse onto four names, so `dev`,
+	// `max` and `team` all resolved to Pro and `max`'s bots had nowhere to land.
+	// api/billing.TierLimits composes the two now, and
+	// TestTheRegistryDoesNotHoldACapacity keeps this comment true.
+
+	// DailyCreditsCents is the daily replenishing credit allowance in cents.
+	// It is 0 for EVERY tier: there is no free tier, so no tier grants a
+	// standing daily balance. The mechanism is kept generic (a nonzero value
+	// would replenish each UTC day, non-accumulating) but is disabled by
+	// configuration. Prepaid balance is managed externally by the billing engine.
+	DailyCreditsCents int64 `json:"dailyCreditsCents"`
+
+	// AllowedModels lists the model prefixes the tier may invoke.
+	// A single entry of "*" means all models are allowed.
+	AllowedModels []string `json:"allowedModels"`
+}
+
+// freeLane is what a caller with no paid plan may invoke: enso-auto, which
+// answers free callers from the free models, and the free Hanzo SKUs. No vendor
+// model is on it; a paid rung opens the rest.
+var freeLane = []string{"enso-auto", "enso-free", "zen-free", "free"}
+
+// registry is the authoritative tier configuration.
+var registry = map[Name]*Config{
+	Free: {
+		Name:        Free,
+		DisplayName: "Free",
+		// No free tier: a zero-balance "free" account grants NO daily credit and
+		// is gated. The one-time starter grant is the only onboarding funding.
+		DailyCreditsCents: 0,
+		AllowedModels:     freeLane,
+	},
+	Starter: {
+		Name:              Starter,
+		DisplayName:       "Starter",
+		DailyCreditsCents: 0,
+		AllowedModels:     freeLane, // a trial has not paid; it is on the free lane
+	},
+	Pro: {
+		Name:              Pro,
+		DisplayName:       "Pro",
+		DailyCreditsCents: 0,
+		AllowedModels:     []string{"*"},
+	},
+	Enterprise: {
+		Name:              Enterprise,
+		DisplayName:       "Enterprise",
+		DailyCreditsCents: 0,
+		AllowedModels:     []string{"*"},
+	},
+}
+
+// Get returns the Config for a given tier name. Unknown tiers fall back
+// to Free so callers never receive nil.
+func Get(name Name) *Config {
+	if c, ok := registry[name]; ok {
+		return c
+	}
+	return registry[Free]
+}
+
+// All returns a copy of every registered tier configuration.
+func All() map[Name]*Config {
+	out := make(map[Name]*Config, len(registry))
+	for k, v := range registry {
+		out[k] = v
+	}
+	return out
+}
+
+// ParseOK normalizes a raw string into a tier Name and reports whether it actually
+// NAMED a registered tier.
+//
+// The distinction is the whole point. Parse collapses "unknown" and "free" into one
+// answer, and the registry holds tier names (free/starter/pro/enterprise) while the
+// CATALOG sells plan slugs (go/dev/pro/max/team/enterprise). Four of the six sold
+// plans are not tier names, so they parsed to Free — the most restrictive config
+// there is (1 agent, two models). Measured live: `?tier=max`, a $99/mo plan,
+// answered displayName "Free", maxAgents 1.
+//
+// A caller that holds the catalog can now tell "this is a tier" from "this is not a
+// tier I know" and resolve the slug properly instead of downgrading silently.
+func ParseOK(raw string) (Name, bool) {
+	n := Name(raw)
+	if _, ok := registry[n]; ok {
+		return n, true
+	}
+	return Free, false
+}
+
+// Parse normalizes a raw string into a tier Name. Empty or unknown
+// strings default to Free.
+//
+// Prefer ParseOK anywhere a plan slug can arrive: this signature cannot report
+// that it did not recognize the input, and "not recognized" is not "free".
+func Parse(raw string) Name {
+	n, _ := ParseOK(raw)
+	return n
+}
+
+// IsModelAllowed checks whether the given model identifier is permitted
+// under the tier's allowedModels list. Matching is prefix-based: an
+// entry "claude-sonnet" matches "claude-sonnet-4-20250514".
+func (c *Config) IsModelAllowed(model string) bool {
+	for _, prefix := range c.AllowedModels {
+		if prefix == "*" {
+			return true
+		}
+		if len(model) >= len(prefix) && model[:len(prefix)] == prefix {
+			return true
+		}
+	}
+	return false
+}
+
+// HasDailyCredits returns true if the tier receives daily replenishing credits.
+func (c *Config) HasDailyCredits() bool {
+	return c.DailyCreditsCents > 0
+}

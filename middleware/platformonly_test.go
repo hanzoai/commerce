@@ -1,0 +1,144 @@
+// Copyright (c) 2014-present Hanzo AI, Inc.
+// Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
+
+package middleware
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/auth"
+	"github.com/hanzoai/commerce/util/bit"
+	"github.com/hanzoai/commerce/util/permission"
+	"github.com/hanzoai/commerce/util/test/ae"
+)
+
+// runMintGate drives the EXACT production money-mint middleware chain —
+// TokenRequired(permission.Admin) THEN PlatformOnly() — that api/billing.Route
+// mounts on /credit, /deposit, /refund, /credits and
+// /customer-balance/adjustments, to a sentinel handler. Returns the HTTP status and whether the
+// sentinel was reached. seed pre-sets context state exactly as the real upstream
+// middleware would (EdgeAuth/IAMTokenRequired mint iam_authenticated + permissions
+// + iam_claims).
+func runMintGate(t *testing.T, seed func(*zip.Ctx), reqSetup func(*http.Request)) (int, bool) {
+	t.Helper()
+
+	reached := false
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	if seed != nil {
+		app.Use(zip.H(func(c *zip.Ctx) error { seed(c); return c.Next() }))
+	}
+	app.Use(TokenRequired(permission.Admin))
+	app.Use(PlatformOnly())
+	app.Raw(http.MethodPost, "/x", func(c *zip.Ctx) error { reached = true; return c.NoContent(http.StatusOK) })
+
+	req := httptest.NewRequest(http.MethodPost, "/x", nil)
+	if reqSetup != nil {
+		reqSetup(req)
+	}
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	return resp.StatusCode, reached
+}
+
+func iamIdentity(perms bit.Field, claims *auth.IAMClaims) func(*zip.Ctx) {
+	return func(c *zip.Ctx) {
+		c.Locals("iam_authenticated", true)
+		c.Locals("permissions", perms)
+		c.Locals("iam_claims", claims)
+	}
+}
+
+// TestPlatformOnly_OrgAdminDeniedMint is THE C1 proof at the gate: an ORG-level
+// admin (org owner — org-level IsAdmin=true, so the gateway mints Admin|Live, but
+// IsSuperAdmin()=false) PASSES TokenRequired(Admin) yet is DENIED (403) by
+// PlatformOnly on the money-mint chain; the handler is never reached. This is the
+// exact principal (e.g. maxpower) that could previously self-mint unlimited balance.
+func TestPlatformOnly_OrgAdminDeniedMint(t *testing.T) {
+	orgAdmin := &auth.IAMClaims{Owner: "maxpower", IsAdmin: true} // org owner, NOT global
+	status, reached := runMintGate(t, iamIdentity(bit.Field(permission.Admin|permission.Live), orgAdmin), nil)
+	if status != http.StatusForbidden || reached {
+		t.Fatalf("org-admin on money-mint chain: status=%d reached=%v, want 403 & not-reached (this was the C1 hole)", status, reached)
+	}
+}
+
+// TestPlatformOnly_SuperAdminMints proves a PLATFORM (global) admin — the explicit
+// the reserved "admin" org (owner=="admin") — passes the same chain
+// (the legitimate human-superadmin path RED's spec requires to still work).
+func TestPlatformOnly_SuperAdminMints(t *testing.T) {
+	for _, gc := range []*auth.IAMClaims{
+		{HomeOrg: "admin", Owner: "hanzo"}, // home org grants sudo even from a non-admin effective org
+		{Owner: "admin"},                   // the global-admin org
+	} {
+		status, reached := runMintGate(t, iamIdentity(bit.Field(permission.Admin|permission.Live), gc), nil)
+		if status != http.StatusOK || !reached {
+			t.Fatalf("global admin %+v: status=%d reached=%v, want 200 & reached", gc, status, reached)
+		}
+	}
+}
+
+// TestPlatformOnly_PlatformAppMints proves the platform's own application — an IAM
+// identity minted under the reserved admin org, which is how the scheduled money
+// work reaches commerce — passes the chain. This is the legitimate money path that
+// MUST keep working, and it is the same predicate a human SuperAdmin satisfies.
+func TestPlatformOnly_PlatformAppMints(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+
+	app := &auth.IAMClaims{Owner: "admin"}
+	app.Subject = "app_platform"
+	identity := iamIdentity(bit.Field(permission.Admin|permission.Live), app)
+	seed := func(c *zip.Ctx) { c.SetContext(ctx); identity(c) }
+	status, reached := runMintGate(t, seed, func(r *http.Request) {
+		r.Header.Set("X-Org-Id", "svc-org")
+	})
+	if status != http.StatusOK || !reached {
+		t.Fatalf("platform app: status=%d reached=%v, want 200 & reached (money path must keep working)", status, reached)
+	}
+}
+
+// TestPlatformOnly_AdminBitAloneDenied pins the gate's core invariant in isolation:
+// holding the org-level Admin bit — or being merely IAM-authenticated as an org
+// owner — is NOT sufficient; only SuperAdmin (owner=="admin") passes.
+// This is the anti-conflation that closes C1: a legacy per-org access token and an
+// org owner, both of which carry Admin, are refused. Fail-closed on empty context.
+func TestPlatformOnly_AdminBitAloneDenied(t *testing.T) {
+	cases := []struct {
+		name string
+		seed func(*zip.Ctx)
+	}{
+		{"nothing set (fail-closed)", func(c *zip.Ctx) {}},
+		{"org-level Admin permission bit only (legacy access token)", func(c *zip.Ctx) {
+			c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
+		}},
+		{"iam org-admin, not global", func(c *zip.Ctx) {
+			c.Locals("iam_authenticated", true)
+			c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
+			c.Locals("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: true})
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			reached := false
+			app := zip.New(zip.Config{DisableStartupMessage: true})
+			app.Use(zip.H(func(c *zip.Ctx) error { tc.seed(c); return c.Next() }))
+			app.Use(PlatformOnly())
+			app.Raw(http.MethodPost, "/x", func(c *zip.Ctx) error {
+				reached = true
+				return c.NoContent(http.StatusOK)
+			})
+			resp, err := app.Test(httptest.NewRequest(http.MethodPost, "/x", nil))
+			if err != nil {
+				t.Fatalf("request failed: %v", err)
+			}
+			if resp.StatusCode != http.StatusForbidden || reached {
+				t.Fatalf("%s: status=%d reached=%v, want 403 & not-reached", tc.name, resp.StatusCode, reached)
+			}
+		})
+	}
+}

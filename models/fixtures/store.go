@@ -1,0 +1,37 @@
+package fixtures
+
+import (
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/store"
+	"github.com/hanzoai/commerce/models/types/currency"
+
+	. "github.com/hanzoai/commerce/types"
+)
+
+var Store = New("store", func(c *zip.Ctx) *store.Store {
+	// Get namespaced db
+	db := getNamespaceDb(c)
+
+	stor := store.New(db)
+	stor.Slug = "suchtees"
+	stor.GetOrCreate("Slug=", stor.Slug)
+
+	stor.Name = "JPY Store"
+	stor.Domain = "suchtees.com"
+	stor.Prefix = "/"
+	stor.Currency = currency.JPY
+	stor.TaxNexus = []Address{Address{Line1: "123 Such St", City: "Tee City"}, Address{Line1: "456 Noo Ln", City: "Memetown"}}
+
+	// Fetch first product
+	prod := Product(c).(*product.Product)
+	price := currency.Cents(30000)
+	stor.Listings[prod.Id()] = store.Listing{
+		ProductId: prod.Id(),
+		Price:     &price,
+	}
+
+	stor.MustPut()
+	return stor
+})

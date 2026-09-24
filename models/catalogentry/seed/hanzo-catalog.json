@@ -1,0 +1,2542 @@
+[
+  {
+    "id": "models",
+    "name": "Models",
+    "category": "AI",
+    "brandColor": "violet",
+    "iconKey": "Brain",
+    "slug": "models",
+    "route": "/models",
+    "docsUrl": "https://docs.hanzo.ai/docs/models",
+    "apiPath": "/v1/models",
+    "apiRoute": "api.hanzo.ai/v1/models",
+    "githubUrl": "https://github.com/hanzoai/ai",
+    "repo": "hanzoai/ai",
+    "gcp": "Model Garden",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "From $0.10 / 1M input tokens (Zen4 Mini)",
+      "planTiers": [
+        "developer",
+        "pro",
+        "max",
+        "team",
+        "enterprise"
+      ],
+      "usageMeter": "per_mtok"
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "agents",
+    "name": "Agents",
+    "category": "AI",
+    "brandColor": "purple",
+    "iconKey": "Bot",
+    "slug": "agents",
+    "route": "/agents",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/agents",
+    "apiPath": "/v1/agents",
+    "apiRoute": "api.hanzo.ai/v1/agents",
+    "githubUrl": "https://github.com/hanzoai/agent",
+    "repo": "hanzoai/agent",
+    "gcp": "Agent Builder",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "inference",
+    "name": "Inference",
+    "category": "AI",
+    "brandColor": "violet",
+    "iconKey": "Zap",
+    "slug": "inference",
+    "route": "/engine",
+    "docsUrl": "https://docs.hanzo.ai/docs/models",
+    "apiPath": "/v1/chat/completions",
+    "apiRoute": "api.hanzo.ai/v1/chat/completions",
+    "githubUrl": "https://github.com/hanzoai/engine",
+    "repo": "hanzoai/engine",
+    "gcp": "Vertex AI Prediction",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "$1.50 / 1M input · $4.50 / 1M output (Zen4)",
+      "planTiers": [
+        "developer",
+        "pro",
+        "max",
+        "team",
+        "enterprise"
+      ],
+      "usageMeter": "per_mtok"
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "embeddings",
+    "name": "Embeddings",
+    "category": "AI",
+    "brandColor": "cyan",
+    "iconKey": "Boxes",
+    "slug": "embeddings",
+    "route": "/cloud/embeddings",
+    "docsUrl": "https://docs.hanzo.ai/docs/models",
+    "apiPath": "/v1/embeddings",
+    "apiRoute": "api.hanzo.ai/v1/embeddings",
+    "githubUrl": "https://github.com/hanzoai/ai",
+    "repo": "hanzoai/ai",
+    "gcp": "Vertex AI Embeddings",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "From $0.02 / 1M tokens (Zen3 Embedding Small)",
+      "planTiers": [
+        "developer",
+        "pro",
+        "max",
+        "team",
+        "enterprise"
+      ],
+      "usageMeter": "per_mtok"
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "images",
+    "name": "Images",
+    "category": "AI",
+    "brandColor": "pink",
+    "iconKey": "Image",
+    "slug": "images",
+    "route": "/cloud/images",
+    "docsUrl": "https://docs.hanzo.ai/docs/models",
+    "apiPath": "/v1/images",
+    "apiRoute": "api.hanzo.ai/v1/images",
+    "githubUrl": "https://github.com/hanzoai/ai",
+    "repo": "hanzoai/ai",
+    "gcp": "Imagen",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "videos",
+    "name": "Videos",
+    "category": "AI",
+    "brandColor": "amber",
+    "iconKey": "Video",
+    "slug": "videos",
+    "route": "/cloud/videos",
+    "docsUrl": "https://docs.hanzo.ai/docs/models",
+    "apiPath": "/v1/videos",
+    "apiRoute": "api.hanzo.ai/v1/videos",
+    "githubUrl": "https://github.com/hanzoai/ai",
+    "repo": "hanzoai/ai",
+    "gcp": "Veo",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "audio",
+    "name": "Audio",
+    "category": "AI",
+    "brandColor": "teal",
+    "iconKey": "AudioLines",
+    "slug": "audio",
+    "route": "/cloud/audio",
+    "docsUrl": "https://docs.hanzo.ai/docs/models",
+    "apiPath": "/v1/audio",
+    "apiRoute": "api.hanzo.ai/v1/audio",
+    "githubUrl": "https://github.com/hanzoai/ai",
+    "repo": "hanzoai/ai",
+    "gcp": "Text-to-Speech",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "evals",
+    "name": "Evals",
+    "category": "Science",
+    "brandColor": "red",
+    "iconKey": "ListChecks",
+    "slug": "evals",
+    "route": "/cloud/evals",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/eval",
+    "apiPath": "/v1/evals",
+    "apiRoute": "api.hanzo.ai/v1/evals",
+    "githubUrl": "https://github.com/hanzoai/cloud",
+    "repo": "hanzoai/cloud",
+    "gcp": "Vertex AI Eval",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "benchmark",
+    "name": "Benchmark",
+    "category": "Science",
+    "brandColor": "red",
+    "iconKey": "Trophy",
+    "slug": "benchmark",
+    "route": "/cloud/benchmark",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/benchmark",
+    "apiPath": "/v1/benchmark",
+    "apiRoute": "api.hanzo.ai/v1/benchmark",
+    "githubUrl": "https://github.com/hanzoai/cloud",
+    "repo": "hanzoai/cloud",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "research",
+    "name": "Research",
+    "category": "Science",
+    "brandColor": "red",
+    "iconKey": "FlaskConical",
+    "slug": "research",
+    "route": "/cloud/research",
+    "docsUrl": "https://docs.hanzo.ai",
+    "apiPath": "/v1/research",
+    "apiRoute": "api.hanzo.ai/v1/research",
+    "githubUrl": "https://github.com/hanzoai/cloud",
+    "repo": "hanzoai/cloud",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "gpus",
+    "name": "GPUs",
+    "category": "Compute",
+    "brandColor": "orange",
+    "iconKey": "Cpu",
+    "slug": "gpus",
+    "route": "/cloud/gpus",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/platform",
+    "apiPath": "/v1/compute/gpus",
+    "apiRoute": "api.hanzo.ai/v1/compute/gpus",
+    "githubUrl": "https://github.com/hanzoai/operator",
+    "repo": "hanzoai/operator",
+    "gcp": "Compute Engine GPUs",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "$3.48 / hour (1x H100 80GB)",
+      "planTiers": [],
+      "usageMeter": "per_gpu_hour"
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "machines",
+    "name": "Machines",
+    "category": "Compute",
+    "brandColor": "blue",
+    "iconKey": "Server",
+    "slug": "machines",
+    "route": "/machines",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/platform",
+    "apiPath": "/v1/compute/machines",
+    "apiRoute": "api.hanzo.ai/v1/compute/machines",
+    "githubUrl": "https://github.com/hanzoai/operator",
+    "repo": "hanzoai/operator",
+    "gcp": "Compute Engine",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "From $0.0097 / hour (1 vCPU / 1 GB)",
+      "planTiers": [],
+      "usageMeter": "per_vm_hour"
+    },
+    "private": {
+      "cost": "$0.00893 / hour (DigitalOcean s-1vcpu-1gb)",
+      "marginPct": 7.9
+    }
+  },
+  {
+    "id": "containers",
+    "name": "Containers",
+    "category": "Compute",
+    "brandColor": "sky",
+    "iconKey": "Container",
+    "slug": "containers",
+    "route": "/cloud/containers",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/platform",
+    "apiPath": "",
+    "apiRoute": "",
+    "githubUrl": "https://github.com/hanzoai/operator",
+    "repo": "hanzoai/operator",
+    "gcp": "Cloud Run",
+    "kind": "pending",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "functions",
+    "name": "Functions",
+    "category": "Compute",
+    "brandColor": "amber",
+    "iconKey": "FunctionSquare",
+    "slug": "functions",
+    "route": "/functions",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/functions",
+    "apiPath": "/v1/functions",
+    "apiRoute": "api.hanzo.ai/v1/functions",
+    "githubUrl": "https://github.com/hanzoai/functions",
+    "repo": "hanzoai/functions",
+    "gcp": "Cloud Functions",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "edge",
+    "name": "Edge",
+    "category": "Compute",
+    "brandColor": "lime",
+    "iconKey": "Radio",
+    "slug": "edge",
+    "route": "/edge",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/ingress",
+    "apiPath": "",
+    "apiRoute": "",
+    "githubUrl": "https://github.com/hanzoai/edge",
+    "repo": "hanzoai/edge",
+    "gcp": "Cloud Run (edge)",
+    "kind": "client",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "vector",
+    "name": "Vector",
+    "category": "Data",
+    "brandColor": "cyan",
+    "iconKey": "Boxes",
+    "slug": "vector",
+    "route": "/vector",
+    "docsUrl": "https://docs.hanzo.ai/docs/openapi/ai/get-ai-vectors",
+    "apiPath": "/v1/provisioning/vector",
+    "apiRoute": "api.hanzo.ai/v1/provisioning/vector",
+    "githubUrl": "https://github.com/hanzoai/vector",
+    "repo": "hanzoai/vector",
+    "gcp": "Vertex Vector Search",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "sql",
+    "name": "SQL",
+    "category": "Data",
+    "brandColor": "teal",
+    "iconKey": "Database",
+    "slug": "sql",
+    "route": "/sql",
+    "docsUrl": "https://docs.hanzo.ai/docs/projects/hanzoai/sql",
+    "apiPath": "/v1/provisioning/sql",
+    "apiRoute": "api.hanzo.ai/v1/provisioning/sql",
+    "githubUrl": "https://github.com/hanzoai/sql",
+    "repo": "hanzoai/sql",
+    "gcp": "Cloud SQL / AlloyDB",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "kv",
+    "name": "KV",
+    "category": "Data",
+    "brandColor": "teal",
+    "iconKey": "Key",
+    "slug": "kv",
+    "route": "/kv",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/kv",
+    "apiPath": "/v1/provisioning/kv",
+    "apiRoute": "api.hanzo.ai/v1/provisioning/kv",
+    "githubUrl": "https://github.com/hanzoai/kv",
+    "repo": "hanzoai/kv",
+    "gcp": "Memorystore",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "datastore",
+    "name": "Datastore",
+    "category": "Data",
+    "brandColor": "blue",
+    "iconKey": "Server",
+    "slug": "datastore",
+    "route": "/datastore",
+    "docsUrl": "https://docs.hanzo.ai/docs/projects/hanzoai/datastore",
+    "apiPath": "/v1/provisioning/datastore",
+    "apiRoute": "api.hanzo.ai/v1/provisioning/datastore",
+    "githubUrl": "https://github.com/hanzoai/datastore",
+    "repo": "hanzoai/datastore",
+    "gcp": "Bigtable",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "docdb",
+    "name": "DocDB",
+    "category": "Data",
+    "brandColor": "sky",
+    "iconKey": "FileText",
+    "slug": "docdb",
+    "route": "/docdb",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/provisioning",
+    "apiPath": "/v1/provisioning/docdb",
+    "apiRoute": "api.hanzo.ai/v1/provisioning/docdb",
+    "githubUrl": "https://github.com/hanzoai/docdb",
+    "repo": "hanzoai/docdb",
+    "gcp": "Firestore",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "gateway",
+    "name": "Gateway",
+    "category": "Network",
+    "brandColor": "blue",
+    "iconKey": "Network",
+    "slug": "gateway",
+    "route": "/gateway",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/gateway",
+    "apiPath": "/v1/gateway",
+    "apiRoute": "api.hanzo.ai/v1/gateway",
+    "githubUrl": "https://github.com/hanzoai/gateway",
+    "repo": "hanzoai/gateway",
+    "gcp": "API Gateway",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "vpc",
+    "name": "VPC",
+    "category": "Network",
+    "brandColor": "violet",
+    "iconKey": "Waypoints",
+    "slug": "vpc",
+    "route": "/network",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/network",
+    "apiPath": "",
+    "apiRoute": "",
+    "githubUrl": "https://github.com/hanzoai/operator",
+    "repo": "hanzoai/operator",
+    "gcp": "VPC",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    },
+    "kind": "pending"
+  },
+  {
+    "id": "dns",
+    "name": "DNS",
+    "category": "Network",
+    "brandColor": "sky",
+    "iconKey": "Globe",
+    "slug": "dns",
+    "route": "/dns",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/dns",
+    "apiPath": "/v1/dns",
+    "apiRoute": "api.hanzo.ai/v1/dns",
+    "githubUrl": "https://github.com/hanzoai/dns",
+    "repo": "hanzoai/dns",
+    "gcp": "Cloud DNS",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "Free · $5 · $25 / month",
+      "planTiers": [
+        "dns-free",
+        "dns-pro",
+        "dns-enterprise"
+      ],
+      "usageMeter": "per_zone_month"
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "cdn",
+    "name": "CDN",
+    "category": "Network",
+    "brandColor": "sky",
+    "iconKey": "Cable",
+    "slug": "cdn",
+    "route": "/cloud/cdn",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/ingress",
+    "apiPath": "",
+    "apiRoute": "",
+    "githubUrl": "https://github.com/hanzoai/edge",
+    "repo": "hanzoai/edge",
+    "gcp": "Cloud CDN",
+    "kind": "pending",
+    "status": "soon",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "load-balancer",
+    "name": "Load Balancer",
+    "category": "Network",
+    "brandColor": "amber",
+    "iconKey": "Spline",
+    "slug": "load-balancer",
+    "route": "/ingress",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/ingress",
+    "apiPath": "",
+    "apiRoute": "",
+    "githubUrl": "https://github.com/hanzoai/ingress",
+    "repo": "hanzoai/ingress",
+    "gcp": "Cloud Load Balancing",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    },
+    "kind": "pending"
+  },
+  {
+    "id": "service-mesh",
+    "name": "Service Mesh",
+    "category": "Network",
+    "brandColor": "pink",
+    "iconKey": "Waypoints",
+    "slug": "service-mesh",
+    "route": "/cloud/service-mesh",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/network",
+    "apiPath": "/v1/networks/services",
+    "apiRoute": "api.hanzo.ai/v1/networks/services",
+    "githubUrl": "https://github.com/hanzoai/gateway",
+    "repo": "hanzoai/gateway",
+    "gcp": "Anthos Service Mesh",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "iam",
+    "name": "IAM",
+    "category": "Security",
+    "brandColor": "red",
+    "iconKey": "Shield",
+    "slug": "iam",
+    "route": "/iam",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/iam",
+    "apiPath": "/v1/iam",
+    "apiRoute": "api.hanzo.ai/v1/iam",
+    "githubUrl": "https://github.com/hanzoai/iam",
+    "repo": "hanzoai/iam",
+    "gcp": "Cloud IAM",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "authz",
+    "name": "Authz",
+    "category": "Security",
+    "brandColor": "red",
+    "iconKey": "ShieldCheck",
+    "slug": "authz",
+    "route": "/authz",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/authz",
+    "apiPath": "/v1/authz",
+    "apiRoute": "api.hanzo.ai/v1/authz",
+    "githubUrl": "https://github.com/hanzoai/authz",
+    "repo": "hanzoai/authz",
+    "gcp": "IAM Conditions",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "kms",
+    "name": "KMS",
+    "category": "Security",
+    "brandColor": "red",
+    "iconKey": "KeyRound",
+    "slug": "kms",
+    "route": "/kms",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/kms",
+    "apiPath": "/v1/kms",
+    "apiRoute": "api.hanzo.ai/v1/kms",
+    "githubUrl": "https://github.com/hanzoai/kms",
+    "repo": "hanzoai/kms",
+    "gcp": "Cloud KMS",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "hsm",
+    "name": "HSM",
+    "category": "Security",
+    "brandColor": "rose",
+    "iconKey": "Fingerprint",
+    "slug": "hsm",
+    "route": "/hsm",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/kms",
+    "apiPath": "",
+    "apiRoute": "",
+    "githubUrl": "https://github.com/hanzoai/hsm",
+    "repo": "hanzoai/hsm",
+    "gcp": "Cloud HSM",
+    "kind": "pending",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "secrets",
+    "name": "Secrets",
+    "category": "Security",
+    "brandColor": "red",
+    "iconKey": "Lock",
+    "slug": "secrets",
+    "route": "/cloud/secrets",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/kms",
+    "apiPath": "/v1/kms",
+    "apiRoute": "api.hanzo.ai/v1/kms",
+    "githubUrl": "https://github.com/hanzoai/kms",
+    "repo": "hanzoai/kms",
+    "gcp": "Secret Manager",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "audit",
+    "name": "Audit",
+    "category": "Security",
+    "brandColor": "rose",
+    "iconKey": "ScrollText",
+    "slug": "audit",
+    "route": "/cloud/audit",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/audit",
+    "apiPath": "/v1/iam",
+    "apiRoute": "api.hanzo.ai/v1/iam",
+    "githubUrl": "https://github.com/hanzoai/iam",
+    "repo": "hanzoai/iam",
+    "gcp": "Cloud Audit Logs",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "cli",
+    "name": "CLI",
+    "category": "Dev",
+    "brandColor": "slate",
+    "iconKey": "Terminal",
+    "slug": "cli",
+    "route": "/cli",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli",
+    "apiPath": "",
+    "apiRoute": "",
+    "githubUrl": "https://github.com/hanzoai/cli",
+    "repo": "hanzoai/cli",
+    "gcp": "gcloud CLI",
+    "kind": "client",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "sdks",
+    "name": "SDKs",
+    "category": "Dev",
+    "brandColor": "slate",
+    "iconKey": "Package",
+    "slug": "sdks",
+    "route": "/cloud/sdks",
+    "docsUrl": "https://docs.hanzo.ai/docs/sdks",
+    "apiPath": "",
+    "apiRoute": "",
+    "githubUrl": "https://github.com/hanzoai/sdk",
+    "repo": "hanzoai/sdk",
+    "gcp": "Cloud Client Libraries",
+    "kind": "client",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "api",
+    "name": "API",
+    "category": "Dev",
+    "brandColor": "sky",
+    "iconKey": "Code2",
+    "slug": "api",
+    "route": "/cloud/api",
+    "docsUrl": "https://docs.hanzo.ai/docs/openapi",
+    "apiPath": "",
+    "apiRoute": "",
+    "githubUrl": "https://github.com/hanzoai/ai",
+    "repo": "hanzoai/ai",
+    "gcp": "Google Cloud APIs",
+    "kind": "client",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "playground",
+    "name": "Playground",
+    "category": "Dev",
+    "brandColor": "purple",
+    "iconKey": "Play",
+    "slug": "playground",
+    "route": "/playground",
+    "docsUrl": "https://docs.hanzo.ai/docs/models",
+    "apiPath": "/v1/chat/completions",
+    "apiRoute": "api.hanzo.ai/v1/chat/completions",
+    "githubUrl": "https://github.com/hanzoai/ai",
+    "repo": "hanzoai/ai",
+    "gcp": "Vertex AI Studio",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "ide",
+    "name": "IDE",
+    "category": "Dev",
+    "brandColor": "indigo",
+    "iconKey": "Code",
+    "slug": "ide",
+    "route": "/code",
+    "docsUrl": "https://docs.hanzo.ai/docs/apps/ides",
+    "apiPath": "/v1/code",
+    "apiRoute": "api.hanzo.ai/v1/code",
+    "githubUrl": "https://github.com/hanzoai/code",
+    "repo": "hanzoai/code",
+    "gcp": "Cloud Code",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "desktop",
+    "name": "Desktop",
+    "category": "Dev",
+    "brandColor": "cyan",
+    "iconKey": "Monitor",
+    "slug": "desktop",
+    "route": "/desktop",
+    "docsUrl": "https://docs.hanzo.ai/docs/apps/desktop",
+    "apiPath": "",
+    "apiRoute": "",
+    "githubUrl": "https://github.com/hanzoai/desktop",
+    "repo": "hanzoai/desktop",
+    "gcp": "Cloud Workstations",
+    "kind": "client",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "projects",
+    "name": "Projects",
+    "category": "Infrastructure",
+    "brandColor": "orange",
+    "iconKey": "FolderGit2",
+    "slug": "projects",
+    "route": "/platform",
+    "docsUrl": "https://docs.hanzo.ai/docs/projects",
+    "apiPath": "/v1/project",
+    "apiRoute": "api.hanzo.ai/v1/project",
+    "githubUrl": "https://github.com/hanzoai/console2",
+    "repo": "hanzoai/console2",
+    "gcp": "Resource Manager",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "environments",
+    "name": "Environments",
+    "category": "Infrastructure",
+    "brandColor": "teal",
+    "iconKey": "Layers",
+    "slug": "environments",
+    "route": "/cloud/environments",
+    "docsUrl": "https://docs.hanzo.ai/docs/environments",
+    "apiPath": "/v1/platform/environments",
+    "apiRoute": "api.hanzo.ai/v1/platform/environments",
+    "githubUrl": "https://github.com/hanzoai/operator",
+    "repo": "hanzoai/operator",
+    "gcp": "Deploy targets",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "builds",
+    "name": "Builds",
+    "category": "Infrastructure",
+    "brandColor": "rose",
+    "iconKey": "Hammer",
+    "slug": "builds",
+    "route": "/cloud/builds",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/deploy",
+    "apiPath": "/v1/platform/builds",
+    "apiRoute": "api.hanzo.ai/v1/platform/builds",
+    "githubUrl": "https://github.com/hanzoai/builder",
+    "repo": "hanzoai/builder",
+    "gcp": "Cloud Build",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "registry",
+    "name": "Registry",
+    "category": "Infrastructure",
+    "brandColor": "slate",
+    "iconKey": "Package",
+    "slug": "registry",
+    "route": "/registry",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/registry",
+    "apiPath": "/v1/registry",
+    "apiRoute": "api.hanzo.ai/v1/registry",
+    "githubUrl": "https://github.com/hanzoai/registry",
+    "repo": "hanzoai/registry",
+    "gcp": "Artifact Registry",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "releases",
+    "name": "Releases",
+    "category": "Infrastructure",
+    "brandColor": "slate",
+    "iconKey": "Rocket",
+    "slug": "releases",
+    "route": "/cloud/releases",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/deploy",
+    "apiPath": "/v1/platform/releases",
+    "apiRoute": "api.hanzo.ai/v1/platform/releases",
+    "githubUrl": "https://github.com/hanzoai/operator",
+    "repo": "hanzoai/operator",
+    "gcp": "Cloud Deploy",
+    "status": "soon",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "pipelines",
+    "name": "Pipelines",
+    "category": "Infrastructure",
+    "brandColor": "sky",
+    "iconKey": "GitBranch",
+    "slug": "pipelines",
+    "route": "/cloud/pipelines",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/flow",
+    "apiPath": "/v1/platform/pipelines",
+    "apiRoute": "api.hanzo.ai/v1/platform/pipelines",
+    "githubUrl": "https://github.com/hanzoai/flow",
+    "repo": "hanzoai/flow",
+    "gcp": "Cloud Build / Deploy",
+    "status": "soon",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "logs",
+    "name": "Logs",
+    "category": "Observe",
+    "brandColor": "sky",
+    "iconKey": "ScrollText",
+    "slug": "logs",
+    "route": "/cloud/logs",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/o11y",
+    "apiPath": "/v1/o11y/logs",
+    "apiRoute": "api.hanzo.ai/v1/o11y/logs",
+    "githubUrl": "https://github.com/hanzoai/o11y",
+    "repo": "hanzoai/o11y",
+    "gcp": "Cloud Logging",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "metrics",
+    "name": "Metrics",
+    "category": "Observe",
+    "brandColor": "cyan",
+    "iconKey": "BarChart3",
+    "slug": "metrics",
+    "route": "/metrics",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/metrics",
+    "apiPath": "/v1/event/insights",
+    "apiRoute": "api.hanzo.ai/v1/event/insights",
+    "githubUrl": "https://github.com/hanzoai/insights",
+    "repo": "hanzoai/insights",
+    "gcp": "Cloud Monitoring",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "dashboards",
+    "name": "Dashboards",
+    "category": "Observe",
+    "brandColor": "cyan",
+    "iconKey": "LineChart",
+    "slug": "dashboards",
+    "route": "/dashboards",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/o11y",
+    "apiPath": "/v1/o11y/dashboards",
+    "apiRoute": "api.hanzo.ai/v1/o11y/dashboards",
+    "githubUrl": "https://github.com/hanzoai/insights",
+    "repo": "hanzoai/insights",
+    "gcp": "Monitoring Dashboards",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "alerts",
+    "name": "Alerts",
+    "category": "Observe",
+    "brandColor": "red",
+    "iconKey": "Bell",
+    "slug": "alerts",
+    "route": "/sentry",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/o11y",
+    "apiPath": "/v1/o11y/alerts",
+    "apiRoute": "api.hanzo.ai/v1/o11y/alerts",
+    "githubUrl": "https://github.com/hanzoai/o11y",
+    "repo": "hanzoai/o11y",
+    "gcp": "Cloud Alerting",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "settlement",
+    "name": "Payments",
+    "category": "Web3",
+    "brandColor": "slate",
+    "iconKey": "ArrowLeftRight",
+    "slug": "settlement",
+    "route": "/blockchain/settlement",
+    "docsUrl": "https://docs.hanzo.ai",
+    "apiPath": "/v1/x402/settlements",
+    "apiRoute": "api.hanzo.ai/v1/x402/settlements",
+    "githubUrl": "https://github.com/hanzoai/ledger",
+    "repo": "hanzoai/ledger",
+    "gcp": "On-chain settlement",
+    "status": "external",
+    "admin": false,
+    "external": true,
+    "brands": [
+      "lux"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "tokens",
+    "name": "Tokens",
+    "category": "Web3",
+    "brandColor": "blue",
+    "iconKey": "Coins",
+    "slug": "tokens",
+    "route": "/blockchain/tokens",
+    "docsUrl": "https://docs.hanzo.ai/docs/api-keys",
+    "apiPath": "/v1/web3/tokens",
+    "apiRoute": "api.hanzo.ai/v1/web3/tokens",
+    "githubUrl": "https://github.com/luxfi/standard",
+    "repo": "luxfi/standard",
+    "gcp": "Tokenization & assets",
+    "status": "external",
+    "admin": false,
+    "external": true,
+    "brands": [
+      "lux"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "indexer",
+    "name": "Indexer",
+    "category": "Web3",
+    "brandColor": "pink",
+    "iconKey": "Database",
+    "slug": "indexer",
+    "route": "/blockchain/indexer",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/explorer",
+    "apiPath": "/v1/explorer/indexers",
+    "apiRoute": "api.hanzo.ai/v1/explorer/indexers",
+    "githubUrl": "https://github.com/luxfi/index",
+    "repo": "luxfi/index",
+    "gcp": "Explorer & chain data",
+    "status": "external",
+    "admin": false,
+    "external": true,
+    "brands": [
+      "lux"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "attestations",
+    "name": "Attestations",
+    "category": "Web3",
+    "brandColor": "slate",
+    "iconKey": "ShieldCheck",
+    "slug": "attestations",
+    "route": "/blockchain/attestations",
+    "docsUrl": "https://docs.hanzo.ai/docs/proof-of-ai",
+    "apiPath": "",
+    "apiRoute": "",
+    "githubUrl": "https://github.com/luxfi/attest",
+    "repo": "luxfi/attest",
+    "gcp": "Verifiable provenance",
+    "kind": "pending",
+    "status": "external",
+    "admin": false,
+    "external": true,
+    "brands": [
+      "lux"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "chat",
+    "name": "Chat",
+    "category": "Apps",
+    "brandColor": "green",
+    "iconKey": "MessageSquare",
+    "slug": "chat",
+    "route": "/chat",
+    "docsUrl": "https://docs.hanzo.ai/docs/chat",
+    "apiPath": "/v1/chat",
+    "apiRoute": "api.hanzo.ai/v1/chat",
+    "githubUrl": "https://github.com/hanzoai/chat",
+    "repo": "hanzoai/chat",
+    "gcp": "Vertex AI Search & Conversation",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "bot",
+    "name": "Bot",
+    "category": "Apps",
+    "brandColor": "orange",
+    "iconKey": "Bot",
+    "slug": "bot",
+    "route": "/bot",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/bot",
+    "apiPath": "/v1/bots",
+    "apiRoute": "api.hanzo.ai/v1/bots",
+    "githubUrl": "https://github.com/hanzoai/bot",
+    "repo": "hanzoai/bot",
+    "gcp": "Multi-agent platform",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "search",
+    "name": "Search",
+    "category": "Apps",
+    "brandColor": "sky",
+    "iconKey": "Search",
+    "slug": "search",
+    "route": "/search",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/search",
+    "apiPath": "/v1/search",
+    "apiRoute": "api.hanzo.ai/v1/search",
+    "githubUrl": "https://github.com/hanzoai/search",
+    "repo": "hanzoai/search",
+    "gcp": "Vertex AI Search",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "$0.005 / query",
+      "planTiers": [],
+      "usageMeter": "per_query"
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "crawl",
+    "name": "Crawl",
+    "category": "Apps",
+    "brandColor": "indigo",
+    "iconKey": "Globe",
+    "slug": "crawl",
+    "route": "/crawl",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/crawl",
+    "apiPath": "/v1/crawl",
+    "apiRoute": "api.hanzo.ai/v1/crawl",
+    "githubUrl": "https://github.com/hanzoai/crawl",
+    "repo": "hanzoai/crawl",
+    "gcp": "Web crawler",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "studio",
+    "name": "Studio",
+    "category": "Apps",
+    "brandColor": "slate",
+    "iconKey": "Sparkles",
+    "slug": "studio",
+    "route": "/studio",
+    "docsUrl": "https://docs.hanzo.ai/docs/studio",
+    "apiPath": "",
+    "apiRoute": "",
+    "githubUrl": "https://github.com/hanzoai/studio",
+    "repo": "hanzoai/studio",
+    "gcp": "Creative studio",
+    "kind": "client",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "$0.04 / image",
+      "planTiers": [],
+      "usageMeter": "per_image"
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "console",
+    "name": "Console",
+    "category": "Apps",
+    "brandColor": "orange",
+    "iconKey": "Boxes",
+    "slug": "console",
+    "route": "/console",
+    "docsUrl": "https://docs.hanzo.ai/docs/console",
+    "apiPath": "",
+    "apiRoute": "",
+    "githubUrl": "https://github.com/hanzoai/console",
+    "repo": "hanzoai/console",
+    "gcp": "Cloud Console",
+    "kind": "client",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null,
+    "pricing": {
+      "publicPrice": "TODO",
+      "planTiers": [],
+      "usageMeter": ""
+    },
+    "private": {
+      "cost": "TODO"
+    }
+  },
+  {
+    "id": "providers",
+    "name": "Providers",
+    "category": "AI",
+    "brandColor": "blue",
+    "iconKey": "Server",
+    "slug": "providers",
+    "route": "/providers",
+    "docsUrl": "https://docs.hanzo.ai/docs/models",
+    "apiPath": "/v1/ai/providers",
+    "apiRoute": "api.hanzo.ai/v1/ai/providers",
+    "githubUrl": "https://github.com/hanzoai/ai",
+    "repo": "hanzoai/ai",
+    "gcp": "",
+    "status": "enabled",
+    "admin": true,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "prompts",
+    "name": "Prompts",
+    "category": "AI",
+    "brandColor": "red",
+    "iconKey": "FileText",
+    "slug": "prompts",
+    "route": "/prompts",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/prompt",
+    "apiPath": "/v1/prompts",
+    "apiRoute": "api.hanzo.ai/v1/prompts",
+    "githubUrl": "https://github.com/hanzoai/cloud",
+    "repo": "hanzoai/cloud",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "applications",
+    "name": "Applications",
+    "category": "Compute",
+    "brandColor": "slate",
+    "iconKey": "Box",
+    "slug": "applications",
+    "route": "/applications",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/iam",
+    "apiPath": "/v1/platform/apps",
+    "apiRoute": "api.hanzo.ai/v1/platform/apps",
+    "githubUrl": "",
+    "repo": "",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "clusters",
+    "name": "Clusters",
+    "category": "Compute",
+    "brandColor": "blue",
+    "iconKey": "Network",
+    "slug": "clusters",
+    "route": "/clusters",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/platform",
+    "apiPath": "/v1/compute/clusters",
+    "apiRoute": "api.hanzo.ai/v1/compute/clusters",
+    "githubUrl": "https://github.com/hanzoai/operator",
+    "repo": "hanzoai/operator",
+    "gcp": "",
+    "status": "enabled",
+    "admin": true,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": "paas"
+  },
+  {
+    "id": "kubernetes",
+    "name": "Kubernetes",
+    "category": "Compute",
+    "brandColor": "sky",
+    "iconKey": "Boxes",
+    "slug": "kubernetes",
+    "route": "/kubernetes",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/platform",
+    "apiPath": "/v1/compute/k8s",
+    "apiRoute": "api.hanzo.ai/v1/compute/k8s",
+    "githubUrl": "https://github.com/hanzoai/operator",
+    "repo": "hanzoai/operator",
+    "gcp": "",
+    "status": "enabled",
+    "admin": true,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": "paas"
+  },
+  {
+    "id": "tasks",
+    "name": "Tasks",
+    "category": "Compute",
+    "brandColor": "amber",
+    "iconKey": "Workflow",
+    "slug": "tasks",
+    "route": "/tasks",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/tasks",
+    "apiPath": "/v1/tasks",
+    "apiRoute": "api.hanzo.ai/v1/tasks",
+    "githubUrl": "https://github.com/hanzoai/tasks",
+    "repo": "hanzoai/tasks",
+    "gcp": "Cloud Tasks",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": "tasks"
+  },
+  {
+    "id": "s3",
+    "name": "Object Storage",
+    "category": "Data",
+    "brandColor": "amber",
+    "iconKey": "HardDrive",
+    "slug": "s3",
+    "route": "/s3",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/s3",
+    "apiPath": "/v1/s3/buckets",
+    "apiRoute": "api.hanzo.ai/v1/s3/buckets",
+    "githubUrl": "https://github.com/hanzoai/s3",
+    "repo": "hanzoai/s3",
+    "gcp": "Cloud Storage",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": "storage"
+  },
+  {
+    "id": "base",
+    "name": "Base",
+    "category": "Data",
+    "brandColor": "indigo",
+    "iconKey": "Boxes",
+    "slug": "base",
+    "route": "/base",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/base",
+    "apiPath": "/v1/base",
+    "apiRoute": "api.hanzo.ai/v1/base",
+    "githubUrl": "https://github.com/hanzoai/superbase",
+    "repo": "hanzoai/superbase",
+    "gcp": "Firebase",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": "base"
+  },
+  {
+    "id": "memory",
+    "name": "Memory",
+    "category": "Data",
+    "brandColor": "indigo",
+    "iconKey": "NotebookPen",
+    "slug": "memory",
+    "route": "/memory",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/knowledge",
+    "apiPath": "/v1/ai/memory",
+    "apiRoute": "api.hanzo.ai/v1/ai/memory",
+    "githubUrl": "https://github.com/hanzoai/ai",
+    "repo": "hanzoai/ai",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "nodes",
+    "name": "Nodes",
+    "category": "Network",
+    "brandColor": "cyan",
+    "iconKey": "Server",
+    "slug": "nodes",
+    "route": "/nodes",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/node",
+    "apiPath": "/v1/validators",
+    "apiRoute": "api.hanzo.ai/v1/validators",
+    "githubUrl": "https://github.com/luxfi/node",
+    "repo": "luxfi/node",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo",
+      "lux",
+      "zoo",
+      "pars"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "mpc",
+    "name": "MPC",
+    "category": "Security",
+    "brandColor": "sky",
+    "iconKey": "Network",
+    "slug": "mpc",
+    "route": "/mpc",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/kms",
+    "apiPath": "",
+    "apiRoute": "",
+    "githubUrl": "https://github.com/hanzoai/mpc",
+    "repo": "hanzoai/mpc",
+    "gcp": "",
+    "kind": "pending",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo",
+      "lux",
+      "zoo",
+      "pars"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "zero-trust",
+    "name": "Zero Trust",
+    "category": "Security",
+    "brandColor": "amber",
+    "iconKey": "ShieldCheck",
+    "slug": "zero-trust",
+    "route": "/zero-trust",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/security",
+    "apiPath": "/v1/networks",
+    "apiRoute": "api.hanzo.ai/v1/networks",
+    "githubUrl": "https://github.com/hanzoai/zt",
+    "repo": "hanzoai/zt",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo",
+      "lux",
+      "zoo",
+      "pars"
+    ],
+    "pricingId": "zt"
+  },
+  {
+    "id": "integrations",
+    "name": "Integrations",
+    "category": "Dev",
+    "brandColor": "orange",
+    "iconKey": "Cable",
+    "slug": "integrations",
+    "route": "/integrations",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/integrations",
+    "apiPath": "/v1/integrations",
+    "apiRoute": "api.hanzo.ai/v1/integrations",
+    "githubUrl": "https://github.com/hanzoai/console",
+    "repo": "hanzoai/console",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo",
+      "lux",
+      "zoo",
+      "pars"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "api-keys",
+    "name": "API Keys",
+    "category": "Dev",
+    "brandColor": "orange",
+    "iconKey": "KeySquare",
+    "slug": "api-keys",
+    "route": "/api-keys",
+    "docsUrl": "https://docs.hanzo.ai/docs/api-keys",
+    "apiPath": "/v1/iam",
+    "apiRoute": "api.hanzo.ai/v1/iam",
+    "githubUrl": "https://github.com/hanzoai/iam",
+    "repo": "hanzoai/iam",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo",
+      "lux",
+      "zoo",
+      "pars"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "overview",
+    "name": "Overview",
+    "category": "Observe",
+    "brandColor": "indigo",
+    "iconKey": "Gauge",
+    "slug": "overview",
+    "route": "/overview",
+    "docsUrl": "https://docs.hanzo.ai/docs/quickstart",
+    "apiPath": "/v1/admin/overview",
+    "apiRoute": "api.hanzo.ai/v1/admin/overview",
+    "githubUrl": "https://github.com/hanzoai/console2",
+    "repo": "hanzoai/console2",
+    "gcp": "Cloud overview",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "o11y",
+    "name": "Traces",
+    "category": "Observe",
+    "brandColor": "blue",
+    "iconKey": "Activity",
+    "slug": "o11y",
+    "route": "/o11y",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/o11y",
+    "apiPath": "/v1/o11y",
+    "apiRoute": "api.hanzo.ai/v1/o11y",
+    "githubUrl": "https://github.com/hanzoai/o11y",
+    "repo": "hanzoai/o11y",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": "o11y"
+  },
+  {
+    "id": "ai-metrics",
+    "name": "AI Metrics",
+    "category": "Observe",
+    "brandColor": "cyan",
+    "iconKey": "BarChart3",
+    "slug": "ai-metrics",
+    "route": "/ai-metrics",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/o11y",
+    "apiPath": "/v1/billing/usage",
+    "apiRoute": "api.hanzo.ai/v1/billing/usage",
+    "githubUrl": "https://github.com/hanzoai/commerce",
+    "repo": "hanzoai/commerce",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "billing",
+    "name": "Billing",
+    "category": "Observe",
+    "brandColor": "green",
+    "iconKey": "CreditCard",
+    "slug": "billing",
+    "route": "/billing",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/billing",
+    "apiPath": "/v1/billing",
+    "apiRoute": "api.hanzo.ai/v1/billing",
+    "githubUrl": "https://github.com/hanzoai/commerce",
+    "repo": "hanzoai/commerce",
+    "gcp": "Cloud Billing",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "status",
+    "name": "Status",
+    "category": "Observe",
+    "brandColor": "teal",
+    "iconKey": "Gauge",
+    "slug": "status",
+    "route": "/status",
+    "docsUrl": "https://docs.hanzo.ai",
+    "apiPath": "/v1/o11y/status",
+    "apiRoute": "api.hanzo.ai/v1/o11y/status",
+    "githubUrl": "https://github.com/hanzoai/operator",
+    "repo": "hanzoai/operator",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "plans",
+    "name": "Plans & Pricing",
+    "category": "Observe",
+    "brandColor": "green",
+    "iconKey": "Tag",
+    "slug": "plans",
+    "route": "/plans",
+    "docsUrl": "https://docs.hanzo.ai/docs/pricing",
+    "apiPath": "/v1/pricing",
+    "apiRoute": "api.hanzo.ai/v1/pricing",
+    "githubUrl": "https://github.com/hanzoai/billing",
+    "repo": "hanzoai/billing",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": "subscription"
+  },
+  {
+    "id": "datasets",
+    "name": "Datasets",
+    "category": "Science",
+    "brandColor": "red",
+    "iconKey": "Database",
+    "slug": "datasets",
+    "route": "/datasets",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/dataset",
+    "apiPath": "/v1/evals/datasets",
+    "apiRoute": "api.hanzo.ai/v1/evals/datasets",
+    "githubUrl": "https://github.com/hanzoai/cloud",
+    "repo": "hanzoai/cloud",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "experiments",
+    "name": "Experiments",
+    "category": "Science",
+    "brandColor": "blue",
+    "iconKey": "Workflow",
+    "slug": "experiments",
+    "route": "/experiments",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/experiment",
+    "apiPath": "/v1/experiments",
+    "apiRoute": "api.hanzo.ai/v1/experiments",
+    "githubUrl": "https://github.com/hanzoai/cloud",
+    "repo": "hanzoai/cloud",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "sessions",
+    "name": "Sessions",
+    "category": "Observe",
+    "brandColor": "violet",
+    "iconKey": "MessageSquare",
+    "slug": "sessions",
+    "route": "/sessions",
+    "docsUrl": "https://docs.hanzo.ai",
+    "apiPath": "/v1/o11y/sessions",
+    "apiRoute": "api.hanzo.ai/v1/o11y/sessions",
+    "githubUrl": "https://github.com/hanzoai/o11y",
+    "repo": "hanzoai/o11y",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "scores",
+    "name": "Scores",
+    "category": "Science",
+    "brandColor": "sky",
+    "iconKey": "ListChecks",
+    "slug": "scores",
+    "route": "/scores",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/eval",
+    "apiPath": "/v1/evals/scores",
+    "apiRoute": "api.hanzo.ai/v1/evals/scores",
+    "githubUrl": "https://github.com/hanzoai/cloud",
+    "repo": "hanzoai/cloud",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "score-configs",
+    "name": "Score Configs",
+    "category": "Science",
+    "brandColor": "pink",
+    "iconKey": "Ruler",
+    "slug": "score-configs",
+    "route": "/score-configs",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/eval",
+    "apiPath": "/v1/evals/rubrics",
+    "apiRoute": "api.hanzo.ai/v1/evals/rubrics",
+    "githubUrl": "https://github.com/hanzoai/cloud",
+    "repo": "hanzoai/cloud",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "annotation-queues",
+    "name": "Annotation Queues",
+    "category": "Observe",
+    "brandColor": "purple",
+    "iconKey": "ClipboardList",
+    "slug": "annotation-queues",
+    "route": "/annotation-queues",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/label",
+    "apiPath": "/v1/o11y/reviews",
+    "apiRoute": "api.hanzo.ai/v1/o11y/reviews",
+    "githubUrl": "https://github.com/hanzoai/cloud",
+    "repo": "hanzoai/cloud",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "wallet",
+    "name": "Wallets",
+    "category": "Web3",
+    "brandColor": "pink",
+    "iconKey": "Wallet",
+    "slug": "wallet",
+    "route": "/wallet",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/wallet",
+    "apiPath": "/v1/wallets",
+    "apiRoute": "api.hanzo.ai/v1/wallets",
+    "githubUrl": "https://github.com/hanzoai/billing",
+    "repo": "hanzoai/billing",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo",
+      "lux",
+      "zoo",
+      "pars"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "referrals",
+    "name": "Referrals",
+    "category": "Apps",
+    "brandColor": "green",
+    "iconKey": "Coins",
+    "slug": "referrals",
+    "route": "/referrals",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/referral",
+    "apiPath": "/v1/referrals",
+    "apiRoute": "api.hanzo.ai/v1/referrals",
+    "githubUrl": "https://github.com/hanzoai/billing",
+    "repo": "hanzoai/billing",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo",
+      "lux",
+      "zoo",
+      "pars"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "networks",
+    "name": "Networks",
+    "category": "Web3",
+    "brandColor": "teal",
+    "iconKey": "Blocks",
+    "slug": "networks",
+    "route": "/networks",
+    "docsUrl": "https://docs.hanzo.ai/docs/network",
+    "apiPath": "/v1/web3/chains",
+    "apiRoute": "api.hanzo.ai/v1/web3/chains",
+    "githubUrl": "https://github.com/hanzoai/bootnode",
+    "repo": "hanzoai/bootnode",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo",
+      "lux",
+      "zoo",
+      "pars"
+    ],
+    "pricingId": "blockchain"
+  },
+  {
+    "id": "oracles",
+    "name": "Oracles",
+    "category": "Web3",
+    "brandColor": "slate",
+    "iconKey": "Radio",
+    "slug": "oracles",
+    "route": "/oracles",
+    "docsUrl": "https://docs.hanzo.ai",
+    "apiPath": "/v1/explorer/oracles",
+    "apiRoute": "api.hanzo.ai/v1/explorer/oracles",
+    "githubUrl": "",
+    "repo": "",
+    "gcp": "",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo",
+      "lux",
+      "zoo",
+      "pars"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "marketplace",
+    "name": "Marketplace",
+    "category": "Apps",
+    "brandColor": "pink",
+    "iconKey": "Store",
+    "slug": "marketplace",
+    "route": "/marketplace",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/marketplace",
+    "apiPath": "/v1/pricing/models",
+    "apiRoute": "api.hanzo.ai/v1/pricing/models",
+    "githubUrl": "https://github.com/hanzoai/console",
+    "repo": "hanzoai/console",
+    "gcp": "Marketplace",
+    "status": "enabled",
+    "admin": false,
+    "external": false,
+    "brands": [
+      "hanzo"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "safe",
+    "name": "Safe",
+    "category": "Web3",
+    "brandColor": "pink",
+    "iconKey": "Shield",
+    "slug": "safe",
+    "route": "/safe",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/wallet",
+    "apiPath": "",
+    "apiRoute": "",
+    "githubUrl": "https://github.com/luxdao/contracts",
+    "repo": "luxdao/contracts",
+    "gcp": "",
+    "kind": "pending",
+    "status": "enabled",
+    "admin": false,
+    "external": true,
+    "brands": [
+      "hanzo",
+      "lux",
+      "zoo",
+      "pars"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "governance",
+    "name": "Governance",
+    "category": "Web3",
+    "brandColor": "pink",
+    "iconKey": "Vote",
+    "slug": "governance",
+    "route": "/governance",
+    "docsUrl": "https://docs.hanzo.ai/docs/cli/compliance",
+    "apiPath": "",
+    "apiRoute": "",
+    "githubUrl": "https://github.com/luxdao/app",
+    "repo": "luxdao/app",
+    "gcp": "",
+    "kind": "pending",
+    "status": "enabled",
+    "admin": false,
+    "external": true,
+    "brands": [
+      "hanzo",
+      "lux",
+      "zoo",
+      "pars"
+    ],
+    "pricingId": null
+  },
+  {
+    "id": "daowork",
+    "name": "DaoWork",
+    "category": "Web3",
+    "brandColor": "pink",
+    "iconKey": "Hammer",
+    "slug": "daowork",
+    "route": "/daowork",
+    "docsUrl": "https://docs.hanzo.ai",
+    "apiPath": "",
+    "apiRoute": "",
+    "githubUrl": "https://github.com/luxdao/app",
+    "repo": "luxdao/app",
+    "gcp": "",
+    "kind": "pending",
+    "status": "enabled",
+    "admin": false,
+    "external": true,
+    "brands": [
+      "hanzo",
+      "lux",
+      "zoo",
+      "pars"
+    ],
+    "pricingId": null
+  }
+]

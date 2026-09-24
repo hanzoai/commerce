@@ -1,0 +1,23 @@
+name: CI/CD
+# The ONE pipeline for commerce, now where it belongs: on our own runners,
+# against git.hanzo.ai. Same ~7-line caller it has always been — every real
+# detail (4 images, 3 test gates, no deploy block) lives in the repo-root
+# `hanzo.yml`, which platform.hanzo.ai reads too. Moving the file did not move
+# any build logic, because there is none here to move.
+#
+# It absorbed the two bespoke GitHub workflows that ran beside it:
+#   frontend-build.yml → hanzo.yml `images:` (commerce-store was the one image
+#     it built that hanzo.yml lacked; it also re-pushed fixed semver + :latest
+#     tags on every push, which the shared builder does not do)
+#   test.yml          → hanzo.yml `test:` (go-vet + go-unit were already
+#     duplicated there; the ginkgo API suites were not)
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+jobs:
+  cicd:
+    uses: hanzoai/ci/.github/workflows/build.yml@v1
+    secrets: inherit

@@ -1,0 +1,47 @@
+{
+  "name": "@hanzo/commerce-types",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hanzo Commerce type definitions",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/__tests__",
+    "!dist/**/__fixtures__",
+    "!dist/**/__mocks__"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "author": "Hanzo",
+  "license": "MIT OR Apache-2.0",
+  "scripts": {
+    "build": "rimraf dist && tsc --build",
+    "watch": "tsc --build --watch",
+    "test": "exit 0",
+    "typecheck": "../../node_modules/tsgo/bin/tsc --noEmit --incremental false"
+  },
+  "dependencies": {
+    "bignumber.js": "catalog:"
+  },
+  "devDependencies": {
+    "@mikro-orm/core": "catalog:",
+    "@types/jsonwebtoken": "catalog:",
+    "awilix": "catalog:",
+    "rimraf": "catalog:",
+    "typescript": "catalog:"
+  }
+}

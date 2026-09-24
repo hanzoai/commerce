@@ -1,0 +1,49 @@
+{
+  "name": "@hanzo/commerce-site",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3002",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint --fix",
+    "typecheck": "../node_modules/tsgo/bin/tsc --noEmit --incremental false"
+  },
+  "dependencies": {
+    "@hanzo/commerce-client": "workspace:*",
+    "@hanzo/commerce-icons": "workspace:*",
+    "@hanzo/font": "catalog:",
+    "@hanzo/gui": "catalog:",
+    "@hanzo/ui": "catalog:",
+    "@hanzogui/config": "catalog:",
+    "@hanzogui/core": "catalog:",
+    "@hanzogui/lucide-icons-2": "catalog:",
+    "@hanzogui/next-theme": "catalog:",
+    "@hanzogui/react-native-svg": "catalog:",
+    "@hanzogui/web": "catalog:",
+    "@mdx-js/loader": "catalog:",
+    "@mdx-js/react": "catalog:",
+    "@next/mdx": "catalog:",
+    "@stefanprobst/rehype-extract-toc": "catalog:",
+    "clsx": "catalog:",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-native-web": "catalog:",
+    "rehype-mdx-code-props": "catalog:",
+    "rehype-slug": "catalog:",
+    "remark-frontmatter": "catalog:"
+  },
+  "devDependencies": {
+    "@types/mdx": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "react-native": "catalog:",
+    "typescript": "catalog:"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT OR Apache-2.0"
+}

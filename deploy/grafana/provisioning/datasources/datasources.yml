@@ -1,0 +1,23 @@
+# Hanzo Commerce - Grafana Datasource Configuration
+
+apiVersion: 1
+
+datasources:
+  # Prometheus
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+
+  # Datastore (for analytics dashboards)
+  - name: Datastore
+    type: grafana-clickhouse-datasource
+    access: proxy
+    url: http://datastore:8123
+    jsonData:
+      defaultDatabase: commerce
+    secureJsonData:
+      password: ${DATASTORE_PASSWORD}
+    editable: false
