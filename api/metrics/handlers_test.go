@@ -285,3 +285,22 @@ func TestParseLimit(t *testing.T) {
 		}
 	}
 }
+
+// TestRollup_LapsedRowIsNotRevenue: an active row whose paid period, and the
+// grace after it, are over and that nothing renewed confers nothing, so it adds
+// nothing to MRR or to the active count; one still inside its period does.
+func TestRollup_LapsedRowIsNotRevenue(t *testing.T) {
+	now := time.Now().UTC()
+	a := newAcc(now, windowStart(now, "30d"))
+	current := mkSub("plan-a", 2000, types.Monthly, subscription.Active, 1, now.AddDate(0, -2, 0), time.Time{}, "internal")
+	current.PeriodStart, current.PeriodEnd = now.AddDate(0, 0, -5), now.AddDate(0, 0, 25)
+	lapsed := mkSub("plan-a", 2000, types.Monthly, subscription.Active, 1, now.AddDate(0, 0, -20), time.Time{}, "internal")
+	lapsed.PeriodStart, lapsed.PeriodEnd = now.AddDate(0, -1, -10), now.AddDate(0, 0, -10)
+
+	foldSubs(a, "acme", []*subscription.Subscription{current, lapsed}, false)
+	s := a.snapshot(options{window: "30d", limit: 20})
+	if s.Revenue.MRRCents != 2000 || s.Revenue.ActiveSubscriptions != 1 || s.Revenue.NewMRRCents != 0 {
+		t.Fatalf("MRR %d, active %d, new MRR %d; want 2000, 1 and 0 (the lapsed row counts for nothing)",
+			s.Revenue.MRRCents, s.Revenue.ActiveSubscriptions, s.Revenue.NewMRRCents)
+	}
+}

@@ -337,6 +337,59 @@ func VoidOpen(ctx context.Context, db *datastore.Datastore, sub *subscription.Su
 	return nil
 }
 
+// VoidUnpaid voids the open invoices of a subscription that has ended that
+// collected nothing and carry no payment attempt, each under its lock, and
+// answers the ids of the open ones it left: an invoice something was paid
+// toward, or whose attempt has no known outcome, is left for an operator. It
+// gives nothing back, because nothing was taken on what it voids.
+func VoidUnpaid(db *datastore.Datastore, sub *subscription.Subscription, now time.Time) (left []string, err error) {
+	invs, err := invoicesOf(db, sub)
+	if err != nil {
+		return nil, err
+	}
+	for _, listed := range invs {
+		if listed.Status != billinginvoice.Open {
+			continue
+		}
+		voided, err := voidIfUnpaid(db, listed.Id(), now)
+		if err != nil {
+			return left, err
+		}
+		if !voided {
+			left = append(left, listed.Id())
+		}
+	}
+	return left, nil
+}
+
+// voidIfUnpaid voids one invoice if, read under its lock, it is open, collected
+// nothing and carries no payment attempt.
+func voidIfUnpaid(db *datastore.Datastore, id string, now time.Time) (bool, error) {
+	release, err := LockInvoice(db, id)
+	if errors.Is(err, ErrInvoiceBusy) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	defer release()
+	inv, err := loadInvoice(db, id)
+	if err != nil {
+		return false, err
+	}
+	if inv.Status != billinginvoice.Open {
+		return true, nil
+	}
+	if inv.AmountPaid > 0 || inv.PendingKey != "" {
+		return false, nil
+	}
+	if err := inv.MarkVoid(); err != nil {
+		return false, err
+	}
+	inv.VoidedAt = now
+	return true, inv.Update()
+}
+
 // voidIdle voids one invoice if, read under its lock, it is still open with no
 // payment attempt in flight.
 func voidIdle(ctx context.Context, db *datastore.Datastore, id string, p Prepaid, now time.Time) error {

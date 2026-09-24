@@ -11,6 +11,7 @@ import (
 
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/billinginvoice"
@@ -166,7 +167,7 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 	if err != nil {
 		return subscriptionCreateError(c, err)
 	}
-	retireLapsed(c.Context(), org, db, sub)
+	retireLapsed(c.Context(), org, db, sub, eventsOf(c))
 
 	if paidWithCredits {
 		sub.ProviderType = "credit"
@@ -520,7 +521,8 @@ func childSnapshotPlan(db *datastore.Datastore, childSlug string) *plan.Plan {
 // member of a per-seat subscription — the SAME machinery as plan bundles, so
 // the monthly allotment run (grantOrgAllotments) grants each member their own
 // per-user included credit off their own row. Idempotent per (parent, member):
-// a live child row is never duplicated. The child plan is an in-memory
+// a live child row is never duplicated, and a member's seat under another
+// subscription (a team bought before, now lapsed) never stands in for one here. The child plan is an in-memory
 // zero-price copy of the parent's plan — the customer pays once, on the
 // parent's per-seat invoice.
 func provisionMembers(db *datastore.Datastore, parent *subscription.Subscription, planSlug string, base *plan.Plan, members []string) {
@@ -531,7 +533,7 @@ func provisionMembers(db *datastore.Datastore, parent *subscription.Subscription
 			continue
 		}
 		seen[m] = true
-		if hasMemberSub(db, planSlug, m) {
+		if hasMemberSub(db, parent.Id(), planSlug, m) {
 			continue
 		}
 		childPlan := *base
@@ -554,17 +556,17 @@ func provisionMembers(db *datastore.Datastore, parent *subscription.Subscription
 	}
 }
 
-// hasMemberSub reports whether member already holds a live bundle-child row
-// for the plan — the persisted match key (subscription Metadata does not
-// survive the datastore round-trip). One per-user grant anchor per plan per
-// org is exactly the allotment semantics.
-func hasMemberSub(db *datastore.Datastore, planSlug, member string) bool {
+// hasMemberSub reports whether member already holds a live seat row under
+// parent (bundleParentOf), or one on the plan stored before seats named their
+// parent.
+func hasMemberSub(db *datastore.Datastore, parent, planSlug, member string) bool {
 	subs := make([]*subscription.Subscription, 0)
 	if _, err := subscription.Query(db).Filter("UserId=", member).GetAll(&subs); err != nil {
 		return false
 	}
 	for _, s := range subs {
-		if s.ProviderType != "bundle" || s.Plan.Slug != planSlug {
+		owner := bundleParentOf(s)
+		if !isBundleRow(s) || (owner != parent && (owner != "" || s.Plan.Slug != planSlug)) {
 			continue
 		}
 		switch s.Status {
@@ -639,9 +641,13 @@ func billingSubscription(db *datastore.Datastore, subject string, test bool) *su
 // retireLapsed ends the subject's lapsed subscriptions (engine.Lapsed) once a
 // new one, fresh, has opened for it: the customer subscribing again is how they
 // act on a plan they stopped paying for. Each ends at its paid period's end,
-// charged nothing for the time since, and an invoice it still carries is voided
-// (engine.VoidOpen). A failure is logged: the new subscription stands.
-func retireLapsed(ctx context.Context, org *organization.Organization, db *datastore.Datastore, fresh *subscription.Subscription) {
+// charged nothing for the time since, and so do the seats it paid for. An
+// invoice it still carries that collected nothing is voided (engine.VoidUnpaid).
+// One that collected money, or whose payment attempt has no known outcome, is
+// left to the billing cycle, which gives back what it took (engine.ResolveCanceled);
+// nothing is given back here. Each end is subscription_canceled with the reason
+// replaced. A failure is logged: the new subscription stands.
+func retireLapsed(ctx context.Context, org *organization.Organization, db *datastore.Datastore, fresh *subscription.Subscription, ev *events.Client) {
 	subs, err := userSubscriptions(db, fresh.UserId, fresh.Test)
 	if err != nil {
 		log.Error("billing: read %s's subscriptions to retire lapsed ones: %v", fresh.UserId, err)
@@ -661,9 +667,40 @@ func retireLapsed(ctx context.Context, org *organization.Organization, db *datas
 			log.Error("billing: retire lapsed subscription %s of %s: %v", row.Id(), row.UserId, err)
 			continue
 		}
-		if err := engine.VoidOpen(ctx, db, row, prepaidFor(ctx, org), now); err != nil {
+		emitStep(ctx, ev, org.Name, row, &engine.Step{Action: engine.Replaced})
+		left, err := engine.VoidUnpaid(db, row, now)
+		if err != nil {
 			log.Error("billing: void the invoices of retired subscription %s: %v", row.Id(), err)
 		}
+		if len(left) > 0 {
+			log.Warn("billing: retired subscription %s keeps invoices %v, which collected money or carry an attempt; the billing cycle settles them",
+				row.Id(), left)
+		}
+		endSeats(ctx, org, db, row, now, ev)
+	}
+}
+
+// endSeats ends the seat and bundle rows parent paid for, at parent's end.
+func endSeats(ctx context.Context, org *organization.Organization, db *datastore.Datastore, parent *subscription.Subscription, now time.Time, ev *events.Client) {
+	seats := make([]*subscription.Subscription, 0)
+	if _, err := subscription.Query(db).Filter("ProviderType=", "bundle").GetAll(&seats); err != nil {
+		log.Error("billing: list the seats of retired subscription %s: %v", parent.Id(), err)
+		return
+	}
+	for _, s := range seats {
+		if bundleParentOf(s) != parent.Id() || s.Status == subscription.Canceled {
+			continue
+		}
+		row := subscription.New(db)
+		if err := row.GetById(s.Id()); err != nil || row.Status == subscription.Canceled {
+			continue
+		}
+		engine.End(row, parent.Ended, now, engine.EndedWithParent)
+		if err := row.Update(); err != nil {
+			log.Error("billing: end seat %s of retired subscription %s: %v", row.Id(), parent.Id(), err)
+			continue
+		}
+		emitStep(ctx, ev, org.Name, row, &engine.Step{Action: engine.EndedWithParent})
 	}
 }
 
@@ -1150,7 +1187,8 @@ func ReactivateBillingSubscription(c *zip.Ctx) error {
 // is renewed for the period from now and never billed for the time it was not
 // renewed. A past-due one waits for its next retry (its invoice is paid now
 // through POST /v1/billing/invoices/:id/pay), and one that is not due is left
-// alone; neither is charged here.
+// alone; neither is charged here. While a subscription of the subscriber's
+// awaits realignment it is a 409 (ErrRealignPending), as the live cycle is.
 //
 //	POST /v1/billing/subscriptions/:id/renew
 func RenewBillingSubscription(c *zip.Ctx) error {
@@ -1165,6 +1203,10 @@ func RenewBillingSubscription(c *zip.Ctx) error {
 	if err := sub.GetById(c.Param("id")); err != nil {
 		unlock()
 		return http.Fail(c, 404, "subscription not found", err)
+	}
+	if err := refuseUnrealigned(ctx, []*organization.Organization{org}, sub.UserId); err != nil {
+		unlock()
+		return cycleFault(c, err)
 	}
 	run := engine.Run{Now: time.Now(), Asked: true, Prepaid: prepaidFor(ctx, org)}
 	res := settleOne(ctx, org, db, sub, run, eventsOf(c), cardFor(kmsOf(c), org))

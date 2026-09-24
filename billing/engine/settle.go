@@ -106,6 +106,11 @@ const (
 	// Replaced: a lapsed subscription whose customer subscribed again. Ended at
 	// its paid period's end, nothing charged for the time since.
 	Replaced Action = "replaced"
+	// Returned: money that landed for a period a canceled subscription is never
+	// served — a prepaid payment made while it was outstanding, or a renewal paid
+	// after it lapsed and before it was replaced — went back to the customer's
+	// prepaid money.
+	Returned Action = "returned"
 	// Skipped: due, but nothing can be done on this pass. Step.Reason says why.
 	Skipped Action = "skipped"
 )
@@ -133,6 +138,10 @@ type Collection struct {
 	// now, which counts as a declined attempt, unless it wraps ErrChargeUnknown.
 	// A dry run reports what Choose answers.
 	Choose func(ctx context.Context, db *datastore.Datastore, inv *billinginvoice.BillingInvoice, amount int64) (method string, err error)
+	// Look finds out what became of a card attempt whose answer was lost,
+	// without asking for money: the path for a subscription canceled since. Nil
+	// means the attempt cannot be looked up here.
+	Look Looker
 	// Pay moves amount on method under an idempotency key: the attempt's
 	// (inv.PendingKey) or the period's. It is asked again with the same method
 	// and amount to repeat an attempt whose outcome was not reported, so it must
@@ -152,6 +161,20 @@ type Collection struct {
 	// Reason says why, for the report.
 	Reason string
 }
+
+// Looked is what became of a payment attempt, found without asking for money.
+type Looked struct {
+	// Known is whether the processor could say.
+	Known bool
+	// Landed is whether the money moved.
+	Landed bool
+	// Ref is the processor's id for the payment, when it landed and gave one.
+	Ref string
+}
+
+// Looker finds out what became of inv's recorded payment attempt (PendingKey,
+// PendingRef) without asking for money again.
+type Looker func(ctx context.Context, db *datastore.Datastore, inv *billinginvoice.BillingInvoice) (Looked, error)
 
 // Settle takes the one step the billing cycle takes for a subscription at
 // run.Now.
@@ -214,8 +237,8 @@ func Live(sub *subscription.Subscription) bool {
 
 // Lapsed reports whether sub no longer confers its plan at now though no step
 // has ended it: an active row whose paid period ended more than RenewalGrace
-// ago (overdue), or a past_due one past the grace window and the whole retry
-// schedule after it. Nothing is charged for the time since; its customer
+// ago (overdue), or a past_due or unpaid one past the grace window and the whole
+// retry schedule after it. Nothing is charged for the time since; its customer
 // renews it, or subscribes again and the new subscription replaces it.
 func Lapsed(sub *subscription.Subscription, now time.Time) bool {
 	if sub.PeriodEnd.IsZero() {
@@ -224,20 +247,33 @@ func Lapsed(sub *subscription.Subscription, now time.Time) bool {
 	switch sub.Status {
 	case subscription.Active:
 		return now.Sub(sub.PeriodEnd) > RenewalGrace
-	case subscription.PastDue:
+	case subscription.PastDue, subscription.Unpaid:
 		return now.Sub(sub.PeriodEnd) > RenewalGrace+RetrySchedule[len(RetrySchedule)-1]
 	}
 	return false
 }
 
-// ResolveCanceled repeats, under its key, a payment attempt with no known
-// outcome that a canceled subscription's invoice still carries, so money that
-// may have moved is never left unlooked-at. The answer decides the invoice as a
-// cancel during a renewal does (canceledMeanwhile): a payment that landed is
-// kept and reported for a refund, a decline voids the invoice, and one still
-// unknown stays recorded and is reported again on the next run. A subscription
-// that is not canceled, or carries no such attempt, is left alone. A dry run
-// reports the attempt it would repeat and moves nothing.
+// ResolveCanceled settles a payment attempt with no known outcome that a
+// canceled subscription's invoice still carries, without ever asking for money
+// again: the customer canceled, so no new payment may be made for them.
+//
+//   - A card attempt is looked up (c.Look): a payment that landed is recorded
+//     on its invoice and reported for a refund (ChargedAfterCancel); one that
+//     never did clears the attempt and voids the invoice.
+//   - A prepaid attempt is repeated under the period's ref: the ledger answers
+//     with the posting it holds, or makes it, and whatever it took is given
+//     straight back (ReturnPaid) as the invoice is voided (Returned).
+//   - Anything that cannot be settled so stays recorded on the open invoice and
+//     is reported, with an alert, on every run until an operator reconciles it
+//     (POST /v1/billing/invoices/:id/void-unresolved).
+//
+// A subscription replaced after it lapsed (Replaced) is never served past its
+// paid period, so money one of its invoices collected toward a later period —
+// a renewal paid after the lapse, before the cycle moved the row on — is given
+// back (ReturnPaid) and an open invoice voided (Returned).
+//
+// Any other subscription, or one with nothing to settle, is left alone. A dry
+// run reports what it would settle and moves nothing.
 func ResolveCanceled(ctx context.Context, db *datastore.Datastore, sub *subscription.Subscription, run Run, c Collection) (*Step, error) {
 	if sub.Status != subscription.Canceled {
 		return &Step{}, nil
@@ -250,10 +286,9 @@ func ResolveCanceled(ctx context.Context, db *datastore.Datastore, sub *subscrip
 		if listed.Status != billinginvoice.Open || listed.PendingKey == "" {
 			continue
 		}
-		s := &settlement{ctx: ctx, db: db, sub: sub, now: run.Now, c: c, run: run}
 		if run.DryRun {
 			return &Step{Action: Skipped, Invoice: listed,
-				Reason: "canceled with a payment attempt of unknown outcome; the live run repeats it under its key"}, nil
+				Reason: "canceled with a payment attempt of unknown outcome; the live run looks it up and asks for no money"}, nil
 		}
 		release, err := LockInvoice(db, listed.Id())
 		if errors.Is(err, ErrInvoiceBusy) {
@@ -270,19 +305,137 @@ func ResolveCanceled(ctx context.Context, db *datastore.Datastore, sub *subscrip
 		if inv.Status != billinginvoice.Open || inv.PendingKey == "" {
 			return &Step{}, nil
 		}
-		if c.Pay == nil {
-			return s.canceledMeanwhile(inv, 0)
+		s := &settlement{ctx: ctx, db: db, sub: sub, now: run.Now, c: c, run: run}
+		switch {
+		case inv.PendingMethod == PaidByPrepaid && c.Pay != nil:
+			return s.returnPrepaid(inv)
+		case inv.PendingMethod != PaidByPrepaid && c.Look != nil:
+			return s.lookCanceled(inv)
 		}
-		res, err := Pay(ctx, db, inv, c, run.Now)
+		return s.unresolved(inv, "nothing here can look the attempt up")
+	}
+	if reason, _ := sub.Metadata["endReason"].(string); reason == string(Replaced) {
+		for _, listed := range invs {
+			if unserved(sub, listed) {
+				return returnUnserved(ctx, db, sub, listed.Id(), run)
+			}
+		}
+	}
+	return &Step{}, nil
+}
+
+// unserved reports whether inv collected money toward a period sub, ended, is
+// never served, has no attempt in flight and has not given the money back.
+func unserved(sub *subscription.Subscription, inv *billinginvoice.BillingInvoice) bool {
+	if _, done := inv.Metadata["returnedCents"]; done {
+		return false
+	}
+	return (inv.Status == billinginvoice.Paid || inv.Status == billinginvoice.Open) &&
+		inv.AmountPaid > 0 && inv.PendingKey == "" && !inv.PeriodStart.Before(sub.PeriodEnd)
+}
+
+// returnUnserved gives back what invoice id collected toward a period sub is
+// never served, under the invoice's lock, voiding it when it is open.
+func returnUnserved(ctx context.Context, db *datastore.Datastore, sub *subscription.Subscription, id string, run Run) (*Step, error) {
+	const reason = "replaced after a payment toward a later period; what it collected went back to the customer's prepaid money, for a refund review"
+	if run.DryRun {
+		inv, err := loadInvoice(db, id)
 		if err != nil {
 			return nil, err
 		}
-		if err := inv.Update(); err != nil {
-			return nil, fmt.Errorf("record the repeated attempt on invoice %s: %w", inv.Id(), err)
-		}
-		return s.canceledMeanwhile(inv, res.AmountCharged)
+		return &Step{Action: Returned, Invoice: inv, Reason: reason}, nil
 	}
-	return &Step{}, nil
+	release, err := LockInvoice(db, id)
+	if errors.Is(err, ErrInvoiceBusy) {
+		return &Step{Action: Skipped, Reason: "a payment or change on invoice " + id + " is in progress"}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	inv, err := loadInvoice(db, id)
+	if err != nil {
+		return nil, fmt.Errorf("read invoice %s under its lock: %w", id, err)
+	}
+	if !unserved(sub, inv) {
+		return &Step{}, nil
+	}
+	if inv.Status == billinginvoice.Open {
+		if err := inv.MarkVoid(); err != nil {
+			return nil, err
+		}
+		inv.VoidedAt = run.Now
+	}
+	if err := ReturnPaid(ctx, db, inv, run.Prepaid, run.Now); err != nil {
+		return nil, err
+	}
+	if err := inv.Update(); err != nil {
+		return nil, fmt.Errorf("record the return on invoice %s: %w", inv.Id(), err)
+	}
+	return &Step{Action: Returned, Invoice: inv, Reason: reason}, nil
+}
+
+// lookCanceled settles a canceled subscription's card attempt by looking it up.
+func (s *settlement) lookCanceled(inv *billinginvoice.BillingInvoice) (*Step, error) {
+	looked, err := s.c.Look(s.ctx, s.db, inv)
+	switch {
+	case err != nil:
+		return s.unresolved(inv, err.Error())
+	case !looked.Known:
+		return s.unresolved(inv, "the processor could not say what became of it")
+	case looked.Landed:
+		method, amount := inv.PendingMethod, inv.PendingAmount
+		clearPending(inv)
+		inv.AttemptCount++
+		inv.AmountPaid += amount
+		if err := markPaid(inv, method, looked.Ref, s.now, &CollectionResult{}); err != nil {
+			return nil, err
+		}
+		if err := inv.Update(); err != nil {
+			return nil, fmt.Errorf("record the payment found on invoice %s: %w", inv.Id(), err)
+		}
+		return s.canceledMeanwhile(inv, amount)
+	}
+	clearPending(inv)
+	inv.AttemptCount++
+	if err := s.voidInvoice(inv); err != nil {
+		return nil, err
+	}
+	return &Step{Action: Skipped, Invoice: inv, Reason: "canceled; the attempt took no money and its invoice is voided"}, nil
+}
+
+// returnPrepaid settles a canceled subscription's prepaid attempt: it is
+// repeated under the period's ref, and whatever the ledger took goes back.
+func (s *settlement) returnPrepaid(inv *billinginvoice.BillingInvoice) (*Step, error) {
+	amount := inv.PendingAmount
+	_, err := s.c.Pay(s.ctx, s.db, inv, inv.PendingMethod, amount)
+	switch {
+	case err != nil && errors.Is(err, ErrChargeUnknown):
+		return s.unresolved(inv, err.Error())
+	case err != nil:
+		clearPending(inv)
+		inv.AttemptCount++
+		if err := s.voidInvoice(inv); err != nil {
+			return nil, err
+		}
+		return &Step{Action: Skipped, Invoice: inv, Reason: "canceled; the attempt took no money and its invoice is voided"}, nil
+	}
+	clearPending(inv)
+	inv.AttemptCount++
+	inv.AmountPaid += amount
+	if err := s.voidInvoice(inv); err != nil {
+		return nil, err
+	}
+	return &Step{Action: Returned, Invoice: inv, Reason: "canceled; what the attempt took went back to the customer's prepaid money"}, nil
+}
+
+// unresolved keeps a canceled subscription's attempt recorded on its open
+// invoice and reports it for an operator.
+func (s *settlement) unresolved(inv *billinginvoice.BillingInvoice, why string) (*Step, error) {
+	log.Error("billing cycle: ALERT subscription %s is canceled and the payment attempt %s on invoice %s has no known outcome (%s); "+
+		"reconcile it with the processor and void it (POST /v1/billing/invoices/%s/void-unresolved)", s.sub.Id(), inv.PendingKey, inv.Id(), why, inv.Id())
+	return &Step{Action: Skipped, Invoice: inv,
+		Reason: "canceled with a payment attempt of unknown outcome (" + why + "); an operator reconciles it"}, nil
 }
 
 // settle decides and takes the step for a due subscription.

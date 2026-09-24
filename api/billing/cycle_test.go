@@ -64,13 +64,31 @@ func cycleAt(t *testing.T, ctx context.Context, org *organization.Organization, 
 	t.Helper()
 	report := newCycleReport(now, dryRun)
 	db := datastore.New(org.Namespaced(ctx))
-	cycleOrg(ctx, org, db, now, dryRun, nil, chargeProviderForOrg(org), "", report)
+	cycleOrg(ctx, org, db, now, dryRun, nil, railOf(org), "", report)
 	if len(report.Errors) > 0 {
 		t.Fatalf("cycle at %s: %v", now, report.Errors)
 	}
 	for _, r := range report.Results {
 		if r.Error != "" {
 			t.Fatalf("cycle at %s: %s: %s", now, r.SubscriptionId, r.Error)
+		}
+	}
+	return report
+}
+
+// refusedAt runs a live cycle over org at now and fails the test unless the org
+// was refused for realignment: its one error is ErrRealignPending and nothing in
+// it was settled, only reported realign_pending.
+func refusedAt(t *testing.T, ctx context.Context, org *organization.Organization, now time.Time) *CycleReport {
+	t.Helper()
+	report := newCycleReport(now, false)
+	cycleOrg(ctx, org, datastore.New(org.Namespaced(ctx)), now, false, nil, railOf(org), "", report)
+	if len(report.Errors) != 1 || !strings.Contains(report.Errors[0], ErrRealignPending.Error()) {
+		t.Fatalf("live cycle at %s: errors %v, want the org refused for realignment", now, report.Errors)
+	}
+	for _, r := range report.Results {
+		if r.Action != realignPending || r.AmountCents != 0 {
+			t.Fatalf("live cycle at %s settled %+v in a refused org", now, r)
 		}
 	}
 	return report
@@ -282,7 +300,7 @@ func TestCycle_RunTwiceChargesOnce(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			report := newCycleReport(now, false)
-			cycleOrg(ctx, org, datastore.New(org.Namespaced(ctx)), now, false, nil, chargeProviderForOrg(org), "", report)
+			cycleOrg(ctx, org, datastore.New(org.Namespaced(ctx)), now, false, nil, railOf(org), "", report)
 		}()
 	}
 	wg.Wait()
@@ -841,7 +859,7 @@ func TestRenewalOf_HowItWasBoughtDecidesInEveryOrg(t *testing.T) {
 		default:
 			sub = unpaidSub(t, db, tc.subject, "dev", now)
 		}
-		_, source, err := renewalOf(org, db, sub, chargeProviderForOrg(org), prepaidFor(ctx, org))
+		_, source, err := renewalOf(org, db, sub, railOf(org), prepaidFor(ctx, org))
 		if err != nil || source != tc.want {
 			t.Errorf("%s in %s bought %q: renews from %q (err %v), want %q", tc.subject, tc.org, tc.bought, source, err, tc.want)
 		}
@@ -1120,11 +1138,10 @@ func TestCycle_OldRowsAreRealignedOnlyWhenAsked(t *testing.T) {
 				shiftAsOldCode(t, db, sub, tc.step)
 				at := age.at(paid)
 
-				for _, dry := range []bool{true, false} {
-					if res := only(t, cycleAt(t, ctx, org, at, dry), realignPending); res.AmountCents != 0 {
-						t.Fatalf("dry=%v: the cycle charged %d for a row pending realignment", dry, res.AmountCents)
-					}
+				if res := only(t, cycleAt(t, ctx, org, at, true), realignPending); res.AmountCents != 0 {
+					t.Fatalf("the dry run charged %d for a row pending realignment", res.AmountCents)
 				}
+				only(t, refusedAt(t, ctx, org, at), realignPending)
 				if code := runCycle(t, ctx, org, "?dryRun=false"); code != http.StatusConflict || m.chargeCalls != 1 {
 					t.Fatalf("a live run before the realignment answered %d after %d charges, want 409 and only the subscribe", code, m.chargeCalls)
 				}
@@ -1254,7 +1271,7 @@ func TestCycle_ExpiryEmitsCanceledWithItsReason(t *testing.T) {
 	}
 
 	report := newCycleReport(now, false)
-	cycleOrg(ctx, org, db, now, false, events.NewClient(srv.URL), chargeProviderForOrg(org), "", report)
+	cycleOrg(ctx, org, db, now, false, events.NewClient(srv.URL), railOf(org), "", report)
 	only(t, report, engine.CanceledAtPeriodEnd)
 	select {
 	case e := <-got:
@@ -1297,7 +1314,7 @@ func TestCycle_ChargeAfterCancelEmitsOnlyThePayment(t *testing.T) {
 	}
 
 	report := newCycleReport(now, false)
-	cycleOrg(ctx, org, db, now, false, events.NewClient(srv.URL), charger, "", report)
+	cycleOrg(ctx, org, db, now, false, events.NewClient(srv.URL), rail{charge: charger, look: lookProviderForOrg(org)}, "", report)
 	res := only(t, report, engine.ChargedAfterCancel)
 	if res.AmountCents == 0 || report.ChargedCents != res.AmountCents {
 		t.Fatalf("result %+v charged %d, want the collected amount reported", res, report.ChargedCents)
@@ -1396,13 +1413,13 @@ func TestCycle_OrgBudgetLeavesTheRestForTheNextRun(t *testing.T) {
 	t.Cleanup(func() { orgCycleBudget = old })
 
 	report := newCycleReport(now, false)
-	cycleOrg(ctx, org, db, now, false, nil, slow, "", report)
+	cycleOrg(ctx, org, db, now, false, nil, rail{charge: slow, look: lookProviderForOrg(org)}, "", report)
 	if len(report.Results) != 1 || report.Results[0].Action != engine.Renewed || len(report.Errors) != 1 {
 		t.Fatalf("results %+v errors %v, want one renewal and the stop reported", report.Results, report.Errors)
 	}
 	orgCycleBudget = old
 	next := newCycleReport(now, false)
-	cycleOrg(ctx, org, db, now, false, nil, slow, "", next)
+	cycleOrg(ctx, org, db, now, false, nil, rail{charge: slow, look: lookProviderForOrg(org)}, "", next)
 	renewed := 0
 	for _, r := range next.Results {
 		if r.Action == engine.Renewed {
@@ -1613,5 +1630,177 @@ func TestCycle_DryRunDeclinesACardRenewalWithNoCard(t *testing.T) {
 	live := only(t, cycleAt(t, ctx, org, now, false), engine.RenewalFailed)
 	if dry.Source != sourceCard || dry.AmountCents != 0 || live.AmountCents != 0 || m.chargeCalls != 0 {
 		t.Fatalf("dry %+v live %+v with %d charges; want a declined card renewal reported the same, nothing charged", dry, live, m.chargeCalls)
+	}
+}
+
+// TestRunSubscriptionCycle_RealignRefusesOnlyItsOrg: a live run skips an org
+// whose subscriptions await realignment, reporting each and the org's refusal,
+// and renews every other org; once the org is realigned its run goes ahead.
+func TestRunSubscriptionCycle_RealignRefusesOnlyItsOrg(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	m := squareMock("cust_po", "ccof_po", "sqpay_po")
+	withFakeSquare(t, m)
+	now := time.Now()
+	stored := func(name string) *organization.Organization {
+		org := organization.New(datastore.New(ctx))
+		org.Name = name
+		org.Live = true
+		if err := org.Create(); err != nil {
+			t.Fatalf("create org %s: %v", name, err)
+		}
+		return org
+	}
+	ahead, clean := stored("cyc-org-ahead"), stored("cyc-org-clean")
+	old := subscribeByCard(t, ctx, ahead, `{"sourceId":"cnon:ok","planId":"dev"}`)
+	shiftAsOldCode(t, datastore.New(ahead.Namespaced(ctx)), old, func(at time.Time) time.Time { return at.AddDate(0, 1, 0) })
+	due := cardSubThrough(t, datastore.New(clean.Namespaced(ctx)), "cyc-org-clean", now.Add(-time.Hour))
+	calls := m.chargeCalls
+
+	r, err := RunSubscriptionCycle(ctx, nil, nil, now, false)
+	if err != nil {
+		t.Fatalf("live run: %v", err)
+	}
+	if len(r.Errors) != 1 || !strings.HasPrefix(r.Errors[0], "cyc-org-ahead: ") || !strings.Contains(r.Errors[0], ErrRealignPending.Error()) {
+		t.Fatalf("errors %v, want the one org refused for realignment", r.Errors)
+	}
+	actions := actionsOf(r)
+	if actions[old.Id()] != realignPending || actions[due.Id()] != engine.Renewed || m.chargeCalls != calls+1 {
+		t.Fatalf("actions %v after %d charges; want the row ahead reported and the other org renewed once", actions, m.chargeCalls-calls)
+	}
+
+	if rr := Realign(ctx, []*organization.Organization{ahead}, false); rr.Realigned != 1 {
+		t.Fatalf("realigned %d rows, want the one", rr.Realigned)
+	}
+	if r, err = RunSubscriptionCycle(ctx, nil, nil, now, false); err != nil || len(r.Errors) != 0 {
+		t.Fatalf("after the realignment: %v %v, want every org run", err, r.Errors)
+	}
+}
+
+// TestCycle_FirstLiveRunEndsTheRealignment: the first live run in an org with
+// nothing awaiting realignment records the org's cutover, and a row shaped like
+// one the realignment moves, on an invoice issued after it, is never a
+// candidate: the realignment is a one-time migration, not a standing rule.
+func TestCycle_FirstLiveRunEndsTheRealignment(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("cyc-cutover")
+	withFakeSquare(t, squareMock("cust_co", "ccof_co", "sqpay_co"))
+	db := datastore.New(org.Namespaced(ctx))
+
+	cycleAt(t, ctx, org, time.Now(), true)
+	if cut, err := realignCutover(db); err != nil || !cut.IsZero() {
+		t.Fatalf("a dry run recorded the cutover %s (err %v)", cut, err)
+	}
+	cycleAt(t, ctx, org, time.Now(), false)
+	if cut, err := realignCutover(db); err != nil || cut.IsZero() {
+		t.Fatalf("the first live run recorded no cutover (err %v)", err)
+	}
+
+	sub := subscribeByCard(t, ctx, org, `{"sourceId":"cnon:ok","planId":"dev"}`)
+	shiftAsOldCode(t, db, sub, func(at time.Time) time.Time { return at.AddDate(0, 1, 0) })
+	if err := refuseUnrealigned(ctx, []*organization.Organization{org}, ""); err != nil {
+		t.Fatalf("a row on an invoice issued after the cutover awaits realignment: %v", err)
+	}
+	if r := Realign(ctx, []*organization.Organization{org}, true); r.Realigned != 0 {
+		t.Fatalf("the realignment would move %+v after the cutover", r.Results)
+	}
+}
+
+// TestRenew_WaitsForTheRealignment: a customer's renew is refused, as the live
+// cycle is, while the subscription sits a period ahead of its paid invoice, and
+// goes ahead once it is realigned.
+func TestRenew_WaitsForTheRealignment(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("cyc-renew-wait")
+	m := squareMock("cust_rg", "ccof_rg", "sqpay_rg")
+	withFakeSquare(t, m)
+	db := datastore.New(org.Namespaced(ctx))
+	sub := subscribeByCard(t, ctx, org, `{"sourceId":"cnon:ok","planId":"dev"}`)
+	shiftAsOldCode(t, db, sub, func(at time.Time) time.Time { return at.AddDate(0, 1, 0) })
+
+	if resp := invokeRenew(org, ctx, sub.Id()); resp.StatusCode != http.StatusConflict || m.chargeCalls != 1 {
+		t.Fatalf("renew before the realignment answered %d after %d charges, want 409 and only the subscribe", resp.StatusCode, m.chargeCalls)
+	}
+	Realign(ctx, []*organization.Organization{org}, false)
+	if resp := invokeRenew(org, ctx, sub.Id()); resp.StatusCode != http.StatusOK {
+		t.Fatalf("renew after the realignment answered %d, want 200", resp.StatusCode)
+	}
+}
+
+// TestRealign_DryRunNamesTheRowsItLapses: the dry run says which rows the move
+// leaves past their paid period and the grace after it, so the operator sees who
+// loses the plan before any row is written.
+func TestRealign_DryRunNamesTheRowsItLapses(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("realign-lapses")
+	db := datastore.New(org.Namespaced(ctx))
+	old := func(subject string, through time.Time) *subscription.Subscription {
+		sub := cardSubThrough(t, db, subject, through)
+		if _, err := engine.CreatePaidFirstInvoice(db, sub, "card", "sqpay_first"); err != nil {
+			t.Fatalf("first invoice: %v", err)
+		}
+		if err := sub.Update(); err != nil {
+			t.Fatal(err)
+		}
+		shiftAsOldCode(t, db, sub, func(at time.Time) time.Time { return at.AddDate(0, 1, 0) })
+		return sub
+	}
+	gone := old("realign-lapses/gone", time.Now().AddDate(0, 0, -10))
+	kept := old("realign-lapses/kept", time.Now().AddDate(0, 0, 10))
+
+	r := Realign(ctx, []*organization.Organization{org}, true)
+	lapses := make(map[string]bool)
+	for _, res := range r.Results {
+		lapses[res.SubscriptionId] = res.Lapses
+	}
+	if r.Realigned != 2 || r.Lapsing != 1 || !lapses[gone.Id()] || lapses[kept.Id()] {
+		t.Fatalf("dry run %+v, want both moved and only %s lapsing", r, gone.Id())
+	}
+	if got := reloadSub(t, db, gone.Id()); got.PeriodStart.Before(time.Now().AddDate(0, 0, -11)) {
+		t.Fatal("the dry run wrote the row")
+	}
+}
+
+// TestCycle_LapsedRowEmitsOnce: the first live run to find a row lapsed tells the
+// collector (subscription_lapsed, status lapsed), so revenue stops counting it;
+// later runs over the same lapse say nothing more.
+func TestCycle_LapsedRowEmitsOnce(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	got := make(chan map[string]any, 8)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var e map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&e)
+		got <- e
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+	org := moneyOrg("cyc-lapsed-ev")
+	withFakeSquare(t, squareMock("", "", "sqpay_le"))
+	db := datastore.New(org.Namespaced(ctx))
+	sub := cardSubThrough(t, db, "cyc-lapsed-ev", time.Now().AddDate(0, 0, -10))
+	ev := events.NewClient(srv.URL)
+
+	for _, at := range []time.Time{time.Now(), time.Now().Add(time.Hour)} {
+		report := newCycleReport(at, false)
+		cycleOrg(ctx, org, db, at, false, ev, railOf(org), "", report)
+		only(t, report, engine.Overdue)
+	}
+	select {
+	case e := <-got:
+		props, _ := e["properties"].(map[string]any)
+		if e["event"] != events.EventSubscriptionLapsed || props["status"] != "lapsed" || props["subscription_id"] != sub.Id() {
+			t.Fatalf("event %v, want subscription_lapsed for %s", e, sub.Id())
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("no event reached the collector")
+	}
+	select {
+	case e := <-got:
+		t.Fatalf("a second event %v for the same lapse", e)
+	case <-time.After(300 * time.Millisecond):
 	}
 }

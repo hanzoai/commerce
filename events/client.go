@@ -220,6 +220,7 @@ const (
 	EventSubscriptionRenewed     = "subscription_renewed"
 	EventSubscriptionPlanChanged = "subscription_plan_changed"
 	EventSubscriptionCanceled    = "subscription_canceled"
+	EventSubscriptionLapsed      = "subscription_lapsed"
 	EventInvoiceFinalized        = "invoice_finalized"
 	EventInvoicePaid             = "invoice_paid"
 	EventInvoiceVoid             = "invoice_void"
@@ -276,6 +277,15 @@ func (c *Client) EmitSubscriptionPlanChanged(ctx context.Context, s *Subscriptio
 // EmitSubscriptionCanceled sends a subscription_canceled event to the collector.
 func (c *Client) EmitSubscriptionCanceled(ctx context.Context, s *Subscription) error {
 	return c.emitSubscription(ctx, EventSubscriptionCanceled, s)
+}
+
+// EmitSubscriptionLapsed sends a subscription_lapsed event to the collector: the
+// subscription's paid period, and the grace after it, are over and nothing
+// renewed it. It confers nothing and is not recurring revenue until its customer
+// renews it (subscription_renewed) or it ends (subscription_canceled). Its
+// Status is "lapsed".
+func (c *Client) EmitSubscriptionLapsed(ctx context.Context, s *Subscription) error {
+	return c.emitSubscription(ctx, EventSubscriptionLapsed, s)
 }
 
 // EmitPaymentUncredited reports a settled charge whose ledger effect is missing —

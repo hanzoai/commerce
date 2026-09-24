@@ -320,6 +320,22 @@ func (sp *SquareProcessor) Refund(ctx context.Context, req processor.RefundReque
 	}, nil
 }
 
+// CancelByKey cancels the payment Square made under key, if it made one and it
+// has not completed (processor.KeyCanceler). Square answers success when it
+// finds no payment under the key, and refuses to cancel a completed one.
+func (sp *SquareProcessor) CancelByKey(ctx context.Context, key string) error {
+	resp, err := sp.paymentsClient.CancelByIdempotencyKey(ctx, &square.CancelPaymentByIdempotencyKeyRequest{
+		IdempotencyKey: fitKey(key),
+	})
+	if err != nil {
+		return err
+	}
+	if resp != nil && len(resp.Errors) > 0 {
+		return fmt.Errorf("square refused to cancel the payment under key %s: %s", key, resp.Errors[0].Code)
+	}
+	return nil
+}
+
 // GetTransaction retrieves transaction details
 func (sp *SquareProcessor) GetTransaction(ctx context.Context, txID string) (*processor.Transaction, error) {
 	resp, err := sp.paymentsClient.Get(ctx, &square.GetPaymentsRequest{

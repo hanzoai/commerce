@@ -35,7 +35,7 @@ func TestSettle_CancelAfterTheRowWasReadChargesNothing(t *testing.T) {
 		t.Fatalf("cancel: %v", err)
 	}
 
-	res := settleOne(ctx, org, db, stale, engine.Run{Now: now}, nil, chargeProviderForOrg(org))
+	res := settleOne(ctx, org, db, stale, engine.Run{Now: now}, nil, railOf(org))
 	if res.Action != engine.CanceledAtPeriodEnd || m.chargeCalls != 0 {
 		t.Fatalf("result %+v with %d charges, want canceled_at_period_end and none", res, m.chargeCalls)
 	}

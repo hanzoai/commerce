@@ -53,9 +53,9 @@ const (
 //     else records no payment and ends at its period end.
 //
 // A card is only ever the subscription's own DefaultPaymentMethod, never another
-// card the subscriber saved. charge is the org's card charger and pre the org's
+// card the subscriber saved. card is the org's card rail and pre the org's
 // prepaid money.
-func renewalOf(org *organization.Organization, db *datastore.Datastore, sub *subscription.Subscription, charge engine.ProviderCharger, pre engine.Prepaid) (engine.Collection, string, error) {
+func renewalOf(org *organization.Organization, db *datastore.Datastore, sub *subscription.Subscription, card rail, pre engine.Prepaid) (engine.Collection, string, error) {
 	if sub.ProviderType == gift.ProviderType {
 		return engine.Collection{End: engine.GiftEnded, Reason: "the gift ran the time it was granted for"}, sourceGift, nil
 	}
@@ -65,7 +65,8 @@ func renewalOf(org *organization.Organization, db *datastore.Datastore, sub *sub
 
 	eco := IsEcosystemAccount(org, sub.UserId)
 	comped := engine.Collection{Comped: true, Reason: "provisioned on an ecosystem org's enterprise terms"}
-	byCard := engine.CardPayer(charge)
+	byCard := engine.CardPayer(card.charge)
+	byCard.Look = card.look
 	// A card-bought subscription whose card is gone is a declined attempt, and a
 	// dry run reports it so.
 	byCard.Choose = func(_ context.Context, db *datastore.Datastore, _ *billinginvoice.BillingInvoice, _ int64) (string, error) {
@@ -75,7 +76,7 @@ func renewalOf(org *organization.Organization, db *datastore.Datastore, sub *sub
 		return engine.PaidByCard, nil
 	}
 	byPrepaid := engine.PrepaidPayer(pre)
-	card := hasCard(db, sub)
+	carded := hasCard(db, sub)
 
 	first, err := engine.FirstInvoice(db, sub)
 	if err != nil {
@@ -102,7 +103,7 @@ func renewalOf(org *organization.Organization, db *datastore.Datastore, sub *sub
 		return byPrepaid, sourcePrepaid, nil
 	}
 	switch {
-	case card:
+	case carded:
 		return byCard, sourceCard, nil
 	case method == "" && sub.Plan.Price <= 0:
 		return byPrepaid, sourcePrepaid, nil
