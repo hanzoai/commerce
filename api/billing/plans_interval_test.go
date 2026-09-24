@@ -40,7 +40,7 @@ func annual(t *testing.T, slug string) (monthly, perMonth, year currency.Cents) 
 	if sp.AnnualTotal <= 0 {
 		t.Fatalf("plan %q publishes no annual price; these tests need one", slug)
 	}
-	return currency.Cents(sp.Price), currency.Cents(sp.PriceAnnual), currency.Cents(sp.AnnualTotal)
+	return currency.Cents(sp.Price), currency.Cents(sp.annual()), currency.Cents(sp.AnnualTotal)
 }
 
 // TestPlanAtInterval is the rule itself, away from HTTP: a year costs the year the
@@ -140,9 +140,9 @@ func TestAnnualNormalizesToTheAdvertisedPrice(t *testing.T) {
 			t.Errorf("%s: a year charges %d cents, want the stated %d", sp.Slug, year.Price, sp.AnnualTotal)
 		}
 
-		if got := MonthlyNormalizedCents(int64(year.Price), string(year.Interval), year.IntervalCount); got != sp.PriceAnnual {
+		if got := MonthlyNormalizedCents(int64(year.Price), string(year.Interval), year.IntervalCount); got != sp.annual() {
 			t.Errorf("%s: a year at %d cents reports %d/mo of recurring revenue, want the advertised %d",
-				sp.Slug, year.Price, got, sp.PriceAnnual)
+				sp.Slug, year.Price, got, sp.annual())
 		}
 
 		// Through the subscription, which is what actually reaches the revenue
@@ -150,7 +150,7 @@ func TestAnnualNormalizesToTheAdvertisedPrice(t *testing.T) {
 		// snapshotted onto the subscription exactly as StartSubscription does it.
 		sub := &subscription.Subscription{Quantity: 3}
 		sub.Plan = *year
-		if got, want := SubscriptionMRRCents(sub), sp.PriceAnnual*3; got != want {
+		if got, want := SubscriptionMRRCents(sub), sp.annual()*3; got != want {
 			t.Errorf("%s: three annual seats report %d/mo, want %d", sp.Slug, got, want)
 		}
 	}
@@ -409,13 +409,14 @@ func TestAnnualRenewalChargesTheYearAgain(t *testing.T) {
 		t.Fatal("no dev subscription created")
 	}
 
-	// Age it past the year it paid for — a renewal only bills an elapsed period.
+	// Age it to the end of the year it paid for — a renewal bills the next year
+	// once the paid one is over.
 	fresh := subscription.New(db)
 	if err := fresh.GetById(sub.Id()); err != nil {
 		t.Fatalf("re-read subscription: %v", err)
 	}
-	fresh.PeriodStart = time.Now().AddDate(-2, 0, 0)
-	fresh.PeriodEnd = time.Now().AddDate(-1, 0, 0)
+	fresh.PeriodStart = time.Now().AddDate(-1, 0, -1)
+	fresh.PeriodEnd = time.Now().AddDate(0, 0, -1)
 	if err := fresh.Update(); err != nil {
 		t.Fatalf("age subscription: %v", err)
 	}
@@ -445,10 +446,11 @@ func TestAnnualRenewalChargesTheYearAgain(t *testing.T) {
 		t.Fatalf("the renewed period ends %s, want %s — a year was paid for again", after.PeriodEnd, want)
 	}
 
-	// The receipt agrees with the charge.
+	// The receipt agrees with the charge: the renewal invoices the year after the
+	// one paid for, in advance.
 	var renewal *billinginvoice.BillingInvoice
 	for _, inv := range invoicesForSub(t, db, sub.Id()) {
-		if inv.PeriodStart.Equal(fresh.PeriodStart) {
+		if inv.PeriodStart.Unix() == fresh.PeriodEnd.Unix() {
 			renewal = inv
 		}
 	}

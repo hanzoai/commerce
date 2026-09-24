@@ -2,14 +2,15 @@ package workflows
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
-	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/util/nscontext"
@@ -47,19 +48,26 @@ func flatPlan(name string, price int64) plan.Plan {
 	}
 }
 
-// fundBalance credits userId's spendable balance the way deductFromBalance reads
-// it: a Deposit to (kind "user", id userId) in the given currency.
-func fundBalance(t *testing.T, db *datastore.Datastore, userId string, cents int64) {
-	t.Helper()
-	tx := transaction.New(db)
-	tx.Type = transaction.Deposit
-	tx.DestinationKind = "user"
-	tx.DestinationId = userId
-	tx.Currency = currency.USD
-	tx.Amount = currency.Cents(cents)
-	if err := tx.Create(); err != nil {
-		t.Fatalf("fund balance: %v", err)
+// wallets is a Prepaid holding each subject's balance in memory — the seam the
+// billing package fills with the org's credits and its one ledger. Draw is all or
+// nothing, as the real one is.
+type wallets map[string]int64
+
+func (w wallets) Available(_ context.Context, subject string, _ currency.Type) (int64, error) {
+	return w[subject], nil
+}
+
+func (w wallets) Draw(_ context.Context, subject string, _ currency.Type, amount int64, _ string) (engine.Drawn, error) {
+	if w[subject] < amount {
+		return engine.Drawn{}, fmt.Errorf("short")
 	}
+	w[subject] -= amount
+	return engine.Drawn{Balance: amount, Ref: "led_" + subject}, nil
+}
+
+// funded is an activities value whose prepaid money is w.
+func funded(w wallets) *BillingActivities {
+	return &BillingActivities{Prepaid: func(context.Context, string) engine.Prepaid { return w }}
 }
 
 func openInvoice(t *testing.T, db *datastore.Datastore, userId string, cents int64) *billinginvoice.BillingInvoice {
@@ -265,7 +273,7 @@ func TestRenewSubscriptionActivity_PaidFromBalance(t *testing.T) {
 	db := seedDB(ctx)
 
 	const user = "acme/payer"
-	fundBalance(t, db, user, 5000) // $50 covers the $20 charge
+	w := wallets{user: 5000} // $50 covers the $20 charge
 
 	now := time.Now()
 	sub := subscription.New(db)
@@ -280,13 +288,16 @@ func TestRenewSubscriptionActivity_PaidFromBalance(t *testing.T) {
 		t.Fatalf("create sub: %v", err)
 	}
 
-	a := &BillingActivities{}
+	a := funded(w)
 	res, err := a.RenewSubscriptionActivity(ctx, RenewalParams{OrgName: ns, SubscriptionId: sub.Id()})
 	if err != nil {
 		t.Fatalf("renew: %v", err)
 	}
 	if !res.Success {
 		t.Fatalf("renew from balance = %+v, want success", res)
+	}
+	if w[user] != 3000 {
+		t.Fatalf("balance after renewal = %d, want 3000", w[user])
 	}
 
 	inv := billinginvoice.New(db)
@@ -373,11 +384,10 @@ func TestCollectInvoiceActivity(t *testing.T) {
 	const ns = "acme"
 	_, ctx := wctx(t, ns)
 	db := seedDB(ctx)
-	a := &BillingActivities{}
+	a := funded(wallets{"acme/collect-ok": 3000})
 
 	t.Run("succeeds_from_balance", func(t *testing.T) {
 		const user = "acme/collect-ok"
-		fundBalance(t, db, user, 3000)
 		inv := openInvoice(t, db, user, 2000)
 
 		res, err := a.CollectInvoiceActivity(ctx, CollectInvoiceParams{OrgName: ns, InvoiceId: inv.Id()})

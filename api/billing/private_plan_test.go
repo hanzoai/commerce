@@ -65,7 +65,7 @@ func TestPrivatePlan_HiddenFromEveryoneButStaff(t *testing.T) {
 	org := moneyOrg("webby")
 
 	// Not in the public catalog, by list or by slug.
-	rows, err := ReadPlans(ctx, "", nil)
+	rows, err := ReadPlans(ctx, "", "", nil)
 	if err != nil {
 		t.Fatalf("read plans: %v", err)
 	}
@@ -196,7 +196,7 @@ func renewedFree(t *testing.T, ctx context.Context, org *organization.Organizati
 		t.Fatalf("load: %v", err)
 	}
 	s.PeriodStart, s.PeriodEnd = time.Now().AddDate(0, -1, -1), time.Now().Add(-time.Hour)
-	if _, res, err := engine.RenewSubscription(ctx, db, s, BurnCredits, nil); err != nil || !res.Success {
+	if _, res, err := engine.RenewSubscription(ctx, db, s, prepaidFor(ctx, org), nil); err != nil || !res.Success {
 		t.Fatalf("renew: %+v, %v", res, err)
 	}
 	if err := s.Update(); err != nil || !subscriptionPaymentBacked(s) {

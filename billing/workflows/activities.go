@@ -60,11 +60,13 @@ type MarkUncollectibleParams struct {
 
 // BillingActivities holds dependencies for activity implementations.
 type BillingActivities struct {
-	// BurnCredits is injected from the billing package to avoid circular imports.
-	BurnCredits engine.CreditBurner
-	// ChargeProvider charges the subscription's vaulted card for whatever credits +
-	// balance did not cover (injected like BurnCredits to avoid import cycles). nil
-	// keeps the credits+balance-only waterfall — the workflow driver leaves it unset
+	// Prepaid resolves an org's prepaid money — credits, then the balance on the
+	// one ledger — injected from the billing package to avoid circular imports.
+	// nil collects from the card alone.
+	Prepaid func(ctx context.Context, orgName string) engine.Prepaid
+	// ChargeProvider charges the subscription's vaulted card for whatever prepaid
+	// money did not cover (injected like Prepaid to avoid import cycles). nil
+	// keeps the prepaid-only waterfall — the workflow driver leaves it unset
 	// unless it can build a KMS-hydrated per-org charger.
 	ChargeProvider engine.ProviderCharger
 }
@@ -129,7 +131,7 @@ func (a *BillingActivities) RenewSubscriptionActivity(ctx context.Context, param
 		return nil, fmt.Errorf("subscription not found: %w", err)
 	}
 
-	inv, result, err := engine.RenewSubscription(ctx, db, sub, a.BurnCredits, a.ChargeProvider)
+	inv, result, err := engine.RenewSubscription(ctx, db, sub, a.prepaid(ctx, params.OrgName), a.ChargeProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +156,7 @@ func (a *BillingActivities) CollectInvoiceActivity(ctx context.Context, params C
 		return nil, fmt.Errorf("invoice not found: %w", err)
 	}
 
-	result, err := engine.CollectInvoice(ctx, db, inv, a.BurnCredits, a.ChargeProvider)
+	result, err := engine.CollectInvoice(ctx, db, inv, a.prepaid(ctx, params.OrgName), a.ChargeProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -180,6 +182,14 @@ func (a *BillingActivities) MarkUncollectibleActivity(ctx context.Context, param
 	}
 
 	return inv.Update()
+}
+
+// prepaid is the org's prepaid money, or nil when none was injected.
+func (a *BillingActivities) prepaid(ctx context.Context, orgName string) engine.Prepaid {
+	if a.Prepaid == nil {
+		return nil
+	}
+	return a.Prepaid(ctx, orgName)
 }
 
 // orgDB creates a datastore scoped to an org namespace.

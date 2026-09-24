@@ -275,7 +275,7 @@ func voidInvoice(ctx context.Context, org *organization.Organization, id string,
 }
 
 // CollectInvoice attempts to settle an OPEN invoice: credits, then prepaid
-// balance, then the card on file — the same waterfall the dunning workflow runs.
+// balance, then the card on file — the same waterfall a renewal runs.
 //
 // The per-invoice idempotency guard is what makes two concurrent collections one
 // collection. A DECLINE deliberately RELEASES the guard rather than sealing it:
@@ -344,7 +344,7 @@ func collectInvoice(ctx context.Context, org *organization.Organization, id stri
 		return nil, fault(409, "invoice payment already in progress", nil)
 	}
 
-	result, err := engine.CollectInvoice(ctx, db, inv, BurnCredits, chargeProviderForOrg(org))
+	result, err := engine.CollectInvoice(ctx, db, inv, prepaidFor(ctx, org), chargeProviderForOrg(org))
 	if err != nil {
 		if rec != nil {
 			_ = rec.Delete()

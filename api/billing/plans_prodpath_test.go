@@ -54,8 +54,8 @@ func TestProdPath_SeedReadbackAllFields(t *testing.T) {
 			continue
 		}
 		// Display projection (GET /v1/billing/plans).
-		if g.Price != e.Price || g.PriceAnnual != e.PriceAnnual {
-			t.Errorf("%s: LIST price=%d/%d want %d/%d", e.Slug, g.Price, g.PriceAnnual, e.Price, e.PriceAnnual)
+		if g.Price != e.Price || !sameCents(g.PriceAnnual, e.PriceAnnual) {
+			t.Errorf("%s: LIST price=%d/%s want %d/%s", e.Slug, g.Price, centsText(g.PriceAnnual), e.Price, centsText(e.PriceAnnual))
 		}
 		if g.Category != e.Category {
 			t.Errorf("%s: LIST category=%q want %q", e.Slug, g.Category, e.Category)
@@ -75,8 +75,8 @@ func TestProdPath_SeedReadbackAllFields(t *testing.T) {
 			t.Errorf("%s: resolve err %v", e.Slug, rerr)
 			continue
 		}
-		if int64(rp.Price) != e.Price || int64(rp.PriceAnnual) != e.PriceAnnual {
-			t.Errorf("%s: RESOLVE price=%d/%d want %d/%d (CHARGE)", e.Slug, rp.Price, rp.PriceAnnual, e.Price, e.PriceAnnual)
+		if int64(rp.Price) != e.Price || int64(rp.PriceAnnual) != e.annual() {
+			t.Errorf("%s: RESOLVE price=%d/%d want %d/%d (CHARGE)", e.Slug, rp.Price, rp.PriceAnnual, e.Price, e.annual())
 		}
 	}
 }
@@ -143,8 +143,8 @@ func TestProdPath_CorrectsPreexistingBadRows(t *testing.T) {
 	if ms := minSeatsOf(ptr(byslug["team"])); ms != 2 {
 		t.Fatalf("team minSeats=%d, want 2 (not corrected)", ms)
 	}
-	if want := lookupPlan("team").PriceAnnual; byslug["team"].PriceAnnual != want {
-		t.Fatalf("team priceAnnual=%d, want %d (not corrected)", byslug["team"].PriceAnnual, want)
+	if want := lookupPlan("team").PriceAnnual; !sameCents(byslug["team"].PriceAnnual, want) {
+		t.Fatalf("team priceAnnual=%s, want %s (not corrected)", centsText(byslug["team"].PriceAnnual), centsText(want))
 	}
 }
 

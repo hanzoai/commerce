@@ -8,6 +8,7 @@ import (
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/billinginvoice"
+	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -129,7 +130,9 @@ func TestRenewSubscription_NumbersDistinctPeriods(t *testing.T) {
 		t.Fatalf("first invoice number = %d, want 1", inv1.Number)
 	}
 
-	// Period advanced on success; a second renewal is a NEW period → invoice #2.
+	// The row moved onto the period it paid for. Once that one is over, a second
+	// renewal bills a NEW period → invoice #2.
+	sub.PeriodStart, sub.PeriodEnd = sub.PeriodStart.AddDate(0, -1, 0), time.Now().Add(-time.Minute)
 	inv2, _, err := RenewSubscription(context.Background(), db, sub, nil, nil)
 	if err != nil {
 		t.Fatalf("second renew: %v", err)
@@ -210,6 +213,193 @@ func TestIsDue_ExternalIsNeverDue(t *testing.T) {
 		external := &subscription.Subscription{Status: status, PeriodEnd: end, Type: subscription.External}
 		if IsDue(external, later) {
 			t.Fatalf("%s external row answered due", status)
+		}
+	}
+}
+
+// TestRenewSubscription_TheExistingInvoiceDecidesTheRow: a row whose owed period
+// already has an invoice is never charged again here, but it is not left active
+// on nothing either. A paid invoice moves it onto that period; an unpaid one
+// leaves it past due.
+func TestRenewSubscription_TheExistingInvoiceDecidesTheRow(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := datastore.New(c)
+	db.SetNamespace("renew-settle")
+
+	seed := func(user string, paid bool) (*subscription.Subscription, *billinginvoice.BillingInvoice) {
+		now := time.Now()
+		sub := subscription.New(db)
+		sub.UserId = user
+		sub.PlanId = "plan_pro"
+		sub.Plan = plan.Plan{Name: "Pro", Price: currency.Cents(2500), Currency: currency.USD, Interval: types.Monthly, IntervalCount: 1}
+		sub.Status = subscription.Active
+		sub.PeriodStart, sub.PeriodEnd = now.AddDate(0, -1, 0), now.Add(-time.Hour)
+		if err := sub.Create(); err != nil {
+			t.Fatalf("create sub: %v", err)
+		}
+		inv, err := buildPeriodInvoice(db, sub, owed(sub, time.Now()), period{})
+		if err != nil {
+			t.Fatalf("invoice: %v", err)
+		}
+		if paid {
+			if err := inv.MarkPaid("balance", "led_1"); err != nil {
+				t.Fatalf("mark paid: %v", err)
+			}
+			if err := inv.Update(); err != nil {
+				t.Fatalf("save invoice: %v", err)
+			}
+		}
+		return sub, inv
+	}
+	pre := &purse{balance: 100000}
+
+	// The owed period is paid, but the row was never moved onto it: it moves now,
+	// and nothing is drawn.
+	sub, inv := seed("renew-settle/paid", true)
+	got, res, err := RenewSubscription(context.Background(), db, sub, pre, nil)
+	if err != nil || got.Id() != inv.Id() || !res.Success {
+		t.Fatalf("renew: inv=%v res=%+v err=%v, want the paid invoice back", got, res, err)
+	}
+	if sub.Status != subscription.Active || sub.PeriodStart.Unix() != inv.PeriodStart.Unix() || sub.CurrentInvoiceId != inv.Id() {
+		t.Fatalf("row %s on %s (invoice %q), want active on the paid period %s", sub.Status, sub.PeriodStart, sub.CurrentInvoiceId, inv.PeriodStart)
+	}
+
+	// Unpaid: the row is past due, and nothing is drawn.
+	sub, inv = seed("renew-settle/open", false)
+	got, res, err = RenewSubscription(context.Background(), db, sub, pre, nil)
+	if err != nil || got.Id() != inv.Id() || res.Success {
+		t.Fatalf("renew: inv=%v res=%+v err=%v, want the open invoice back, unpaid", got, res, err)
+	}
+	if sub.Status != subscription.PastDue {
+		t.Fatalf("status = %s, want past_due: an ended period with an unpaid invoice is not active", sub.Status)
+	}
+	if len(pre.draws) != 0 {
+		t.Fatalf("drew %v; an existing invoice is never charged again here", pre.draws)
+	}
+}
+
+// TestRenewSubscription_BillsTheNextPeriodInAdvance: the row holds the period it
+// paid for. When that period ends the next one is invoiced — its whole fee, before
+// it is served — and the row moves onto it only once it is paid. A plan canceled
+// at the end of its period is therefore never served a period it did not pay for.
+func TestRenewSubscription_BillsTheNextPeriodInAdvance(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := datastore.New(c)
+	db.SetNamespace("renew-advance")
+
+	start := time.Now().AddDate(0, 0, -3)
+	sub := subscription.New(db)
+	sub.UserId = "renew-advance/alice"
+	sub.PlanId = "plan_pro"
+	sub.Plan = plan.Plan{Name: "Pro", Price: currency.Cents(2500), Currency: currency.USD, Interval: types.Monthly, IntervalCount: 1}
+	sub.Status = subscription.Active
+	sub.PeriodStart, sub.PeriodEnd = start, Advance(start, &sub.Plan)
+	if err := sub.Create(); err != nil {
+		t.Fatalf("create sub: %v", err)
+	}
+	first, err := CreatePaidFirstInvoice(db, sub, "balance", "led_1")
+	if err != nil {
+		t.Fatalf("first invoice: %v", err)
+	}
+	if sub.PeriodStart.Unix() != start.Unix() || first.PeriodStart.Unix() != start.Unix() {
+		t.Fatalf("after paying, row on %s and invoice for %s; both want the paid period %s", sub.PeriodStart, first.PeriodStart, start)
+	}
+
+	// Mid-period nothing is owed.
+	pre := &purse{balance: 10000}
+	if inv, _, _ := RenewSubscription(context.Background(), db, sub, pre, nil); inv != nil || len(pre.draws) != 0 {
+		t.Fatalf("a renewal inside the paid period billed %v, drew %v", inv != nil, pre.draws)
+	}
+
+	// At its end, the next period is billed in full and the row moves onto it.
+	end := sub.PeriodEnd
+	sub.PeriodStart, sub.PeriodEnd = sub.PeriodStart.AddDate(0, -1, 0), time.Now().Add(-time.Minute)
+	end = sub.PeriodEnd
+	inv, res, err := RenewSubscription(context.Background(), db, sub, pre, nil)
+	if err != nil || !res.Success {
+		t.Fatalf("renew: %+v, %v", res, err)
+	}
+	if inv.PeriodStart.Unix() != end.Unix() || inv.PeriodEnd.Unix() != Advance(end, &sub.Plan).Unix() || inv.AmountPaid != 2500 {
+		t.Fatalf("invoice %s..%s paid %d, want the period after %s paid 2500", inv.PeriodStart, inv.PeriodEnd, inv.AmountPaid, end)
+	}
+	if sub.PeriodStart.Unix() != end.Unix() || sub.CurrentInvoiceId != inv.Id() {
+		t.Fatalf("row on %s (invoice %q), want the period it just paid for", sub.PeriodStart, sub.CurrentInvoiceId)
+	}
+}
+
+// TestRenewSubscription_AMissedRowPaysOnlyThePeriodRunningNow: an active row whose
+// renewal was missed for whole periods is billed the one running now, once; the
+// periods that ended in between are not billed after the fact.
+func TestRenewSubscription_AMissedRowPaysOnlyThePeriodRunningNow(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := datastore.New(c)
+	db.SetNamespace("renew-missed")
+
+	sub := subscription.New(db)
+	sub.UserId = "renew-missed/alice"
+	sub.PlanId = "plan_pro"
+	sub.Plan = plan.Plan{Name: "Pro", Price: currency.Cents(2500), Currency: currency.USD, Interval: types.Monthly, IntervalCount: 1}
+	sub.Status = subscription.Active
+	sub.PeriodStart, sub.PeriodEnd = time.Now().AddDate(0, -4, 0), time.Now().AddDate(0, -3, 0)
+	if err := sub.Create(); err != nil {
+		t.Fatalf("create sub: %v", err)
+	}
+	pre := &purse{balance: 100000}
+	inv, res, err := RenewSubscription(context.Background(), db, sub, pre, nil)
+	if err != nil || !res.Success {
+		t.Fatalf("renew: %+v, %v", res, err)
+	}
+	now := time.Now()
+	if len(pre.draws) != 1 || pre.draws[0] != 2500 || inv.PeriodStart.After(now) || !inv.PeriodEnd.After(now) {
+		t.Fatalf("drew %v for %s..%s; want one period, the one running now", pre.draws, inv.PeriodStart, inv.PeriodEnd)
+	}
+	if again, _, _ := RenewSubscription(context.Background(), db, sub, pre, nil); again != nil || len(pre.draws) != 1 {
+		t.Fatalf("a second renewal billed again: %v, %v", again != nil, pre.draws)
+	}
+}
+
+// TestVoidOpen_LeavesAnInvoiceBeingPaid: an invoice whose payment is in flight is
+// not voided over it; one nobody is paying, with nothing paid toward it, is.
+func TestVoidOpen_LeavesAnInvoiceBeingPaid(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := datastore.New(c)
+	db.SetNamespace("void-open")
+
+	sub := subscription.New(db)
+	sub.UserId = "void-open/alice"
+	sub.PlanId = "plan_pro"
+	sub.Plan = plan.Plan{Name: "Pro", Price: currency.Cents(2500), Currency: currency.USD, Interval: types.Monthly, IntervalCount: 1}
+	sub.Status = subscription.PastDue
+	sub.PeriodStart, sub.PeriodEnd = time.Now().AddDate(0, -1, 0), time.Now().Add(-time.Hour)
+	if err := sub.Create(); err != nil {
+		t.Fatalf("create sub: %v", err)
+	}
+	paying, err := buildPeriodInvoice(db, sub, owed(sub, time.Now()), period{})
+	if err != nil {
+		t.Fatalf("invoice: %v", err)
+	}
+	if _, replay, err := idempotencykey.Begin(db, "billing-pay", "invoice:"+paying.Id()); err != nil || replay {
+		t.Fatalf("hold the payment guard: %v %v", replay, err)
+	}
+	idle, err := buildPeriodInvoice(db, sub, period{sub.PeriodStart, sub.PeriodEnd}, period{})
+	if err != nil {
+		t.Fatalf("invoice: %v", err)
+	}
+
+	if err := VoidOpen(db, sub); err != nil {
+		t.Fatalf("void: %v", err)
+	}
+	for _, tc := range []struct {
+		inv  *billinginvoice.BillingInvoice
+		want billinginvoice.Status
+	}{{paying, billinginvoice.Open}, {idle, billinginvoice.Void}} {
+		got := billinginvoice.New(db)
+		if err := got.GetById(tc.inv.Id()); err != nil || got.Status != tc.want {
+			t.Fatalf("invoice %s is %s (err %v), want %s", tc.inv.Id(), got.Status, err, tc.want)
 		}
 	}
 }

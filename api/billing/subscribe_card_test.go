@@ -119,9 +119,8 @@ func pmsFor(t *testing.T, db *datastore.Datastore, subject string) []*paymentmet
 
 func invoicesForSub(t *testing.T, db *datastore.Datastore, subID string) []*billinginvoice.BillingInvoice {
 	t.Helper()
-	rootKey := db.NewKey("synckey", "", 1, nil)
 	out := make([]*billinginvoice.BillingInvoice, 0)
-	if _, err := billinginvoice.Query(db).Ancestor(rootKey).Filter("SubscriptionId=", subID).GetAll(&out); err != nil {
+	if _, err := billinginvoice.Query(db).Filter("SubscriptionId=", subID).GetAll(&out); err != nil {
 		t.Fatalf("query invoices: %v", err)
 	}
 	return out
@@ -609,7 +608,7 @@ func TestRenewSubscription_ParallelExactlyOneCharge(t *testing.T) {
 			if err := s.GetById(sub.Id()); err != nil {
 				return
 			}
-			_, _, _ = engine.RenewSubscription(ctx, db, s, BurnCredits, charger)
+			_, _, _ = engine.RenewSubscription(ctx, db, s, prepaidFor(ctx, org), charger)
 		}()
 	}
 	wg.Wait()
@@ -653,7 +652,7 @@ func TestPayInvoice_ConcurrentCollect_OneCharge(t *testing.T) {
 			if i2.Status != billinginvoice.Open {
 				return
 			}
-			_, _ = engine.CollectInvoice(ctx, db, i2, BurnCredits, charger)
+			_, _ = engine.CollectInvoice(ctx, db, i2, prepaidFor(ctx, org), charger)
 		}()
 	}
 	wg.Wait()
