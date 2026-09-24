@@ -353,7 +353,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	sourceID := strings.TrimSpace(in.SourceID)
 	methodID := strings.TrimSpace(in.MethodID)
 	planID := strings.TrimSpace(in.PlanID)
-	isEco := (org != nil && IsPaidEcosystemOrg(org.Name)) || IsPaidEcosystemOrg(UserOrg(in.Subject))
+	isEco := IsEcosystemAccount(org, in.Subject)
 	if (sourceID == "") == (methodID == "") && !isEco && sourceID != "credits" && sourceID != "balance" {
 		return nil, saleRefusal{saleRefused, "send exactly one of sourceId (a new card) or paymentMethodId (a saved card)"}
 	}

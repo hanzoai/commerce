@@ -74,7 +74,7 @@ func GetBalance(c *zip.Ctx) error {
 	if err != nil {
 		return http.Fail(c, 500, "failed to query balance", err)
 	}
-	isPaidEco := (org != nil && IsPaidEcosystemOrg(org.Name)) || IsPaidEcosystemOrg(UserOrg(user))
+	isPaidEco := IsEcosystemAccount(org, user)
 	if isPaidEco {
 		if split.Available < currency.Cents(DefaultEcosystemCreditCents) {
 			split.CreditsRemaining = currency.Cents(DefaultEcosystemCreditCents)

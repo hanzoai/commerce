@@ -192,3 +192,45 @@ func TestSquareSandbox_SubscribeWithCardNonceOk(t *testing.T) {
 		t.Fatalf("charged amount = %d, want 5000", m.lastChargeAmount)
 	}
 }
+
+// A person's wallet inside an ecosystem org is a customer's: it is tiered by its own
+// subscriptions, its balance is its own money, and nothing tops it up. Only the org's
+// own account — the payer IAM names for the org's machines, owners and admins — is
+// Enterprise.
+func TestAPersonInAnEcosystemOrgIsTieredByTheirOwnPlan(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+
+	for _, orgName := range []string{"hanzo", "lux", "zoo", "admin"} {
+		t.Run(orgName, func(t *testing.T) {
+			org := moneyOrg(orgName)
+			person := orgName + "/alice"
+			if got, err := TierOf(ctx, org, person); err != nil || got != tier.Free {
+				t.Fatalf("TierOf(%s) = %s,%v, want free", person, got, err)
+			}
+			tv, err := ReadTier(ctx, org, person, tier.Free)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tv.Tier.Name != tier.Free || tv.Balance.EffectiveAvailable != 0 {
+				t.Errorf("ReadTier(%s): tier %s effectiveAvailable %d, want free and 0", person, tv.Tier.Name, tv.Balance.EffectiveAvailable)
+			}
+			if len(tv.Tier.AllowedModels) == 1 && tv.Tier.AllowedModels[0] == "*" {
+				t.Errorf("ReadTier(%s) allows every model", person)
+			}
+			db := datastore.New(org.Namespaced(ctx))
+			if err := EnsureEcosystemCredits(ctx, db, person); err != nil {
+				t.Fatal(err)
+			}
+			if grants, _ := getActiveGrants(db, person); len(grants) != 0 {
+				t.Errorf("%s was granted ecosystem credit: %d grant(s)", person, len(grants))
+			}
+			if got, _ := TierOf(ctx, org, orgName); got != tier.Enterprise {
+				t.Errorf("the org's own account %s = %s, want enterprise", orgName, got)
+			}
+		})
+	}
+	if IsEcosystemAccount(moneyOrg("acme"), "hanzo") {
+		t.Error("an ecosystem slug read inside another org's books is not that org's account")
+	}
+}

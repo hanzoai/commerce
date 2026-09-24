@@ -40,6 +40,20 @@ func IsPaidEcosystemOrg(orgName string) bool {
 	return PaidEcosystemOrgs[strings.ToLower(strings.TrimSpace(orgName))]
 }
 
+// IsEcosystemAccount reports whether subject is a paid ecosystem org's OWN account:
+// the bare org slug ("hanzo"), within that org's books when org is given. That is
+// the account IAM names as payer for the org's machines and its owners and admins
+// (a signed billing_account of org:<slug>), and for every member of a pooled org.
+// A person's wallet inside the org ("hanzo/alice") is not the org's account: it is
+// a customer's, tiered by its own subscriptions and funded by its own money.
+func IsEcosystemAccount(org *organization.Organization, subject string) bool {
+	s := strings.ToLower(strings.TrimSpace(subject))
+	if s == "" || strings.Contains(s, "/") || !IsPaidEcosystemOrg(s) {
+		return false
+	}
+	return org == nil || strings.EqualFold(strings.TrimSpace(org.Name), s)
+}
+
 // UserOrg extracts the tenant org prefix from a user identifier (e.g. "hanzo/alice" -> "hanzo").
 func UserOrg(user string) string {
 	parts := strings.Split(strings.TrimSpace(user), "/")
@@ -194,7 +208,7 @@ func ReadTier(ctx context.Context, org *organization.Organization, user string, 
 	}
 	ctx = org.Namespaced(ctx)
 
-	isPaidEco := (org != nil && IsPaidEcosystemOrg(org.Name)) || IsPaidEcosystemOrg(UserOrg(user))
+	isPaidEco := IsEcosystemAccount(org, user)
 	if isPaidEco && name == tier.Free {
 		name = tier.Enterprise
 	}
@@ -286,7 +300,7 @@ func ReadTier(ctx context.Context, org *organization.Organization, user string, 
 // Fail-safe: a lookup error is RETURNED rather than answered as Free, so a
 // transient store error can never strip a paid subscriber's tier.
 func TierOf(ctx context.Context, org *organization.Organization, user string) (tier.Name, error) {
-	if (org != nil && IsPaidEcosystemOrg(org.Name)) || IsPaidEcosystemOrg(UserOrg(user)) {
+	if IsEcosystemAccount(org, user) {
 		return tier.Enterprise, nil
 	}
 	if org == nil {
