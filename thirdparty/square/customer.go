@@ -137,6 +137,9 @@ func (sp *SquareProcessor) Vault(ctx context.Context, customerID, token string) 
 		CardNonce:  token,
 	})
 	if err != nil {
+		if d := decline(err); d != nil {
+			err = d
+		}
 		return processor.Card{}, fmt.Errorf("square add payment method: %w", err)
 	}
 	if resp.Card == nil || resp.Card.ID == nil {

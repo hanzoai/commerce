@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -158,11 +159,7 @@ func (sp *SquareProcessor) Charge(ctx context.Context, req processor.PaymentRequ
 
 	resp, err := sp.paymentsClient.Create(ctx, paymentReq)
 	if err != nil {
-		return &processor.PaymentResult{
-			Success:      false,
-			Error:        err,
-			ErrorMessage: err.Error(),
-		}, err
+		return failed(err)
 	}
 
 	payment := resp.Payment
@@ -205,6 +202,46 @@ func (sp *SquareProcessor) Charge(ctx context.Context, req processor.PaymentRequ
 	}, nil
 }
 
+// failed is the answer to a payment Square did not take. A refused card is a
+// processor.Decline carrying only Square's category and code: Square returns the
+// failed payment beside its errors, card_details included, so the raw response is
+// not kept anywhere a buyer or a log could read it. Any other failure is returned
+// as the SDK reported it.
+func failed(err error) (*processor.PaymentResult, error) {
+	if d := decline(err); d != nil {
+		err = d
+	}
+	return &processor.PaymentResult{Success: false, Error: err, ErrorMessage: err.Error()}, err
+}
+
+// decline reads the card refusal out of a Square API error, or answers nil when err
+// is not one. Square classifies a refused card under PAYMENT_METHOD_ERROR and names
+// the refusal in the code beside it.
+func decline(err error) *processor.Decline {
+	var api *core.APIError
+	if !errors.As(err, &api) || api.Unwrap() == nil {
+		return nil
+	}
+	var body struct {
+		Errors []struct {
+			Category string `json:"category"`
+			Code     string `json:"code"`
+		} `json:"errors"`
+	}
+	if json.Unmarshal([]byte(api.Unwrap().Error()), &body) != nil {
+		return nil
+	}
+	for _, e := range body.Errors {
+		if e.Category == paymentMethodError {
+			return &processor.Decline{Processor: processor.Square, Category: e.Category, Code: e.Code}
+		}
+	}
+	return nil
+}
+
+// paymentMethodError is Square's error category for a card it refused.
+const paymentMethodError = "PAYMENT_METHOD_ERROR"
+
 // Authorize authorizes a payment without capturing
 func (sp *SquareProcessor) Authorize(ctx context.Context, req processor.PaymentRequest) (*processor.PaymentResult, error) {
 	if err := processor.ValidateRequest(req); err != nil {
@@ -234,11 +271,7 @@ func (sp *SquareProcessor) Authorize(ctx context.Context, req processor.PaymentR
 
 	resp, err := sp.paymentsClient.Create(ctx, paymentReq)
 	if err != nil {
-		return &processor.PaymentResult{
-			Success:      false,
-			Error:        err,
-			ErrorMessage: err.Error(),
-		}, err
+		return failed(err)
 	}
 
 	return &processor.PaymentResult{
