@@ -242,6 +242,12 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 	result, err := proc.Charge(ctx, chargeReq)
 	if err != nil {
 		abandon()
+		// A refused card answers the sentence the buyer may read and carries the
+		// processor's refusal for a caller that answers with its code.
+		if d, ok := processor.DeclineOf(err); ok {
+			log.Warn("Card declined for token topup (org=%s): %s %s", in.Subject, d.Category, d.Code)
+			return nil, fault(402, d.Sentence(), d)
+		}
 		log.Error("Charge failed for token topup (org=%s): %v", in.Subject, err)
 		return nil, fault(402, "charge failed", err)
 	}

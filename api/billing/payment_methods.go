@@ -76,7 +76,17 @@ func verifyCardWithPreAuth(ctx context.Context, reg *processor.Registry, nonce, 
 }
 
 // parseCardDeclineReason returns a single clean sentence explaining why the card was declined.
+//
+// A refusal the processor classified ([processor.Decline]) answers with its own
+// sentence, which is one of a closed set. Only a processor that states no code falls
+// back to reading its message, and that reading lands on the same closed set. The
+// message is never searched when a code exists: Square's refusal carries the
+// payment's card_details beside it, whose cvv_status field made every Square
+// decline read as a security-code mismatch.
 func parseCardDeclineReason(result *processor.PaymentResult, err error) string {
+	if d, ok := declineOf(result, err); ok {
+		return d.Sentence()
+	}
 	if result == nil && err != nil {
 		if strings.Contains(err.Error(), "timeout") {
 			return "Card verification timed out. Please try again."
@@ -90,29 +100,40 @@ func parseCardDeclineReason(result *processor.PaymentResult, err error) string {
 	}
 	lower := strings.ToLower(msg)
 
+	code := ""
 	switch {
 	case strings.Contains(lower, "insufficient_funds"):
-		return "Card declined — insufficient funds."
-	case strings.Contains(lower, "transaction_limit"):
-		return "Card declined — transaction limit reached. Please try a different card."
+		code = processor.ReasonInsufficientFunds
 	case strings.Contains(lower, "address_verification_failure") || strings.Contains(lower, "avs_rejected"):
-		return "Card declined — billing address does not match. Please check your address and try again."
+		code = processor.ReasonAddress
 	case strings.Contains(lower, "cvv") || strings.Contains(lower, "cvc"):
-		return "Card declined — incorrect security code (CVV)."
+		code = processor.ReasonCVV
 	case strings.Contains(lower, "expired"):
-		return "Card declined — card is expired."
-	case strings.Contains(lower, "invalid_card") || strings.Contains(lower, "invalid_account"):
-		return "Card declined — invalid card number."
-	case strings.Contains(lower, "stolen") || strings.Contains(lower, "lost"):
-		return "Card declined — please contact your bank."
-	case strings.Contains(lower, "do_not_honor") || strings.Contains(lower, "generic_decline"):
-		return "Card declined by your bank. Please try a different card or contact your bank."
+		code = processor.ReasonExpired
 	case msg != "":
-		return "Card declined. Please try a different card."
+		code = processor.ReasonDeclined
 	default:
 		return "Unable to verify card. Please try again or use a different card."
 	}
+	return (&processor.Decline{Code: code}).Sentence()
 }
+
+// declineOf finds the processor's classified refusal of a charge, in its error or
+// in the result that carried it.
+func declineOf(result *processor.PaymentResult, err error) (*processor.Decline, bool) {
+	if d, ok := processor.DeclineOf(err); ok {
+		return d, true
+	}
+	if result != nil {
+		return processor.DeclineOf(result.Error)
+	}
+	return nil, false
+}
+
+// DeclineOf is the processor's classified refusal of a card, found anywhere in a
+// charge's error: the decline a caller answering with the processor's code reads,
+// when this package's own sentence is not enough.
+func DeclineOf(err error) (*processor.Decline, bool) { return processor.DeclineOf(err) }
 
 // The refusals these cores make, as VALUES. A core has no request to answer on,
 // so it says which KIND of refusal happened and the endpoint it was reached through

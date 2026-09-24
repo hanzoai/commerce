@@ -213,6 +213,26 @@ type saleRefusal struct {
 
 func (e saleRefusal) Error() string { return e.msg }
 
+// saleDecline is a declined sale that also carries the processor's classified
+// refusal, so a caller can answer with the processor's code as well as the sentence.
+// Both are in its chain: errors.As finds the saleRefusal for [IsSaleDeclined] and the
+// processor.Decline for [DeclineOf].
+type saleDecline struct {
+	saleRefusal
+	decline *processor.Decline
+}
+
+func (e saleDecline) Unwrap() []error { return []error{e.saleRefusal, e.decline} }
+
+// declinedSale is the refusal of a sale whose card said no.
+func declinedSale(res *processor.PaymentResult, err error) error {
+	r := saleRefusal{saleDeclined, parseCardDeclineReason(res, err)}
+	if d, ok := declineOf(res, err); ok {
+		return saleDecline{r, d}
+	}
+	return r
+}
+
 func isSale(err error, k saleKind) bool {
 	var e saleRefusal
 	return errors.As(err, &e) && e.kind == k
@@ -621,7 +641,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		pm, fresh, err = saveCard(ctx, db, cp, in.Subject, strings.TrimSpace(in.Email), sourceID)
 		if err != nil {
 			abandon()
-			return nil, saleRefusal{saleDeclined, parseCardDeclineReason(&processor.PaymentResult{ErrorMessage: err.Error()}, err)}
+			return nil, declinedSale(&processor.PaymentResult{ErrorMessage: err.Error()}, err)
 		}
 	}
 
@@ -639,8 +659,12 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			_ = pm.Delete()
 		}
 		abandon()
-		log.Error("saved-card charge failed for subscribe (subject=%s): %v", in.Subject, err)
-		return nil, saleRefusal{saleDeclined, parseCardDeclineReason(res, err)}
+		if d, ok := declineOf(res, err); ok {
+			log.Warn("saved-card charge declined for subscribe (subject=%s): %s %s", in.Subject, d.Category, d.Code)
+		} else {
+			log.Error("saved-card charge failed for subscribe (subject=%s): %v", in.Subject, err)
+		}
+		return nil, declinedSale(res, err)
 	}
 
 	// The charged card is the subscription's default from here on.
