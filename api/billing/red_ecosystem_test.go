@@ -3,12 +3,11 @@ package billing
 import (
 	"io"
 
-	"github.com/hanzoai/commerce/models/creditgrant"
-	"github.com/hanzoai/commerce/models/transaction"
-	txutil "github.com/hanzoai/commerce/models/transaction/util"
-	"github.com/hanzoai/commerce/models/types/currency"
 	"net/http"
 	"testing"
+
+	"github.com/hanzoai/commerce/models/creditgrant"
+	"github.com/hanzoai/commerce/models/types/currency"
 
 	"github.com/hanzoai/commerce/billing/tier"
 	"github.com/hanzoai/commerce/datastore"
@@ -26,17 +25,15 @@ func TestRed_AMemberCannotSpendAnotherMembersBalance(t *testing.T) {
 	defer ctx.Close()
 
 	org := moneyOrg("acme-members")
-	// DeductFromBalance reads kind "user" through the request context, so bob's
-	// funds are seeded where that read looks.
-	seedUserFunds(t, ctx, "acme-members/bob", 100000)
-	before := userFunds(t, ctx, "acme-members/bob")
+	deposit(t, datastore.New(org.Namespaced(ctx)), "acme-members/bob", 100000)
+	before := walletOf(t, ctx, org, "acme-members/bob")
 
 	alice := map[string]string{"X-User-IsOrgAdmin": "false", "X-User-Id": "acme-members/alice"}
 	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"balance","planId":"team","quantity":2,"userId":"acme-members/bob"}`, alice)
 	body, _ := io.ReadAll(resp.Body)
 
 	subs := parentSub(t, datastore.New(org.Namespaced(ctx)), "acme-members/bob", "team")
-	after := userFunds(t, ctx, "acme-members/bob")
+	after := walletOf(t, ctx, org, "acme-members/bob")
 	t.Logf("bob's team subscription opened by alice: %v", subs != nil)
 	t.Logf("status=%d balance %d -> %d body=%s", resp.StatusCode, before, after, body)
 	if resp.StatusCode == http.StatusCreated || subs != nil {
@@ -70,29 +67,6 @@ func TestRed_ACustomerGetsNoFreeSubscription(t *testing.T) {
 	if grants, _ := getActiveGrants(db, "hanzo/carol"); len(grants) != 0 {
 		t.Fatalf("a hanzo customer holds %d ecosystem grant(s)", len(grants))
 	}
-}
-
-func seedUserFunds(t *testing.T, ctx ae.Context, subject string, cents int64) {
-	t.Helper()
-	tr := transaction.New(datastore.New(ctx))
-	tr.Type = transaction.Deposit
-	tr.DestinationId = subject
-	tr.DestinationKind = "user"
-	tr.Currency = currency.USD
-	tr.Amount = currency.Cents(cents)
-	tr.MustCreate()
-}
-
-func userFunds(t *testing.T, ctx ae.Context, subject string) currency.Cents {
-	t.Helper()
-	d, err := txutil.GetTransactionsByCurrency(ctx, subject, "user", currency.USD, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if b, ok := d.Data[currency.USD]; ok && b != nil {
-		return b.Balance
-	}
-	return 0
 }
 
 // A plain member of a pooled ecosystem org (lux, zoo) carries no billing claim and
