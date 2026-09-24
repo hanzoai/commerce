@@ -97,7 +97,9 @@ func ListInvoices(ctx context.Context, org *organization.Organization, userID, s
 	}
 	limit, offset = PageParams(limit, offset)
 	db := datastore.New(org.Namespaced(ctx))
-	q := billinginvoice.Query(db).Ancestor(db.NewKey("synckey", "", 1, nil))
+	// Under no ancestor: an invoice saved again after it was loaded by id — every
+	// paid one — is stored without the synckey parent it was created under.
+	q := billinginvoice.Query(db)
 	if userID != "" {
 		q = q.Filter("UserId=", userID)
 	}

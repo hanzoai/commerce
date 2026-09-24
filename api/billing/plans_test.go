@@ -187,7 +187,7 @@ func firstNonNilPositive(vals ...*int) *int {
 //
 // Every consumer of Plan.Interval matches on types.Monthly ("month"), and the two
 // that bill reach their monthly answer by a DIFFERENT route when handed anything
-// else: advancePeriod through the default arm of its switch, MonthlyNormalizedCents
+// else: Advance through the default arm of its switch, MonthlyNormalizedCents
 // through the default arm of its own. Both arms exist to be generous about what a
 // stored row might hold, and neither is a place for the catalog's own value to
 // land — an answer reached through a fallback is one nothing asserts, and the next

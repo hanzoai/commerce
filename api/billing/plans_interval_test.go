@@ -409,13 +409,14 @@ func TestAnnualRenewalChargesTheYearAgain(t *testing.T) {
 		t.Fatal("no dev subscription created")
 	}
 
-	// Age it past the year it paid for — a renewal only bills an elapsed period.
+	// Age it to the end of the year it paid for — a renewal bills the next year
+	// once the paid one is over.
 	fresh := subscription.New(db)
 	if err := fresh.GetById(sub.Id()); err != nil {
 		t.Fatalf("re-read subscription: %v", err)
 	}
-	fresh.PeriodStart = time.Now().AddDate(-2, 0, 0)
-	fresh.PeriodEnd = time.Now().AddDate(-1, 0, 0)
+	fresh.PeriodStart = time.Now().AddDate(-1, 0, -1)
+	fresh.PeriodEnd = time.Now().AddDate(0, 0, -1)
 	if err := fresh.Update(); err != nil {
 		t.Fatalf("age subscription: %v", err)
 	}
@@ -445,10 +446,11 @@ func TestAnnualRenewalChargesTheYearAgain(t *testing.T) {
 		t.Fatalf("the renewed period ends %s, want %s — a year was paid for again", after.PeriodEnd, want)
 	}
 
-	// The receipt agrees with the charge.
+	// The receipt agrees with the charge: the renewal invoices the year after the
+	// one paid for, in advance.
 	var renewal *billinginvoice.BillingInvoice
 	for _, inv := range invoicesForSub(t, db, sub.Id()) {
-		if inv.PeriodStart.Equal(fresh.PeriodStart) {
+		if inv.PeriodStart.Unix() == fresh.PeriodEnd.Unix() {
 			renewal = inv
 		}
 	}

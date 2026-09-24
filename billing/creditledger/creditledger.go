@@ -1,5 +1,6 @@
-// Package creditledger is the injection seam for the ONE double-entry credit
-// ledger commerce's billing writes to.
+// Package creditledger is the injection seam for the ONE double-entry ledger
+// commerce's prepaid money lives in: credits go in, balances are read, and
+// payments are drawn out, all at one address.
 //
 // Commerce runs BOTH standalone and EMBEDDED in the cloud binary. When embedded,
 // the AI spend-gate reads cloud's native ledger (a per-org finance ledger);
@@ -15,6 +16,7 @@ package creditledger
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 )
@@ -58,16 +60,33 @@ type CreditInput struct {
 	ExpiresAt      *time.Time
 }
 
-// CreditLedger is the ONE way credit enters an org ledger when commerce is
-// embedded. Both methods MUST resolve the account the SAME way — an empty Subject is
-// the org's pool on either side — so a Credit is immediately visible to Balance and
-// to the cloud AI gate that reads the same ledger account.
+// DebitInput is one payment drawn from an account: (Org, Subject, Test) is the
+// same address CreditInput names, so a debit spends the money a credit put there.
+// Ref names the act the money pays for and is the idempotency key: the same Ref
+// for the same amount debits at most once.
+type DebitInput struct {
+	Org         string
+	Subject     string
+	Currency    string
+	Reason      string
+	Ref         string
+	AmountCents int64
+	Test        bool
+}
+
+// ErrShort is a debit the account cannot cover in full. It moved nothing.
+var ErrShort = errors.New("insufficient balance")
+
+// CreditLedger is the ONE ledger commerce's prepaid money lives in when commerce is
+// embedded. Every method MUST resolve the account the SAME way — an empty Subject is
+// the org's pool everywhere — so a Credit is immediately visible to Balance, to
+// Debit, and to the cloud AI gate that reads the same ledger account.
 //
 // THEY TAKE THE SAME ADDRESS, and that is the point of the shapes below. A credit
-// lands at (Org, Subject, Test); a read that named fewer components than that could
-// not name the account the credit went to, and the one it named instead was a
-// different account that answers without complaining. Both halves spell the whole
-// address or neither does.
+// lands at (Org, Subject, Test); a read or a debit that named fewer components than
+// that could not name the account the credit went to, and the one it named instead
+// was a different account that answers without complaining. Every verb spells the
+// whole address or none does.
 type CreditLedger interface {
 	// Credit appends a BALANCED double-entry credit to the org's account and
 	// returns the posting/tx id and the account's new available balance.
@@ -79,6 +98,12 @@ type CreditLedger interface {
 	// byte-for-byte the address CreditInput names. An empty subject is the org's
 	// pool, the same default Credit applies.
 	Balance(ctx context.Context, org, subject, currency string, test bool) (availableCents int64, err error)
+	// Debit draws a payment from the account, all or nothing: when the account
+	// holds less than AmountCents it moves nothing and answers ErrShort. The check
+	// and the posting are one transaction, so a concurrent spend cannot take the
+	// account below zero between them. Idempotent on Ref: a replay answers the
+	// original posting's id and moves nothing.
+	Debit(ctx context.Context, in DebitInput) (txID string, balanceCents int64, err error)
 }
 
 var (

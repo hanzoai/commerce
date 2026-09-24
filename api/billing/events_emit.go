@@ -69,7 +69,7 @@ func emitSale(ctx context.Context, ev *events.Client, orgName string, sub *subsc
 // package produces.
 //
 // The period is interval × intervalCount, and BOTH are required, because the
-// price is charged in full once per period. billing/engine advancePeriod moves
+// price is charged in full once per period. billing/engine Advance moves
 // a subscription on by AddDate(0, IntervalCount, 0) and the invoice carries
 // Plan.Price × seats for that whole span — so month/3 at $50 is $50 every three
 // months, worth $16.67 of monthly recurring revenue. This function used to take
