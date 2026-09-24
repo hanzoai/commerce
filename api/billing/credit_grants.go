@@ -273,7 +273,7 @@ func ReadCreditBalance(ctx context.Context, org *organization.Organization, user
 	if userID == "" {
 		return nil, fmt.Errorf("credit balance: %w", errNoUser)
 	}
-	isPaidEco := (org != nil && IsPaidEcosystemOrg(org.Name)) || IsPaidEcosystemOrg(UserOrg(userID))
+	isPaidEco := IsEcosystemAccount(org, userID)
 	grants, err := getActiveGrants(datastore.New(org.Namespaced(ctx)), userID)
 	if err != nil {
 		return nil, err
@@ -337,7 +337,7 @@ func ReadCreditBreakdown(ctx context.Context, org *organization.Organization, us
 		}
 	}
 
-	isPaidEco := (org != nil && IsPaidEcosystemOrg(org.Name)) || IsPaidEcosystemOrg(UserOrg(userID))
+	isPaidEco := IsEcosystemAccount(org, userID)
 	if isPaidEco && out.Total.Cents < DefaultEcosystemCreditCents {
 		diff := DefaultEcosystemCreditCents - out.Total.Cents
 		out.Total.Cents = DefaultEcosystemCreditCents
@@ -436,11 +436,9 @@ func EnsureEcosystemCredits(ctx context.Context, db *datastore.Datastore, target
 	if target == "" {
 		return nil
 	}
-	orgName := target
-	if uOrg := UserOrg(target); uOrg != "" {
-		orgName = uOrg
-	}
-	if !IsPaidEcosystemOrg(orgName) {
+	// Only an ecosystem org's own account is kept funded; a person inside it
+	// funds their own wallet.
+	if !IsEcosystemAccount(nil, target) {
 		return nil
 	}
 

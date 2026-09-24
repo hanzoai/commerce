@@ -131,7 +131,7 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 	// ungated, the row opens internal and the first renewal marks it invoiced: a
 	// contact-sales plan's invoice is $0, so that collection succeeds with no money
 	// and the row confers its tier.
-	isPaidEco := (org != nil && IsPaidEcosystemOrg(org.Name)) || IsPaidEcosystemOrg(UserOrg(req.UserId))
+	isPaidEco := IsEcosystemAccount(org, req.UserId)
 	if paidPlan(p.Slug, p) && !middleware.MayMintMoney(c) && !isPaidEco {
 		return http.Fail(c, 403,
 			"creating a paid-tier subscription requires platform-administrator or internal-service credentials", nil)
