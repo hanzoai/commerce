@@ -247,7 +247,7 @@ func resolveSubscriptionPlan(db *datastore.Datastore, planId string) (*plan.Plan
 		p.Description = staticP.Description
 		p.Category = staticP.Category
 		p.Price = currency.Cents(staticP.Price)
-		p.PriceAnnual = currency.Cents(staticP.PriceAnnual)
+		p.PriceAnnual = currency.Cents(staticP.annual())
 		p.AnnualTotal = currency.Cents(staticP.AnnualTotal)
 		p.Prices = centsOf(staticP.Prices)
 		p.ContactSales = staticP.ContactSales

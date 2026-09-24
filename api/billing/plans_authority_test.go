@@ -49,8 +49,8 @@ func TestSeededPricesEqualEmbed(t *testing.T) {
 		if err != nil || !ok {
 			t.Fatalf("seeded plan %q missing: ok=%v err=%v", embed.Slug, ok, err)
 		}
-		if int64(p.Price) != embed.Price || int64(p.PriceAnnual) != embed.PriceAnnual {
-			t.Errorf("seeded %q price %d/%d != embed %d/%d (seed must not change charge)", embed.Slug, p.Price, p.PriceAnnual, embed.Price, embed.PriceAnnual)
+		if int64(p.Price) != embed.Price || int64(p.PriceAnnual) != embed.annual() {
+			t.Errorf("seeded %q price %d/%d != embed %d/%d (seed must not change charge)", embed.Slug, p.Price, p.PriceAnnual, embed.Price, embed.annual())
 		}
 		if p.ContactSales != embed.ContactSales {
 			t.Errorf("seeded %q contactSales %v != embed %v (null-vs-0 preserved)", embed.Slug, p.ContactSales, embed.ContactSales)
@@ -150,8 +150,8 @@ func TestPlanAuthorityRows_LoudFallbackThenAuthority(t *testing.T) {
 	}
 	for _, embed := range catalog {
 		got := bySlug[embed.Slug]
-		if got.Price != embed.Price || got.Category != embed.Category || got.PriceAnnual != embed.PriceAnnual {
-			t.Errorf("projected %q = %d/%d/%s, want %d/%d/%s", embed.Slug, got.Price, got.PriceAnnual, got.Category, embed.Price, embed.PriceAnnual, embed.Category)
+		if got.Price != embed.Price || got.Category != embed.Category || !sameCents(got.PriceAnnual, embed.PriceAnnual) {
+			t.Errorf("projected %q = %d/%s/%s, want %d/%s/%s", embed.Slug, got.Price, centsText(got.PriceAnnual), got.Category, embed.Price, centsText(embed.PriceAnnual), embed.Category)
 		}
 	}
 }

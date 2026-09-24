@@ -111,8 +111,12 @@ type PlanView struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Category    string `json:"category"`
-	Price       int64  `json:"price"`       // monthly price in cents (0 = free)
-	PriceAnnual int64  `json:"priceAnnual"` // annual price in cents per month, for display
+	Price       int64  `json:"price"` // monthly price in cents (0 = free)
+	// PriceAnnual is the annual price in cents per month, for display, and null
+	// where the catalog states none: a plan sold by the month only (advisory,
+	// dedicated) or a sales call. Null is not $0 — a $0 annual price on a plan
+	// that charges would advertise a free year of it.
+	PriceAnnual *int64 `json:"priceAnnual"`
 	// AnnualTotal is what a year of the plan charges, in cents (plan.AnnualTotal).
 	// Absent for a plan not sold by the year.
 	AnnualTotal int64 `json:"annualTotal,omitempty"`
@@ -247,7 +251,8 @@ func parsePlans(data []byte) ([]staticPlan, error) {
 			sp.Price = int64(math.Round(*cp.PriceMonthly * 100))
 		}
 		if cp.PriceAnnual != nil {
-			sp.PriceAnnual = int64(math.Round(*cp.PriceAnnual * 100))
+			annual := int64(math.Round(*cp.PriceAnnual * 100))
+			sp.PriceAnnual = &annual
 		}
 		for _, d := range cp.Prices {
 			sp.Prices = append(sp.Prices, int64(math.Round(d*100)))
@@ -265,7 +270,7 @@ func parsePlans(data []byte) ([]staticPlan, error) {
 		// price — the dns rows, whose per-month figures are whole dollars. The
 		// catalog states the total wherever twelve months would not add up to it.
 		if sp.AnnualTotal == 0 {
-			sp.AnnualTotal = sp.PriceAnnual * 12
+			sp.AnnualTotal = sp.annual() * 12
 		}
 		sp.Limits = cp.Limits
 		sp.Licensing = licensingOf(&canonical[i])
@@ -274,6 +279,16 @@ func parsePlans(data []byte) ([]staticPlan, error) {
 	}
 
 	return plans, nil
+}
+
+// annual is the plan's annual price as the row stores it: zero where the catalog
+// states none. The row keeps money non-nullable, as it does Price beside
+// ContactSales, and annualOf reads that zero back as null.
+func (p *PlanView) annual() int64 {
+	if p.PriceAnnual == nil {
+		return 0
+	}
+	return *p.PriceAnnual
 }
 
 // withPromo returns a COPY of the catalog (never the shared catalog var) with
@@ -630,7 +645,7 @@ func toPlan(p *staticPlan) Plan {
 		Description: p.Description,
 		Category:    p.Category,
 		PriceMonth:  p.Price,
-		PriceYear:   p.PriceAnnual,
+		PriceYear:   p.annual(),
 		Currency:    p.Currency,
 	}
 }
