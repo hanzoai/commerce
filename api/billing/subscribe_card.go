@@ -224,9 +224,14 @@ type saleDecline struct {
 
 func (e saleDecline) Unwrap() []error { return []error{e.saleRefusal, e.decline} }
 
-// declinedSale is the refusal of a sale whose card said no.
+// declinedSale is the refusal of a sale whose card said no, or a sale held because
+// its payment is still processing (an in-flight sale, answered as one).
 func declinedSale(d *processor.Decline) error {
-	return saleDecline{saleRefusal{saleDeclined, d.Sentence()}, d}
+	kind := saleDeclined
+	if d.Processing() {
+		kind = saleHeld
+	}
+	return saleDecline{saleRefusal{kind, d.Sentence()}, d}
 }
 
 func isSale(err error, k saleKind) bool {
@@ -613,10 +618,12 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		abandon()
 		return nil, saleRefusal{saleUnchargeable, "no card-on-file payment processor available for this organization"}
 	}
-	if err := ceiling(db, in.Subject); err != nil {
+	release, err := attempt(db, org.Name, in.Subject)
+	if err != nil {
 		abandon()
 		return nil, err
 	}
+	defer release()
 	var pm *paymentmethod.PaymentMethod
 	fresh := false // whether THIS request vaulted a new card (decline cleanup)
 	if methodID != "" {
@@ -839,7 +846,9 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		case IsSaleDeclined(err):
 			return http.Fail(c, 402, err.Error(), nil)
 		case IsDeclineCeiling(err):
-			return http.Fail(c, 429, "Too many declined card attempts. Try again later.", nil)
+			return http.Fail(c, 429, ceilingSentence, nil)
+		case IsAttemptInFlight(err):
+			return http.Fail(c, 409, attemptSentence, nil)
 		case IsProcessorFailed(err):
 			return http.Fail(c, 502, processorSentence, nil)
 		case IsMethodNotFound(err):
@@ -940,7 +949,7 @@ func chargeProviderForOrg(org *organization.Organization) engine.ProviderCharger
 			// already rotates per attempt (AttemptCount), and a renewal is off-session,
 			// so it is neither counted against the wallet nor held by its ceiling.
 			if d := refusalOf(res, err); d != nil {
-				log.Warn("renewal declined (invoice=%s): %s %s", inv.Id(), d.Category, d.Code)
+				answered(db, "renewal "+inv.Id(), inv.UserId, "", d)
 				return "", declinedCard{d}
 			}
 			return "", processorFailure("renewal", inv.UserId, err)

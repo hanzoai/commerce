@@ -189,9 +189,10 @@ func (sp *SquareProcessor) Charge(ctx context.Context, req processor.PaymentRequ
 	var refused error
 	if !completed {
 		errMsg = "payment not completed (status: " + paymentStatus + ")"
-		// A payment Square answered and did not settle took no money, so it is a
-		// refusal of the charge, named by its status.
-		refused = &processor.Decline{Processor: processor.Square, Category: "PAYMENT_STATUS", Code: paymentStatus}
+		// A payment Square answered and did not settle is named by its status: a
+		// refusal when it will not settle (FAILED, CANCELED), and still processing
+		// when it may (PENDING, APPROVED; see processor.Decline.Processing).
+		refused = &processor.Decline{Processor: processor.Square, Category: processor.StatusCategory, Code: paymentStatus}
 	}
 	return &processor.PaymentResult{
 		Success:       completed,

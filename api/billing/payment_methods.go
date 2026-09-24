@@ -229,11 +229,13 @@ func CreateMethod(ctx context.Context, org *organization.Organization, email str
 	// EXISTING row instead of stacking a duplicate when the same card is saved
 	// again. Use the per-org registry so Square carries the org's credentials.
 	if in.ProviderRef != "" {
-		reg := payment.ProcessorsForOrg(org)
+		reg := processorsForOrg(org)
 		if cp, ok := squareCustomerProcessorFrom(reg); ok {
-			if err := ceiling(db, in.CustomerId); err != nil {
+			release, err := attempt(db, org.Name, in.CustomerId)
+			if err != nil {
 				return nil, false, err
 			}
+			defer release()
 			pm, created, err := saveCard(ctx, db, cp, in.CustomerId, strings.TrimSpace(email), in.ProviderRef)
 			if err != nil {
 				// Vaulting validates the card, so a refusal here is the card's and is
@@ -368,7 +370,9 @@ func CreatePaymentMethod(c *zip.Ctx) error {
 		case IsCardDeclined(err):
 			return http.Fail(c, 402, err.Error(), nil)
 		case IsDeclineCeiling(err):
-			return http.Fail(c, 429, "Too many declined card attempts. Try again later.", nil)
+			return http.Fail(c, 429, ceilingSentence, nil)
+		case IsAttemptInFlight(err):
+			return http.Fail(c, 409, attemptSentence, nil)
 		case IsProcessorFailed(err):
 			return http.Fail(c, 502, processorSentence, nil)
 		}

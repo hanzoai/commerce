@@ -120,3 +120,29 @@ func TestCharge_AFailureThatIsNotARefusalIsScrubbed(t *testing.T) {
 		}
 	}
 }
+
+// TestCharge_ACardRefusalAmongOtherErrorsIsTheDecline — Square can list several errors
+// for one request, and the card refusal is the one that decides the answer wherever it
+// sits in the list.
+func TestCharge_ACardRefusalAmongOtherErrorsIsTheDecline(t *testing.T) {
+	body := `{"errors":[{"category":"INVALID_REQUEST_ERROR","code":"INVALID_VALUE"},` +
+		`{"category":"PAYMENT_METHOD_ERROR","code":"CVV_FAILURE"}]}`
+	_, err := squareAnswering(t, http.StatusPaymentRequired, body).Charge(context.Background(), charge)
+	d, ok := processor.DeclineOf(err)
+	if !ok || d.Code != "CVV_FAILURE" {
+		t.Fatalf("a refusal listed second answered %v", err)
+	}
+}
+
+// TestCharge_APendingPaymentIsStillProcessing — a payment Square answered 200 and has
+// not settled is still processing, not declined.
+func TestCharge_APendingPaymentIsStillProcessing(t *testing.T) {
+	res, err := squareAnswering(t, http.StatusOK, `{"payment":{"id":"P1","status":"PENDING"}}`).Charge(context.Background(), charge)
+	if err != nil || res == nil || res.Success {
+		t.Fatalf("answered %+v, %v", res, err)
+	}
+	d, ok := processor.DeclineOf(res.Error)
+	if !ok || !d.Processing() {
+		t.Fatalf("a PENDING payment is %v, want still processing", res.Error)
+	}
+}

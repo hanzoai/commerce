@@ -157,10 +157,6 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 		}
 	}
 
-	if err := ceiling(db, userId); err != nil {
-		abandon()
-		return "", 0, err
-	}
 	base := gatewayKey("charge", userId, idemKey)
 
 	squareCustomerID := pm.CustomerId
@@ -200,8 +196,11 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 	result, err := proc.Charge(ctx, chargeReq)
 	if err != nil || result == nil || !result.Success {
 		abandon()
+		// A refusal moves the next attempt onto its own gateway key. It is not counted
+		// against the wallet here: this core also runs the auto-recharge sweep, which
+		// is off-session, and [TopupCard] counts a buyer's refusal itself.
 		if d := refusalOf(result, err); d != nil {
-			refused(db, "saved-card charge", userId, base, d)
+			answered(db, "saved-card charge", userId, base, d)
 			return "", 0, declinedCard{d}
 		}
 		return "", 0, processorFailure("saved-card charge", userId, err)
@@ -404,8 +403,18 @@ func TopupCard(ctx context.Context, org *organization.Organization, in TopupCard
 		desc = fmt.Sprintf("Top-up %d %s for %s", in.AmountCents, cur, in.Subject)
 	}
 
+	// A buyer's attempt: one at a time for the wallet, held at its refusal ceiling, and
+	// a refusal counted against it ([attempt]).
+	release, err := attempt(db, org.Name, in.Subject)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
 	txID, balanceCents, err := chargeAndCredit(ctx, in.Events, org, db, pm, in.AmountCents, cur, in.Subject, idemKey, desc)
 	if err != nil {
+		if d, ok := DeclineOf(err); ok && !d.Processing() {
+			tally(db, in.Subject)
+		}
 		return nil, err
 	}
 	return &TopupCardOut{TransactionID: txID, BalanceCents: int64(balanceCents), Status: "ok"}, nil
@@ -480,12 +489,14 @@ func Topup(c *zip.Ctx) error {
 		case IsTopupUncredited(err):
 			return jsonhttp.Fail(c, 500, "charge succeeded but balance credit failed; contact support", err)
 		case IsDeclineCeiling(err):
-			return jsonhttp.Fail(c, 429, "Too many declined card attempts. Try again later.", nil)
+			return jsonhttp.Fail(c, 429, ceilingSentence, nil)
+		case IsAttemptInFlight(err):
+			return jsonhttp.Fail(c, 409, attemptSentence, nil)
 		case IsProcessorFailed(err):
 			return jsonhttp.Fail(c, 502, processorSentence, nil)
 		}
 		if d, ok := DeclineOf(err); ok {
-			return jsonhttp.Fail(c, 402, d.Sentence(), nil)
+			return jsonhttp.Fail(c, declineStatus(d), d.Sentence(), nil)
 		}
 		log.Error("Charge failed for topup (subject=%s pm=%s): %v", subject, req.PaymentMethodID, err, c)
 		return jsonhttp.Fail(c, 500, "the top-up could not be completed; please retry", nil)

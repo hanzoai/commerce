@@ -67,3 +67,35 @@ func TestDecline_IsFoundThroughWrappingAndCarriesNoCardText(t *testing.T) {
 		t.Error("the category is for operators and should not be in the message")
 	}
 }
+
+// TestDecline_APaymentStillProcessingIsNotARefusal — Square's PENDING and APPROVED
+// are payments that may yet settle: their own reason and sentence, and
+// ErrUnknownOutcome rather than ErrPaymentDeclined, so no caller retries them under a
+// new key or counts them against a wallet. FAILED and CANCELED will not settle and are
+// refusals.
+func TestDecline_APaymentStillProcessingIsNotARefusal(t *testing.T) {
+	for _, tc := range []struct {
+		code       string
+		processing bool
+	}{{"PENDING", true}, {"APPROVED", true}, {"FAILED", false}, {"CANCELED", false}} {
+		d := &Decline{Processor: Square, Category: StatusCategory, Code: tc.code}
+		if d.Processing() != tc.processing {
+			t.Errorf("%s: processing %t", tc.code, d.Processing())
+		}
+		if errors.Is(d, ErrUnknownOutcome) != tc.processing || errors.Is(d, ErrPaymentDeclined) == tc.processing {
+			t.Errorf("%s: is unknown-outcome %t, is declined %t", tc.code, errors.Is(d, ErrUnknownOutcome), errors.Is(d, ErrPaymentDeclined))
+		}
+		wantReason, wantSentence := ReasonDeclined, "Your card was declined by the bank."
+		if tc.processing {
+			wantReason, wantSentence = ReasonProcessing, "Your payment is still processing. Please don't pay again."
+		}
+		if d.Reason() != wantReason || d.Sentence() != wantSentence {
+			t.Errorf("%s: %s %q", tc.code, d.Reason(), d.Sentence())
+		}
+	}
+	// A card refusal whose code happens to read PENDING is still a refusal: only the
+	// status category names a payment's state.
+	if (&Decline{Category: "PAYMENT_METHOD_ERROR", Code: "PENDING"}).Processing() {
+		t.Error("a PAYMENT_METHOD_ERROR was read as a payment still processing")
+	}
+}
