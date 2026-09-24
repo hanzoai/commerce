@@ -153,12 +153,12 @@ func InvoicePreview(c *zip.Ctx) error {
 		}
 	}
 
-	// 4. Apply credit burn-down
+	// 4. What the credit grants would cover. A preview reads them; it never spends.
 	creditApplied := int64(0)
 	overage := totalCost
 
 	if totalCost > 0 {
-		remaining, err := BurnCredits(db, req.UserId, totalCost, "")
+		remaining, err := BurnCreditsPreview(db, req.UserId, totalCost)
 		if err != nil {
 			log.Error("Failed to calculate credit burn-down: %v", err, c)
 			// Non-fatal: show preview without credits
