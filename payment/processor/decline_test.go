@@ -18,6 +18,8 @@ func TestDecline_EachCodeTellsTheBuyerItsSentence(t *testing.T) {
 		{"CARD_DECLINED", "CARD_DECLINED", "Your card was declined by the bank."},
 		{"GENERIC_DECLINE", "CARD_DECLINED", "Your card was declined by the bank."},
 		{"CVV_FAILURE", "CVV_FAILURE", "The security code (CVV) didn't match."},
+		{"VERIFY_CVV_FAILURE", "CVV_FAILURE", "The security code (CVV) didn't match."},
+		{"VERIFY_AVS_FAILURE", "ADDRESS_VERIFICATION_FAILURE", "The billing ZIP code didn't match."},
 		{"ADDRESS_VERIFICATION_FAILURE", "ADDRESS_VERIFICATION_FAILURE", "The billing ZIP code didn't match."},
 		{"EXPIRATION_FAILURE", "EXPIRATION_FAILURE", "The card has expired."},
 		{"CARD_EXPIRED", "EXPIRATION_FAILURE", "The card has expired."},

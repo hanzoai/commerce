@@ -225,12 +225,8 @@ type saleDecline struct {
 func (e saleDecline) Unwrap() []error { return []error{e.saleRefusal, e.decline} }
 
 // declinedSale is the refusal of a sale whose card said no.
-func declinedSale(res *processor.PaymentResult, err error) error {
-	r := saleRefusal{saleDeclined, parseCardDeclineReason(res, err)}
-	if d, ok := declineOf(res, err); ok {
-		return saleDecline{r, d}
-	}
-	return r
+func declinedSale(d *processor.Decline) error {
+	return saleDecline{saleRefusal{saleDeclined, d.Sentence()}, d}
 }
 
 func isSale(err error, k saleKind) bool {
@@ -490,7 +486,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// The Square idempotency key is derived from the SAME stable guard key (never the
 	// single-use nonce), so Square itself de-dups the money move even if the local
 	// guard store is unavailable OR two submits race — the definitive backstop.
-	squareKey := gatewayKey("subscribe", in.Subject, guard)
+	base := gatewayKey("subscribe", in.Subject, guard)
 
 	rec, replay, gerr := idempotencykey.Begin(db, "billing-subscribe:"+in.Subject+":"+in.StoreID, guard)
 	if gerr != nil {
@@ -617,6 +613,10 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		abandon()
 		return nil, saleRefusal{saleUnchargeable, "no card-on-file payment processor available for this organization"}
 	}
+	if err := ceiling(db, in.Subject); err != nil {
+		abandon()
+		return nil, err
+	}
 	var pm *paymentmethod.PaymentMethod
 	fresh := false // whether THIS request vaulted a new card (decline cleanup)
 	if methodID != "" {
@@ -641,14 +641,19 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		pm, fresh, err = saveCard(ctx, db, cp, in.Subject, strings.TrimSpace(in.Email), sourceID)
 		if err != nil {
 			abandon()
-			return nil, declinedSale(&processor.PaymentResult{ErrorMessage: err.Error()}, err)
+			// Vaulting validates the card, so a refusal here is the card's.
+			if d := refusalOf(nil, err); d != nil {
+				refused(db, "plan sale", in.Subject, "", d)
+				return nil, declinedSale(d)
+			}
+			return nil, processorFailure("plan sale", in.Subject, err)
 		}
 	}
 
 	// Charge the SAVED card (card-on-file id + Square customer id) for the first
 	// period at the server-authoritative price × seats, with the stable Square
 	// idempotency key. All-or-nothing: on a decline no subscription is created.
-	res, err := chargeSavedCard(ctx, reg, pm.ProviderRef, squareCustomerIDOf(pm), chargeCents, cur, squareKey,
+	res, err := chargeSavedCard(ctx, reg, pm.ProviderRef, squareCustomerIDOf(pm), chargeCents, cur, attemptKey(db, base),
 		fmt.Sprintf("Subscription %s — first period", p.Name))
 	if err != nil || res == nil || !res.Success {
 		// A card vaulted BY THIS REQUEST is removed again so a declined attempt
@@ -659,12 +664,11 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			_ = pm.Delete()
 		}
 		abandon()
-		if d, ok := declineOf(res, err); ok {
-			log.Warn("saved-card charge declined for subscribe (subject=%s): %s %s", in.Subject, d.Category, d.Code)
-		} else {
-			log.Error("saved-card charge failed for subscribe (subject=%s): %v", in.Subject, err)
+		if d := refusalOf(res, err); d != nil {
+			refused(db, "plan sale", in.Subject, base, d)
+			return nil, declinedSale(d)
 		}
-		return nil, declinedSale(res, err)
+		return nil, processorFailure("plan sale", in.Subject, err)
 	}
 
 	// The charged card is the subscription's default from here on.
@@ -834,6 +838,10 @@ func SubscribeWithCard(c *zip.Ctx) error {
 			return http.Fail(c, 422, err.Error(), nil)
 		case IsSaleDeclined(err):
 			return http.Fail(c, 402, err.Error(), nil)
+		case IsDeclineCeiling(err):
+			return http.Fail(c, 429, "Too many declined card attempts. Try again later.", nil)
+		case IsProcessorFailed(err):
+			return http.Fail(c, 502, processorSentence, nil)
 		case IsMethodNotFound(err):
 			return http.Fail(c, 404, "payment method not found", err)
 		case IsMethodUnchargeable(err):
@@ -927,7 +935,15 @@ func chargeProviderForOrg(org *organization.Organization) engine.ProviderCharger
 		res, err := chargeSavedCard(ctx, reg, cardID, squareCustomerIDOf(pm), amountCents, cur, squareKey,
 			fmt.Sprintf("Subscription renewal invoice %s", inv.NumberStr))
 		if err != nil || res == nil || !res.Success {
-			return "", fmt.Errorf("%s", parseCardDeclineReason(res, err))
+			// A refusal keeps the processor's Decline beneath the sentence dunning
+			// records; anything else is the processor failing to answer. The key
+			// already rotates per attempt (AttemptCount), and a renewal is off-session,
+			// so it is neither counted against the wallet nor held by its ceiling.
+			if d := refusalOf(res, err); d != nil {
+				log.Warn("renewal declined (invoice=%s): %s %s", inv.Id(), d.Category, d.Code)
+				return "", declinedCard{d}
+			}
+			return "", processorFailure("renewal", inv.UserId, err)
 		}
 		return res.ProcessorRef, nil
 	}

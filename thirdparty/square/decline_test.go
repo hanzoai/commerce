@@ -82,16 +82,21 @@ func TestCharge_ARefusedCardIsADeclineWithSquaresCode(t *testing.T) {
 	}
 }
 
-// TestCharge_AFailureThatIsNotARefusalIsNotADecline — an authentication failure or
-// a malformed request is Square failing, not the card, and stays what the SDK said.
-func TestCharge_AFailureThatIsNotARefusalIsNotADecline(t *testing.T) {
+// TestCharge_AFailureThatIsNotARefusalIsScrubbed — an authentication failure, a
+// malformed request or an outage is Square failing, not the card. It is not a Decline,
+// and it leaves this package as a processor.PaymentError naming Square's status,
+// category and code, with none of Square's own text. That text can say anything
+// ("This access token has expired.") and read as a reason it would tell a buyer
+// something untrue about their card.
+func TestCharge_AFailureThatIsNotARefusalIsScrubbed(t *testing.T) {
 	for _, tc := range []struct {
 		status int
 		body   string
+		code   string
 	}{
-		{http.StatusUnauthorized, `{"errors":[{"category":"AUTHENTICATION_ERROR","code":"UNAUTHORIZED","detail":"bad token"}]}`},
-		{http.StatusBadRequest, `{"errors":[{"category":"INVALID_REQUEST_ERROR","code":"CARD_TOKEN_USED","detail":"used"}]}`},
-		{http.StatusInternalServerError, `not json`},
+		{http.StatusUnauthorized, `{"errors":[{"category":"AUTHENTICATION_ERROR","code":"ACCESS_TOKEN_EXPIRED","detail":"This access token has expired."}]}`, "ACCESS_TOKEN_EXPIRED"},
+		{http.StatusBadRequest, `{"errors":[{"category":"INVALID_REQUEST_ERROR","code":"CARD_TOKEN_USED","detail":"used"}]}`, "CARD_TOKEN_USED"},
+		{http.StatusInternalServerError, `not json`, "HTTP_500"},
 	} {
 		_, err := squareAnswering(t, tc.status, tc.body).Charge(context.Background(), charge)
 		if err == nil {
@@ -100,9 +105,18 @@ func TestCharge_AFailureThatIsNotARefusalIsNotADecline(t *testing.T) {
 		if _, ok := processor.DeclineOf(err); ok {
 			t.Errorf("%d %s: read as a card refusal", tc.status, tc.body)
 		}
+		var pe *processor.PaymentError
+		if !errors.As(err, &pe) || pe.Code != tc.code || pe.Processor != processor.Square {
+			t.Errorf("%d: %v is not the scrubbed error with code %s", tc.status, err, tc.code)
+		}
 		var api *core.APIError
-		if !errors.As(err, &api) || api.StatusCode != tc.status {
-			t.Errorf("%d: the SDK's error was not kept: %v", tc.status, err)
+		if errors.As(err, &api) {
+			t.Errorf("%d: the SDK's error, with Square's text, is still in the chain", tc.status)
+		}
+		for _, text := range []string{"expired", "used", "not json"} {
+			if strings.Contains(err.Error(), text) {
+				t.Errorf("%d: %q carries Square's text %q", tc.status, err.Error(), text)
+			}
 		}
 	}
 }

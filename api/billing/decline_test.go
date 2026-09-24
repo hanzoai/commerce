@@ -15,9 +15,9 @@ import (
 const squareBody = `{"payment":{"card_details":{"card":{"last_4":"1111"},"cvv_status":"CVV_ACCEPTED","avs_status":"AVS_ACCEPTED"}}}`
 
 // TestParseCardDeclineReason_AClassifiedRefusalIsReadByItsCode — a refusal the
-// processor classified is read by its code alone, never by the text beside it. The
-// text used to decide: every Square decline carries cvv_status, so a plain decline
-// told the buyer their security code was wrong.
+// processor classified is read by its code alone, never by the text beside it: every
+// Square decline carries cvv_status, so read as text a plain decline would tell the
+// buyer their security code was wrong.
 func TestParseCardDeclineReason_AClassifiedRefusalIsReadByItsCode(t *testing.T) {
 	for code, want := range map[string]string{
 		"CARD_DECLINED":                "Your card was declined by the bank.",
@@ -45,10 +45,10 @@ func TestParseCardDeclineReason_AClassifiedRefusalIsReadByItsCode(t *testing.T) 
 
 // TestTakePayment_ADeclinedCardAnswersItsSentenceAndCode — the token top-up's
 // refusal is the buyer's sentence at 402, with the processor's decline beneath it for
-// a caller that answers with the code. It answered "charge failed".
+// a caller that answers with the code.
 //
-// A failure that is not a classified refusal still says "charge failed" and never
-// the processor's own text.
+// A failure that is not a refusal is the processor failing: 502, in a sentence of our
+// own, never the processor's text.
 func TestTakePayment_ADeclinedCardAnswersItsSentenceAndCode(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -69,14 +69,20 @@ func TestTakePayment_ADeclinedCardAnswersItsSentenceAndCode(t *testing.T) {
 	m2.chargeErr = errors.New("402: " + squareBody)
 	withFakeSquare(t, m2)
 	_, f = TakePayment(ctx, org, TakePaymentIn{SourceID: "cnon:b", AmountCents: 500, Subject: "declineco", IdempotencyKey: "d-2"})
-	if f == nil || f.Status != 402 || f.Message != "charge failed" || strings.Contains(f.Message, "1111") {
-		t.Fatalf("fault %+v, want 402 \"charge failed\" without the processor's text", f)
+	if f == nil || f.Status != 502 || f.Message != processorSentence || !IsProcessorFailed(f.Err) {
+		t.Fatalf("fault %+v, want 502 %q", f, processorSentence)
+	}
+	if strings.Contains(f.Error(), "1111") || strings.Contains(f.Error(), "card_details") {
+		t.Errorf("the fault carries the processor's text: %q", f.Error())
 	}
 }
 
+// cardDeclined is Square's plain refusal, as commerce's Square processor answers it.
+var cardDeclined = &processor.Decline{Processor: processor.Square, Category: "PAYMENT_METHOD_ERROR", Code: "CARD_DECLINED"}
+
 // TestSubscribeCard_ADeclinedCardCarriesTheProcessorsCode — a plan sale's refusal
-// kept only a sentence, so no caller could answer with Square's code. It now carries
-// the decline beneath the sentence, and is still a declined sale.
+// carries the processor's decline beneath the buyer's sentence, so a caller can answer
+// with Square's code, and it is still a declined sale.
 func TestSubscribeCard_ADeclinedCardCarriesTheProcessorsCode(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()

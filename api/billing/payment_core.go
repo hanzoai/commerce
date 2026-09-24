@@ -190,7 +190,7 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 	if idemKey == "" {
 		idemKey = windowKey("amount:" + fmt.Sprint(in.AmountCents) + ":cur:" + string(cur))
 	}
-	squareKey := gatewayKey("topup", in.Subject, idemKey)
+	base := gatewayKey("topup", in.Subject, idemKey)
 
 	rec, replay, gerr := idemBegin(db, "billing-topup:"+in.Subject, idemKey)
 	if gerr != nil {
@@ -219,12 +219,16 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 			_ = rec.Delete()
 		}
 	}
+	if err := ceiling(db, in.Subject); err != nil {
+		abandon()
+		return nil, fault(429, "Too many declined card attempts. Try again later.", err)
+	}
 
 	chargeReq := processor.PaymentRequest{
 		Token:          in.SourceID,
 		Amount:         currency.Cents(in.AmountCents),
 		Currency:       cur,
-		IdempotencyKey: squareKey,
+		IdempotencyKey: attemptKey(db, base),
 		Description:    fmt.Sprintf("Top-up %d %s for org %s", in.AmountCents, cur, in.Subject),
 	}
 
@@ -240,24 +244,16 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 	}
 
 	result, err := proc.Charge(ctx, chargeReq)
-	if err != nil {
+	if err != nil || result == nil || !result.Success {
 		abandon()
 		// A refused card answers the sentence the buyer may read and carries the
-		// processor's refusal for a caller that answers with its code.
-		if d, ok := processor.DeclineOf(err); ok {
-			log.Warn("Card declined for token topup (org=%s): %s %s", in.Subject, d.Category, d.Code)
+		// processor's refusal for a caller that answers with its code. Anything else
+		// is the processor failing, and its text is never the buyer's.
+		if d := refusalOf(result, err); d != nil {
+			refused(db, "token top-up", in.Subject, base, d)
 			return nil, fault(402, d.Sentence(), d)
 		}
-		log.Error("Charge failed for token topup (org=%s): %v", in.Subject, err)
-		return nil, fault(402, "charge failed", err)
-	}
-	if !result.Success {
-		abandon()
-		msg := result.ErrorMessage
-		if msg == "" {
-			msg = "charge declined"
-		}
-		return nil, fault(402, msg, nil)
+		return nil, fault(502, processorSentence, processorFailure("token top-up", in.Subject, err))
 	}
 
 	// Credit the canonical balance for the subject the caller's endpoint bounded.

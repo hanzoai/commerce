@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -185,11 +186,16 @@ func (sp *SquareProcessor) Charge(ctx context.Context, req processor.PaymentRequ
 	// counts as money.
 	completed := processor.Settled(paymentStatus)
 	errMsg := ""
+	var refused error
 	if !completed {
 		errMsg = "payment not completed (status: " + paymentStatus + ")"
+		// A payment Square answered and did not settle took no money, so it is a
+		// refusal of the charge, named by its status.
+		refused = &processor.Decline{Processor: processor.Square, Category: "PAYMENT_STATUS", Code: paymentStatus}
 	}
 	return &processor.PaymentResult{
 		Success:       completed,
+		Error:         refused,
 		TransactionID: *payment.ID,
 		ProcessorRef:  *payment.ID,
 		Fee:           fee,
@@ -202,25 +208,45 @@ func (sp *SquareProcessor) Charge(ctx context.Context, req processor.PaymentRequ
 	}, nil
 }
 
-// failed is the answer to a payment Square did not take. A refused card is a
-// processor.Decline carrying only Square's category and code: Square returns the
-// failed payment beside its errors, card_details included, so the raw response is
-// not kept anywhere a buyer or a log could read it. Any other failure is returned
-// as the SDK reported it.
+// failed is the answer to a payment Square did not take, its error scrubbed ([scrub]).
 func failed(err error) (*processor.PaymentResult, error) {
-	if d := decline(err); d != nil {
-		err = d
-	}
+	err = scrub(err)
 	return &processor.PaymentResult{Success: false, Error: err, ErrorMessage: err.Error()}, err
 }
 
-// decline reads the card refusal out of a Square API error, or answers nil when err
-// is not one. Square classifies a refused card under PAYMENT_METHOD_ERROR and names
-// the refusal in the code beside it.
-func decline(err error) *processor.Decline {
+// scrub is a Square API error as this package lets it leave, applied where every SDK
+// call returns. The SDK's error text is Square's whole response, and for a refused
+// payment that response carries the payment's card_details (brand, last four digits,
+// expiry, BIN, fingerprint), so none of it is kept:
+//
+//	a card refusal (Square's PAYMENT_METHOD_ERROR) becomes a processor.Decline
+//	carrying the category and the code;
+//	any other Square error becomes a processor.PaymentError naming the HTTP status,
+//	the category and the code.
+//
+// An error that is not a Square API error (a context deadline, a failed dial) carries
+// no response and is returned unchanged.
+func scrub(err error) error {
 	var api *core.APIError
-	if !errors.As(err, &api) || api.Unwrap() == nil {
-		return nil
+	if !errors.As(err, &api) {
+		return err
+	}
+	category, code := classify(api)
+	if category == paymentMethodError {
+		return &processor.Decline{Processor: processor.Square, Category: category, Code: code}
+	}
+	if code == "" {
+		code = "HTTP_" + strconv.Itoa(api.StatusCode)
+	}
+	return processor.NewPaymentError(processor.Square, code,
+		fmt.Sprintf("square answered %d %s %s", api.StatusCode, category, code), nil)
+}
+
+// classify reads the first error's category and code out of a Square API error's
+// response, or answers two empty strings when the response is not Square's error list.
+func classify(api *core.APIError) (category, code string) {
+	if api.Unwrap() == nil {
+		return "", ""
 	}
 	var body struct {
 		Errors []struct {
@@ -228,15 +254,15 @@ func decline(err error) *processor.Decline {
 			Code     string `json:"code"`
 		} `json:"errors"`
 	}
-	if json.Unmarshal([]byte(api.Unwrap().Error()), &body) != nil {
-		return nil
+	if json.Unmarshal([]byte(api.Unwrap().Error()), &body) != nil || len(body.Errors) == 0 {
+		return "", ""
 	}
 	for _, e := range body.Errors {
 		if e.Category == paymentMethodError {
-			return &processor.Decline{Processor: processor.Square, Category: e.Category, Code: e.Code}
+			return e.Category, e.Code
 		}
 	}
-	return nil
+	return body.Errors[0].Category, body.Errors[0].Code
 }
 
 // paymentMethodError is Square's error category for a card it refused.
@@ -291,11 +317,7 @@ func (sp *SquareProcessor) Capture(ctx context.Context, transactionID string, am
 		PaymentID: transactionID,
 	})
 	if err != nil {
-		return &processor.PaymentResult{
-			Success:      false,
-			Error:        err,
-			ErrorMessage: err.Error(),
-		}, err
+		return failed(err)
 	}
 
 	payment := resp.Payment
@@ -339,6 +361,7 @@ func (sp *SquareProcessor) Refund(ctx context.Context, req processor.RefundReque
 
 	resp, err := sp.refundsClient.RefundPayment(ctx, refundReq)
 	if err != nil {
+		err = scrub(err)
 		return &processor.RefundResult{
 			Success:      false,
 			Error:        err,
@@ -359,7 +382,7 @@ func (sp *SquareProcessor) GetTransaction(ctx context.Context, txID string) (*pr
 		PaymentID: txID,
 	})
 	if err != nil {
-		return nil, err
+		return nil, scrub(err)
 	}
 
 	payment := resp.Payment
@@ -524,7 +547,7 @@ func (sp *SquareProcessor) CancelAuthorization(ctx context.Context, paymentID st
 		PaymentID: paymentID,
 	})
 	if err != nil {
-		return fmt.Errorf("cancel authorization %s: %w", paymentID, err)
+		return fmt.Errorf("cancel authorization %s: %w", paymentID, scrub(err))
 	}
 	return nil
 }

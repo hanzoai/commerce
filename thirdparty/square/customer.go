@@ -34,7 +34,7 @@ func (sp *SquareProcessor) CreateCustomer(ctx context.Context, email, name strin
 
 	resp, err := sp.customersClient.Create(ctx, req)
 	if err != nil {
-		return "", fmt.Errorf("square create customer: %w", err)
+		return "", fmt.Errorf("square create customer: %w", scrub(err))
 	}
 	if resp.Customer == nil || resp.Customer.ID == nil {
 		return "", fmt.Errorf("square create customer: empty response")
@@ -48,7 +48,7 @@ func (sp *SquareProcessor) GetCustomer(ctx context.Context, customerID string) (
 		CustomerID: customerID,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("square get customer: %w", err)
+		return nil, fmt.Errorf("square get customer: %w", scrub(err))
 	}
 	if resp.Customer == nil {
 		return nil, fmt.Errorf("square get customer: not found")
@@ -99,7 +99,7 @@ func (sp *SquareProcessor) UpdateCustomer(ctx context.Context, customerID string
 
 	_, err := sp.customersClient.Update(ctx, req)
 	if err != nil {
-		return fmt.Errorf("square update customer: %w", err)
+		return fmt.Errorf("square update customer: %w", scrub(err))
 	}
 	return nil
 }
@@ -110,7 +110,7 @@ func (sp *SquareProcessor) DeleteCustomer(ctx context.Context, customerID string
 		CustomerID: customerID,
 	})
 	if err != nil {
-		return fmt.Errorf("square delete customer: %w", err)
+		return fmt.Errorf("square delete customer: %w", scrub(err))
 	}
 	return nil
 }
@@ -137,10 +137,7 @@ func (sp *SquareProcessor) Vault(ctx context.Context, customerID, token string) 
 		CardNonce:  token,
 	})
 	if err != nil {
-		if d := decline(err); d != nil {
-			err = d
-		}
-		return processor.Card{}, fmt.Errorf("square add payment method: %w", err)
+		return processor.Card{}, fmt.Errorf("square add payment method: %w", scrub(err))
 	}
 	if resp.Card == nil || resp.Card.ID == nil {
 		return processor.Card{}, fmt.Errorf("square add payment method: empty response")
@@ -160,7 +157,7 @@ func (sp *SquareProcessor) Cards(ctx context.Context, customerID string) ([]proc
 		CustomerID: square.String(customerID),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("square list cards: %w", err)
+		return nil, fmt.Errorf("square list cards: %w", scrub(err))
 	}
 	out := make([]processor.Card, 0, len(page.Results))
 	for _, c := range page.Results {
@@ -209,7 +206,7 @@ func (sp *SquareProcessor) RemovePaymentMethod(ctx context.Context, customerID, 
 		CardID:     paymentMethodID,
 	})
 	if err != nil {
-		return fmt.Errorf("square remove payment method: %w", err)
+		return fmt.Errorf("square remove payment method: %w", scrub(err))
 	}
 	return nil
 }

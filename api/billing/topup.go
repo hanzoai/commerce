@@ -157,6 +157,12 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 		}
 	}
 
+	if err := ceiling(db, userId); err != nil {
+		abandon()
+		return "", 0, err
+	}
+	base := gatewayKey("charge", userId, idemKey)
+
 	squareCustomerID := pm.CustomerId
 	if pm.Metadata != nil {
 		if v, ok := pm.Metadata["squareCustomerId"].(string); ok && v != "" {
@@ -172,7 +178,7 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 		// The gateway de-dups on this key, derived from the SAME stable guard key.
 		// It is the backstop that survives a guard-store outage or two racing
 		// submits, because it is enforced where the money actually moves.
-		IdempotencyKey: gatewayKey("charge", userId, idemKey),
+		IdempotencyKey: attemptKey(db, base),
 		Description:    description,
 	}
 
@@ -192,17 +198,13 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 	}
 
 	result, err := proc.Charge(ctx, chargeReq)
-	if err != nil {
+	if err != nil || result == nil || !result.Success {
 		abandon()
-		return "", 0, fmt.Errorf("charge failed: %w", err)
-	}
-	if !result.Success {
-		abandon()
-		msg := result.ErrorMessage
-		if msg == "" {
-			msg = "charge declined"
+		if d := refusalOf(result, err); d != nil {
+			refused(db, "saved-card charge", userId, base, d)
+			return "", 0, declinedCard{d}
 		}
-		return "", 0, errors.New(msg)
+		return "", 0, processorFailure("saved-card charge", userId, err)
 	}
 
 	// Step 4: the card was charged (money in), so mint the credit ON CHAIN as
@@ -477,10 +479,16 @@ func Topup(c *zip.Ctx) error {
 			return jsonhttp.Fail(c, 422, "no payment processor available", err)
 		case IsTopupUncredited(err):
 			return jsonhttp.Fail(c, 500, "charge succeeded but balance credit failed; contact support", err)
-		default:
-			log.Error("Charge failed for topup (subject=%s pm=%s): %v", subject, req.PaymentMethodID, err, c)
-			return jsonhttp.Fail(c, 402, err.Error(), nil)
+		case IsDeclineCeiling(err):
+			return jsonhttp.Fail(c, 429, "Too many declined card attempts. Try again later.", nil)
+		case IsProcessorFailed(err):
+			return jsonhttp.Fail(c, 502, processorSentence, nil)
 		}
+		if d, ok := DeclineOf(err); ok {
+			return jsonhttp.Fail(c, 402, d.Sentence(), nil)
+		}
+		log.Error("Charge failed for topup (subject=%s pm=%s): %v", subject, req.PaymentMethodID, err, c)
+		return jsonhttp.Fail(c, 500, "the top-up could not be completed; please retry", nil)
 	}
 
 	return c.JSON(200, out)

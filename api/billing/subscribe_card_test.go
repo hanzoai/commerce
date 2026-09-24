@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -419,7 +418,7 @@ func TestSubscribeWithCard_DeclinedNoSubscription(t *testing.T) {
 	defer ctx.Close()
 	org := moneyOrg("sc-decline")
 	m := squareMock("cust_d", "ccof_d", "")
-	m.chargeErr = errors.New("CARD_DECLINED")
+	m.chargeErr = cardDeclined
 	withFakeSquare(t, m)
 
 	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:bad","planId":"dev"}`, nil)
@@ -591,7 +590,7 @@ func TestRenewSubscription_DeclineLeavesOpenNoDoubleCharge(t *testing.T) {
 	defer ctx.Close()
 	org := moneyOrg("sc-renew-decline")
 	m := squareMock("", "", "")
-	m.chargeErr = errors.New("CARD_DECLINED")
+	m.chargeErr = cardDeclined
 	withFakeSquare(t, m)
 
 	db := datastore.New(org.Namespaced(ctx))
@@ -802,7 +801,7 @@ func TestPayInvoice_DeclineThenRetryReCollects(t *testing.T) {
 	defer ctx.Close()
 	org := moneyOrg("sc-pay-dun")
 	m := squareMock("", "", "sqpay_dun")
-	m.chargeErr = errors.New("CARD_DECLINED")
+	m.chargeErr = cardDeclined
 	withFakeSquare(t, m)
 
 	db := datastore.New(org.Namespaced(ctx))
@@ -859,7 +858,7 @@ func TestSubscribeWithCard_DistinctKeyRetriesAFailedAttempt(t *testing.T) {
 	defer ctx.Close()
 	org := moneyOrg("sc-resub")
 	m := squareMock("cust_rs", "ccof_rs", "sqpay_rs")
-	m.chargeErr = errors.New("CARD_DECLINED")
+	m.chargeErr = cardDeclined
 	withFakeSquare(t, m)
 
 	r1 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:A","planId":"dev"}`, map[string]string{"X-Idempotency-Key": "attempt-1"})
