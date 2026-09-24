@@ -50,6 +50,10 @@ var nowFn = time.Now
 const (
 	StatusStarted   = "started"
 	StatusCompleted = "completed"
+	// StatusReleased is a guard its holder gave up (Delete): the guarded side
+	// effect did not happen, and the next Begin for the same (scope, key) starts
+	// it afresh.
+	StatusReleased = "released"
 )
 
 // StartedTTL bounds how long a "started" guard is treated as a live in-flight
@@ -115,6 +119,16 @@ func Begin(db *datastore.Datastore, scope, key string) (rec *IdempotencyKey, rep
 	existing := New(db)
 	guardKey := db.NewKey(existing.Kind(), id, 0, nil)
 	if e := existing.Get(guardKey); e == nil {
+		// Released → its holder gave it up and nothing happened under it: this
+		// Begin takes it afresh, on the same row.
+		if existing.Status == StatusReleased {
+			existing.SetId(id)
+			existing.Status, existing.Response, existing.RecoveryPoint = StatusStarted, "", ""
+			if e := existing.Put(); e != nil {
+				return nil, false, e
+			}
+			return existing, false, nil
+		}
 		// Completed → always a replay (return the stored response).
 		if existing.Status == StatusCompleted {
 			return existing, true, nil
@@ -168,6 +182,16 @@ func Complete(rec *IdempotencyKey, response string) error {
 	rec.Status = StatusCompleted
 	rec.Response = response
 	return rec.Put()
+}
+
+// Delete releases the guard: its holder gave it up, and the next Begin for the
+// same (scope, key) takes it afresh. The row stays, marked released, rather than
+// being deleted, because its storage id is deterministic: every later Begin
+// writes the same row again.
+func (k *IdempotencyKey) Delete() error {
+	k.SetId(DeterministicID(k.Scope, k.IdemKey))
+	k.Status, k.Response, k.RecoveryPoint = StatusReleased, "", ""
+	return k.Put()
 }
 
 // New returns an initialized IdempotencyKey bound to db.
