@@ -8,6 +8,7 @@ import (
 
 	"github.com/hanzoai/commerce/billing/tier"
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
@@ -238,23 +239,35 @@ func TestAPersonInAnEcosystemOrgIsTieredByTheirOwnPlan(t *testing.T) {
 
 // The org's own account is subscribed by its admins; a plain member is refused, and
 // in an ecosystem org that is what keeps a member from buying the org a plan with
-// no card. A member subscribing their own account is not refused on this ground.
+// no card. A member naming another member subscribes only their own account.
 func TestOnlyAnOrgAdminSubscribesTheOrgAccount(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
 	org := moneyOrg("hanzo")
-	member := map[string]string{"X-User-IsOrgAdmin": "false"}
+	member := map[string]string{"X-User-IsOrgAdmin": "false", "X-User-Id": "alice"}
+	// With no userId a member of the signup org subscribes their OWN account, which
+	// is a customer's: it needs a card, and the org account gets nothing.
 	resp := invokeSubscribeCard(org, ctx, `{"planId":"max-20x"}`, member)
-	if resp.StatusCode != http.StatusForbidden {
+	if resp.StatusCode < 400 {
 		body, _ := io.ReadAll(resp.Body)
-		t.Fatalf("a plain member subscribing the org account: %d %s, want 403", resp.StatusCode, body)
+		t.Fatalf("a member subscribed with no card: %d %s", resp.StatusCode, body)
 	}
-	resp = invokeSubscribeCard(org, ctx, `{"planId":"max-20x","userId":"hanzo/alice"}`, member)
-	if resp.StatusCode == http.StatusForbidden {
-		body, _ := io.ReadAll(resp.Body)
-		if strings.Contains(string(body), "only an admin of this organization") {
-			t.Fatalf("a member subscribing their own account was refused as if it were the org's: %s", body)
+	resp = invokeSubscribeCard(org, ctx, `{"planId":"max-20x","userId":"hanzo/bob","sourceId":"credits"}`, member)
+	body, _ := io.ReadAll(resp.Body)
+	if strings.Contains(string(body), "hanzo/bob") {
+		t.Fatalf("a member acted on another member's account: %d %s", resp.StatusCode, body)
+	}
+	db := datastore.New(org.Namespaced(ctx))
+	for _, who := range []string{"hanzo/bob", "hanzo"} {
+		if subs, _ := subscription.Query(db).Filter("UserId=", who).Count(); subs != 0 {
+			t.Fatalf("a member opened %d subscription(s) on %s", subs, who)
 		}
+	}
+	pooled := moneyOrg("acme")
+	resp = invokeSubscribeCard(pooled, ctx, `{"planId":"team","quantity":2}`, map[string]string{"X-User-IsOrgAdmin": "false", "X-User-Id": "carol"})
+	if resp.StatusCode != http.StatusForbidden {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("a plain member of a pooled org subscribing its account: %d %s, want 403", resp.StatusCode, b)
 	}
 }
