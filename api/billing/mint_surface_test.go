@@ -857,11 +857,13 @@ func isPayoutExecutorCall(call *ast.CallExpr, imports map[string]string) bool {
 // is flagged by the guard, and a NEW mint handler NOT listed here (and not
 // route-gated) FAILS the guard.
 var userSafeMintHandlers = map[string]string{
-	"api/billing.Topup":                 "credits ONLY the amount the caller's own saved card was charged (money-in == credit); own subject",
-	"api/billing.TopupWithToken":        "credits ONLY the amount the caller's own card nonce was charged (money-in == credit); own subject",
-	"api/billing.GrantAllotment":        "amount is clamped to the caller's REAL subscription via planForGrant unless MayMintMoney (TestAllotment_OrgAdminCannotInflatePlan)",
-	"api/billing.RunAllotments":         "per-user amount is subscription-derived in grantOrgAllotments; NO client-supplied amount or plan",
-	"api/billing.HandleProviderWebhook": "unauthenticated by design — trust anchor is the per-provider signature, not a commerce token; not an org-admin surface",
+	"api/billing.Topup":                     "credits ONLY the amount the caller's own saved card was charged (money-in == credit); own subject",
+	"api/billing.TopupWithToken":            "credits ONLY the amount the caller's own card nonce was charged (money-in == credit); own subject",
+	"api/billing.GrantAllotment":            "amount is clamped to the caller's REAL subscription via planForGrant unless MayMintMoney (TestAllotment_OrgAdminCannotInflatePlan)",
+	"api/billing.RunAllotments":             "per-user amount is subscription-derived in grantOrgAllotments; NO client-supplied amount or plan",
+	"api/billing.HandleProviderWebhook":     "unauthenticated by design — trust anchor is the per-provider signature, not a commerce token; not an org-admin surface",
+	"api/billing.SubscribeWithCard":         "reaches a sink only through retireLapsed → engine.VoidOpen → engine.ReturnPaid, which gives back exactly what a lapsed subscription's own invoice collected (money-in == return, once per invoice); the sale credits nothing (TestVoid_ReturnsWhatThePartPaymentTook)",
+	"api/billing.CreateBillingSubscription": "a paid plan is gated on MayMintMoney in the handler; it reaches a sink only through retireLapsed → engine.VoidOpen → engine.ReturnPaid, which gives back exactly what a lapsed subscription's own invoice collected (money-in == return, once per invoice)",
 }
 
 // methodGatedMintHandlers reach a sink but gate it INSIDE the handler per-method

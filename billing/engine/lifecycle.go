@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
@@ -18,26 +18,26 @@ import (
 	"github.com/hanzoai/money"
 )
 
-// periodLockStripes bounds the memory of the per-(subscription, period) renewal
-// lock to a fixed set of mutexes (no unbounded per-period growth). Same key → same
-// stripe → serialized; a rare hash collision only briefly serializes two unrelated
-// renewals, which is harmless.
-const periodLockStripes = 256
+// subLockStripes bounds the memory of the per-subscription renewal lock to a
+// fixed set of mutexes. Same subscription → same stripe → serialized; a rare hash
+// collision only briefly serializes two unrelated renewals, which is harmless.
+const subLockStripes = 256
 
-var periodLockMu [periodLockStripes]sync.Mutex
+var subLockMu [subLockStripes]sync.Mutex
 
-// lockPeriod serializes work on the SAME (subscription, billed period) WITHIN a
-// process, returning the unlock func. Commerce is single-writer per tenant
-// (ReadWriteOnce PVC, Recreate), so this fully serializes real concurrent renewals
-// (the cycle + a manual renew) — one invoice row, one charge attempt — closing the
-// non-atomic findInvoiceForPeriod → issuePeriodInvoice window. The idempotencykey
-// guard + the per-(subscription, period, attempt) processor idempotency key remain
-// the money backstops (a cross-process racer still cannot double-charge).
-func lockPeriod(subID string, start time.Time) func() {
-	key := subID + "|" + strconv.FormatInt(start.Unix(), 10)
+// lockSubscription serializes the renewal step of one subscription WITHIN a
+// process, returning the unlock func. It is taken once per step and never while
+// another is held, so no step can wait on a stripe it holds. Commerce is
+// single-writer per tenant (ReadWriteOnce PVC, Recreate), so this fully
+// serializes real concurrent renewals (the cycle + a manual renew) — one invoice
+// row, one charge attempt — closing the non-atomic findInvoiceForPeriod →
+// issuePeriodInvoice window. The idempotencykey guards and the per-(subscription,
+// period, attempt) processor idempotency key remain the money backstops (a
+// cross-process racer still cannot double-charge).
+func lockSubscription(subID string) func() {
 	h := fnv.New32a()
-	_, _ = h.Write([]byte(key))
-	mu := &periodLockMu[h.Sum32()%periodLockStripes]
+	_, _ = h.Write([]byte(subID))
+	mu := &subLockMu[h.Sum32()%subLockStripes]
 	mu.Lock()
 	return mu.Unlock
 }
@@ -312,16 +312,22 @@ func assignInvoiceNumber(db *datastore.Datastore, inv *billinginvoice.BillingInv
 // has ended now: it is served no further period, so it owes none. What one
 // collected is given back (ReturnPaid). Each is voided under its lock and read
 // again inside it, so a payment landing at the same moment either finds it void
-// or leaves it paid. An invoice whose lock another path holds, or whose last
-// payment attempt has no known outcome, is left: the money may have moved, and
-// it is an operator's to settle with the processor.
+// or leaves it paid. An invoice whose lock another path holds is left, and so
+// is one whose last payment attempt has no known outcome: the money may have
+// moved. The billing cycle repeats that attempt under its key
+// (ResolveCanceled), and it is logged for an operator.
 func VoidOpen(ctx context.Context, db *datastore.Datastore, sub *subscription.Subscription, p Prepaid, now time.Time) error {
 	invs, err := invoicesOf(db, sub)
 	if err != nil {
 		return err
 	}
 	for _, listed := range invs {
-		if listed.Status != billinginvoice.Open || listed.PendingKey != "" {
+		if listed.Status != billinginvoice.Open {
+			continue
+		}
+		if listed.PendingKey != "" {
+			log.Error("billing: ALERT subscription %s ended with the payment attempt %s on invoice %s of unknown outcome; "+
+				"the billing cycle repeats it under its key", sub.Id(), listed.PendingKey, listed.Id())
 			continue
 		}
 		if err := voidIdle(ctx, db, listed.Id(), p, now); err != nil {

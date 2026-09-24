@@ -2,6 +2,9 @@ package engine
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"fmt"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -46,5 +49,35 @@ func EmitBillingEvent(db *datastore.Datastore, eventType, objectType, objectId, 
 		return nil, fmt.Errorf("failed to create billing event: %w", err)
 	}
 
+	return evt, nil
+}
+
+// EmitBillingEventOnce records the billing event that key names, once: it is
+// stored under a storage key derived from key, and a later call with the same key
+// answers the event already there. An act that is retried after its event was
+// written, or whose event is written again after the act, records one event.
+func EmitBillingEventOnce(db *datastore.Datastore, key, eventType, objectType, objectId, customerId string, data Map) (*billingevent.BillingEvent, error) {
+	sum := sha256.Sum256([]byte("billing-event\x00" + key))
+	storageKey := db.NewKey("billing-event", "bevt_"+hex.EncodeToString(sum[:16]), 0, db.NewKey("synckey", "", 1, nil))
+	evt := billingevent.New(db)
+	switch err := evt.Get(storageKey); {
+	case err == nil:
+		return evt, nil
+	case !errors.Is(err, datastore.ErrNoSuchEntity):
+		return nil, fmt.Errorf("read billing event %s: %w", key, err)
+	}
+	evt = billingevent.New(db)
+	if err := evt.SetKey(storageKey); err != nil {
+		return nil, err
+	}
+	evt.Type = eventType
+	evt.ObjectType = objectType
+	evt.ObjectId = objectId
+	evt.CustomerId = customerId
+	evt.Data = data
+	evt.Pending = true
+	if err := evt.Create(); err != nil {
+		return nil, fmt.Errorf("failed to create billing event: %w", err)
+	}
 	return evt, nil
 }

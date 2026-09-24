@@ -2,6 +2,7 @@ package billing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -28,6 +29,10 @@ const (
 	notDue engine.Action = "not_due"
 	// renewedOutside: a processor outside Hanzo renews it; nothing here charges it.
 	renewedOutside engine.Action = "external"
+	// realignPending: it sits a period ahead of its paid invoice
+	// (engine.RealignPending). The realignment moves it back; until it runs, no
+	// live cycle runs (ErrRealignPending).
+	realignPending engine.Action = "realign_pending"
 )
 
 // CycleResult is what one run of the subscription cycle did to one
@@ -117,12 +122,20 @@ func (r *CycleReport) add(res CycleResult) {
 // written or emitted; a card charge is reported as if the card accepted it, and a
 // prepaid payment as the money stands.
 //
-// A failure in one org is that org's entry in Errors; the run continues. Only
-// failing to list the organizations ends it.
+// A live run is refused (ErrRealignPending), before anything is charged, while
+// a subscription still sits a period ahead of its paid invoice; a dry run
+// reports each such subscription as realign_pending. A failure in one org is
+// that org's entry in Errors; the run continues. Only failing to list the
+// organizations ends it.
 func RunSubscriptionCycle(ctx context.Context, kmsClient *kms.CachedClient, ev *events.Client, now time.Time, dryRun bool) (*CycleReport, error) {
 	orgs := make([]*organization.Organization, 0)
 	if _, err := organization.Query(datastore.New(ctx)).GetAll(&orgs); err != nil {
 		return nil, err
+	}
+	if !dryRun {
+		if err := refuseUnrealigned(ctx, orgs, ""); err != nil {
+			return nil, err
+		}
 	}
 	report := newCycleReport(now, dryRun)
 	report.Orgs = len(orgs)
@@ -131,6 +144,51 @@ func RunSubscriptionCycle(ctx context.Context, kmsClient *kms.CachedClient, ev *
 		cycleOrg(ctx, org, db, now, dryRun, ev, cardFor(kmsClient, org), "", report)
 	}
 	return report, nil
+}
+
+// ErrRealignPending is a live cycle refused because subscriptions still sit a
+// period ahead of their paid invoice (engine.RealignPending): renewed by the
+// dates they hold, each would be served that period without paying for it. The
+// realignment (POST /v1/billing/realign/run-all?dryRun=false) runs first.
+var ErrRealignPending = errors.New("subscriptions sit a period ahead of their paid invoice; run the realignment before a live cycle")
+
+// refuseUnrealigned answers ErrRealignPending, naming how many, when a live
+// subscription in orgs — one subscriber's, when user is set — is pending
+// realignment.
+func refuseUnrealigned(ctx context.Context, orgs []*organization.Organization, user string) error {
+	n := 0
+	for _, org := range orgs {
+		db := datastore.New(org.Namespaced(ctx))
+		subs, err := orgSubscriptions(db, user)
+		if err != nil {
+			return fmt.Errorf("list subscriptions of %q: %w", org.Name, err)
+		}
+		for _, s := range subs {
+			if isBundleRow(s) || !engine.Live(s) {
+				continue
+			}
+			ahead, err := engine.RealignPending(db, s)
+			if err != nil {
+				return fmt.Errorf("subscription %s of %q: %w", s.Id(), org.Name, err)
+			}
+			if ahead {
+				n++
+			}
+		}
+	}
+	if n > 0 {
+		return fmt.Errorf("%w (%d)", ErrRealignPending, n)
+	}
+	return nil
+}
+
+// cycleFault is the HTTP answer to a cycle that could not start.
+func cycleFault(c *zip.Ctx, err error) error {
+	if errors.Is(err, ErrRealignPending) {
+		return http.Fail(c, 409, err.Error(), nil)
+	}
+	log.Error("billing cycle: %v", err, c)
+	return http.Fail(c, 500, "failed to start the billing cycle", err)
 }
 
 // cycleLocks serializes runs of one org's cycle within the process, and a
@@ -168,11 +226,11 @@ func cycleOrg(ctx context.Context, org *organization.Organization, db *datastore
 		return
 	}
 
-	// Paying subscriptions first, so a seat or bundle row sees its parent end in
-	// the same run. Each settled row replaces its listed one, so what follows —
-	// the seat rows and the allotment grants — reads this run's outcome, in a dry
-	// run as in a real one.
-	ended := make(map[string]bool)
+	// Paying subscriptions first, so a seat or bundle row sees its parent in the
+	// same run. Each settled row replaces its listed one, so what follows — the
+	// seat rows and the allotment grants — reads this run's outcome, in a dry run
+	// as in a real one.
+	settled := make(map[string]*subscription.Subscription)
 	started := time.Now()
 	for i, s := range subs {
 		if isBundleRow(s) || !engine.Live(s) {
@@ -189,21 +247,41 @@ func cycleOrg(ctx context.Context, org *organization.Organization, db *datastore
 			report.add(res)
 			continue
 		}
-		report.add(settleOne(ctx, org, db, sub, run, ev, charge))
-		if sub.Status == subscription.Canceled {
-			ended[sub.Id()] = true
+		if ahead, err := engine.RealignPending(db, sub); err != nil || ahead {
+			res := resultOf(org, sub)
+			res.Action, res.Reason = realignPending, "a period ahead of its paid invoice; the realignment moves it back before a live run"
+			if err != nil {
+				res.Action, res.Error = "", err.Error()
+			}
+			report.add(res)
+			continue
 		}
+		report.add(settleOne(ctx, org, db, sub, run, ev, charge))
+		settled[sub.Id()] = sub
 		subs[i] = sub
 	}
-	for _, s := range subs {
+	parents := make(map[string]*subscription.Subscription, len(settled))
+	for id, sub := range settled {
+		parents[id] = sub
+	}
+	for i, s := range subs {
 		if !isBundleRow(s) || !grantsTier(s.Status) {
 			continue
 		}
-		parent := bundleParentOf(s)
-		if parent == "" || !parentEnded(db, parent, ended) {
-			continue
+		parent := parentOf(db, bundleParentOf(s), parents)
+		switch {
+		case parent == nil:
+		case parent.Status == subscription.Canceled:
+			report.add(endWithParent(ctx, org, db, s, now, dryRun, ev))
+		default:
+			if err := followParent(db, s, parent, dryRun); err != nil {
+				fail("move seat "+s.Id()+" onto its paying subscription's period", err)
+			}
+			subs[i] = s
 		}
-		report.add(endWithParent(ctx, org, db, s, now, dryRun, ev))
+	}
+	for _, res := range resolveCanceled(ctx, org, db, subs, settled, run, charge) {
+		report.add(res)
 	}
 
 	granted, skipped, results := grantOrgAllotments(db, subs, now, !org.TestMode(), dryRun)
@@ -214,6 +292,76 @@ func cycleOrg(ctx context.Context, org *organization.Organization, db *datastore
 			report.Allotments.Failed++
 		}
 	}
+}
+
+// followParent moves a seat or bundle row onto its paying subscription's
+// period, so it is served, and granted its month, for exactly the time the
+// payment covers. A dry run moves the row in hand only.
+func followParent(db *datastore.Datastore, s, parent *subscription.Subscription, dryRun bool) error {
+	if s.PeriodStart.Equal(parent.PeriodStart) && s.PeriodEnd.Equal(parent.PeriodEnd) {
+		return nil
+	}
+	s.PeriodStart, s.PeriodEnd = parent.PeriodStart, parent.PeriodEnd
+	if dryRun {
+		return nil
+	}
+	row := subscription.New(db)
+	if err := row.GetById(s.Id()); err != nil {
+		return err
+	}
+	if row.Status == subscription.Canceled {
+		s.Status = row.Status
+		return nil
+	}
+	row.PeriodStart, row.PeriodEnd = parent.PeriodStart, parent.PeriodEnd
+	return row.Update()
+}
+
+// resolveCanceled repeats the payment attempts of unknown outcome that canceled
+// subscriptions' invoices still carry (engine.ResolveCanceled), each through the
+// source its subscription was bought from, and answers a report line for each.
+// A subscription this run already settled is left for the next run.
+func resolveCanceled(ctx context.Context, org *organization.Organization, db *datastore.Datastore, subs []*subscription.Subscription, settled map[string]*subscription.Subscription, run engine.Run, charge engine.ProviderCharger) []CycleResult {
+	open := make([]*billinginvoice.BillingInvoice, 0)
+	if _, err := billinginvoice.Query(db).Filter("Status=", billinginvoice.Open).GetAll(&open); err != nil {
+		return []CycleResult{{Org: org.Name, Error: "list open invoices: " + err.Error()}}
+	}
+	pending := make(map[string]bool)
+	for _, inv := range open {
+		if inv.PendingKey != "" && inv.SubscriptionId != "" {
+			pending[inv.SubscriptionId] = true
+		}
+	}
+	out := make([]CycleResult, 0)
+	for _, s := range subs {
+		if _, now := settled[s.Id()]; now || s.Status != subscription.Canceled || !pending[s.Id()] {
+			continue
+		}
+		res := resultOf(org, s)
+		c, source, err := renewalOf(org, db, s, charge, run.Prepaid)
+		if err != nil {
+			res.Error = err.Error()
+			out = append(out, res)
+			continue
+		}
+		res.Source = source
+		step, err := engine.ResolveCanceled(ctx, db, s, run, c)
+		if err != nil {
+			res.Error = err.Error()
+		} else {
+			res.Action, res.AmountCents, res.Reason = step.Action, step.AmountCharged, step.Reason
+			if inv := step.Invoice; inv != nil {
+				res.BillStart, res.BillEnd = inv.PeriodStart, inv.PeriodEnd
+				if !run.DryRun {
+					res.InvoiceId = inv.Id()
+				}
+			}
+		}
+		if res.Action != "" || res.Error != "" {
+			out = append(out, res)
+		}
+	}
+	return out
 }
 
 // resultOf is the report line for sub before a step is taken on it.
@@ -415,19 +563,22 @@ func bundleParentOf(s *subscription.Subscription) string {
 	return strings.TrimSpace(id)
 }
 
-// parentEnded reports whether the paying subscription id has ended, from this
-// run's outcomes or, for a parent the run did not list, from the store.
-func parentEnded(db *datastore.Datastore, id string, ended map[string]bool) bool {
-	if e, ok := ended[id]; ok {
-		return e
+// parentOf is the paying subscription id, as this run left it or, for one the
+// run did not settle, as stored (and then kept in parents); nil when there is
+// none.
+func parentOf(db *datastore.Datastore, id string, parents map[string]*subscription.Subscription) *subscription.Subscription {
+	if id == "" {
+		return nil
+	}
+	if p, ok := parents[id]; ok {
+		return p
 	}
 	parent := subscription.New(db)
 	if err := parent.GetById(id); err != nil {
-		return false
+		return nil
 	}
-	e := parent.Status == subscription.Canceled
-	ended[id] = e
-	return e
+	parents[id] = parent
+	return parent
 }
 
 // grantsTier reports whether a subscription in this status still confers its
@@ -485,9 +636,10 @@ func dryRunOf(c *zip.Ctx) (bool, error) {
 }
 
 // RunBillingCycle runs the subscription cycle for the request's organization.
-// It is a dry run unless the request says dryRun=false. The run is not tied to
-// the request: a caller that stops waiting does not stop a run that may already
-// have charged a card.
+// It is a dry run unless the request says dryRun=false, and a live run is a 409
+// while a subscription awaits realignment (ErrRealignPending). The run is not
+// tied to the request: a caller that stops waiting does not stop a run that may
+// already have charged a card.
 //
 //	POST /v1/billing/cycle/run[?dryRun=false]
 func RunBillingCycle(c *zip.Ctx) error {
@@ -496,6 +648,11 @@ func RunBillingCycle(c *zip.Ctx) error {
 	dryRun, err := dryRunOf(c)
 	if err != nil {
 		return http.Fail(c, 400, err.Error(), nil)
+	}
+	if !dryRun {
+		if err := refuseUnrealigned(ctx, []*organization.Organization{org}, ""); err != nil {
+			return cycleFault(c, err)
+		}
 	}
 	report := newCycleReport(time.Now(), dryRun)
 	report.Orgs = 1
@@ -529,6 +686,11 @@ func RunBillingCycleUser(c *zip.Ctx) error {
 		return http.Fail(c, 400, "userId is required", nil)
 	}
 
+	if !dryRun {
+		if err := refuseUnrealigned(ctx, []*organization.Organization{org}, req.UserId); err != nil {
+			return cycleFault(c, err)
+		}
+	}
 	report := newCycleReport(time.Now(), dryRun)
 	report.Orgs = 1
 	db := datastore.New(org.Namespaced(ctx))
@@ -548,8 +710,7 @@ func RunBillingCycleAllOrgs(c *zip.Ctx) error {
 	}
 	report, err := RunSubscriptionCycle(context.WithoutCancel(c.Context()), kmsOf(c), eventsOf(c), time.Now(), dryRun)
 	if err != nil {
-		log.Error("Failed to list organizations for billing cycle: %v", err, c)
-		return http.Fail(c, 500, "failed to list organizations", err)
+		return cycleFault(c, err)
 	}
 	return c.JSON(200, report)
 }

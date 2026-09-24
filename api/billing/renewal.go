@@ -1,11 +1,14 @@
 package billing
 
 import (
+	"context"
+	"errors"
 	"strings"
 
 	"github.com/hanzoai/commerce/billing/engine"
 	gift "github.com/hanzoai/commerce/billing/grant"
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
 	"github.com/hanzoai/commerce/models/subscription"
@@ -63,6 +66,14 @@ func renewalOf(org *organization.Organization, db *datastore.Datastore, sub *sub
 	eco := IsEcosystemAccount(org, sub.UserId)
 	comped := engine.Collection{Comped: true, Reason: "provisioned on an ecosystem org's enterprise terms"}
 	byCard := engine.CardPayer(charge)
+	// A card-bought subscription whose card is gone is a declined attempt, and a
+	// dry run reports it so.
+	byCard.Choose = func(_ context.Context, db *datastore.Datastore, _ *billinginvoice.BillingInvoice, _ int64) (string, error) {
+		if !hasCard(db, sub) {
+			return "", errNoCard
+		}
+		return engine.PaidByCard, nil
+	}
 	byPrepaid := engine.PrepaidPayer(pre)
 	card := hasCard(db, sub)
 
@@ -100,6 +111,9 @@ func renewalOf(org *organization.Organization, db *datastore.Datastore, sub *sub
 	}
 	return engine.Collection{Reason: "nothing on file pays for it: no card and no recorded way it was bought"}, sourceNone, nil
 }
+
+// errNoCard is a card renewal with no card on file to charge.
+var errNoCard = errors.New("no card on file: the subscription's default payment method is not a saved card")
 
 // hasCard reports whether the subscription's DefaultPaymentMethod names a
 // vaulted card.

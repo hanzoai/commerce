@@ -341,9 +341,9 @@ func TestCycle_RepeatedAttemptReplaysTheCharge(t *testing.T) {
 
 // TestCycle_OverdueIsLeftUntilTheCustomerRenews: a subscription whose paid
 // period ended three months ago with no renewal — the cycle was not running — is
-// neither charged nor changed, run after run. When its customer renews it, one
-// period is charged, the one from that moment, and the months it was not renewed
-// for are never billed.
+// neither charged nor changed, run after run, and confers nothing. When its
+// customer renews it, one period is charged, the one from that moment, and the
+// months it was not renewed for are never billed.
 func TestCycle_OverdueIsLeftUntilTheCustomerRenews(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -368,6 +368,9 @@ func TestCycle_OverdueIsLeftUntilTheCustomerRenews(t *testing.T) {
 	}
 	if got.Status != subscription.Active || !got.PeriodEnd.Equal(through) || !got.UpdatedAt.Equal(before.UpdatedAt) {
 		t.Fatalf("subscription %s through %s, want it left as it was", got.Status, got.PeriodEnd)
+	}
+	if n := tierOf(t, ctx, org, "cyc-overdue"); n != tier.Free {
+		t.Fatalf("tier %s while overdue, want free: the paid period and its grace are over", n)
 	}
 
 	// The customer acts: one period from now, and nothing for the months before.
@@ -1052,6 +1055,17 @@ func shiftAsOldCode(t *testing.T, db *datastore.Datastore, sub *subscription.Sub
 	}
 }
 
+// runCycle runs the cycle endpoint for org with the given query and answers the
+// status.
+func runCycle(t *testing.T, ctx context.Context, org *organization.Organization, query string) int {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, "/v1/billing/cycle/run"+query, nil)
+	return driveSeeded(func(c *zip.Ctx) {
+		c.SetContext(ctx)
+		c.Locals("organization", org)
+	}, "/v1/billing/cycle/run", req, RunBillingCycle).StatusCode
+}
+
 // realignAt runs the realignment endpoint for org with the given query.
 func realignAt(t *testing.T, ctx context.Context, org *organization.Organization, query string) map[string]any {
 	t.Helper()
@@ -1067,12 +1081,13 @@ func realignAt(t *testing.T, ctx context.Context, org *organization.Organization
 }
 
 // TestCycle_OldRowsAreRealignedOnlyWhenAsked: a monthly and an annual row sit
-// one period ahead of what they paid for. The cycle settles them by the dates
-// they hold and never moves them. The realignment endpoint is a dry run unless
-// told otherwise: it reports the move and writes nothing, and only dryRun=false
+// one period ahead of what they paid for. The cycle never moves them: a dry run
+// reports them pending realignment and settles nothing for them, and a live run
+// is refused while they are. The realignment endpoint is a dry run unless told
+// otherwise: it reports the move and writes nothing, and only dryRun=false
 // moves the row back onto the paid invoice's period. From there the cycle
 // renews it when that period ends, within the grace window; one realigned long
-// after is overdue, and nothing is charged until the customer renews it.
+// after is overdue, and nothing is charged until the customer acts.
 func TestCycle_OldRowsAreRealignedOnlyWhenAsked(t *testing.T) {
 	year := int64(lookupPlan("dev").AnnualTotal)
 	for _, tc := range []struct {
@@ -1106,9 +1121,12 @@ func TestCycle_OldRowsAreRealignedOnlyWhenAsked(t *testing.T) {
 				at := age.at(paid)
 
 				for _, dry := range []bool{true, false} {
-					if r := cycleAt(t, ctx, org, at, dry); len(acted(r)) != 0 {
-						t.Fatalf("dry=%v: the cycle acted on the row before it was realigned: %+v", dry, acted(r))
+					if res := only(t, cycleAt(t, ctx, org, at, dry), realignPending); res.AmountCents != 0 {
+						t.Fatalf("dry=%v: the cycle charged %d for a row pending realignment", dry, res.AmountCents)
 					}
+				}
+				if code := runCycle(t, ctx, org, "?dryRun=false"); code != http.StatusConflict || m.chargeCalls != 1 {
+					t.Fatalf("a live run before the realignment answered %d after %d charges, want 409 and only the subscribe", code, m.chargeCalls)
 				}
 				if got := reloadSub(t, db, sub.Id()); !got.PeriodStart.Equal(paid) {
 					t.Fatalf("the cycle moved the row to %s", got.PeriodStart)
@@ -1567,5 +1585,33 @@ func TestCycle_DryRunReportsEachSubscription(t *testing.T) {
 	}
 	if got := reloadSub(t, db, due.Id()); !got.UpdatedAt.Equal(before) || len(invoicesForSub(t, db, due.Id())) != 0 {
 		t.Fatal("the dry run wrote the subscription or stored an invoice")
+	}
+}
+
+// TestCycle_DryRunDeclinesACardRenewalWithNoCard: a card-bought subscription
+// whose card is gone is reported by the dry run as the declined renewal the live
+// run makes, never as renewed.
+func TestCycle_DryRunDeclinesACardRenewalWithNoCard(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("cyc-nocard")
+	m := squareMock("", "", "sqpay_nocard")
+	withFakeSquare(t, m)
+	db := datastore.New(org.Namespaced(ctx))
+	now := time.Now()
+	sub := cardSubThrough(t, db, "cyc-nocard", now.Add(-time.Hour))
+	if _, err := engine.CreatePaidFirstInvoice(db, sub, "card", "sqpay_first"); err != nil {
+		t.Fatalf("first invoice: %v", err)
+	}
+	row := reloadSub(t, db, sub.Id())
+	row.DefaultPaymentMethod = ""
+	if err := row.Update(); err != nil {
+		t.Fatalf("remove card: %v", err)
+	}
+
+	dry := only(t, cycleAt(t, ctx, org, now, true), engine.RenewalFailed)
+	live := only(t, cycleAt(t, ctx, org, now, false), engine.RenewalFailed)
+	if dry.Source != sourceCard || dry.AmountCents != 0 || live.AmountCents != 0 || m.chargeCalls != 0 {
+		t.Fatalf("dry %+v live %+v with %d charges; want a declined card renewal reported the same, nothing charged", dry, live, m.chargeCalls)
 	}
 }

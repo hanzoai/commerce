@@ -76,9 +76,9 @@ func TestRed2_ImmediateCancelDuringDeclineIsRetried(t *testing.T) {
 
 // TestRed2_CatchUpChargeThenExpired: a row sits a period ahead of its paid
 // first invoice, and the period it holds ended more than RenewalGrace before
-// the cycle first runs. Before and after an operator realigns it, it is
-// overdue: no run bills a period already over, and none ends the subscriber in
-// the month they are using.
+// the cycle first runs. Before an operator realigns it the cycle settles
+// nothing for it; after, it is overdue: no run bills a period already over, and
+// none ends the subscriber.
 func TestRed2_CatchUpChargeThenExpired(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -99,7 +99,7 @@ func TestRed2_CatchUpChargeThenExpired(t *testing.T) {
 		t.Fatalf("shift: %v", err)
 	}
 
-	only(t, cycleAt(t, ctx, org, now, false), engine.Overdue) // the first run ever
+	only(t, cycleAt(t, ctx, org, now, false), realignPending) // the first run ever
 	if r := Realign(ctx, []*organization.Organization{org}, false); r.Realigned != 1 {
 		t.Fatalf("realigned %d rows, want the one", r.Realigned)
 	}

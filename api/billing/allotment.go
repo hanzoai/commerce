@@ -10,6 +10,7 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/allotment"
+	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
@@ -85,10 +86,12 @@ func servedPlanSlug(db *datastore.Datastore, user string, test bool) string {
 }
 
 // planSlugOf is the plan of the newest of one subject's subscriptions that
-// speaks for them: active or trialing — and past_due when pastDue is set — and,
-// for a paid plan, payment-backed. "" when none does.
+// speaks for them: active or trialing — and past_due when pastDue is set — not
+// lapsed (engine.Lapsed), and, for a paid plan, payment-backed. "" when none
+// does.
 func planSlugOf(subs []*subscription.Subscription, pastDue bool) string {
 	var best *subscription.Subscription
+	now := time.Now()
 	for _, s := range subs {
 		switch s.Status {
 		case subscription.Active, subscription.Trialing:
@@ -97,6 +100,9 @@ func planSlugOf(subs []*subscription.Subscription, pastDue bool) string {
 				continue
 			}
 		default:
+			continue
+		}
+		if engine.Lapsed(s, now) {
 			continue
 		}
 		// C1-a: a PAID tier's included allotment may anchor ONLY on a

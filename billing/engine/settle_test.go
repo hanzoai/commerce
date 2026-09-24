@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/billinginvoice"
+	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/meter"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/pricingrule"
@@ -1081,4 +1083,74 @@ func TestSettle_APendingAttemptIsResolvedBeforeAnEnd(t *testing.T) {
 				step.Action, got.Status, inv.Status, inv.PendingKey)
 		}
 	})
+}
+
+// TestSettle_CarryRefusesARowMovedMeanwhile: a customer's renewal of an overdue
+// row read before another renewal moved it charges nothing: the row is carried
+// only when it still ends where this step read it.
+func TestSettle_CarryRefusesARowMovedMeanwhile(t *testing.T) {
+	db, done := settleDB(t, "settle-carry-moved")
+	defer done()
+	now := time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC)
+	sub := paidThrough(t, db, monthly, now.AddDate(0, -2, 0))
+	stale := reload(t, db, sub.Id())
+
+	moved := reload(t, db, sub.Id())
+	moved.PeriodStart, moved.PeriodEnd = now, now.AddDate(0, 1, 0)
+	if err := moved.Update(); err != nil {
+		t.Fatalf("move: %v", err)
+	}
+	c := &card{}
+	step := settleRun(t, db, stale, Run{Now: now.Add(time.Minute), Asked: true}, c)
+	if step.Action != Skipped || len(c.amounts) != 0 {
+		t.Fatalf("stale carry: %s with %d charges, want skipped and none", step.Action, len(c.amounts))
+	}
+	if got := reload(t, db, sub.Id()); !got.PeriodEnd.Equal(now.AddDate(0, 1, 0)) {
+		t.Fatalf("row through %s, want the other renewal's period kept", got.PeriodEnd)
+	}
+}
+
+// TestSettle_CarryIsOncePerMissedPeriod: a second process renewing the same
+// overdue row from the same missed period end finds the first one's guard and
+// charges nothing.
+func TestSettle_CarryIsOncePerMissedPeriod(t *testing.T) {
+	db, done := settleDB(t, "settle-carry-once")
+	defer done()
+	now := time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC)
+	through := now.AddDate(0, -2, 0)
+	sub := paidThrough(t, db, monthly, through)
+	if _, replay, err := idempotencykey.Begin(db, "billing-carry:"+sub.Id(), "from:"+strconv.FormatInt(through.Unix(), 10)); err != nil || replay {
+		t.Fatalf("the other process's guard: replay=%v err=%v", replay, err)
+	}
+	c := &card{}
+	if step := settleRun(t, db, sub, Run{Now: now, Asked: true}, c); step.Action != Skipped || len(c.amounts) != 0 {
+		t.Fatalf("carry under another's guard: %s with %d charges, want skipped and none", step.Action, len(c.amounts))
+	}
+}
+
+// TestLapsed_EndsEntitlementAfterTheGrace: an active row confers its plan until
+// RenewalGrace after its paid period; a past_due one through the grace and the
+// whole retry schedule; a row with no period end, or ended, is not lapsed.
+func TestLapsed_EndsEntitlementAfterTheGrace(t *testing.T) {
+	end := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	last := RetrySchedule[len(RetrySchedule)-1]
+	for _, tc := range []struct {
+		status subscription.Status
+		at     time.Time
+		want   bool
+	}{
+		{subscription.Active, end.Add(RenewalGrace), false},
+		{subscription.Active, end.Add(RenewalGrace + time.Second), true},
+		{subscription.PastDue, end.Add(RenewalGrace + last), false},
+		{subscription.PastDue, end.Add(RenewalGrace + last + time.Second), true},
+		{subscription.Canceled, end.AddDate(1, 0, 0), false},
+	} {
+		sub := &subscription.Subscription{Status: tc.status, PeriodEnd: end}
+		if got := Lapsed(sub, tc.at); got != tc.want {
+			t.Errorf("%s at end+%s: lapsed=%v, want %v", tc.status, tc.at.Sub(end), got, tc.want)
+		}
+	}
+	if Lapsed(&subscription.Subscription{Status: subscription.Active}, end.AddDate(5, 0, 0)) {
+		t.Error("a row with no period end lapsed")
+	}
 }

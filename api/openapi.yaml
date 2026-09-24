@@ -1848,11 +1848,14 @@ paths:
         a declined renewal 1, 3 and 7 days after the decline and ends the
         subscription after the last; leaves a subscription overdue by more than
         72 hours as it is, charging nothing, until its customer renews it; and
-        grants the month's included allotments. A dry run unless dryRun=false:
-        the dry run reports, for every live subscription, its org, plan,
-        interval, periods, amount, source and the action the live run would
-        take, and writes nothing. /cycle/run runs the same for the request's
-        organization, /cycle/run-user for one subscriber in it.
+        grants the month's included allotments. An overdue subscription confers
+        no tier; its customer renews it or subscribes again, which replaces it.
+        A dry run unless dryRun=false: the dry run reports, for every live
+        subscription, its org, plan, interval, periods, amount, source and the
+        action the live run would take, and writes nothing. A live run is
+        refused (409) while any subscription sits a period ahead of its paid
+        invoice; the realignment runs first. /cycle/run runs the same for the
+        request's organization, /cycle/run-user for one subscriber in it.
       parameters:
         - name: dryRun
           in: query
@@ -1868,6 +1871,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          description: A live run refused while subscriptions await the realignment
 
   /realign/run-all:
     post:

@@ -20,6 +20,7 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/payment/processor"
+	"github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
@@ -157,6 +158,16 @@ func TestVoidUnresolved_EndsAnEscalatedDeletedCard(t *testing.T) {
 	if !audited {
 		t.Fatalf("events %+v, want invoice.operator_void naming admin/z, the reason and the attempt %s", evs, key)
 	}
+	if recorded := operatorVoidOf(got); recorded == nil || recorded["actor"] != "admin/z" {
+		t.Fatalf("invoice metadata %v, want the operator's void recorded on the invoice", got.Metadata)
+	}
+	// The operator retrying the void (its answer lost) records it once.
+	if resp := invokeVoidUnresolved(org, ctx, inv.Id(), `{"reason":"card deleted at Square; no payment under the key"}`); resp.StatusCode != http.StatusOK {
+		t.Fatalf("operator void retried: %d, want 200", resp.StatusCode)
+	}
+	if n := operatorVoidEvents(t, db, inv.Id()); n != 1 {
+		t.Fatalf("%d operator_void events after a retry, want 1", n)
+	}
 
 	calls := m.chargeCalls
 	only(t, cycleAt(t, ctx, org, d.Add(200*time.Hour), false), engine.EndedInvoiceVoided)
@@ -185,5 +196,54 @@ func TestVoidUnresolved_RefusedWhileTheCycleRepeats(t *testing.T) {
 	}
 	if got, _ := invoiceRow(db, inv.Id()); got.Status != billinginvoice.Open || got.PendingKey == "" {
 		t.Fatalf("invoice %s pending %q, want open with its attempt", got.Status, got.PendingKey)
+	}
+}
+
+// operatorVoidEvents counts the invoice.operator_void events of invoice id.
+func operatorVoidEvents(t *testing.T, db *datastore.Datastore, id string) int {
+	t.Helper()
+	evs := make([]*billingevent.BillingEvent, 0)
+	if _, err := billingevent.Query(db).Filter("ObjectId=", id).GetAll(&evs); err != nil {
+		t.Fatalf("read events: %v", err)
+	}
+	n := 0
+	for _, e := range evs {
+		if e.Type == "invoice.operator_void" {
+			n++
+		}
+	}
+	return n
+}
+
+// TestVoidUnresolved_ARetryWritesAMissingEvent: an operator's void is on the
+// invoice before its billing event is written. When that write did not happen,
+// the operator retrying the void writes the event, once, from what the invoice
+// recorded.
+func TestVoidUnresolved_ARetryWritesAMissingEvent(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("void-unresolved-event")
+	withFakeSquare(t, squareMock("", "", ""))
+	db := datastore.New(org.Namespaced(ctx))
+	sub := seedCardBackedSub(t, db, "void-unresolved-event", "dev", "ccof_ve", "cust_ve")
+	inv := seedOpenInvoice(t, db, sub, 2000)
+	row, err := invoiceRow(db, inv.Id())
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if err := row.MarkVoid(); err != nil {
+		t.Fatalf("void: %v", err)
+	}
+	row.Metadata = types.Map{"operatorVoid": types.Map{"actor": "admin/z", "reason": "settled at Square", "attempt": types.Map{"key": "collect:k"}}}
+	if err := row.Update(); err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	for range 2 {
+		if resp := invokeVoidUnresolved(org, ctx, inv.Id(), `{"reason":"settled at Square"}`); resp.StatusCode != http.StatusOK {
+			t.Fatalf("operator void retried: %d, want 200", resp.StatusCode)
+		}
+	}
+	if n := operatorVoidEvents(t, db, inv.Id()); n != 1 {
+		t.Fatalf("%d operator_void events, want the missing one written once", n)
 	}
 }

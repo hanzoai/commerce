@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/creditgrant"
 	"github.com/hanzoai/commerce/types"
@@ -59,9 +60,20 @@ func ReturnPaid(ctx context.Context, db *datastore.Datastore, inv *billinginvoic
 		if p == nil {
 			return fmt.Errorf("invoice %s collected %d cents and there is no ledger to return them to", inv.Id(), rest)
 		}
-		if _, err := p.Return(ctx, inv.UserId, cur, rest, "invoice-return:"+inv.Id()); err != nil {
+		ref, err := p.Return(ctx, inv.UserId, cur, rest, "invoice-return:"+inv.Id())
+		if err != nil {
 			return fmt.Errorf("return %d cents to the balance from invoice %s: %w", rest, inv.Id(), err)
 		}
+		// Money a card may have paid comes back as balance, not to the card: each
+		// such return is an item for operations to review as a refund.
+		data := types.Map{"invoiceId": inv.Id(), "subscriptionId": inv.SubscriptionId, "balanceCents": rest,
+			"creditCents": credit, "currency": string(cur), "ledgerRef": ref,
+			"paymentMethod": inv.PaymentMethod, "paymentRef": inv.PaymentRef}
+		if _, err := EmitBillingEventOnce(db, "invoice.returned:"+inv.Id(), "invoice.returned", "invoice", inv.Id(), inv.UserId, data); err != nil {
+			return fmt.Errorf("record the return from invoice %s: %w", inv.Id(), err)
+		}
+		log.Warn("billing: REFUND REVIEW invoice %s returned %d cents to %s's balance (payment %s %s)",
+			inv.Id(), rest, inv.UserId, inv.PaymentMethod, inv.PaymentRef)
 	}
 	if inv.Metadata == nil {
 		inv.Metadata = types.Map{}
