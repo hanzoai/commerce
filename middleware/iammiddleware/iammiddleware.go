@@ -70,6 +70,15 @@ func isOrgAdmin(c *zip.Ctx) bool {
 		strings.EqualFold(strings.TrimSpace(c.Header(HeaderUserIsAdmin)), "true")
 }
 
+// ActsAsOrgAdmin reports whether the caller administers the org this request acts
+// in: the identity edge mints X-User-IsOrgAdmin from the caller's role in the
+// EFFECTIVE org of the signed membership set, so switching into an org one merely
+// belongs to never carries it. It is an authority header, stripped and re-minted
+// on ingress.
+func ActsAsOrgAdmin(c *zip.Ctx) bool {
+	return strings.EqualFold(strings.TrimSpace(c.Header(HeaderUserIsOrgAdmin)), "true")
+}
+
 // orgAdminHomeMatches reports whether the caller's HOME org (X-User-Owner) equals
 // the EFFECTIVE org this request acts in (effectiveOrg == the resolved X-Org-Id).
 // The org-admin grant is authority over one's OWN org; this is the tenant check that

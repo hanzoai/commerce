@@ -3,6 +3,7 @@ package billing
 import (
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/hanzoai/commerce/billing/tier"
@@ -232,5 +233,28 @@ func TestAPersonInAnEcosystemOrgIsTieredByTheirOwnPlan(t *testing.T) {
 	}
 	if IsEcosystemAccount(moneyOrg("acme"), "hanzo") {
 		t.Error("an ecosystem slug read inside another org's books is not that org's account")
+	}
+}
+
+// The org's own account is subscribed by its admins; a plain member is refused, and
+// in an ecosystem org that is what keeps a member from buying the org a plan with
+// no card. A member subscribing their own account is not refused on this ground.
+func TestOnlyAnOrgAdminSubscribesTheOrgAccount(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+
+	org := moneyOrg("hanzo")
+	member := map[string]string{"X-User-IsOrgAdmin": "false"}
+	resp := invokeSubscribeCard(org, ctx, `{"planId":"max-20x"}`, member)
+	if resp.StatusCode != http.StatusForbidden {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("a plain member subscribing the org account: %d %s, want 403", resp.StatusCode, body)
+	}
+	resp = invokeSubscribeCard(org, ctx, `{"planId":"max-20x","userId":"hanzo/alice"}`, member)
+	if resp.StatusCode == http.StatusForbidden {
+		body, _ := io.ReadAll(resp.Body)
+		if strings.Contains(string(body), "only an admin of this organization") {
+			t.Fatalf("a member subscribing their own account was refused as if it were the org's: %s", body)
+		}
 	}
 }

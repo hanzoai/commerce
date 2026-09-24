@@ -69,3 +69,10 @@ func callerMayReachBillingSubject(c *zip.Ctx, ownerIDs ...string) bool {
 	}
 	return false
 }
+
+// mayActForOrg reports whether the caller may act for the org's own account: a
+// privileged billing caller (service, platform SuperAdmin) or an admin of the org
+// the request acts in.
+func mayActForOrg(c *zip.Ctx) bool {
+	return isPrivilegedBillingCaller(c) || iammiddleware.ActsAsOrgAdmin(c)
+}

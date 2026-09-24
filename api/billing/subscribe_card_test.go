@@ -68,6 +68,9 @@ func squareMock(customerID, cardID, chargeRef string) *mockSquareProcessor {
 func invokeSubscribeCard(org *organization.Organization, ctx context.Context, body string, headers map[string]string) *http.Response {
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/subscribe/card", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
+	// The buyer administers the org, as an org buying its own plan does; a test
+	// about a plain member states "false".
+	req.Header.Set("X-User-IsOrgAdmin", "true")
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
