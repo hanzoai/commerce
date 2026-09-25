@@ -50,7 +50,7 @@ var clientProducts = map[string]bool{
 //   - hsm        — no prefix. /v1/kms is the key service and it is MPC-rooted,
 //     not hardware-rooted; lending it to HSM would sell one as the other.
 //   - mpc        — apps/mpc is a CLIENT LIBRARY for the separate luxfi/mpc ring.
-//     Nothing in this fleet serves it. MPC custody is REACHED through /v1/wallets,
+//     Nothing in this fleet serves it. MPC custody is REACHED through /v1/wallet,
 //     which is the Wallets product, not this one.
 //   - attestations — no prefix, no handler, nothing HTTP-addressable.
 //

@@ -26,8 +26,8 @@ func TestCorrect_MovesTheAddressAndNothingElse(t *testing.T) {
 		t.Fatalf("wallet row: ok=%v err=%v", ok, err)
 	}
 	want := e.ApiPath
-	e.ApiPath = "/v1/wallet"
-	e.ApiRoute = "api.hanzo.ai/v1/wallet"
+	e.ApiPath = "/v1/wallets"
+	e.ApiRoute = "api.hanzo.ai/v1/wallets"
 	e.Name = "Wallets, renamed in the CMS"
 	e.Order = 4242
 	e.Status = StatusExternal
