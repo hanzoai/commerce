@@ -188,6 +188,11 @@ func TestRecordFromBalance_RenewalDrawsThePeriodFromTheBalance(t *testing.T) {
 	if len(out) != 1 || !out[0].Success {
 		t.Fatalf("cycle = %+v, want the one due row renewed", out)
 	}
+	// The result states the money the period's invoice collected, so a caller
+	// stating the renewal as a sale reports what moved and not a sale of nothing.
+	if r := out[0]; r.AmountCents != balPrice || r.Currency != "usd" || r.Test {
+		t.Fatalf("renewal states %d %q test=%v, want %d usd live", r.AmountCents, r.Currency, r.Test, balPrice)
+	}
 	if b := walletOf(t, ctx, org, balSubject); b != 20000-2*balPrice {
 		t.Fatalf("balance = %d, want another %d drawn", b, balPrice)
 	}
