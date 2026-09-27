@@ -379,20 +379,22 @@ func GetIAMClaims(c *zip.Ctx) *auth.IAMClaims {
 	// HOME org — the identity + platform-sudo anchor (the gateway/EdgeAuth
 	// X-User-Owner header, the validated JWT `owner`). DISTINCT from Owner (==
 	// X-Org-Id, the EFFECTIVE org a SuperAdmin may switch to another tenant):
-	// IsSuperAdmin gates on this, so owner=="admin" survives an org-switch. Absent
-	// (pre-rollout) → homeOrg() falls back to Owner, which equals home for a
-	// non-switching caller. No spoofable isGlobalAdmin boolean is read — the org
+	// IsSuperAdmin gates on this, so owner=="admin" survives an org-switch. The
+	// boundary mints it for every validated principal, so its absence means no
+	// validated home, and Attested keeps homeOrg() from reading the caller's own
+	// X-Org-Id in its place. No spoofable isGlobalAdmin boolean is read — the org
 	// IS the signal.
 	homeOrg := strings.TrimSpace(c.Header(HeaderUserOwner))
 	roles := parseRolesHeader(c.Header(HeaderRoles))
 
 	claims := &auth.IAMClaims{
-		Owner:   owner,
-		HomeOrg: homeOrg,
-		Name:    user,
-		Email:   email,
-		IsAdmin: isAdmin,
-		Roles:   roles,
+		Owner:    owner,
+		HomeOrg:  homeOrg,
+		Attested: true,
+		Name:     user,
+		Email:    email,
+		IsAdmin:  isAdmin,
+		Roles:    roles,
 	}
 	// Subject is the canonical user id field IAMClaims callers read;
 	// the gateway puts the JWT sub into X-User-Id.

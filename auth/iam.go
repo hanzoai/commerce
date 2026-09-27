@@ -232,7 +232,12 @@ type IAMClaims struct {
 	// an org-switch. In the JWT-validated path (EdgeAuth) it is empty and Owner already
 	// holds the JWT `owner` claim (== home). homeOrg() resolves the right one. NOT a
 	// JWT claim — populated only from the trusted X-User-Owner header.
-	HomeOrg     string    `json:"-"`
+	HomeOrg string `json:"-"`
+	// Attested marks claims read from the identity boundary's headers
+	// (GetIAMClaims). There HomeOrg is exactly what the boundary attested, and an
+	// empty one means it attested no home: Owner is then the caller's own
+	// X-Org-Id, which homeOrg must never read as a home. NOT a JWT claim.
+	Attested    bool      `json:"-"`
 	Groups      []string  `json:"groups,omitempty"`
 	Roles       FlexRoles `json:"roles,omitempty"`
 	Permissions []string  `json:"permissions,omitempty"`
@@ -242,14 +247,14 @@ type IAMClaims struct {
 	Properties map[string]string `json:"properties,omitempty"`
 }
 
-// homeOrg resolves the caller's HOME org: the dedicated HomeOrg (the header-sourced
-// path, from X-User-Owner) when present, else Owner (the JWT-validated path, where
-// Owner IS the `owner` claim == home). nil-safe.
+// homeOrg resolves the caller's HOME org. On the header-sourced path (Attested)
+// it is HomeOrg, from X-User-Owner, and nothing else. On the JWT-validated path it
+// is HomeOrg when set, else Owner, which there IS the `owner` claim. nil-safe.
 func (c *IAMClaims) homeOrg() string {
 	if c == nil {
 		return ""
 	}
-	if h := strings.TrimSpace(c.HomeOrg); h != "" {
+	if h := strings.TrimSpace(c.HomeOrg); h != "" || c.Attested {
 		return h
 	}
 	return strings.TrimSpace(c.Owner)
