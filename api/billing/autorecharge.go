@@ -273,6 +273,8 @@ type RechargeResult struct {
 	UserId        string `json:"userId"`
 	Charged       bool   `json:"charged"`
 	AmountCents   int64  `json:"amountCents,omitempty"`
+	Currency      string `json:"currency,omitempty"`
+	Test          bool   `json:"test,omitempty"` // charged the org's sandbox, so no sale
 	BalanceCents  int64  `json:"balanceCents,omitempty"`
 	TransactionId string `json:"transactionId,omitempty"`
 	Error         string `json:"error,omitempty"`
@@ -390,6 +392,8 @@ func RunAutoRecharge(ctx context.Context, kmsClient *kms.CachedClient, ev *event
 			UserId:        org.Name,
 			Charged:       true,
 			AmountCents:   cfg.AmountCents,
+			Currency:      string(cur),
+			Test:          org.TestMode(),
 			BalanceCents:  int64(balanceCents),
 			TransactionId: txID,
 		})
