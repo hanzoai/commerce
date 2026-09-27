@@ -281,6 +281,39 @@ func TestRenewalChargesTheChosenLevel(t *testing.T) {
 	}
 }
 
+// TestSweptRenewalStatesTheCardCharge: the sweep's result for a card renewal
+// names what the card was charged, which is the renewal's new money.
+func TestSweptRenewalStatesTheCardCharge(t *testing.T) {
+	want := maxLevels(t)[5]
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("swept-card")
+	m := squareMock("cust_s", "ccof_s", "sqpay_s")
+	withFakeSquare(t, m)
+	if resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"max-5x","level":5}`, nil); resp.StatusCode != http.StatusCreated {
+		raw, _ := io.ReadAll(resp.Body)
+		t.Fatalf("subscribe status=%d body=%s, want 201", resp.StatusCode, string(raw))
+	}
+	db := datastore.New(org.Namespaced(ctx))
+	sub := parentSub(t, db, "swept-card", "max-5x")
+	fresh := subscription.New(db)
+	if err := fresh.GetById(sub.Id()); err != nil {
+		t.Fatalf("re-read subscription: %v", err)
+	}
+	fresh.PeriodStart = time.Now().AddDate(0, -1, -1)
+	fresh.PeriodEnd = time.Now().AddDate(0, 0, -1)
+	if err := fresh.Update(); err != nil {
+		t.Fatalf("age subscription: %v", err)
+	}
+	out := renewDue(ctx, org, "")
+	if len(out) != 1 || !out[0].Success {
+		t.Fatalf("cycle = %+v, want the one due row renewed", out)
+	}
+	if r := out[0]; r.AmountCents != want || r.Currency != "usd" || r.Test {
+		t.Fatalf("renewal states %d %q test=%v, want the card's %d usd", r.AmountCents, r.Currency, r.Test, want)
+	}
+}
+
 // TestAbsentLevelBuysTheBasePrice: every client that predates levels keeps
 // buying exactly what it bought before, and naming level 0 explicitly is the
 // same purchase as naming nothing.

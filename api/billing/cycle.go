@@ -95,10 +95,12 @@ func RunBillingCycleAllOrgs(c *zip.Ctx) error {
 	return c.JSON(200, run)
 }
 
-// Renewal is what renewing one due subscription did. AmountCents and Currency
-// are what its invoice collected, in minor units of the currency charged, so a
-// caller stating the renewal as a sale states the money that moved. Test is the
-// row's mode: a sandbox renewal is no sale.
+// Renewal is what renewing one due subscription did. AmountCents is what the
+// card was charged for it, in minor units of Currency: the part of the invoice
+// that is new money. A period paid from credits or from a balance a top-up
+// already bought is zero here, so a caller stating renewals as sales never
+// counts money twice or counts a grant as a sale. Test is the row's mode: a
+// sandbox renewal is no sale.
 type Renewal struct {
 	OrgName        string `json:"orgName"`
 	UserId         string `json:"userId"`
@@ -194,8 +196,10 @@ func renewOne(ctx context.Context, db *datastore.Datastore, orgName string, sub 
 	r := Renewal{OrgName: orgName, UserId: row.UserId, SubscriptionId: row.Id(), Test: row.Test}
 	inv, result, err := engine.RenewSubscription(ctx, db, row, pre, charge)
 	if inv != nil {
-		r.InvoiceId = inv.Id()
-		r.AmountCents, r.Currency = inv.AmountPaid, string(inv.Currency)
+		r.InvoiceId, r.Currency = inv.Id(), string(inv.Currency)
+	}
+	if result != nil {
+		r.AmountCents = result.ProviderUsed
 	}
 	if err != nil {
 		log.Error("Billing cycle: failed to renew subscription %s: %v", row.Id(), err)
