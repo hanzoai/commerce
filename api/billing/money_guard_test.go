@@ -16,6 +16,7 @@ package billing
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -204,12 +205,22 @@ func TestAutoRecharge_DoubleFire_OneCharge(t *testing.T) {
 	m := squareMock("", "", "sqpay_cron")
 	withFakeSquare(t, m)
 
-	if r := runRecharge(ctx); r.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(r.Body)
+	r := runRecharge(ctx)
+	b, _ := io.ReadAll(r.Body)
+	if r.StatusCode != http.StatusOK {
 		t.Fatalf("first run status=%d body=%s, want 200", r.StatusCode, string(b))
 	}
 	if m.chargeCalls != 1 {
 		t.Fatalf("charge calls after first run=%d, want 1", m.chargeCalls)
+	}
+	// The row states the money it charged, in its currency and books, so a caller
+	// stating the reload as a sale reports what moved and never a sandbox charge.
+	var run RechargeRun
+	if err := json.Unmarshal(b, &run); err != nil || len(run.Results) != 1 {
+		t.Fatalf("run body %s: %v", b, err)
+	}
+	if got := run.Results[0]; !got.Charged || got.AmountCents != 2500 || got.Currency != "usd" || got.Test {
+		t.Fatalf("recharge result %+v, want a live charge of 2500 usd", got)
 	}
 
 	// The job fires again inside the same window — a retry, an overlapping
