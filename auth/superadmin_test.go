@@ -28,6 +28,10 @@ func TestIAMClaims_IsSuperAdmin(t *testing.T) {
 		// THE anti-escalation: a non-admin HOME can never become SuperAdmin, even if
 		// the effective X-Org-Id (Owner) is "admin" — home wins, effective can't grant.
 		{"effective=admin but home=hanzo → NOT SuperAdmin", &IAMClaims{HomeOrg: "hanzo", Owner: "admin"}, false},
+		// Attested (header path) with no home: the boundary validated nobody, and
+		// Owner is the caller's own X-Org-Id. It is never read as a home.
+		{"attested, no home, effective=admin → NOT SuperAdmin", &IAMClaims{Attested: true, Owner: "admin"}, false},
+		{"attested home=admin → SuperAdmin", &IAMClaims{Attested: true, HomeOrg: "admin", Owner: "acme"}, true},
 		// Org owner (org-level IsAdmin) is NOT a SuperAdmin.
 		{"org-owner isAdmin is NOT SuperAdmin (maxpower)", &IAMClaims{Owner: "maxpower", IsAdmin: true}, false},
 		{"platform org is NOT the admin org", &IAMClaims{Owner: "platform", IsAdmin: true}, false},
