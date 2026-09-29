@@ -48,6 +48,13 @@ import (
 // credit it — no error, no duplicate detected, the money simply lands twice. The key
 // is only exactly-once if everyone who can credit one payment addresses one ledger,
 // and Test is a component of that address.
+//
+// Cash says a SETTLED PAYMENT funded the credit: money the customer paid, which the
+// host keeps apart from money it minted, and which alone buys paid-model work. It is
+// set only where a payment was observed settling — the provider webhook — and then
+// IdempotencyKey is the payment's own processor reference, so the payment credits once
+// whichever path records it. The zero value is credit the platform minted (a grant, a
+// starter or promo credit), and Reason says who minted it and why.
 type CreditInput struct {
 	Org            string
 	Subject        string
@@ -57,6 +64,7 @@ type CreditInput struct {
 	IdempotencyKey string
 	AmountCents    int64
 	Test           bool
+	Cash           bool
 	ExpiresAt      *time.Time
 }
 

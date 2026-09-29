@@ -183,6 +183,9 @@ func TestWebhookSeam_AsyncSettlementCreditsTheSpendableLedger(t *testing.T) {
 	if got.IdempotencyKey != "inv_async" {
 		t.Errorf("CreditInput.IdempotencyKey=%q, want inv_async — the settlement's own id, which is what makes every path credit it once", got.IdempotencyKey)
 	}
+	if !got.Cash {
+		t.Errorf("CreditInput.Cash=false for a settled payment — the customer's money landed as credit Hanzo minted")
+	}
 }
 
 // (ii) A settlement this callback ALREADY credited is not credited again — rule 1,
