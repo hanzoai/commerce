@@ -313,6 +313,7 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 			IdempotencyKey: paymentID,
 			AmountCents:    int64(amount),
 			Test:           who.test,
+			Cash:           true, // a provider-verified settlement of a captured payment
 		}); err != nil {
 			// The provider retries for up to 72h, so the honest answer is to leave no
 			// marker and let the next delivery try again. Loud, because until one of

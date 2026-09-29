@@ -163,8 +163,16 @@ func TestCredit_InjectedLedger_RoutesAndReflects(t *testing.T) {
 		t.Fatalf("CreditLedger.Credit calls=%d, want 1", fake.calls)
 	}
 	got := fake.lastIn
-	if got.Org != "acme" || got.Currency != "usd" || got.Reason != "welcome" || got.Tag != "starter-credit" || got.AmountCents != 500 {
-		t.Fatalf("CreditInput=%+v, want {Org:acme Currency:usd Reason:welcome Tag:starter-credit AmountCents:500}", got)
+	if got.Org != "acme" || got.Currency != "usd" || got.Reason != "Minted by app_platform: welcome" || got.Tag != "starter-credit" || got.AmountCents != 500 {
+		t.Fatalf("CreditInput=%+v, want {Org:acme Currency:usd Reason:Minted by app_platform: welcome Tag:starter-credit AmountCents:500}", got)
+	}
+	// The mint route makes money; it never records a payment, whatever the tag says.
+	if got.Cash {
+		t.Fatalf("a minted credit reached the ledger as cash: %+v", got)
+	}
+	topup := postCredit(eng, "", "acme", `{"org":"acme","amountCents":100,"reason":"looks like a top-up","tag":"topup"}`)
+	if topup.StatusCode != http.StatusCreated || fake.lastIn.Cash {
+		t.Fatalf("a minted credit tagged topup: status=%d cash=%v, want 201 and credit", topup.StatusCode, fake.lastIn.Cash)
 	}
 
 	out := decodeJSON(t, resp)
@@ -175,9 +183,9 @@ func TestCredit_InjectedLedger_RoutesAndReflects(t *testing.T) {
 		t.Fatalf("response balanceCents=%v, want 500", out["balanceCents"])
 	}
 
-	// GET balance reads the SAME org account → reflects the credit (one ledger).
-	if bal := getBalanceCents(t, eng, "", "acme"); bal != 500 {
-		t.Fatalf("GET balance for acme=%d, want 500 (credit must be visible on the same account)", bal)
+	// GET balance reads the SAME org account → reflects both credits (one ledger).
+	if bal := getBalanceCents(t, eng, "", "acme"); bal != 600 {
+		t.Fatalf("GET balance for acme=%d, want 600 (credit must be visible on the same account)", bal)
 	}
 }
 

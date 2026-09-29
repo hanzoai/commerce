@@ -12,6 +12,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/transaction"
@@ -115,8 +116,10 @@ func Credit(c *zip.Ctx) error {
 	// Injected double-entry ledger (embedded-in-cloud path): the ONE ledger the AI
 	// gate reads. Org-keyed; the impl handles idempotency + the balanced posting.
 	if led := creditledger.Get(); led != nil {
+		// Minted, never cash: this route takes an amount from its caller, so what it
+		// credits is money the platform made, and the ledger records who made it.
 		in := creditledger.CreditInput{
-			Org: org, Currency: cur, Reason: reason, Tag: tag,
+			Org: org, Currency: cur, Reason: mintedBy(c, reason), Tag: tag,
 			IdempotencyKey: strings.TrimSpace(req.IdempotencyKey), AmountCents: req.AmountCents,
 			Test: test,
 		}
@@ -148,6 +151,24 @@ func Credit(c *zip.Ctx) error {
 // It is a function rather than two lines inside the datastore path because the LEDGER
 // path needs the same answer, and asking it in only one of them is exactly how the two
 // came to disagree.
+// mintedBy is the ledger's note for a minted credit: who minted it, then why. The
+// mint route admits only a platform SuperAdmin (middleware.PlatformOnlyMW), whose
+// validated claims name them.
+func mintedBy(c *zip.Ctx, reason string) string {
+	claims := iammiddleware.GetIAMClaims(c)
+	who := strings.TrimSpace(claims.Email)
+	if who == "" && claims.Name != "" {
+		who = strings.TrimSpace(claims.Owner + "/" + claims.Name)
+	}
+	if who == "" {
+		who = strings.TrimSpace(claims.Subject)
+	}
+	if who == "" {
+		return "Minted: " + reason
+	}
+	return "Minted by " + who + ": " + reason
+}
+
 func creditTargetOrg(c *zip.Ctx, org string) (*organization.Organization, error) {
 	if scoped, ok := middleware.GetOrganizationOK(c); ok && scoped != nil &&
 		strings.EqualFold(strings.TrimSpace(scoped.Name), org) {
