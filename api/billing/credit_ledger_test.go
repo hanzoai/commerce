@@ -106,6 +106,28 @@ func (f *fakeLedger) Debit(_ context.Context, in creditledger.DebitInput) (strin
 	return id, f.bal[k], nil
 }
 
+// Refund gives back the debit drawn under Ref, once.
+func (f *fakeLedger) Refund(_ context.Context, in creditledger.RefundInput) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	scope := f.scope(in.Org, in.Test, "refund:"+in.Ref)
+	if id, ok := f.seen[scope]; ok {
+		return id, nil
+	}
+	for i, d := range f.debits {
+		if d.Ref == in.Ref && d.Org == in.Org && d.Subject == in.Subject && d.Test == in.Test {
+			f.bal[f.account(d.Org, d.Subject, d.Currency, d.Test)] += d.AmountCents
+			f.debits = append(f.debits[:i], f.debits[i+1:]...)
+			delete(f.seen, f.scope(in.Org, in.Test, "debit:"+in.Ref))
+			f.nextID++
+			id := fmt.Sprintf("refund_%d", f.nextID)
+			f.seen[scope] = id
+			return id, nil
+		}
+	}
+	return "", nil
+}
+
 // credits returns the credits actually POSTED (replays excluded), for the tests that
 // care about how many times money moved rather than how many calls were made.
 func (f *fakeLedger) credits() []creditledger.CreditInput {

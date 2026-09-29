@@ -863,3 +863,59 @@ func (c *countingPrepaid) Draw(context.Context, string, currency.Type, int64, st
 	c.calls++
 	return engine.Drawn{}, creditledger.ErrShort
 }
+
+// A plan's seat floor is asked before its price is drawn: Team from the balance with
+// one seat is refused and the balance is exactly what it was. The draw used to happen
+// first, and the refusal left the period's price taken from the wallet.
+func TestRecordFromBalance_TooFewSeatsTakesNothing(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org, db := balanceSetup(t, ctx, "rec-seats", 1_000_000)
+	p := lookupPlan("team")
+	if p == nil || !perSeat("team") || minSeats("team") < 2 {
+		t.Fatalf("the catalog's team plan is not a per-seat plan with a floor of two")
+	}
+	start := time.Now().UTC().Truncate(24 * time.Hour)
+	in := RecordIn{
+		Subject: balSubject, PlanID: "team", Quantity: 1, PriceCents: int64(p.Price),
+		PeriodStart: start, PeriodEnd: start.AddDate(0, 1, 0), Processor: "balance",
+	}
+	if _, err := RecordSubscription(ctx, org, in); !IsSaleRefused(err) {
+		t.Fatalf("err = %v, want refused for one seat on a two-seat plan", err)
+	}
+	if b := walletOf(t, ctx, org, balSubject); b != 1_000_000 {
+		t.Fatalf("balance = %d after a refused plan, want 1000000 untouched", b)
+	}
+	if n := len(subsOf(t, db, balSubject)); n != 0 {
+		t.Fatalf("a refused plan left %d subscription(s)", n)
+	}
+}
+
+// A payment taken for a plan that then cannot open is given back, and the retry
+// draws afresh rather than replaying the returned payment.
+func TestPrepaidRefundGivesTheDrawBack(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org, _ := balanceSetup(t, ctx, "rec-refund", 5000)
+	pay := prepaidFor(ctx, org)
+	d, err := pay.Draw(ctx, balSubject, currency.USD, 3000, "record:test")
+	if err != nil || d.Balance != 3000 {
+		t.Fatalf("draw = %+v, %v", d, err)
+	}
+	if b := walletOf(t, ctx, org, balSubject); b != 2000 {
+		t.Fatalf("balance after the draw = %d, want 2000", b)
+	}
+	if err := pay.Refund(ctx, balSubject, currency.USD, d, "record:test"); err != nil {
+		t.Fatalf("refund: %v", err)
+	}
+	if b := walletOf(t, ctx, org, balSubject); b != 5000 {
+		t.Fatalf("balance after the refund = %d, want 5000", b)
+	}
+	again, err := pay.Draw(ctx, balSubject, currency.USD, 3000, "record:test")
+	if err != nil || again.Balance != 3000 {
+		t.Fatalf("the retry = %+v, %v; want a fresh draw", again, err)
+	}
+	if b := walletOf(t, ctx, org, balSubject); b != 2000 {
+		t.Fatalf("balance after the retry = %d, want 2000", b)
+	}
+}
