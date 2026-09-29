@@ -24,6 +24,7 @@ import (
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/mintauth"
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
@@ -220,6 +221,47 @@ func (p prepaid) stored(ctx context.Context, subject string, cur currency.Type) 
 
 // debit draws amount from the subject's balance on the one ledger, all or
 // nothing, and answers the ledger's id for the posting.
+// Refund gives back a draw that paid for something that was then not delivered: the
+// ledger returns what it debited under ref, and the draw's records are forgotten so a
+// retry under the same ref draws again rather than replaying a payment that was
+// returned. Credit grants the draw burned are not restored here — that part is named
+// for reconciliation.
+func (p prepaid) Refund(ctx context.Context, subject string, cur currency.Type, d engine.Drawn, ref string) error {
+	if d.Balance > 0 {
+		if led := creditledger.Get(); led != nil {
+			if _, err := led.Refund(ctx, creditledger.RefundInput{
+				Org: ledgerOrg(p.org), Subject: subject, Ref: ref, Test: p.org.TestMode(),
+			}); err != nil {
+				return fmt.Errorf("refund %s: %w", ref, err)
+			}
+		} else {
+			t := transaction.New(p.db)
+			t.Type = transaction.Deposit
+			t.DestinationId = subject
+			t.DestinationKind = transaction.IAMUserKind
+			t.Currency = cur
+			t.Amount = currency.Cents(d.Balance)
+			t.Notes = "refund of subscription " + ref
+			t.Tags = "refund"
+			t.Test = p.org.TestMode()
+			t.SetContext(mintauth.WithAuthorized(t.Context()))
+			if err := t.Create(); err != nil {
+				return fmt.Errorf("refund %s: %w", ref, err)
+			}
+		}
+	}
+	if d.Credit > 0 {
+		log.Error("RECONCILE: refund %s (subject=%s): %d cents of credit grants were burned by the draw and are not restored", ref, subject, d.Credit)
+	}
+	for _, scope := range []string{"billing-draw:" + subject, "billing-split:" + subject} {
+		k := idempotencykey.New(p.db)
+		if err := k.Get(p.db.NewKey(k.Kind(), idempotencykey.DeterministicID(scope, ref), 0, nil)); err == nil {
+			_ = k.Delete()
+		}
+	}
+	return nil
+}
+
 func (p prepaid) debit(ctx context.Context, subject string, cur currency.Type, amount int64, ref string) (string, error) {
 	if led := creditledger.Get(); led != nil {
 		id, _, err := led.Debit(ctx, creditledger.DebitInput{

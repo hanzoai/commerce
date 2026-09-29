@@ -374,18 +374,12 @@ func createSubscription(db *datastore.Datastore, p *plan.Plan, req *createSubscr
 	// seat floor. A per-seat plan bills Price × quantity, never below
 	// limits.minSeats, and member rows (each minting a per-user allotment) can
 	// never exceed the seats paid for.
-	quantity := req.Quantity
-	if quantity < 1 {
-		quantity = 1
+	quantity, err := seats(req.PlanId, req.Quantity, len(req.Members))
+	if err != nil {
+		return nil, err
 	}
 	if perSeat(req.PlanId) {
 		p.PerSeat = true
-		if min := minSeats(req.PlanId); quantity < min {
-			return nil, subValidationError{fmt.Sprintf("plan %q requires at least %d seats (got %d)", req.PlanId, min, quantity)}
-		}
-		if len(req.Members) > quantity {
-			return nil, subValidationError{fmt.Sprintf("members (%d) exceed seats (%d)", len(req.Members), quantity)}
-		}
 	}
 
 	// Create subscription
@@ -1237,4 +1231,25 @@ func subscriptionResponse(sub *subscription.Subscription) map[string]any {
 	}
 
 	return resp
+}
+
+// seats is the seat count a subscription to planID opens with, or why it cannot open:
+// at least one; for a per-seat plan at least the catalog's floor (limits.minSeats),
+// and never fewer seats than members. It is the ONE seat rule, asked by every path
+// that opens a subscription — and by a path that takes money for one, BEFORE it takes
+// the money.
+func seats(planID string, quantity, members int) (int, error) {
+	if quantity < 1 {
+		quantity = 1
+	}
+	if !perSeat(planID) {
+		return quantity, nil
+	}
+	if min := minSeats(planID); quantity < min {
+		return 0, subValidationError{fmt.Sprintf("plan %q requires at least %d seats (got %d)", planID, min, quantity)}
+	}
+	if members > quantity {
+		return 0, subValidationError{fmt.Sprintf("members (%d) exceed seats (%d)", members, quantity)}
+	}
+	return quantity, nil
 }

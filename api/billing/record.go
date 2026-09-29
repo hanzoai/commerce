@@ -184,9 +184,10 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 		return nil, err
 	}
 
-	qty := in.Quantity
-	if qty < 1 {
-		qty = 1
+	// Every rule that can refuse the plan is asked before anything moves.
+	qty, err := seats(planID, in.Quantity, 0)
+	if err != nil {
+		return nil, saleRefusal{saleRefused, err.Error()}
 	}
 	seatMult := int64(1)
 	if perSeat(planID) {
@@ -444,9 +445,10 @@ func recordFromBalance(ctx context.Context, org *organization.Organization, db *
 	if now := time.Now(); start.After(now) || !end.After(now) {
 		return nil, saleRefusal{saleRefused, "a period paid from the balance is the one running now: it must have started and not yet ended"}
 	}
-	qty := in.Quantity
-	if qty < 1 {
-		qty = 1
+	// Every rule that can refuse the plan is asked before anything moves.
+	qty, err := seats(planID, in.Quantity, 0)
+	if err != nil {
+		return nil, saleRefusal{saleRefused, err.Error()}
 	}
 	seatMult := int64(1)
 	if perSeat(planID) {
@@ -502,7 +504,9 @@ func recordFromBalance(ctx context.Context, org *organization.Organization, db *
 	// The draw refuses a balance that cannot cover the period, having moved
 	// nothing. Its ref is this record's, so a retry after the money moved finds
 	// the draw it already made instead of being measured against what is left.
-	drawn, err := prepaidFor(ctx, org).Draw(ctx, subject, cur, in.PriceCents, "record:"+subject+":"+planID+":"+strconv.FormatInt(start.Unix(), 10))
+	drawRef := "record:" + subject + ":" + planID + ":" + strconv.FormatInt(start.Unix(), 10)
+	pay := prepaidFor(ctx, org)
+	drawn, err := pay.Draw(ctx, subject, cur, in.PriceCents, drawRef)
 	if err != nil {
 		abandon()
 		if errors.Is(err, errShort) {
@@ -520,10 +524,20 @@ func recordFromBalance(ctx context.Context, org *organization.Organization, db *
 		Collected:            &collected{processor: "credit", start: start, end: end},
 	}, 0, "", drawn)
 	if err != nil {
-		// The money moved and no subscription holds it. The guard stays started,
-		// so a retry replays the draw rather than paying twice.
-		uncredited(ctx, in.Events, org.Name, subject, drawn.Ref,
-			"a period was drawn from the balance and no subscription was opened: "+err.Error(), in.PriceCents, false)
+		// The money moved and no subscription holds it, so the period it paid for is
+		// given back and the guard released: a retry draws again. Only a refund that
+		// fails leaves the guard started, so the retry replays the draw rather than
+		// paying twice.
+		if rerr := pay.Refund(ctx, subject, cur, drawn, drawRef); rerr != nil {
+			uncredited(ctx, in.Events, org.Name, subject, drawn.Ref,
+				"a period was drawn from the balance, no subscription was opened ("+err.Error()+") and the refund failed: "+rerr.Error(), in.PriceCents, false)
+			return nil, fmt.Errorf("record subscription: %w; the payment was not given back: %v", err, rerr)
+		}
+		abandon()
+		var sv subValidationError
+		if errors.As(err, &sv) {
+			return nil, saleRefusal{saleRefused, sv.Error()}
+		}
 		return nil, err
 	}
 

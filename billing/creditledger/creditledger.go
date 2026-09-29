@@ -112,6 +112,19 @@ type CreditLedger interface {
 	// account below zero between them. Idempotent on Ref: a replay answers the
 	// original posting's id and moves nothing.
 	Debit(ctx context.Context, in DebitInput) (txID string, balanceCents int64, err error)
+	// Refund gives back the payment Debit drew under in.Ref at the same address,
+	// exactly: every account it came from gets back what it gave. Idempotent: a
+	// second refund moves nothing, and a ref that drew nothing refunds nothing.
+	Refund(ctx context.Context, in RefundInput) (txID string, err error)
+}
+
+// RefundInput names the payment to give back: the address and the Ref it was drawn
+// under.
+type RefundInput struct {
+	Org     string
+	Subject string
+	Ref     string
+	Test    bool
 }
 
 var (
