@@ -78,9 +78,10 @@ func Identity(require bool) zip.Handler {
 		c.Fiber().SetContext(ctx)
 
 		// Mirror onto request locals for legacy handlers that read from c.Locals.
+		// iam_authenticated is set only by IAMTokenRequired, from the validated
+		// X-User-Id; an org header alone authenticates nobody.
 		if org != "" {
 			c.Locals("iam_org", org)
-			c.Locals("iam_authenticated", true)
 		}
 		if user != "" {
 			c.Locals("iam_user_id", user)

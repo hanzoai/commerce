@@ -25,15 +25,12 @@ func Route(r *zip.Group, args ...zip.Handler) {
 
 // requireCostsAdmin is the in-handler gate for the vendor-cost god-view. It fails
 // closed (403) unless the caller is a PLATFORM admin, and is enforced INSIDE each
-// handler because the route-level middleware.TokenRequired(permission.Admin) is a
-// NO-OP on the IAM path: it short-circuits (c.Next) for ANY IAM-authenticated
-// request WITHOUT checking the Admin bit, and IAMTokenRequired stamps
-// iam_authenticated=true whenever an X-Org-Id header is present — which the gateway
-// sets on EVERY authenticated call. A handler must never trust that gate on its own.
+// handler: the route-level middleware.TokenRequired(permission.Admin) admits the
+// org-level Admin bit, and these figures need the stricter platform predicate.
 //
 // These figures are cross-tenant PLATFORM spend/margin, so this gates on the
-// STRICTER GlobalAdmin predicate (or the trusted internal service token), NEVER the
-// org-level Admin bit an org owner carries. That gate is shared with the SaaS
+// STRICTER SuperAdmin predicate, NEVER the org-level Admin bit an org owner
+// carries. That gate is shared with the SaaS
 // metrics god-view (api/metrics) as the single middleware.RequirePlatformAdmin
 // predicate — one and only one definition of "may read cross-org platform data",
 // so costs and metrics can never drift apart. See middleware.MayReadPlatform for

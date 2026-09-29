@@ -141,6 +141,30 @@ func TestIdentity(t *testing.T) {
 	})
 }
 
+// An X-Org-Id header names an org; it authenticates nobody. Only IAMTokenRequired,
+// which requires the validated X-User-Id, marks a request iam_authenticated.
+func TestIdentityOrgHeaderIsNotAuthentication(t *testing.T) {
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	app.Use(Identity(false))
+	app.Raw(http.MethodGet, "/x", func(c *zip.Ctx) error {
+		if b, _ := c.Locals("iam_authenticated").(bool); b {
+			return c.String(http.StatusOK, "authenticated")
+		}
+		return c.String(http.StatusOK, "anonymous")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/x", nil)
+	req.Header.Set(HeaderOrgID, "victim")
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("test request: %v", err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if string(body) != "anonymous" {
+		t.Fatalf("X-Org-Id alone: got %q, want anonymous", body)
+	}
+}
+
 func TestAccessorsEmptyContext(t *testing.T) {
 	ctx := context.Background()
 	if OrgID(ctx) != "" || UserID(ctx) != "" || UserEmail(ctx) != "" {
