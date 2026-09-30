@@ -13,6 +13,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
@@ -674,14 +675,43 @@ func Subscriptions(ctx context.Context, org *organization.Organization, userID, 
 	if err != nil {
 		return nil, err
 	}
+	db := datastore.New(org.Namespaced(ctx))
 	out := make([]Subscription, 0, len(rows))
 	for _, s := range rows {
 		if s == nil {
 			continue
 		}
-		out = append(out, *viewSubscription(s))
+		v := viewSubscription(s)
+		v.Settled = periodSettled(db, s)
+		out = append(out, *v)
 	}
 	return out, nil
+}
+
+// periodSettled is how the subscription's period in hand was paid: the settlement
+// method of that period's paid invoice, or, for a plan recorded as collected outside
+// commerce with no invoice, "external:<processor>" when the record covers this period.
+// Anything else — unpaid, unknown, a row nobody paid for — is "".
+func periodSettled(db *datastore.Datastore, s *subscription.Subscription) string {
+	invs := make([]*billinginvoice.BillingInvoice, 0)
+	if _, err := billinginvoice.Query(db).Filter("SubscriptionId=", s.Id()).GetAll(&invs); err == nil {
+		for _, inv := range invs {
+			if inv.PeriodStart.Unix() == s.PeriodStart.Unix() && inv.Status == billinginvoice.Paid {
+				return strings.ToLower(strings.TrimSpace(inv.PaymentMethod))
+			}
+		}
+	}
+	if c, _ := s.Metadata["collection"].(string); c != collectionExternal {
+		return ""
+	}
+	periods, _ := s.Metadata["periods"].([]interface{})
+	for _, p := range periods {
+		m, _ := p.(map[string]interface{})
+		if start, _ := m["start"].(string); start == s.PeriodStart.UTC().Format(time.RFC3339) {
+			return "external:" + strings.ToLower(strings.TrimSpace(s.ProviderType))
+		}
+	}
+	return ""
 }
 
 // ListBillingSubscriptions lists subscriptions for a user.
@@ -880,6 +910,11 @@ type Subscription struct {
 	MRRCents             int64  `json:"mrrCents"`
 	ProviderType         string `json:"providerType"`
 	DefaultPaymentMethod string `json:"defaultPaymentMethod"`
+	// Settled is how the period in hand was paid: "card" (a processor charged a card
+	// for all of it), "external:<processor>" (a payment recorded as collected outside
+	// commerce), "balance", "credit" or "mixed" (prepaid money, alone or beside a
+	// card). Empty when the period is unpaid or nothing says how.
+	Settled string `json:"settled,omitempty"`
 
 	Plan SubscriptionPlan `json:"plan"`
 

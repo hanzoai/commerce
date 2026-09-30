@@ -549,8 +549,9 @@ func TestWebhookSeam_ADeliveryNamingNoSubscriptionMintsNothing(t *testing.T) {
 }
 
 // A refund or a dispute of a settled payment takes the money back from the wallet the
-// payment credited — the one its receipt names — once per refund or dispute id; a
-// refund still pending takes nothing.
+// payment credited — found from the payment itself, since the provider sends no org —
+// once per refund or dispute id; a refund still pending takes nothing, and a dispute
+// the merchant wins gives its money back.
 func TestWebhookSeam_ARefundOrDisputeTakesThePaymentBack(t *testing.T) {
 	const secret = "whsec_seam_clawback"
 	registerSquare(t, secret)
@@ -568,16 +569,17 @@ func TestWebhookSeam_ARefundOrDisputeTakesThePaymentBack(t *testing.T) {
 			`"data":{"type":"refund","id":"rf_1","object":{"refund":{"id":"rf_1","payment_id":"pay_claw","status":%q,`+
 			`"amount_money":{"amount":%d,"currency":"USD"}}}}}`, event, time.Now().UTC().Format(time.RFC3339), status, cents))
 	}
-	for _, b := range [][]byte{refund("evt_rf_0", "PENDING", 2000), refund("evt_rf_1", "COMPLETED", 2000), refund("evt_rf_2", "COMPLETED", 2000)} {
-		if r := deliverWebhook(ctx, "seam-claw", secret, b, ""); r.StatusCode != http.StatusOK {
-			t.Fatalf("refund delivery: %d", r.StatusCode)
-		}
+	dispute := func(event, typ, state string) []byte {
+		return []byte(fmt.Sprintf(`{"merchant_id":"M1","type":%q,"event_id":%q,"created_at":%q,`+
+			`"data":{"type":"dispute","id":"dp_1","object":{"dispute":{"id":"dp_1","state":%q,"disputed_payment":{"payment_id":"pay_claw"},`+
+			`"amount_money":{"amount":3000,"currency":"USD"}}}}}`, typ, event, time.Now().UTC().Format(time.RFC3339), state))
 	}
-	dispute := []byte(fmt.Sprintf(`{"merchant_id":"M1","type":"dispute.created","event_id":"evt_dp","created_at":%q,`+
-		`"data":{"type":"dispute","id":"dp_1","object":{"dispute":{"id":"dp_1","disputed_payment":{"payment_id":"pay_claw"},`+
-		`"amount_money":{"amount":3000,"currency":"USD"}}}}}`, time.Now().UTC().Format(time.RFC3339)))
-	if r := deliverWebhook(ctx, "seam-claw", secret, dispute, ""); r.StatusCode != http.StatusOK {
-		t.Fatalf("dispute delivery: %d", r.StatusCode)
+	// No X-Org-Id on any of these: the provider sends none.
+	for _, b := range [][]byte{refund("evt_rf_0", "PENDING", 2000), refund("evt_rf_1", "COMPLETED", 2000), refund("evt_rf_2", "COMPLETED", 2000),
+		dispute("evt_dp_0", "dispute.created", "EVIDENCE_REQUIRED"), dispute("evt_dp_1", "dispute.state.changed", "WON")} {
+		if r := deliverWebhook(ctx, "", secret, b, ""); r.StatusCode != http.StatusOK {
+			t.Fatalf("delivery: %d", r.StatusCode)
+		}
 	}
 	if len(fake.clawbacks) != 2 {
 		t.Fatalf("clawbacks = %+v, want the completed refund once and the dispute once", fake.clawbacks)
@@ -590,5 +592,8 @@ func TestWebhookSeam_ARefundOrDisputeTakesThePaymentBack(t *testing.T) {
 		if got.Org != "seam-claw" || got.Subject != "seam-claw/alice" || got.Payment != "pay_claw" || got.Ref != want.ref || got.AmountCents != want.cents {
 			t.Fatalf("clawback %d = %+v, want %s of %d from seam-claw/alice", i, got, want.ref, want.cents)
 		}
+	}
+	if len(fake.restores) != 1 || fake.restores[0].Ref != "dispute:dp_1" || fake.restores[0].Org != "seam-claw" {
+		t.Fatalf("restores = %+v, want the won dispute given back once", fake.restores)
 	}
 }

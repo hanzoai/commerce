@@ -121,6 +121,9 @@ type CreditLedger interface {
 	// out of cash first, then credit, which may go below zero, since the money is gone
 	// either way. Posted once per in.Ref (the processor's refund or dispute id).
 	Clawback(ctx context.Context, in ClawbackInput) (txID string, err error)
+	// Restore gives back what the clawback posted under in.Ref took — a dispute the
+	// merchant won — to the accounts it came from. Once per in.Ref.
+	Restore(ctx context.Context, in ClawbackInput) (txID string, err error)
 }
 
 // ClawbackInput names the payment (its processor reference, the deposit's key), the

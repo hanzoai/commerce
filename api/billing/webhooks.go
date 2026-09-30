@@ -18,6 +18,7 @@ import (
 	"github.com/hanzoai/commerce/models/billingevent"
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/paymentorg"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -353,6 +354,9 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 	trans.SetContext(mintauth.WithAuthorized(trans.Context()))
 	if err := trans.Create(); err != nil {
 		log.Warn("settlement %s: failed to write the local receipt: %v", paymentID, err)
+	}
+	if err := paymentorg.Put(paymentID, org.Name, who.subject, who.test); err != nil {
+		log.Warn("settlement %s: the org index was not written: %v", paymentID, err)
 	}
 }
 
@@ -739,7 +743,7 @@ func pickSignatureHeader(h http.Header, providerHint string) string {
 // opens).
 func isClawbackEvent(eventType string) bool {
 	switch eventType {
-	case "refund.created", "refund.updated", "dispute.created":
+	case "refund.created", "refund.updated", "dispute.created", "dispute.state.changed", "dispute.updated":
 		return true
 	default:
 		return false
@@ -747,17 +751,22 @@ func isClawbackEvent(eventType string) bool {
 }
 
 // applyClawbackEvent takes a refunded or disputed payment's money back out of the
-// wallet it credited. The wallet is the one commerce's own receipt of the payment
-// names — the receipt the settlement wrote, stamped with the payment id — never one
-// the callback states. A refund acts once it has COMPLETED; a dispute acts when it
-// opens. The ledger posts it once per refund or dispute id.
-func applyClawbackEvent(ctx context.Context, db *datastore.Datastore, org *organization.Organization, event *processor.WebhookEvent) {
+// wallet it credited, and gives a dispute's back when the merchant wins it.
+//
+// The org and the wallet are the ones the payment's own receipt names — found through
+// the payment index (models/paymentorg), since the callback names only the payment —
+// never the request's org. A refund acts once it has COMPLETED; a dispute takes the
+// money when it opens and gives it back when it is WON. The ledger posts each once
+// per refund or dispute id, and never takes back more than the payment brought in.
+func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organization.Organization, event *processor.WebhookEvent) {
 	if event.Data == nil {
 		return
 	}
 	obj := unwrapObject(event.Data, "refund")
 	paymentID := stringField(obj, "payment_id")
-	if strings.HasPrefix(event.Type, "dispute.") {
+	dispute := strings.HasPrefix(event.Type, "dispute.")
+	won := false
+	if dispute {
 		obj = unwrapObject(event.Data, "dispute")
 		paymentID = stringField(obj, "payment_id")
 		if paymentID == "" {
@@ -765,30 +774,45 @@ func applyClawbackEvent(ctx context.Context, db *datastore.Datastore, org *organ
 				paymentID = stringField(dp, "payment_id")
 			}
 		}
+		switch state := strings.ToUpper(stringField(obj, "state")); {
+		case state == "WON":
+			won = true
+		case event.Type != "dispute.created":
+			return // a dispute's other changes move no money
+		}
 	} else if st := stringField(obj, "status"); !strings.EqualFold(st, "COMPLETED") {
 		return
 	}
 	id := stringField(obj, "id")
 	amount, _ := settlementAmount(obj)
-	if paymentID == "" || id == "" || amount <= 0 {
+	if paymentID == "" || id == "" || (amount <= 0 && !won) {
 		return
 	}
-	receipt := transaction.New(db)
-	found, err := receipt.Query().Filter("SourceId=", paymentID).Get()
-	if err != nil || !found || receipt.Type != transaction.Deposit {
-		log.Error("RECONCILE: %s %s returns %d cents of payment %s, which no receipt in org %s credited — take it back by hand", event.Type, id, amount, paymentID, org.Name)
+	where, found, err := paymentorg.Get(paymentID)
+	if err != nil || !found {
+		log.Error("RECONCILE: %s %s concerns payment %s, which no receipt recorded (err=%v) — settle it by hand", event.Type, id, paymentID, err)
 		return
 	}
 	led := creditledger.Get()
 	if led == nil {
 		return
 	}
-	if _, err := led.Clawback(ctx, creditledger.ClawbackInput{
-		Org: ledgerOrg(org), Subject: receipt.DestinationId, Payment: paymentID,
-		Ref: event.Type[:strings.IndexByte(event.Type, '.')] + ":" + id, AmountCents: int64(amount),
-		Reason: event.Type + " " + id, Test: receipt.Test,
-	}); err != nil {
-		log.Error("RECONCILE: %s %s: %d cents of payment %s were returned to the payer and not taken back from %s/%s: %v — retryable: the provider redelivers",
-			event.Type, id, amount, paymentID, org.Name, receipt.DestinationId, err)
+	kind := "refund"
+	if dispute {
+		kind = "dispute"
 	}
+	in := creditledger.ClawbackInput{
+		Org: where.Org, Subject: where.Subject, Payment: paymentID,
+		Ref: kind + ":" + id, AmountCents: int64(amount), Reason: event.Type + " " + id, Test: where.Test,
+	}
+	if won {
+		_, err = led.Restore(ctx, in)
+	} else {
+		_, err = led.Clawback(ctx, in)
+	}
+	if err != nil {
+		log.Error("RECONCILE: %s %s on payment %s for %s/%s did not post: %v — retryable: the provider redelivers",
+			event.Type, id, paymentID, where.Org, where.Subject, err)
+	}
+	_ = org
 }

@@ -919,3 +919,18 @@ func TestPrepaidRefundGivesTheDrawBack(t *testing.T) {
 		t.Fatalf("balance after the retry = %d, want 2000", b)
 	}
 }
+
+// A plan paid from the balance reads as settled from the balance, which is not the
+// customer paying for it.
+func TestRecordFromBalance_ThePeriodReadsAsPaidFromTheBalance(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org, _ := balanceSetup(t, ctx, "bal-settled", 20000)
+	if _, err := RecordSubscription(ctx, org, balanceIn()); err != nil {
+		t.Fatalf("record: %v", err)
+	}
+	rows, err := Subscriptions(ctx, org, balSubject, "")
+	if err != nil || len(rows) != 1 || rows[0].Settled != "balance" {
+		t.Fatalf("rows = %+v, %v; want one settled from the balance", rows, err)
+	}
+}
