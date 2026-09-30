@@ -252,3 +252,28 @@ func TestListSubscriptions_ReadsTheRowsTheStoreHolds(t *testing.T) {
 		t.Fatalf("the billing page's view: %+v err=%v", views, err)
 	}
 }
+
+// Each subscription says how its period in hand was paid: a plan recorded as
+// collected outside commerce names its processor, a plan paid from the balance says
+// so, and a row nobody paid for says nothing.
+func TestSubscriptionsSayHowThePeriodWasPaid(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("rec-settled")
+	withFakeSquare(t, squareMock("cust_1", "ccof_1", "sqpay_1"))
+	db := datastore.New(org.Namespaced(ctx))
+	for _, proc := range []string{"square", "comp"} {
+		in := recordDev(t, db)
+		in.Subject = "acme-" + proc
+		in.Processor = proc
+		if _, err := RecordSubscription(ctx, org, in); err != nil {
+			t.Fatalf("record %s: %v", proc, err)
+		}
+	}
+	for subject, want := range map[string]string{"acme-square": "external:square", "acme-comp": "external:comp"} {
+		rows, err := Subscriptions(ctx, org, subject, "")
+		if err != nil || len(rows) != 1 || rows[0].Settled != want {
+			t.Fatalf("%s: %+v, %v; want settled %q", subject, rows, err, want)
+		}
+	}
+}

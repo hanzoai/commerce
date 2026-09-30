@@ -50,6 +50,7 @@ import (
 	"github.com/hanzoai/commerce/mintauth"
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/paymentorg"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -292,6 +293,11 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		log.Error("RECONCILE: charge succeeded (ref=%s) but deposit failed for org %s: %v",
 			result.ProcessorRef, in.Subject, err)
 		return nil, fault(500, "charge succeeded but balance credit failed; contact support", err)
+	}
+	// Where this payment's receipt lives, so its processor's refund or dispute finds
+	// it: those callbacks name the payment and no org.
+	if err := paymentorg.Put(result.ProcessorRef, org.Name, in.Subject, test); err != nil {
+		log.Warn("payment %s: the org index was not written: %v", result.ProcessorRef, err)
 	}
 
 	// Read back the SAME key just credited so the returned balance matches what

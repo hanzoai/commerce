@@ -33,6 +33,7 @@ type fakeLedger struct {
 	posted    []creditledger.CreditInput
 	debits    []creditledger.DebitInput
 	clawbacks []creditledger.ClawbackInput
+	restores  []creditledger.ClawbackInput
 	calls     int
 	bal       map[string]int64
 	seen      map[string]string
@@ -126,6 +127,27 @@ func (f *fakeLedger) Refund(_ context.Context, in creditledger.RefundInput) (str
 		}
 	}
 	return f.seen[f.scope(in.Org, in.Test, "refund:"+in.Ref)], nil
+}
+
+// Restore gives back the clawback posted under Ref, once.
+func (f *fakeLedger) Restore(_ context.Context, in creditledger.ClawbackInput) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	scope := f.scope(in.Org, in.Test, "restore:"+in.Ref)
+	if id, ok := f.seen[scope]; ok {
+		return id, nil
+	}
+	for _, c := range f.clawbacks {
+		if c.Ref == in.Ref && c.Org == in.Org {
+			f.bal[f.account(c.Org, c.Subject, "usd", c.Test)] += c.AmountCents
+			f.nextID++
+			id := fmt.Sprintf("restore_%d", f.nextID)
+			f.seen[scope] = id
+			f.restores = append(f.restores, in)
+			return id, nil
+		}
+	}
+	return "", nil
 }
 
 // Clawback takes money back once per Ref.

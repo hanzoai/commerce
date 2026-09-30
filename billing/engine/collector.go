@@ -154,10 +154,14 @@ func CollectInvoice(ctx context.Context, db *datastore.Datastore, inv *billingin
 
 	// The settling instrument, most specific first: a card charge settled the
 	// remainder, credits alone covered it, or the balance did.
+	// "card" only when the card paid all of it: prepaid money beside a card is
+	// "mixed", which is not a payment the customer made in full.
 	method := "balance"
 	switch {
-	case result.ProviderUsed > 0:
+	case result.ProviderUsed > 0 && result.CreditUsed == 0 && result.BalanceUsed == 0:
 		method = "card"
+	case result.ProviderUsed > 0:
+		method = "mixed"
 	case result.CreditUsed > 0 && result.BalanceUsed == 0:
 		method = "credit"
 	}

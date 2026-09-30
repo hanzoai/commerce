@@ -209,8 +209,9 @@ func TestCollectInvoice_PrepaidAndCard(t *testing.T) {
 	if pre.credit != 0 || pre.balance != 0 {
 		t.Fatalf("prepaid left credit=%d balance=%d, want both spent", pre.credit, pre.balance)
 	}
-	if inv.Status != billinginvoice.Paid || inv.PaymentMethod != "card" || inv.AmountPaid != 2500 {
-		t.Fatalf("invoice %s by %q paid %d, want paid by card in full", inv.Status, inv.PaymentMethod, inv.AmountPaid)
+	// Paid in full, and "mixed": prepaid money paid part of it beside the card.
+	if inv.Status != billinginvoice.Paid || inv.PaymentMethod != "mixed" || inv.AmountPaid != 2500 {
+		t.Fatalf("invoice %s by %q paid %d, want paid in full, mixed", inv.Status, inv.PaymentMethod, inv.AmountPaid)
 	}
 }
 
@@ -245,4 +246,32 @@ func (p *purse) Draw(_ context.Context, _ string, _ currency.Type, amount int64,
 	p.balance -= d.Balance
 	p.draws = append(p.draws, amount)
 	return d, nil
+}
+
+type halfPrepaid struct{}
+
+func (halfPrepaid) Available(context.Context, string, currency.Type) (int64, error) { return 500, nil }
+func (halfPrepaid) Draw(_ context.Context, _ string, _ currency.Type, amount int64, _ string) (Drawn, error) {
+	return Drawn{Credit: amount}, nil
+}
+
+// A renewal the card paid only part of — prepaid credit took the rest — is settled
+// "mixed", never "card": only a period a card paid in full reads as the customer's
+// own money.
+func TestCollectInvoice_CreditBesideACardIsMixed(t *testing.T) {
+	inv := &billinginvoice.BillingInvoice{}
+	inv.Status = billinginvoice.Open
+	inv.AmountDue = 2000
+	inv.UserId = "u_mix"
+	inv.SubscriptionId = "sub_mix"
+	charger := ProviderCharger(func(context.Context, *datastore.Datastore, *billinginvoice.BillingInvoice, int64) (string, error) {
+		return "sqpay_mix", nil
+	})
+	result, err := CollectInvoice(nil, nil, inv, halfPrepaid{}, charger)
+	if err != nil || !result.Success {
+		t.Fatalf("collect = %+v, %v", result, err)
+	}
+	if inv.PaymentMethod != "mixed" {
+		t.Fatalf("invoice paymentMethod = %q, want mixed", inv.PaymentMethod)
+	}
 }
