@@ -102,9 +102,10 @@ type plannedEvent struct {
 // plan_changed is NOT derivable — the row holds only the CURRENT plan, no prior
 // state (models/billingevent is not written on plan change) — so it is
 // deliberately never emitted. Bundle-child subs (the entitlement shadow of a paid
-// parent, price 0) are skipped, exactly like the metrics fold.
+// parent, price 0) are skipped, exactly like the metrics fold, and so is a comp,
+// which nobody bought.
 func planSubscription(orgName string, s *subscription.Subscription) []plannedEvent {
-	if s.ProviderType == "bundle" {
+	if s.ProviderType == "bundle" || s.Type == subscription.Comp {
 		return nil
 	}
 	payload := subscriptionEvent(orgName, s) // reuse the events_emit.go builder (DRY)

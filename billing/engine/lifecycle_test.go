@@ -403,3 +403,53 @@ func TestVoidOpen_LeavesAnInvoiceBeingPaid(t *testing.T) {
 		}
 	}
 }
+
+// A comp is served each next period for nothing: the cycle takes it once its
+// period ends and rolls it on with no invoice, and neither prepaid money nor a card
+// is asked. It is never past due.
+func TestRenewSubscription_ACompRollsOnWithNothingCollected(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := datastore.New(c)
+	db.SetNamespace("renew-comp")
+
+	sub := subscription.New(db)
+	sub.UserId = "renew-comp/acme"
+	sub.PlanId = "team"
+	sub.Type = "comp"
+	sub.ProviderType = "comp"
+	sub.Quantity = 2
+	sub.Plan = plan.Plan{Slug: "team", Name: "Team", Currency: currency.USD, Interval: types.Monthly, IntervalCount: 1, PerSeat: true}
+	sub.Status = subscription.Active
+	sub.PeriodStart, sub.PeriodEnd = time.Now().AddDate(0, -3, 0), time.Now().AddDate(0, -2, 0)
+	if err := sub.Create(); err != nil {
+		t.Fatalf("create sub: %v", err)
+	}
+	if !IsDue(sub, time.Now()) {
+		t.Fatal("a comp past its period is not due; the cycle would never roll it on")
+	}
+	pre := &purse{balance: 100000}
+	charged := 0
+	charge := func(context.Context, *datastore.Datastore, *billinginvoice.BillingInvoice, int64) (string, error) {
+		charged++
+		return "ref", nil
+	}
+	inv, res, err := RenewSubscription(context.Background(), db, sub, pre, charge)
+	if err != nil || inv != nil || res == nil || !res.Success {
+		t.Fatalf("renew: invoice=%v result=%+v err=%v; want rolled on with no invoice", inv != nil, res, err)
+	}
+	if len(pre.draws) != 0 || charged != 0 || res.AmountCharged != 0 {
+		t.Fatalf("drew %v, charged %d time(s), collected %d; a comp collects nothing", pre.draws, charged, res.AmountCharged)
+	}
+	now := time.Now()
+	if sub.Status != subscription.Active || sub.PeriodStart.After(now) || !sub.PeriodEnd.After(now) {
+		t.Fatalf("comp is %s on %s..%s, want active on the period running now", sub.Status, sub.PeriodStart, sub.PeriodEnd)
+	}
+	invs := make([]*billinginvoice.BillingInvoice, 0)
+	if _, err := billinginvoice.Query(db).Filter("SubscriptionId=", sub.Id()).GetAll(&invs); err != nil || len(invs) != 0 {
+		t.Fatalf("invoices=%d (%v); a comp is never invoiced", len(invs), err)
+	}
+	if again, res, _ := RenewSubscription(context.Background(), db, sub, pre, charge); again != nil || res.Success {
+		t.Fatalf("a comp inside its period renewed again: invoice=%v result=%+v", again != nil, res)
+	}
+}

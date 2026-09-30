@@ -255,14 +255,14 @@ func TestListSubscriptions_ReadsTheRowsTheStoreHolds(t *testing.T) {
 
 // Each subscription says how its period in hand was paid: a plan recorded as
 // collected outside commerce names its processor, a plan paid from the balance says
-// so, and a row nobody paid for says nothing.
+// so, a comp says nobody paid, and a row nobody paid for says nothing.
 func TestSubscriptionsSayHowThePeriodWasPaid(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	org := moneyOrg("rec-settled")
 	withFakeSquare(t, squareMock("cust_1", "ccof_1", "sqpay_1"))
 	db := datastore.New(org.Namespaced(ctx))
-	for _, proc := range []string{"square", "comp"} {
+	for _, proc := range []string{"square", "wire"} {
 		in := recordDev(t, db)
 		in.Subject = "acme-" + proc
 		in.Processor = proc
@@ -270,7 +270,12 @@ func TestSubscriptionsSayHowThePeriodWasPaid(t *testing.T) {
 			t.Fatalf("record %s: %v", proc, err)
 		}
 	}
-	for subject, want := range map[string]string{"acme-square": "external:square", "acme-comp": "external:comp"} {
+	comp := compIn()
+	comp.Subject = "acme-comp"
+	if _, err := RecordSubscription(ctx, org, comp); err != nil {
+		t.Fatalf("record comp: %v", err)
+	}
+	for subject, want := range map[string]string{"acme-square": "external:square", "acme-wire": "external:wire", "acme-comp": "comp"} {
 		rows, err := Subscriptions(ctx, org, subject, "")
 		if err != nil || len(rows) != 1 || rows[0].Settled != want {
 			t.Fatalf("%s: %+v, %v; want settled %q", subject, rows, err, want)

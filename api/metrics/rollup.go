@@ -164,10 +164,11 @@ func foldSubscriptions(a *acc, orgName string, db *datastore.Datastore, test boo
 // foldSubs is the pure fold (no I/O) over one org's subscriptions: MRR, plan mix,
 // trials, and new/churn movement. Bundle-child subscriptions (ProviderType
 // "bundle", price 0 — the entitlement shadow of a paid parent) are skipped so
-// counts and MRR are not double-inflated.
+// counts and MRR are not double-inflated, and so are comps: a plan granted at no
+// charge is no subscriber and no revenue on this board.
 func foldSubs(a *acc, orgName string, subs []*subscription.Subscription, test bool) {
 	for _, s := range subs {
-		if s.Test != test || s.ProviderType == "bundle" {
+		if s.Test != test || s.ProviderType == "bundle" || s.Type == subscription.Comp {
 			continue
 		}
 		slug := s.PlanId

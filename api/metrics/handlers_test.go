@@ -285,3 +285,23 @@ func TestParseLimit(t *testing.T) {
 		}
 	}
 }
+
+// A comp is no revenue and no subscriber on the board: nobody bought it.
+func TestRollup_ACompIsNotOnTheBoard(t *testing.T) {
+	now := time.Now().UTC()
+	a := newAcc(now, windowStart(now, "30d"))
+	comp := mkSub("team", 2500, types.Monthly, subscription.Active, 2, now.AddDate(0, 0, -3), time.Time{}, "comp")
+	comp.Type = "comp"
+	revoked := mkSub("team", 2500, types.Monthly, subscription.Canceled, 2, now.AddDate(0, 0, -20), now.AddDate(0, 0, -1), "comp")
+	revoked.Type = "comp"
+	foldSubs(a, "acme", []*subscription.Subscription{comp, revoked}, false)
+	a.orgSeen["acme"] = true
+
+	s := a.snapshot(options{window: "30d", limit: 20})
+	if s.Revenue.MRRCents != 0 || s.Revenue.ActiveSubscriptions != 0 || s.Revenue.PayingCustomers != 0 {
+		t.Errorf("mrr=%d active=%d paying=%d, want a comp to be none of them", s.Revenue.MRRCents, s.Revenue.ActiveSubscriptions, s.Revenue.PayingCustomers)
+	}
+	if s.Subs.New != 0 || s.Subs.Canceled != 0 || s.Revenue.ChurnedMRRCents != 0 || len(s.Subs.Recent) != 0 {
+		t.Errorf("new=%d canceled=%d churned=%d events=%d, want a comp to move nothing", s.Subs.New, s.Subs.Canceled, s.Revenue.ChurnedMRRCents, len(s.Subs.Recent))
+	}
+}

@@ -591,8 +591,13 @@ func hasMemberSub(db *datastore.Datastore, planSlug, member string) bool {
 //	collects nothing, so it cannot double-charge, and counting it would trap the
 //	holder of a forged Active row outside any endpoint that could fix it.
 //
-// It answers a different question from subscriptionPlanSlug ("what may this
-// subject's allotment anchor on") and shares its filters by coincidence of
+// A comp counts although nobody paid for it. A SuperAdmin granted it, so it is
+// not a forgery to be stepped around, and it holds its plan as surely as a paid
+// row: a plan bought beside it would be a second subscription speaking for one
+// subject. A sale over it names it in replaces, or the comp is canceled first.
+//
+// It answers a different question from subscriptionPlanSlug ("which plan is this
+// subject served") and shares its filters by coincidence of
 // meaning, not by being the same predicate; keeping them apart is what lets FREE
 // anchor an allotment while not blocking a sale.
 func billingSubscription(db *datastore.Datastore, subject string, test bool) *subscription.Subscription {
@@ -614,7 +619,7 @@ func billingSubscription(db *datastore.Datastore, subject string, test bool) *su
 		if strings.EqualFold(strings.TrimSpace(s.ProviderType), "bundle") {
 			continue
 		}
-		if paidRow(s) && subscriptionPaymentBacked(s) {
+		if paidRow(s) && (subscriptionPaymentBacked(s) || s.Type == subscription.Comp) {
 			return s
 		}
 	}
@@ -691,8 +696,12 @@ func Subscriptions(ctx context.Context, org *organization.Organization, userID, 
 // periodSettled is how the subscription's period in hand was paid: the settlement
 // method of that period's paid invoice, or, for a plan recorded as collected outside
 // commerce with no invoice, "external:<processor>" when the record covers this period.
-// Anything else — unpaid, unknown, a row nobody paid for — is "".
+// A comp is "comp": granted, and paid by nobody. Anything else — unpaid, unknown, a
+// row nobody paid for — is "".
 func periodSettled(db *datastore.Datastore, s *subscription.Subscription) string {
+	if s.Type == subscription.Comp {
+		return collectionComp
+	}
 	invs := make([]*billinginvoice.BillingInvoice, 0)
 	if _, err := billinginvoice.Query(db).Filter("SubscriptionId=", s.Id()).GetAll(&invs); err == nil {
 		for _, inv := range invs {
@@ -777,6 +786,13 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 	sub := subscription.New(db)
 	if err := sub.GetById(id); err != nil || !Holds(callerHolder(c), sub.UserId) {
 		return http.Fail(c, 404, "subscription not found", err)
+	}
+
+	// A comp's plan and seats are what a SuperAdmin granted. They change by a new
+	// comp that replaces it (RecordSubscription), never here, where a move onto a
+	// plan or up in seats would be served for nothing.
+	if sub.Type == subscription.Comp {
+		return http.Fail(c, 409, "this plan is a comp: its plan and seats change only by a new comp that replaces it", nil)
 	}
 
 	var req updateSubscriptionRequest
@@ -913,7 +929,8 @@ type Subscription struct {
 	// Settled is how the period in hand was paid: "card" (a processor charged a card
 	// for all of it), "external:<processor>" (a payment recorded as collected outside
 	// commerce), "balance", "credit" or "mixed" (prepaid money, alone or beside a
-	// card). Empty when the period is unpaid or nothing says how.
+	// card), or "comp" (granted at no charge; nobody paid). Empty when the period is
+	// unpaid or nothing says how.
 	Settled string `json:"settled,omitempty"`
 
 	Plan SubscriptionPlan `json:"plan"`

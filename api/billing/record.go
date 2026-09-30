@@ -29,6 +29,14 @@ package billing
 // past due. The ledger entry and the invoice the draw paid are the reference, so
 // the caller need not name one.
 //
+// ONE PROCESSOR IS NOBODY: "comp". A SuperAdmin grants a plan the catalog sells
+// at no charge. Nothing was paid, so the price stated is 0 and no reference is
+// taken; the terms say why and the actor says who. The row is subscription.Comp:
+// the engine moves it on to each next period for nothing (engine.RenewSubscription)
+// until it is canceled, never invoicing it, never drawing on the subject's money
+// and never asking a card. It confers the plan — its tier and its seats — and is
+// no sale: no event is emitted for it, its MRR is 0, and it anchors no allotment.
+//
 // A record may TAKE OVER the plan the subject holds, when the caller names it in
 // Replaces. The new plan is recorded — and, from the balance, paid — first; the
 // held plan ends only after, so a refusal at any step leaves it as it was.
@@ -66,22 +74,29 @@ type RecordIn struct {
 	// Quantity is the seat count of a per-seat plan. 0 reads as 1.
 	Quantity int
 	// PriceCents is what the customer paid for one period, all seats. It is a
-	// CHECK and never a price: it must equal the plan's price for that period.
+	// CHECK and never a price: it must equal the plan's price for that period. A
+	// comp was paid nothing, so it is 0.
 	PriceCents int64
 	// PeriodStart and PeriodEnd bound the period the payment covers.
 	PeriodStart time.Time
 	PeriodEnd   time.Time
 	// Processor is who collected the money: "square", "wire", … It becomes the
-	// row's provider, and nothing here ever calls it. "balance" is the one
-	// exception: the period is paid now from the subject's prepaid money and the
-	// engine renews it from there.
+	// row's provider, and nothing here ever calls it. "balance" is commerce
+	// itself: the period is paid now from the subject's prepaid money and the
+	// engine renews it from there. "comp" is nobody: the plan is granted at no
+	// charge and renews for nothing until it is canceled.
 	Processor string
 	// Reference is the processor's own ids for the payment (invoice, order,
 	// payment, customer, receipt), kept on the row for reconciliation. Optional
-	// for "balance", whose ledger entry and invoice are recorded instead.
+	// for "balance", whose ledger entry and invoice are recorded instead. A comp
+	// has no payment, so it takes none.
 	Reference map[string]string
-	// Terms is anything agreed alongside the plan, kept verbatim on the row.
+	// Terms is anything agreed alongside the plan, kept verbatim on the row. A
+	// comp states here why it was granted.
 	Terms string
+	// Actor is who recorded it, as the caller authenticated them, kept on the row.
+	// A comp requires one.
+	Actor string
 	// Replaces is the id of the plan the subject holds that this one takes over.
 	// The held plan ends at once, and only after the new one is recorded and
 	// paid. Empty, a subject holding another plan is refused.
@@ -107,21 +122,22 @@ type Recorded struct {
 	Replaced *Subscription
 }
 
-// collected is the payment a new row opens on: who took it and the period it
-// paid. An external one was taken outside commerce, and its later periods
-// arrive the same way; otherwise commerce took it, and the engine collects the
-// periods after it.
+// collected is the payment a new row opens on: who took it, the period it paid,
+// and how the periods after it arrive. subscription.External was taken outside
+// commerce, and its later periods arrive the same way; subscription.Comp was paid
+// by nobody, and the engine moves it on for nothing; empty, commerce took it, and
+// the engine collects the periods after it.
 type collected struct {
 	processor  string
 	start, end time.Time
-	external   bool
+	billing    subscription.BillingType
 }
 
 // open shapes a freshly started row onto the paid period: active from its first
-// day, no trial, and — when collected externally — never due.
+// day, no trial, and billed the way it was collected.
 func (c *collected) open(sub *subscription.Subscription) {
-	if c.external {
-		sub.Type = subscription.External
+	if c.billing != "" {
+		sub.Type = c.billing
 	}
 	sub.ProviderType = c.processor
 	sub.Status = subscription.Active
@@ -148,7 +164,9 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 	in.Replaces = strings.TrimSpace(in.Replaces)
 	processor := strings.ToLower(strings.TrimSpace(in.Processor))
 	reference := cleanReference(in.Reference)
+	in.Terms, in.Actor = strings.TrimSpace(in.Terms), strings.TrimSpace(in.Actor)
 	start, end := in.PeriodStart.UTC(), in.PeriodEnd.UTC()
+	comp := processor == processorComp
 	switch {
 	case subject == "":
 		return nil, saleRefusal{saleRefused, "subject is required"}
@@ -156,11 +174,19 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 		return nil, saleRefusal{saleRefused, "planId is required"}
 	case processor == "":
 		return nil, saleRefusal{saleRefused, "processor is required: name who collected the payment"}
-	case len(reference) == 0 && processor != processorBalance:
+	case comp && in.PriceCents != 0:
+		return nil, saleRefusal{saleRefused, "priceCents must be 0 for a comp: it is granted at no charge"}
+	case comp && len(reference) > 0:
+		return nil, saleRefusal{saleRefused, "a comp takes no reference: nobody paid for it"}
+	case comp && in.Terms == "":
+		return nil, saleRefusal{saleRefused, "terms is required for a comp: say why it is granted"}
+	case comp && in.Actor == "":
+		return nil, saleRefusal{saleRefused, "a comp names its actor: who granted it"}
+	case len(reference) == 0 && processor != processorBalance && !comp:
 		return nil, saleRefusal{saleRefused, "reference is required: the processor's own ids for the payment"}
 	case start.IsZero() || !end.After(start):
 		return nil, saleRefusal{saleRefused, "periodEnd must be after periodStart"}
-	case in.PriceCents <= 0:
+	case in.PriceCents <= 0 && !comp:
 		return nil, saleRefusal{saleRefused, "priceCents is required: what the customer paid for the period"}
 	}
 
@@ -172,12 +198,18 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 	if p, err = planAtInterval(p, in.Interval); err != nil {
 		return nil, saleRefusal{saleRefused, err.Error()}
 	}
-	if processor == processorBalance {
+	switch processor {
+	case processorBalance:
 		return recordFromBalance(ctx, org, db, p, in, subject, planID, reference, start, end)
+	case processorComp:
+		return recordComp(ctx, org, db, p, in, subject, start, end)
 	}
 
 	held := billingSubscription(db, subject, org.TestMode())
-	if held != nil && (in.Replaces == "" || sameRung(held, planID, p.Interval)) {
+	switch {
+	case held != nil && held.Type == subscription.Comp && in.Replaces == "":
+		return nil, compHeld(held)
+	case held != nil && held.Type != subscription.Comp && (in.Replaces == "" || sameRung(held, planID, p.Interval)):
 		return extendRecorded(ctx, org, held, in, planID, p.Interval, reference, start, end)
 	}
 	if err := takesOver(held, in.Replaces); err != nil {
@@ -202,9 +234,9 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 		UserId:    subject,
 		PlanId:    planID,
 		Quantity:  qty,
-		Metadata:  recordMetadata(nil, collectionExternal, processor, reference, in.Terms, start, end),
+		Metadata:  recordMetadata(nil, collectionExternal, processor, in.Actor, reference, in.Terms, start, end),
 		Test:      org.TestMode(),
-		Collected: &collected{processor: processor, start: start, end: end, external: true},
+		Collected: &collected{processor: processor, start: start, end: end, billing: subscription.External},
 	})
 	if err != nil {
 		return nil, err
@@ -265,7 +297,8 @@ func retire(ctx context.Context, org *organization.Organization, id string, ev *
 		log.Error("RECONCILE: subscription %s had ended when a record replaced it, and ending it answered: %v", id, err)
 		sub = row
 	}
-	if ev != nil {
+	// A comp was never sold, so its end is no churn either.
+	if ev != nil && sub.Type != subscription.Comp {
 		go ev.EmitSubscriptionCanceled(context.WithoutCancel(ctx), subscriptionEvent(org.Name, sub))
 	}
 	return sub, nil
@@ -327,7 +360,7 @@ func extendRecorded(ctx context.Context, org *organization.Organization, held *s
 		return nil, err
 	}
 	sub.PeriodStart, sub.PeriodEnd = start, end
-	sub.Metadata = recordMetadata(sub.Metadata, collectionExternal, sub.ProviderType, reference, in.Terms, start, end)
+	sub.Metadata = recordMetadata(sub.Metadata, collectionExternal, sub.ProviderType, in.Actor, reference, in.Terms, start, end)
 	if err := sub.Update(); err != nil {
 		return nil, err
 	}
@@ -335,6 +368,88 @@ func extendRecorded(ctx context.Context, org *organization.Organization, held *s
 		go ev.EmitSubscriptionRenewed(context.WithoutCancel(ctx), subscriptionEvent(org.Name, sub))
 	}
 	return &Recorded{Subscription: *viewSubscription(sub), Outcome: RecordExtended}, nil
+}
+
+// compHeld refuses a payment recorded for a subject that holds a comp without
+// naming it: the comp is the plan the subject holds, and a paid plan beside it
+// would be two.
+func compHeld(held *subscription.Subscription) error {
+	return saleRefusal{saleHeld, fmt.Sprintf(
+		"this account holds the %q plan as a comp (subscription %s); name it in replaces to take it over", heldSlug(held), held.Id())}
+}
+
+// recordComp grants the plan at no charge, as a row the engine moves on for
+// nothing until it is canceled.
+//
+// Everything that can refuse refuses before anything is written. The plan must be
+// one the catalog sells for money: a comp gives a published plan away, and a
+// private plan or a free one is not that. Its period must be one of the plan's and
+// the one running now, because the plan is conferred from the moment it is granted
+// and the engine moves it on one period at a time. Its seats must meet the plan's
+// floor. The subject must hold no plan unless Replaces names it, and a plan it
+// holds ends only once the comp is open. A retry of the comp the subject already
+// holds, on the same plan and seats, is answered with it unchanged.
+//
+// The row is the plan at $0: its snapshot carries no price and no contact-sales
+// contract, so every reader of what it costs reads nothing, while the catalog, by
+// slug, still answers what it confers. Nothing is emitted for it: nothing was sold.
+func recordComp(ctx context.Context, org *organization.Organization, db *datastore.Datastore, p *plan.Plan, in RecordIn, subject string, start, end time.Time) (*Recorded, error) {
+	slug := p.Slug
+	switch {
+	case lookupPlan(slug) == nil:
+		return nil, saleRefusal{saleRefused, fmt.Sprintf("a comp grants a plan the catalog sells; %q is not in the catalog", in.PlanID)}
+	case !paidTier(slug):
+		return nil, saleRefusal{saleRefused, fmt.Sprintf("plan %q is free; there is nothing to comp", slug)}
+	}
+	if one := engine.Advance(start, p); end.After(one) || end.Before(one.Add(-monthEnd)) {
+		return nil, saleRefusal{saleRefused, fmt.Sprintf(
+			"a comp's period is one %s of the plan: periodEnd must be %s, or up to three days earlier where a month is shorter",
+			p.Interval, one.Format(time.RFC3339))}
+	}
+	if now := time.Now(); start.After(now) || !end.After(now) {
+		return nil, saleRefusal{saleRefused, "a comp's period is the one running now: it must have started and not yet ended"}
+	}
+	qty, err := seats(slug, in.Quantity, 0)
+	if err != nil {
+		return nil, saleRefusal{saleRefused, err.Error()}
+	}
+
+	held := billingSubscription(db, subject, org.TestMode())
+	switch {
+	case held != nil && held.Type == subscription.Comp && sameRung(held, slug, p.Interval) && held.Quantity == qty:
+		return &Recorded{Subscription: *viewSubscription(held), Outcome: RecordUnchanged}, nil
+	case held != nil && in.Replaces == "":
+		return nil, saleRefusal{saleHeld, fmt.Sprintf(
+			"this account holds the %q plan (subscription %s); name it in replaces to take it over with a comp", heldSlug(held), held.Id())}
+	}
+	if err := takesOver(held, in.Replaces); err != nil {
+		return nil, err
+	}
+
+	p.TrialPeriodDays = 0
+	p.Price, p.ContactSales = 0, false
+	sub, err := createSubscription(db, p, &createSubscriptionRequest{
+		UserId:    subject,
+		PlanId:    slug,
+		Quantity:  qty,
+		Metadata:  recordMetadata(nil, collectionComp, processorComp, in.Actor, nil, in.Terms, start, end),
+		Test:      org.TestMode(),
+		Collected: &collected{processor: processorComp, start: start, end: end, billing: subscription.Comp},
+	})
+	if err != nil {
+		return nil, err
+	}
+	var replaced *Subscription
+	if held != nil {
+		old, err := retire(ctx, org, held.Id(), in.Events)
+		if err != nil {
+			// Nothing moved, so the comp is withdrawn and the held plan stands.
+			withdraw(db, sub)
+			return nil, fmt.Errorf("record subscription: subscription %s could not be ended, so the comp was not recorded: %w", held.Id(), err)
+		}
+		replaced = viewSubscription(old)
+	}
+	return &Recorded{Subscription: *viewSubscription(sub), Outcome: RecordCreated, Replaced: replaced}, nil
 }
 
 // priceMatches refuses a payment that is not what the plan costs for the period.
@@ -349,16 +464,17 @@ func priceMatches(planID string, want, paid int64) error {
 }
 
 // How a recorded row's periods are collected: by the processor outside
-// commerce, or by the engine from the subject's prepaid money.
+// commerce, by the engine from the subject's prepaid money, or not at all.
 const (
 	collectionExternal = "external"
 	collectionBalance  = processorBalance
+	collectionComp     = processorComp
 )
 
 // recordMetadata carries the collection on the row: how it is collected, who
-// collected it, the latest payment's references, the terms, and every period
-// recorded so far.
-func recordMetadata(prev types.Map, collection, processor string, reference map[string]string, terms string, start, end time.Time) types.Map {
+// collected it, who recorded it, the latest payment's references, the terms, and
+// every period recorded so far.
+func recordMetadata(prev types.Map, collection, processor, actor string, reference map[string]string, terms string, start, end time.Time) types.Map {
 	m := types.Map{}
 	for k, v := range prev {
 		m[k] = v
@@ -373,12 +489,17 @@ func recordMetadata(prev types.Map, collection, processor string, reference map[
 	if t := strings.TrimSpace(terms); t != "" {
 		m["terms"] = t
 	}
-	periods, _ := m["periods"].([]interface{})
-	m["periods"] = append(periods, map[string]interface{}{
+	period := map[string]interface{}{
 		"start":     start.Format(time.RFC3339),
 		"end":       end.Format(time.RFC3339),
 		"reference": ref,
-	})
+	}
+	if a := strings.TrimSpace(actor); a != "" {
+		m["actor"] = a
+		period["actor"] = a
+	}
+	periods, _ := m["periods"].([]interface{})
+	m["periods"] = append(periods, period)
 	return m
 }
 
@@ -398,6 +519,9 @@ func cleanReference(in map[string]string) map[string]string {
 // processorBalance is the processor that is commerce itself: the period is paid
 // from the subject's prepaid money.
 const processorBalance = "balance"
+
+// processorComp is the processor that is nobody: the plan is granted at no charge.
+const processorComp = "comp"
 
 // monthEnd is the most a calendar month's end shortens a period against
 // engine.Advance, which carries a day a month lacks into the next one: January 31
@@ -487,7 +611,7 @@ func recordFromBalance(ctx context.Context, org *organization.Organization, db *
 		return nil, saleRefusal{saleHeld, fmt.Sprintf(
 			"this account already holds the %q plan (subscription %s); name it in replaces to take it over, or change that subscription instead of opening a second one",
 			heldSlug(held), held.Id())}
-	case held != nil && sameRung(held, planID, p.Interval):
+	case held != nil && held.Type != subscription.Comp && sameRung(held, planID, p.Interval):
 		abandon()
 		return nil, saleRefusal{saleHeld, fmt.Sprintf(
 			"subscription %s is already the %q plan; a record from the balance opens a plan and cannot replace it with itself", held.Id(), planID)}
@@ -552,7 +676,7 @@ func recordFromBalance(ctx context.Context, org *organization.Organization, db *
 	if inv != nil {
 		paid["invoice"] = inv.Id()
 	}
-	sub.Metadata = recordMetadata(sub.Metadata, collectionBalance, processorBalance, paid, in.Terms, start, end)
+	sub.Metadata = recordMetadata(sub.Metadata, collectionBalance, processorBalance, in.Actor, paid, in.Terms, start, end)
 	if err := sub.Update(); err != nil {
 		log.Error("RECONCILE: subscription %s (subject=%s) was paid from the balance and its reference was not saved: %v", sub.Id(), subject, err)
 	}

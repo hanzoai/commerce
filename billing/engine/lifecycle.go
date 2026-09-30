@@ -92,6 +92,18 @@ func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscr
 		return nil, &CollectionResult{Error: "subscription was canceled at the end of its period"}, nil
 	}
 
+	// A comp is served its next period for nothing: no invoice is built, so neither
+	// prepaid money nor a card is ever asked, and it is never past due.
+	if sub.Type == subscription.Comp {
+		if !IsDue(sub, now) {
+			return nil, &CollectionResult{Error: "subscription period is not due for renewal"}, nil
+		}
+		next := owed(sub, now)
+		sub.PeriodStart, sub.PeriodEnd = next.start, next.end
+		sub.Status = subscription.Active
+		return nil, &CollectionResult{Success: true}, nil
+	}
+
 	// Idempotency (period): if the owed period already has an invoice, NEVER charge
 	// it again here. Dunning retries collection via PayInvoice, not this generator.
 	next := owed(sub, now)
@@ -223,6 +235,9 @@ func owed(sub *subscription.Subscription, now time.Time) period {
 // processor directly, so an invoice built here would bill a period nobody owes us
 // for, and collecting it would burn their credits, then their balance, then a card.
 // Its next period is recorded when that payment arrives, not renewed.
+//
+// A comp is due like any row once its period ends, so the cycle moves it on; its
+// renewal collects nothing (RenewSubscription).
 func IsDue(sub *subscription.Subscription, now time.Time) bool {
 	if sub.Type == subscription.External {
 		return false
