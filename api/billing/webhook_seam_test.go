@@ -547,3 +547,48 @@ func TestWebhookSeam_ADeliveryNamingNoSubscriptionMintsNothing(t *testing.T) {
 		t.Fatalf("victim balance=%d, want 0 — an unrelated wallet was credited from a blank key", got)
 	}
 }
+
+// A refund or a dispute of a settled payment takes the money back from the wallet the
+// payment credited — the one its receipt names — once per refund or dispute id; a
+// refund still pending takes nothing.
+func TestWebhookSeam_ARefundOrDisputeTakesThePaymentBack(t *testing.T) {
+	const secret = "whsec_seam_clawback"
+	registerSquare(t, secret)
+	fake := newFakeLedger()
+	injectLedger(t, fake)
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := webhookOrg(t, ctx, "seam-claw", true)
+	seedProviderSubscription(t, org, ctx, "sub_claw", "seam-claw/alice")
+	if r := deliverWebhook(ctx, "seam-claw", secret, renewalEvent("evt_pay", "pay_claw", "sub_claw", 5000), ""); r.StatusCode != http.StatusOK {
+		t.Fatalf("settle: %d", r.StatusCode)
+	}
+	refund := func(event, status string, cents int64) []byte {
+		return []byte(fmt.Sprintf(`{"merchant_id":"M1","type":"refund.updated","event_id":%q,"created_at":%q,`+
+			`"data":{"type":"refund","id":"rf_1","object":{"refund":{"id":"rf_1","payment_id":"pay_claw","status":%q,`+
+			`"amount_money":{"amount":%d,"currency":"USD"}}}}}`, event, time.Now().UTC().Format(time.RFC3339), status, cents))
+	}
+	for _, b := range [][]byte{refund("evt_rf_0", "PENDING", 2000), refund("evt_rf_1", "COMPLETED", 2000), refund("evt_rf_2", "COMPLETED", 2000)} {
+		if r := deliverWebhook(ctx, "seam-claw", secret, b, ""); r.StatusCode != http.StatusOK {
+			t.Fatalf("refund delivery: %d", r.StatusCode)
+		}
+	}
+	dispute := []byte(fmt.Sprintf(`{"merchant_id":"M1","type":"dispute.created","event_id":"evt_dp","created_at":%q,`+
+		`"data":{"type":"dispute","id":"dp_1","object":{"dispute":{"id":"dp_1","disputed_payment":{"payment_id":"pay_claw"},`+
+		`"amount_money":{"amount":3000,"currency":"USD"}}}}}`, time.Now().UTC().Format(time.RFC3339)))
+	if r := deliverWebhook(ctx, "seam-claw", secret, dispute, ""); r.StatusCode != http.StatusOK {
+		t.Fatalf("dispute delivery: %d", r.StatusCode)
+	}
+	if len(fake.clawbacks) != 2 {
+		t.Fatalf("clawbacks = %+v, want the completed refund once and the dispute once", fake.clawbacks)
+	}
+	for i, want := range []struct {
+		ref   string
+		cents int64
+	}{{"refund:rf_1", 2000}, {"dispute:dp_1", 3000}} {
+		got := fake.clawbacks[i]
+		if got.Org != "seam-claw" || got.Subject != "seam-claw/alice" || got.Payment != "pay_claw" || got.Ref != want.ref || got.AmountCents != want.cents {
+			t.Fatalf("clawback %d = %+v, want %s of %d from seam-claw/alice", i, got, want.ref, want.cents)
+		}
+	}
+}

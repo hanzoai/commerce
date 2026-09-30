@@ -28,14 +28,15 @@ import (
 // It records the LAST CreditInput and every credit it took, so a test can assert the
 // handler passed exactly the right fields and nothing credited twice.
 type fakeLedger struct {
-	mu     sync.Mutex
-	lastIn creditledger.CreditInput
-	posted []creditledger.CreditInput
-	debits []creditledger.DebitInput
-	calls  int
-	bal    map[string]int64
-	seen   map[string]string
-	nextID int
+	mu        sync.Mutex
+	lastIn    creditledger.CreditInput
+	posted    []creditledger.CreditInput
+	debits    []creditledger.DebitInput
+	clawbacks []creditledger.ClawbackInput
+	calls     int
+	bal       map[string]int64
+	seen      map[string]string
+	nextID    int
 }
 
 func newFakeLedger() *fakeLedger {
@@ -106,26 +107,41 @@ func (f *fakeLedger) Debit(_ context.Context, in creditledger.DebitInput) (strin
 	return id, f.bal[k], nil
 }
 
-// Refund gives back the debit drawn under Ref, once.
+// Refund gives back the debit drawn under Ref, as the real ledger does: the attempt
+// that holds money is refunded once, a debit under the same Ref afterwards is a new
+// payment, and a Ref with nothing outstanding answers the last refund.
 func (f *fakeLedger) Refund(_ context.Context, in creditledger.RefundInput) (string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	scope := f.scope(in.Org, in.Test, "refund:"+in.Ref)
-	if id, ok := f.seen[scope]; ok {
-		return id, nil
-	}
-	for i, d := range f.debits {
+	for i := len(f.debits) - 1; i >= 0; i-- {
+		d := f.debits[i]
 		if d.Ref == in.Ref && d.Org == in.Org && d.Subject == in.Subject && d.Test == in.Test {
 			f.bal[f.account(d.Org, d.Subject, d.Currency, d.Test)] += d.AmountCents
 			f.debits = append(f.debits[:i], f.debits[i+1:]...)
 			delete(f.seen, f.scope(in.Org, in.Test, "debit:"+in.Ref))
 			f.nextID++
 			id := fmt.Sprintf("refund_%d", f.nextID)
-			f.seen[scope] = id
+			f.seen[f.scope(in.Org, in.Test, "refund:"+in.Ref)] = id
 			return id, nil
 		}
 	}
-	return "", nil
+	return f.seen[f.scope(in.Org, in.Test, "refund:"+in.Ref)], nil
+}
+
+// Clawback takes money back once per Ref.
+func (f *fakeLedger) Clawback(_ context.Context, in creditledger.ClawbackInput) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	scope := f.scope(in.Org, in.Test, "clawback:"+in.Ref)
+	if id, ok := f.seen[scope]; ok {
+		return id, nil
+	}
+	f.bal[f.account(in.Org, in.Subject, "usd", in.Test)] -= in.AmountCents
+	f.nextID++
+	id := fmt.Sprintf("clawback_%d", f.nextID)
+	f.seen[scope] = id
+	f.clawbacks = append(f.clawbacks, in)
+	return id, nil
 }
 
 // credits returns the credits actually POSTED (replays excluded), for the tests that
