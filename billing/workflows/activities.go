@@ -140,9 +140,15 @@ func (a *BillingActivities) RenewSubscriptionActivity(ctx context.Context, param
 		return nil, fmt.Errorf("failed to update subscription: %w", err)
 	}
 
+	// No invoice is built for a period that was not due, for a row that ended, or
+	// for a comp moved on for nothing.
+	invoiceID := ""
+	if inv != nil {
+		invoiceID = inv.Id()
+	}
 	return &RenewalResult{
 		Success:       result.Success,
-		InvoiceId:     inv.Id(),
+		InvoiceId:     invoiceID,
 		NextPeriodEnd: sub.PeriodEnd,
 	}, nil
 }

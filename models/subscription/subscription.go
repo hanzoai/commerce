@@ -56,6 +56,12 @@ const (
 	// it, and it moves to its next period only when that next payment is recorded
 	// (billing/engine.IsDue, api/billing.RecordSubscription).
 	External BillingType = "external"
+	// Comp is a catalog plan a SuperAdmin granted at no charge
+	// (api/billing.RecordSubscription, processor "comp"). Nobody paid for it and
+	// nothing ever collects for it: no invoice, no draw, no card. The engine moves it
+	// on to each next period for nothing until it is canceled
+	// (billing/engine.RenewSubscription). It confers its plan and is never revenue.
+	Comp BillingType = "comp"
 )
 
 type Status string

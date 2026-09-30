@@ -523,6 +523,10 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		if heldSlug == "" {
 			heldSlug = held.PlanId
 		}
+		if held.Type == subscription.Comp {
+			return nil, saleRefusal{saleHeld, fmt.Sprintf(
+				"this account holds the %q plan as a comp (subscription %s); cancel it before buying a plan", heldSlug, held.Id())}
+		}
 		return nil, saleRefusal{saleHeld, fmt.Sprintf(
 			"this account already pays for the %q plan (subscription %s); change that subscription instead of buying a second one",
 			heldSlug, held.Id())}

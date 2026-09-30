@@ -129,7 +129,12 @@ func roundDiv(num, den int64) int64 {
 // which every summation must apply. What a canceled subscription was worth is
 // this number — churn is the revenue we lost, so it needs the amount even
 // though the status no longer counts.
+//
+// A comp contributes nothing: nobody pays for it, whatever its plan is worth.
 func SubscriptionMRRCents(sub *subscription.Subscription) int64 {
+	if sub.Type == subscription.Comp {
+		return 0
+	}
 	qty := sub.Quantity
 	if qty < 1 {
 		qty = 1
@@ -224,7 +229,12 @@ func emitSubscriptionPlanChanged(c *zip.Ctx, orgName string, sub *subscription.S
 	})
 }
 
+// emitSubscriptionCanceled is silent for a comp: it was never sold, so its end is
+// no churn.
 func emitSubscriptionCanceled(c *zip.Ctx, orgName string, sub *subscription.Subscription) {
+	if sub.Type == subscription.Comp {
+		return
+	}
 	fireEvent(c, func(ctx context.Context, ev *events.Client) {
 		ev.EmitSubscriptionCanceled(ctx, subscriptionEvent(orgName, sub))
 	})

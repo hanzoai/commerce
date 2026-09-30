@@ -54,8 +54,9 @@ func speaks(s *subscription.Subscription, test bool) bool {
 
 // subscriptionPlanSlug returns the plan slug of `user`'s newest active/trialing
 // subscription, or "" when none. This is the user's REAL, un-spoofable
-// entitlement — the SOLE authority for how much included allotment may be minted
-// on their behalf. It never trusts a client-supplied plan.
+// entitlement — the plan they are served, and through planForGrant the SOLE
+// authority for how much included allotment may be minted on their behalf. It
+// never trusts a client-supplied plan.
 //
 // Subscriptions are registered ancestor-less (orm.Register without WithParent)
 // and keyed by UserId, so they are queried the SAME way
@@ -64,9 +65,18 @@ func speaks(s *subscription.Subscription, test bool) bool {
 // the old resolvePlanSlug) matched NOTHING, which would make the grant clamp
 // reject even a legitimate self-service grant for the user's actual plan.
 func subscriptionPlanSlug(db *datastore.Datastore, user string, test bool) string {
+	if s := servedSubscription(db, user, test); s != nil {
+		return subscriptionSlug(s)
+	}
+	return ""
+}
+
+// servedSubscription is the row subscriptionPlanSlug answers from, or nil when
+// none speaks for the subject.
+func servedSubscription(db *datastore.Datastore, user string, test bool) *subscription.Subscription {
 	subs, err := userSubscriptions(db, user, test)
 	if err != nil {
-		return ""
+		return nil
 	}
 
 	var best *subscription.Subscription
@@ -81,24 +91,16 @@ func subscriptionPlanSlug(db *datastore.Datastore, user string, test bool) strin
 		// Active sub (CreateBillingSubscription starts one instantly). A free ($0)
 		// tier is self-serve even when it carries a small included credit (a perk),
 		// so it anchors as-is; price, not the allotment, is the paid-tier gate.
-		slug := s.Plan.Slug
-		if slug == "" {
-			slug = s.PlanId
-		}
-		if paidTier(slug) && !subscriptionPaymentBacked(s) {
+		// A comp is served its plan although nobody paid: a SuperAdmin granted it.
+		// It still mints nothing, because planForGrant drops it.
+		if paidTier(subscriptionSlug(s)) && !subscriptionPaymentBacked(s) && s.Type != subscription.Comp {
 			continue
 		}
 		if best == nil || s.PeriodStart.After(best.PeriodStart) {
 			best = s
 		}
 	}
-	if best == nil {
-		return ""
-	}
-	if best.Plan.Slug != "" {
-		return best.Plan.Slug
-	}
-	return best.PlanId
+	return best
 }
 
 // subscriptionPaymentBacked reports whether a subscription represents a REAL paid
@@ -109,6 +111,9 @@ func subscriptionPlanSlug(db *datastore.Datastore, user string, test bool) strin
 // forged internal Active sub (ProviderType="internal", no collected invoice) is
 // NOT payment-backed, so its higher-tier allotment can never be minted (C1-a).
 func subscriptionPaymentBacked(s *subscription.Subscription) bool {
+	if s.Type == subscription.Comp {
+		return false // granted at no charge: nobody paid for it
+	}
 	if s.Type == subscription.External {
 		return true // opened only by recording a payment the processor already collected
 	}
@@ -146,8 +151,14 @@ func resolvePlanSlug(db *datastore.Datastore, user, explicit string, test bool) 
 //
 // This makes /allotment/grant self-service-safe (an org grants its OWN allotment,
 // but only ever its OWN paid plan's amount) without a blanket platform-only gate.
+//
+// A comp anchors no allotment. It confers its plan, and what the plan includes is
+// money nobody paid for.
 func planForGrant(c *zip.Ctx, db *datastore.Datastore, user, explicit string, test bool) string {
-	sub := subscriptionPlanSlug(db, user, test)
+	sub := ""
+	if s := servedSubscription(db, user, test); s != nil && s.Type != subscription.Comp {
+		sub = subscriptionSlug(s)
+	}
 	explicit = strings.TrimSpace(explicit)
 	if explicit == "" {
 		return sub
@@ -240,7 +251,8 @@ func grantOrgAllotments(c *zip.Ctx, db *datastore.Datastore, now time.Time, live
 		default:
 			continue
 		}
-		if s.UserId == "" || !speaks(s, !live) {
+		// A comp mints no allotment (planForGrant).
+		if s.UserId == "" || !speaks(s, !live) || s.Type == subscription.Comp {
 			continue
 		}
 		slug := s.Plan.Slug
@@ -393,13 +405,18 @@ func ReadRollup(ctx context.Context, org *organization.Organization, user, plan 
 	ctx = org.Namespaced(ctx)
 	db := datastore.New(ctx)
 
+	named := strings.TrimSpace(plan) != ""
 	plan = resolvePlanSlug(db, user, plan, org.TestMode())
 
 	// Catalog-declared included allotment, and what is actually granted on the
 	// balance this month (they match once the grant has run; before the first
 	// grant the granted amount is 0 while the catalog amount shows the plan's
-	// entitlement).
+	// entitlement). Resolved from the subscription, the entitlement is what the
+	// grant would mint, which for a comp is nothing.
 	includedMonthlyCents := IncludedMonthlyCents(plan)
+	if !named {
+		includedMonthlyCents = IncludedMonthlyCents(planForGrant(nil, db, user, "", org.TestMode()))
+	}
 	includedGrantedCents := allotment.GrantedCents(db, user, now, org.TestMode())
 
 	// Consumption this UTC month (api-usage withdrawals).
