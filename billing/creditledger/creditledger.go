@@ -116,6 +116,23 @@ type CreditLedger interface {
 	// exactly: every account it came from gets back what it gave. Idempotent: a
 	// second refund moves nothing, and a ref that drew nothing refunds nothing.
 	Refund(ctx context.Context, in RefundInput) (txID string, err error)
+	// Clawback takes back money a processor returned to the payer — a refund, or a
+	// dispute that holds or takes the funds — from the wallet the payment credited:
+	// out of cash first, then credit, which may go below zero, since the money is gone
+	// either way. Posted once per in.Ref (the processor's refund or dispute id).
+	Clawback(ctx context.Context, in ClawbackInput) (txID string, err error)
+}
+
+// ClawbackInput names the payment (its processor reference, the deposit's key), the
+// processor's own id for the refund or dispute, and the amount taken back.
+type ClawbackInput struct {
+	Org         string
+	Subject     string
+	Payment     string
+	Ref         string
+	AmountCents int64
+	Reason      string
+	Test        bool
 }
 
 // RefundInput names the payment to give back: the address and the Ref it was drawn
