@@ -24,10 +24,13 @@ type CreateRefundParams struct {
 }
 
 // CreateRefund creates a full or partial refund for a payment intent or invoice.
-// If Amount is 0, the full amount is refunded.
+// If Amount is 0, the full amount is refunded — of an invoice, all it still holds.
+// An invoice refund is recorded on the invoice, so the period it paid for reads
+// what its payment still holds.
 func CreateRefund(ctx context.Context, db *datastore.Datastore, params CreateRefundParams, proc processor.PaymentProcessor) (*refund.Refund, error) {
 	var amount int64
 	var cur currency.Type
+	var inv *billinginvoice.BillingInvoice
 
 	if params.PaymentIntentId != "" {
 		pi := paymentintent.New(db)
@@ -47,20 +50,21 @@ func CreateRefund(ctx context.Context, db *datastore.Datastore, params CreateRef
 		}
 		cur = pi.Currency
 	} else if params.InvoiceId != "" {
-		inv := billinginvoice.New(db)
+		inv = billinginvoice.New(db)
 		if err := inv.GetById(params.InvoiceId); err != nil {
 			return nil, fmt.Errorf("invoice not found: %w", err)
 		}
 		if inv.Status != billinginvoice.Paid {
 			return nil, fmt.Errorf("can only refund paid invoices, current: %s", inv.Status)
 		}
+		holds := inv.AmountPaid - inv.Refunded()
 		if params.Amount > 0 {
 			amount = params.Amount
 		} else {
-			amount = inv.AmountPaid
+			amount = holds
 		}
-		if amount > inv.AmountPaid {
-			return nil, fmt.Errorf("refund amount %d exceeds paid amount %d", amount, inv.AmountPaid)
+		if amount <= 0 || amount > holds {
+			return nil, fmt.Errorf("refund amount %d exceeds the %d cents the invoice still holds", amount, holds)
 		}
 		cur = inv.Currency
 	} else {
@@ -102,6 +106,12 @@ func CreateRefund(ctx context.Context, db *datastore.Datastore, params CreateRef
 
 	if err := r.Create(); err != nil {
 		return nil, fmt.Errorf("failed to create refund: %w", err)
+	}
+	if inv != nil {
+		inv.Refund("refund:"+r.Id(), amount)
+		if err := inv.Update(); err != nil {
+			return r, fmt.Errorf("refund %s was recorded and invoice %s was not updated: %w", r.Id(), inv.Id(), err)
+		}
 	}
 
 	return r, nil

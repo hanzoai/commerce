@@ -6,6 +6,7 @@ import (
 	"net/http"
 	nethttp "net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/zap-proto/zip"
@@ -24,6 +25,7 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/secret"
+	"github.com/hanzoai/commerce/util/nscontext"
 
 	// Blank-import the provider barrel so every provider's init() registers
 	// with processor.Global() before HandleProviderWebhook runs. Without this
@@ -355,7 +357,7 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 	if err := trans.Create(); err != nil {
 		log.Warn("settlement %s: failed to write the local receipt: %v", paymentID, err)
 	}
-	if err := paymentorg.Put(paymentID, org.Name, who.subject, who.test); err != nil {
+	if err := paymentorg.Put(paymentID, org.Name, who.subject, "", who.test); err != nil {
 		log.Warn("settlement %s: the org index was not written: %v", paymentID, err)
 	}
 }
@@ -751,7 +753,9 @@ func isClawbackEvent(eventType string) bool {
 }
 
 // applyClawbackEvent takes a refunded or disputed payment's money back out of the
-// wallet it credited, and gives a dispute's back when the merchant wins it.
+// wallet it credited, and gives a dispute's back when the merchant wins it. A payment
+// that paid an invoice credited no wallet: the invoice records the refund or the
+// dispute instead, and the period it paid for reads as its payment now stands.
 //
 // The org and the wallet are the ones the payment's own receipt names — found through
 // the payment index (models/paymentorg), since the callback names only the payment —
@@ -765,7 +769,7 @@ func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organi
 	obj := unwrapObject(event.Data, "refund")
 	paymentID := stringField(obj, "payment_id")
 	dispute := strings.HasPrefix(event.Type, "dispute.")
-	won := false
+	won, state := false, ""
 	if dispute {
 		obj = unwrapObject(event.Data, "dispute")
 		paymentID = stringField(obj, "payment_id")
@@ -774,11 +778,14 @@ func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organi
 				paymentID = stringField(dp, "payment_id")
 			}
 		}
-		switch state := strings.ToUpper(stringField(obj, "state")); {
-		case state == "WON":
+		state = strings.ToUpper(stringField(obj, "state"))
+		switch {
+		case state == billinginvoice.DisputeWon:
 			won = true
 		case event.Type != "dispute.created":
 			return // a dispute's other changes move no money
+		case state == "":
+			state = "OPEN"
 		}
 	} else if st := stringField(obj, "status"); !strings.EqualFold(st, "COMPLETED") {
 		return
@@ -793,13 +800,20 @@ func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organi
 		log.Error("RECONCILE: %s %s concerns payment %s, which no receipt recorded (err=%v) — settle it by hand", event.Type, id, paymentID, err)
 		return
 	}
-	led := creditledger.Get()
-	if led == nil {
-		return
-	}
 	kind := "refund"
 	if dispute {
 		kind = "dispute"
+	}
+	if where.Invoice != "" {
+		if err := returnOnInvoice(ctx, where, kind+":"+id, dispute, state, int64(amount)); err != nil {
+			log.Error("RECONCILE: %s %s on payment %s did not reach invoice %s in %s: %v — record it on the invoice by hand",
+				event.Type, id, paymentID, where.Invoice, where.Org, err)
+		}
+		return
+	}
+	led := creditledger.Get()
+	if led == nil {
+		return
 	}
 	in := creditledger.ClawbackInput{
 		Org: where.Org, Subject: where.Subject, Payment: paymentID,
@@ -815,4 +829,26 @@ func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organi
 			event.Type, id, paymentID, where.Org, where.Subject, err)
 	}
 	_ = org
+}
+
+// invoiceReturns serializes the read-modify-write of an invoice's refunds and
+// dispute within the process, the one writer of a tenant's books.
+var invoiceReturns sync.Mutex
+
+// returnOnInvoice records a refund or a dispute of the payment that paid an invoice
+// on that invoice, in the org the payment's receipt names: a refund once per ref, a
+// dispute as the state it reached.
+func returnOnInvoice(ctx context.Context, where *paymentorg.PaymentOrg, ref string, dispute bool, state string, amount int64) error {
+	invoiceReturns.Lock()
+	defer invoiceReturns.Unlock()
+	inv := billinginvoice.New(datastore.New(nscontext.WithNamespace(ctx, where.Org)))
+	if err := inv.GetById(where.Invoice); err != nil {
+		return err
+	}
+	if dispute {
+		inv.SetDispute(state)
+	} else if !inv.Refund(ref, amount) {
+		return nil
+	}
+	return inv.Update()
 }

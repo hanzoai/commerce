@@ -682,36 +682,99 @@ func Subscriptions(ctx context.Context, org *organization.Organization, userID, 
 			continue
 		}
 		v := viewSubscription(s)
-		v.Settled = periodSettled(db, s)
+		pay := periodPaid(db, s)
+		v.Settled, v.Seats, v.ChargedCents = pay.settled, pay.seats, pay.charged
 		out = append(out, *v)
 	}
 	return out, nil
 }
 
-// periodSettled is how the subscription's period in hand was paid: the settlement
-// method of that period's paid invoice, or, for a plan recorded as collected outside
-// commerce with no invoice, "external:<processor>" when the record covers this period.
-// Anything else — unpaid, unknown, a row nobody paid for — is "".
-func periodSettled(db *datastore.Datastore, s *subscription.Subscription) string {
+// periodPayment is how a subscription's period in hand was paid, and for what.
+type periodPayment struct {
+	settled string // Subscription.Settled
+	seats   int    // Subscription.Seats
+	charged int64  // Subscription.ChargedCents
+}
+
+// periodPaid is how the subscription's period in hand was paid: from that period's
+// paid invoice — its settlement method, the seats its plan line charged, and its plan
+// fee after discount less what was refunded — or, for a plan recorded as collected
+// outside commerce with no invoice, "external:<processor>" with the seats and the
+// price recorded with the period. A period unpaid, unknown, refunded in full or
+// disputed answers the zero value.
+func periodPaid(db *datastore.Datastore, s *subscription.Subscription) periodPayment {
 	invs := make([]*billinginvoice.BillingInvoice, 0)
 	if _, err := billinginvoice.Query(db).Filter("SubscriptionId=", s.Id()).GetAll(&invs); err == nil {
 		for _, inv := range invs {
-			if inv.PeriodStart.Unix() == s.PeriodStart.Unix() && inv.Status == billinginvoice.Paid {
-				return strings.ToLower(strings.TrimSpace(inv.PaymentMethod))
+			if inv.Status != billinginvoice.Paid || !paysPeriod(inv, s) {
+				continue
+			}
+			if inv.Disputed() || (inv.AmountPaid > 0 && inv.Refunded() >= inv.AmountPaid) {
+				return periodPayment{}
+			}
+			fee, seats := int64(0), int64(0)
+			for _, li := range inv.LineItems {
+				if li.Type != billinginvoice.LineSubscription {
+					continue
+				}
+				// A plan line states its seats; one that does not is read from its
+				// amount at its unit price, and is one seat when it states neither.
+				n := li.Quantity
+				if n < 1 && li.UnitPrice > 0 {
+					n = li.Amount / li.UnitPrice
+				}
+				fee, seats = fee+li.Amount, seats+max(n, 1)
+			}
+			charged := min(fee-inv.Discount, inv.AmountPaid) - inv.Refunded()
+			return periodPayment{
+				settled: strings.ToLower(strings.TrimSpace(inv.PaymentMethod)),
+				seats:   int(seats),
+				charged: max(charged, 0),
 			}
 		}
 	}
 	if c, _ := s.Metadata["collection"].(string); c != collectionExternal {
-		return ""
+		return periodPayment{}
 	}
 	periods, _ := s.Metadata["periods"].([]interface{})
 	for _, p := range periods {
 		m, _ := p.(map[string]interface{})
-		if start, _ := m["start"].(string); start == s.PeriodStart.UTC().Format(time.RFC3339) {
-			return "external:" + strings.ToLower(strings.TrimSpace(s.ProviderType))
+		if start, _ := m["start"].(string); start != s.PeriodStart.UTC().Format(time.RFC3339) {
+			continue
+		}
+		// A period recorded without its seats and price reads what the record
+		// checked: the row's seats at the plan's price.
+		seats, ok := numberField(m, "quantity")
+		if !ok {
+			seats = recordedSeats(s)
+		}
+		charged, ok := numberField(m, "priceCents")
+		if !ok {
+			charged = int64(s.Plan.Price) * seats
+		}
+		return periodPayment{
+			settled: "external:" + strings.ToLower(strings.TrimSpace(s.ProviderType)),
+			seats:   int(seats),
+			charged: charged,
 		}
 	}
-	return ""
+	return periodPayment{}
+}
+
+// paysPeriod reports whether inv paid the period s holds: the invoice is for that
+// period, or the period began when a late payment of it settled.
+func paysPeriod(inv *billinginvoice.BillingInvoice, s *subscription.Subscription) bool {
+	return inv.PeriodStart.Unix() == s.PeriodStart.Unix() ||
+		(!inv.PaidAt.IsZero() && inv.PaidAt.Unix() == s.PeriodStart.Unix())
+}
+
+// recordedSeats is the seat count an external record charges a row for: its
+// quantity on a per-seat plan, one on a flat plan.
+func recordedSeats(s *subscription.Subscription) int64 {
+	if s.Plan.PerSeat && s.Quantity > 1 {
+		return int64(s.Quantity)
+	}
+	return 1
 }
 
 // ListBillingSubscriptions lists subscriptions for a user.
@@ -788,6 +851,8 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 
 	// Seat gate: the EFFECTIVE plan + quantity after this update must satisfy
 	// the catalog's per-seat floor, and member rows never exceed seats paid for.
+	// A change of seats waits for the next period, whose invoice charges it, so
+	// the seats paid for are the fewer of the period in hand's and the next one's.
 	slug := req.PlanId
 	if !planChanged {
 		if slug = sub.Plan.Slug; slug == "" {
@@ -795,6 +860,9 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 		}
 	}
 	quantity := sub.Quantity
+	if sub.PendingQuantity > 0 {
+		quantity = sub.PendingQuantity
+	}
 	if req.Quantity > 0 {
 		quantity = req.Quantity
 	}
@@ -806,9 +874,9 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 			return http.Fail(c, 400,
 				fmt.Sprintf("plan %q requires at least %d seats (got %d)", slug, min, quantity), nil)
 		}
-		if len(req.Members) > quantity {
+		if paidSeats := min(quantity, max(sub.Quantity, 1)); len(req.Members) > paidSeats {
 			return http.Fail(c, 400,
-				fmt.Sprintf("members (%d) exceed seats (%d)", len(req.Members), quantity), nil)
+				fmt.Sprintf("members (%d) exceed seats paid for (%d)", len(req.Members), paidSeats), nil)
 		}
 	}
 
@@ -869,8 +937,14 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 		}
 	}
 
-	if req.Quantity > 0 {
-		sub.Quantity = req.Quantity
+	// The period in hand keeps the seats it was paid for; the next period opens
+	// at the seats asked for, and the renewal that opens it charges them.
+	switch {
+	case req.Quantity <= 0:
+	case req.Quantity == sub.Quantity:
+		sub.PendingQuantity = 0
+	default:
+		sub.PendingQuantity = req.Quantity
 	}
 
 	if err := sub.Update(); err != nil {
@@ -915,6 +989,16 @@ type Subscription struct {
 	// commerce), "balance", "credit" or "mixed" (prepaid money, alone or beside a
 	// card). Empty when the period is unpaid or nothing says how.
 	Settled string `json:"settled,omitempty"`
+	// Seats is the seat count the period in hand was paid for: the quantity its
+	// payment charged, never the row's Quantity. 0 when the period is unpaid.
+	Seats int `json:"seats,omitempty"`
+	// ChargedCents is what the period in hand was paid for its plan, after any
+	// discount, less what was refunded against that payment. 0 when the period is
+	// unpaid.
+	ChargedCents int64 `json:"chargedCents,omitempty"`
+	// PendingQuantity is the seat count the next period opens at, when a change of
+	// seats waits for the renewal that charges it.
+	PendingQuantity int `json:"pendingQuantity,omitempty"`
 
 	Plan SubscriptionPlan `json:"plan"`
 
@@ -955,6 +1039,7 @@ func viewSubscription(sub *subscription.Subscription) *Subscription {
 		PlanID:               sub.PlanId,
 		Status:               string(sub.Status),
 		Quantity:             sub.Quantity,
+		PendingQuantity:      sub.PendingQuantity,
 		CurrentPeriodStart:   sub.PeriodStart,
 		CurrentPeriodEnd:     sub.PeriodEnd,
 		CancelAtPeriodEnd:    sub.EndCancel,
@@ -1254,6 +1339,9 @@ func subscriptionResponse(sub *subscription.Subscription) map[string]any {
 		"updatedAt": sub.UpdatedAt,
 	}
 
+	if sub.PendingQuantity > 0 {
+		resp["pendingQuantity"] = sub.PendingQuantity
+	}
 	if !sub.TrialStart.IsZero() {
 		resp["trialStart"] = sub.TrialStart
 		resp["trialEnd"] = sub.TrialEnd
