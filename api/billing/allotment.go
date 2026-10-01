@@ -52,10 +52,20 @@ func speaks(s *subscription.Subscription, test bool) bool {
 	return !s.Test || test
 }
 
-// subscriptionPlanSlug returns the plan slug of `user`'s newest active/trialing
-// subscription, or "" when none. This is the user's REAL, un-spoofable
-// entitlement — the SOLE authority for how much included allotment may be minted
-// on their behalf. It never trusts a client-supplied plan.
+// subscriptionPlanSlug returns the plan slug of the subscription that serves
+// `user` (servedSubscription), or "" when none. This is the user's REAL,
+// un-spoofable entitlement — the SOLE authority for how much included allotment
+// may be minted on their behalf. It never trusts a client-supplied plan.
+func subscriptionPlanSlug(db *datastore.Datastore, user string, test bool) string {
+	if s := servedSubscription(db, user, test); s != nil {
+		return subscriptionSlug(s)
+	}
+	return ""
+}
+
+// servedSubscription is the row a subject's plan is served from: among its
+// active/trialing rows that may anchor a plan, the one conferring the highest tier
+// (rowTier), the newest of those on a tie. nil when there is none.
 //
 // Subscriptions are registered ancestor-less (orm.Register without WithParent)
 // and keyed by UserId, so they are queried the SAME way
@@ -63,10 +73,13 @@ func speaks(s *subscription.Subscription, test bool) bool {
 // under the synckey ancestor. The prior Ancestor(synckey) filter (inherited by
 // the old resolvePlanSlug) matched NOTHING, which would make the grant clamp
 // reject even a legitimate self-service grant for the user's actual plan.
-func subscriptionPlanSlug(db *datastore.Datastore, user string, test bool) string {
+//
+// The highest tier wins, so a free row held beside a paid one never answers for the
+// subject, whichever of their periods began last.
+func servedSubscription(db *datastore.Datastore, user string, test bool) *subscription.Subscription {
 	subs, err := userSubscriptions(db, user, test)
 	if err != nil {
-		return ""
+		return nil
 	}
 
 	var best *subscription.Subscription
@@ -81,24 +94,18 @@ func subscriptionPlanSlug(db *datastore.Datastore, user string, test bool) strin
 		// Active sub (CreateBillingSubscription starts one instantly). A free ($0)
 		// tier is self-serve even when it carries a small included credit (a perk),
 		// so it anchors as-is; price, not the allotment, is the paid-tier gate.
-		slug := s.Plan.Slug
-		if slug == "" {
-			slug = s.PlanId
-		}
-		if paidTier(slug) && !subscriptionPaymentBacked(s) {
+		if paidTier(subscriptionSlug(s)) && !subscriptionPaymentBacked(s) {
 			continue
 		}
-		if best == nil || s.PeriodStart.After(best.PeriodStart) {
+		if best == nil {
+			best = s
+			continue
+		}
+		if r, b := tierRank(rowTier(s)), tierRank(rowTier(best)); r > b || (r == b && s.PeriodStart.After(best.PeriodStart)) {
 			best = s
 		}
 	}
-	if best == nil {
-		return ""
-	}
-	if best.Plan.Slug != "" {
-		return best.Plan.Slug
-	}
-	return best.PlanId
+	return best
 }
 
 // subscriptionPaymentBacked reports whether a subscription represents a REAL paid

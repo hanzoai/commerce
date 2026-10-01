@@ -159,6 +159,10 @@ type TierView struct {
 	// multiplies — is keyed on this. A retired slug answers as its successor, the
 	// same rung every other gate reads, so a max holder reads max-5x here.
 	Plan string `json:"plan,omitempty"`
+	// Subscription is the id of the subscription row Plan is served from, when the
+	// tier answered is the one that row confers; "" when no row serves the subject,
+	// or the tier is not the row's (a minted override).
+	Subscription string `json:"subscription,omitempty"`
 	// Tier is the tier's own bounds.
 	Tier TierLimits `json:"tier"`
 	// Balance is what they can spend right now.
@@ -250,10 +254,17 @@ func ReadTier(ctx context.Context, org *organization.Organization, user string, 
 		}
 	}
 
-	// ONE slug resolution, for both the usage windows and the plan's roster. It was
-	// already resolved for the windows; reading it twice is two chances to answer
-	// for two different plans in one payload.
-	slug := subscriptionPlanSlug(datastore.New(ctx), user, org.TestMode())
+	// ONE row resolution, for the plan, the usage windows and the plan's roster.
+	// Reading it twice is two chances to answer for two different plans in one
+	// payload.
+	served := servedSubscription(datastore.New(ctx), user, org.TestMode())
+	slug, servedID := "", ""
+	if served != nil {
+		slug = subscriptionSlug(served)
+		if rowTier(served) == name {
+			servedID = served.Id()
+		}
+	}
 
 	creditsRemaining := split.CreditsRemaining
 	effectiveAvailable := int64(spendable) + dailyRemaining
@@ -276,9 +287,10 @@ func ReadTier(ctx context.Context, org *organization.Organization, user string, 
 	}
 
 	return &TierView{
-		User: user,
-		Plan: servedAs(slug),
-		Tier: lims,
+		User:         user,
+		Plan:         servedAs(slug),
+		Subscription: servedID,
+		Tier:         lims,
 		Balance: TierBalance{
 			Currency:           cur,
 			PrepaidAvailable:   prepaidAvailable,
@@ -602,20 +614,23 @@ func deriveTier(db *datastore.Datastore, user string, test bool) (tier.Name, err
 	}
 	best := tier.Free
 	for _, s := range subs {
-		var t tier.Name
-		switch s.Status {
-		case subscription.Trialing:
-			t = tier.Starter
-		case subscription.Active:
-			t = activeTier(s)
-		default:
-			continue // past_due / unpaid / canceled confer no tier
-		}
-		if tierRank(t) > tierRank(best) {
+		if t := rowTier(s); tierRank(t) > tierRank(best) {
 			best = t
 		}
 	}
 	return best, nil
+}
+
+// rowTier is the tier one subscription confers: a trialing row Starter, an active
+// row its plan's (activeTier), and past_due / unpaid / canceled none.
+func rowTier(s *subscription.Subscription) tier.Name {
+	switch s.Status {
+	case subscription.Trialing:
+		return tier.Starter
+	case subscription.Active:
+		return activeTier(s)
+	}
+	return tier.Free
 }
 
 // activeTier is the tier an ACTIVE subscription confers.
