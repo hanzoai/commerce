@@ -1,120 +1,46 @@
 package engine
 
 import (
-	"context"
 	"fmt"
+	"sync"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/credit"
-	"github.com/hanzoai/commerce/models/paymentintent"
-	"github.com/hanzoai/commerce/models/refund"
-	"github.com/hanzoai/commerce/models/types/currency"
-
-	"github.com/hanzoai/commerce/payment/processor"
-	"github.com/hanzoai/money"
 )
 
-// CreateRefundParams holds the parameters for creating a refund.
-type CreateRefundParams struct {
-	PaymentIntentId string
-	InvoiceId       string
-	Amount          int64  // 0 = full refund
-	Reason          string // "duplicate" | "fraudulent" | "requested_by_customer"
+// returns serializes the read-modify-write of an invoice's refunds and dispute
+// within the process, the one writer of a tenant's books. Commerce never makes a
+// refund: both are recorded only from the processor's signed webhook, through here.
+var returns sync.Mutex
+
+// RecordRefund records on invoice id the refund the processor gave back under its
+// own refundID, once — a refund reported twice is one entry — reading the invoice
+// afresh under returns.
+func RecordRefund(db *datastore.Datastore, id, refundID string, amount int64) error {
+	returns.Lock()
+	defer returns.Unlock()
+	inv := billinginvoice.New(db)
+	if err := inv.GetById(id); err != nil {
+		return err
+	}
+	if !inv.Refund("refund:"+refundID, amount) {
+		return nil
+	}
+	return inv.Update()
 }
 
-// CreateRefund creates a full or partial refund for a payment intent or invoice.
-// If Amount is 0, the full amount is refunded — of an invoice, all it still holds.
-// An invoice refund is recorded on the invoice, so the period it paid for reads
-// what its payment still holds.
-func CreateRefund(ctx context.Context, db *datastore.Datastore, params CreateRefundParams, proc processor.PaymentProcessor) (*refund.Refund, error) {
-	var amount int64
-	var cur currency.Type
-	var inv *billinginvoice.BillingInvoice
-
-	if params.PaymentIntentId != "" {
-		pi := paymentintent.New(db)
-		if err := pi.GetById(params.PaymentIntentId); err != nil {
-			return nil, fmt.Errorf("payment intent not found: %w", err)
-		}
-		if pi.Status != paymentintent.Succeeded {
-			return nil, fmt.Errorf("can only refund succeeded payment intents, current: %s", pi.Status)
-		}
-		if params.Amount > 0 {
-			amount = params.Amount
-		} else {
-			amount = pi.AmountReceived
-		}
-		if amount > pi.AmountReceived {
-			return nil, fmt.Errorf("refund amount %d exceeds received amount %d", amount, pi.AmountReceived)
-		}
-		cur = pi.Currency
-	} else if params.InvoiceId != "" {
-		inv = billinginvoice.New(db)
-		if err := inv.GetById(params.InvoiceId); err != nil {
-			return nil, fmt.Errorf("invoice not found: %w", err)
-		}
-		if inv.Status != billinginvoice.Paid {
-			return nil, fmt.Errorf("can only refund paid invoices, current: %s", inv.Status)
-		}
-		holds := inv.AmountPaid - inv.Refunded()
-		if params.Amount > 0 {
-			amount = params.Amount
-		} else {
-			amount = holds
-		}
-		if amount <= 0 || amount > holds {
-			return nil, fmt.Errorf("refund amount %d exceeds the %d cents the invoice still holds", amount, holds)
-		}
-		cur = inv.Currency
-	} else {
-		return nil, fmt.Errorf("either paymentIntentId or invoiceId is required")
+// RecordDispute records on invoice id the state a dispute against its payment
+// reached, reading the invoice afresh under returns.
+func RecordDispute(db *datastore.Datastore, id, state string) error {
+	returns.Lock()
+	defer returns.Unlock()
+	inv := billinginvoice.New(db)
+	if err := inv.GetById(id); err != nil {
+		return err
 	}
-
-	r := refund.New(db)
-	r.PaymentIntentId = params.PaymentIntentId
-	r.InvoiceId = params.InvoiceId
-	r.Amount = amount
-	r.Currency = cur
-	r.Reason = params.Reason
-
-	// If external processor, attempt refund
-	if proc != nil && params.PaymentIntentId != "" {
-		pi := paymentintent.New(db)
-		_ = pi.GetById(params.PaymentIntentId)
-		if pi.ProviderRef != "" {
-			result, err := proc.Refund(ctx, processor.RefundRequest{
-				TransactionID: pi.ProviderRef,
-				// cur is the invoice's own currency, read above. The gateway
-				// needs it to render the amount at the right scale.
-				Amount: money.FromMinor(int64(amount), cur.Money()),
-				Reason: params.Reason,
-			})
-			if err != nil {
-				_ = r.MarkFailed(err.Error())
-				if createErr := r.Create(); createErr != nil {
-					return nil, createErr
-				}
-				return r, err
-			}
-			r.ProviderRef = result.RefundID
-		}
-	}
-
-	// Mark as succeeded for internal refunds
-	_ = r.MarkSucceeded()
-
-	if err := r.Create(); err != nil {
-		return nil, fmt.Errorf("failed to create refund: %w", err)
-	}
-	if inv != nil {
-		inv.Refund("refund:"+r.Id(), amount)
-		if err := inv.Update(); err != nil {
-			return r, fmt.Errorf("refund %s was recorded and invoice %s was not updated: %w", r.Id(), inv.Id(), err)
-		}
-	}
-
-	return r, nil
+	inv.SetDispute(state)
+	return inv.Update()
 }
 
 // CreateCreditNoteParams holds the parameters for creating a credit note.

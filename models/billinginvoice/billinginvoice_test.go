@@ -46,3 +46,21 @@ func TestADisputeWonStaysWon(t *testing.T) {
 		t.Fatal("a dispute lost does not read disputed")
 	}
 }
+
+// An inquiry closed without a chargeback holds nothing, and one that escalates holds
+// the payment again.
+func TestAnInquiryClosedHoldsNothing(t *testing.T) {
+	inv := &BillingInvoice{}
+	inv.SetDispute("INQUIRY_EVIDENCE_REQUIRED")
+	if !inv.Disputed() {
+		t.Fatal("an open inquiry does not read disputed")
+	}
+	inv.SetDispute("INQUIRY_CLOSED")
+	if inv.Disputed() {
+		t.Fatal("an inquiry closed without a chargeback reads disputed")
+	}
+	inv.SetDispute("EVIDENCE_REQUIRED")
+	if !inv.Disputed() {
+		t.Fatal("an inquiry escalated to a chargeback does not read disputed")
+	}
+}

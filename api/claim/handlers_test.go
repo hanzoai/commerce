@@ -17,6 +17,7 @@ import (
 	"github.com/hanzoai/commerce/models/lineitem"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/refund"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/test/ae"
@@ -114,14 +115,15 @@ func mustCreateClaim(t *testing.T, ns, orderId, resolution string, items []itemR
 	return &cl
 }
 
-// TestAccept_Refund_ComputesAmount proves the money math: a claim for 2 widgets
-// (@1000) + 1 gadget (@2500) settles to 4500c, and the order's Refunded reflects it.
-func TestAccept_Refund_ComputesAmount(t *testing.T) {
+// TestAccept_Replace_ComputesAmount proves the money math: a claim for 2 widgets
+// (@1000) + 1 gadget (@2500) settles to 4500c by a replacement order, and the
+// order's Refunded is untouched.
+func TestAccept_Replace_ComputesAmount(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
 
 	o := seedOrder(t, "acme")
-	cl := mustCreateClaim(t, "acme", o.Id(), "refund", []itemRequest{
+	cl := mustCreateClaim(t, "acme", o.Id(), "replace", []itemRequest{
 		{ItemId: "widget", Quantity: 2, Reason: "damaged"},
 		{ItemId: "gadget", Quantity: 1, Reason: "wrong_item"},
 	})
@@ -137,32 +139,31 @@ func TestAccept_Refund_ComputesAmount(t *testing.T) {
 	if resp.AmountCents != 4500 {
 		t.Fatalf("settled amount = %d, want 4500", resp.AmountCents)
 	}
-	if resp.RefundId == "" {
-		t.Fatalf("expected a refund id on refund resolution")
+	if resp.ReplacementOrderId == "" {
+		t.Fatalf("expected a replacement order id")
 	}
 	if resp.Claim.Status != claimModel.StatusAccepted {
 		t.Fatalf("claim status = %q, want accepted", resp.Claim.Status)
 	}
 
-	// The order's Refunded is bumped by exactly the settled amount.
 	db := datastore.New(nscontext.WithNamespace(context.Background(), "acme"))
 	fresh := order.New(db)
 	if err := fresh.GetById(o.Id()); err != nil {
 		t.Fatalf("reload order: %v", err)
 	}
-	if int64(fresh.Refunded) != 4500 {
-		t.Fatalf("order refunded = %d, want 4500", fresh.Refunded)
+	if fresh.Refunded != 0 {
+		t.Fatalf("order refunded = %d, want 0", fresh.Refunded)
 	}
 }
 
-// TestAccept_Idempotent proves a second accept returns the SAME refund and does
-// NOT bump the order refund again.
+// TestAccept_Idempotent proves a second accept returns the SAME replacement order
+// and builds no second one.
 func TestAccept_Idempotent(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
 
 	o := seedOrder(t, "acme")
-	cl := mustCreateClaim(t, "acme", o.Id(), "refund", []itemRequest{
+	cl := mustCreateClaim(t, "acme", o.Id(), "replace", []itemRequest{
 		{ItemId: "widget", Quantity: 1, Reason: "missing"},
 	})
 
@@ -177,28 +178,19 @@ func TestAccept_Idempotent(t *testing.T) {
 	var r2 acceptResponse
 	_ = json.Unmarshal(b2, &r2)
 
-	if r1.RefundId == "" || r1.RefundId != r2.RefundId {
-		t.Fatalf("replay produced a different refund: %q vs %q", r1.RefundId, r2.RefundId)
-	}
-
-	db := datastore.New(nscontext.WithNamespace(context.Background(), "acme"))
-	fresh := order.New(db)
-	if err := fresh.GetById(o.Id()); err != nil {
-		t.Fatalf("reload order: %v", err)
-	}
-	if int64(fresh.Refunded) != 1000 {
-		t.Fatalf("order refunded = %d after replay, want 1000 (no second debit)", fresh.Refunded)
+	if r1.ReplacementOrderId == "" || r1.ReplacementOrderId != r2.ReplacementOrderId {
+		t.Fatalf("replay produced a different replacement: %q vs %q", r1.ReplacementOrderId, r2.ReplacementOrderId)
 	}
 }
 
 // TestAccept_CannotClaimMoreThanOrdered proves over-claiming a line is rejected
-// (422) before any money moves.
+// (422) before any order is created.
 func TestAccept_CannotClaimMoreThanOrdered(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
 
 	o := seedOrder(t, "acme")
-	cl := mustCreateClaim(t, "acme", o.Id(), "refund", []itemRequest{
+	cl := mustCreateClaim(t, "acme", o.Id(), "replace", []itemRequest{
 		{ItemId: "widget", Quantity: 99, Reason: "damaged"}, // ordered only 3
 	})
 
@@ -220,13 +212,13 @@ func TestAccept_CannotClaimMoreThanOrdered(t *testing.T) {
 	}
 }
 
-// TestAccept_NonAdmin_403 proves accept (a money move) rejects a non-admin.
+// TestAccept_NonAdmin_403 proves accept rejects a non-admin.
 func TestAccept_NonAdmin_403(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
 
 	o := seedOrder(t, "acme")
-	cl := mustCreateClaim(t, "acme", o.Id(), "refund", []itemRequest{
+	cl := mustCreateClaim(t, "acme", o.Id(), "replace", []itemRequest{
 		{ItemId: "widget", Quantity: 1, Reason: "damaged"},
 	})
 
@@ -242,7 +234,7 @@ func TestClaim_CrossTenant404(t *testing.T) {
 	defer tc.Close()
 
 	o := seedOrder(t, "acme")
-	cl := mustCreateClaim(t, "acme", o.Id(), "refund", []itemRequest{
+	cl := mustCreateClaim(t, "acme", o.Id(), "replace", []itemRequest{
 		{ItemId: "widget", Quantity: 1, Reason: "damaged"},
 	})
 
@@ -259,7 +251,7 @@ func TestReject(t *testing.T) {
 	defer tc.Close()
 
 	o := seedOrder(t, "acme")
-	cl := mustCreateClaim(t, "acme", o.Id(), "refund", []itemRequest{
+	cl := mustCreateClaim(t, "acme", o.Id(), "replace", []itemRequest{
 		{ItemId: "gadget", Quantity: 1, Reason: "damaged"},
 	})
 
@@ -277,5 +269,46 @@ func TestReject(t *testing.T) {
 	code2, _ := callAction(t, "acme", true, cl.Id(), "accept", Accept)
 	if code2 != 409 {
 		t.Fatalf("accept-after-reject status = %d, want 409", code2)
+	}
+}
+
+// TestClaim_NeverRefunds proves a claim is settled only by replacement: one asking
+// for a refund is refused at create, one filed without a resolution is a
+// replacement, and a refund claim already on file is refused at accept — no refund
+// row, and the order's Refunded untouched.
+func TestClaim_NeverRefunds(t *testing.T) {
+	tc := ae.NewContext()
+	defer tc.Close()
+
+	o := seedOrder(t, "acme")
+	items := []itemRequest{{ItemId: "widget", Quantity: 1, Reason: "damaged"}}
+	body, _ := json.Marshal(createRequest{OrderId: o.Id(), Resolution: "refund", Items: items})
+	if code, b := callCreate(t, "acme", body); code != 400 {
+		t.Fatalf("create refund claim status = %d, want 400; body=%s", code, b)
+	}
+	if cl := mustCreateClaim(t, "acme", o.Id(), "", items); cl.Resolution != claimModel.ResolutionReplace {
+		t.Fatalf("default resolution = %q, want replace", cl.Resolution)
+	}
+
+	db := datastore.New(nscontext.WithNamespace(context.Background(), "acme"))
+	cl := mustCreateClaim(t, "acme", o.Id(), "replace", items)
+	onFile := claimModel.New(db)
+	if err := onFile.GetById(cl.Id()); err != nil {
+		t.Fatalf("load claim: %v", err)
+	}
+	onFile.Resolution = "refund"
+	if err := onFile.Update(); err != nil {
+		t.Fatalf("file a refund claim: %v", err)
+	}
+	if code, b := callAction(t, "acme", true, cl.Id(), "accept", Accept); code != 422 {
+		t.Fatalf("accept refund claim status = %d, want 422; body=%s", code, b)
+	}
+	fresh := order.New(db)
+	if err := fresh.GetById(o.Id()); err != nil || fresh.Refunded != 0 {
+		t.Fatalf("order refunded = %d (%v), want 0", fresh.Refunded, err)
+	}
+	rows := make([]*refund.Refund, 0)
+	if _, err := refund.Query(db).GetAll(&rows); err != nil || len(rows) != 0 {
+		t.Fatalf("refund rows = %d (%v), want none", len(rows), err)
 	}
 }

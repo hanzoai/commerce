@@ -183,7 +183,7 @@ export const RESOURCES: Resource[] = [
     slug: 'claims',
     kind: 'claim',
     label: 'Claims',
-    subtitle: 'Resolve damaged, wrong, or missing items with a refund or replacement',
+    subtitle: 'Resolve damaged, wrong, or missing items with a replacement',
     empty: 'No claims.',
     columns: [{ key: 'orderId', header: 'Order', as: 'name' }, { key: 'resolution', header: 'Resolution', as: 'text' }, { key: 'amountCents', header: 'Amount', as: 'money' }, { key: 'status', header: 'Status', as: 'status' }, { key: 'createdAt', header: 'Created', as: 'date' }],
   },

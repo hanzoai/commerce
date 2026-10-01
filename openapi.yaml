@@ -41,7 +41,7 @@ tags:
   - name: Cart
     description: Shopping cart operations
   - name: Checkout
-    description: Payment authorization, capture, and refunds
+    description: Payment authorization and capture
   - name: Users
     description: User management (admin)
   - name: Products
@@ -696,40 +696,6 @@ paths:
       responses:
         '200':
           description: Payment charged
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Order'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /order/{orderid}/refund:
-    post:
-      tags:
-        - Orders
-        - Checkout
-      summary: Refund order
-      operationId: refundOrder
-      parameters:
-        - name: orderid
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                amount:
-                  type: integer
-                  description: Amount to refund in cents (optional, full refund if omitted)
-                reason:
-                  type: string
-      responses:
-        '200':
-          description: Refund processed
           content:
             application/json:
               schema:

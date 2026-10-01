@@ -134,7 +134,6 @@ func Route(api *zip.Group) {
 	rest.New(site.Site{}).Route(api, tokenRequired)
 
 	paymentApi := rest.New(payment.Payment{})
-	paymentApi.POST("/:paymentid/refund", checkoutApi.Refund)
 	paymentApi.Route(api, tokenRequired)
 
 	accountApi.Route(api, tokenRequired)

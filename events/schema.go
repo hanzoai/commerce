@@ -5,7 +5,6 @@ const (
 	SubjectOrderCreated    = "commerce.order.created"
 	SubjectOrderCompleted  = "commerce.order.completed"
 	SubjectOrderCanceled   = "commerce.order.canceled"
-	SubjectOrderRefunded   = "commerce.order.refunded"
 	SubjectCheckoutStarted = "commerce.checkout.started"
 	SubjectCheckoutFailed  = "commerce.checkout.failed"
 	SubjectPaymentReceived = "commerce.payment.received"

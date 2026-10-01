@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/hanzoai/commerce/api/promo"
-	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/organization"
@@ -276,27 +275,4 @@ func TestWebhook_ADisputeOfAPlanPaymentUnpaysItsPeriodUntilWon(t *testing.T) {
 		disputeEvent("evt_pp_dw_2", "dispute.updated", "dp_won", "sqpay_won", "PROCESSING", price))
 	paidAs(t, viewOf(t, ctx, org, "pp-dispute-lost"), "", 0, 0)
 	paidAs(t, viewOf(t, ctx, org, "pp-dispute-won"), "card", 1, price)
-}
-
-// A refund recorded against a paid invoice here counts the same way, and never more
-// than the invoice still holds.
-func TestCreateRefund_AnInvoiceRefundCountsAgainstItsPeriod(t *testing.T) {
-	ctx := ae.NewContext()
-	defer ctx.Close()
-	org := moneyOrg("pp-api-refund")
-	withFakeSquare(t, squareMock("cust_ar", "ccof_ar", "sqpay_ar"))
-	sub := subscribed(t, ctx, org, "pp-api-refund", "team", 2, nil)
-	db := datastore.New(org.Namespaced(ctx))
-
-	if _, err := engine.CreateRefund(ctx, db, engine.CreateRefundParams{InvoiceId: sub.CurrentInvoiceId, Amount: 1500}, nil); err != nil {
-		t.Fatalf("partial refund: %v", err)
-	}
-	paidAs(t, viewOf(t, ctx, org, "pp-api-refund"), "card", 2, 3500)
-	if _, err := engine.CreateRefund(ctx, db, engine.CreateRefundParams{InvoiceId: sub.CurrentInvoiceId, Amount: 4000}, nil); err == nil {
-		t.Fatal("a refund beyond what the invoice still holds was accepted")
-	}
-	if _, err := engine.CreateRefund(ctx, db, engine.CreateRefundParams{InvoiceId: sub.CurrentInvoiceId}, nil); err != nil {
-		t.Fatalf("refund of the rest: %v", err)
-	}
-	paidAs(t, viewOf(t, ctx, org, "pp-api-refund"), "", 0, 0)
 }

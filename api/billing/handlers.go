@@ -58,7 +58,6 @@ func Route(r *zip.Group, args ...zip.Handler) {
 	api.Raw(http.MethodPost, "/usage", RecordUsage)
 	// Money-MINT routes: service-token / global-admin ONLY.
 	mint.Raw(http.MethodPost, "/deposit", Deposit)
-	mint.Raw(http.MethodPost, "/refund", Refund)
 
 	// Chain-backed credit ledger (HUSD): the indexer backfill/reconcile pass and
 	// the metered-usage settlement sweep are platform-only (they move on-chain
@@ -153,8 +152,8 @@ func Route(r *zip.Group, args ...zip.Handler) {
 	api.Raw(http.MethodPatch, "/subscription-items/:id", UpdateSubscriptionItem)
 	api.Raw(http.MethodDelete, "/subscription-items/:id", DeleteSubscriptionItem)
 
-	// Refunds
-	api.Raw(http.MethodPost, "/refunds", CreateRefund)
+	// Refunds are read here and never made: one is recorded only from the
+	// processor's signed webhook (HandleProviderWebhook).
 	api.Raw(http.MethodGet, "/refunds", ListRefunds)
 	api.Raw(http.MethodGet, "/refunds/:id", GetRefund)
 

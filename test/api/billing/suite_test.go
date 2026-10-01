@@ -10,8 +10,6 @@ import (
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/models/fixtures"
 	"github.com/hanzoai/commerce/models/organization"
-	"github.com/hanzoai/commerce/models/transaction"
-	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/test/ae"
 	"github.com/hanzoai/commerce/util/test/zipclient"
@@ -81,20 +79,3 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	ctx.Close()
 })
-
-// seedCharge writes a Withdraw (charge) to the fixture org's ledger and returns
-// its id — the thing a refund reverses. It mirrors the money model the Refund
-// handler validates after the H1 hardening (an original that exists, is a
-// Withdraw, and is owned by the subject); see api/billing/refund_h1_test.go's
-// seedCharge. A refund of a Deposit is (correctly) rejected — refunding a credit
-// would double it — so the refund test must reverse a real charge, not a deposit.
-func seedCharge(subject string, cents int64) string {
-	tr := transaction.New(db)
-	tr.Type = transaction.Withdraw
-	tr.DestinationId = subject
-	tr.DestinationKind = "iam-user"
-	tr.Currency = currency.USD
-	tr.Amount = currency.Cents(cents)
-	tr.MustCreate()
-	return tr.Id()
-}

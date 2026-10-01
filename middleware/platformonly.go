@@ -81,7 +81,7 @@ func PlatformOnlyMW(next zip.Handler) zip.Handler {
 	return func(c *zip.Ctx) error {
 		if MayMintMoney(c) {
 			// Proven mint principal → authorize the ledger sink for this request,
-			// so the PlatformOnly-gated mint handlers (deposit, refund,
+			// so the PlatformOnly-gated mint handlers (deposit,
 			// credit-grants, payouts, cycle, auto-recharge, …) all mint without
 			// per-handler changes while org-admins are still 403'd above.
 			AuthorizeMint(c)

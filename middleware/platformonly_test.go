@@ -18,7 +18,7 @@ import (
 
 // runMintGate drives the EXACT production money-mint middleware chain —
 // TokenRequired(permission.Admin) THEN PlatformOnly() — that api/billing.Route
-// mounts on /credit, /deposit, /refund, /credits and
+// mounts on /credit, /deposit, /credits and
 // /customer-balance/adjustments, to a sentinel handler. Returns the HTTP status and whether the
 // sentinel was reached. seed pre-sets context state exactly as the real upstream
 // middleware would (EdgeAuth/IAMTokenRequired mint iam_authenticated + permissions

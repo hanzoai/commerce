@@ -184,7 +184,7 @@ func (r *Rest) Route(api *zip.Group, mw ...zip.Handler) {
 	// Red HIGH-4 (money sub-routes reachable by non-admin) is closed at the
 	// authoritative layer instead: every money-moving handler calls
 	// middleware.RequireAdmin FIRST (IAM-aware, and fail-closed even when no
-	// route-level token middleware ran) — giftcard Redeem/Void, checkout Refund,
+	// route-level token middleware ran) — giftcard Redeem/Void,
 	// b2b Accept/Reject/Approve, wallet Send, transaction Create/Hold, wire
 	// Credit. That is stricter and more precise than propagating the base gate,
 	// and it works on the IAM path where TokenRequired(Admin) no-ops.

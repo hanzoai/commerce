@@ -888,7 +888,7 @@ func TestMintSurface_EveryMintRouteGatedOrProvablyUserSafe(t *testing.T) {
 	// is reached ONLY by resolving a call onto a service value, which is exactly
 	// what the same-package-only call graph could not do.
 	for _, must := range []string{
-		"api/billing.Deposit", "api/billing.Refund", "api/billing.GrantAllotment",
+		"api/billing.Deposit", "api/billing.GrantAllotment",
 		"api/billing.zapDeposit", "api/billing.ZapDispatch", "api/billing.Credit",
 		"api/affiliate.executePayouts", "api/transaction.Create",
 		"api/billing.SyncHUSD", "api/billing.SettleHUSD", "api/billing.MigrateHUSD",

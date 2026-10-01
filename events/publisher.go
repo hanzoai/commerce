@@ -251,56 +251,6 @@ func (p *Publisher) PublishOrderCompleted(ctx context.Context, orderID, orgName,
 	return p.Publish(ctx, SubjectOrderCompleted, event)
 }
 
-// PublishOrderRefunded sends an order.refunded event.
-func (p *Publisher) PublishOrderRefunded(ctx context.Context, orderID, orgName, userID string, refundedCents int64, currencyCode string) error {
-	if p == nil {
-		return nil
-	}
-
-	if currencyCode == "" {
-		currencyCode = "USD"
-	}
-
-	refundedAmount := float64(refundedCents) / 100.0
-
-	now := time.Now().UTC()
-	event := &CommerceEvent{
-		ID:             orderID,
-		Type:           "order.refunded",
-		Timestamp:      now,
-		OrganizationID: orgName,
-		UserID:         userID,
-		Data: map[string]interface{}{
-			"order_id":        orderID,
-			"refunded_amount": refundedAmount,
-			"currency":        currencyCode,
-		},
-		GA4: &GA4EcommerceEvent{
-			EventName: "refund",
-			Currency:  currencyCode,
-			Value:     refundedAmount,
-			Parameters: map[string]interface{}{
-				"transaction_id": orderID,
-			},
-		},
-		FacebookCAPI: &FacebookCAPIEvent{
-			EventName:    "Refund",
-			EventTime:    now.Unix(),
-			ActionSource: "website",
-			UserData: &FacebookUserData{
-				ExternalID: userID,
-			},
-			CustomData: map[string]interface{}{
-				"currency": currencyCode,
-				"value":    refundedAmount,
-				"order_id": orderID,
-			},
-		},
-	}
-
-	return p.Publish(ctx, SubjectOrderRefunded, event)
-}
-
 // PublishProductCreated sends a product.created event after a catalog product is
 // created. It is the reverse half of the storefront loop: the content lane consumes
 // this to auto-render the product's ecom asset (design == slug). Fire-and-forget,

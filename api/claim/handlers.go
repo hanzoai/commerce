@@ -1,14 +1,14 @@
 // Package claim wires the order-claim HTTP surface: CRUD on claims (with their
 // claimed lines) plus the accept / reject decisions. A claim is a customer's
 // report that delivered items were damaged / wrong / missing; the merchant
-// accepts it — settling with a refund or a replacement order — or rejects it.
+// accepts it — settling with a replacement order, never a refund — or rejects it.
 //
 // Every handler is tenant-scoped via the caller's organization namespace: the
 // custom sub-routes pass the Namespace middleware explicitly and read/write the
 // per-org store (datastore.NewNamespaced), the same isolation the rest of /v1
-// uses. Accept moves money, so it is admin-gated INSIDE the handler (the route
-// middleware no-ops on the IAM path) and is idempotent: an already-accepted
-// claim returns its prior outcome without refunding twice.
+// uses. Accept creates an order, so it is admin-gated INSIDE the handler (the
+// route middleware no-ops on the IAM path) and is idempotent: an already-accepted
+// claim returns its prior outcome without a second replacement.
 package claim
 
 import (
@@ -23,7 +23,6 @@ import (
 	"github.com/hanzoai/commerce/models/claimitem"
 	"github.com/hanzoai/commerce/models/lineitem"
 	"github.com/hanzoai/commerce/models/order"
-	"github.com/hanzoai/commerce/models/refund"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
@@ -76,10 +75,10 @@ func Create(c *zip.Ctx) error {
 		return http.Fail(c, 400, "orderId is required", errors.New("missing orderId"))
 	}
 	if req.Resolution == "" {
-		req.Resolution = claimModel.ResolutionRefund
+		req.Resolution = claimModel.ResolutionReplace
 	}
 	if !claimModel.ValidResolution(req.Resolution) {
-		return http.Fail(c, 400, "resolution must be refund or replace", errors.New("invalid resolution"))
+		return http.Fail(c, 400, "resolution must be replace: a claim is settled by a replacement order, never a refund", errors.New("invalid resolution"))
 	}
 	if len(req.Items) == 0 {
 		return http.Fail(c, 400, "at least one claim item is required", errors.New("no items"))
@@ -165,15 +164,15 @@ func loadItems(db *datastore.Datastore, claimId string) ([]*claimitem.ClaimItem,
 type acceptResponse struct {
 	Claim              *claimModel.Claim `json:"claim"`
 	AmountCents        currency.Cents    `json:"amountCents"`
-	RefundId           string            `json:"refundId,omitempty"`
 	ReplacementOrderId string            `json:"replacementOrderId,omitempty"`
 }
 
-// Accept settles a pending claim. Money move ⇒ admin-gated inside the handler.
-// Idempotent: an already-accepted claim returns its prior outcome without
-// refunding or building a replacement again. The settled amount is computed from
-// the claimed quantities × the order's line prices; claiming more units than
-// were ordered is rejected (422) before any money moves.
+// Accept settles a pending claim with a replacement order, admin-gated inside the
+// handler. Idempotent: an already-accepted claim returns its prior outcome without
+// building a replacement again. The settled amount is computed from the claimed
+// quantities × the order's line prices; claiming more units than were ordered, or
+// a claim asking for anything but a replacement, is rejected (422) before any
+// order is created.
 func Accept(c *zip.Ctx) error {
 	if !middleware.RequireAdmin(c) {
 		return nil // RequireAdmin already wrote the 403
@@ -188,12 +187,12 @@ func Accept(c *zip.Ctx) error {
 		return http.Fail(c, 404, "No claim found with id: "+id, err)
 	}
 
-	// Idempotent replay: an accepted claim returns its recorded outcome. No
-	// second refund, no second replacement order.
+	// Idempotent replay: an accepted claim returns its recorded outcome, never a
+	// second replacement order.
 	if cl.Status == claimModel.StatusAccepted {
 		return http.Render(c, 200, acceptResponse{
 			Claim: cl, AmountCents: cl.AmountCents,
-			RefundId: cl.RefundId, ReplacementOrderId: cl.ReplacementOrderId,
+			ReplacementOrderId: cl.ReplacementOrderId,
 		})
 	}
 	if cl.Status != claimModel.StatusPending {
@@ -220,33 +219,14 @@ func Accept(c *zip.Ctx) error {
 		return http.Fail(c, 422, err.Error(), err)
 	}
 
-	switch cl.Resolution {
-	case claimModel.ResolutionRefund:
-		// Ledger-level over-refund guard: never refund past the order total.
-		if ord.Refunded+amount > ord.Total {
-			return http.Fail(c, 422, "refund would exceed the order total", errors.New("over-refund"))
-		}
-		r := refund.New(db)
-		r.Amount = int64(amount)
-		r.Currency = cl.CurrencyCode
-		r.Status = refund.Succeeded
-		r.Reason = "claim:" + cl.Id()
-		if err := r.Create(); err != nil {
-			return http.Fail(c, 500, "Failed to create refund", err)
-		}
-		ord.Refunded += amount
-		if err := ord.Update(); err != nil {
-			return http.Fail(c, 500, "Failed to update order", err)
-		}
-		cl.RefundId = r.Id()
-
-	case claimModel.ResolutionReplace:
-		repl, err := buildReplacement(db, ord, items)
-		if err != nil {
-			return http.Fail(c, 500, "Failed to create replacement order", err)
-		}
-		cl.ReplacementOrderId = repl.Id()
+	if !claimModel.ValidResolution(cl.Resolution) {
+		return http.Fail(c, 422, "a claim is settled by a replacement order, never a refund", errors.New("invalid resolution"))
 	}
+	repl, err := buildReplacement(db, ord, items)
+	if err != nil {
+		return http.Fail(c, 500, "Failed to create replacement order", err)
+	}
+	cl.ReplacementOrderId = repl.Id()
 
 	cl.AmountCents = amount
 	cl.Status = claimModel.StatusAccepted
@@ -256,7 +236,7 @@ func Accept(c *zip.Ctx) error {
 
 	return http.Render(c, 200, acceptResponse{
 		Claim: cl, AmountCents: cl.AmountCents,
-		RefundId: cl.RefundId, ReplacementOrderId: cl.ReplacementOrderId,
+		ReplacementOrderId: cl.ReplacementOrderId,
 	})
 }
 
