@@ -197,8 +197,12 @@ func (inv *BillingInvoice) MarkUncollectible() error {
 	return nil
 }
 
-// DisputeWon is the dispute state in which the merchant kept the payment.
-const DisputeWon = "WON"
+// The dispute states in which the payment stays with the merchant: a dispute won,
+// and an inquiry that closed without becoming a chargeback.
+const (
+	DisputeWon           = "WON"
+	DisputeInquiryClosed = "INQUIRY_CLOSED"
+)
 
 // Refund records amount given back under ref, once: a ref already recorded changes
 // nothing. It reports whether it recorded anything.
@@ -236,9 +240,9 @@ func (inv *BillingInvoice) SetDispute(state string) {
 }
 
 // Disputed reports whether a dispute holds the payment's money: one is open, or was
-// lost. A dispute won holds nothing.
+// lost. A dispute won, or an inquiry closed without a chargeback, holds nothing.
 func (inv *BillingInvoice) Disputed() bool {
-	return inv.Dispute != "" && inv.Dispute != DisputeWon
+	return inv.Dispute != "" && inv.Dispute != DisputeWon && inv.Dispute != DisputeInquiryClosed
 }
 
 // RecalculateSubtotal sums all line item amounts.

@@ -1,15 +1,15 @@
 // Package claim is the order-claim domain (Medusa v2 core parity: order
 // claims): a customer reports a problem with delivered items (damaged, wrong,
-// missing) and the merchant resolves it with either a refund or a replacement
-// order.
+// missing) and the merchant resolves it with a replacement order. A claim is
+// never settled by a refund.
 //
 // A Claim references an order and carries its claimed lines as claimitem rows
-// (parent by ClaimId). It is pending until the merchant accepts (→ refund or
-// replacement) or rejects it. Accept is idempotent: an already-accepted claim
-// returns its prior outcome (RefundId / ReplacementOrderId) without moving money
-// or creating a second refund. AmountCents is a projection computed at accept
-// time from the claimed quantities × the order's line prices — never a mutable
-// counter — so it is exact and re-derivable.
+// (parent by ClaimId). It is pending until the merchant accepts (→ replacement)
+// or rejects it. Accept is idempotent: an already-accepted claim returns its
+// prior outcome (ReplacementOrderId) without creating a second replacement.
+// AmountCents is a projection computed at accept time from the claimed
+// quantities × the order's line prices — never a mutable counter — so it is
+// exact and re-derivable.
 package claim
 
 import (
@@ -31,27 +31,24 @@ const (
 	StatusRejected = "rejected"
 )
 
-// Resolution types — how an accepted claim is settled.
-const (
-	ResolutionRefund  = "refund"
-	ResolutionReplace = "replace"
-)
+// ResolutionReplace is how an accepted claim is settled: a replacement order.
+const ResolutionReplace = "replace"
 
-// ValidResolution reports whether r is a recognized resolution type.
+// ValidResolution reports whether r is a resolution a claim may be settled by.
 func ValidResolution(r string) bool {
-	return r == ResolutionRefund || r == ResolutionReplace
+	return r == ResolutionReplace
 }
 
-// Claim links a problem report to an order and resolves to a refund or a
-// replacement order. Its claimed lines live as claimitem rows keyed by ClaimId.
+// Claim links a problem report to an order and resolves to a replacement order.
+// Its claimed lines live as claimitem rows keyed by ClaimId.
 type Claim struct {
 	mixin.Model[Claim]
 
 	// OrderId is the order this claim is filed against.
 	OrderId string `json:"orderId"`
 
-	// Resolution is refund|replace. Default refund.
-	Resolution string `json:"resolution" orm:"default:refund"`
+	// Resolution is replace, the default.
+	Resolution string `json:"resolution" orm:"default:replace"`
 
 	// Status is pending|accepted|rejected. Default pending.
 	Status string `json:"status" orm:"default:pending"`
@@ -65,9 +62,6 @@ type Claim struct {
 	// AmountCents is the settled amount, computed at accept from the claimed
 	// quantities × the order line prices. Zero until accepted.
 	AmountCents currency.Cents `json:"amountCents"`
-
-	// RefundId is set when an accepted claim was resolved with a refund.
-	RefundId string `json:"refundId,omitempty"`
 
 	// ReplacementOrderId is set when an accepted claim was resolved with a
 	// replacement order.

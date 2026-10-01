@@ -9,9 +9,6 @@ import (
 	. "github.com/hanzoai/commerce/util/test/zipclient"
 )
 
-// seedCharge (a Withdraw the refund test reverses) is defined once for this
-// package in suite_test.go — the shared suite fixture file.
-
 // Response types for JSON parsing
 type meterResponse struct {
 	Id              string   `json:"id"`
@@ -110,7 +107,7 @@ var (
 )
 
 // Ordered: this is a stateful integration suite — a meter created in "Meters" is
-// reused by "Meter Events", deposits precede refunds, and the allotment specs are
+// reused by "Meter Events", and the allotment specs are
 // a report→grant→balance sequence. Declare that ordering so `ginkgo
 // --randomize-all` doesn't run a dependent spec before the one that seeds its
 // state (that was the "batch events → count 0" CI failure: meterId still "").
@@ -618,7 +615,7 @@ var _ = Describe("billing", Ordered, func() {
 		})
 	})
 
-	// ─── EXISTING ENDPOINTS (balance, usage, deposit, refund) ─────────
+	// ─── EXISTING ENDPOINTS (balance, usage, deposit) ─────────
 
 	Context("Existing Billing Endpoints", func() {
 		It("Should record usage via POST /billing/usage", func() {
@@ -710,27 +707,6 @@ var _ = Describe("billing", Ordered, func() {
 
 			second := cl.PostJSON("/billing/credit", body)
 			Expect(second.Code).To(Equal(200)) // replayed existing grant, no second credit
-		})
-
-		It("Should create a refund", func() {
-			// Refund reverses a CHARGE (a Withdraw), never a Deposit — so seed a real
-			// charge for the subject, then partially refund it. (The prior version
-			// deposited then tried to refund the deposit, which refund.go correctly
-			// rejects with 400 "not a refundable charge"; that shape is proven in
-			// api/billing TestRefund_NotACharge_400.)
-			txId := seedCharge("acme/dave", 200)
-
-			refundReq := map[string]interface{}{
-				"user":                  "acme/dave",
-				"currency":              "usd",
-				"amount":                int64(100),
-				"originalTransactionId": txId,
-				"notes":                 "Partial refund",
-			}
-			refundRes := &map[string]interface{}{}
-			cl.Post("/billing/refund", refundReq, refundRes)
-
-			Expect((*refundRes)["transactionId"]).NotTo(BeEmpty())
 		})
 	})
 

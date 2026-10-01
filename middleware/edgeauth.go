@@ -176,7 +176,7 @@ func looksLikeJWT(tok string) bool {
 // The Admin bit is the MONEY/admin authority: TokenRequired(permission.Admin)
 // gates every credit-creating and card-charging billing endpoint
 // (api/billing/handlers.go — deposit, credit-grants, customer-balance/adjustments,
-// auto-recharge/run-all, cycle/run-all, payouts, refund, test-mode). Because
+// auto-recharge/run-all, cycle/run-all, payouts, test-mode). Because
 // bit.Field.Has is intersection semantics, granting Admin to a caller lets that
 // caller satisfy those gates. It is therefore GLOBAL-admin-only: an org-level
 // admin (claims.IsAdmin — an org OWNER like maxpower carries it within their own

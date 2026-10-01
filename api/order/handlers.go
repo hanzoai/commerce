@@ -21,7 +21,6 @@ func Route(router *zip.Group, args ...zip.Handler) {
 	api.POST("/:orderid/capture", publishedRequired, namespaced, checkoutApi.Capture)
 	api.POST("/:orderid/charge", publishedRequired, namespaced, checkoutApi.Charge)
 
-	api.POST("/:orderid/refund", adminRequired, namespaced, checkoutApi.Refund)
 	api.GET("/:orderid/payments", adminRequired, namespaced, Payments)
 	api.GET("/:orderid/returns", adminRequired, namespaced, Returns)
 	api.GET("/:orderid/status", publishedRequired, namespaced, Status)

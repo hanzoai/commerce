@@ -147,3 +147,26 @@ func TestRoutes_PublicTenantResolvesOrg(t *testing.T) {
 		t.Fatalf("org JSON missing square block (card form needs it): %v", body)
 	}
 }
+
+// TestRoutes_NoRouteRefunds proves no route initiates or records a refund: each
+// former refund path reaches the NoRoute fallback (or a 405), never a handler. A
+// refund is recorded only from the processor's signed webhook.
+func TestRoutes_NoRouteRefunds(t *testing.T) {
+	app := bootTestCommerce(t)
+
+	for _, path := range []string{
+		"/v1/billing/refunds",
+		"/v1/billing/refund",
+		"/v1/order/ord_x/refund",
+		"/v1/payment/pay_x/refund",
+	} {
+		t.Run(path, func(t *testing.T) {
+			resp := probe(t, app, http.MethodPost, path, "pay.example.test", []byte(`{"amount":100}`))
+			defer resp.Body.Close()
+			bodyBytes, _ := io.ReadAll(resp.Body)
+			if body := string(bodyBytes); body != `{"error":"not found"}` && resp.StatusCode != http.StatusMethodNotAllowed {
+				t.Fatalf("POST %s reached a handler: status=%d body=%s", path, resp.StatusCode, body)
+			}
+		})
+	}
+}

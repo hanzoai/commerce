@@ -84,30 +84,6 @@ func TestCreateSetupIntent_ValidParams_RequiresDatastore(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// refunds.go — CreateRefund validation
-// ---------------------------------------------------------------------------
-
-func TestCreateRefund_MissingBothIds(t *testing.T) {
-	_, err := CreateRefund(nil, nil, CreateRefundParams{
-		Reason: "requested_by_customer",
-	}, nil)
-	if err == nil {
-		t.Fatal("expected error when both paymentIntentId and invoiceId are missing")
-	}
-	if !strings.Contains(err.Error(), "either paymentIntentId or invoiceId is required") {
-		t.Fatalf("unexpected error: %s", err)
-	}
-}
-
-func TestCreateRefund_WithPaymentIntentId_RequiresDatastore(t *testing.T) {
-	t.Skip("requires datastore: paymentintent.New(db).GetById needs live db")
-}
-
-func TestCreateRefund_WithInvoiceId_RequiresDatastore(t *testing.T) {
-	t.Skip("requires datastore: billinginvoice.New(db).GetById needs live db")
-}
-
-// ---------------------------------------------------------------------------
 // refunds.go — CreateCreditNote validation
 // ---------------------------------------------------------------------------
 
@@ -707,18 +683,6 @@ func TestCreateSetupIntentParams_Defaults(t *testing.T) {
 	}
 	if p.Usage != "" {
 		t.Fatal("Usage should default to empty")
-	}
-}
-
-func TestCreateRefundParams_FullRefund(t *testing.T) {
-	p := CreateRefundParams{
-		PaymentIntentId: "pi_123",
-		Amount:          0, // 0 = full refund
-		Reason:          "duplicate",
-	}
-
-	if p.Amount != 0 {
-		t.Fatal("Amount=0 should indicate full refund")
 	}
 }
 
@@ -1581,68 +1545,6 @@ func TestUsageSummary_PeriodBoundary(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// refunds.go — CreateRefundParams: additional param tests
-// ---------------------------------------------------------------------------
-
-func TestCreateRefundParams_PartialRefund(t *testing.T) {
-	p := CreateRefundParams{
-		PaymentIntentId: "pi_abc",
-		Amount:          500,
-		Reason:          "requested_by_customer",
-	}
-
-	if p.Amount != 500 {
-		t.Fatal("Amount should be 500 for partial refund")
-	}
-	if p.Reason != "requested_by_customer" {
-		t.Fatalf("Reason mismatch: %s", p.Reason)
-	}
-}
-
-func TestCreateRefundParams_FraudulentReason(t *testing.T) {
-	p := CreateRefundParams{
-		PaymentIntentId: "pi_fraud",
-		Amount:          0,
-		Reason:          "fraudulent",
-	}
-
-	if p.Reason != "fraudulent" {
-		t.Fatalf("Reason mismatch: %s", p.Reason)
-	}
-}
-
-func TestCreateRefundParams_DuplicateReason(t *testing.T) {
-	p := CreateRefundParams{
-		InvoiceId: "inv_dup",
-		Reason:    "duplicate",
-	}
-
-	if p.Reason != "duplicate" {
-		t.Fatalf("Reason mismatch: %s", p.Reason)
-	}
-	if p.InvoiceId != "inv_dup" {
-		t.Fatalf("InvoiceId mismatch: %s", p.InvoiceId)
-	}
-}
-
-func TestCreateRefundParams_BothIds(t *testing.T) {
-	// Having both IDs set — PaymentIntentId takes priority in the code
-	p := CreateRefundParams{
-		PaymentIntentId: "pi_both",
-		InvoiceId:       "inv_both",
-		Amount:          1000,
-		Reason:          "requested_by_customer",
-	}
-
-	if p.PaymentIntentId == "" {
-		t.Fatal("PaymentIntentId should be set")
-	}
-	if p.InvoiceId == "" {
-		t.Fatal("InvoiceId should be set")
-	}
-}
-
-// ---------------------------------------------------------------------------
 // refunds.go — CreateCreditNoteParams: additional tests
 // ---------------------------------------------------------------------------
 
@@ -1995,40 +1897,6 @@ func TestCreateSetupIntent_EmptyStringCustomerId(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "customerId is required") {
 		t.Fatalf("unexpected error: %s", err)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// refunds.go — CreateRefund boundary conditions
-// ---------------------------------------------------------------------------
-
-func TestCreateRefund_EmptyBothIds(t *testing.T) {
-	_, err := CreateRefund(nil, nil, CreateRefundParams{
-		PaymentIntentId: "",
-		InvoiceId:       "",
-		Amount:          500,
-		Reason:          "duplicate",
-	}, nil)
-	if err == nil {
-		t.Fatal("expected error when both IDs empty")
-	}
-	if !strings.Contains(err.Error(), "either paymentIntentId or invoiceId is required") {
-		t.Fatalf("unexpected error: %s", err)
-	}
-}
-
-func TestCreateRefund_AllReasons(t *testing.T) {
-	reasons := []string{"duplicate", "fraudulent", "requested_by_customer", ""}
-	for _, reason := range reasons {
-		_, err := CreateRefund(nil, nil, CreateRefundParams{
-			Reason: reason,
-		}, nil)
-		if err == nil {
-			t.Fatalf("expected error for reason=%q (missing IDs)", reason)
-		}
-		if !strings.Contains(err.Error(), "either paymentIntentId or invoiceId is required") {
-			t.Fatalf("unexpected error for reason=%q: %s", reason, err)
-		}
 	}
 }
 

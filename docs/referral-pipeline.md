@@ -25,7 +25,7 @@ and OSS contributor payout pipeline across IAM, Commerce, Analytics, and Console
 | Contributor API | `api/contributor/contributor.go` | Complete. Register, SBOM CRUD, payout calculate/preview, earnings/attributions |
 | Payout algorithm | `models/contributor/payout.go` | Complete. Weighted component attribution, min threshold, sorted allocations |
 | Affiliate payout cron | `cron/payout/affiliate/affiliate.go` | Complete. Iterates orgs, finds affiliates with Stripe tokens, transfers fees by schedule |
-| Event publisher | `events/publisher.go` | Complete. NATS/JetStream, order.created/completed/refunded, checkout.started |
+| Event publisher | `events/publisher.go` | Complete. NATS/JetStream, order.created/completed, checkout.started |
 | Hook system | `hooks/hooks.go` | Complete. OnModelCreate/Update/Delete, lifecycle hooks, priority chain |
 | IAM middleware | `middleware/iammiddleware/iammiddleware.go` | Complete. JWT validation, org auto-provisioning, role mapping |
 | Starter credit | `billing/credit/credit.go` | Complete. $5/30-day, idempotent, transactional |

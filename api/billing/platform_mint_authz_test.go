@@ -39,7 +39,6 @@ import (
 // Dropping the gate from any route below fails here and nowhere else.
 var mintRoutes = []struct{ method, path, body string }{
 	{http.MethodPost, "/v1/billing/deposit", `{"user":"acme/alice","amount":100}`},
-	{http.MethodPost, "/v1/billing/refund", `{"user":"acme/alice","amount":100,"originalTransactionId":"x"}`},
 	{http.MethodPost, "/v1/billing/credit", `{"org":"acme","amountCents":100,"reason":"c1"}`},
 	{http.MethodPost, "/v1/billing/credits", `{"userId":"acme/alice","amountCents":100}`},
 	{http.MethodPost, "/v1/billing/credits/abc/void", `{}`},

@@ -3,46 +3,11 @@ package billing
 import (
 	"github.com/zap-proto/zip"
 
-	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/refund"
 	"github.com/hanzoai/commerce/util/json/http"
 )
-
-type createRefundRequest struct {
-	PaymentIntentId string `json:"paymentIntentId,omitempty"`
-	InvoiceId       string `json:"invoiceId,omitempty"`
-	Amount          int64  `json:"amount,omitempty"` // 0 = full refund
-	Reason          string `json:"reason,omitempty"`
-}
-
-// CreateRefund creates a full or partial refund.
-//
-//	POST /v1/billing/refunds
-func CreateRefund(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c.Context()))
-
-	var req createRefundRequest
-	if err := c.Bind(&req); err != nil {
-		return http.Fail(c, 400, "invalid request body", err)
-	}
-
-	r, err := engine.CreateRefund(c.Context(), db, engine.CreateRefundParams{
-		PaymentIntentId: req.PaymentIntentId,
-		InvoiceId:       req.InvoiceId,
-		Amount:          req.Amount,
-		Reason:          req.Reason,
-	}, nil) // no external processor for now
-	if err != nil {
-		log.Error("Failed to create refund: %v", err, c)
-		return http.Fail(c, 400, err.Error(), err)
-	}
-
-	return c.JSON(201, refundResponse(r))
-}
 
 // GetRefund retrieves a refund by ID.
 //
@@ -99,7 +64,7 @@ func refundResponse(r *refund.Refund) map[string]interface{} {
 		"amount":   r.Amount,
 		"currency": r.Currency,
 		"status":   r.Status,
-		"created":  r.Created,
+		"created":  r.CreatedAt,
 	}
 	if r.PaymentIntentId != "" {
 		resp["paymentIntentId"] = r.PaymentIntentId
