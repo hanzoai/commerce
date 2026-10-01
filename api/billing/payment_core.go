@@ -296,7 +296,7 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 	}
 	// Where this payment's receipt lives, so its processor's refund or dispute finds
 	// it: those callbacks name the payment and no org.
-	if err := paymentorg.Put(result.ProcessorRef, org.Name, in.Subject, test); err != nil {
+	if err := paymentorg.Put(result.ProcessorRef, org.Name, in.Subject, "", test); err != nil {
 		log.Warn("payment %s: the org index was not written: %v", result.ProcessorRef, err)
 	}
 

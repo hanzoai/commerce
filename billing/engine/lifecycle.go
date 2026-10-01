@@ -161,10 +161,18 @@ func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscr
 		return again, resultFromInvoice(again), nil
 	}
 
+	// A change of seats waiting for this period takes effect here: the period's
+	// invoice bills it, and the row holds it from now on.
+	quantity, pending := sub.Quantity, sub.PendingQuantity
+	if pending > 0 {
+		sub.Quantity, sub.PendingQuantity = pending, 0
+	}
+
 	// Generate a fresh, sequentially-numbered invoice: the owed period's fee in
 	// advance, and the metered usage since the held period began, in arrears.
 	inv, err := buildPeriodInvoice(db, sub, next, period{sub.PeriodStart, next.start})
 	if err != nil {
+		sub.Quantity, sub.PendingQuantity = quantity, pending
 		if rec != nil {
 			_ = rec.Delete() // release the guard so a later attempt can rebuild
 		}

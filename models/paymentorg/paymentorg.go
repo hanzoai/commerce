@@ -3,7 +3,8 @@
 //
 // A processor's callback names a payment and no org: Square sends no X-Org-Id, and a
 // sessionless request resolves to the default org. So a refund or a dispute of a
-// customer's top-up is traced to its org here, never read off the request.
+// customer's top-up, or of the payment for a plan's period, is traced to its org
+// here, never read off the request.
 package paymentorg
 
 import (
@@ -21,12 +22,14 @@ func init() {
 }
 
 // PaymentOrg is where one payment's receipt lives: the org, the wallet it credited,
-// and whether the charge was a sandbox one.
+// and whether the charge was a sandbox one. A payment that paid an invoice names it
+// in Invoice and credited no wallet.
 type PaymentOrg struct {
 	mixin.Model[PaymentOrg]
 
 	Org     string `json:"org"`
 	Subject string `json:"subject"`
+	Invoice string `json:"invoice,omitempty"`
 	Test    bool   `json:"test"`
 }
 
@@ -37,9 +40,10 @@ func db() *datastore.Datastore {
 	return datastore.New(nscontext.WithNamespace(context.Background(), "system"))
 }
 
-// Put records that payment's receipt lives in org, for subject. Idempotent: the
-// payment id is the key.
-func Put(payment, org, subject string, test bool) error {
+// Put records that payment's receipt lives in org, for subject, and the invoice it
+// paid ("" for a payment that credited subject's wallet). Idempotent: the payment id
+// is the key.
+func Put(payment, org, subject, invoice string, test bool) error {
 	payment = strings.TrimSpace(payment)
 	if payment == "" || org == "" {
 		return nil
@@ -48,7 +52,7 @@ func Put(payment, org, subject string, test bool) error {
 	p := new(PaymentOrg)
 	p.Init(d)
 	p.SetId(payment)
-	p.Org, p.Subject, p.Test = org, subject, test
+	p.Org, p.Subject, p.Invoice, p.Test = org, subject, invoice, test
 	return p.Put()
 }
 

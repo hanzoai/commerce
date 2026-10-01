@@ -148,3 +148,43 @@ func TestChangePlan_ProrationSeats(t *testing.T) {
 		t.Fatalf("flat-plan proration at qty=3 (%d) must match the 1-seat net (%d)", itemFlat.Amount, item1.Amount)
 	}
 }
+
+// A change of seats waiting for the next period is what that period's invoice
+// bills, and the row holds it from then on.
+func TestRenewSubscription_BillsThePendingSeats(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+
+	db := datastore.New(c)
+	db.SetNamespace("seats-pending")
+
+	now := time.Now()
+	sub := subscription.New(db)
+	sub.UserId = "seats/pending"
+	sub.PlanId = "plan_team_pending"
+	sub.Plan = plan.Plan{
+		Name:          "Team",
+		Price:         currency.Cents(2500),
+		PerSeat:       true,
+		Currency:      currency.USD,
+		Interval:      types.Monthly,
+		IntervalCount: 1,
+	}
+	sub.Quantity, sub.PendingQuantity = 2, 4
+	sub.Status = subscription.Active
+	sub.PeriodStart, sub.PeriodEnd = now.AddDate(0, -1, -1), now.AddDate(0, 0, -1)
+	if err := sub.Create(); err != nil {
+		t.Fatalf("create sub: %v", err)
+	}
+
+	inv, _, err := RenewSubscription(context.Background(), db, sub, nil, nil)
+	if err != nil {
+		t.Fatalf("renew: %v", err)
+	}
+	if li := inv.LineItems[0]; li.Quantity != 4 || li.Amount != 10000 {
+		t.Fatalf("line bills %d seat(s) for %d, want 4 for 10000", li.Quantity, li.Amount)
+	}
+	if sub.Quantity != 4 || sub.PendingQuantity != 0 {
+		t.Fatalf("row holds %d seat(s), %d pending; want 4, 0", sub.Quantity, sub.PendingQuantity)
+	}
+}

@@ -202,7 +202,7 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 		UserId:    subject,
 		PlanId:    planID,
 		Quantity:  qty,
-		Metadata:  recordMetadata(nil, collectionExternal, processor, reference, in.Terms, start, end),
+		Metadata:  recordMetadata(nil, collectionExternal, processor, reference, in.Terms, start, end, seatMult, in.PriceCents),
 		Test:      org.TestMode(),
 		Collected: &collected{processor: processor, start: start, end: end, external: true},
 	})
@@ -300,20 +300,27 @@ func extendRecorded(ctx context.Context, org *organization.Organization, held *s
 			"this account already holds the %q plan by the %s (subscription %s); a payment for another plan cannot extend it, but may take it over by naming it in replaces",
 			slug, held.Plan.Interval, held.Id())}
 	}
-	if in.Quantity > 0 && in.Quantity != held.Quantity {
+	// The period recorded again holds the seats it was paid for; a later period
+	// opens at the seats a change asked for, when one waits for it.
+	same := start.Equal(held.PeriodStart.UTC()) && end.Equal(held.PeriodEnd.UTC())
+	quantity := held.Quantity
+	if !same && held.PendingQuantity > 0 {
+		quantity = held.PendingQuantity
+	}
+	if in.Quantity > 0 && in.Quantity != quantity {
 		return nil, saleRefusal{saleRefused, fmt.Sprintf(
-			"subscription %s holds %d seat(s); a payment for %d cannot extend it", held.Id(), held.Quantity, in.Quantity)}
+			"subscription %s holds %d seat(s) for this period; a payment for %d cannot extend it", held.Id(), quantity, in.Quantity)}
 	}
 	seatMult := int64(1)
-	if held.Plan.PerSeat && held.Quantity > 1 {
-		seatMult = int64(held.Quantity)
+	if held.Plan.PerSeat && quantity > 1 {
+		seatMult = int64(quantity)
 	}
 	// The row keeps the price it was opened at, so a later payment is checked
 	// against that price and not against whatever the catalog sells today.
 	if err := priceMatches(slug, int64(held.Plan.Price)*seatMult, in.PriceCents); err != nil {
 		return nil, err
 	}
-	if start.Equal(held.PeriodStart.UTC()) && end.Equal(held.PeriodEnd.UTC()) {
+	if same {
 		return &Recorded{Subscription: *viewSubscription(held), Outcome: RecordUnchanged}, nil
 	}
 	if !end.After(held.PeriodEnd) {
@@ -327,7 +334,8 @@ func extendRecorded(ctx context.Context, org *organization.Organization, held *s
 		return nil, err
 	}
 	sub.PeriodStart, sub.PeriodEnd = start, end
-	sub.Metadata = recordMetadata(sub.Metadata, collectionExternal, sub.ProviderType, reference, in.Terms, start, end)
+	sub.Quantity, sub.PendingQuantity = quantity, 0
+	sub.Metadata = recordMetadata(sub.Metadata, collectionExternal, sub.ProviderType, reference, in.Terms, start, end, seatMult, in.PriceCents)
 	if err := sub.Update(); err != nil {
 		return nil, err
 	}
@@ -357,8 +365,8 @@ const (
 
 // recordMetadata carries the collection on the row: how it is collected, who
 // collected it, the latest payment's references, the terms, and every period
-// recorded so far.
-func recordMetadata(prev types.Map, collection, processor string, reference map[string]string, terms string, start, end time.Time) types.Map {
+// recorded so far with the seats and the price its payment was checked against.
+func recordMetadata(prev types.Map, collection, processor string, reference map[string]string, terms string, start, end time.Time, seats, priceCents int64) types.Map {
 	m := types.Map{}
 	for k, v := range prev {
 		m[k] = v
@@ -375,9 +383,11 @@ func recordMetadata(prev types.Map, collection, processor string, reference map[
 	}
 	periods, _ := m["periods"].([]interface{})
 	m["periods"] = append(periods, map[string]interface{}{
-		"start":     start.Format(time.RFC3339),
-		"end":       end.Format(time.RFC3339),
-		"reference": ref,
+		"start":      start.Format(time.RFC3339),
+		"end":        end.Format(time.RFC3339),
+		"reference":  ref,
+		"quantity":   seats,
+		"priceCents": priceCents,
 	})
 	return m
 }
@@ -552,7 +562,7 @@ func recordFromBalance(ctx context.Context, org *organization.Organization, db *
 	if inv != nil {
 		paid["invoice"] = inv.Id()
 	}
-	sub.Metadata = recordMetadata(sub.Metadata, collectionBalance, processorBalance, paid, in.Terms, start, end)
+	sub.Metadata = recordMetadata(sub.Metadata, collectionBalance, processorBalance, paid, in.Terms, start, end, seatMult, in.PriceCents)
 	if err := sub.Update(); err != nil {
 		log.Error("RECONCILE: subscription %s (subject=%s) was paid from the balance and its reference was not saved: %v", sub.Id(), subject, err)
 	}

@@ -129,6 +129,10 @@ type Subscription struct {
 	Quantity int       `json:"quantity"`
 	Status   Status    `json:"status"`
 
+	// PendingQuantity is the seat count the next period opens at, set when a
+	// change of seats waits for the renewal whose invoice charges it; 0 when none.
+	PendingQuantity int `json:"pendingQuantity,omitempty"`
+
 	Metadata  Map    `json:"metadata" datastore:"-" orm:"default:{}"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 

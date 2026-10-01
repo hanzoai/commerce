@@ -20,6 +20,7 @@ import (
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
+	"github.com/hanzoai/commerce/models/paymentorg"
 	storemodel "github.com/hanzoai/commerce/models/store"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -688,6 +689,8 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		// The subscription exists and the money is collected; a first-invoice record
 		// failure is non-fatal to the entitlement. Log for reconciliation.
 		log.Error("subscribe: failed to record paid first invoice (subject=%s, ref=%s): %v", in.Subject, res.ProcessorRef, err)
+	} else if err := paymentorg.Put(res.ProcessorRef, org.Name, in.Subject, inv.Id(), org.TestMode()); err != nil {
+		log.Warn("subscribe: payment %s: the index to its invoice was not written, so its refund or dispute will not find the period it paid: %v", res.ProcessorRef, err)
 	}
 	if err := sub.Update(); err != nil {
 		log.Error("subscribe: failed to update subscription after first invoice (subject=%s): %v", in.Subject, err)
@@ -904,6 +907,9 @@ func chargeProviderForOrg(org *organization.Organization) engine.ProviderCharger
 			fmt.Sprintf("Subscription renewal invoice %s", inv.NumberStr))
 		if err != nil || res == nil || !res.Success {
 			return "", fmt.Errorf("%s", parseCardDeclineReason(res, err))
+		}
+		if err := paymentorg.Put(res.ProcessorRef, org.Name, inv.UserId, inv.Id(), org.TestMode()); err != nil {
+			log.Warn("renewal: payment %s: the index to invoice %s was not written, so its refund or dispute will not find the period it paid: %v", res.ProcessorRef, inv.Id(), err)
 		}
 		return res.ProcessorRef, nil
 	}
