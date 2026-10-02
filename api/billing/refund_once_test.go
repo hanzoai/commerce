@@ -62,23 +62,6 @@ func TestWebhook_RefundsLandingTogetherAreAllKept(t *testing.T) {
 	paidAs(t, viewOf(t, ctx, org, "rf-together"), "card", 2, 5000-n*100)
 }
 
-// An inquiry that closes without becoming a chargeback restores the period it held.
-func TestWebhook_AnInquiryThatClosesRestoresItsPeriod(t *testing.T) {
-	const secret = "whsec_rf_inquiry"
-	registerSquare(t, secret)
-	ctx := ae.NewContext()
-	defer ctx.Close()
-	org := webhookOrg(t, ctx, "rf-inquiry", true)
-	withFakeSquare(t, squareMock("cust_iq", "ccof_iq", "sqpay_iq"))
-	subscribed(t, ctx, org, "rf-inquiry", "dev", 1, nil)
-	price := lookupPlan("dev").Price
-
-	deliver(t, ctx, secret, disputeEvent("evt_rf_iq_0", "dispute.created", "dp_iq", "sqpay_iq", "INQUIRY_EVIDENCE_REQUIRED", price))
-	paidAs(t, viewOf(t, ctx, org, "rf-inquiry"), "", 0, 0)
-	deliver(t, ctx, secret, disputeEvent("evt_rf_iq_1", "dispute.state.changed", "dp_iq", "sqpay_iq", "INQUIRY_CLOSED", price))
-	paidAs(t, viewOf(t, ctx, org, "rf-inquiry"), "card", 1, price)
-}
-
 // POST /v1/billing/refunds and /v1/billing/refund are not routed, even for the
 // platform, and a request to either writes nothing: no refund row, and the invoice
 // holds all it was paid.

@@ -68,3 +68,13 @@ func TestValidateWebhook_MissingURLFailsClosed(t *testing.T) {
 		t.Fatal("expected failure when webhook URL is unconfigured")
 	}
 }
+
+// Square names a dispute's change of state dispute.state.updated, and once named it
+// dispute.state.changed; both are the one normalized dispute.updated.
+func TestMapSquareEventType_DisputeStateBothNames(t *testing.T) {
+	for _, sq := range []string{"dispute.state.updated", "dispute.state.changed"} {
+		if got := mapSquareEventType(sq); got != "dispute.updated" {
+			t.Fatalf("mapSquareEventType(%q) = %q, want dispute.updated", sq, got)
+		}
+	}
+}

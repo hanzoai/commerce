@@ -18,6 +18,7 @@ import (
 	"github.com/hanzoai/commerce/mintauth"
 	"github.com/hanzoai/commerce/models/billingevent"
 	"github.com/hanzoai/commerce/models/billinginvoice"
+	"github.com/hanzoai/commerce/models/dispute"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentorg"
 	"github.com/hanzoai/commerce/models/subscription"
@@ -741,11 +742,11 @@ func pickSignatureHeader(h http.Header, providerHint string) string {
 }
 
 // isClawbackEvent reports whether an event returns a settled payment's money to the
-// payer: a refund, or a dispute (the processor holds the funds from the moment one
-// opens).
+// payer, or reports a dispute of it: a refund, or a dispute's creation or change of
+// state (Square's dispute.state.updated, once named dispute.state.changed).
 func isClawbackEvent(eventType string) bool {
 	switch eventType {
-	case "refund.created", "refund.updated", "dispute.created", "dispute.state.changed", "dispute.updated":
+	case "refund.created", "refund.updated", "dispute.created", "dispute.state.updated", "dispute.state.changed", "dispute.updated":
 		return true
 	default:
 		return false
@@ -760,8 +761,11 @@ func isClawbackEvent(eventType string) bool {
 //
 // The org and the wallet are the ones the payment's own receipt names — found through
 // the payment index (models/paymentorg), since the callback names only the payment —
-// never the request's org. A refund acts once it has COMPLETED; a dispute takes the
-// money when it opens and gives it back when it is WON. The ledger posts each once
+// never the request's org. A refund acts once it has COMPLETED. A dispute moves money
+// only while the processor withholds the funds (dispute.Withholds — a chargeback, or
+// one lost or accepted; an inquiry holds none) and gives it back when it is WON. Every
+// dispute report is ordered by the dispute's version, else its updated_at, and one
+// older than the report already recorded changes nothing. The ledger posts each once
 // per refund or dispute id, and never takes back more than the payment brought in.
 func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organization.Organization, event *processor.WebhookEvent) {
 	if event.Data == nil {
@@ -769,9 +773,9 @@ func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organi
 	}
 	obj := unwrapObject(event.Data, "refund")
 	paymentID := stringField(obj, "payment_id")
-	dispute := strings.HasPrefix(event.Type, "dispute.")
-	state := ""
-	if dispute {
+	isDispute := strings.HasPrefix(event.Type, "dispute.")
+	state, version, at := "", int64(0), time.Time{}
+	if isDispute {
 		obj = unwrapObject(event.Data, "dispute")
 		paymentID = stringField(obj, "payment_id")
 		if paymentID == "" {
@@ -780,20 +784,19 @@ func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organi
 			}
 		}
 		state = strings.ToUpper(stringField(obj, "state"))
-		if state == "" && event.Type == "dispute.created" {
-			state = "OPEN"
-		}
+		version, _ = numberField(obj, "version")
+		at, _ = time.Parse(time.RFC3339, stringField(obj, "updated_at"))
 	} else if st := stringField(obj, "status"); !strings.EqualFold(st, "COMPLETED") {
 		return
 	}
 	id := stringField(obj, "id")
 	amount, _ := settlementAmount(obj)
-	// What moves wallet money: a refund, a dispute opening, a dispute won.
-	won := state == billinginvoice.DisputeWon
-	moves := won || (amount > 0 && (!dispute || event.Type == "dispute.created"))
-	// What an invoice records: a refund, and any state a dispute reports.
-	records := (!dispute && amount > 0) || state != ""
-	if paymentID == "" || id == "" || !(moves || records) {
+	// What moves wallet money: a refund, funds a dispute withholds, a dispute won.
+	won := state == dispute.StateWon
+	moves := won || (amount > 0 && (!isDispute || dispute.Withholds(state)))
+	// What is recorded: a refund, and any state a dispute reports.
+	records := (!isDispute && amount > 0) || state != ""
+	if paymentID == "" || id == "" || !records {
 		return
 	}
 	where, found, err := paymentorg.Get(paymentID)
@@ -805,8 +808,8 @@ func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organi
 	}
 	if where.Invoice != "" {
 		db := datastore.New(nscontext.WithNamespace(ctx, where.Org))
-		if dispute {
-			err = engine.RecordDispute(db, where.Invoice, state)
+		if isDispute {
+			err = engine.RecordDispute(db, where.Invoice, state, version, at)
 		} else {
 			err = engine.RecordRefund(db, where.Invoice, id, int64(amount))
 		}
@@ -816,12 +819,22 @@ func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organi
 		}
 		return
 	}
+	if isDispute {
+		latest, err := engine.RecordPaymentDispute(paymentID, state, version, at)
+		if err != nil {
+			log.Error("RECONCILE: %s %s on payment %s: the dispute's state was not recorded: %v — retryable: the provider redelivers", event.Type, id, paymentID, err)
+			return
+		}
+		if !latest {
+			return // an earlier report than the one recorded moves nothing
+		}
+	}
 	led := creditledger.Get()
 	if led == nil || !moves {
 		return
 	}
 	kind := "refund"
-	if dispute {
+	if isDispute {
 		kind = "dispute"
 	}
 	in := creditledger.ClawbackInput{

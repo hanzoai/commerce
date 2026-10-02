@@ -10,8 +10,10 @@ package paymentorg
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/dispute"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/orm"
@@ -23,7 +25,8 @@ func init() {
 
 // PaymentOrg is where one payment's receipt lives: the org, the wallet it credited,
 // and whether the charge was a sandbox one. A payment that paid an invoice names it
-// in Invoice and credited no wallet.
+// in Invoice and credited no wallet. Report is a dispute of a payment that credited
+// a wallet, as the processor last reported it.
 type PaymentOrg struct {
 	mixin.Model[PaymentOrg]
 
@@ -31,6 +34,8 @@ type PaymentOrg struct {
 	Subject string `json:"subject"`
 	Invoice string `json:"invoice,omitempty"`
 	Test    bool   `json:"test"`
+
+	dispute.Report
 }
 
 func (p *PaymentOrg) Load(ps []datastore.Property) error  { return datastore.LoadStruct(p, ps) }
@@ -70,4 +75,18 @@ func Get(payment string) (*PaymentOrg, bool, error) {
 	default:
 		return nil, false, err
 	}
+}
+
+// RecordDispute records a reported state of a dispute of payment on its record and
+// reports whether it is the latest known (dispute.Report.SetDispute). A payment
+// nothing recorded answers false.
+func RecordDispute(payment, state string, version int64, at time.Time) (bool, error) {
+	p, found, err := Get(payment)
+	if err != nil || !found {
+		return false, err
+	}
+	if !p.SetDispute(state, version, at) {
+		return false, nil
+	}
+	return true, p.Put()
 }

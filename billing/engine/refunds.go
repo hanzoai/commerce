@@ -3,15 +3,18 @@ package engine
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/credit"
+	"github.com/hanzoai/commerce/models/paymentorg"
 )
 
-// returns serializes the read-modify-write of an invoice's refunds and dispute
-// within the process, the one writer of a tenant's books. Commerce never makes a
-// refund: both are recorded only from the processor's signed webhook, through here.
+// returns serializes the read-modify-write of a payment's refunds and dispute —
+// on its invoice, or on a wallet payment's record — within the process, the one
+// writer of a tenant's books. Commerce never makes a refund: both are recorded
+// only from the processor's signed webhook, through here.
 var returns sync.Mutex
 
 // RecordRefund records on invoice id the refund the processor gave back under its
@@ -31,16 +34,29 @@ func RecordRefund(db *datastore.Datastore, id, refundID string, amount int64) er
 }
 
 // RecordDispute records on invoice id the state a dispute against its payment
-// reached, reading the invoice afresh under returns.
-func RecordDispute(db *datastore.Datastore, id, state string) error {
+// reached, ordered by the dispute's version (or updated_at): a report older than
+// the one the invoice holds changes nothing. It reads the invoice afresh under
+// returns.
+func RecordDispute(db *datastore.Datastore, id, state string, version int64, at time.Time) error {
 	returns.Lock()
 	defer returns.Unlock()
 	inv := billinginvoice.New(db)
 	if err := inv.GetById(id); err != nil {
 		return err
 	}
-	inv.SetDispute(state)
+	if !inv.SetDispute(state, version, at) {
+		return nil
+	}
 	return inv.Update()
+}
+
+// RecordPaymentDispute records the state a dispute of a wallet payment reached on
+// the payment's record (models/paymentorg), under returns, and reports whether it
+// is the latest known — the one report whose money the caller may move.
+func RecordPaymentDispute(payment, state string, version int64, at time.Time) (bool, error) {
+	returns.Lock()
+	defer returns.Unlock()
+	return paymentorg.RecordDispute(payment, state, version, at)
 }
 
 // CreateCreditNoteParams holds the parameters for creating a credit note.
