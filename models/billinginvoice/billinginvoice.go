@@ -2,10 +2,10 @@ package billinginvoice
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/dispute"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
@@ -99,13 +99,13 @@ type BillingInvoice struct {
 	PaymentMethod string `json:"paymentMethod,omitempty"` // "balance", "stripe", "credit"
 	PaymentRef    string `json:"paymentRef,omitempty"`    // e.g. Stripe PaymentIntent ID
 
-	// Refunds is each refund given back against the payment that paid this
-	// invoice, in cents, keyed by the id it was given under — the processor's
-	// refund id, or a refund recorded here — so a refund reported twice counts once.
+	// Refunds is each refund the processor gave back against the payment that
+	// paid this invoice, in cents, keyed by the processor's refund id, so a refund
+	// reported twice counts once.
 	Refunds map[string]int64 `json:"refunds,omitempty"`
-	// Dispute is the state of a dispute against the payment that paid this
-	// invoice, as the processor last reported it; empty when there is none.
-	Dispute string `json:"dispute,omitempty"`
+	// Report is a dispute against the payment that paid this invoice, as the
+	// processor last reported it, ordered by the dispute's version.
+	dispute.Report
 
 	// Invoice number (auto-increment per org)
 	Number    int    `json:"number"`
@@ -197,13 +197,6 @@ func (inv *BillingInvoice) MarkUncollectible() error {
 	return nil
 }
 
-// The dispute states in which the payment stays with the merchant: a dispute won,
-// and an inquiry that closed without becoming a chargeback.
-const (
-	DisputeWon           = "WON"
-	DisputeInquiryClosed = "INQUIRY_CLOSED"
-)
-
 // Refund records amount given back under ref, once: a ref already recorded changes
 // nothing. It reports whether it recorded anything.
 func (inv *BillingInvoice) Refund(ref string, amount int64) bool {
@@ -228,21 +221,6 @@ func (inv *BillingInvoice) Refunded() int64 {
 		total += cents
 	}
 	return min(total, inv.AmountPaid)
-}
-
-// SetDispute records the state a dispute against the payment reached, in upper
-// case. A dispute won is final: a later report of an earlier state leaves it won.
-func (inv *BillingInvoice) SetDispute(state string) {
-	if inv.Dispute == DisputeWon {
-		return
-	}
-	inv.Dispute = strings.ToUpper(strings.TrimSpace(state))
-}
-
-// Disputed reports whether a dispute holds the payment's money: one is open, or was
-// lost. A dispute won, or an inquiry closed without a chargeback, holds nothing.
-func (inv *BillingInvoice) Disputed() bool {
-	return inv.Dispute != "" && inv.Dispute != DisputeWon && inv.Dispute != DisputeInquiryClosed
 }
 
 // RecalculateSubtotal sums all line item amounts.

@@ -471,7 +471,7 @@ func mapSquareEventType(sqType string) string {
 		return "subscription.updated"
 	case "dispute.created":
 		return "dispute.created"
-	case "dispute.state.changed":
+	case "dispute.state.updated", "dispute.state.changed":
 		return "dispute.updated"
 	case "customer.created":
 		return "customer.created"
