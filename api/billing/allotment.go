@@ -353,9 +353,6 @@ type RollupView struct {
 	Currency string `json:"currency"`
 	// Period is the UTC month, YYYY-MM.
 	Period string `json:"period"`
-	// Windows are the plan's four nested request bounds and how much of each is
-	// left — the half a holder actually asks about.
-	Windows []Window `json:"windows"`
 	// Included is the plan side: see RollupAllotment.
 	Included RollupAllotment `json:"included"`
 	// ConsumedCents is everything spent this month, inside the allotment and out.
@@ -447,7 +444,6 @@ func ReadRollup(ctx context.Context, org *organization.Organization, user, plan 
 		Plan:     plan,
 		Currency: "usd",
 		Period:   allotment.Period(now),
-		Windows:  usageWindows(ctx, user, plan, org.TestMode(), now),
 		Included: RollupAllotment{
 			MonthlyCents:   includedMonthlyCents,
 			GrantedCents:   includedGrantedCents,

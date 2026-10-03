@@ -420,7 +420,7 @@ func GetPlan(c *zip.Ctx) error {
 // catalog — a plan's "replaces" list — so commerce and every other reader of
 // @hanzo/plans answer a retired id identically.
 //
-// Every gate reads the catalog BY SLUG — paid-ness, tier, roster, windows and
+// Every gate reads the catalog BY SLUG — paid-ness, tier, roster and
 // the monthly allotment — and a retired slug is absent from it. Without this a
 // holder of the old rung reads as unpaid and falls to Free while their renewal
 // still bills. With it they are served the rung that replaced theirs; the price

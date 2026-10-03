@@ -17,7 +17,7 @@ import (
 // longer be bought.
 
 // TestRetiredMaxHolderIsServedAsMax5x: a live, payment-backed max subscription
-// is a paid tier with max-5x's roster, windows and allotment.
+// is a paid tier with max-5x's roster and allotment.
 func TestRetiredMaxHolderIsServedAsMax5x(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -48,15 +48,6 @@ func TestRetiredMaxHolderIsServedAsMax5x(t *testing.T) {
 	}
 	if view.Tier.MaxBots != 1 {
 		t.Errorf("max holder may run %d bots, want max-5x's 1", view.Tier.MaxBots)
-	}
-	want := planWindowLimits("max-5x")
-	if len(want) != 4 {
-		t.Fatalf("max-5x publishes %d windows, want 4", len(want))
-	}
-	for _, w := range view.Windows {
-		if w.Limit != want[w.Span] {
-			t.Errorf("max holder's %s window = %d, want max-5x's %d", w.Span, w.Limit, want[w.Span])
-		}
 	}
 }
 

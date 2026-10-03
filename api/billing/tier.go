@@ -149,7 +149,8 @@ type TierBalance struct {
 }
 
 // TierView is a subject's tier as a TYPED value: which tier they are on, what it
-// allows, what they can spend, and how much of each plan window is left.
+// allows, and what they can spend. What a plan allows of AI is cloud's usage
+// policy, read at /v1/ai/limits; this carries no figure of it.
 type TierView struct {
 	// User is the billing subject this answers for.
 	User string `json:"user"`
@@ -167,13 +168,6 @@ type TierView struct {
 	Tier TierLimits `json:"tier"`
 	// Balance is what they can spend right now.
 	Balance TierBalance `json:"balance"`
-	// Windows are the plan's own bounds, over four nested spans. A plan sells
-	// usage over them and nothing on the request path could see it: they were
-	// published in the catalog and reported to the account page, and the gate had
-	// no way to ask. They are CARRIED here, not enforced — enforcing is the
-	// router's call and a refusal is money. A window with limit 0 declares no
-	// bound at that span, so a reader skips it rather than treating it as spent.
-	Windows []Window `json:"windows"`
 }
 
 // errTierNoOrg is ReadTier REFUSING the question rather than failing at it: with
@@ -206,8 +200,8 @@ func IsTierRefusal(err error) bool { return errors.Is(err, errTierNoOrg) }
 // only a minter may name one (resolveTierName), which is a fact about the caller's
 // credential, not about the subject.
 //
-// Its single failure is the ledger read. The daily term and the windows report
-// what they can and stay quiet otherwise, exactly as they do on the wire.
+// Its single failure is the ledger read. The daily term reports what it can and
+// stays quiet otherwise, exactly as it does on the wire.
 func ReadTier(ctx context.Context, org *organization.Organization, user string, name tier.Name) (*TierView, error) {
 	if org == nil {
 		return nil, errTierNoOrg
@@ -254,7 +248,7 @@ func ReadTier(ctx context.Context, org *organization.Organization, user string, 
 		}
 	}
 
-	// ONE row resolution, for the plan, the usage windows and the plan's roster.
+	// ONE row resolution, for the plan and the plan's roster.
 	// Reading it twice is two chances to answer for two different plans in one
 	// payload.
 	served := servedSubscription(datastore.New(ctx), user, org.TestMode())
@@ -298,7 +292,6 @@ func ReadTier(ctx context.Context, org *organization.Organization, user string, 
 			DailyRemaining:     dailyRemaining,
 			EffectiveAvailable: effectiveAvailable,
 		},
-		Windows: usageWindows(ctx, user, slug, org.TestMode(), time.Now()),
 	}, nil
 }
 
