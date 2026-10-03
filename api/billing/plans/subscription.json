@@ -13,11 +13,6 @@
       "Upgrade any time from inside the app"
     ],
     "limits": {
-      "requestsPerMinute": 60,
-      "requestsPerHour": 10,
-      "requestsPerDay": 50,
-      "requestsPerWeek": 100,
-      "requestsPerMonth": 300,
       "agents": 1,
       "bots": 0
     },
@@ -26,21 +21,10 @@
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
     },
     "entitlements": {
-      "ai.requests_per_min": 60,
       "commerce.support_tier": "community",
       "commerce.idle_resale_percent": 20,
-      "ai.requests_per_hour": 10,
-      "ai.requests_per_day": 50,
-      "ai.requests_per_week": 100,
-      "ai.requests_per_month": 300,
       "ai.agents": 1,
       "ai.bots": 0,
-      "ai.included_cents": 0,
-      "ai.weekly_cents": 0,
-      "ai.weekly_premium_cents": 0,
-      "ai.session_cents": 0,
-      "ai.session_hours": 0,
-      "ai.resets": 0,
       "ai.models": [
         "enso-auto",
         "enso-free",
@@ -69,12 +53,6 @@
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
     },
     "entitlements": {
-      "ai.requests_per_min": 500,
-      "ai.tokens_per_min": 1000000,
-      "ai.requests_per_hour": 400,
-      "ai.requests_per_day": 2500,
-      "ai.requests_per_week": 12000,
-      "ai.requests_per_month": 40000,
       "ai.priority_inference": true,
       "ai.models": [
         "tier:max"
@@ -87,22 +65,10 @@
       "commerce.idle_resale_percent": 20,
       "team.guests": 3,
       "ai.agents": 10,
-      "ai.bots": 0,
-      "ai.included_cents": 1500,
-      "ai.weekly_cents": 375,
-      "ai.weekly_premium_cents": 94,
-      "ai.session_cents": 75,
-      "ai.session_hours": 5,
-      "ai.resets": 1
+      "ai.bots": 0
     },
     "limits": {
-      "requestsPerMinute": 500,
-      "tokensPerMinute": 1000000,
       "teamGuests": 3,
-      "requestsPerHour": 400,
-      "requestsPerDay": 2500,
-      "requestsPerWeek": 12000,
-      "requestsPerMonth": 40000,
       "agents": 10,
       "bots": 0
     },
@@ -150,8 +116,6 @@
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
     },
     "entitlements": {
-      "ai.requests_per_min": 2500,
-      "ai.tokens_per_min": 5000000,
       "ai.premium_models": true,
       "ai.priority_inference": true,
       "ai.custom_training": true,
@@ -176,27 +140,11 @@
       "commerce.support_tier": "dedicated",
       "commerce.idle_resale_percent": 20,
       "team.guests": 3,
-      "ai.requests_per_hour": 2000,
-      "ai.requests_per_day": 12500,
-      "ai.requests_per_week": 60000,
-      "ai.requests_per_month": 200000,
       "ai.agents": 10,
-      "ai.bots": 1,
-      "ai.included_cents": 7500,
-      "ai.weekly_cents": 1875,
-      "ai.weekly_premium_cents": 469,
-      "ai.session_cents": 375,
-      "ai.session_hours": 5,
-      "ai.resets": 1
+      "ai.bots": 1
     },
     "limits": {
-      "requestsPerMinute": 2500,
-      "tokensPerMinute": 5000000,
       "teamGuests": 3,
-      "requestsPerHour": 2000,
-      "requestsPerDay": 12500,
-      "requestsPerWeek": 60000,
-      "requestsPerMonth": 200000,
       "agents": 10,
       "bots": 1
     },
@@ -241,8 +189,6 @@
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
     },
     "entitlements": {
-      "ai.requests_per_min": 10000,
-      "ai.tokens_per_min": 20000000,
       "ai.premium_models": true,
       "ai.priority_inference": true,
       "ai.custom_training": true,
@@ -267,27 +213,11 @@
       "commerce.support_tier": "dedicated",
       "commerce.idle_resale_percent": 20,
       "team.guests": 3,
-      "ai.requests_per_hour": 8000,
-      "ai.requests_per_day": 50000,
-      "ai.requests_per_week": 240000,
-      "ai.requests_per_month": 800000,
       "ai.agents": 10,
-      "ai.bots": 1,
-      "ai.included_cents": 15000,
-      "ai.weekly_cents": 3750,
-      "ai.weekly_premium_cents": 938,
-      "ai.session_cents": 1500,
-      "ai.session_hours": 5,
-      "ai.resets": 1
+      "ai.bots": 1
     },
     "limits": {
-      "requestsPerMinute": 10000,
-      "tokensPerMinute": 20000000,
       "teamGuests": 3,
-      "requestsPerHour": 8000,
-      "requestsPerDay": 50000,
-      "requestsPerWeek": 240000,
-      "requestsPerMonth": 800000,
       "agents": 10,
       "bots": 1
     },
@@ -327,12 +257,6 @@
       "One bill for the whole org, with KMS-backed credentials"
     ],
     "limits": {
-      "requestsPerMinute": 500,
-      "tokensPerMinute": 1000000,
-      "requestsPerHour": 400,
-      "requestsPerDay": 2500,
-      "requestsPerWeek": 12000,
-      "requestsPerMonth": 40000,
       "agents": 10,
       "bots": 0,
       "maxMembers": 100,
@@ -349,13 +273,7 @@
         "annual_total_usd": 240,
         "annual_usd": 20,
         "per_seat": true,
-        "stripe_lookup_key": "hanzo_team_25",
-        "annual_entitlements": {
-          "ai.included_cents": 1500,
-          "ai.weekly_cents": 375,
-          "ai.weekly_premium_cents": 94,
-          "ai.session_cents": 75
-        }
+        "stripe_lookup_key": "hanzo_team_25"
       },
       "metered": [
         {
@@ -367,12 +285,6 @@
       ]
     },
     "entitlements": {
-      "ai.requests_per_min": 500,
-      "ai.tokens_per_min": 1000000,
-      "ai.requests_per_hour": 400,
-      "ai.requests_per_day": 2500,
-      "ai.requests_per_week": 12000,
-      "ai.requests_per_month": 40000,
       "ai.priority_inference": true,
       "ai.models": [
         "tier:max"
@@ -388,13 +300,7 @@
       "commerce.support_tier": "priority",
       "commerce.idle_resale_percent": 20,
       "ai.agents": 10,
-      "ai.bots": 0,
-      "ai.included_cents": 1875,
-      "ai.weekly_cents": 469,
-      "ai.weekly_premium_cents": 117,
-      "ai.session_cents": 94,
-      "ai.session_hours": 5,
-      "ai.resets": 1
+      "ai.bots": 0
     }
   },
   {
@@ -424,8 +330,6 @@
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
     },
     "entitlements": {
-      "ai.requests_per_min": 10000,
-      "ai.tokens_per_min": 20000000,
       "ai.premium_models": true,
       "ai.priority_inference": true,
       "ai.custom_training": true,
@@ -450,27 +354,11 @@
       "commerce.support_tier": "dedicated",
       "commerce.idle_resale_percent": 20,
       "team.guests": 3,
-      "ai.requests_per_hour": 8000,
-      "ai.requests_per_day": 50000,
-      "ai.requests_per_week": 240000,
-      "ai.requests_per_month": 800000,
       "ai.agents": 10,
-      "ai.bots": 1,
-      "ai.included_cents": 15000,
-      "ai.weekly_cents": 3750,
-      "ai.weekly_premium_cents": 938,
-      "ai.session_cents": 1500,
-      "ai.session_hours": 5,
-      "ai.resets": 1
+      "ai.bots": 1
     },
     "limits": {
-      "requestsPerMinute": 10000,
-      "tokensPerMinute": 20000000,
       "teamGuests": 3,
-      "requestsPerHour": 8000,
-      "requestsPerDay": 50000,
-      "requestsPerWeek": 240000,
-      "requestsPerMonth": 800000,
       "agents": 10,
       "bots": 1
     },
@@ -517,8 +405,6 @@
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
     },
     "entitlements": {
-      "ai.requests_per_min": 10000,
-      "ai.tokens_per_min": 20000000,
       "ai.premium_models": true,
       "ai.priority_inference": true,
       "ai.custom_training": true,
@@ -543,27 +429,11 @@
       "commerce.support_tier": "dedicated",
       "commerce.idle_resale_percent": 20,
       "team.guests": 3,
-      "ai.requests_per_hour": 8000,
-      "ai.requests_per_day": 50000,
-      "ai.requests_per_week": 240000,
-      "ai.requests_per_month": 800000,
       "ai.agents": -1,
-      "ai.bots": 1,
-      "ai.included_cents": 15000,
-      "ai.weekly_cents": 3750,
-      "ai.weekly_premium_cents": 938,
-      "ai.session_cents": 1500,
-      "ai.session_hours": 5,
-      "ai.resets": 1
+      "ai.bots": 1
     },
     "limits": {
-      "requestsPerMinute": 10000,
-      "tokensPerMinute": 20000000,
       "teamGuests": 3,
-      "requestsPerHour": 8000,
-      "requestsPerDay": 50000,
-      "requestsPerWeek": 240000,
-      "requestsPerMonth": 800000,
       "agents": -1,
       "bots": 1
     },
@@ -605,8 +475,6 @@
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
     },
     "entitlements": {
-      "ai.requests_per_min": 50000,
-      "ai.tokens_per_min": 100000000,
       "ai.premium_models": true,
       "ai.priority_inference": true,
       "ai.custom_training": true,
@@ -638,17 +506,9 @@
       "commerce.on_prem": true,
       "commerce.idle_resale_percent": 20,
       "ai.agents": -1,
-      "ai.bots": -1,
-      "ai.included_cents": -1,
-      "ai.weekly_cents": -1,
-      "ai.weekly_premium_cents": -1,
-      "ai.session_cents": -1,
-      "ai.session_hours": -1,
-      "ai.resets": -1
+      "ai.bots": -1
     },
     "limits": {
-      "requestsPerMinute": 50000,
-      "tokensPerMinute": 100000000,
       "maxMembers": -1,
       "agents": -1,
       "bots": -1
