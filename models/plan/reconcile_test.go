@@ -13,15 +13,9 @@ func n(i int) *int { return &i }
 // THE INVARIANT copyInto's own comment states: every field it copies is one
 // planEqual compares. This asserts it over the STRUCT rather than over a list
 // somebody has to remember to extend — which is the only version that survives
-// the next field.
-//
-// It has already been broken once, by me, and the failure is silent in the worst
-// direction. Four window fields were added to Limits and to copyInto and not to
-// limitsEqual, so a plan whose ONLY change was its windows read as already
-// published: the seed skipped it, the catalog said one thing and the served row
-// said another, and nothing logged. It reached production as free and max
-// carrying no windows at all — so the holders most likely to meet a limit were
-// the only ones with no meter to see it coming.
+// the next field. A field copied but not compared fails silently in the worst
+// direction: a plan whose ONLY change is that field reads as already published,
+// the seed skips it, and the catalog and the served row disagree with no log.
 func TestEveryLimitCopiedIsAlsoCompared(t *testing.T) {
 	tp := reflect.TypeOf(Limits{})
 	ptrInt := reflect.TypeOf((*int)(nil))
@@ -46,43 +40,41 @@ func TestEveryLimitCopiedIsAlsoCompared(t *testing.T) {
 	}
 }
 
-// A plan whose ONLY change is its windows must reconcile. This is the production
-// case in miniature: same slug, same price, new usage.
-func TestAWindowChangeAloneIsReconciled(t *testing.T) {
+// A plan whose ONLY change is a capacity must reconcile. This is the production
+// case in miniature: same slug, same price, a new roster.
+func TestACapacityChangeAloneIsReconciled(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
 	db := sysDB(c)
 
 	before := []*Plan{{
 		Slug: "free", Category: "personal", Name: "Free", Price: 0, Currency: currency.USD,
-		Limits: &Limits{RequestsPerMinute: n(60)},
+		Limits: &Limits{Agents: n(1)},
 	}}
 	if _, _, err := Seed(db, before); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 
-	// The catalog now says what the free rung includes. Nothing else moved.
+	// The catalog now says the free rung includes no bots. Nothing else moved.
 	after := []*Plan{{
 		Slug: "free", Category: "personal", Name: "Free", Price: 0, Currency: currency.USD,
-		Limits: &Limits{RequestsPerMinute: n(60), RequestsPerHour: n(10), RequestsPerDay: n(20),
-			RequestsPerWeek: n(100), RequestsPerMonth: n(300)},
+		Limits: &Limits{Agents: n(1), Bots: n(0)},
 	}}
 	_, corrected, err := Seed(db, after)
 	if err != nil {
 		t.Fatalf("re-seed: %v", err)
 	}
 	if corrected == 0 {
-		t.Fatal("the catalog published new windows and the seed wrote nothing — a plan " +
-			"that changed only its included usage stays at its old, unbounded row")
+		t.Fatal("the catalog published a new capacity and the seed wrote nothing — a plan " +
+			"that changed only its roster stays at its old row")
 	}
 
 	p := New(db)
 	if ok, _ := p.Query().Filter("Slug=", "free").Get(); !ok {
 		t.Fatal("free is missing")
 	}
-	if p.Limits == nil || p.Limits.RequestsPerDay == nil || *p.Limits.RequestsPerDay != 20 {
-		t.Fatalf("stored windows = %+v, want the catalog's — without them a holder's "+
-			"meter has nothing to measure and reads as though they have no plan", p.Limits)
+	if p.Limits == nil || p.Limits.Bots == nil || *p.Limits.Bots != 0 {
+		t.Fatalf("stored limits = %+v, want the catalog's bots=0", p.Limits)
 	}
 }
 

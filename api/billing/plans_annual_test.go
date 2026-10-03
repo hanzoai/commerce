@@ -79,7 +79,7 @@ func TestAnnualPriceIsTheCatalogs(t *testing.T) {
 		}
 	}
 
-	served("embed", catalog)
+	served("embed", views(catalog))
 
 	c := ae.NewContext()
 	defer c.Close()

@@ -310,30 +310,16 @@ type Licensing struct {
 	Seats *int `json:"seats,omitempty"`
 }
 
-// Limits is a plan's published allowance block — rate ceilings, seat floors and
-// included credit. It lives HERE, with the plan, because it is plan data: the
-// catalog publishes it and GET /v1/billing/plans serves it verbatim. api/billing
-// aliases this type rather than declaring a second copy.
+// Limits is a plan's limits block — capacities, seat floors, included credit and
+// the DNS quotas. It lives HERE, with the plan, because it is plan data: the
+// catalog publishes it and the row stores it. api/billing aliases this type
+// rather than declaring a second copy, and serves only its capacities in public
+// (api/billing Capacity). It states no AI usage: what a plan allows of AI is
+// cloud's usage policy (apps/ai/limits), so a field for it here would be a second
+// home for one figure.
 type Limits struct {
-	// Subscription (API) limits
-	RequestsPerMinute *int `json:"requestsPerMinute,omitempty"`
-	TokensPerMinute   *int `json:"tokensPerMinute,omitempty"`
-
-	// The usage a plan INCLUDES, in requests, over four nested windows.
-	//
-	// RequestsPerMinute above bounds a BURST and says nothing about how much of a
-	// plan a month contains; these bound volume. The short windows refresh as the
-	// day goes, so a holder can keep working all month, and the long ones are the
-	// ceiling that stops it being unlimited — which is only true while each longer
-	// window is smaller than the naive multiple of the shorter one. Set month to
-	// thirty times the day and it can never be reached, because every route to it
-	// crosses thirty daily ceilings first.
-	RequestsPerHour  *int `json:"requestsPerHour,omitempty"`
-	RequestsPerDay   *int `json:"requestsPerDay,omitempty"`
-	RequestsPerWeek  *int `json:"requestsPerWeek,omitempty"`
-	RequestsPerMonth *int `json:"requestsPerMonth,omitempty"`
-	FreeCredit       *int `json:"freeCredit,omitempty"`
-	MaxMembers       *int `json:"maxMembers,omitempty"`
+	FreeCredit *int `json:"freeCredit,omitempty"`
+	MaxMembers *int `json:"maxMembers,omitempty"`
 
 	// MinSeats is the minimum billable seat count for per-seat plans
 	// (price_ref.recurring.per_seat) — the ONE canonical home for seat minimums.
@@ -610,13 +596,7 @@ func limitsEqual(a, b *Limits) bool {
 	if a == nil || b == nil {
 		return a == b
 	}
-	return eqInt(a.RequestsPerMinute, b.RequestsPerMinute) &&
-		eqInt(a.TokensPerMinute, b.TokensPerMinute) &&
-		eqInt(a.RequestsPerHour, b.RequestsPerHour) &&
-		eqInt(a.RequestsPerDay, b.RequestsPerDay) &&
-		eqInt(a.RequestsPerWeek, b.RequestsPerWeek) &&
-		eqInt(a.RequestsPerMonth, b.RequestsPerMonth) &&
-		eqInt(a.FreeCredit, b.FreeCredit) &&
+	return eqInt(a.FreeCredit, b.FreeCredit) &&
 		eqInt(a.MaxMembers, b.MaxMembers) &&
 		eqInt(a.MinSeats, b.MinSeats) &&
 		eqInt(a.TeamGuests, b.TeamGuests) &&
@@ -734,51 +714,4 @@ func Backfill(db *datastore.Datastore, licensing map[string]*Licensing) (filled 
 		filled++
 	}
 	return filled, nil
-}
-
-// LevelWindows is the usage this plan includes at level — the volume half of
-// LevelPrice, and the ONE place that question is answered.
-//
-// USAGE SCALES WITH WHAT YOU PAY, derived rather than stored. A ladder that sells
-// ten levels does not carry ten sets of windows: it carries one, and each level
-// includes them in proportion to its own price. So the $999 level of a $99 plan
-// includes 999/99 of the base windows, and there is no second table to maintain,
-// disagree with the prices, or forget when a level is added.
-//
-// Only the VOLUME windows scale. requestsPerMinute is a burst rate — what the
-// service will absorb at once — and paying more does not make a spike safer to
-// serve. Conflating the two is how "60 a minute" comes to be read as a quota.
-//
-// Returns a COPY. The plan's own Limits is the base and must never be mutated by
-// a question about one level; two callers asking about two levels would otherwise
-// race, and the second would see the first's answer.
-func (p *Plan) LevelWindows(level int) (*Limits, error) {
-	if p.Limits == nil {
-		return nil, nil // a plan that declares no windows includes no bound
-	}
-	price, err := p.LevelPrice(level)
-	if err != nil {
-		return nil, err
-	}
-
-	out := *p.Limits
-	// The base price is the denominator. Zero or missing means there is no ladder
-	// to scale along, so every level includes the base — the honest answer for a
-	// free plan, and for one whose base price has not been set.
-	if p.Price <= 0 || price <= 0 {
-		return &out, nil
-	}
-
-	scale := func(v *int) *int {
-		if v == nil || *v <= 0 {
-			return v
-		}
-		n := int(int64(*v) * int64(price) / int64(p.Price))
-		return &n
-	}
-	out.RequestsPerHour = scale(out.RequestsPerHour)
-	out.RequestsPerDay = scale(out.RequestsPerDay)
-	out.RequestsPerWeek = scale(out.RequestsPerWeek)
-	out.RequestsPerMonth = scale(out.RequestsPerMonth)
-	return &out, nil
 }

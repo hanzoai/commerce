@@ -51,11 +51,8 @@ func TestPlansLoaded(t *testing.T) {
 	if entry.Limits == nil {
 		t.Fatal("Dev plan should have limits")
 	}
-	if entry.Limits.RequestsPerMinute == nil || *entry.Limits.RequestsPerMinute != 500 {
-		t.Error("Dev requestsPerMinute should be 500")
-	}
-	if entry.Limits.TokensPerMinute == nil || *entry.Limits.TokensPerMinute != 1000000 {
-		t.Error("Dev tokensPerMinute should be 1000000")
+	if entry.Limits.Agents == nil || *entry.Limits.Agents != 10 {
+		t.Error("Dev agents should be 10")
 	}
 
 	// The ladder climbs. Asserted as an ORDERING rather than four numbers, so it

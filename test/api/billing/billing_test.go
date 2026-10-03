@@ -719,8 +719,7 @@ var _ = Describe("billing", Ordered, func() {
 		const user = "acme/allotuser"
 		// A plan the published catalog credits with included cloud credit
 		// (cloud.included_credits_usd), read from the catalog rather than named:
-		// @hanzo/plans 1.8.9 credits none, so these specs skip until one does.
-		// ai.included_cents is not this: it is usage the plan covers, not credit.
+		// @hanzo/plans credits none, so these specs skip until one does.
 		plan := allotmentPlan(true)
 		// The plan's DECLARED included amount, read from the catalog — never a
 		// hardcoded dollar figure (that brittleness is what broke these tests when

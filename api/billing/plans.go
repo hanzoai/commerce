@@ -101,10 +101,10 @@ func licensingOf(cp *canonicalPlan) *plan.Licensing {
 	return &plan.Licensing{Products: e.Products, Apps: e.Apps, Features: e.Features, Seats: e.Seats}
 }
 
-// PlanView is a plan as this service SELLS it — the wire type GET /billing/plans
-// returns, promo annotation and all. Fields match the Plan type in the billing
-// frontend's commerce-client.ts.
-type PlanView struct {
+// staticPlan is a plan as this package reads it — from the embed or an authority
+// row — with every limit the row holds. Gates read it; it never leaves the
+// package whole: what is served is its PlanView.
+type staticPlan struct {
 	Slug        string `json:"slug"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
@@ -148,11 +148,71 @@ type PlanView struct {
 	Licensing *plan.Licensing `json:"licensing,omitempty"`
 }
 
-// staticPlan is the name the rest of the package writes for a PlanView. It is an
-// ALIAS, not a second declaration: the plan a peer reads off the internal plane
-// and the plan the endpoint serves are then one type by construction, rather than
-// two structs kept in agreement.
-type staticPlan = PlanView
+// PlanView is a plan as this service SELLS it — the wire type GET /billing/plans
+// returns and the internal plane forwards, promo annotation and all. Fields match
+// the Plan type in the billing frontend's commerce-client.ts.
+//
+// It is a staticPlan whose limits are narrowed to Capacity: the outer Limits
+// shadows the embedded one on the wire, so a row's limits block is never served
+// verbatim and a figure an older catalog or an admin edit left on a row cannot
+// reach a customer.
+type PlanView struct {
+	staticPlan
+	Limits *Capacity `json:"limits,omitempty"`
+}
+
+// Capacity is what a plan's limits say in public: how many of a thing the plan
+// may hold — agents, bots, workspace guests, org members, billable seats, and the
+// DNS product's zones, records and daily queries. It carries no AI usage figure:
+// what a plan allows of AI is cloud's usage policy (apps/ai/limits), read at
+// /v1/ai/limits, and a figure here would be a second statement of it that
+// customers read and nothing enforces. Credit grants stay off it too.
+type Capacity struct {
+	Agents         *int `json:"agents,omitempty"`
+	Bots           *int `json:"bots,omitempty"`
+	TeamGuests     *int `json:"teamGuests,omitempty"`
+	MaxMembers     *int `json:"maxMembers,omitempty"`
+	MinSeats       *int `json:"minSeats,omitempty"`
+	Zones          *int `json:"zones,omitempty"`
+	RecordsPerZone *int `json:"recordsPerZone,omitempty"`
+	QueriesPerDay  *int `json:"queriesPerDay,omitempty"`
+}
+
+// capacityOf reads a plan's capacities off its limits, nil when it states none.
+// It only reads: the row is never written.
+func capacityOf(l *planLimits) *Capacity {
+	if l == nil {
+		return nil
+	}
+	c := Capacity{
+		Agents:         l.Agents,
+		Bots:           l.Bots,
+		TeamGuests:     l.TeamGuests,
+		MaxMembers:     l.MaxMembers,
+		MinSeats:       l.MinSeats,
+		Zones:          l.Zones,
+		RecordsPerZone: l.RecordsPerZone,
+		QueriesPerDay:  l.QueriesPerDay,
+	}
+	if c == (Capacity{}) {
+		return nil
+	}
+	return &c
+}
+
+// view is the plan as it is served.
+func (p staticPlan) view() PlanView {
+	return PlanView{staticPlan: p, Limits: capacityOf(p.Limits)}
+}
+
+// views serves a list of plans, in order.
+func views(plans []staticPlan) []PlanView {
+	out := make([]PlanView, len(plans))
+	for i, p := range plans {
+		out[i] = p.view()
+	}
+	return out
+}
 
 // catalog contains every plan this service sells, loaded at init from the
 // operator's directory when one is named and from the embed otherwise. It was
@@ -277,7 +337,7 @@ func parsePlans(data []byte) ([]staticPlan, error) {
 // annual is the plan's annual price as the row stores it: zero where the catalog
 // states none. The row keeps money non-nullable, as it does Price beside
 // ContactSales, and annualOf reads that zero back as null.
-func (p *PlanView) annual() int64 {
+func (p *staticPlan) annual() int64 {
 	if p.PriceAnnual == nil {
 		return 0
 	}
@@ -368,7 +428,7 @@ func ReadPlans(ctx context.Context, host, category string, pr *promo.Promo) ([]P
 		plans = catalog
 	}
 	if category == "" {
-		return withPromo(pr, plans), nil
+		return views(withPromo(pr, plans)), nil
 	}
 
 	filtered := make([]staticPlan, 0)
@@ -377,7 +437,7 @@ func ReadPlans(ctx context.Context, host, category string, pr *promo.Promo) ([]P
 			filtered = append(filtered, p)
 		}
 	}
-	return withPromo(pr, filtered), nil
+	return views(withPromo(pr, filtered)), nil
 }
 
 // ListPlans is the endpoint over ReadPlans. Catalog data is admin-editable and
@@ -409,7 +469,7 @@ func GetPlan(c *zip.Ctx) error {
 	}
 	for _, p := range plans {
 		if p.Slug == id {
-			return c.JSON(200, withPromo(promo.Active(c), []staticPlan{p})[0])
+			return c.JSON(200, withPromo(promo.Active(c), []staticPlan{p})[0].view())
 		}
 	}
 	return http.Fail(c, 404, "plan not found", nil)
