@@ -51,16 +51,11 @@ func TestF1_PatchUpgrade_NonMint_Gated(t *testing.T) {
 	if got.Plan.Slug != "pro" {
 		t.Fatalf("sub plan = %q after gated PATCH, want unchanged 'pro' (no laundering)", got.Plan.Slug)
 	}
-	// Read both anchors from the catalog rather than restating cents: the property
-	// is that the gate left the sub on pro, so the allotment still anchors on pro
-	// and never on team. That holds at any price, and a reprice should not fail a
-	// test with no opinion about the price.
-	wantPro, wantTeam := coveredCents("pro"), coveredCents("team")
-	if wantPro == wantTeam {
-		t.Fatal("pro and team cover the same; this test cannot tell laundering from a no-op")
-	}
-	if got := IncludedMonthlyCents(got.Plan.Slug); got != wantPro {
-		t.Fatalf("post-gate allotment anchor = %d, want %d (pro), never %d (team)", got, wantPro, wantTeam)
+	// The move is a raise by the catalog's own prices, so the 403 is the gate and
+	// not a no-op. Read from the catalog rather than restating cents: a reprice
+	// should not fail a test with no opinion about the price.
+	if listCents("team") <= listCents("pro") {
+		t.Fatal("team does not list above pro; this test cannot tell laundering from a no-op")
 	}
 
 	// Control: a mint principal (cloud-api after a real payment) MAY upgrade — the

@@ -167,8 +167,8 @@ func TestCreateSubscription_TeamSeats_MembersProvisioned(t *testing.T) {
 			t.Fatalf("member %s child plan slug = %q, want team", m, kids[0].Plan.Slug)
 		}
 	}
-	if cents := coveredCents("team"); cents != 1875 {
-		t.Fatalf("coveredCents(team) = %d, want 1875 ($18.75/user/mo)", cents)
+	if cents := listCents("team"); cents != 2500 {
+		t.Fatalf("listCents(team) = %d, want 2500 ($25 a seat a month)", cents)
 	}
 }
 

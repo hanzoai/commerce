@@ -270,33 +270,37 @@ func TestRetiredSlugsAreNotInTheEmbed(t *testing.T) {
 	}
 }
 
-// TestVendoredAllotmentAmounts canaries what a plan gives away. No rung mints
-// prepaid credit any more — the ledger holds only credit a buyer bought — and
-// each paid rung instead COVERS AI usage a period (ai.included_cents, 75% of its
-// price). coveredCents is the sum the plan-move gate scores, so a drift in either
-// half changes who may move where without paying, and must fail here by name.
+// TestVendoredAllotmentAmounts canaries what a plan gives away: no rung mints
+// prepaid credit — the ledger holds only credit a buyer bought.
 func TestVendoredAllotmentAmounts(t *testing.T) {
 	for _, slug := range []string{"free", "dev", "max-5x", "max-20x", "max", "team", "advisory", "dedicated", "enterprise", "dns-pro", "go", "pro"} {
 		if got := IncludedMonthlyCents(slug); got != 0 {
 			t.Errorf("IncludedMonthlyCents(%q) = %d, want 0 — no rung mints credit", slug, got)
 		}
 	}
+}
+
+// TestVendoredMoveScores canaries the plan-move gate's input: each plan's list
+// price from the embed, per seat on a per-seat plan, resolved through retired
+// slugs. A drift here changes who may move where without paying, and must fail
+// by name.
+func TestVendoredMoveScores(t *testing.T) {
 	for slug, cents := range map[string]int64{
 		"free":       0,
-		"dev":        1500,  // $15 of a $20 plan
-		"max-5x":     7500,  // $75 of $100
-		"max-20x":    15000, // $150 of $200
-		"max":        7500,  // retired; covered as max-5x
-		"team":       1875,  // per seat, $18.75 of a $25 seat
-		"advisory":   15000, // agency retainers carry Max 20x's AI
-		"dedicated":  15000,
-		"enterprise": math.MaxInt64, // unlimited by contract
-		"dns-pro":    0,
-		"go":         0,
+		"dev":        2000,
+		"max-5x":     10000,
+		"max-20x":    20000,
+		"max":        10000, // retired; scored as max-5x
+		"team":       2500,  // per seat
+		"advisory":   499900,
+		"dedicated":  999900,
+		"enterprise": math.MaxInt64, // priced by negotiation
+		"dns-pro":    500,
+		"go":         0, // retired with no successor
 		"pro":        0,
 	} {
-		if got := coveredCents(slug); got != cents {
-			t.Errorf("coveredCents(%q) = %d, want %d", slug, got, cents)
+		if got := listCents(slug); got != cents {
+			t.Errorf("listCents(%q) = %d, want %d", slug, got, cents)
 		}
 	}
 }

@@ -82,13 +82,10 @@ type canonicalPlan struct {
 	// time (see plan.Licensing). The other namespaces (ai.*, cloud.*, commerce.*)
 	// are served from the catalog by the plans vocabulary and are not row data.
 	Entitlements struct {
-		// IncludedCents is the AI usage the rung covers a billing period, in US
-		// cents, per seat on a per-seat plan; -1 is unlimited (see coveredCents).
-		IncludedCents *int64   `json:"ai.included_cents,omitempty"`
-		Products      []string `json:"licensing.product_ids,omitempty"`
-		Apps          []string `json:"licensing.app_ids,omitempty"`
-		Features      []string `json:"licensing.engine_features,omitempty"`
-		Seats         *int     `json:"licensing.seats,omitempty"`
+		Products []string `json:"licensing.product_ids,omitempty"`
+		Apps     []string `json:"licensing.app_ids,omitempty"`
+		Features []string `json:"licensing.engine_features,omitempty"`
+		Seats    *int     `json:"licensing.seats,omitempty"`
 	} `json:"entitlements,omitempty"`
 }
 
@@ -170,7 +167,7 @@ var dnsPlans []staticPlan
 
 func init() {
 	catalog = loadPlansFromEmbed(subscriptionJSON, "plans/subscription.json")
-	successor, includedAI = rungsFromEmbed(subscriptionJSON, "plans/subscription.json")
+	successor = successorsFromEmbed(subscriptionJSON, "plans/subscription.json")
 
 	dns := loadPlansFromEmbed(dnsJSON, "plans/dns.json")
 	dnsPlans = dns
@@ -193,11 +190,10 @@ func loadPlansFromEmbed(fs embed.FS, path string) []staticPlan {
 	return plans
 }
 
-// rungsFromEmbed reads the two per-rung facts the plan view does not carry: each
-// plan's "replaces" list (retired id → replacing plan id) and the AI usage it
-// covers a period (ai.included_cents). A retired id named twice panics: the
-// catalog would be answering one subscription two ways.
-func rungsFromEmbed(fs embed.FS, path string) (map[string]string, map[string]int64) {
+// successorsFromEmbed reads the one per-rung fact the plan view does not carry:
+// each plan's "replaces" list (retired id → replacing plan id). A retired id
+// named twice panics: the catalog would be answering one subscription two ways.
+func successorsFromEmbed(fs embed.FS, path string) map[string]string {
 	data, err := fs.ReadFile(path)
 	if err != nil {
 		panic(fmt.Sprintf("billing: failed to read embedded %s: %v", path, err))
@@ -207,7 +203,6 @@ func rungsFromEmbed(fs embed.FS, path string) (map[string]string, map[string]int
 		panic(fmt.Sprintf("billing: failed to parse %s: %v", path, err))
 	}
 	out := map[string]string{}
-	ai := map[string]int64{}
 	for _, cp := range canonical {
 		for _, old := range cp.Replaces {
 			if prev, dup := out[old]; dup {
@@ -215,11 +210,8 @@ func rungsFromEmbed(fs embed.FS, path string) (map[string]string, map[string]int
 			}
 			out[old] = cp.ID
 		}
-		if c := cp.Entitlements.IncludedCents; c != nil {
-			ai[cp.ID] = *c
-		}
 	}
-	return out, ai
+	return out
 }
 
 // parsePlans is the ONE decoder. It was inline in the embed reader, so a second
@@ -439,24 +431,21 @@ func GetPlan(c *zip.Ctx) error {
 // authority, whose archived row is refused before a card is touched.
 var successor map[string]string
 
-// includedAI is each rung's covered AI usage a billing period, in US cents, per
-// seat on a per-seat plan; -1 is unlimited. Read with coveredCents.
-var includedAI map[string]int64
-
-// coveredCents is what a plan gives its holder each period without a further
-// charge, in US cents: the allotment it mints plus the AI usage it covers.
-// Unlimited coverage reads as the most there is. It is the value a plan move is
-// scored on — a move that raises it is a move toward something not yet paid for.
-func coveredCents(slug string) int64 {
+// listCents is a plan's list price as the embed publishes it, by resolved slug:
+// the monthly price in US cents, per seat on a per-seat plan. A contact-sales
+// plan is priced by negotiation and reads as the most there is; a slug the
+// catalog does not publish reads 0. It is the value a plan move is scored on — a
+// move that raises it is a move toward something not yet paid for. The embed is
+// immutable, so neither an admin price edit nor a hashid can move the score.
+func listCents(slug string) int64 {
 	p := lookupPlan(slug)
 	if p == nil {
 		return 0
 	}
-	ai := includedAI[p.Slug]
-	if ai < 0 {
+	if p.ContactSales {
 		return math.MaxInt64
 	}
-	return IncludedMonthlyCents(slug) + ai
+	return p.Price
 }
 
 // servedAs is the catalog rung a subscription's slug is served as: itself, or its

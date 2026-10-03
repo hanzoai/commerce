@@ -32,8 +32,8 @@ func TestRetiredMaxHolderIsServedAsMax5x(t *testing.T) {
 	if !paidTier("max") {
 		t.Fatal(`paidTier("max") = false; the holder's renewal still bills, so the tier must read paid`)
 	}
-	if got, want := coveredCents("max"), coveredCents("max-5x"); got != want || want == 0 {
-		t.Fatalf("coveredCents(max) = %d, want max-5x's %d", got, want)
+	if got, want := listCents("max"), listCents("max-5x"); got != want || want == 0 {
+		t.Fatalf("listCents(max) = %d, want max-5x's %d", got, want)
 	}
 	if got := subscriptionPlanSlug(db, "maxholder/a", false); got != "max" {
 		t.Fatalf("the holder's plan reads %q; the subscription keeps the slug it was bought under", got)

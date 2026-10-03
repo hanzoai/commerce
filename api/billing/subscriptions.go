@@ -908,11 +908,10 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 		// swaps sub.Plan for free (its proration line item is discarded, never
 		// charged). So a cheap payment-backed sub could be laundered into a higher
 		// tier's spendable allotment (subscribe dns-pro via card → PATCH to "max" →
-		// allotment/grant mints ~$100). Gate a move that INCREASES what the plan
-		// covers — the allotment it mints plus the AI usage it covers — on
-		// MayMintMoney. Score the IMMUTABLE embed by the RESOLVED slug (never the raw
-		// id, never the editable DB Price), so neither a hashid nor an admin price
-		// edit can move the gate; a lateral/downgrade stays self-serve.
+		// allotment/grant mints ~$100). Gate a move that RAISES the plan's list price
+		// (listCents) on MayMintMoney. Score the IMMUTABLE embed by the RESOLVED slug
+		// (never the raw id, never the editable DB Price), so neither a hashid nor an
+		// admin price edit can move the gate; a lateral/downgrade stays self-serve.
 		//
 		// A paid plan the catalog does not publish covers nothing the catalog can
 		// score, yet the tier reads it from the snapshot this move writes, on a row
@@ -923,9 +922,9 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 			curSlug = sub.PlanId
 		}
 		uncatalogued := lookupPlan(newPlan.Slug) == nil && paidPlan(newPlan.Slug, newPlan)
-		if (coveredCents(newPlan.Slug) > coveredCents(curSlug) || uncatalogued) && !middleware.MayMintMoney(c) {
+		if (listCents(newPlan.Slug) > listCents(curSlug) || uncatalogued) && !middleware.MayMintMoney(c) {
 			return http.Fail(c, 403,
-				"increasing what a subscription covers requires platform-administrator or internal-service credentials", nil)
+				"moving a subscription to a pricier plan requires platform-administrator or internal-service credentials", nil)
 		}
 
 		if perSeat(slug) {
