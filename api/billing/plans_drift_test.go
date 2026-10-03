@@ -20,6 +20,10 @@ import (
 // entry whose digests must equal the new bytes, and editing the bytes under the
 // current version breaks the current entry.
 var versionDigests = map[string]struct{ subscription, dns string }{
+	"1.8.15": {
+		subscription: "81233e73006d1f31fc6de14a6c3aafdd3147b83c87ed2072ec9e8090d94dab36",
+		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
+	},
 	"1.8.9": {
 		subscription: "cc8481a800b3891d4df6a2eb5670e87d80c89b50a210b3eb4fe615eae55d7f5b",
 		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
@@ -107,7 +111,7 @@ func TestVendoredPlansMatchPinnedVersion(t *testing.T) {
 
 // TestVendoredPlanPrices is a diagnostic price-canary: if a money-bearing plan's
 // cents change, THIS test names which one (the digest test only says "drifted").
-// These are the @hanzo/plans@1.8.9 cents — monthly, the annual price tag shown
+// These are the @hanzo/plans@1.8.15 cents — monthly, the annual price tag shown
 // per month, and the year a yearly subscription is charged. contactSales plans
 // are null-priced → stored as 0 + ContactSales (never a chargeable $0).
 func TestVendoredPlanPrices(t *testing.T) {

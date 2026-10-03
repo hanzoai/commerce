@@ -8,15 +8,14 @@
     "priceAnnual": 0,
     "features": [
       "Hanzo's free models: enso-free and zen-free",
-      "20 messages a day, resetting at midnight UTC",
-      "60 requests a minute",
-      "Chat and the app's core features",
+      "Chat on free models, with limited usage",
+      "The app's core features",
       "Upgrade any time from inside the app"
     ],
     "limits": {
       "requestsPerMinute": 60,
       "requestsPerHour": 10,
-      "requestsPerDay": 20,
+      "requestsPerDay": 50,
       "requestsPerWeek": 100,
       "requestsPerMonth": 300,
       "agents": 1,
@@ -31,7 +30,7 @@
       "commerce.support_tier": "community",
       "commerce.idle_resale_percent": 20,
       "ai.requests_per_hour": 10,
-      "ai.requests_per_day": 20,
+      "ai.requests_per_day": 50,
       "ai.requests_per_week": 100,
       "ai.requests_per_month": 300,
       "ai.agents": 1,
@@ -54,14 +53,15 @@
     "id": "dev",
     "name": "Pro",
     "category": "personal",
-    "description": "For one person: every room in the hanzo.ai app, with $15 of AI usage each month.",
+    "description": "For one person: every room in the hanzo.ai app, with premium and Hanzo model usage included each month.",
     "priceMonthly": 20,
     "priceAnnual": 16.67,
     "features": [
       "Everything in Free and:",
       "Every room in the hanzo.ai app",
-      "$15 of AI usage each month, with weekly limits",
-      "Usage past the limits billed at cost from prepaid credit",
+      "Includes premium and Hanzo model usage each month",
+      "Top up prepaid credit anytime for more",
+      "Limited free usage when you reach your plan's included usage",
       "MCP, the SDK and the CLI are not metered"
     ],
     "payouts": {
@@ -132,13 +132,15 @@
     ],
     "name": "Max 5x",
     "category": "personal",
-    "description": "Five times Pro: $75 of AI usage each month, with Enso orchestration, managed agents and a resident bot.",
+    "description": "More included usage than Pro, with Enso orchestration, managed agents and a resident bot.",
     "priceMonthly": 100,
     "priceAnnual": 83.33,
     "features": [
       "Everything in Pro, plus:",
-      "Choose 5x or 20x more usage than Pro",
-      "$75 of AI usage each month, with weekly limits",
+      "More included usage than Pro",
+      "Includes premium and Hanzo model usage each month",
+      "Top up prepaid credit anytime for more",
+      "Limited free usage when you reach your plan's included usage",
       "Enso orchestration — dedicated routing through Hanzo's foundational framework model",
       "Managed agents and a resident bot, scheduled in the background",
       "Priority GPU inference queues"
@@ -221,14 +223,15 @@
     "id": "max-20x",
     "name": "Max 20x",
     "category": "personal",
-    "description": "Twenty times Pro in every session, with $150 of AI usage each month.",
+    "description": "The most included usage of any personal plan, with Enso orchestration, managed agents and a resident bot.",
     "priceMonthly": 200,
     "priceAnnual": 166.67,
     "features": [
       "Everything in Pro, plus:",
-      "Choose 5x or 20x more usage than Pro",
-      "$150 of AI usage each month, with weekly limits",
-      "20x Pro's usage in every 5-hour session",
+      "The most included usage of any personal plan",
+      "Includes premium and Hanzo model usage each month",
+      "Top up prepaid credit anytime for more",
+      "Limited free usage when you reach your plan's included usage",
       "Enso orchestration — dedicated routing through Hanzo's foundational framework model",
       "Managed agents and a resident bot, scheduled in the background",
       "Priority GPU inference queues"
@@ -316,7 +319,9 @@
     "category": "team",
     "features": [
       "$25 per member per month, or $240 per member per year ($20 a month) — minimum 2 members",
-      "$18.75 of AI usage per member each month ($15 on the annual plan), with weekly limits",
+      "Includes premium and Hanzo model usage per member each month",
+      "Top up prepaid credit anytime for more",
+      "Limited free usage when you reach your plan's included usage",
       "Org workspaces with shared history and projects",
       "SSO via Hanzo IAM, roles and an audit log",
       "One bill for the whole org, with KMS-backed credentials"
@@ -412,7 +417,7 @@
       "Full copyright ownership",
       "Unlimited revisions & requests",
       "4 hours of consultation per month",
-      "Max 20x AI for your org: $150 of AI usage each month, with weekly limits"
+      "Max-level AI usage for your org, with prepaid credit for more"
     ],
     "payouts": {
       "idleResalePercent": 20,
@@ -505,7 +510,7 @@
       "3D, AR, and immersive design",
       "AI consulting and marketing strategy",
       "8 hours of executive consultation per month",
-      "Max 20x AI for your org: $150 of AI usage each month, with weekly limits"
+      "Max-level AI usage for your org, with prepaid credit for more"
     ],
     "payouts": {
       "idleResalePercent": 20,
