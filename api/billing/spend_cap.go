@@ -19,6 +19,7 @@ package billing
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -182,6 +183,11 @@ type Verdict struct {
 	WarnPct    int    `json:"warnPct"`
 }
 
+// ErrCapUnread is AuthorizeCap's answer when an ENFORCED cap covers the request and
+// the spend it is measured against cannot be read. It is not a verdict: a caller
+// that reads it as allow lets a request through a ceiling it could not check.
+var ErrCapUnread = errors.New("spend-cap: enforced cap's spend unreadable")
+
 // AuthorizeCap is the per-request cap verdict for a (project,service) scope and a
 // proposed amount, over the org's spend-alert rows — the DECISION, with no HTTP in it.
 // It evaluates EVERY covering row (most-restrictive-wins) and DENIES when any
@@ -197,14 +203,15 @@ type Verdict struct {
 // projectValidated says whether the PROJECT axis came from a validated claim, which is
 // the only axis that can degrade a hard cap to a warn.
 //
-// FAIL OPEN on UNKNOWN spend: if an enforce row's spend sum cannot be read (a transient
-// finance-ledger error), the verdict does NOT block — a backend blip must not 402 an
-// under-cap customer, nor storm every capped org at once. A row DENIES only when spend is
-// KNOWN and over the cap, so this never fails open on a real overage. Per-scope sums are
-// memoized so covering rows sharing a scope cost one query. The row scan is bounded
-// (loadOrgScopes). A returned error means no verdict was reached at all — the caller
-// decides what an unanswered cap means, and at the edge that is the non-2xx the gate
-// already reads as fail-open.
+// AN ENFORCED CAP WHOSE SPEND CANNOT BE READ IS NOT A CAP THAT ALLOWS. If the spend
+// behind a hard row cannot be summed, no verdict is reached and the error says so
+// (ErrCapUnread): the ceiling exists and nothing can say the request fits under it, so
+// the caller refuses rather than spends. A SOFT row never denies, so its unreadable
+// spend only costs the warn figure. An org with no covering rows is answered allow
+// without reading any spend — no cap set is the only reason a cap check passes
+// unread. Per-scope sums are memoized so covering rows sharing a scope cost one
+// query. The row scan is bounded (loadOrgScopes). A returned error means no verdict
+// was reached at all.
 func AuthorizeCap(ctx context.Context, org *organization.Organization, project, service string, amount int64, projectValidated bool) (Verdict, error) {
 	if org == nil {
 		return Verdict{}, errors.New("spend-cap: no organization")
@@ -231,15 +238,10 @@ func AuthorizeCap(ctx context.Context, org *organization.Organization, project, 
 		if !ok {
 			v, serr := scopeSpentCents(db, test, s.Project, s.Service)
 			if serr != nil {
-				// FAIL OPEN on UNKNOWN spend. A transient finance-ledger read error must NOT
-				// 402 an under-cap customer — and a co-resident SQLite blip under load would
-				// otherwise storm EVERY capped org at once (self-amplifying: load → store
-				// contention → read errors → 402s → retries → more load). We cannot PROVE a
-				// scope is over its cap without its spend, so we do NOT block: the balance
-				// gate still bounds spend and the next request re-reads. A genuine over-cap
-				// still denies below, where spend IS known — so this fails open ONLY on the
-				// unknown, never on a real overage. Logged for observability.
-				log.Error("spend-cap: spend read failed for scope (cap=%d) — failing OPEN, not blocking: %v", s.Threshold, serr)
+				if hard {
+					return Verdict{}, fmt.Errorf("%w: project=%q service=%q cap=%d: %v", ErrCapUnread, s.Project, s.Service, s.Threshold, serr)
+				}
+				log.Warn("spend-cap: spend unreadable for soft cap (project=%q service=%q cap=%d); no warn figure: %v", s.Project, s.Service, s.Threshold, serr)
 				continue
 			}
 			spent = v
@@ -270,8 +272,8 @@ func AuthorizeCap(ctx context.Context, org *organization.Organization, project, 
 	return res, nil
 }
 
-// AuthorizeSpendCap serves the cap verdict to the cloud metering gate, which reads it
-// on every billable request and treats any non-2xx as fail-open.
+// AuthorizeSpendCap serves the cap verdict over HTTP. A verdict is 200; no verdict —
+// the rows or an enforced cap's spend unreadable — is 503, which a gate refuses on.
 //
 //	GET /v1/billing/alerts/authorize?user=&project=&service=&amount=&pv=
 func AuthorizeSpendCap(c *zip.Ctx) error {
@@ -283,8 +285,8 @@ func AuthorizeSpendCap(c *zip.Ctx) error {
 		parseCents(c.Query("amount")),
 		c.Query("pv") == "1")
 	if err != nil {
-		log.Error("spend-cap: load scopes failed: %v", err, c)
-		return http.Fail(c, 500, "failed to load spend caps", err)
+		log.Error("spend-cap: no verdict: %v", err, c)
+		return http.Fail(c, 503, "spend cap could not be read; retry shortly", err)
 	}
 
 	return c.JSON(200, res)

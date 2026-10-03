@@ -3,6 +3,8 @@ package billing
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/hanzoai/commerce/models/organization"
@@ -77,11 +79,10 @@ func TestSpendCap_ExhaustedCapDeniesRegardlessOfEnvironment(t *testing.T) {
 	}
 }
 
-// TestSpendCap_ReaderError_FailsOpen pins F2-2: a finance-ledger read ERROR must NOT 402
-// an under-cap customer. An enforce row whose spend can't be summed fails OPEN (allow) —
-// a transient backend blip (e.g. a busy co-resident SQLite store under load) can't storm
-// every capped org. A genuine over-cap, where spend IS known, still denies (tests above).
-func TestSpendCap_ReaderError_FailsOpen(t *testing.T) {
+// An ENFORCED cap whose spend cannot be read reaches no verdict: the ceiling exists
+// and nothing can say the request fits under it, so AuthorizeCap answers ErrCapUnread
+// and the endpoint 503s rather than allowing the spend.
+func TestSpendCap_ReaderError_EnforcedCapReachesNoVerdict(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
 
@@ -95,9 +96,53 @@ func TestSpendCap_ReaderError_FailsOpen(t *testing.T) {
 	defer SetPeriodSpendReader(nil)
 	createCap(t, org, `{"title":"cap","threshold":100,"enforce":true}`)
 
-	// Flag ON (package default), hard enforce cap, spend UNKNOWN → FAIL OPEN, never 402.
-	if v := authorize(t, org, "user=reader-error&amount=1"); !v.Allow || v.Reason != "" {
-		t.Fatalf("reader error must FAIL OPEN: authorize = %+v, want ALLOW (not spend_cap)", v)
+	if v, err := AuthorizeCap(context.Background(), org, "", "", 1, false); !errors.Is(err, ErrCapUnread) {
+		t.Fatalf("AuthorizeCap = %+v, %v; want ErrCapUnread", v, err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/v1/billing/alerts/authorize?user=reader-error&amount=1", nil)
+	if w := driveSeeded(capSeed(org), "/v1/billing/alerts/authorize", req, AuthorizeSpendCap); w.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("AuthorizeSpendCap status = %d, want 503", w.StatusCode)
+	}
+}
+
+// A SOFT cap never denies, so its unreadable spend costs only the warn figure.
+func TestSpendCap_ReaderError_SoftCapAllows(t *testing.T) {
+	tc := ae.NewContext()
+	defer tc.Close()
+
+	org := &organization.Organization{}
+	org.Name = "reader-error-soft"
+	warmNamespace(org)
+
+	SetPeriodSpendReader(func(_ context.Context, _ string, _ bool, _, _ string) (int64, error) {
+		return 0, errors.New("finance store busy")
+	})
+	defer SetPeriodSpendReader(nil)
+	createCap(t, org, `{"title":"cap","threshold":100,"enforce":false}`)
+
+	if v := authorize(t, org, "user=reader-error-soft&amount=1"); !v.Allow || v.WarnPct != 0 {
+		t.Fatalf("authorize = %+v, want allow with no warn figure", v)
+	}
+}
+
+// An org with no cap reads no spend at all: a reader that would fail is never asked.
+func TestSpendCap_NoCap_AllowsWithoutReadingSpend(t *testing.T) {
+	tc := ae.NewContext()
+	defer tc.Close()
+
+	org := &organization.Organization{}
+	org.Name = "no-cap"
+	warmNamespace(org)
+
+	asked := false
+	SetPeriodSpendReader(func(_ context.Context, _ string, _ bool, _, _ string) (int64, error) {
+		asked = true
+		return 0, errors.New("finance store busy")
+	})
+	defer SetPeriodSpendReader(nil)
+
+	if v := authorize(t, org, "user=no-cap&amount=1"); !v.Allow || asked {
+		t.Fatalf("authorize = %+v (spend read: %v), want allow without a spend read", v, asked)
 	}
 }
 
