@@ -133,6 +133,23 @@ func (d tenantDB) NextSequence(ctx context.Context, name string) (uint64, error)
 	return out, err
 }
 
+// Add forwards to the tenant's own store, so a tenantDB satisfies Counter
+// exactly when the store behind it does — one statement, one borrow, as
+// NextSequence.
+func (d tenantDB) Add(ctx context.Context, name string, delta int64) (int64, error) {
+	var out int64
+	err := d.do(ctx, func(db DB) error {
+		c, ok := db.(Counter)
+		if !ok {
+			return fmt.Errorf("db: tenant store %T cannot add to counters", db)
+		}
+		var err error
+		out, err = c.Add(ctx, name, delta)
+		return err
+	})
+	return out, err
+}
+
 func (d tenantDB) Query(kind string) Query { return tenantQuery{d: d, kind: kind} }
 
 // tenantQuery defers a query to the operation that runs it.

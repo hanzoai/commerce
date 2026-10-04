@@ -298,6 +298,28 @@ func (db *PostgresDB) NextSequence(ctx context.Context, name string) (uint64, er
 	return uint64(value), nil
 }
 
+// Add atomically adds delta to the named total and returns the new total. See
+// db.Counter. One statement, as NextSequence is: on conflict Postgres row-locks
+// and re-evaluates DO UPDATE against the newest committed value, so concurrent
+// additions queue on the row and each returns its own total, at READ COMMITTED
+// and across replicas.
+func (db *PostgresDB) Add(ctx context.Context, name string, delta int64) (int64, error) {
+	if name == "" {
+		return 0, fmt.Errorf("db: counter name is empty")
+	}
+
+	var value int64
+	err := db.db.QueryRowContext(ctx, `
+		INSERT INTO _sequences (name, value) VALUES ($1, $2)
+		ON CONFLICT (name) DO UPDATE SET value = _sequences.value + EXCLUDED.value
+		RETURNING value
+	`, name, delta).Scan(&value)
+	if err != nil {
+		return 0, fmt.Errorf("db: add to counter %q: %w", name, err)
+	}
+	return value, nil
+}
+
 // initVectorSearch initializes pgvector extension
 func (db *PostgresDB) initVectorSearch() error {
 	// Enable pgvector extension

@@ -506,6 +506,26 @@ type Sequencer interface {
 	NextSequence(ctx context.Context, name string) (uint64, error)
 }
 
+// Counter is a backend that can add to a durable named total ATOMICALLY and
+// return the total after the addition: the Sequencer guarantee for a delta of
+// any size. Two concurrent callers adding a and b each get back a different
+// total, so each owns its own span (total-delta, total] of the running sum and
+// no span is counted twice.
+//
+// It is what makes an exact running sum possible over a store whose writes are
+// blind upserts. The usage ledger debits whole cents but is priced in
+// micro-dollars; the sub-cent remainder accumulates here instead of being
+// rounded away. Like Sequencer it is a capability: a caller that needs it
+// refuses when the assertion fails rather than imitate it.
+//
+// It shares the _sequences table with Sequencer. A counter's names are the
+// caller's, kept apart from a sequence's by their prefix.
+type Counter interface {
+	// Add atomically adds delta to the named total, which starts at 0, and
+	// returns the new total.
+	Add(ctx context.Context, name string, delta int64) (int64, error)
+}
+
 // sequenceDDL is the ONE definition of the counter table, identical in shape on
 // both backends: a name, and the last value handed out under it.
 const sequenceDDL = `CREATE TABLE IF NOT EXISTS _sequences (

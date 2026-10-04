@@ -754,6 +754,29 @@ func (db *SQLiteDB) NextSequence(ctx context.Context, name string) (uint64, erro
 	return uint64(value), nil
 }
 
+// Add atomically adds delta to the named total and returns the new total. See
+// db.Counter. One statement, as NextSequence is: no value is read into Go and
+// written back, so two callers can never both start from the same total.
+func (db *SQLiteDB) Add(ctx context.Context, name string, delta int64) (int64, error) {
+	if name == "" {
+		return 0, fmt.Errorf("db: counter name is empty")
+	}
+
+	db.writeMu.Lock()
+	defer db.writeMu.Unlock()
+
+	var value int64
+	err := db.writeDB.QueryRowContext(ctx, `
+		INSERT INTO _sequences (name, value) VALUES (?, ?)
+		ON CONFLICT(name) DO UPDATE SET value = _sequences.value + excluded.value
+		RETURNING value
+	`, name, delta).Scan(&value)
+	if err != nil {
+		return 0, fmt.Errorf("db: add to counter %q: %w", name, err)
+	}
+	return value, nil
+}
+
 // RunInTransaction executes a function within a transaction
 func (db *SQLiteDB) RunInTransaction(ctx context.Context, fn func(tx Transaction) error, opts *TransactionOptions) error {
 	db.writeMu.Lock()
