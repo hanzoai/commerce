@@ -47,6 +47,8 @@ func (f *fakeCommerce) handler() http.Handler {
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"user": org, "currency": "usd", "balance": avail, "holds": 0, "available": avail,
 			})
+		case r.Method == http.MethodGet && r.URL.Path == "/v1/billing/alerts/authorize":
+			_ = json.NewEncoder(w).Encode(map[string]any{"allow": true})
 		case r.Method == http.MethodPost && r.URL.Path == "/v1/billing/usage":
 			var body struct {
 				User     string `json:"user"`
@@ -254,5 +256,42 @@ func TestProxy_UpstreamDown_502(t *testing.T) {
 	// Gate passed (funded), but upstream is down -> 502, distinct from 402/503.
 	if resp.StatusCode != http.StatusBadGateway {
 		t.Fatalf("status = %d, want 502 (upstream down, billing OK)", resp.StatusCode)
+	}
+}
+
+// No metering client, no proxy: a metered product is never served unchecked.
+func TestProxy_RequiresAMeter(t *testing.T) {
+	if _, err := proxy.New(proxy.Config{Upstream: "http://127.0.0.1:6333", Provider: "vector"}); err == nil {
+		t.Fatal("a proxy was built with no metering client")
+	}
+}
+
+// A request whose spend cap cannot be read is refused, and the product never sees it.
+func TestProxy_UnknownCapRefuses503(t *testing.T) {
+	csrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/billing/balance" {
+			_, _ = io.WriteString(w, `{"available":100}`)
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer csrv.Close()
+	upstream := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Error("the upstream served a request whose cap was unknown")
+	}))
+	defer upstream.Close()
+	psrv := httptest.NewServer(buildProxy(t, csrv.URL, upstream.URL))
+	defer psrv.Close()
+
+	req, _ := http.NewRequest(http.MethodGet, psrv.URL+"/collections/docs", nil)
+	req.Header.Set("X-Org-Id", "acme")
+	req.Header.Set("X-User-Id", "alice")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", resp.StatusCode)
 	}
 }

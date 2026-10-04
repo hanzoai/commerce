@@ -70,7 +70,6 @@ func TestRender_Search_PriceTableAndStorage(t *testing.T) {
 		Tag:             "1.37.0",
 		MeterProxyImage: "ghcr.io/hanzoai/meter-proxy",
 		MeterProxyTag:   "0.1.0",
-		Test:            true,
 	})
 	for _, s := range []string{
 		"name: search-zoo",
@@ -78,12 +77,17 @@ func TestRender_Search_PriceTableAndStorage(t *testing.T) {
 		"POST|/indexes/|3", // index a document costs 3c
 		"mountPath: /meili_data",
 		"claimName: search-zoo-data",
-		"METERING_TEST", // test ledger requested
 		`COMMERCE_SERVICE_ORG`,
 		`value: "zoo"`,
 	} {
 		if !strings.Contains(out, s) {
 			t.Errorf("search CR missing %q\n---\n%s", s, out)
+		}
+	}
+	// No knob turns metering down: none of the retired switches is ever emitted.
+	for _, k := range []string{"METERING_TEST", "METERING_FAIL_OPEN", "METERING_DISABLED", "METERING_TIER_AWARE"} {
+		if strings.Contains(out, k) {
+			t.Errorf("search CR carries %s\n%s", k, out)
 		}
 	}
 	// No ingress requested -> ingress disabled.

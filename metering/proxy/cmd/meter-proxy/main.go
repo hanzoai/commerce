@@ -16,10 +16,9 @@
 //	COMMERCE_URL           commerce base url               (default in-cluster commerce)
 //	COMMERCE_SERVICE_TOKEN admin S2S token (KMS-backed)    (required to bill)
 //	COMMERCE_SERVICE_ORG   default org when a request carries none
-//	METERING_TIER_AWARE    "true" to honor included plan allotment before prepaid
-//	METERING_FAIL_OPEN     "true" to allow-on-error (default fail-closed)
-//	METERING_TEST          "true" to write commerce's TEST ledger (staging/sandbox)
-//	METERING_DISABLED      "true" to forward without gating/recording (local dev)
+//
+// No variable turns the gate off: a request whose balance or spend cap cannot be
+// read is refused with 503, and every served request is recorded.
 package main
 
 import (
@@ -69,8 +68,7 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	log.Printf("meter-proxy: provider=%s listen=%s upstream=%s billing_enabled=%t",
-		provider, listen, upstream, meter.Enabled())
+	log.Printf("meter-proxy: provider=%s listen=%s upstream=%s", provider, listen, upstream)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("meter-proxy: serve: %v", err)
 	}

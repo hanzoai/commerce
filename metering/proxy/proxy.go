@@ -30,9 +30,8 @@ type Config struct {
 	// readiness, metrics). No gate, no charge. Upstream still serves them.
 	SkipPaths []string
 
-	// Meter is the metering client (built from metering.FromEnv()). When it is
-	// not Enabled (no COMMERCE_URL) the proxy still forwards but neither gates
-	// nor records — so a product can deploy the sidecar before billing is wired.
+	// Meter is the metering client (built from metering.FromEnv()). Required:
+	// the proxy never forwards a metered request unchecked.
 	Meter *metering.Client
 
 	// FlushInterval bounds streaming response flushing (vector/search are
@@ -40,9 +39,12 @@ type Config struct {
 	FlushInterval time.Duration
 }
 
-// New builds the metered reverse-proxy handler. It returns an error only for an
-// unparseable Upstream URL.
+// New builds the metered reverse-proxy handler. It refuses an unparseable
+// Upstream URL and a missing metering client.
 func New(cfg Config) (http.Handler, error) {
+	if cfg.Meter == nil {
+		return nil, fmt.Errorf("meter-proxy: a metering client is required")
+	}
 	target, err := url.Parse(strings.TrimSpace(cfg.Upstream))
 	if err != nil || target.Scheme == "" || target.Host == "" {
 		return nil, fmt.Errorf("meter-proxy: invalid upstream %q", cfg.Upstream)

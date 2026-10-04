@@ -2,6 +2,7 @@ package metering
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -18,17 +19,18 @@ const (
 	HeaderAccount = "X-Billing-Account-Id"
 )
 
-// PriceFunc computes the cost (in cents) to record for a completed request.
+// PriceFunc computes the cost (in cents) to charge for a completed request.
 // It is called AFTER the wrapped handler runs, with the captured status code
 // and the per-request context, so it can price by outcome (e.g. charge only on
 // success) and by work done (bytes, rows, units recorded on the context by the
-// handler). Return 0 to record nothing.
+// handler). A zero price is still a recorded call: it is counted, not dropped.
 type PriceFunc func(r *http.Request, status int, in AuthInput) int64
 
 // MiddlewareConfig configures Middleware.
 type MiddlewareConfig struct {
-	// Price computes the per-request cost in cents. Required — without it the
-	// middleware would gate but never charge, which is not metering.
+	// Price computes the per-request cost in cents. Required: without it every
+	// metered request is refused, because a gate that never charges is not
+	// metering.
 	Price PriceFunc
 
 	// Provider labels the recorded usage (e.g. "search", "functions"). It is
@@ -45,8 +47,8 @@ type MiddlewareConfig struct {
 	Skip func(*http.Request) bool
 
 	// OnDenied renders the response when Authorize denies. Defaults to a JSON
-	// 402 (insufficient balance) / 503 (balance unknown, fail-closed) — the
-	// same status mapping the gateway uses.
+	// 402 (insufficient balance or spend cap) / 503 (cannot decide) — the same
+	// status mapping the gateway uses.
 	OnDenied func(w http.ResponseWriter, r *http.Request, err error)
 
 	// OnRecordError is invoked (best-effort, async) if recording usage fails.
@@ -56,9 +58,10 @@ type MiddlewareConfig struct {
 }
 
 // Middleware returns net/http middleware that gates every request on the
-// caller's commerce balance (fail-closed by default) and records usage after a
-// successful response. It is the ONE way a non-LLM product opts into
-// pay-for-everything: wrap the handler once and every request is metered.
+// caller's commerce balance and spend cap (fail-closed, always) and records
+// every served request after the response, priced by Price. It is the ONE way a
+// non-LLM product opts into pay-for-everything: wrap the handler once and every
+// request is metered.
 //
 // It is plain net/http middleware (func(http.Handler) http.Handler), so it
 // composes with the standard library, gorilla/mux (.Use), chi, and anything
@@ -73,12 +76,6 @@ func (c *Client) Middleware(cfg MiddlewareConfig) func(http.Handler) http.Handle
 		onDenied = defaultOnDenied
 	}
 	price := cfg.Price
-	if price == nil {
-		// A nil Price would gate-without-charging. Refuse silently to charge
-		// nothing rather than panic, but this is a misconfiguration: callers
-		// MUST supply Price. We treat it as "record nothing".
-		price = func(*http.Request, int, AuthInput) int64 { return 0 }
-	}
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -87,11 +84,16 @@ func (c *Client) Middleware(cfg MiddlewareConfig) func(http.Handler) http.Handle
 				return
 			}
 
+			// A wrap with no price would serve without charging: refuse instead.
+			if price == nil {
+				onDenied(w, r, errNoPrice)
+				return
+			}
+
 			in := identify(r)
 
-			// Pre-request gate. When the client is not configured this always
-			// allows (Authorize handles that), so a product can ship the wrap
-			// before its billing is wired.
+			// Pre-request gate. A nil client, an unreachable commerce and an
+			// unknown cap all refuse here.
 			if err := c.Authorize(r.Context(), in); err != nil {
 				onDenied(w, r, err)
 				return
@@ -101,19 +103,15 @@ func (c *Client) Middleware(cfg MiddlewareConfig) func(http.Handler) http.Handle
 			sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
 			next.ServeHTTP(sw, r)
 
-			// Post-request record. Decoupled from the response: priced by
-			// outcome, recorded best-effort so billing never corrupts the
-			// reply the user already received.
-			cents := price(r, sw.status, in)
-			if cents <= 0 || !c.Enabled() {
-				return
-			}
+			// Post-request record of EVERY served request, a zero price
+			// included. Decoupled from the response so billing never corrupts
+			// the reply the user already received.
 			u := Usage{
 				User:        in.User,  // per-org debit key (matches the gate)
 				Actor:       in.Actor, // org/sub, audit only
 				Org:         in.Org,
 				Currency:    in.Currency,
-				AmountCents: cents,
+				AmountCents: price(r, sw.status, in),
 				Provider:    cfg.Provider,
 				RequestID:   r.Header.Get("X-Request-Id"),
 				Status:      statusLabel(sw.status),
@@ -174,14 +172,23 @@ func IdentityFromGatewayHeaders(r *http.Request) AuthInput {
 	return AuthInput{User: user, Actor: actor, Org: org}
 }
 
+// errNoPrice is a wrap configured without a Price.
+var errNoPrice = errors.New("metering: middleware has no Price")
+
 func defaultOnDenied(w http.ResponseWriter, _ *http.Request, err error) {
 	w.Header().Set("Content-Type", "application/json")
-	if err == ErrInsufficientBalance {
+	switch err {
+	case ErrInsufficientBalance:
 		w.WriteHeader(http.StatusPaymentRequired) // 402
 		_, _ = w.Write([]byte(`{"error":{"message":"Insufficient balance. Please add credits at console.hanzo.ai","type":"billing_error","code":"insufficient_balance"}}`))
 		return
+	case ErrSpendCapExceeded:
+		w.WriteHeader(http.StatusPaymentRequired) // 402
+		_, _ = w.Write([]byte(`{"error":{"message":"Spend cap reached for this scope","type":"billing_error","code":"spend_cap_exceeded"}}`))
+		return
 	}
-	// Balance unknown -> fail-closed -> 503 (commerce unreachable / not verifiable).
+	// Cannot decide -> fail-closed -> 503 (commerce unreachable, cap unknown,
+	// no commerce configured, or no price).
 	w.WriteHeader(http.StatusServiceUnavailable) // 503
 	_, _ = w.Write([]byte(`{"error":{"message":"Billing temporarily unavailable","type":"billing_error","code":"balance_unavailable"}}`))
 }

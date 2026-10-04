@@ -15,7 +15,7 @@ WORKDIR /src/metering
 
 # Context root IS the metering module. Copy the client module files at /src/metering
 # and the proxy submodule at /src/metering/proxy, matching `replace => ../`.
-COPY go.mod ./
+COPY go.mod go.sum ./
 COPY *.go ./
 COPY proxy/ ./proxy/
 

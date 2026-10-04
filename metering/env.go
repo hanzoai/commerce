@@ -22,36 +22,16 @@ const (
 	// EnvOrg is the default tenant org slug (X-Org-Id) for S2S calls when a
 	// request carries no org. Default: hanzo.
 	EnvOrg = "COMMERCE_SERVICE_ORG"
-
-	// EnvTierAware ("true") gates on the tier-aware effective balance
-	// (prepaid + included plan allotment) instead of bare prepaid balance.
-	EnvTierAware = "METERING_TIER_AWARE"
-
-	// EnvFailOpen ("true") flips the gate to allow-on-error. Default is
-	// fail-closed (deny), matching the gateway. Set only where availability
-	// outranks billing.
-	EnvFailOpen = "METERING_FAIL_OPEN"
-
-	// EnvDisabled ("true") forces "not configured" mode regardless of
-	// COMMERCE_URL — Authorize allows, Record is a no-op. For local dev.
-	EnvDisabled = "METERING_DISABLED"
-
-	// EnvTest ("true") routes all calls to commerce's TEST ledger
-	// (X-Hanzo-Test: true). For staging/sandbox so debits never hit real money.
-	EnvTest = "METERING_TEST"
 )
 
 // DefaultBaseURL is the in-cluster commerce address. Matches the gateway's
 // AUTH_BILLING_URL default so both gate on the same balance source.
 const DefaultBaseURL = "http://commerce.hanzo.svc.cluster.local:8001"
 
-// ConfigFromEnv builds a Config from the canonical environment variables. It
-// applies the in-cluster commerce default and the fail-closed/usd defaults.
+// ConfigFromEnv builds a Config from the canonical environment variables,
+// applying the in-cluster commerce default. No variable turns metering off,
+// opens it on error, or sends it to a sandbox ledger: there is no such switch.
 func ConfigFromEnv() Config {
-	if envTrue(EnvDisabled) {
-		return Config{} // not configured -> allow + no-op.
-	}
-
 	base := strings.TrimSpace(os.Getenv(EnvBaseURL))
 	if base == "" {
 		base = DefaultBaseURL
@@ -62,12 +42,9 @@ func ConfigFromEnv() Config {
 	}
 
 	return Config{
-		BaseURL:   base,
-		Token:     strings.TrimSpace(os.Getenv(EnvToken)),
-		Org:       org,
-		TierAware: envTrue(EnvTierAware),
-		FailOpen:  envTrue(EnvFailOpen),
-		Test:      envTrue(EnvTest),
+		BaseURL: base,
+		Token:   strings.TrimSpace(os.Getenv(EnvToken)),
+		Org:     org,
 	}
 }
 
@@ -78,9 +55,4 @@ func ConfigFromEnv() Config {
 //	mux.Use(meter.Middleware(metering.MiddlewareConfig{Provider: "search", Price: priceSearch}))
 func FromEnv() (*Client, error) {
 	return New(ConfigFromEnv())
-}
-
-func envTrue(key string) bool {
-	v := strings.ToLower(strings.TrimSpace(os.Getenv(key)))
-	return v == "true" || v == "1" || v == "yes"
 }

@@ -11,4 +11,6 @@ go 1.24
 
 require github.com/hanzoai/commerce/metering v0.0.0
 
+require github.com/hanzoai/account v0.2.0 // indirect
+
 replace github.com/hanzoai/commerce/metering => ../

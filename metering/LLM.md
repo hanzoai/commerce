@@ -48,10 +48,14 @@ renderer. No product reimplements billing; no second balance gate exists.
   rather than "asked wrongly". That is exactly how hanzo.chat showed a funded
   org no credits (2026-08-08). Assert the header where the request is BUILT — an
   end-to-end test cannot tell a refusal from an empty ledger.
-- **Fail-closed.** Balance unknown -> deny (503); out-of-funds -> 402. Set
-  `METERING_FAIL_OPEN=true` only where availability outranks revenue.
-- **Test ledger.** `METERING_TEST=true` sends `X-Hanzo-Test: true` so balances
-  and debits hit commerce's sandbox books, never real money.
+- **Fail-closed, with no switch.** Balance or spend cap unknown -> deny (503);
+  out-of-funds or over the cap -> 402. There is no fail-open, disabled, test-ledger
+  or tier-aware mode: `New` refuses an empty BaseURL, a nil client refuses every
+  call, a `Middleware` with no `Price` refuses every metered request, and the
+  meter never sends `X-Hanzo-Test` — a tenant's mode is its org's.
+- **Every call is a row.** The middleware records every served request at the
+  price `Price` gives it, zero included; commerce writes a `$0` call as a usage
+  row with its cost (`costMicros`) and payer (`paidBy`).
 - **KMS-only token.** `COMMERCE_SERVICE_TOKEN` is always from a KMS-backed
   secret; never inlined, never read from disk by this package.
 

@@ -34,7 +34,7 @@ func (f *fakeCommerce) handler() http.HandlerFunc {
 		f.mu.Lock()
 		defer f.mu.Unlock()
 		// Authorize also consults the per-scope spend-cap endpoint after funds pass
-		// (issue #70). These tests pin the FUNDS contract (balance/tier/usage), so
+		// (issue #70). These tests pin the FUNDS contract (balance/usage), so
 		// answer the scope call with the canned body but don't record it as the
 		// asserted request.
 		if strings.HasPrefix(r.URL.Path, "/v1/billing/alerts") {
@@ -134,84 +134,37 @@ func TestAuthorize_FailClosed_OnCommerceError(t *testing.T) {
 	}
 }
 
-func TestAuthorize_FailOpen_OnCommerceError(t *testing.T) {
-	fc := &fakeCommerce{status: 503, reply: `down`}
-	srv := httptest.NewServer(fc.handler())
-	defer srv.Close()
-
-	c := newClient(t, srv, metering.Config{FailOpen: true})
-	if err := c.Authorize(context.Background(), metering.AuthInput{User: "hanzo/alice"}); err != nil {
-		t.Fatalf("fail-open: commerce down must allow, got %v", err)
+// There is no client without a commerce to ask, and a nil one refuses every
+// call: nothing is served or dropped unchecked.
+func TestNoCommerceRefuses(t *testing.T) {
+	if _, err := metering.New(metering.Config{}); err != metering.ErrNotConfigured {
+		t.Fatalf("New with no BaseURL = %v, want ErrNotConfigured", err)
+	}
+	var c *metering.Client
+	if err := c.Authorize(context.Background(), metering.AuthInput{User: "hanzo/alice"}); err != metering.ErrNotConfigured {
+		t.Fatalf("nil client Authorize = %v, want ErrNotConfigured", err)
+	}
+	if _, err := c.Record(context.Background(), metering.Usage{User: "hanzo/alice", AmountCents: 100}); err != metering.ErrNotConfigured {
+		t.Fatalf("nil client Record = %v, want ErrNotConfigured", err)
+	}
+	if _, err := c.ScopeRules(context.Background(), "hanzo"); err != metering.ErrNotConfigured {
+		t.Fatalf("nil client ScopeRules = %v, want ErrNotConfigured", err)
 	}
 }
 
-func TestAuthorize_NotConfigured_Allows(t *testing.T) {
-	c, err := metering.New(metering.Config{}) // no BaseURL
-	if err != nil {
-		t.Fatalf("New: %v", err)
-	}
-	if c.Enabled() {
-		t.Fatal("client with no BaseURL should report Enabled()=false")
-	}
-	if err := c.Authorize(context.Background(), metering.AuthInput{User: "hanzo/alice"}); err != nil {
-		t.Fatalf("not-configured Authorize must allow, got %v", err)
-	}
-}
-
-func TestAuthorize_TierAware_UsesEffectiveAvailable(t *testing.T) {
-	// Bare prepaid is 0 but the free-tier daily credit gives effective 100.
-	fc := &fakeCommerce{reply: `{"user":"hanzo/alice","balance":{"currency":"usd","prepaidAvailable":0,"dailyRemaining":100,"effectiveAvailable":100}}`}
-	srv := httptest.NewServer(fc.handler())
-	defer srv.Close()
-
-	c := newClient(t, srv, metering.Config{TierAware: true})
-	if err := c.Authorize(context.Background(), metering.AuthInput{User: "hanzo/alice"}); err != nil {
-		t.Fatalf("tier-aware allow (included allotment) should be nil, got %v", err)
-	}
-	if fc.path != "/v1/billing/tier" {
-		t.Errorf("tier-aware must hit /v1/billing/tier, got %s", fc.path)
-	}
-	if fc.query.Get("user") != "hanzo/alice" {
-		t.Errorf("tier user query = %q", fc.query.Get("user"))
-	}
-}
-
-func TestAuthorize_TierAware_DeniesWhenEffectiveZero(t *testing.T) {
-	fc := &fakeCommerce{reply: `{"balance":{"effectiveAvailable":0}}`}
-	srv := httptest.NewServer(fc.handler())
-	defer srv.Close()
-
-	c := newClient(t, srv, metering.Config{TierAware: true})
-	if err := c.Authorize(context.Background(), metering.AuthInput{User: "hanzo/alice"}); err != metering.ErrInsufficientBalance {
-		t.Fatalf("tier-aware exhausted must deny with ErrInsufficientBalance, got %v", err)
-	}
-}
-
-func TestTestMode_SendsTestHeader(t *testing.T) {
+// No call ever routes to commerce's sandbox ledger: the mode is the org's, not
+// the meter's.
+func TestNoTestHeaderIsEverSent(t *testing.T) {
 	fc := &fakeCommerce{reply: `{"available":1}`}
 	srv := httptest.NewServer(fc.handler())
 	defer srv.Close()
 
-	c := newClient(t, srv, metering.Config{Test: true})
-	if err := c.Authorize(context.Background(), metering.AuthInput{User: "meter-sandbox"}); err != nil {
-		t.Fatalf("Authorize: %v", err)
-	}
-	if fc.testHdr != "true" {
-		t.Errorf("Test mode must send X-Hanzo-Test: true, got %q", fc.testHdr)
-	}
-}
-
-func TestLiveMode_OmitsTestHeader(t *testing.T) {
-	fc := &fakeCommerce{reply: `{"available":1}`}
-	srv := httptest.NewServer(fc.handler())
-	defer srv.Close()
-
-	c := newClient(t, srv, metering.Config{}) // Test=false (production default)
+	c := newClient(t, srv, metering.Config{})
 	if err := c.Authorize(context.Background(), metering.AuthInput{User: "hanzo/alice"}); err != nil {
 		t.Fatalf("Authorize: %v", err)
 	}
 	if fc.testHdr != "" {
-		t.Errorf("Live mode must NOT send X-Hanzo-Test (would write the wrong ledger), got %q", fc.testHdr)
+		t.Errorf("X-Hanzo-Test = %q; the meter must never pick the sandbox ledger", fc.testHdr)
 	}
 }
 
@@ -289,28 +242,33 @@ func TestRecord_PostsCanonicalPayload(t *testing.T) {
 	}
 }
 
-func TestRecord_ZeroAmount_IsNoOp(t *testing.T) {
-	called := false
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
-	}))
+// A $0 call is recorded like any other: commerce writes its row.
+func TestRecord_ZeroAmountIsRecorded(t *testing.T) {
+	fc := &fakeCommerce{status: 201, reply: `{"transactionId":"tx_0","amount":0,"type":"withdraw"}`}
+	srv := httptest.NewServer(fc.handler())
 	defer srv.Close()
 
 	c := newClient(t, srv, metering.Config{})
-	res, err := c.Record(context.Background(), metering.Usage{User: "hanzo/alice", AmountCents: 0})
-	if err != nil || res != nil {
-		t.Fatalf("zero-amount Record should be (nil,nil), got (%v,%v)", res, err)
+	res, err := c.Record(context.Background(), metering.Usage{User: "hanzo/alice", CostMicros: 400, PaidBy: "plan"})
+	if err != nil || res == nil || res.TransactionID != "tx_0" {
+		t.Fatalf("zero-amount Record = (%+v, %v), want the written row", res, err)
 	}
-	if called {
-		t.Fatal("zero-amount Record must not call commerce")
+	var body map[string]any
+	if err := json.Unmarshal(fc.body, &body); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+	if fc.path != "/v1/billing/usage" || body["amount"].(float64) != 0 || body["costMicros"].(float64) != 400 || body["paidBy"] != "plan" {
+		t.Fatalf("POST %s body %v; want amount 0, costMicros 400, paidBy plan", fc.path, body)
 	}
 }
 
-func TestRecord_NotConfigured_IsNoOp(t *testing.T) {
-	c, _ := metering.New(metering.Config{})
-	res, err := c.Record(context.Background(), metering.Usage{User: "hanzo/alice", AmountCents: 100})
-	if err != nil || res != nil {
-		t.Fatalf("not-configured Record should be (nil,nil), got (%v,%v)", res, err)
+func TestRecord_RefusesANegativeCharge(t *testing.T) {
+	fc := &fakeCommerce{}
+	srv := httptest.NewServer(fc.handler())
+	defer srv.Close()
+	c := newClient(t, srv, metering.Config{})
+	if _, err := c.Record(context.Background(), metering.Usage{User: "hanzo/alice", AmountCents: -1}); err == nil {
+		t.Fatal("a negative charge was sent")
 	}
 }
 
@@ -323,7 +281,6 @@ func TestNew_RejectsBadURL(t *testing.T) {
 func TestConfigFromEnv_Defaults(t *testing.T) {
 	t.Setenv(metering.EnvBaseURL, "")
 	t.Setenv(metering.EnvOrg, "")
-	t.Setenv(metering.EnvDisabled, "")
 	cfg := metering.ConfigFromEnv()
 	if cfg.BaseURL != metering.DefaultBaseURL {
 		t.Errorf("default BaseURL = %q, want %q", cfg.BaseURL, metering.DefaultBaseURL)
@@ -331,29 +288,25 @@ func TestConfigFromEnv_Defaults(t *testing.T) {
 	if cfg.Org != "hanzo" {
 		t.Errorf("default Org = %q, want hanzo", cfg.Org)
 	}
-	if cfg.FailOpen {
-		t.Error("default must be fail-closed")
-	}
 }
 
-func TestConfigFromEnv_Disabled(t *testing.T) {
-	t.Setenv(metering.EnvDisabled, "true")
+// The retired switches are inert: setting them changes nothing about the client.
+func TestConfigFromEnv_NoSwitchTurnsEnforcementOff(t *testing.T) {
 	t.Setenv(metering.EnvBaseURL, "http://commerce:8001")
-	cfg := metering.ConfigFromEnv()
-	if cfg.BaseURL != "" {
-		t.Errorf("METERING_DISABLED must yield empty BaseURL, got %q", cfg.BaseURL)
+	want := metering.ConfigFromEnv()
+	for _, k := range []string{"METERING_DISABLED", "METERING_FAIL_OPEN", "METERING_TEST", "METERING_TIER_AWARE"} {
+		t.Setenv(k, "true")
+	}
+	if got := metering.ConfigFromEnv(); got != want {
+		t.Fatalf("with the retired switches set the config became %+v, want %+v", got, want)
 	}
 }
 
 func TestConfigFromEnv_ReadsToken(t *testing.T) {
 	t.Setenv(metering.EnvToken, "kms-sourced-token")
-	t.Setenv(metering.EnvTierAware, "true")
 	cfg := metering.ConfigFromEnv()
 	if cfg.Token != "kms-sourced-token" {
 		t.Errorf("token = %q", cfg.Token)
-	}
-	if !cfg.TierAware {
-		t.Error("METERING_TIER_AWARE=true should set TierAware")
 	}
 }
 

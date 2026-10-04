@@ -4,21 +4,19 @@
 //
 // It provides two operations, matching the proven cloud/gateway path:
 //
-//   - Authorize: a pre-request balance gate. Fail-closed by default — if the
-//     balance cannot be determined the request is denied, exactly like the
-//     gateway's prepaid-balance gate (gateway/auth_middleware.go). With
-//     TierAware enabled it consults the tier-aware effective balance, which
-//     folds in the tenant's included plan allotment (e.g. the free-tier
-//     daily credit) so included usage is honored before prepaid funds.
+//   - Authorize: a pre-request gate on the balance and the per-scope spend cap.
+//     Fail-closed, always: if either cannot be determined the request is
+//     denied, exactly like the gateway's prepaid-balance gate. There is no
+//     switch that turns this off.
 //
-//   - Record: a post-request usage write. Records a usage event (cost in
-//     cents) against commerce, which debits the user's balance ledger.
+//   - Record: a post-request usage write. Every served call writes a row in
+//     commerce, a $0 call included; its cost is debited from the balance.
 //
 // The HTTP contract is commerce's canonical billing API, mounted under /v1
 // (commerce/api/billing/handlers.go):
 //
 //	GET  {BaseURL}/v1/billing/balance?user={user}&currency={cur}
-//	GET  {BaseURL}/v1/billing/tier?user={user}            (tier-aware)
+//	GET  {BaseURL}/v1/billing/alerts/authorize?user={user}&...
 //	POST {BaseURL}/v1/billing/usage
 //
 // Auth is the commerce service token (admin-scoped S2S), sent as
@@ -56,7 +54,6 @@ import (
 // denies every request.
 const (
 	pathBalance         = "/v1/billing/balance"
-	pathTier            = "/v1/billing/tier"
 	pathUsage           = "/v1/billing/usage"
 	pathSpendAlerts     = "/v1/billing/alerts"
 	pathLimitsAuthorize = "/v1/billing/alerts/authorize"
@@ -69,11 +66,9 @@ const (
 // would silently debit the wrong tenant.
 const headerOrg = "X-Org-Id"
 
-// headerTest opts a service-token call into commerce's TEST ledger
-// (org.Live=false): balances and debits hit the sandbox books, not real money.
-// See commerce/middleware/accesstoken.go (c.GetHeader("X-Hanzo-Test")). Sent
-// only when Config.Test is true — production metering omits it and stays live.
-const headerTest = "X-Hanzo-Test"
+// ErrNotConfigured is returned by every call on a client that has no commerce to
+// ask (a nil *Client). Nothing is served unchecked: callers map it to HTTP 503.
+var ErrNotConfigured = errors.New("metering: no commerce configured")
 
 // ErrInsufficientBalance is returned by Authorize when commerce confirms the
 // user's available balance is non-positive. It is distinct from a connectivity
@@ -93,10 +88,8 @@ type HTTPDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// Config configures a Client. Only BaseURL is conceptually required; an empty
-// BaseURL puts the client in "not configured" mode where Authorize allows and
-// Record is a no-op — matching the gateway's behavior when no billing URL is
-// set, so a product can adopt metering before its tenant billing is wired.
+// Config configures a Client. BaseURL is required: a client with no commerce to
+// ask cannot gate or count, so it is never built.
 type Config struct {
 	// BaseURL is the commerce service base, e.g.
 	// "http://commerce.hanzo.svc.cluster.local:8001". No trailing /v1 — the
@@ -112,23 +105,6 @@ type Config struct {
 	// Usage/AuthInput overrides this default.
 	Org string
 
-	// TierAware, when true, makes Authorize consult GET /v1/billing/tier and
-	// gate on the effective balance (prepaid + included plan allotment such as
-	// the free-tier daily credit) instead of the bare prepaid balance. This is
-	// the same effectiveAvailable commerce computes in GetTier.
-	TierAware bool
-
-	// FailOpen inverts the default fail-closed posture: when commerce cannot be
-	// reached, Authorize allows the request instead of denying it. Leave false
-	// for paid products; set true only where availability outranks billing
-	// (and accept the revenue leak). Mirrors the gateway, which is fail-closed.
-	FailOpen bool
-
-	// Test routes every call to commerce's TEST ledger (X-Hanzo-Test: true) so
-	// balances and debits hit the sandbox books, not real money. Production
-	// metering leaves this false. Used for end-to-end proofs and staging.
-	Test bool
-
 	// Timeout bounds each commerce HTTP call. Default 5s (the gateway's value).
 	Timeout time.Duration
 
@@ -139,23 +115,21 @@ type Config struct {
 
 // Client meters usage to commerce. It is safe for concurrent use.
 type Client struct {
-	baseURL   string
-	token     string
-	org       string
-	tierAware bool
-	failOpen  bool
-	test      bool
-	http      HTTPDoer
+	baseURL string
+	token   string
+	org     string
+	http    HTTPDoer
 }
 
-// New builds a metering Client from cfg. It returns an error only for an
-// unparseable BaseURL; an empty BaseURL is valid ("not configured" mode).
+// New builds a metering Client from cfg. It refuses an empty or unparseable
+// BaseURL: there is no "not configured" client.
 func New(cfg Config) (*Client, error) {
 	base := strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
-	if base != "" {
-		if _, err := url.Parse(base); err != nil {
-			return nil, fmt.Errorf("metering: invalid BaseURL %q: %w", cfg.BaseURL, err)
-		}
+	if base == "" {
+		return nil, ErrNotConfigured
+	}
+	if _, err := url.Parse(base); err != nil {
+		return nil, fmt.Errorf("metering: invalid BaseURL %q: %w", cfg.BaseURL, err)
 	}
 
 	doer := cfg.HTTPClient
@@ -168,19 +142,12 @@ func New(cfg Config) (*Client, error) {
 	}
 
 	return &Client{
-		baseURL:   base,
-		token:     strings.TrimSpace(cfg.Token),
-		org:       strings.TrimSpace(cfg.Org),
-		tierAware: cfg.TierAware,
-		failOpen:  cfg.FailOpen,
-		test:      cfg.Test,
-		http:      doer,
+		baseURL: base,
+		token:   strings.TrimSpace(cfg.Token),
+		org:     strings.TrimSpace(cfg.Org),
+		http:    doer,
 	}, nil
 }
-
-// Enabled reports whether a commerce BaseURL is configured. When false,
-// Authorize always allows and Record is a no-op.
-func (c *Client) Enabled() bool { return c != nil && c.baseURL != "" }
 
 // AuthInput identifies who to authorize.
 //
@@ -257,11 +224,7 @@ type scopeVerdict struct {
 //	(ErrInsufficientBalance)    -> deny: out of funds          (map to HTTP 402).
 //	(ErrSpendCapExceeded)       -> deny: funded but over a per-scope cap (HTTP 402
 //	                               spend_cap_exceeded — distinct from out-of-funds).
-//	(other error)               -> balance unknown; with the default fail-closed
-//	                               posture this denies          (map to HTTP 503).
-//	                               With FailOpen it returns nil (allow).
-//
-// When the client is not configured (no BaseURL) it always allows.
+//	(other error)               -> balance or cap unknown: deny (map to HTTP 503).
 func (c *Client) Authorize(ctx context.Context, in AuthInput) error {
 	v, err := c.AuthorizeVerdict(ctx, in)
 	if err != nil {
@@ -276,38 +239,27 @@ func (c *Client) Authorize(ctx context.Context, in AuthInput) error {
 	return ErrInsufficientBalance
 }
 
-// AuthorizeVerdict is the full pre-request gate: it checks FUNDS first (the
-// money-safety backstop, honoring the fail-open/closed posture on a connectivity
-// error) and, only when funded, layers the per-scope SPEND CAP verdict.
-//
-// Spend caps are a POLICY OVERLAY, not a funds check: the balance gate already
-// prevents overspending real money, so a cap-endpoint failure FAILS OPEN
-// (degrades to funds-only gating) regardless of the funds fail posture — a
-// commerce limits blip must never take down all paid traffic. An older commerce
-// without the endpoint (404) is likewise treated as "no cap configured".
+// AuthorizeVerdict is the full pre-request gate: it checks FUNDS first and, only
+// when funded, the per-scope SPEND CAP. Both must answer. A gate that cannot
+// decide refuses: an unreachable balance, an unreachable or unreadable cap, an
+// empty identity and a nil client are each an error, never an allow.
 //
 // The returned WarnPct (>0 when at/over a covering cap's soft threshold) lets the
 // caller emit X-Spend-Warn from this one round trip.
 func (c *Client) AuthorizeVerdict(ctx context.Context, in AuthInput) (Verdict, error) {
-	if !c.Enabled() {
-		return Verdict{Allow: true}, nil
+	if c == nil {
+		return Verdict{}, ErrNotConfigured
 	}
 	user := strings.TrimSpace(in.User)
 	if user == "" {
-		// No identity -> cannot bill. Fail-closed denies (anonymous traffic
-		// must be handled by a public-path bypass before reaching here).
-		if c.failOpen {
-			return Verdict{Allow: true}, nil
-		}
+		// No identity -> cannot bill. Anonymous traffic is a public path the
+		// product skips before reaching here.
 		return Verdict{}, fmt.Errorf("metering: empty user")
 	}
 
 	available, err := c.fetchAvailable(ctx, user, c.orgFor(in.Org), currencyOr(in.Currency))
 	if err != nil {
-		if c.failOpen {
-			return Verdict{Allow: true}, nil
-		}
-		return Verdict{}, err // unknown -> deny (fail-closed).
+		return Verdict{}, err
 	}
 	funded := available > 0
 	if in.AmountCents > 0 {
@@ -317,10 +269,10 @@ func (c *Client) AuthorizeVerdict(ctx context.Context, in AuthInput) (Verdict, e
 		return Verdict{Allow: false, Reason: "insufficient_balance"}, nil
 	}
 
-	// Funded — layer the per-scope spend cap. Fail-open on any cap error.
+	// Funded — the per-scope spend cap decides next, and an unknown cap refuses.
 	sv, serr := c.scopeAuthorize(ctx, in)
 	if serr != nil {
-		return Verdict{Allow: true}, nil
+		return Verdict{}, fmt.Errorf("metering: spend cap unknown: %w", serr)
 	}
 	if !sv.Allow && sv.Reason == "spend_cap" {
 		return Verdict{Allow: false, Reason: "spend_cap", CapCents: sv.CapCents, SpentCents: sv.SpentCents}, nil
@@ -337,12 +289,12 @@ type ScopeRule struct {
 }
 
 // ScopeRules lists the org's per-scope rate-limit rules (the rate-limited subset
-// of its spend-alert rows). It is the config source for the cloud ScopeRateLimit
-// middleware, which caches it with a short TTL and fails open on error. Org is
-// sent as X-Org-Id so the rules are the caller org's own — never another tenant's.
+// of its spend-alert rows), the config source for a ScopeRateLimit middleware.
+// Org is sent as X-Org-Id so the rules are the caller org's own — never another
+// tenant's.
 func (c *Client) ScopeRules(ctx context.Context, org string) ([]ScopeRule, error) {
-	if !c.Enabled() {
-		return nil, nil
+	if c == nil {
+		return nil, ErrNotConfigured
 	}
 	body, err := c.get(ctx, pathSpendAlerts, nil, c.orgFor(org))
 	if err != nil {
@@ -397,23 +349,9 @@ func (c *Client) scopeAuthorize(ctx context.Context, in AuthInput) (scopeVerdict
 	return v, nil
 }
 
-// fetchAvailable returns the spendable balance in cents. With TierAware it uses
-// the tier endpoint's effectiveAvailable (prepaid + included allotment);
-// otherwise the bare prepaid available from the balance endpoint.
+// fetchAvailable returns the spendable balance in cents: money and credit on the
+// subject's ledger, less holds — the one figure the balance endpoint serves.
 func (c *Client) fetchAvailable(ctx context.Context, user, org, cur string) (int64, error) {
-	if c.tierAware {
-		q := url.Values{"user": {user}}
-		body, err := c.get(ctx, pathTier, q, org)
-		if err != nil {
-			return 0, err
-		}
-		var tr tierResponse
-		if err := json.Unmarshal(body, &tr); err != nil {
-			return 0, fmt.Errorf("metering: decode tier: %w", err)
-		}
-		return tr.Balance.EffectiveAvailable, nil
-	}
-
 	q := url.Values{"user": {user}, "currency": {cur}}
 	body, err := c.get(ctx, pathBalance, q, org)
 	if err != nil {
@@ -426,18 +364,24 @@ func (c *Client) fetchAvailable(ctx context.Context, user, org, cur string) (int
 	return br.Available, nil
 }
 
-// Usage is one usage event to record. User (IAM "org/sub") and AmountCents
-// (the cost to debit) are the essentials; the rest is descriptive metadata
-// commerce stores on the transaction. Fields mirror commerce's usageRequest
-// (commerce/api/billing/usage.go) one-for-one.
+// Usage is one usage event to record. User (the paying account) is the
+// essential; the charge is AmountMicros (micro-USD, preferred) or AmountCents,
+// and zero is a real charge that is still recorded. The rest is descriptive
+// metadata commerce stores on the transaction. Fields mirror commerce's
+// usageRequest (commerce/api/billing/usage.go) one-for-one.
 type Usage struct {
-	User        string `json:"user"`            // per-org billing key (org slug) — the debit destination.
-	Actor       string `json:"actor,omitempty"` // org/sub identity for the audit trail (commerce ignores unknown fields today; forward-compatible).
-	Org         string `json:"-"`               // routed via X-Org-Id, not the body.
-	Currency    string `json:"currency,omitempty"`
-	AmountCents int64  `json:"amount"`
-	Model       string `json:"model,omitempty"`
-	Provider    string `json:"provider,omitempty"`
+	User         string `json:"user"`            // the paying account — the debit destination.
+	Actor        string `json:"actor,omitempty"` // org/sub identity for the audit trail (commerce ignores unknown fields today; forward-compatible).
+	Org          string `json:"-"`               // routed via X-Org-Id, not the body.
+	Currency     string `json:"currency,omitempty"`
+	AmountCents  int64  `json:"amount"`
+	AmountMicros int64  `json:"amountMicros,omitempty"`
+	// CostMicros is what serving the call cost us, in micro-USD.
+	CostMicros int64 `json:"costMicros,omitempty"`
+	// PaidBy is what pays: plan, prepaid, credits, line or hanzo.
+	PaidBy   string `json:"paidBy,omitempty"`
+	Model    string `json:"model,omitempty"`
+	Provider string `json:"provider,omitempty"`
 	// Project and Service attribute this debit to a scope so commerce records the
 	// dimensions the per-scope spend cap sums over (issue #70). Empty = the
 	// org-wide default scope.
@@ -462,19 +406,20 @@ type RecordResult struct {
 	Type          string `json:"type"`
 }
 
-// Record writes a usage event to commerce, debiting the user's balance.
-//
-// It is a no-op (nil, nil) when the client is not configured or when
-// AmountCents <= 0 (commerce treats zero-cost usage as "skipped"). Usage
-// recording is deliberately decoupled from gating: the work already happened
-// and must be recorded, so balance is NOT re-checked here — exactly as
-// commerce's RecordUsage documents.
+// Record writes a usage event to commerce, debiting the user's balance. Every
+// call writes, a zero charge included: commerce records a $0 call as a row.
+// Recording is decoupled from gating — the work already happened and must be
+// recorded, so balance is NOT re-checked here, exactly as commerce's
+// RecordUsage documents.
 //
 // Provider is the service name doing the metering when no model/provider is
 // natural (e.g. "search", "functions"); set it on Usage.Provider.
 func (c *Client) Record(ctx context.Context, u Usage) (*RecordResult, error) {
-	if !c.Enabled() || u.AmountCents <= 0 {
-		return nil, nil
+	if c == nil {
+		return nil, ErrNotConfigured
+	}
+	if u.AmountCents < 0 || u.AmountMicros < 0 || u.CostMicros < 0 {
+		return nil, fmt.Errorf("metering: a usage charge cannot be negative")
 	}
 	if strings.TrimSpace(u.User) == "" {
 		return nil, fmt.Errorf("metering: Record requires a user")
@@ -532,9 +477,6 @@ func (c *Client) do(req *http.Request, org string) ([]byte, error) {
 	if org != "" {
 		req.Header.Set(headerOrg, org)
 	}
-	if c.test {
-		req.Header.Set(headerTest, "true")
-	}
 
 	resp, err := c.http.Do(req)
 	if err != nil {
@@ -576,17 +518,4 @@ type balanceResponse struct {
 	Balance   int64  `json:"balance"`
 	Holds     int64  `json:"holds"`
 	Available int64  `json:"available"`
-}
-
-// tierResponse mirrors commerce GET /v1/billing/tier. effectiveAvailable folds
-// the tenant's included plan allotment (e.g. free-tier daily credit) into the
-// prepaid available balance.
-type tierResponse struct {
-	User    string `json:"user"`
-	Balance struct {
-		Currency           string `json:"currency"`
-		PrepaidAvailable   int64  `json:"prepaidAvailable"`
-		DailyRemaining     int64  `json:"dailyRemaining"`
-		EffectiveAvailable int64  `json:"effectiveAvailable"`
-	} `json:"balance"`
 }

@@ -106,21 +106,22 @@ func TestAuthorizeVerdict_Insufficient(t *testing.T) {
 	}
 }
 
-// The cap check FAILS OPEN: a funded caller is allowed even when the cap endpoint
-// errors (the funds gate already protects the money; a caps blip must not deny).
-func TestAuthorizeVerdict_CapFailsOpen(t *testing.T) {
-	rc := &routingCommerce{
-		balance:   `{"available":100000}`,
-		authorize: `nope`,
-		authCode:  http.StatusNotFound,
-	}
-	c := capClient(t, rc.server(t))
-	v, err := c.AuthorizeVerdict(context.Background(), metering.AuthInput{User: "acme", Org: "acme", AmountCents: 1})
-	if err != nil {
-		t.Fatalf("AuthorizeVerdict err: %v", err)
-	}
-	if !v.Allow {
-		t.Fatalf("verdict = %+v, want allow (cap fails open when funded)", v)
+// A funded caller whose cap cannot be read is REFUSED: a gate that cannot decide
+// does not allow. Any cap error — a missing endpoint, a 500, an unreadable body.
+func TestAuthorizeVerdict_CapErrorRefuses(t *testing.T) {
+	for _, tc := range []struct {
+		body string
+		code int
+	}{{"nope", http.StatusNotFound}, {"boom", http.StatusInternalServerError}, {"not json", http.StatusOK}} {
+		rc := &routingCommerce{balance: `{"available":100000}`, authorize: tc.body, authCode: tc.code}
+		c := capClient(t, rc.server(t))
+		in := metering.AuthInput{User: "acme", Org: "acme", AmountCents: 1}
+		if v, err := c.AuthorizeVerdict(context.Background(), in); err == nil || v.Allow {
+			t.Fatalf("cap %d %q: verdict %+v err %v; want a refusal", tc.code, tc.body, v, err)
+		}
+		if err := c.Authorize(context.Background(), in); err == nil || err == metering.ErrInsufficientBalance {
+			t.Fatalf("cap %d %q: Authorize = %v; want an unknown-cap error (503)", tc.code, tc.body, err)
+		}
 	}
 }
 

@@ -45,13 +45,6 @@ type Tenant struct {
 	// no ingress (ClusterIP only; reached via the gateway).
 	IngressHost string
 
-	// TierAware gates on prepaid + included plan allotment (free-tier credit)
-	// instead of bare prepaid balance.
-	TierAware bool
-
-	// Test routes billing to commerce's TEST ledger (staging/sandbox).
-	Test bool
-
 	// Replicas defaults to 1.
 	Replicas int
 }
@@ -129,8 +122,6 @@ func Render(p Product, t Tenant) (string, error) {
 		SkipPaths:      strings.Join(p.SkipPaths, ","),
 		CommerceURL:    commerceURL,
 		CommerceSecret: t.commerceSecret(),
-		TierAware:      t.TierAware,
-		Test:           t.Test,
 		StorageMount:   p.StorageMount,
 		StorageSize:    p.StorageSize,
 		PVCName:        fmt.Sprintf("%s-%s-data", p.Name, t.Org),
@@ -191,8 +182,6 @@ type tmplData struct {
 	SkipPaths      string
 	CommerceURL    string
 	CommerceSecret string
-	TierAware      bool
-	Test           bool
 	StorageMount   string
 	StorageSize    string
 	PVCName        string
@@ -247,14 +236,6 @@ spec:
         secretKeyRef:
           name: {{.CommerceSecret}}
           key: commerceToken
-{{- if .TierAware}}
-    - name: METERING_TIER_AWARE
-      value: "true"
-{{- end}}
-{{- if .Test}}
-    - name: METERING_TEST
-      value: "true"
-{{- end}}
   sidecars:
     # The product runs as a sidecar; containers share the pod network namespace,
     # so the proxy reaches it on 127.0.0.1:{{.ProductPort}} with no port mapping
@@ -294,14 +275,6 @@ spec:
         secretKeyRef:
           name: {{.CommerceSecret}}
           key: commerceToken
-{{- if .TierAware}}
-    - name: METERING_TIER_AWARE
-      value: "true"
-{{- end}}
-{{- if .Test}}
-    - name: METERING_TEST
-      value: "true"
-{{- end}}
 {{- range .Env}}
     - name: {{.Key}}
       value: "{{.Value}}"

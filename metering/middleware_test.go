@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -183,7 +184,9 @@ func TestMiddleware_Skip_Bypasses(t *testing.T) {
 	}
 }
 
-func TestMiddleware_OnlyChargesSuccess(t *testing.T) {
+// A failed request is counted and not charged: its row is written at the price
+// the product gave it, zero here.
+func TestMiddleware_RecordsAFailedRequestUncharged(t *testing.T) {
 	stub := &commerceStub{available: 5000}
 	srv := stub.server()
 	defer srv.Close()
@@ -206,10 +209,62 @@ func TestMiddleware_OnlyChargesSuccess(t *testing.T) {
 	if rr.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500", rr.Code)
 	}
-	// Give any (erroneous) async record a chance, then assert none happened.
-	time.Sleep(50 * time.Millisecond)
+	waitFor(t, func() bool { n, _, _ := stub.records(); return n == 1 })
+	if n, amt, _ := stub.records(); n != 1 || amt != 0 {
+		t.Fatalf("failed request: %d record(s) at %d¢; want 1 at 0¢", n, amt)
+	}
+}
+
+// A wrap with no Price, and a nil client, both refuse: nothing is served
+// without being gated and charged.
+func TestMiddleware_RefusesWhatItCannotMeter(t *testing.T) {
+	stub := &commerceStub{available: 5000}
+	srv := stub.server()
+	defer srv.Close()
+	live, _ := metering.New(metering.Config{BaseURL: srv.URL, Token: "t", Org: "hanzo"})
+	var none *metering.Client
+
+	for name, h := range map[string]http.Handler{
+		"no price": live.Middleware(metering.MiddlewareConfig{Provider: "search"})(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+			t.Error("served with no price")
+		})),
+		"nil client": none.Middleware(metering.MiddlewareConfig{
+			Provider: "search",
+			Price:    func(*http.Request, int, metering.AuthInput) int64 { return 7 },
+		})(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+			t.Error("served with no commerce")
+		})),
+	} {
+		rr := httptest.NewRecorder()
+		h.ServeHTTP(rr, gatewayReq())
+		if rr.Code != http.StatusServiceUnavailable {
+			t.Errorf("%s: status %d, want 503", name, rr.Code)
+		}
+	}
 	if n, _, _ := stub.records(); n != 0 {
-		t.Fatalf("failed request must not be charged, got %d records", n)
+		t.Fatalf("refused requests recorded %d row(s)", n)
+	}
+}
+
+// A spend cap renders as 402 spend_cap_exceeded, not as an outage.
+func TestMiddleware_SpendCapIs402(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/billing/alerts/authorize" {
+			_, _ = io.WriteString(w, `{"allow":false,"reason":"spend_cap","capCents":100,"spentCents":100}`)
+			return
+		}
+		_, _ = io.WriteString(w, `{"available":5000}`)
+	}))
+	defer srv.Close()
+	c, _ := metering.New(metering.Config{BaseURL: srv.URL, Token: "t", Org: "hanzo"})
+	h := c.Middleware(metering.MiddlewareConfig{
+		Provider: "search",
+		Price:    func(*http.Request, int, metering.AuthInput) int64 { return 7 },
+	})(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("served over the cap") }))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, gatewayReq())
+	if rr.Code != http.StatusPaymentRequired || !strings.Contains(rr.Body.String(), "spend_cap_exceeded") {
+		t.Fatalf("over the cap: %d %s; want 402 spend_cap_exceeded", rr.Code, rr.Body.String())
 	}
 }
 
