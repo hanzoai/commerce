@@ -772,7 +772,7 @@ func TestRecordFromBalance_TheGrantedLedgerPaysAndTheTierSeesIt(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("grant: %v", err)
 	}
-	if v, err := ReadTier(ctx, org, subject, tier.Free); err != nil || v.Balance.PrepaidAvailable != 20000 {
+	if v, err := ReadTier(ctx, org, subject); err != nil || v.Balance.PrepaidAvailable != 20000 {
 		t.Fatalf("tier before: %+v, %v; the tier must read the granted 20000", v.Balance, err)
 	}
 
@@ -788,7 +788,7 @@ func TestRecordFromBalance_TheGrantedLedgerPaysAndTheTierSeesIt(t *testing.T) {
 	if n := len(led.debits); n != 1 || led.debits[0].AmountCents != balPrice || led.debits[0].Org != org.Name || led.debits[0].Subject != subject {
 		t.Fatalf("ledger debits %+v, want one of %d at %s/%s", led.debits, balPrice, org.Name, subject)
 	}
-	v, err := ReadTier(ctx, org, subject, tier.Free)
+	v, err := ReadTier(ctx, org, subject)
 	if err != nil || v.Balance.PrepaidAvailable != 20000-balPrice || v.Balance.EffectiveAvailable != 20000-balPrice {
 		t.Fatalf("tier after: %+v, %v; want %d prepaid", v.Balance, err, 20000-balPrice)
 	}

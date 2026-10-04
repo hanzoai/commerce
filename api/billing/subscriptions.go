@@ -135,8 +135,7 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 	// ungated, the row opens internal and the first renewal marks it invoiced: a
 	// contact-sales plan's invoice is $0, so that collection succeeds with no money
 	// and the row confers its tier.
-	isPaidEco := IsEcosystemAccount(org, req.UserId)
-	if paidPlan(p.Slug, p) && !middleware.MayMintMoney(c) && !isPaidEco {
+	if paidPlan(p.Slug, p) && !middleware.MayMintMoney(c) {
 		return http.Fail(c, 403,
 			"creating a paid-tier subscription requires platform-administrator or internal-service credentials", nil)
 	}
@@ -145,35 +144,15 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 	if qty < 1 {
 		qty = 1
 	}
-	seatMult := int64(1)
 	if perSeat(p.Slug) {
 		if min := minSeats(p.Slug); qty < min {
 			return http.Fail(c, 400, fmt.Sprintf("plan %q requires at least %d seats (got %d)", p.Slug, min, qty), nil)
 		}
-		seatMult = int64(qty)
-	}
-	chargeCents := int64(p.Price) * seatMult
-
-	paidWithCredits := false
-	if isPaidEco && paidTier(p.Slug) {
-		if chargeCents > 0 {
-			_, _ = BurnCredits(db, req.UserId, chargeCents, "")
-		}
-		paidWithCredits = true
 	}
 
 	sub, err := createSubscription(db, p, &req)
 	if err != nil {
 		return subscriptionCreateError(c, err)
-	}
-
-	if paidWithCredits {
-		sub.ProviderType = "credit"
-		inv, _ := engine.CreatePaidFirstInvoice(db, sub, "credit", "credit_burn")
-		if inv != nil {
-			sub.CurrentInvoiceId = inv.Id()
-		}
-		_ = sub.Update()
 	}
 
 	emitSubscriptionCreated(c, org.Name, sub)

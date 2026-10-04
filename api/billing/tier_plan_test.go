@@ -12,19 +12,10 @@ import (
 // EVERY PLAN THE CATALOG SELLS MUST CONFER A PAID TIER.
 //
 // The registry holds tier names (free/starter/pro/enterprise); the catalog sells plan
-// slugs (go/dev/pro/max/team/enterprise). `tier.Parse` knows only the first, so four
-// of the six sold plans resolved to Free — one agent, two models. Measured live
-// against the running pod before the fix:
-//
-//	?tier=go -> Free   ?tier=dev -> Free   ?tier=team -> Free   ?tier=max -> Free
-//
-// `max` is $99/mo. A customer on the most expensive plan got the most restrictive
-// configuration, with no error anywhere to find it by.
-//
-// This drives off the CATALOG rather than a list written here, so a plan added
-// tomorrow is covered without anyone remembering to update a test. That is the
-// property worth holding: not "these four slugs work" but "nothing we sell parses to
-// Free".
+// slugs (go/dev/pro/max/team/enterprise). An active subscription is tiered by its
+// slug through the catalog (tierForActivePaidSlug), so this drives off the CATALOG
+// rather than a list written here: a plan added tomorrow is covered without anyone
+// remembering to update a test, and nothing we sell confers Free.
 func TestEverySoldPlanConfersAPaidTier(t *testing.T) {
 	plans := catalog
 	if len(plans) == 0 {
@@ -37,15 +28,13 @@ func TestEverySoldPlanConfersAPaidTier(t *testing.T) {
 			continue // genuinely free/$0 rows (dns-free) are not the subject
 		}
 		sold++
-		got := tierOfName(p.Slug)
+		got := tierForActivePaidSlug(p.Slug)
 		if got == tier.Free {
-			t.Errorf("plan %q (category=%q, price=%d) resolves to Free — a sold plan "+
+			t.Errorf("plan %q (category=%q, price=%d) confers Free — a sold plan "+
 				"must never confer the most restrictive tier", p.Slug, p.Category, p.Price)
 		}
-		if p.Category == "enterprise" || p.ContactSales {
-			if got != tier.Enterprise {
-				t.Errorf("plan %q is enterprise-category but resolves to %q", p.Slug, got)
-			}
+		if p.Category == "enterprise" && got != tier.Enterprise {
+			t.Errorf("plan %q is enterprise-category but confers %q", p.Slug, got)
 		}
 	}
 	if sold == 0 {
@@ -53,25 +42,12 @@ func TestEverySoldPlanConfersAPaidTier(t *testing.T) {
 	}
 }
 
-// A tier NAME still resolves to itself: the catalog lookup is a fallback for slugs,
-// not a replacement, so the registry keeps priority.
-func TestTierNamesStillResolveToThemselves(t *testing.T) {
-	for _, n := range []tier.Name{tier.Free, tier.Starter, tier.Pro, tier.Enterprise} {
-		if got := tierOfName(string(n)); got != n {
-			t.Errorf("tierOfName(%q) = %q, want %q — a registered tier name must win "+
-				"over any catalog lookup", n, got, n)
-		}
-	}
-}
-
-// And a string that is neither a tier nor a sold plan is still Free. Unknown input
-// must not be promoted into a paid tier by accident — the failure this fixes runs one
-// way only.
-func TestUnknownNameIsStillFree(t *testing.T) {
+// A slug the catalog does not sell confers Free. Unknown input must not be promoted
+// into a paid tier by accident.
+func TestUnknownSlugConfersFree(t *testing.T) {
 	for _, raw := range []string{"", "nope", "zen-ultra", "pro-plus", "../pro"} {
-		if got := tierOfName(raw); got != tier.Free {
-			t.Errorf("tierOfName(%q) = %q, want free — an unrecognized name must never "+
-				"confer a paid tier", raw, got)
+		if got := tierForActivePaidSlug(raw); got != tier.Free {
+			t.Errorf("tierForActivePaidSlug(%q) = %q, want free", raw, got)
 		}
 	}
 }

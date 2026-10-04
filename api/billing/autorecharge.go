@@ -312,18 +312,8 @@ func RunAutoRecharge(ctx context.Context, kmsClient *kms.CachedClient, ev *event
 
 	run := &RechargeRun{Orgs: len(orgs), Results: make([]RechargeResult, 0)}
 
-	// Ensure all core ecosystem partner orgs keep their operating credits topped up
-	for ecoOrg := range PaidEcosystemOrgs {
-		ecoDb := datastore.New((&organization.Organization{Name: ecoOrg}).Namespaced(ctx))
-		_ = EnsureEcosystemCredits(ctx, ecoDb, ecoOrg)
-	}
-
 	for _, org := range orgs {
 		db := datastore.New(org.Namespaced(ctx))
-
-		if IsPaidEcosystemOrg(org.Name) {
-			_ = EnsureEcosystemCredits(ctx, db, org.Name)
-		}
 
 		cfg := loadAutoRecharge(db, org.Name)
 		if cfg == nil || !cfg.Enabled || cfg.AmountCents <= 0 {

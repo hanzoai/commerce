@@ -13,57 +13,12 @@ import (
 	"github.com/hanzoai/commerce/billing/tier"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
-	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json/http"
 )
-
-// PaidEcosystemOrgs defines the core ecosystem partner organizations marked as paid
-// with full platform access: hanzo, lux, zoo, adnexus, bootnode, osage, pars, and admin.
-var PaidEcosystemOrgs = map[string]bool{
-	"admin":    true,
-	"hanzo":    true,
-	"lux":      true,
-	"zoo":      true,
-	"adnexus":  true,
-	"bootnode": true,
-	"osage":    true,
-	"pars":     true,
-}
-
-// IsPaidEcosystemOrg reports whether an organization name belongs to the core paid ecosystem.
-func IsPaidEcosystemOrg(orgName string) bool {
-	if orgName == "" {
-		return false
-	}
-	return PaidEcosystemOrgs[strings.ToLower(strings.TrimSpace(orgName))]
-}
-
-// IsEcosystemAccount reports whether subject is a paid ecosystem org's OWN account:
-// the bare org slug ("hanzo"), within that org's books when org is given. That is
-// the account IAM names as payer for the org's machines and its owners and admins
-// (a signed billing_account of org:<slug>), and for every member of a pooled org.
-// A person's wallet inside the org ("hanzo/alice") is not the org's account: it is
-// a customer's, tiered by its own subscriptions and funded by its own money.
-func IsEcosystemAccount(org *organization.Organization, subject string) bool {
-	s := strings.ToLower(strings.TrimSpace(subject))
-	if s == "" || strings.Contains(s, "/") || !IsPaidEcosystemOrg(s) {
-		return false
-	}
-	return org == nil || strings.EqualFold(strings.TrimSpace(org.Name), s)
-}
-
-// UserOrg extracts the tenant org prefix from a user identifier (e.g. "hanzo/alice" -> "hanzo").
-func UserOrg(user string) string {
-	parts := strings.Split(strings.TrimSpace(user), "/")
-	if len(parts) > 1 {
-		return strings.ToLower(strings.TrimSpace(parts[0]))
-	}
-	return ""
-}
 
 // TierLimits is what a tier ALLOWS, as the wire has always carried it: the
 // registry's configuration plus the one fact that is derived rather than stored.
@@ -162,7 +117,7 @@ type TierView struct {
 	Plan string `json:"plan,omitempty"`
 	// Subscription is the id of the subscription row Plan is served from, when the
 	// tier answered is the one that row confers; "" when no row serves the subject,
-	// or the tier is not the row's (a minted override).
+	// or another of the subject's rows confers the tier.
 	Subscription string `json:"subscription,omitempty"`
 	// Tier is the tier's own bounds.
 	Tier TierLimits `json:"tier"`
@@ -196,21 +151,21 @@ func IsTierRefusal(err error) bool { return errors.Is(err, errTierNoOrg) }
 // a second answer to "may this subject spend" — which is the one question that
 // must have exactly one.
 //
-// The tier NAME is passed in rather than resolved here. An override is a mint and
-// only a minter may name one (resolveTierName), which is a fact about the caller's
-// credential, not about the subject.
+// The tier is DERIVED here, from the subject's own recorded subscriptions, and
+// from nothing else: no caller, however privileged, names one. Our own orgs
+// resolve exactly like a customer's.
 //
-// Its single failure is the ledger read. The daily term reports what it can and
-// stays quiet otherwise, exactly as it does on the wire.
-func ReadTier(ctx context.Context, org *organization.Organization, user string, name tier.Name) (*TierView, error) {
+// Its failures are the subscription read and the ledger read; neither is ever
+// answered as Free. The daily term reports what it can and stays quiet
+// otherwise, exactly as it does on the wire.
+func ReadTier(ctx context.Context, org *organization.Organization, user string) (*TierView, error) {
 	if org == nil {
 		return nil, errTierNoOrg
 	}
 	ctx = org.Namespaced(ctx)
-
-	isPaidEco := IsEcosystemAccount(org, user)
-	if isPaidEco && name == tier.Free {
-		name = tier.Enterprise
+	name, err := deriveTier(datastore.New(ctx), user, org.TestMode())
+	if err != nil {
+		return nil, err
 	}
 	cfg := tier.Get(name)
 
@@ -260,37 +215,17 @@ func ReadTier(ctx context.Context, org *organization.Organization, user string, 
 		}
 	}
 
-	creditsRemaining := split.CreditsRemaining
-	effectiveAvailable := int64(spendable) + dailyRemaining
-	if isPaidEco {
-		// Core ecosystem partner organizations receive operating credit allowance.
-		if creditsRemaining < currency.Cents(DefaultEcosystemCreditCents) {
-			creditsRemaining = currency.Cents(DefaultEcosystemCreditCents)
-		}
-		if effectiveAvailable < DefaultEcosystemCreditCents {
-			effectiveAvailable = DefaultEcosystemCreditCents
-		}
-	}
-
-	lims := tierLimits(cfg, slug)
-	if isPaidEco {
-		lims.UnlimitedAgents = true
-		lims.MaxAgents = 0
-		lims.MaxBots = 0
-		lims.AllowedModels = []string{"*"}
-	}
-
 	return &TierView{
 		User:         user,
 		Plan:         servedAs(slug),
 		Subscription: servedID,
-		Tier:         lims,
+		Tier:         tierLimits(cfg, slug),
 		Balance: TierBalance{
 			Currency:           cur,
 			PrepaidAvailable:   prepaidAvailable,
-			CreditsRemaining:   creditsRemaining,
+			CreditsRemaining:   split.CreditsRemaining,
 			DailyRemaining:     dailyRemaining,
-			EffectiveAvailable: effectiveAvailable,
+			EffectiveAvailable: int64(spendable) + dailyRemaining,
 		},
 	}, nil
 }
@@ -326,18 +261,13 @@ func tierSplit(ctx context.Context, org *organization.Organization, user string,
 // TierOf is the tier a subject's own subscriptions confer — the DERIVATION, with
 // no request in it.
 //
-// It is deliberately the store half only. The two ways a caller can NAME a tier
-// rather than earn one — an X-Tier header, an explicit ?tier= — are request
-// facts and are a MINT, admitted only for a caller that may mint; that decision
-// belongs at the endpoint that can see the credential, and a core that read them
-// would be honouring a claim nobody proved.
+// It is the ONLY source of a tier. There is no override: an X-Tier header or a
+// ?tier= parameter is ignored from every caller, SuperAdmins and services
+// included, because a tier nobody paid for is a tier minted.
 //
 // Fail-safe: a lookup error is RETURNED rather than answered as Free, so a
 // transient store error can never strip a paid subscriber's tier.
 func TierOf(ctx context.Context, org *organization.Organization, user string) (tier.Name, error) {
-	if IsEcosystemAccount(org, user) {
-		return tier.Enterprise, nil
-	}
 	if org == nil {
 		// No org means no store to reach, so there is genuinely no subscription
 		// in view. Free is the answer, not an error.
@@ -347,9 +277,6 @@ func TierOf(ctx context.Context, org *organization.Organization, user string) (t
 }
 
 // GetTier is the endpoint over ReadTier.
-//
-// For IAM-authenticated requests the tier is read from the JWT claim.
-// For service-to-service calls the tier may be passed as a query parameter.
 //
 //	GET /v1/billing/tier?user=hanzo/alice
 //
@@ -385,19 +312,12 @@ func GetTier(c *zip.Ctx) error {
 		return http.Fail(c, 400, "user query parameter is required", nil)
 	}
 
-	// Resolved HERE because it reads the caller's own credential, not the
-	// subject: an override is a mint and only a minter may name one.
-	tierName, err := resolveTierName(c, user)
+	// Fail-safe: a store hiccup must NOT downgrade a paid subscriber to Free.
+	// Surface the error so the caller retries or holds the last-known tier
+	// instead of asserting a wrong Free.
+	view, err := ReadTier(c.Context(), org, user)
 	if err != nil {
-		// Fail-safe: a subscription-store hiccup must NOT downgrade a paid
-		// subscriber to Free. Surface the error so the caller retries or holds
-		// the last-known tier instead of asserting a wrong Free.
-		return http.Fail(c, 500, "failed to resolve tier", err)
-	}
-
-	view, err := ReadTier(c.Context(), org, user, tierName)
-	if err != nil {
-		return http.Fail(c, 500, "failed to query balance", err)
+		return http.Fail(c, 500, "failed to read tier", err)
 	}
 	return c.JSON(200, view)
 }
@@ -415,18 +335,20 @@ func TierCheck(c *zip.Ctx) error {
 
 	model := strings.TrimSpace(c.Query("model"))
 
-	tierName, err := resolveTierName(c, user)
+	// A missing org means no store to reach and so no subscription in view: the
+	// tier is Free, the slug is empty, the catalog is silent, and `capacity`
+	// serves without a bound rather than refusing on nothing.
+	org, _ := middleware.GetOrganizationOK(c)
+	tierName, err := TierOf(c.Context(), org, user)
 	if err != nil {
 		return http.Fail(c, 500, "failed to resolve tier", err)
 	}
 	cfg := tier.Get(tierName)
 
 	// The SAME composition ReadTier answers with, so a check and a read cannot
-	// report a different roster for one customer. A missing org means no store to
-	// reach and so no subscription in view — the slug is empty, the catalog is
-	// silent, and `capacity` serves without a bound rather than refusing on nothing.
+	// report a different roster for one customer.
 	slug := ""
-	if org, ok := middleware.GetOrganizationOK(c); ok && org != nil {
+	if org != nil {
 		slug = subscriptionPlanSlug(datastore.New(org.Namespaced(c.Context())), user, org.TestMode())
 	}
 	lim := tierLimits(cfg, slug)
@@ -478,103 +400,6 @@ func dailyUsageCents(ctx context.Context, user string, isTest bool) int64 {
 	}
 
 	return total
-}
-
-// resolveTierName resolves the caller's REAL billing tier for `user`. An upstream
-// X-Tier claim or an explicit ?tier= override wins (the service-to-service
-// contract); otherwise the tier is DERIVED from the user's active/trialing
-// subscription in the org's store. Both /v1/billing/tier and
-// /v1/billing/tier-check route through here, so tier resolution lives in exactly
-// one place.
-//
-// Fail-safe: a subscription lookup error is RETURNED (not swallowed to Free) so a
-// transient store error can never strip a paid subscriber's tier — the handler
-// surfaces it as a 5xx and the caller holds its last-known tier.
-func resolveTierName(c *zip.Ctx, user string) (tier.Name, error) {
-	// AN OVERRIDE IS A MINT, AND ONLY A MINTER MAY USE ONE.
-	//
-	// Both of these are CLIENT INPUT. `?tier=` is obviously so; X-Tier is too —
-	// the gateway neither mints it (iamauth.MintedIdentityHeaders) nor strips it
-	// (StripIdentityHeaderNames), so despite the comment calling it authoritative
-	// it arrives from whoever sent the request. Honouring either unconditionally
-	// let any caller name its own tier: measured live, `X-Tier: enterprise` on a
-	// free subject returned enterprise with unlimitedAgents, and `?tier=max`
-	// returned Pro with allowedModels ["*"].
-	//
-	// A tier decides which models a caller may invoke and how many agents it may
-	// run, so granting one is minting. The clamp is the SAME predicate the sibling
-	// resolver already applies to the same class of client string —
-	// planForGrant (allotment.go) honours an explicit plan only for
-	// middleware.MayMintMoney — so there is one rule for "may this caller name its
-	// own entitlement", in one place, rather than three resolvers disagreeing.
-	//
-	// An unprivileged override is IGNORED, not refused, exactly as planForGrant
-	// ignores one: the caller falls through to the tier its subscriptions actually
-	// confer. Refusing would break readers that pass a hint they are not entitled
-	// to, for no gain — the answer they get is simply the true one.
-	//
-	// The S2S readers are unaffected: ai's rate limiter and apps/metering send
-	// ?user= and a service token, never ?tier=, and a service token satisfies
-	// MayMintMoney anyway.
-	if override := firstOverride(iammiddleware.GetIAMTier(c), c.Query("tier")); override != "" {
-		if middleware.MayMintMoney(c) {
-			return tierOfName(override), nil
-		}
-	}
-	// The derivation itself is TierOf, so the endpoint and a peer asking by name read
-	// one implementation. A missing org (which should not happen under the
-	// billing group) is Free there for the reason it was Free here: with no store
-	// to reach there is genuinely no subscription in view.
-	org, _ := middleware.GetOrganizationOK(c)
-	return TierOf(c.Context(), org, user)
-}
-
-// firstOverride returns the first non-empty, trimmed tier override. Both sources
-// are client input; which one arrived does not change how much it is trusted.
-func firstOverride(vals ...string) string {
-	for _, v := range vals {
-		if t := strings.TrimSpace(v); t != "" {
-			return t
-		}
-	}
-	return ""
-}
-
-// tierOfName resolves a name that may be EITHER a tier or a CATALOG PLAN SLUG.
-//
-// Two vocabularies meet here and only one was being read. The registry holds tier
-// names — free, starter, pro, enterprise. The catalog SELLS go, dev, pro, max, team
-// and enterprise. `tier.Parse` knows only the first, so four of the six sold plans
-// fell through to Free, which is the most restrictive configuration there is: one
-// agent and two models. Measured live before this change:
-//
-//	?tier=go   -> Free   ?tier=dev  -> Free
-//	?tier=max  -> Free   ?tier=team -> Free      (max is $99/mo)
-//
-// A plan name is not a tier name, and the fix is not a second hardcoded list: the
-// CATALOG is the authority on what is sold, and it already carries the category
-// deriveTier keys on. Resolving through it means a plan confers the same tier
-// whether it arrives as a subscription row or as a name in a claim — and a plan
-// added to the catalog tomorrow is covered without touching this function.
-//
-// Only a string that is neither a tier nor a sold plan is Free.
-func tierOfName(raw string) tier.Name {
-	if n, ok := tier.ParseOK(raw); ok {
-		return n
-	}
-	p := lookupPlan(strings.ToLower(strings.TrimSpace(raw)))
-	if p == nil {
-		return tier.Free
-	}
-	// Same two rules deriveTier applies to a subscription, so the two paths cannot
-	// disagree about what a plan is worth.
-	if p.Category == "enterprise" || p.ContactSales {
-		return tier.Enterprise
-	}
-	if paidTier(p.Slug) {
-		return tier.Pro
-	}
-	return tier.Free
 }
 
 // deriveTier resolves a subject's REAL billing tier from their subscriptions: the

@@ -354,8 +354,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	sourceID := strings.TrimSpace(in.SourceID)
 	methodID := strings.TrimSpace(in.MethodID)
 	planID := strings.TrimSpace(in.PlanID)
-	isEco := IsEcosystemAccount(org, in.Subject)
-	if (sourceID == "") == (methodID == "") && !isEco && sourceID != "credits" && sourceID != "balance" {
+	if (sourceID == "") == (methodID == "") && sourceID != "credits" && sourceID != "balance" {
 		return nil, saleRefusal{saleRefused, "send exactly one of sourceId (a new card) or paymentMethodId (a saved card)"}
 	}
 	if planID == "" {
@@ -529,16 +528,12 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			heldSlug, held.Id())}
 	}
 
-	payWithCredits := sourceID == "credits" || sourceID == "balance" || (sourceID == "" && methodID == "" && isEco)
-	if payWithCredits {
+	if sourceID == "credits" || sourceID == "balance" {
 		// The first period is paid from prepaid money, all or nothing, before the
-		// row exists. A partner ecosystem org holds an operating allowance rather
-		// than a balance, so for one a short draw opens the plan undrawn.
+		// row exists. Every subject pays this way or by card, our own orgs included.
 		drawn, err := prepaidFor(ctx, org).Draw(ctx, in.Subject, cur, chargeCents, "subscribe:"+in.Subject+":"+guard)
 		switch {
 		case err == nil:
-		case isEco:
-			drawn = engine.Drawn{} // the draw moved nothing; the allowance opens the plan
 		case errors.Is(err, errShort):
 			abandon()
 			return nil, saleRefusal{saleDeclined, fmt.Sprintf("insufficient credits/balance to subscribe to %s: %v", p.Name, err)}

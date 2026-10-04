@@ -39,7 +39,7 @@ func TestRetiredMaxHolderIsServedAsMax5x(t *testing.T) {
 		t.Fatalf("the holder's plan reads %q; the subscription keeps the slug it was bought under", got)
 	}
 
-	view, err := ReadTier(ctx, org, "maxholder/a", tier.Pro)
+	view, err := ReadTier(ctx, org, "maxholder/a")
 	if err != nil {
 		t.Fatalf("ReadTier: %v", err)
 	}

@@ -48,7 +48,7 @@ func TestReadTier_NamesTheRowThatServesThePlan(t *testing.T) {
 	if err != nil || name != tier.Pro {
 		t.Fatalf("TierOf = %q, %v; want pro", name, err)
 	}
-	view, err := ReadTier(ctx, org, "tier-row/alice", name)
+	view, err := ReadTier(ctx, org, "tier-row/alice")
 	if err != nil {
 		t.Fatalf("ReadTier: %v", err)
 	}
@@ -56,12 +56,8 @@ func TestReadTier_NamesTheRowThatServesThePlan(t *testing.T) {
 		t.Fatalf("plan %q from row %q; want dev from the paid row %q", view.Plan, view.Subscription, paid.Id())
 	}
 
-	if view, err := ReadTier(ctx, org, "tier-row/nobody", tier.Free); err != nil || view.Subscription != "" {
+	if view, err := ReadTier(ctx, org, "tier-row/nobody"); err != nil || view.Subscription != "" {
 		t.Fatalf("no subscription: row %q, %v; want none", view.Subscription, err)
-	}
-	// A tier a minter named is not the row's to answer for.
-	if view, err := ReadTier(ctx, org, "tier-row/alice", tier.Enterprise); err != nil || view.Subscription != "" {
-		t.Fatalf("minted tier: row %q, %v; want none", view.Subscription, err)
 	}
 }
 
