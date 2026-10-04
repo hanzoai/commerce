@@ -74,7 +74,7 @@ func AdjustCustomerBalance(c *zip.Ctx) error {
 		cur = currency.Type(req.Currency)
 	}
 
-	bt, err := engine.AdjustCustomerBalance(db, req.CustomerId, req.Amount, cur, "adjustment", req.Description)
+	bt, err := engine.AdjustCustomerBalance(db, req.CustomerId, req.Amount, cur, "adjustment", req.Description, minter(c))
 	if err != nil {
 		log.Error("Failed to adjust balance: %v", err, c)
 		return http.Fail(c, 500, "failed to adjust balance", err)
@@ -122,7 +122,7 @@ func balanceTransactionResponse(bt *balancetransaction.BalanceTransaction) map[s
 		"currency":      bt.Currency,
 		"type":          bt.Type,
 		"endingBalance": bt.EndingBalance,
-		"created":       bt.Created,
+		"created":       bt.CreatedAt,
 	}
 	if bt.Description != "" {
 		resp["description"] = bt.Description

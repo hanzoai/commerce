@@ -16,6 +16,8 @@ import (
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json/http"
+
+	. "github.com/hanzoai/commerce/types"
 )
 
 // depositMaxCents is the server-authoritative ceiling on a SINGLE Deposit/Refund,
@@ -133,7 +135,7 @@ func Deposit(c *zip.Ctx) error {
 		if reason == "" {
 			reason = "deposit"
 		}
-		rc, err := chainMintCredit(c.Context(), org, req.User, req.Amount, bucketForTags(req.Tags), reason, mintKey)
+		rc, err := chainMintCredit(c.Context(), org, req.User, req.Amount, bucketForTags(req.Tags), mintedBy(c, reason), mintKey)
 		if err != nil {
 			log.Error("chain deposit mint failed for %s: %v", req.User, err, c)
 			return http.Fail(c, 502, "on-chain credit mint failed", err)
@@ -189,6 +191,7 @@ func Deposit(c *zip.Ctx) error {
 	trans.Amount = currency.Cents(req.Amount)
 	trans.Notes = notes
 	trans.Tags = req.Tags
+	trans.Metadata = Map{"mintedBy": minter(c)}
 
 	trans.ExpiresAt = time.Now().AddDate(0, 0, expiryDays(req.ExpiresIn))
 

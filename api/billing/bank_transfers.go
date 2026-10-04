@@ -185,7 +185,7 @@ func ReconcileInboundTransfer(c *zip.Ctx) error {
 
 	// Create a balance transaction via the engine
 	description := fmt.Sprintf("Bank transfer received (ref: %s, type: %s)", inst.Reference, inst.Type)
-	bt, err := engine.AdjustCustomerBalance(db, inst.CustomerId, req.Amount, cur, "bank_transfer", description)
+	bt, err := engine.AdjustCustomerBalance(db, inst.CustomerId, req.Amount, cur, "bank_transfer", description, minter(c))
 	if err != nil {
 		log.Error("Failed to reconcile bank transfer: %v", err, c)
 		return http.Fail(c, 500, "failed to reconcile transfer", err)

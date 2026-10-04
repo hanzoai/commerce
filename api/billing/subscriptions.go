@@ -135,9 +135,18 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 	// ungated, the row opens internal and the first renewal marks it invoiced: a
 	// contact-sales plan's invoice is $0, so that collection succeeds with no money
 	// and the row confers its tier.
-	if paidPlan(p.Slug, p) && !middleware.MayMintMoney(c) {
-		return http.Fail(c, 403,
-			"creating a paid-tier subscription requires platform-administrator or internal-service credentials", nil)
+	if paidPlan(p.Slug, p) {
+		if !middleware.MayMintMoney(c) {
+			return http.Fail(c, 403,
+				"creating a paid-tier subscription requires platform-administrator or internal-service credentials", nil)
+		}
+		// No payment opens this row, so it is a comp, and it names who granted it.
+		if req.Metadata == nil {
+			req.Metadata = map[string]interface{}{}
+		}
+		req.Metadata["compedBy"] = minter(c)
+	} else {
+		delete(req.Metadata, "compedBy") // client input never forges the audit field
 	}
 
 	qty := req.Quantity

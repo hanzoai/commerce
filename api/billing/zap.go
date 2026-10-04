@@ -16,6 +16,8 @@ import (
 	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
 	httperr "github.com/hanzoai/commerce/util/json/http"
+
+	. "github.com/hanzoai/commerce/types"
 )
 
 // zapMintMethods are the ZAP-over-HTTP methods that MINT money / spendable
@@ -314,6 +316,7 @@ func zapDeposit(c *zip.Ctx, params json.RawMessage) (interface{}, *zapError) {
 	trans.Amount = currency.Cents(req.Amount)
 	trans.Notes = notes
 	trans.Tags = req.Tags
+	trans.Metadata = Map{"mintedBy": minter(c)}
 
 	trans.ExpiresAt = time.Now().AddDate(0, 0, expiryDays(req.ExpiresIn))
 

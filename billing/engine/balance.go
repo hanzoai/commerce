@@ -7,6 +7,8 @@ import (
 	"github.com/hanzoai/commerce/models/balancetransaction"
 	"github.com/hanzoai/commerce/models/customerbalance"
 	"github.com/hanzoai/commerce/models/types/currency"
+
+	. "github.com/hanzoai/commerce/types"
 )
 
 // GetOrCreateCustomerBalance retrieves the customer balance for a given
@@ -40,8 +42,9 @@ func GetOrCreateCustomerBalance(db *datastore.Datastore, customerId string, cur 
 	return cb, nil
 }
 
-// AdjustCustomerBalance adjusts a customer's balance and creates a ledger entry.
-func AdjustCustomerBalance(db *datastore.Datastore, customerId string, amount int64, cur currency.Type, txnType, description string) (*balancetransaction.BalanceTransaction, error) {
+// AdjustCustomerBalance adjusts a customer's balance and creates a ledger entry
+// recording who made the adjustment (by).
+func AdjustCustomerBalance(db *datastore.Datastore, customerId string, amount int64, cur currency.Type, txnType, description, by string) (*balancetransaction.BalanceTransaction, error) {
 	cb, err := GetOrCreateCustomerBalance(db, customerId, cur)
 	if err != nil {
 		return nil, err
@@ -60,6 +63,7 @@ func AdjustCustomerBalance(db *datastore.Datastore, customerId string, amount in
 	bt.Type = txnType
 	bt.Description = description
 	bt.EndingBalance = cb.Balance
+	bt.Metadata = Map{"by": by}
 
 	if err := bt.Create(); err != nil {
 		return nil, fmt.Errorf("failed to create balance transaction: %w", err)
