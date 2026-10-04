@@ -11,30 +11,12 @@ import (
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
-// TestRoundMicrosToCents pins the sub-cent rounding: round-to-NEAREST (half-up),
-// never floor. Floor would drop every sub-cent fraction (systematic undercharge);
-// round-to-nearest is statistically fair (E[undercharge]=0). Exact micros are
-// preserved in metadata by the handler, so any drift is auditable.
-func TestRoundMicrosToCents(t *testing.T) {
-	cases := []struct {
-		micros int64
-		cents  int64
-		note   string
-	}{
-		{0, 0, "zero"},
-		{1, 0, "0.0001c — rounds to 0 (echoed in metadata, not silently lost)"},
-		{4999, 0, "just under half a cent -> 0"},
-		{5000, 1, "exactly half a cent -> 1 (half-up)"},
-		{9999, 1, "just under a cent -> 1"},
-		{10000, 1, "exactly one cent"},
-		{14999, 1, "1.4999c -> 1"},
-		{15000, 2, "1.5c -> 2 (half-up)"},
-		{25000, 3, "2.5c -> 3 (half-up)"},
-		{1000000, 100, "$1 -> 100c"},
-	}
-	for _, tc := range cases {
-		if got := roundMicrosToCents(tc.micros); got != tc.cents {
-			t.Errorf("roundMicrosToCents(%d) = %d, want %d (%s)", tc.micros, got, tc.cents, tc.note)
+// floorCents is whole cents in a micro-dollar total, toward -inf, so the span
+// arithmetic in usageCents stays exact even across a compensating subtraction.
+func TestFloorCents(t *testing.T) {
+	for micros, cents := range map[int64]int64{0: 0, 1: 0, 9999: 0, 10000: 1, 19999: 1, 1000000: 100, -1: -1, -10000: -1, -10001: -2} {
+		if got := floorCents(micros); got != cents {
+			t.Errorf("floorCents(%d) = %d, want %d", micros, got, cents)
 		}
 	}
 }

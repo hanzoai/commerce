@@ -3,6 +3,7 @@ package billing
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/db"
 	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
@@ -32,9 +34,15 @@ type usageRequest struct {
 	// it carries sub-cent precision so tiny spends aren't lost to cent rounding.
 	// Chat's tokenValue is already micro-USD (1e6 tokenCredits = $1), so it maps
 	// 1:1. Zero/absent => fall back to Amount*10000.
-	AmountMicros int64  `json:"amountMicros"`
-	Model        string `json:"model"`
-	Provider     string `json:"provider"`
+	AmountMicros int64 `json:"amountMicros"`
+	// CostMicros is what serving this call cost US (the provider's price), in
+	// micro-USD. Recorded beside the charge so margin is a fact on the row.
+	CostMicros int64 `json:"costMicros"`
+	// PaidBy names what pays for the call: plan, prepaid, credits, line, or
+	// hanzo (our own spend, still recorded and still charged to its account).
+	PaidBy   string `json:"paidBy"`
+	Model    string `json:"model"`
+	Provider string `json:"provider"`
 	// Project / Service attribute this spend to a scope for per-scope caps
 	// (issue #70). Empty = the org-wide default scope.
 	Project          string `json:"project"`
@@ -62,12 +70,9 @@ type usageRequest struct {
 // The quantity a token charge prices is the tokens; a count-aggregated meter
 // ignores the value and counts the row.
 //
-// IT RUNS BEFORE THE ROUNDING. A charge under half a cent rounds to $0.00 and
-// RecordUsage acknowledges it without a debit — statistically fair for money, and
-// silent erasure for work. Per-token pricing makes most single calls sub-half-cent,
-// so a meter placed after that short-circuit sees almost nothing, which is the
-// exact opposite of what a meter is for: accumulating small quantities so they can
-// be priced in bulk at the end of the period.
+// It records the quantity whatever the charge: per-token pricing makes most
+// single calls sub-cent, and a meter is for accumulating small quantities so they
+// can be priced in bulk at the end of the period.
 //
 // One act, one row: [engine.IngestUsageEvent] already dedups on the idempotency
 // key, so a retry of the same requestId counts the tokens once. This used to be a
@@ -141,95 +146,155 @@ func GetUsage(c *zip.Ctx) error {
 	})
 }
 
-// roundMicrosToCents converts a micro-USD debit (1e6 = $1, so 1 cent = 10_000
-// micros) to whole cents, rounding to the NEAREST cent (round-half-up). Chosen
-// over floor: floor drops every sub-cent fraction and thus systematically
-// undercharges, whereas round-to-nearest has expected undercharge 0 over many
-// spends. Stateless (no shared remainder) so it is safe on the append-only,
-// no-atomic-RMW commerce ledger. The exact micros are preserved in the
-// transaction metadata for audit / future true-up.
-func roundMicrosToCents(micros int64) int64 {
-	if micros <= 0 {
-		return 0
+// paidBySources is what may pay for a usage call. Empty is "not stated".
+var paidBySources = map[string]bool{"plan": true, "prepaid": true, "credits": true, "line": true, "hanzo": true}
+
+// usageRefused is a usage write refused for what the CALLER sent (400).
+type usageRefused struct{ msg string }
+
+func (e usageRefused) Error() string { return e.msg }
+
+var (
+	// errUsageInFlight is a concurrent write under the same idempotency key (409).
+	errUsageInFlight = errors.New("usage recording already in progress")
+	// errUsageUncounted is a store that cannot keep the exact running total (503).
+	errUsageUncounted = errors.New("this store cannot keep an exact usage total")
+)
+
+// usageCounter names the running micro-dollar total one subject's usage debits
+// against: per org, mode, subject and currency. The name carries the org because
+// a shared Postgres keeps one counter table for every tenant.
+func usageCounter(org string, test bool, subject string, cur currency.Type) string {
+	mode := "live"
+	if test {
+		mode = "test"
 	}
-	return (micros + 5000) / 10000
+	return "usage-micros:" + org + ":" + mode + ":" + subject + ":" + string(cur)
+}
+
+// usageCents is what one usage act debits, in whole cents, so that the cents
+// debited across all of a subject's usage equal floor(total micros / 10_000)
+// EXACTLY. The act's micros land on one atomic running total and the act debits
+// the cent boundaries its own span of that total crosses: a sub-cent call debits
+// 0 and carries its micros forward, the call that completes the cent debits it.
+// Nothing is rounded away and no cent is debited twice, under any concurrency,
+// because the running total moves in one storage statement (db.Counter).
+//
+// It returns the counter so a caller whose row then fails to write can take its
+// micros back out.
+func usageCents(ctx context.Context, d *datastore.Datastore, name string, micros int64) (int64, db.Counter, error) {
+	counter, ok := d.DB().(db.Counter)
+	if !ok {
+		return 0, nil, errUsageUncounted
+	}
+	if micros == 0 {
+		return 0, counter, nil
+	}
+	total, err := counter.Add(ctx, name, micros)
+	if err != nil {
+		return 0, nil, err
+	}
+	return floorCents(total) - floorCents(total-micros), counter, nil
+}
+
+// floorCents is whole cents in a micro-dollar total, rounding toward -inf.
+func floorCents(micros int64) int64 {
+	c := micros / 10000
+	if micros%10000 < 0 {
+		c--
+	}
+	return c
 }
 
 // RecordUsage records an API usage event as a Withdraw transaction.
 //
 //	POST /v1/billing/usage
 //
-// Creates a withdraw transaction deducting the cost from the user's balance.
+// Every served call writes a row, a $0 call and a sub-cent call included: the
+// row carries the call's model, tokens, scope, our cost and what paid, and debits
+// the whole cents the call's micros complete (usageCents).
 func RecordUsage(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c.Context()))
-
 	var req usageRequest
 	if err := c.Bind(&req); err != nil {
 		return http.Fail(c, 400, "invalid request body", err)
 	}
-
-	if req.User == "" {
-		return http.Fail(c, 400, "user is required", nil)
-	}
-
-	// THE QUANTITY IS NOT THE MONEY, and it is recorded before the money is, because
-	// everything below this line is about rounding a charge and any of it can drop
-	// one. See meterUsage.
-	go meterUsage(db, req)
-
-	// Lossless sub-cent handling. `amountMicros` (micro-USD, 1e6=$1) carries full
-	// precision over the wire; `amount` (cents) is the back-compat fallback.
-	effMicros := req.AmountMicros
-	if effMicros <= 0 {
-		effMicros = req.Amount * 10000 // 1 cent = 10_000 micro-USD
-	}
-	if effMicros <= 0 {
-		// Genuinely zero-cost — acknowledge, no transaction.
-		return c.JSON(200, map[string]any{"user": req.User, "amount": 0, "status": "skipped"})
-	}
-
-	// Round to NEAREST cent (round-half-up), NOT floor. Floor systematically
-	// undercharges every sub-cent spend; round-to-nearest has expected
-	// undercharge 0 across many spends. A per-subject remainder accumulator would
-	// be exact, but the commerce datastore has NO atomic RMW / CAS / transactions
-	// (RunInTransaction is a stub; balance is append-only, summed from the
-	// ledger), so a mutable remainder would be a racy money-state — unsafe on a
-	// live ledger. Round-to-nearest is the stateless, race-free equivalent; the
-	// EXACT micros are recorded in metadata below for audit / future true-up.
-	amountCents := roundMicrosToCents(effMicros)
-	if amountCents <= 0 {
-		// Sub-half-cent spend rounds to $0.00 (statistically fair, E[loss]=0).
-		// Acknowledge without debiting; echo the exact micros for audit.
-		return c.JSON(200, map[string]any{"user": req.User, "amount": 0, "amountMicros": effMicros, "status": "rounded-to-zero"})
-	}
-
-	// Idempotency guard (money-critical). A retry (client lost the response) or a
-	// double-submit MUST create AT MOST ONE withdraw. Key on the caller's
-	// X-Idempotency-Key when supplied, else the requestId the caller sends per
-	// spend. The datastore is already org-namespaced, so the key is per-tenant.
-	// No key => caller opted out of the guard (behavior unchanged).
-	var idemRec *idempotencykey.IdempotencyKey
 	idemKey := strings.TrimSpace(c.Header("X-Idempotency-Key"))
 	if idemKey == "" {
 		idemKey = strings.TrimSpace(req.RequestID)
 	}
+	out, replay, err := writeUsage(c, req, idemKey)
+	var refused usageRefused
+	switch {
+	case errors.As(err, &refused):
+		return http.Fail(c, 400, refused.msg, nil)
+	case errors.Is(err, errUsageInFlight):
+		return http.Fail(c, 409, err.Error(), nil)
+	case errors.Is(err, errUsageUncounted):
+		return http.Fail(c, 503, "usage cannot be counted exactly on this store", err)
+	case err != nil:
+		return http.Fail(c, 500, "failed to record usage", err)
+	case replay != nil:
+		c.SetHeader("Content-Type", "application/json")
+		return c.Bytes(200, replay)
+	}
+	return c.JSON(201, out)
+}
+
+// writeUsage is the ONE usage write, behind POST /v1/billing/usage and ZAP
+// billing.recordUsage alike. It returns the written row's answer, or the stored
+// answer of a completed retry under the same idempotency key.
+func writeUsage(c *zip.Ctx, req usageRequest, idemKey string) (map[string]any, []byte, error) {
+	org := middleware.GetOrganization(c)
+	d := datastore.New(org.Namespaced(c.Context()))
+
+	req.User = strings.TrimSpace(req.User)
+	if req.User == "" {
+		return nil, nil, usageRefused{"user is required"}
+	}
+	if req.Amount < 0 || req.AmountMicros < 0 || req.CostMicros < 0 {
+		return nil, nil, usageRefused{"amount, amountMicros and costMicros must not be negative"}
+	}
+	req.PaidBy = strings.ToLower(strings.TrimSpace(req.PaidBy))
+	if req.PaidBy != "" && !paidBySources[req.PaidBy] {
+		return nil, nil, usageRefused{"paidBy must be one of plan, prepaid, credits, line, hanzo"}
+	}
+
+	// THE QUANTITY IS NOT THE MONEY, and it is recorded before the money is. See
+	// meterUsage.
+	go meterUsage(d, req)
+
+	// `amountMicros` (micro-USD, 1e6=$1) carries full precision; `amount` (cents)
+	// is the back-compat form of the same charge.
+	micros := req.AmountMicros
+	if micros == 0 {
+		micros = req.Amount * 10000 // 1 cent = 10_000 micro-USD
+	}
+
+	// Idempotency guard (money-critical). A retry (client lost the response) or a
+	// double-submit MUST create AT MOST ONE row. Keyed on the caller's
+	// X-Idempotency-Key, else the requestId the caller sends per spend; the
+	// datastore is org-namespaced, so the key is per-tenant. No key => the caller
+	// opted out of the guard.
+	var idemRec *idempotencykey.IdempotencyKey
 	if idemKey != "" {
-		rec, replay, gerr := idempotencykey.Begin(db, "billing-usage", idemKey)
-		if gerr != nil {
-			// Guard store unavailable — log and proceed WITHOUT the replay guard
-			// rather than drop a legitimate usage record (matches topup posture).
+		rec, replay, gerr := idempotencykey.Begin(d, "billing-usage", idemKey)
+		switch {
+		case gerr != nil:
+			// Guard store unavailable — proceed WITHOUT the replay guard rather
+			// than drop a legitimate usage record (matches topup posture).
 			log.Error("usage idempotency Begin failed (org=%s key=%s): %v", org.Name, idemKey, gerr, c)
-		} else if replay {
+		case replay:
 			if rec.Status == idempotencykey.StatusCompleted && rec.Response != "" {
-				// Retry of a completed debit — replay the stored body, no 2nd debit.
-				c.SetHeader("Content-Type", "application/json")
-				return c.Bytes(200, []byte(rec.Response))
+				return nil, []byte(rec.Response), nil
 			}
-			// Concurrent in-flight debit for this key — never run a second one.
-			return http.Fail(c, 409, "usage recording already in progress", nil)
-		} else {
+			return nil, nil, errUsageInFlight
+		default:
 			idemRec = rec
+		}
+	}
+	release := func() {
+		if idemRec != nil {
+			_ = idemRec.Delete()
 		}
 	}
 
@@ -238,15 +303,20 @@ func RecordUsage(c *zip.Ctx) error {
 		cur = "usd"
 	}
 
-	notes := fmt.Sprintf("API usage: %s (%d tokens)", req.Model, req.TotalTokens)
+	counter := usageCounter(org.Name, org.TestMode(), req.User, cur)
+	amountCents, total, err := usageCents(c.Context(), d, counter, micros)
+	if err != nil {
+		release()
+		return nil, nil, err
+	}
 
-	trans := transaction.New(db)
+	trans := transaction.New(d)
 	trans.Type = transaction.Withdraw
 	trans.SourceId = req.User
 	trans.SourceKind = "iam-user"
 	trans.Currency = cur
 	trans.Amount = currency.Cents(amountCents)
-	trans.Notes = notes
+	trans.Notes = fmt.Sprintf("API usage: %s (%d tokens)", req.Model, req.TotalTokens)
 	trans.Tags = "api-usage"
 	// Scope attribution (issue #70): the indexed dimensions the per-scope spend
 	// cap sums over. Normalized so the default project ("default") and "no
@@ -259,73 +329,73 @@ func RecordUsage(c *zip.Ctx) error {
 		"promptTokens":     req.PromptTokens,
 		"completionTokens": req.CompletionTokens,
 		"totalTokens":      req.TotalTokens,
-		// Exact debit in micro-USD, before cent rounding — the audit trail that
-		// makes any systematic rounding bias detectable and enables a future
-		// true-up. sum(amountMicros) is the exact spend; sum(amount)*10000 is
-		// what was charged; their delta is the (E=0) rounding drift.
-		"amountMicros": effMicros,
+		// The exact charge and our exact cost, in micro-USD. sum(amountMicros) is
+		// the exact spend; sum(amount) is floor(sum(amountMicros)/10_000) by
+		// construction (usageCents).
+		"amountMicros": micros,
+		"costMicros":   req.CostMicros,
+		"paidBy":       req.PaidBy,
 		"requestId":    req.RequestID,
 		"premium":      req.Premium,
 		"stream":       req.Stream,
 		"status":       req.Status,
 		"clientIp":     req.ClientIP,
 	}
-
 	if org.TestMode() {
 		trans.Test = true
 	}
 
-	// Create the transaction. For usage recording we do NOT enforce
-	// balance checks — the API call already happened and must be recorded.
-	// Balance gating happens at request time in Cloud-API.
+	// The call already happened, so its row is written whatever the balance:
+	// balance gating happens at request time, before the call is served.
 	if err := trans.Create(); err != nil {
+		// No row holds these micros, so the running total gives them back.
+		if micros != 0 {
+			if _, rerr := total.Add(context.WithoutCancel(c.Context()), counter, -micros); rerr != nil {
+				log.Error("RECONCILE: usage counter %s holds %d micros no row records: %v", counter, micros, rerr, c)
+			}
+		}
+		release()
 		log.Error("Failed to record usage transaction: %v", err, c)
-		return http.Fail(c, 500, "failed to record usage", err)
+		return nil, nil, err
 	}
 
-	// Track referral revenue share: if this user was referred, create an
-	// affiliate Fee for the referrer's commission. Fire-and-forget — usage
-	// recording must not fail because of referral tracking.
-	go engine.TrackRevenueShare(db, req.User, currency.Cents(amountCents), cur, trans.Id(), org.TestMode())
-
-	// Accrue the OSS-developer payout: attribute up to 25% of this charge
-	// across the upstream OSS packages this org's deployment depends on (from
-	// the SBOMs emitted on deploy) into the per-package accrual ledger.
-	// Fire-and-forget, same posture as revenue share.
-	go engine.AccrueOSSPayout(db, org.Name, req.User, currency.Cents(amountCents), cur, trans.Id(), !org.Live)
+	if amountCents > 0 {
+		// Referral revenue share and the OSS-developer payout accrue on money
+		// actually debited. Fire-and-forget: neither may fail the usage write.
+		go engine.TrackRevenueShare(d, req.User, currency.Cents(amountCents), cur, trans.Id(), org.TestMode())
+		go engine.AccrueOSSPayout(d, org.Name, req.User, currency.Cents(amountCents), cur, trans.Id(), !org.Live)
+	}
 
 	// Emit the api-usage debit to the analytics collector (commerce.events) so the
 	// fleet usage view (admin.hanzo.ai) can aggregate metered spend — best-effort,
 	// fire-and-forget, never blocks the money path.
-	emitAPIUsageDebit(c, org.Name, &req, amountCents, effMicros)
+	emitAPIUsageDebit(c, org.Name, &req, amountCents, micros)
 
 	// Fire any spend-alert this debit pushed over its soft-warn threshold or cap —
 	// the "alert" half of a spend-alert (the "cap" half is the metering gate). This
 	// is the ONLY write path where period spend accrues, so the crossing is detected
-	// here, once, off the money path (detached goroutine, like the debits above) and
-	// debounced per (period, level) so it re-arms only at the monthly window reset.
+	// here, once, off the money path and debounced per (period, level).
 	ev, _ := c.Locals("events").(*events.Client)
-	fireProject := spendalert.NormalizeProject(req.Project)
-	fireService := strings.TrimSpace(req.Service)
-	fireCtx := context.WithoutCancel(c.Context())
-	go checkAndFireSpendAlerts(fireCtx, db, org.Name, org.TestMode(), fireProject, fireService, ev)
+	go checkAndFireSpendAlerts(context.WithoutCancel(c.Context()), d, org.Name, org.TestMode(),
+		spendalert.NormalizeProject(req.Project), strings.TrimSpace(req.Service), ev)
 
 	resp := map[string]any{
 		"transactionId": trans.Id(),
 		"user":          req.User,
 		"amount":        amountCents,
-		"amountMicros":  effMicros,
+		"amountMicros":  micros,
+		"costMicros":    req.CostMicros,
+		"paidBy":        req.PaidBy,
 		"currency":      cur,
 		"type":          "withdraw",
 	}
 
 	// Seal the idempotency guard with the exact success body so a retry replays
-	// it verbatim (no second withdraw, identical response).
+	// it verbatim (no second row, identical response).
 	if idemRec != nil {
 		if body, mErr := json.Marshal(resp); mErr == nil {
 			_ = idempotencykey.Complete(idemRec, string(body))
 		}
 	}
-
-	return c.JSON(201, resp)
+	return resp, nil, nil
 }

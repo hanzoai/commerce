@@ -48,7 +48,8 @@ const (
 
 // RecordDNSUsage records a batch of DNS query usage for a zone owner.
 // The zone's owner is looked up via the user field. Usage is checked against
-// the plan's daily query limit.
+// the plan's daily query limit. Every batch writes a meter event, an empty one
+// included.
 //
 //	POST /v1/dns/usage
 func RecordDNSUsage(c *zip.Ctx) error {
@@ -68,20 +69,24 @@ func RecordDNSUsage(c *zip.Ctx) error {
 		return http.Fail(c, 400, "user is required", nil)
 	}
 
-	if req.Queries <= 0 {
-		return c.JSON(200, dnsUsageResponse{Recorded: true, Remaining: -1, Limit: -1})
+	if req.Queries < 0 || req.Errors < 0 {
+		return http.Fail(c, 400, "queries and errors must not be negative", nil)
 	}
 
 	// Resolve the user's DNS plan to determine limits.
-	plan, dailyLimit := resolveDNSPlan(db, req.User)
-	_ = plan
+	_, dailyLimit := resolveDNSPlan(db, req.User)
 
 	// Calculate today's usage so far by querying meter events.
+	// A quota that cannot be read cannot be enforced, so the batch is refused.
 	todayStart := todayUTC()
-	todayUsage := aggregateDNSUsage(db, req.User, todayStart, todayStart.Add(24*time.Hour))
+	todayUsage, err := aggregateDNSUsage(db, req.User, todayStart, todayStart.Add(24*time.Hour))
+	if err != nil {
+		return http.Fail(c, 503, "cannot read today's DNS usage", err)
+	}
 
-	// Check limit. -1 means unlimited.
-	if dailyLimit > 0 && todayUsage+req.Queries > dailyLimit {
+	// Check limit. -1 means unlimited. An empty batch serves nothing, so it is
+	// recorded rather than refused.
+	if req.Queries > 0 && dailyLimit > 0 && todayUsage+req.Queries > dailyLimit {
 		remaining := dailyLimit - todayUsage
 		if remaining < 0 {
 			remaining = 0
@@ -161,8 +166,14 @@ func GetDNSUsageSummary(c *zip.Ctx) error {
 		periodEnd = periodStart.Add(24 * time.Hour)
 	}
 
-	queries := aggregateDNSUsage(db, user, periodStart, periodEnd)
-	zones := countDNSZones(db, user, periodStart, periodEnd)
+	queries, err := aggregateDNSUsage(db, user, periodStart, periodEnd)
+	if err != nil {
+		return http.Fail(c, 503, "cannot read DNS usage", err)
+	}
+	zones, err := countDNSZones(db, user, periodStart, periodEnd)
+	if err != nil {
+		return http.Fail(c, 503, "cannot read DNS usage", err)
+	}
 
 	planSlug, dailyLimit := resolveDNSPlan(db, user)
 
@@ -227,7 +238,7 @@ func resolveDNSPlan(db *datastore.Datastore, user string) (planSlug string, dail
 }
 
 // aggregateDNSUsage sums DNS query meter events for a user within a time range.
-func aggregateDNSUsage(db *datastore.Datastore, user string, start, end time.Time) int64 {
+func aggregateDNSUsage(db *datastore.Datastore, user string, start, end time.Time) (int64, error) {
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	events := make([]*meter.MeterEvent, 0)
 	q := meter.QueryEvents(db).Ancestor(rootKey).
@@ -236,7 +247,7 @@ func aggregateDNSUsage(db *datastore.Datastore, user string, start, end time.Tim
 		Filter("Timestamp<", end)
 
 	if _, err := q.GetAll(&events); err != nil {
-		return 0
+		return 0, err
 	}
 
 	// Only count events that belong to the dns-queries meter.
@@ -247,11 +258,11 @@ func aggregateDNSUsage(db *datastore.Datastore, user string, start, end time.Tim
 			total += evt.Value
 		}
 	}
-	return total
+	return total, nil
 }
 
 // countDNSZones counts distinct zones from DNS meter events for a user within a period.
-func countDNSZones(db *datastore.Datastore, user string, start, end time.Time) int {
+func countDNSZones(db *datastore.Datastore, user string, start, end time.Time) (int, error) {
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	events := make([]*meter.MeterEvent, 0)
 	q := meter.QueryEvents(db).Ancestor(rootKey).
@@ -260,7 +271,7 @@ func countDNSZones(db *datastore.Datastore, user string, start, end time.Time) i
 		Filter("Timestamp<", end)
 
 	if _, err := q.GetAll(&events); err != nil {
-		return 0
+		return 0, err
 	}
 
 	meterId := findDNSMeterId(db)
@@ -272,7 +283,7 @@ func countDNSZones(db *datastore.Datastore, user string, start, end time.Time) i
 			}
 		}
 	}
-	return len(zones)
+	return len(zones), nil
 }
 
 // ensureDNSMeter finds or creates the dns-queries meter and returns its ID.

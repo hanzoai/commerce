@@ -637,15 +637,19 @@ var _ = Describe("billing", Ordered, func() {
 			Expect((*res)["type"]).To(Equal("withdraw"))
 		})
 
-		It("Should skip zero-cost usage", func() {
+		It("Should record zero-cost usage as a row", func() {
 			req := map[string]interface{}{
-				"user":   "acme/bob",
-				"amount": int64(0),
+				"user":       "acme/bob",
+				"amount":     int64(0),
+				"costMicros": int64(700),
+				"paidBy":     "plan",
 			}
 			res := &map[string]interface{}{}
 			cl.Post("/billing/usage", req, res)
 
-			Expect((*res)["status"]).To(Equal("skipped"))
+			Expect((*res)["transactionId"]).NotTo(BeEmpty())
+			Expect((*res)["amount"]).To(BeNumerically("==", 0))
+			Expect((*res)["costMicros"]).To(BeNumerically("==", 700))
 		})
 
 		It("Should create a deposit", func() {

@@ -63,17 +63,16 @@ func TestAMeterEventCarriesTheQuantityNotTheCharge(t *testing.T) {
 	m := seedUsageMeter(t, db)
 
 	// The modern path: the charge crosses as micro-USD and `amount` is absent.
-	// 1234 micros is $0.001234 — a real sub-cent charge that rounds to one cent.
-	// 1234 micros is $0.001234 — under half a cent, so the CHARGE rounds to $0.00
-	// and RecordUsage acknowledges it without a debit. The work still happened.
+	// 1234 micros is $0.001234 — under a cent, so the row debits nothing yet and
+	// the micros carry forward. The work still happened and is still metered.
 	if got := recordUsage(t, org, `{
 		"user":"usage-meter-org/alice@example.com",
 		"amountMicros":1234,
 		"model":"gpt-5","provider":"hanzo",
 		"promptTokens":120,"completionTokens":30,"totalTokens":150,
 		"requestId":"req-quantity-1"
-	}`); got != 200 {
-		t.Fatalf("RecordUsage status = %d, want 200 (rounded-to-zero is acknowledged)", got)
+	}`); got != 201 {
+		t.Fatalf("RecordUsage status = %d, want 201 (a sub-cent call writes its row)", got)
 	}
 
 	evts := usageEvents(t, db, m.Id(), 1)

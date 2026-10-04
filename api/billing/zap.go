@@ -16,8 +16,6 @@ import (
 	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
 	httperr "github.com/hanzoai/commerce/util/json/http"
-
-	. "github.com/hanzoai/commerce/types"
 )
 
 // zapMintMethods are the ZAP-over-HTTP methods that MINT money / spendable
@@ -260,67 +258,25 @@ func zapGetUsage(c *zip.Ctx, params json.RawMessage) (interface{}, *zapError) {
 	}, nil
 }
 
+// zapRecordUsage is billing.recordUsage: the SAME write as POST
+// /v1/billing/usage (writeUsage), keyed for idempotency on the requestId.
 func zapRecordUsage(c *zip.Ctx, params json.RawMessage) (interface{}, *zapError) {
 	var req usageRequest
 	if err := json.Unmarshal(params, &req); err != nil {
 		return nil, &zapError{Code: -32602, Message: "invalid params: " + err.Error()}
 	}
-
-	if req.User == "" {
-		return nil, &zapError{Code: -32602, Message: "user is required"}
-	}
-
-	if req.Amount <= 0 {
-		return map[string]any{"user": req.User, "amount": 0, "status": "skipped"}, nil
-	}
-
-	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c.Context()))
-
-	cur := currency.Type(strings.ToLower(req.Currency))
-	if cur == "" {
-		cur = "usd"
-	}
-
-	notes := fmt.Sprintf("API usage: %s (%d tokens)", req.Model, req.TotalTokens)
-
-	trans := transaction.New(db)
-	trans.Type = transaction.Withdraw
-	trans.SourceId = req.User
-	trans.SourceKind = "iam-user"
-	trans.Currency = cur
-	trans.Amount = currency.Cents(req.Amount)
-	trans.Notes = notes
-	trans.Tags = "api-usage"
-	trans.Metadata = Map{
-		"model":            req.Model,
-		"provider":         req.Provider,
-		"promptTokens":     req.PromptTokens,
-		"completionTokens": req.CompletionTokens,
-		"totalTokens":      req.TotalTokens,
-		"requestId":        req.RequestID,
-		"premium":          req.Premium,
-		"stream":           req.Stream,
-		"status":           req.Status,
-		"clientIp":         req.ClientIP,
-	}
-
-	if org.TestMode() {
-		trans.Test = true
-	}
-
-	if err := trans.Create(); err != nil {
+	out, replay, err := writeUsage(c, req, strings.TrimSpace(req.RequestID))
+	var refused usageRefused
+	switch {
+	case errors.As(err, &refused):
+		return nil, &zapError{Code: -32602, Message: refused.msg}
+	case err != nil:
 		log.Error("ZAP: Failed to record usage: %v", err, c)
 		return nil, &zapError{Code: -32000, Message: "failed to record usage: " + err.Error()}
+	case replay != nil:
+		return json.RawMessage(replay), nil
 	}
-
-	return map[string]any{
-		"transactionId": trans.Id(),
-		"user":          req.User,
-		"amount":        req.Amount,
-		"currency":      cur,
-		"type":          "withdraw",
-	}, nil
+	return out, nil
 }
 
 func zapDeposit(c *zip.Ctx, params json.RawMessage) (interface{}, *zapError) {
