@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/zap-proto/zip"
@@ -21,6 +22,7 @@ import (
 	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/util/nscontext"
 )
 
 // preAuthVerifier is implemented by processors that support pre-authorization
@@ -630,6 +632,119 @@ func DetachPaymentMethod(c *zip.Ctx) error {
 	return c.JSON(200, detached)
 }
 
+// defaultLocks serializes every change to which card is a subject's default —
+// the first card's automatic default and an explicit choice — per (namespace,
+// subject), so two of them at once leave exactly one default. An org's store is
+// written by one process (replicas:1, or the shard router's one owner per org),
+// so an in-process lock is the serialization point, as redeemLocks is in
+// api/coupon.
+var defaultLocks sync.Map // map[string]*sync.Mutex
+
+func defaultLock(db *datastore.Datastore, subject string) *sync.Mutex {
+	m, _ := defaultLocks.LoadOrStore(nscontext.GetNamespace(db.Context)+"\x00"+subject, &sync.Mutex{})
+	return m.(*sync.Mutex)
+}
+
+// defaultsOf is the subject's default cards, as auto-recharge finds them. More
+// than one is possible only from a write interrupted between marking one card
+// and clearing another; the next choice clears it.
+func defaultsOf(db *datastore.Datastore, subject string) ([]*paymentmethod.PaymentMethod, error) {
+	rows := make([]*paymentmethod.PaymentMethod, 0, 1)
+	_, err := paymentmethod.Query(db).Ancestor(db.NewKey("synckey", "", 1, nil)).
+		Filter("CustomerId=", subject).
+		Filter("IsDefault=", true).
+		GetAll(&rows)
+	return rows, err
+}
+
+// rewrite persists a method loaded by id under the synckey root every method
+// query reads by ancestor. A row loaded by id carries a key with no parent, and
+// written back as loaded it would drop out of every list and lookup.
+func rewrite(db *datastore.Datastore, pm *paymentmethod.PaymentMethod) error {
+	k := pm.Key()
+	if err := pm.SetKey(db.NewKey(k.Kind(), k.StringID(), k.IntID(), db.NewKey("synckey", "", 1, nil))); err != nil {
+		return err
+	}
+	return pm.Update()
+}
+
+// DefaultChange is what choosing a default card answers with.
+type DefaultChange struct {
+	// Method is the card that is the default now.
+	Method Method `json:"method"`
+	// Previous names the default before the choice: one card, none when there was
+	// no default, and the chosen card itself when it already was.
+	Previous []string `json:"previous"`
+}
+
+// SetDefaultMethod makes one of a subject's saved cards its default — the card
+// auto-recharge charges.
+//
+// It takes values rather than a request: subject is the billing key the
+// endpoint already resolved from the caller's credential, and the card must be
+// that subject's own. A card the org's namespace does not hold and a card of
+// another subject both answer errNoMethod, so the refusal cannot prove a card id
+// exists. Only a vaulted card can be the default: a method with nothing to
+// charge answers errMethodUnchargeable. A refusal changes nothing.
+//
+// The chosen card is marked before the others are cleared, so a write that
+// fails between the two leaves two of this subject's own cards marked, which
+// the next choice clears, rather than none.
+func SetDefaultMethod(ctx context.Context, org *organization.Organization, id, subject string) (*DefaultChange, error) {
+	if org == nil {
+		return nil, errors.New("payment methods: no organization")
+	}
+	if subject == "" {
+		return nil, errNoMethod
+	}
+	db := datastore.New(org.Namespaced(ctx))
+
+	mu := defaultLock(db, subject)
+	mu.Lock()
+	defer mu.Unlock()
+
+	pm := paymentmethod.New(db)
+	if err := pm.GetById(id); err != nil {
+		return nil, fmt.Errorf("%w: %v", errNoMethod, err)
+	}
+	if pm.CustomerId != subject && pm.UserId != subject {
+		return nil, errNoMethod
+	}
+	if !strings.EqualFold(strings.TrimSpace(pm.Type), "card") || strings.TrimSpace(pm.ProviderRef) == "" {
+		return nil, errMethodUnchargeable
+	}
+
+	held, err := defaultsOf(db, subject)
+	if err != nil {
+		return nil, err
+	}
+	previous := make([]string, 0, len(held))
+	for _, h := range held {
+		previous = append(previous, h.Id())
+	}
+
+	if !pm.IsDefault {
+		pm.IsDefault = true
+		if err := rewrite(db, pm); err != nil {
+			return nil, err
+		}
+	}
+	for _, h := range held {
+		if h.Id() == pm.Id() {
+			continue
+		}
+		was := paymentmethod.New(db)
+		if err := was.GetById(h.Id()); err != nil {
+			return nil, err
+		}
+		was.IsDefault = false
+		if err := rewrite(db, was); err != nil {
+			return nil, err
+		}
+	}
+	return &DefaultChange{Method: methodOf(pm), Previous: previous}, nil
+}
+
 type setDefaultRequest struct {
 	PaymentMethodId string `json:"paymentMethodId"`
 }
@@ -638,13 +753,15 @@ type setDefaultRequest struct {
 //
 //	POST /v1/billing/customers/:id/default-payment-method
 func SetDefaultPaymentMethod(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c.Context()))
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		return http.Fail(c, 401, "sign in to choose a default payment method", nil)
+	}
 	customerId := c.Param("id")
 
-	// Intra-org IDOR guard (#43a, per-user). The :id customer path-param scopes the
-	// default-unset sweep below; a non-privileged caller must not clear another
-	// subject's default flags. 404 keeps customer ids unprobeable.
+	// Intra-org IDOR guard (#43a, per-user). The :id customer path-param names
+	// whose default changes; a non-privileged caller reaches only its own. 404
+	// keeps customer ids unprobeable.
 	if !callerMayReachBillingSubject(c, customerId) {
 		return http.Fail(c, 404, "payment method not found", nil)
 	}
@@ -654,42 +771,17 @@ func SetDefaultPaymentMethod(c *zip.Ctx) error {
 		return http.Fail(c, 400, "invalid request body", err)
 	}
 
-	// Unset any existing default for this customer
-	rootKey := db.NewKey("synckey", "", 1, nil)
-	iter := paymentmethod.Query(db).Ancestor(rootKey).
-		Filter("CustomerId=", customerId).
-		Filter("IsDefault=", true).
-		Run()
-
-	for {
-		existing := paymentmethod.New(db)
-		if _, err := iter.Next(existing); err != nil {
-			break
-		}
-		existing.IsDefault = false
-		_ = existing.Update()
-	}
-
-	// Set the new default
-	pm := paymentmethod.New(db)
-	if err := pm.GetById(req.PaymentMethodId); err != nil {
-		return http.Fail(c, 404, "payment method not found", err)
-	}
-
-	// Intra-org IDOR guard (#43a, per-user). paymentMethodId is an unpinned body
-	// field that can name a DIFFERENT subject's card; guard it too so a caller
-	// can't flip another subject's card to default. 404, no existence oracle.
-	if !callerMayReachBillingSubject(c, pm.CustomerId, pm.UserId) {
+	ch, err := SetDefaultMethod(c.Context(), org, req.PaymentMethodId, customerId)
+	switch {
+	case IsMethodNotFound(err):
 		return http.Fail(c, 404, "payment method not found", nil)
-	}
-
-	pm.IsDefault = true
-	if err := pm.Update(); err != nil {
+	case IsMethodUnchargeable(err):
+		return http.Fail(c, 422, err.Error(), nil)
+	case err != nil:
 		log.Error("Failed to set default payment method: %v", err, c)
 		return http.Fail(c, 500, "failed to set default", err)
 	}
-
-	return c.JSON(200, methodOf(pm))
+	return c.JSON(200, ch.Method)
 }
 
 // Method is a saved payment instrument as every billing surface states it: the

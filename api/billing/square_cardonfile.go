@@ -169,6 +169,19 @@ func saveCard(ctx context.Context, db *datastore.Datastore, cp squareCustomerPro
 		"squareVerified":   true,
 	}
 	stampCard(pm, cof.Card)
+
+	// The first card a subject saves is its default; a card saved while it has
+	// one leaves that default alone. Decided and persisted under the subject's
+	// default lock, so two saves at once cannot both find none. A default that
+	// cannot be read is left alone too: in doubt, nothing is taken over.
+	mu := defaultLock(db, subject)
+	mu.Lock()
+	defer mu.Unlock()
+	held, herr := defaultsOf(db, subject)
+	if herr != nil {
+		log.Warn("saveCard: the default of %s could not be read, so the new card is not made default: %v", subject, herr)
+	}
+	pm.IsDefault = herr == nil && len(held) == 0
 	if err := pm.Create(); err != nil {
 		return nil, false, fmt.Errorf("persist payment method: %w", err)
 	}
