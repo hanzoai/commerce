@@ -6,11 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/api/promo"
+	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/checkout"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
@@ -159,6 +161,17 @@ type staticPlan struct {
 type PlanView struct {
 	staticPlan
 	Limits *Capacity `json:"limits,omitempty"`
+	// The coupon quote, present only when the catalog was read with a coupon
+	// code (QuoteCoupon). A paid plan the coupon covers carries its code, its
+	// percent, what the first month charges under it (couponFirstCents: monthly,
+	// per seat on a per-seat plan like price, after any promo) and when it stops
+	// being redeemable; every other row carries couponError instead — unknown,
+	// expired, exhausted or not_applicable.
+	CouponCode       string `json:"couponCode,omitempty"`
+	CouponPercent    int    `json:"couponPercent,omitempty"`
+	CouponFirstCents int64  `json:"couponFirstCents,omitempty"`
+	CouponEnds       string `json:"couponEnds,omitempty"`
+	CouponError      string `json:"couponError,omitempty"`
 }
 
 // Capacity is what a plan's limits say in public: how many of a thing the plan
@@ -440,17 +453,62 @@ func ReadPlans(ctx context.Context, host, category string, pr *promo.Promo) ([]P
 	return views(withPromo(pr, filtered)), nil
 }
 
+// QuoteCoupon is the plan catalog as one coupon code would price it — a pure
+// read: nothing is reserved and nothing is counted. Each paid plan the coupon
+// covers is annotated with the code, its percent, the first month's charge
+// under it and when it ends; every other row names why not in couponError. An
+// empty code returns plans untouched, so a catalog read without one is the
+// catalog exactly as it was.
+//
+// The first month is priced by engine.Discounted over the row's own promo and
+// the coupon, the arithmetic the sale charges with. A plan the coupon would make
+// free is not applicable, because the sale refuses a charge of nothing.
+//
+// It annotates a COPY. ReadPlans hands back a fresh list, and this keeps the
+// rows it was given as they were.
+func QuoteCoupon(ctx context.Context, plans []PlanView, code string) []PlanView {
+	if strings.TrimSpace(code) == "" {
+		return plans
+	}
+	out := make([]PlanView, len(plans))
+	copy(out, plans)
+	offer, reason := promo.FindCoupon(ctx, code, time.Now())
+	ends := ""
+	if offer != nil && offer.End != nil {
+		ends = offer.End.UTC().Format(time.RFC3339)
+	}
+	for i := range out {
+		r := &out[i]
+		if reason != "" {
+			r.CouponError = reason
+			continue
+		}
+		first := engine.Discounted(r.Price, r.PromoPercent, offer.Percent)
+		if r.Price <= 0 || r.ContactSales || !offer.AppliesTo(r.Slug) || first <= 0 {
+			r.CouponError = promo.CouponNotApplicable
+			continue
+		}
+		r.CouponCode = offer.Code
+		r.CouponPercent = offer.Percent
+		r.CouponFirstCents = first
+		r.CouponEnds = ends
+	}
+	return out
+}
+
 // ListPlans is the endpoint over ReadPlans. Catalog data is admin-editable and
-// embedded as a fallback; the promo is admin-configured and resolved per request.
+// embedded as a fallback; the promo is admin-configured and resolved per request,
+// and a coupon code, when one is asked about, is quoted by QuoteCoupon.
 //
 //	GET /v1/billing/plans
 //	GET /v1/billing/plans?category=dns
+//	GET /v1/billing/plans?coupon=50OFF
 func ListPlans(c *zip.Ctx) error {
 	plans, err := ReadPlans(c.Context(), checkout.RequestHost(c), c.Query("category"), promo.Active(c))
 	if err != nil {
 		return http.Fail(c, 500, "failed to list plans", err)
 	}
-	return c.JSON(200, plans)
+	return c.JSON(200, QuoteCoupon(c.Context(), plans, c.Query("coupon")))
 }
 
 // GetPlan returns a single plan by slug, annotated with the active platform promo.

@@ -12,7 +12,6 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
-	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/transaction"
@@ -153,25 +152,7 @@ func Credit(c *zip.Ctx) error {
 // came to disagree.
 // mintedBy is the ledger's note for a minted credit: who minted it, then why.
 func mintedBy(c *zip.Ctx, reason string) string {
-	return "Minted by " + minter(c) + ": " + reason
-}
-
-// minter names the principal behind a privileged money act — a mint, a comp, a
-// balance adjustment — for the row it writes. Every such route admits only the
-// platform principal (middleware.MayMintMoney: owner "admin"), whose validated
-// claims name them: the email, else owner/name, else the subject, else the owner.
-func minter(c *zip.Ctx) string {
-	claims := iammiddleware.GetIAMClaims(c)
-	if e := strings.TrimSpace(claims.Email); e != "" {
-		return e
-	}
-	if n := strings.TrimSpace(claims.Name); n != "" {
-		return strings.TrimSpace(claims.Owner) + "/" + n
-	}
-	if s := strings.TrimSpace(claims.Subject); s != "" {
-		return s
-	}
-	return strings.TrimSpace(claims.Owner)
+	return "Minted by " + middleware.Actor(c) + ": " + reason
 }
 
 func creditTargetOrg(c *zip.Ctx, org string) (*organization.Organization, error) {
@@ -223,7 +204,7 @@ func creditToDatastore(c *zip.Ctx, targetOrg *organization.Organization, org, cu
 	if targetOrg.TestMode() {
 		trans.Test = true
 	}
-	trans.Metadata = Map{"reason": reason, "mintedBy": minter(c)}
+	trans.Metadata = Map{"reason": reason, "mintedBy": middleware.Actor(c)}
 
 	if err := trans.Create(); err != nil {
 		if idemRec != nil {

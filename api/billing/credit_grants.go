@@ -66,7 +66,7 @@ func CreateCreditGrant(c *zip.Ctx) error {
 	grant.Priority = req.Priority
 	grant.Eligibility = req.Eligibility
 	grant.Tags = req.Tags
-	grant.Metadata = Map{"mintedBy": minter(c)}
+	grant.Metadata = Map{"mintedBy": middleware.Actor(c)}
 
 	if req.ExpiresIn != "" {
 		dur, err := time.ParseDuration(req.ExpiresIn)
@@ -402,7 +402,7 @@ func VoidCreditGrant(c *zip.Ctx) error {
 	if grant.Metadata == nil {
 		grant.Metadata = Map{}
 	}
-	grant.Metadata["voidedBy"] = minter(c)
+	grant.Metadata["voidedBy"] = middleware.Actor(c)
 	if err := grant.Update(); err != nil {
 		log.Error("Failed to void credit grant: %v", err, c)
 		return http.Fail(c, 500, "failed to void credit grant", err)

@@ -339,7 +339,7 @@ func openPaid(db *datastore.Datastore, p *plan.Plan, req *createSubscriptionRequ
 	if ref == "" {
 		ref = "credit_burn"
 	}
-	inv, err := engine.CreatePaidFirstInvoice(db, sub, method, ref)
+	inv, err := engine.CreatePaidFirstInvoice(db, sub, method, ref, engine.Coupon{})
 	if err != nil {
 		log.Error("RECONCILE: subscription %s (subject=%s) was paid from prepaid money (ref=%s) and its first invoice was not recorded: %v",
 			sub.Id(), req.UserId, ref, err)

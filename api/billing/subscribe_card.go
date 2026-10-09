@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/zap-proto/zip"
 
@@ -111,6 +112,9 @@ type subscribeCardRequest struct {
 	// before; "year" buys the catalog's annual price, charged for the whole year
 	// at once. planAtInterval says what that amounts to.
 	Interval types.Interval `json:"interval,omitempty"`
+	// Coupon is a plan coupon CODE (case-insensitive) for a percent off the first
+	// month — a code, never an amount: the percent is the stored coupon's.
+	Coupon string `json:"coupon,omitempty"`
 }
 
 // SubscribeIn is the whole input of a card subscription. Every field is a VALUE
@@ -145,6 +149,11 @@ type SubscribeIn struct {
 	Currency string
 	// Email is stamped on the Square customer a fresh vault creates.
 	Email string
+	// Coupon is a plan coupon code the buyer typed. Empty buys at the price the
+	// catalog and promo set. A code that does not stand, does not cover the plan,
+	// or was redeemed by this org or card REFUSES the sale before the card is
+	// charged — it never silently sells at full price.
+	Coupon string
 	// IdempotencyKey is the caller's explicit retry key. Empty falls back to the
 	// windowed derivation over the stable facts (store, plan, level).
 	IdempotencyKey string
@@ -182,12 +191,16 @@ type Sale struct {
 	// PaymentMethodID is the vaulted card that paid, and that renewals charge.
 	PaymentMethodID string `json:"paymentMethodId"`
 	// AmountCents is what the card was actually charged for the first period —
-	// price x seats, less any promotion.
+	// price x seats, less any promotion and coupon.
 	AmountCents int64 `json:"amountCents"`
 	// Currency is the ISO code, the plan's own.
 	Currency string `json:"currency"`
 	// Status is "ok" on a settled sale. A failure is an error, never a status.
 	Status string `json:"status"`
+	// Coupon and CouponPercent name the coupon the first period was bought with,
+	// absent when none was. Renewals bill without it.
+	Coupon        string `json:"coupon,omitempty"`
+	CouponPercent int    `json:"couponPercent,omitempty"`
 }
 
 // The kinds of no a sale can end in. They are separate because each is a
@@ -414,13 +427,13 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// AppliesTo), and until now nothing subtracted it here: the page could say
 	// "50% off" while this line charged full price and the receipt agreed with the
 	// charge, not the offer. Resolved once, carried on the subscription, so every
-	// renewal prices identically — and computed through engine.DiscountCents, the
+	// renewal prices identically — and computed through engine.Discounted, the
 	// same function that discounts the invoice, so charge == AmountDue by
 	// construction rather than by two implementations agreeing.
 	promoPercent, promoName := 0, ""
 	if pr := in.Promo; pr != nil && pr.AppliesTo(planID) {
 		promoPercent, promoName = pr.PercentOff, pr.Name()
-		chargeCents -= engine.DiscountCents(chargeCents, promoPercent)
+		chargeCents = engine.Discounted(chargeCents, promoPercent)
 	}
 	if chargeCents <= 0 {
 		// A 100%-off promo leaves nothing to charge, and a card sale of $0 is not a
@@ -443,6 +456,27 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			fmt.Sprintf("plan priced in %s; currency %s not accepted", cur, reqCur)}
 	}
 
+	// A coupon's request shape is checked here, before anything is held. Whether
+	// the coupon stands, covers this plan and is still this org's to redeem is
+	// state, and is asked after the idempotency guard, for the reason the
+	// one-paid-subscription check is: a lost-response retry of a sale that used
+	// the last redemption must replay its receipt, not be told the coupon is
+	// exhausted.
+	couponCode := ""
+	if raw := strings.TrimSpace(in.Coupon); raw != "" {
+		couponCode = promo.CouponCode(raw)
+		switch {
+		case couponCode == "":
+			return nil, saleRefusal{saleRefused, "coupon is not valid"}
+		case sourceID == "credits" || sourceID == "balance":
+			// One use per card is half the rule, and prepaid money has no card.
+			return nil, saleRefusal{saleRefused, "a coupon is redeemed with a card: send sourceId or paymentMethodId"}
+		case p.Interval == types.Yearly:
+			return nil, saleRefusal{saleRefused,
+				fmt.Sprintf("coupon %s takes a percent off the first month, so it applies to monthly billing only", couponCode)}
+		}
+	}
+
 	// Idempotency (money-critical). The client SHOULD send a STABLE X-Idempotency-Key
 	// per checkout attempt (the SPA does), so a lost-response retry — even with a
 	// FRESH single-use nonce — replays instead of vaulting + charging again. Absent a
@@ -462,10 +496,19 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// charge and be handed a receipt for a year. It is the RESOLVED period that
 	// scopes the key, not the field as sent, because an absent interval and "month"
 	// are the same purchase and must share a key rather than charge twice.
+	//
+	// The COUPON is one of those facts when one is sent: a buyer who retried with a
+	// different code, or with none, is making a different purchase. It is absent
+	// from the facts when no coupon is sent, so a coupon-less sale keys exactly as
+	// it always has.
 	guard := in.IdempotencyKey
 	if guard == "" {
-		guard = windowKey("store:" + in.StoreID + ":plan:" + planID +
-			":level:" + strconv.Itoa(in.Level) + ":interval:" + string(p.Interval))
+		facts := "store:" + in.StoreID + ":plan:" + planID +
+			":level:" + strconv.Itoa(in.Level) + ":interval:" + string(p.Interval)
+		if couponCode != "" {
+			facts += ":coupon:" + couponCode
+		}
+		guard = windowKey(facts)
 	}
 	// The Square idempotency key is derived from the SAME stable guard key (never the
 	// single-use nonce), so Square itself de-dups the money move even if the local
@@ -526,6 +569,38 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		return nil, saleRefusal{saleHeld, fmt.Sprintf(
 			"this account already pays for the %q plan (subscription %s); change that subscription instead of buying a second one",
 			heldSlug, held.Id())}
+	}
+
+	// The coupon, resolved now that the guard is held: it must stand, cover this
+	// plan, and not have been redeemed by this org. Its percent comes off what
+	// the promo left, through the function the invoice prices with, so the charge
+	// equals the first invoice's AmountDue. It discounts this first charge only:
+	// the subscription never carries it, so every renewal bills the catalog price.
+	cpn := engine.Coupon{}
+	if couponCode != "" {
+		slug := p.Slug
+		if slug == "" {
+			slug = planID
+		}
+		offer, reason := promo.FindCoupon(ctx, couponCode, time.Now())
+		if reason == "" && !offer.AppliesTo(slug) {
+			reason = promo.CouponNotApplicable
+		}
+		if reason != "" {
+			abandon()
+			return nil, saleRefusal{saleRefused, couponRefusal(couponCode, slug, reason)}
+		}
+		if promo.Redeemed(ctx, couponCode, org.Name) {
+			abandon()
+			return nil, saleRefusal{saleHeld, fmt.Sprintf("%v (%s)", promo.ErrCouponRedeemedByOrg, couponCode)}
+		}
+		cpn = engine.Coupon{Code: offer.Code, Percent: offer.Percent}
+		chargeCents = engine.Discounted(chargeCents, cpn.Percent)
+		if chargeCents <= 0 {
+			abandon()
+			return nil, saleRefusal{saleRefused,
+				fmt.Sprintf("coupon %s leaves nothing to charge for plan %q, and a card sale must charge something", couponCode, planID)}
+		}
 	}
 
 	if sourceID == "credits" || sourceID == "balance" {
@@ -621,12 +696,33 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		}
 	}
 
+	// The coupon's use is RESERVED before the card is charged, under the coupon's
+	// lock: the redemption rows for this org and this card are written and the use
+	// counted against the limit, so two buyers racing for the last use cannot both
+	// be charged for it. A card that already redeemed the code is refused here,
+	// once the card is known and before any money moves. A decline gives the use
+	// back; once the charge settles it is spent, whatever happens after.
+	var hold *promo.Hold
+	if cpn.Code != "" {
+		h, herr := promo.Reserve(ctx, cpn.Code, org.Name, instrumentOf(pm), time.Now())
+		if herr != nil {
+			if fresh {
+				_ = cp.RemovePaymentMethod(ctx, squareCustomerIDOf(pm), pm.ProviderRef)
+				_ = pm.Delete()
+			}
+			abandon()
+			return nil, holdRefusal(cpn.Code, herr)
+		}
+		hold = h
+	}
+
 	// Charge the SAVED card (card-on-file id + Square customer id) for the first
 	// period at the server-authoritative price × seats, with the stable Square
 	// idempotency key. All-or-nothing: on a decline no subscription is created.
 	res, err := chargeSavedCard(ctx, reg, pm.ProviderRef, squareCustomerIDOf(pm), chargeCents, cur, squareKey,
 		fmt.Sprintf("Subscription %s — first period", p.Name))
 	if err != nil || res == nil || !res.Success {
+		hold.Release()
 		// A card vaulted BY THIS REQUEST is removed again so a declined attempt
 		// leaves no orphan — but a card the customer already had on file (saved
 		// earlier, or the dedupe match) is theirs and stays.
@@ -652,13 +748,17 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// deliberately not on this path). No trial: the customer is paying now, so the
 	// first period is Active immediately.
 	p.TrialPeriodDays = 0
+	meta := map[string]interface{}{"source": "subscribe/card"}
+	if cpn.Code != "" {
+		meta["coupon"] = cpn.Code
+	}
 	sub, err := createSubscription(db, p, &createSubscriptionRequest{
 		UserId:               in.Subject,
 		PlanId:               planID,
 		StoreId:              in.StoreID,
 		DefaultPaymentMethod: pm.Id(),
 		Quantity:             qty,
-		Metadata:             map[string]interface{}{"source": "subscribe/card"},
+		Metadata:             meta,
 		Test:                 org.TestMode(),
 	})
 	if err != nil {
@@ -677,9 +777,10 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	sub.ProviderType = string(processor.Square)
 	// Stamp the promo BEFORE the invoice is built — buildPeriodInvoice prices the
 	// discount off the subscription, so setting it after would invoice the first
-	// period at full price against a discounted charge.
+	// period at full price against a discounted charge. The coupon is NOT stamped:
+	// it is handed to this one invoice, so renewals bill without it.
 	sub.DiscountPercent, sub.DiscountName = promoPercent, promoName
-	inv, err := engine.CreatePaidFirstInvoice(db, sub, "card", res.ProcessorRef)
+	inv, err := engine.CreatePaidFirstInvoice(db, sub, "card", res.ProcessorRef, cpn)
 	if err != nil {
 		// The subscription exists and the money is collected; a first-invoice record
 		// failure is non-fatal to the entitlement. Log for reconciliation.
@@ -705,6 +806,8 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		AmountCents:     chargeCents,
 		Currency:        string(cur),
 		Status:          "ok",
+		Coupon:          cpn.Code,
+		CouponPercent:   cpn.Percent,
 	}
 	// Seal the idempotency guard with the exact success body so a retry replays it
 	// verbatim (no second vault/charge/subscribe, identical response).
@@ -716,18 +819,60 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil
 }
 
+// couponRefusal is the sentence a buyer reads when the coupon they sent cannot
+// be used for this plan, by the reason the plans quote names.
+func couponRefusal(code, slug, reason string) string {
+	switch reason {
+	case promo.CouponExpired:
+		return fmt.Sprintf("coupon %s has expired", code)
+	case promo.CouponExhausted:
+		return fmt.Sprintf("coupon %s has been fully redeemed", code)
+	case promo.CouponNotApplicable:
+		return fmt.Sprintf("coupon %s does not apply to plan %q", code, slug)
+	}
+	return fmt.Sprintf("coupon %s is not valid", code)
+}
+
+// holdRefusal is a coupon reservation's refusal as a sale refusal: the coupon
+// no longer standing is the request's 400, an org or card that already redeemed
+// it is a 409, and a store that could not record the use is the sale failing.
+func holdRefusal(code string, err error) error {
+	var cr promo.CouponRefusal
+	switch {
+	case errors.As(err, &cr):
+		return saleRefusal{saleRefused, couponRefusal(code, "", cr.Reason)}
+	case errors.Is(err, promo.ErrCouponRedeemedByOrg), errors.Is(err, promo.ErrCouponRedeemedByCard):
+		return saleRefusal{saleHeld, fmt.Sprintf("%v (%s)", err, code)}
+	}
+	return fmt.Errorf("coupon %s: the use was not recorded, so the card was not charged: %w", code, err)
+}
+
+// instrumentOf is a saved card's identity across orgs and vaults, for the
+// one-use-per-card rule: the processor's fingerprint of the card number, else
+// its brand, last four and expiry, else the vaulted card itself.
+func instrumentOf(pm *paymentmethod.PaymentMethod) string {
+	if fp := metaStr(pm, "fingerprint"); fp != "" {
+		return "fp:" + fp
+	}
+	if c := pm.Card; c != nil && c.Brand != "" && c.Last4 != "" {
+		return fmt.Sprintf("card:%s:%s:%d/%d", strings.ToLower(c.Brand), c.Last4, c.ExpMonth, c.ExpYear)
+	}
+	return "ref:" + strings.TrimSpace(pm.ProviderRef)
+}
+
 // SubscribeWithCard vaults a Square card nonce as a reusable card-on-file, charges
 // it for the plan's FIRST period at the SERVER-AUTHORITATIVE catalog price, and
 // creates the subscription — all server-side, in one transaction of intent.
 //
 //	POST /v1/billing/subscribe/card
 //
-// Body: { sourceId | paymentMethodId, planId, userId?, quantity?, level?, currency? }
-// — NO client amount: the price is the plan's catalog price, always.
+// Body: { sourceId | paymentMethodId, planId, userId?, quantity?, level?, interval?, currency?, coupon? }
+// — NO client amount: the price is the plan's catalog price, always. coupon is a
+// plan coupon code for a percent off the first month only.
 // Header (optional): X-Idempotency-Key — a retry/double-submit with the same key
 // (or, absent a key, the same store/plan/level inside a window) never
 // double-charges: it replays the first result verbatim.
-// Returns: { subscriptionId, invoiceId, planId, level, paymentMethodId, amountCents, currency, status }
+// Returns: { subscriptionId, invoiceId, planId, level, interval, paymentMethodId, amountCents, currency, status, coupon?, couponPercent? }
 //
 // Everything below the bind is reading values off the request and handing them to
 // Subscribe: the buyer bounded to the caller's own org, the retry key from the
@@ -791,6 +936,7 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		Interval:       req.Interval,
 		Currency:       req.Currency,
 		Email:          iamEmail,
+		Coupon:         req.Coupon,
 		IdempotencyKey: strings.TrimSpace(c.Header("X-Idempotency-Key")),
 		Promo:          promo.Active(c),
 		KMS:            kmsOf(c),

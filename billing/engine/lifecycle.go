@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -141,7 +142,7 @@ func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscr
 
 	// Generate a fresh, sequentially-numbered invoice: the owed period's fee in
 	// advance, and the metered usage since the held period began, in arrears.
-	inv, err := buildPeriodInvoice(db, sub, next, period{sub.PeriodStart, next.start})
+	inv, err := buildPeriodInvoice(db, sub, next, period{sub.PeriodStart, next.start}, Coupon{})
 	if err != nil {
 		sub.Quantity, sub.PendingQuantity = quantity, pending
 		if rec != nil {
@@ -221,7 +222,10 @@ func IsDue(sub *subscription.Subscription, now time.Time) bool {
 // paid for; RenewSubscription bills the next one when this one ends. Idempotent per
 // period: if an invoice for the held period already exists it is returned as-is (no
 // duplicate, no state change), so a retried subscribe never double-invoices.
-func CreatePaidFirstInvoice(db *datastore.Datastore, sub *subscription.Subscription, method, providerRef string) (*billinginvoice.BillingInvoice, error) {
+//
+// coupon discounts this invoice alone (the zero Coupon discounts nothing): the
+// charge already taken was priced with it, and the subscription never carries it.
+func CreatePaidFirstInvoice(db *datastore.Datastore, sub *subscription.Subscription, method, providerRef string, coupon Coupon) (*billinginvoice.BillingInvoice, error) {
 	held := period{sub.PeriodStart, sub.PeriodEnd}
 	if existing, err := findInvoiceForPeriod(db, sub, held); err != nil {
 		return nil, fmt.Errorf("failed to look up existing invoice for period: %w", err)
@@ -229,7 +233,7 @@ func CreatePaidFirstInvoice(db *datastore.Datastore, sub *subscription.Subscript
 		return existing, nil
 	}
 
-	inv, err := buildPeriodInvoice(db, sub, held, period{})
+	inv, err := buildPeriodInvoice(db, sub, held, period{}, coupon)
 	if err != nil {
 		return inv, err
 	}
@@ -245,9 +249,10 @@ func CreatePaidFirstInvoice(db *datastore.Datastore, sub *subscription.Subscript
 
 // buildPeriodInvoice constructs, numbers, finalizes and persists a new invoice
 // for the plan fee of period fee and the metered usage of period use (none when
-// use is empty). The invoice number is a sequential per-org counter, mirroring the
-// credit-note numbering in refunds.go.
-func buildPeriodInvoice(db *datastore.Datastore, sub *subscription.Subscription, fee, use period) (*billinginvoice.BillingInvoice, error) {
+// use is empty), less the subscription's promo and then coupon, which only the
+// first period's invoice is ever handed. The invoice number is a sequential
+// per-org counter, mirroring the credit-note numbering in refunds.go.
+func buildPeriodInvoice(db *datastore.Datastore, sub *subscription.Subscription, fee, use period, coupon Coupon) (*billinginvoice.BillingInvoice, error) {
 	inv := billinginvoice.New(db)
 	inv.UserId = sub.UserId
 	inv.SubscriptionId = sub.Id()
@@ -283,19 +288,36 @@ func buildPeriodInvoice(db *datastore.Datastore, sub *subscription.Subscription,
 	// Calculate totals
 	inv.RecalculateSubtotal()
 
-	// The promo the subscription was bought under, priced off the PLAN fee only —
-	// metered usage above is real consumption and is never discounted by a plan
-	// promo. Finalize() folds Discount into AmountDue, so this must land before it.
-	if inv.Subtotal > 0 && sub.DiscountPercent > 0 {
+	// The promo the subscription was bought under, then the coupon this invoice
+	// alone carries, priced off the PLAN fee only — metered usage above is real
+	// consumption and is never discounted by a plan promo or coupon. Discounted is
+	// the function the card path priced the charge with, so the two agree to the
+	// cent. Finalize() folds Discount into AmountDue, so this must land before it.
+	if inv.Subtotal > 0 && (sub.DiscountPercent > 0 || coupon.Percent > 0) {
 		planFee := int64(0)
 		for _, li := range inv.LineItems {
 			if li.Type == billinginvoice.LineSubscription {
 				planFee += li.Amount
 			}
 		}
-		if d := DiscountCents(planFee, sub.DiscountPercent); d > 0 {
+		afterPromo := Discounted(planFee, sub.DiscountPercent)
+		couponCents := afterPromo - Discounted(afterPromo, coupon.Percent)
+		names := make([]string, 0, 2)
+		if afterPromo < planFee {
+			names = append(names, sub.DiscountName)
+		}
+		if couponCents > 0 {
+			names = append(names, coupon.Label())
+			if inv.Metadata == nil {
+				inv.Metadata = map[string]interface{}{}
+			}
+			inv.Metadata["coupon"] = coupon.Code
+			inv.Metadata["couponPercent"] = coupon.Percent
+			inv.Metadata["couponCents"] = couponCents
+		}
+		if d := planFee - afterPromo + couponCents; d > 0 {
 			inv.Discount = d
-			inv.DiscountName = sub.DiscountName
+			inv.DiscountName = strings.Join(names, "; ")
 		}
 	}
 

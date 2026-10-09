@@ -3,6 +3,8 @@
 
 package engine
 
+import "strconv"
+
 // DiscountCents is the ONE place a percent-off becomes money.
 //
 // It exists because the charge and the invoice are computed in two different
@@ -29,4 +31,32 @@ func DiscountCents(subtotalCents int64, percent int) int64 {
 		return subtotalCents
 	}
 	return d
+}
+
+// Discounted is fee less each percent in turn, every percent priced off what the
+// one before it left: the subscription's promo, then a coupon. The card path and
+// the invoice both call it with the same percents in the same order, so the
+// amount charged equals the invoice's AmountDue however many discounts stack.
+func Discounted(fee int64, percents ...int) int64 {
+	for _, p := range percents {
+		fee -= DiscountCents(fee, p)
+	}
+	return fee
+}
+
+// Coupon is a percent off ONE invoice: the first period of a subscription bought
+// with a coupon code. It is handed to the invoice that period's charge paid and
+// never stored on the subscription, so every later period bills at the plan's
+// price, less only the promo the subscription carries.
+type Coupon struct {
+	Code    string
+	Percent int
+}
+
+// Label is how the coupon reads on the invoice it discounts.
+func (c Coupon) Label() string {
+	if c.Code == "" || c.Percent <= 0 {
+		return ""
+	}
+	return c.Code + " — " + strconv.Itoa(c.Percent) + "% off first month"
 }

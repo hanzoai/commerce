@@ -25,6 +25,10 @@ const (
 
 var Types = []Type{Flat, Percent, FreeShipping}
 
+// PlanFilter marks a coupon that discounts a subscription PLAN purchase rather
+// than a cart: the first period of a plan bought with its code.
+const PlanFilter = "plan"
+
 type Coupon struct {
 	mixin.Model[Coupon]
 
@@ -47,7 +51,7 @@ type Coupon struct {
 	StartDate time.Time `json:"startDate"`
 	EndDate   time.Time `json:"endDate"`
 
-	// Possible values: order, product.
+	// Possible values: order, product, plan (PlanFilter).
 	Filter string `json:"filter"`
 
 	// Indicates whether this coupon may be applied once or more than once at checkout.
@@ -58,6 +62,10 @@ type Coupon struct {
 
 	// Product id for product-specific coupons.
 	ProductId string `json:"productId,omitempty"`
+
+	// Plans are the plan slugs a plan coupon applies to, beside ProductId. Both
+	// empty means every paid plan.
+	Plans []string `json:"plans,omitempty"`
 
 	// Whether coupon is valid.
 	Enabled bool `json:"enabled" orm:"default:true"`
