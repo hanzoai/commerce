@@ -29,6 +29,15 @@ package billing
 // past due. The ledger entry and the invoice the draw paid are the reference, so
 // the caller need not name one.
 //
+// ONE PROCESSOR IS NOBODY: "comp". A plan an owner gives away — our own orgs,
+// a partner — is recorded as what it is, a plan nobody paid for: priceCents 0,
+// whatever the plan costs (a plan with no price, such as enterprise, included),
+// the approval that gave it in reference.order and why in terms. Its row is
+// external like any record, so it never renews and nothing ever charges it, and
+// its plan is held at price 0, so it adds nothing to MRR. A comp is extended only
+// by a comp; a paid plan takes one over by naming it in Replaces, and a comp
+// takes over a paid plan the same way.
+//
 // A record may TAKE OVER the plan the subject holds, when the caller names it in
 // Replaces. The new plan is recorded — and, from the balance, paid — first; the
 // held plan ends only after, so a refusal at any step leaves it as it was.
@@ -74,7 +83,8 @@ type RecordIn struct {
 	// Processor is who collected the money: "square", "wire", … It becomes the
 	// row's provider, and nothing here ever calls it. "balance" is the one
 	// exception: the period is paid now from the subject's prepaid money and the
-	// engine renews it from there.
+	// engine renews it from there. "comp" is a plan nobody paid for: PriceCents 0,
+	// the approval in Reference "order", and Terms saying why.
 	Processor string
 	// Reference is the processor's own ids for the payment (invoice, order,
 	// payment, customer, receipt), kept on the row for reconciliation. Optional
@@ -149,6 +159,7 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 	processor := strings.ToLower(strings.TrimSpace(in.Processor))
 	reference := cleanReference(in.Reference)
 	start, end := in.PeriodStart.UTC(), in.PeriodEnd.UTC()
+	comp := processor == processorComp
 	switch {
 	case subject == "":
 		return nil, saleRefusal{saleRefused, "subject is required"}
@@ -156,11 +167,15 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 		return nil, saleRefusal{saleRefused, "planId is required"}
 	case processor == "":
 		return nil, saleRefusal{saleRefused, "processor is required: name who collected the payment"}
+	case comp && (reference["order"] == "" || strings.TrimSpace(in.Terms) == ""):
+		return nil, saleRefusal{saleRefused, "a comp names the approval that gave it in reference.order and why in terms"}
+	case comp && in.PriceCents != 0:
+		return nil, saleRefusal{saleRefused, "a comp is a plan nobody paid for: priceCents is 0"}
 	case len(reference) == 0 && processor != processorBalance:
 		return nil, saleRefusal{saleRefused, "reference is required: the processor's own ids for the payment"}
 	case start.IsZero() || !end.After(start):
 		return nil, saleRefusal{saleRefused, "periodEnd must be after periodStart"}
-	case in.PriceCents <= 0:
+	case !comp && in.PriceCents <= 0:
 		return nil, saleRefusal{saleRefused, "priceCents is required: what the customer paid for the period"}
 	}
 
@@ -177,7 +192,8 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 	}
 
 	held := billingSubscription(db, subject, org.TestMode())
-	if held != nil && (in.Replaces == "" || sameRung(held, planID, p.Interval)) {
+	sameKind := held != nil && (held.ProviderType == processorComp) == comp
+	if held != nil && (in.Replaces == "" || (sameRung(held, planID, p.Interval) && sameKind)) {
 		return extendRecorded(ctx, org, held, in, planID, p.Interval, reference, start, end)
 	}
 	if err := takesOver(held, in.Replaces); err != nil {
@@ -193,7 +209,11 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 	if perSeat(planID) {
 		seatMult = int64(qty)
 	}
-	if err := priceMatches(planID, int64(p.Price)*seatMult, in.PriceCents); err != nil {
+	if comp {
+		// Held at price 0: what the row's plan costs is what MRR and every
+		// reader of the row sum, and nobody pays for a comp.
+		p.Price = 0
+	} else if err := priceMatches(planID, int64(p.Price)*seatMult, in.PriceCents); err != nil {
 		return nil, err
 	}
 
@@ -300,6 +320,12 @@ func extendRecorded(ctx context.Context, org *organization.Organization, held *s
 			"this account already holds the %q plan by the %s (subscription %s); a payment for another plan cannot extend it, but may take it over by naming it in replaces",
 			slug, held.Plan.Interval, held.Id())}
 	}
+	comp := strings.EqualFold(strings.TrimSpace(in.Processor), processorComp)
+	if heldComp := held.ProviderType == processorComp; comp != heldComp {
+		return nil, saleRefusal{saleHeld, fmt.Sprintf(
+			"subscription %s is %s; a comp extends only a comp and a payment only a paid plan, so name it in replaces to take it over",
+			held.Id(), map[bool]string{true: "a comp", false: "a paid plan"}[heldComp])}
+	}
 	// The period recorded again holds the seats it was paid for; a later period
 	// opens at the seats a change asked for, when one waits for it.
 	same := start.Equal(held.PeriodStart.UTC()) && end.Equal(held.PeriodEnd.UTC())
@@ -316,9 +342,12 @@ func extendRecorded(ctx context.Context, org *organization.Organization, held *s
 		seatMult = int64(quantity)
 	}
 	// The row keeps the price it was opened at, so a later payment is checked
-	// against that price and not against whatever the catalog sells today.
-	if err := priceMatches(slug, int64(held.Plan.Price)*seatMult, in.PriceCents); err != nil {
-		return nil, err
+	// against that price and not against whatever the catalog sells today. A comp
+	// is held at 0 and was checked at the door.
+	if !comp {
+		if err := priceMatches(slug, int64(held.Plan.Price)*seatMult, in.PriceCents); err != nil {
+			return nil, err
+		}
 	}
 	if same {
 		return &Recorded{Subscription: *viewSubscription(held), Outcome: RecordUnchanged}, nil
@@ -408,6 +437,9 @@ func cleanReference(in map[string]string) map[string]string {
 // processorBalance is the processor that is commerce itself: the period is paid
 // from the subject's prepaid money.
 const processorBalance = "balance"
+
+// processorComp is no processor at all: a plan given away, recorded at price 0.
+const processorComp = "comp"
 
 // monthEnd is the most a calendar month's end shortens a period against
 // engine.Advance, which carries a day a month lacks into the next one: January 31

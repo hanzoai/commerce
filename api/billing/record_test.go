@@ -262,12 +262,13 @@ func TestSubscriptionsSayHowThePeriodWasPaid(t *testing.T) {
 	org := moneyOrg("rec-settled")
 	withFakeSquare(t, squareMock("cust_1", "ccof_1", "sqpay_1"))
 	db := datastore.New(org.Namespaced(ctx))
-	for _, proc := range []string{"square", "comp"} {
-		in := recordDev(t, db)
-		in.Subject = "acme-" + proc
-		in.Processor = proc
+	paid := recordDev(t, db)
+	paid.Subject = "acme-square"
+	comp := compEnterprise("acme-comp")
+	comp.PlanID = "dev"
+	for _, in := range []RecordIn{paid, comp} {
 		if _, err := RecordSubscription(ctx, org, in); err != nil {
-			t.Fatalf("record %s: %v", proc, err)
+			t.Fatalf("record %s: %v", in.Processor, err)
 		}
 	}
 	for subject, want := range map[string]string{"acme-square": "external:square", "acme-comp": "external:comp"} {

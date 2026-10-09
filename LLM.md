@@ -907,6 +907,14 @@ pool waits until a target is resolved + onboarded.
   (`db.Counter.Add`, one upsert on `_sequences`) and debits the cent boundaries
   its span crosses, so `sum(amount) == floor(sum(amountMicros)/10_000)` under
   any concurrency. A store that is not a `db.Counter` refuses (503).
+- **A plan given away is a comp, recorded as one.** `RecordSubscription` with
+  processor `comp`: priceCents 0 for any plan (enterprise, which publishes no
+  price, included), the approval in `reference.order`, why in `terms`. The row is
+  external, so it never renews or charges, and its plan is held at price 0, so it
+  adds nothing to MRR; it confers the plan's tier like any recorded plan
+  (settled `external:comp`). A comp extends only a comp and a payment only a paid
+  plan; either takes the other over by naming it in `Replaces`. Every other
+  processor still needs a price equal to the catalog's.
 - **Privileged money acts name who took them**: `/credit`, `/deposit`,
   `/credits` (+ void), customer-balance adjustments, bank-transfer matches and
   comp subscriptions stamp `minter(c)` on the row they write.
