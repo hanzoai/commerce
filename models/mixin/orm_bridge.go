@@ -16,6 +16,7 @@ package mixin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -247,6 +248,39 @@ func (b *Model[T]) Update() error {
 	err := b.Model.Update()
 	b.updateId()
 	return err
+}
+
+// Swaps is how many times a read-modify-write reads again after another writer
+// changed its entity under it, before it reports the contention as an error.
+const Swaps = 8
+
+// Swap writes the entity only while the stored one is still the one this model
+// read: its updatedAt unchanged since, or nothing stored for an entity never
+// written (datastore.Swap). It reports whether it wrote; false means another writer
+// changed it first, the model is left as read, and the caller reads again. It runs
+// no update hooks: it is the write of a read-modify-write, not of a form.
+func (b *Model[T]) Swap() (bool, error) {
+	if b.ds == nil {
+		return false, errors.New("mixin: swap on a model with no datastore")
+	}
+	b.callSave()
+	b.ensureKey()
+	prev, created := b.Model.UpdatedAt, b.Model.CreatedAt
+	now := time.Now()
+	if !b.Model.Created() {
+		b.Model.CreatedAt = now
+	}
+	b.Model.UpdatedAt = now
+	if err := orm.SerializeFields(b.self()); err != nil {
+		return false, err
+	}
+	ok, err := b.ds.Swap(b.Key(), prev, b.self())
+	if err != nil || !ok {
+		b.Model.UpdatedAt, b.Model.CreatedAt = prev, created
+		return false, err
+	}
+	b.updateId()
+	return true, nil
 }
 
 func (b *Model[T]) Delete() error {

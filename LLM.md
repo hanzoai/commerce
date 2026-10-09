@@ -1846,6 +1846,21 @@ frozen.
   runs `fn(New(ctx))` with no tx/lock/isolation. `db.SQLiteDB.RunInTransaction`
   IS real (writeMu.Lock+BeginTx) but `mixin.Model[T]` routes to the no-op. So
   model-level read-modify-write is NOT atomic.
+- **A read-modify-write swaps, it does not put** (`db.Swapper`,
+  `datastore.Swap`, `mixin.Model.Swap`): the write lands only while the stored
+  entity's `updatedAt` is still the one read (insert-if-absent, a deleted row
+  counting as absent, when it was never stored); otherwise it writes nothing and
+  the caller reads again, at most `mixin.Swaps` times. One statement on both
+  backends, so READ COMMITTED is enough and two processes over one store cannot
+  lose each other's change. Used by refund and dispute recording
+  (`engine.RecordRefund`/`RecordDispute`, `paymentorg.RecordDispute`) and by
+  `idempotencykey.Begin`, whose first sighting and stale re-claim are swaps, so a
+  guarded money move runs once across replicas; the in-process `returns` and
+  `lockPeriod` mutexes are gone. `api/transaction`'s `lockFunds` stays in-process:
+  its routes mount only standalone (single writer), never in cloud. Pinned by
+  `TestReturnsAcrossTwoReplicasAreNeitherLostNorDoubled`,
+  `TestASwapWritesOnlyOverWhatWasRead` and
+  `TestAKeySightedAtOnceOnTwoReplicasRunsOnce` (two store handles on one file).
 - The money-safe primitive used here: **deterministic-id ledger records**. A
   redemption/guard's STORAGE id = `sha256(scope‖key)` via `orm.WithStringKey`.
   Concurrent duplicate submits collapse onto ONE row via the storage

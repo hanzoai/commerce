@@ -150,6 +150,22 @@ func (d tenantDB) Add(ctx context.Context, name string, delta int64) (int64, err
 	return out, err
 }
 
+// Swap forwards to the tenant's own store, so a tenantDB satisfies Swapper exactly
+// when the store behind it does, and refuses otherwise.
+func (d tenantDB) Swap(ctx context.Context, key Key, prev string, src any) (bool, error) {
+	var out bool
+	err := d.do(ctx, func(db DB) error {
+		s, ok := db.(Swapper)
+		if !ok {
+			return fmt.Errorf("db: tenant store %T cannot swap", db)
+		}
+		var err error
+		out, err = s.Swap(ctx, key, prev, src)
+		return err
+	})
+	return out, err
+}
+
 func (d tenantDB) Query(kind string) Query { return tenantQuery{d: d, kind: kind} }
 
 // tenantQuery defers a query to the operation that runs it.

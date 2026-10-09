@@ -450,6 +450,47 @@ func (db *PostgresDB) Put(ctx context.Context, key Key, src interface{}) (Key, e
 	return key, nil
 }
 
+// Swap writes src under key only while the stored entity is the one the caller
+// read (db.Swapper): its updatedAt still prev, or nothing stored when prev is "" —
+// a deleted entity is nothing stored, so a swap writes it anew.
+// One statement, so READ COMMITTED is enough: the row's update is the check.
+func (db *PostgresDB) Swap(ctx context.Context, key Key, prev string, src interface{}) (bool, error) {
+	if key == nil {
+		return false, ErrInvalidKey
+	}
+	data, err := json.Marshal(src)
+	if err != nil {
+		return false, fmt.Errorf("db: failed to marshal entity: %w", err)
+	}
+	var parentID *string
+	if p := key.Parent(); p != nil {
+		id := p.Encode()
+		parentID = &id
+	}
+	var res sql.Result
+	if prev == "" {
+		res, err = db.db.ExecContext(ctx, `
+			INSERT INTO _entities (id, kind, tenant_id, parent_id, data, updated_at)
+			VALUES ($1, $2, $3, $4, $5, NOW())
+			ON CONFLICT (id, kind, tenant_id) DO UPDATE SET
+				parent_id = EXCLUDED.parent_id, data = EXCLUDED.data,
+				updated_at = NOW(), deleted = FALSE
+			WHERE _entities.deleted
+		`, key.Encode(), key.Kind(), db.tenantFor(ctx), parentID, data)
+	} else {
+		res, err = db.db.ExecContext(ctx, `
+			UPDATE _entities SET parent_id = $4, data = $5, updated_at = NOW()
+			WHERE id = $1 AND kind = $2 AND tenant_id = $3 AND NOT deleted
+				AND data->>'updatedAt' = $6
+		`, key.Encode(), key.Kind(), db.tenantFor(ctx), parentID, data, prev)
+	}
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n == 1, err
+}
+
 // Delete removes an entity (soft delete), scoped to the ctx tenant.
 func (db *PostgresDB) Delete(ctx context.Context, key Key) error {
 	if key == nil {

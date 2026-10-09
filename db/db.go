@@ -526,6 +526,21 @@ type Counter interface {
 	Add(ctx context.Context, name string, delta int64) (int64, error)
 }
 
+// Swapper is a backend that can write an entity only while it is still the one a
+// caller read: a compare-and-swap on the stamp every write sets, its updatedAt. A
+// read-modify-write that swaps instead of putting cannot lose another writer's
+// change, in another goroutine or another replica: the second writer's swap finds
+// the stamp moved, writes nothing, and reads again. Put stays a blind upsert.
+//
+// Like Counter it is a capability: a caller that needs it refuses when the
+// assertion fails rather than imitate it with a check-then-write.
+type Swapper interface {
+	// Swap writes src under key when the stored entity's updatedAt is still prev
+	// (its JSON text, as stored), or, with prev "", when nothing is stored under
+	// key yet. It reports whether it wrote.
+	Swap(ctx context.Context, key Key, prev string, src any) (bool, error)
+}
+
 // sequenceDDL is the ONE definition of the counter table, identical in shape on
 // both backends: a name, and the last value handed out under it.
 const sequenceDDL = `CREATE TABLE IF NOT EXISTS _sequences (

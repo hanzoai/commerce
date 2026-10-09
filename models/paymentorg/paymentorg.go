@@ -9,6 +9,7 @@ package paymentorg
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -80,13 +81,25 @@ func Get(payment string) (*PaymentOrg, bool, error) {
 // RecordDispute records a reported state of a dispute of payment on its record and
 // reports whether it is the latest known (dispute.Report.SetDispute). A payment
 // nothing recorded answers false.
+//
+// The record is swapped in (mixin.Model.Swap): a report another writer beat to it
+// reads it again, so no report is lost to another, on this replica or another.
 func RecordDispute(payment, state string, version int64, at time.Time) (bool, error) {
-	p, found, err := Get(payment)
-	if err != nil || !found {
-		return false, err
+	for range mixin.Swaps {
+		p, found, err := Get(payment)
+		if err != nil || !found {
+			return false, err
+		}
+		if !p.SetDispute(state, version, at) {
+			return false, nil
+		}
+		ok, err := p.Swap()
+		if err != nil {
+			return false, err
+		}
+		if ok {
+			return true, nil
+		}
 	}
-	if !p.SetDispute(state, version, at) {
-		return false, nil
-	}
-	return true, p.Put()
+	return false, fmt.Errorf("payment %s changed under %d reads in a row", payment, mixin.Swaps)
 }

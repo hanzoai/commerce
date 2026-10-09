@@ -371,6 +371,51 @@ func (db *SQLiteDB) Put(ctx context.Context, key Key, src any) (Key, error) {
 	return key, nil
 }
 
+// Swap writes src under key only while the stored entity is the one the caller
+// read (db.Swapper): its updatedAt still prev, or nothing stored when prev is "" —
+// a deleted entity is nothing stored, so a swap writes it anew.
+func (db *SQLiteDB) Swap(ctx context.Context, key Key, prev string, src any) (bool, error) {
+	if key == nil {
+		return false, ErrInvalidKey
+	}
+	data, err := marshalForDB(src)
+	if err != nil {
+		return false, fmt.Errorf("db: failed to marshal entity: %w", err)
+	}
+	var parentID *string
+	if p := key.Parent(); p != nil {
+		id := p.Encode()
+		parentID = &id
+	}
+	ns := getNamespace(ctx)
+
+	db.writeMu.Lock()
+	defer db.writeMu.Unlock()
+
+	var res sql.Result
+	if prev == "" {
+		res, err = db.writeDB.ExecContext(ctx, `
+			INSERT INTO _entities (id, kind, namespace, parent_id, data, updated_at)
+			VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+			ON CONFLICT(id, kind, namespace) DO UPDATE SET
+				parent_id = excluded.parent_id, data = excluded.data,
+				updated_at = CURRENT_TIMESTAMP, deleted = 0
+			WHERE _entities.deleted = 1
+		`, key.Encode(), key.Kind(), ns, parentID, data)
+	} else {
+		res, err = db.writeDB.ExecContext(ctx, `
+			UPDATE _entities SET parent_id = ?, data = ?, updated_at = CURRENT_TIMESTAMP
+			WHERE id = ? AND kind = ? AND namespace = ? AND deleted = 0
+				AND json_extract(data, '$.updatedAt') = ?
+		`, parentID, data, key.Encode(), key.Kind(), ns, prev)
+	}
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n == 1, err
+}
+
 // Delete removes an entity (soft delete)
 func (db *SQLiteDB) Delete(ctx context.Context, key Key) error {
 	if key == nil {

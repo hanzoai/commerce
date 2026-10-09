@@ -3,9 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
-	"hash/fnv"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -17,30 +15,6 @@ import (
 	"github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/money"
 )
-
-// periodLockStripes bounds the memory of the per-(subscription, period) renewal
-// lock to a fixed set of mutexes (no unbounded per-period growth). Same key → same
-// stripe → serialized; a rare hash collision only briefly serializes two unrelated
-// renewals, which is harmless.
-const periodLockStripes = 256
-
-var periodLockMu [periodLockStripes]sync.Mutex
-
-// lockPeriod serializes concurrent collection of the SAME (subscription, period)
-// WITHIN a process, returning the unlock func. Commerce is single-writer per tenant
-// (ReadWriteOnce PVC, Recreate), so this fully serializes real concurrent renewals
-// (the cron sweep + a manual renew) — one invoice row, one collection — closing the
-// non-atomic findInvoiceForPeriod → buildPeriodInvoice window. The idempotencykey
-// guard + the per-(sub, period, attempt) gateway idempotency key remain the
-// money backstops (a cross-process racer still cannot double-charge).
-func lockPeriod(sub *subscription.Subscription) func() {
-	key := sub.Id() + "|" + strconv.FormatInt(sub.PeriodStart.Unix(), 10)
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(key))
-	mu := &periodLockMu[h.Sum32()%periodLockStripes]
-	mu.Lock()
-	return mu.Unlock
-}
 
 // StartSubscription initializes a new subscription: sets the initial state,
 // computes period dates, and handles trial logic.
@@ -78,9 +52,6 @@ func StartSubscription(sub *subscription.Subscription, p *plan.Plan) {
 // the row may not have been told: a paid one moves the row onto its period, and an
 // unpaid one leaves it past due.
 func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscription.Subscription, prepaid Prepaid, chargeProvider ProviderCharger) (*billinginvoice.BillingInvoice, *CollectionResult, error) {
-	// Serialize concurrent collection of this (subscription, period) in-process so
-	// exactly ONE invoice row is built + collected for the period (books integrity).
-	defer lockPeriod(sub)()
 	now := time.Now()
 
 	// A row canceled at the end of its period ends when that period does, is never
@@ -133,11 +104,11 @@ func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscr
 		return nil, &CollectionResult{Error: "subscription period is not due for renewal"}, nil
 	}
 
-	// Atomic per-(subscription, period) guard: two concurrent renews collapse onto
-	// ONE deterministic-id row (storage ON CONFLICT), so only the winner builds +
-	// collects; the loser re-reads the now-existing invoice. The card charge (via
-	// chargeProvider) ALSO carries a stable per-period Square idempotency key, so
-	// even the narrow concurrent-first window can never double-charge.
+	// Atomic per-(subscription, period) guard: of two concurrent renews — the
+	// cron sweep and a manual renew, on one replica or two — one swaps the guard in
+	// and builds and collects; the other finds it and re-reads the invoice
+	// (idempotencykey.Begin). The card charge (via chargeProvider) also carries a
+	// stable per-period Square idempotency key.
 	guardKey := "period:" + strconv.FormatInt(next.start.Unix(), 10)
 	rec, replay, gerr := idempotencykey.Begin(db, "billing-renew:"+sub.Id(), guardKey)
 	if gerr == nil && replay {

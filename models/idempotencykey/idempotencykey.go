@@ -13,24 +13,18 @@
 //	  replay == false ⇒ we recorded the in-flight marker first; perform the
 //	                    side effect, then idempotencykey.Complete(rec, response).
 //
-// LIMITATION (documented, not hidden): Begin uses read-then-write, and this
-// backend has no atomic compare-and-swap reachable from mixin.Model[T]
-// (db.SQLiteDB.RunInTransaction is real but the datastore layer routes to the
-// no-op datastore.RunInTransaction). So two callers racing on a FIRST-EVER key
-// can both observe "not started" and both proceed. The deterministic id still
-// guarantees a single STORED record (the second Create upserts), but the side
-// effect could run twice in that narrow window. Callers whose side effect is
-// itself non-idempotent (e.g. a raw gateway refund) MUST additionally pass the
-// SAME key through to the gateway (Stripe/Square both honor an idempotency key)
-// so the gateway de-dups the money move. This guard de-dups OUR ledger and
-// replays OUR response; the gateway key closes the money-move window. See
-// api/checkout refund for the wired example.
+// Begin's writes are swaps (mixin.Model.Swap): two callers racing on a
+// first-ever key, in two goroutines or two processes over one store, cannot both
+// proceed — one inserts the guard and the other finds it and replays. Callers
+// still pass the same key to the gateway (Stripe and Square honor one), which
+// de-dups the money move should a guard re-claimed as stale race its original.
 package idempotencykey
 
 import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -98,60 +92,65 @@ func (k *IdempotencyKey) Save() ([]datastore.Property, error) {
 // sighting; the caller performs the side effect then calls Complete.
 func Begin(db *datastore.Datastore, scope, key string) (rec *IdempotencyKey, replay bool, err error) {
 	id := DeterministicID(scope, key)
-
-	// Replay: the guard for this (scope,key) already exists. Its STORAGE id is
-	// deterministic, so concurrent first-time Begins collapse onto ONE row via
-	// the backend ON CONFLICT(id,kind,namespace) upsert — no ledger fork.
-	//
-	// Read it by its EXACT storage key (kind + deterministic id + namespace). Do
-	// NOT route this read through GetById: GetById decodes the id as a hashid,
-	// and a deterministic NON-hashid string ("idem_<hex>") decodes to a KIND-LESS
-	// key. The production Postgres backend's Get requires an exact kind match
-	// (db/postgres.go), so a kind-less lookup never finds the row this guard just
-	// wrote under kind "idempotency-key" — every retry then looks brand-new and
-	// the money move runs AGAIN (double charge). SQLite's Get has a kind-less
-	// fallback (db/sqlite.go), which is the ONLY reason this passed in tests and
-	// bit solely in production. A kind-qualified Get round-trips on both backends.
-	existing := New(db)
-	guardKey := db.NewKey(existing.Kind(), id, 0, nil)
-	if e := existing.Get(guardKey); e == nil {
-		// Completed → always a replay (return the stored response).
-		if existing.Status == StatusCompleted {
+	// Every write here is a swap (mixin.Model.Swap), so the guard holds across
+	// processes as well as goroutines: of two first sightings, one inserts the row
+	// and the other finds it there and replays; of two recoveries of a stale
+	// guard, one re-claims it and the other reads it again, fresh, and replays.
+	for range mixin.Swaps {
+		// Read it by its EXACT storage key (kind + deterministic id + namespace). Do
+		// NOT route this read through GetById: GetById decodes the id as a hashid,
+		// and a deterministic NON-hashid string ("idem_<hex>") decodes to a KIND-LESS
+		// key. The production Postgres backend's Get requires an exact kind match
+		// (db/postgres.go), so a kind-less lookup never finds the row this guard
+		// wrote under kind "idempotency-key" — every retry then looks brand-new and
+		// the money move runs AGAIN (double charge). A kind-qualified Get
+		// round-trips on both backends.
+		existing := New(db)
+		guardKey := db.NewKey(existing.Kind(), id, 0, nil)
+		e := existing.Get(guardKey)
+		switch {
+		case e == nil && (existing.Status == StatusCompleted || !existing.Recoverable()):
+			// Completed → a replay (return the stored response). Started and fresh →
+			// a genuine concurrent in-flight op: replay (the caller 409s), never a
+			// second money move alongside it.
 			return existing, true, nil
-		}
-		// Started + FRESH → a genuine concurrent in-flight op. Replay (caller
-		// 409s) — do not run a second money move alongside it.
-		if !existing.Recoverable() {
-			return existing, true, nil
-		}
-		// Started + STALE → the original crashed between Begin and Complete.
-		// Re-claim (Put bumps UpdatedAt) and let the caller RETRY: the money
-		// move carries the same deterministic gateway key, so the gateway
-		// de-dupes if the original had in fact reached it. Fail-safe recovery
-		// of an otherwise-stuck guard.
-		existing.SetId(id)
-		existing.Status = StatusStarted
-		if e := existing.Put(); e != nil {
+		case e == nil:
+			// Started and STALE → the original crashed between Begin and Complete.
+			// Re-claim it and let the caller RETRY: the money move carries the same
+			// deterministic gateway key, so the gateway de-dupes if the original
+			// had in fact reached it.
+			existing.SetId(id)
+			existing.Status = StatusStarted
+			ok, err := existing.Swap()
+			if err != nil {
+				return nil, false, err
+			}
+			if ok {
+				return existing, false, nil
+			}
+			continue
+		case !errors.Is(e, datastore.ErrNoSuchEntity):
 			return nil, false, e
 		}
-		return existing, false, nil
-	} else if !errors.Is(e, datastore.ErrNoSuchEntity) {
-		return nil, false, e
-	}
 
-	rec = New(db)
-	rec.SetId(id)
-	rec.Scope = scope
-	rec.IdemKey = key
-	rec.Status = StatusStarted
-	if e := rec.Create(); e != nil {
-		return nil, false, e
+		rec = New(db)
+		rec.SetId(id)
+		rec.Scope = scope
+		rec.IdemKey = key
+		rec.Status = StatusStarted
+		ok, err := rec.Swap()
+		if err != nil {
+			return nil, false, err
+		}
+		if ok {
+			return rec, false, nil
+		}
 	}
-	return rec, false, nil
+	return nil, false, fmt.Errorf("idempotency key %s changed under %d reads in a row", id, mixin.Swaps)
 }
 
 // DeterministicID derives the stable storage id for a (scope, key) pair. Same
-// inputs → same id → the second concurrent Create upserts onto the first's row.
+// inputs → same id → the second concurrent Begin finds the first's row.
 func DeterministicID(scope, key string) string {
 	sum := sha256.Sum256([]byte(scope + "\x00" + key))
 	return "idem_" + hex.EncodeToString(sum[:16])
