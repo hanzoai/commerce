@@ -147,7 +147,8 @@ type SubscribeIn struct {
 	// Currency is honored only when it matches the plan's own; a mismatch is
 	// refused rather than charged in a weaker unit.
 	Currency string
-	// Email is stamped on the Square customer a fresh vault creates.
+	// Email is stamped on the Square customer a fresh vault creates, and named
+	// in the operator's sale notice.
 	Email string
 	// Coupon is a plan coupon code the buyer typed. Empty buys at the price the
 	// catalog and promo set. A code that does not stand, does not cover the plan,
@@ -602,6 +603,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 				fmt.Sprintf("coupon %s leaves nothing to charge for plan %q, and a card sale must charge something", couponCode, planID)}
 		}
 	}
+	listCents := int64(p.Price) * seatMult
 
 	if sourceID == "credits" || sourceID == "balance" {
 		// The first period is paid from prepaid money, all or nothing, before the
@@ -655,6 +657,10 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 				_ = idempotencykey.Complete(rec, string(body))
 			}
 		}
+		noticeSale(ctx, saleNote{
+			Org: org.Name, Email: in.Email, Plan: p, Seats: seatMult, Sale: sale,
+			ListCents: listCents, PromoName: promoName, Test: org.TestMode(),
+		})
 		return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil
 	}
 
@@ -816,6 +822,10 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			_ = idempotencykey.Complete(rec, string(body))
 		}
 	}
+	noticeSale(ctx, saleNote{
+		Org: org.Name, Email: in.Email, Plan: p, Seats: seatMult, Sale: sale,
+		ListCents: listCents, PromoName: promoName, Coupon: cpn, Test: org.TestMode(),
+	})
 	return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil
 }
 

@@ -17,6 +17,7 @@ import (
 	"github.com/hanzoai/commerce/api/promo"
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/mail"
 	"github.com/hanzoai/commerce/models/billingevent"
 	"github.com/hanzoai/commerce/models/coupon"
 	"github.com/hanzoai/commerce/models/couponredemption"
@@ -455,6 +456,123 @@ func TestSubscribeCoupon_ConcurrentSalesNeverExceedLimit(t *testing.T) {
 	}
 	if n := couponUses(t, ctx, "RUSH"); n != limit {
 		t.Fatalf("coupon used %d, want %d", n, limit)
+	}
+}
+
+// sent is one message a fake mail rail delivered.
+type sent struct {
+	to            []string
+	subject, body string
+}
+
+type senderFunc func(ctx context.Context, to []string, subject, body string) error
+
+func (f senderFunc) Send(ctx context.Context, to []string, subject, body string) error {
+	return f(ctx, to, subject, body)
+}
+
+// Every paid sale tells the configured operator once — with the coupon when
+// there is one — and the mail rail never holds a sale up.
+func TestSaleNotice(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	warmCouponNS(ctx)
+	fiftyOff(t, ctx)
+	m := squareMock("cust_sn", "ccof_sn", "sqpay_sn")
+	withFakeSquare(t, m)
+
+	got := make(chan sent, 8)
+	mail.Set(senderFunc(func(_ context.Context, to []string, subject, body string) error {
+		got <- sent{to, subject, body}
+		return nil
+	}))
+	t.Cleanup(func() { mail.Set(nil) })
+	next := func() (sent, bool) {
+		select {
+		case s := <-got:
+			return s, true
+		case <-time.After(5 * time.Second):
+			return sent{}, false
+		}
+	}
+	quiet := func() {
+		select {
+		case s := <-got:
+			t.Fatalf("an extra notice was sent: %q", s.subject)
+		case <-time.After(300 * time.Millisecond):
+		}
+	}
+
+	// Unset: nobody is told.
+	t.Setenv(saleNotifyEnv, "")
+	if r := invokeSubscribeCard(moneyOrg("cp-note-0"), ctx, `{"sourceId":"cnon:0","planId":"dev"}`, nil); r.StatusCode != 201 {
+		t.Fatalf("sale status=%d", r.StatusCode)
+	}
+	quiet()
+
+	t.Setenv(saleNotifyEnv, " ops@example.test, not an address ,second@example.test")
+	dev := lookupPlan("dev")
+	hdr := map[string]string{"X-Idempotency-Key": "note-1"}
+	org := moneyOrg("cp-note-1")
+	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:1","planId":"dev","coupon":"50OFF"}`, hdr); r.StatusCode != 201 {
+		t.Fatalf("coupon sale status=%d %s", r.StatusCode, bodyOf(r))
+	}
+	s, ok := next()
+	if !ok {
+		t.Fatal("no notice for a paid coupon sale")
+	}
+	if strings.Join(s.to, ",") != "ops@example.test,second@example.test" {
+		t.Fatalf("sent to %v", s.to)
+	}
+	half := dev.Price - engine.DiscountCents(dev.Price, 50)
+	for _, want := range []string{
+		"cp-note-1", "buyer@acme.test", dev.Name + " (dev)", "month",
+		"Charged:        " + cents(half, "USD"), "List price:     " + cents(dev.Price, "USD"),
+		"50OFF — 50% off first month", "Mode:           live",
+	} {
+		if !strings.Contains(s.body, want) {
+			t.Errorf("notice body lacks %q:\n%s", want, s.body)
+		}
+	}
+	if !strings.Contains(s.subject, "coupon 50OFF") || !strings.Contains(s.subject, "cp-note-1") {
+		t.Errorf("notice subject %q", s.subject)
+	}
+
+	// The replay is not a sale.
+	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:1","planId":"dev","coupon":"50OFF"}`, hdr); r.StatusCode != 200 {
+		t.Fatalf("replay status=%d", r.StatusCode)
+	}
+	quiet()
+
+	// A plain sale is told too, with no coupon.
+	if r := invokeSubscribeCard(moneyOrg("cp-note-2"), ctx, `{"sourceId":"cnon:2","planId":"max-5x"}`, nil); r.StatusCode != 201 {
+		t.Fatalf("plain sale status=%d", r.StatusCode)
+	}
+	if s, ok = next(); !ok || !strings.Contains(s.body, "Coupon:         none") {
+		t.Fatalf("plain sale notice ok=%v body:\n%s", ok, s.body)
+	}
+
+	// A mail rail that never answers, then one that fails: the sale answers at
+	// once either way.
+	release := make(chan struct{})
+	t.Cleanup(func() { close(release) })
+	mail.Set(senderFunc(func(ctx context.Context, _ []string, _, _ string) error {
+		select {
+		case <-release:
+		case <-ctx.Done():
+		}
+		return ctx.Err()
+	}))
+	began := time.Now()
+	if r := invokeSubscribeCard(moneyOrg("cp-note-3"), ctx, `{"sourceId":"cnon:3","planId":"dev"}`, nil); r.StatusCode != 201 {
+		t.Fatalf("sale behind a stuck mail rail status=%d", r.StatusCode)
+	}
+	if d := time.Since(began); d > 3*time.Second {
+		t.Fatalf("a stuck mail rail held the sale %v", d)
+	}
+	mail.Set(senderFunc(func(context.Context, []string, string, string) error { return errors.New("rail down") }))
+	if r := invokeSubscribeCard(moneyOrg("cp-note-4"), ctx, `{"sourceId":"cnon:4","planId":"dev"}`, nil); r.StatusCode != 201 {
+		t.Fatalf("sale behind a failing mail rail status=%d", r.StatusCode)
 	}
 }
 

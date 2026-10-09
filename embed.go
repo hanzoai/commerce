@@ -24,6 +24,7 @@ import (
 
 	"github.com/hanzoai/commerce/billing/creditledger"
 	"github.com/hanzoai/commerce/billing/depositledger"
+	"github.com/hanzoai/commerce/mail"
 	"github.com/hanzoai/commerce/models/organization"
 )
 
@@ -91,6 +92,12 @@ type EmbedConfig struct {
 	// nil is fine: callers fall back to whatever they did before.
 	Secrets SecretReader
 
+	// Mail delivers commerce's outbound mail — the sale notice to the operator
+	// (BILLING_SALE_NOTIFY_TO). The cloud binary passes its notify rail, whose
+	// provider credentials are in KMS, so commerce holds no mail credential of
+	// its own. nil sends nothing (mail.ErrNoSender, logged by the caller).
+	Mail mail.Sender
+
 	// Born is the kind a new org's record is created in (organization.Born):
 	// Live where the host's network takes real money, Test where it does not.
 	// Only the host knows which world it runs in, so it declares it. Anything
@@ -147,6 +154,10 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 	if cfg.Secrets != nil {
 		secrets.Set(cfg.Secrets)
 	}
+
+	// The host's mail rail, installed like the two above. Each embed states its
+	// whole world, so nil clears whatever an earlier embed in the process set.
+	mail.Set(cfg.Mail)
 
 	// The kind new tenants are born in, declared before any route can create
 	// one. Each embed states its whole world, so one that declares nothing is
