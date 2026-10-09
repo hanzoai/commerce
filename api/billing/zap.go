@@ -316,7 +316,7 @@ func zapDeposit(c *zip.Ctx, params json.RawMessage) (interface{}, *zapError) {
 	trans.Amount = currency.Cents(req.Amount)
 	trans.Notes = notes
 	trans.Tags = req.Tags
-	trans.Metadata = Map{"mintedBy": minter(c)}
+	trans.Metadata = Map{"mintedBy": middleware.Actor(c)}
 
 	trans.ExpiresAt = time.Now().AddDate(0, 0, expiryDays(req.ExpiresIn))
 

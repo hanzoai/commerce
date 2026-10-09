@@ -144,7 +144,7 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 		if req.Metadata == nil {
 			req.Metadata = map[string]interface{}{}
 		}
-		req.Metadata["compedBy"] = minter(c)
+		req.Metadata["compedBy"] = middleware.Actor(c)
 	} else {
 		delete(req.Metadata, "compedBy") // client input never forges the audit field
 	}

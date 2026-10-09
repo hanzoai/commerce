@@ -55,3 +55,44 @@ func TestDiscountCents_ChargeEqualsInvoice(t *testing.T) {
 		}
 	}
 }
+
+// Discounted stacks percents, each off what the one before left, and with one
+// percent it is exactly fee less DiscountCents — the arithmetic the card path
+// and the invoice both use, so they agree to the cent.
+func TestDiscounted(t *testing.T) {
+	cases := []struct {
+		fee      int64
+		percents []int
+		want     int64
+	}{
+		{2000, nil, 2000},
+		{2000, []int{0}, 2000},
+		{2000, []int{50}, 1000},
+		{2000, []int{50, 50}, 500},
+		{10000, []int{20, 50}, 4000},
+		{1999, []int{33, 50}, 669}, // 1999-660=1339, 1339-670=669
+		{2000, []int{100, 50}, 0},
+		{2000, []int{-5, 150}, 0},
+	}
+	for _, tc := range cases {
+		if got := Discounted(tc.fee, tc.percents...); got != tc.want {
+			t.Errorf("Discounted(%d, %v) = %d, want %d", tc.fee, tc.percents, got, tc.want)
+		}
+	}
+	for fee := int64(1); fee <= 3000; fee++ {
+		for _, pct := range []int{0, 1, 17, 50, 99, 100} {
+			if Discounted(fee, pct) != fee-DiscountCents(fee, pct) {
+				t.Fatalf("Discounted(%d, %d) disagrees with DiscountCents", fee, pct)
+			}
+		}
+	}
+}
+
+func TestCouponLabel(t *testing.T) {
+	if got := (Coupon{Code: "50OFF", Percent: 50}).Label(); got != "50OFF — 50% off first month" {
+		t.Fatalf("label %q", got)
+	}
+	if (Coupon{}).Label() != "" || (Coupon{Code: "X"}).Label() != "" {
+		t.Fatal("a coupon that discounts nothing must print no label")
+	}
+}

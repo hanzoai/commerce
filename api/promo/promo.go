@@ -9,6 +9,10 @@
 // + the applicable plan slugs ride the Promotion's Metadata; the window is the
 // Promotion's StartsAt/EndsAt; `active` is its Status. This is the canonical
 // {percentOff, start, end, plans, active} shape (openapi admin Promo).
+//
+// Beside it live the plan COUPONS (coupon.go): a code a buyer types for a percent
+// off the first period of one plan purchase, stored in the same namespace and
+// edited on the same SuperAdmin surface.
 package promo
 
 import (
@@ -40,6 +44,8 @@ func Route(r *zip.Group, args ...zip.Handler) {
 	api.Use(middleware.TokenRequired(permission.Admin))
 	api.Raw(nethttp.MethodGet, "/promo", GetPromo)
 	api.Raw(nethttp.MethodPut, "/promo", PutPromo)
+	api.Raw(nethttp.MethodGet, "/coupons/:code", GetCoupon)
+	api.Raw(nethttp.MethodPut, "/coupons/:code", PutCoupon)
 }
 
 const (
@@ -70,10 +76,14 @@ type Promo struct {
 }
 
 // platformDB opens the reserved platform namespace, regardless of the caller's own
-// org — the singleton promo is platform-global, read by the public plans view and
-// written only by a SuperAdmin.
-func platformDB(c *zip.Ctx) *datastore.Datastore {
-	return datastore.New(nscontext.WithNamespace(c.Context(), platformNS))
+// org — the singleton promo and the plan coupons are platform-global, read by the
+// public plans view and the sale, and written only by a SuperAdmin.
+func platformDB(c *zip.Ctx) *datastore.Datastore { return platform(c.Context()) }
+
+// platform is platformDB asked from a context alone, for the callers that hold
+// no request: the plan catalog read over the internal plane, and the sale.
+func platform(ctx context.Context) *datastore.Datastore {
+	return datastore.New(nscontext.WithNamespace(ctx, platformNS))
 }
 
 // load reads the singleton platform plan-promo, or nil when none is configured.
@@ -205,8 +215,7 @@ func Active(c *zip.Ctx) *Promo { return Current(c.Context()) }
 // the same row for every caller, which is also why the public org-less plans
 // endpoint can resolve it.
 func Current(ctx context.Context) *Promo {
-	db := datastore.New(nscontext.WithNamespace(ctx, platformNS))
-	p, err := load(db)
+	p, err := load(platform(ctx))
 	if err != nil || p == nil {
 		return nil
 	}
