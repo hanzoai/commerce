@@ -20,6 +20,8 @@ import (
 	"github.com/hanzoai/commerce/models/billingevent"
 	"github.com/hanzoai/commerce/models/coupon"
 	"github.com/hanzoai/commerce/models/couponredemption"
+	"github.com/hanzoai/commerce/models/plan"
+	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/permission"
@@ -27,12 +29,29 @@ import (
 )
 
 // warmCoupons opens the platform namespace's coupon kinds once, so the writes a
-// test drives and the reads it checks share one handle.
+// test drives and the reads it checks share one handle, and puts the plans a
+// coupon may name into the plan authority: three paid plans, a free one and a
+// contact-sales one.
 func warmCoupons(ctx context.Context) {
 	db := platform(ctx)
 	_, _ = coupon.Query(db).Count()
 	_, _ = couponredemption.Query(db).Count()
 	_, _ = billingevent.Query(db).Count()
+	adb := plan.AuthorityDB(ctx)
+	if n, _ := plan.Query(adb).Count(); n > 0 {
+		return
+	}
+	for _, p := range []struct {
+		slug  string
+		price int64
+		sales bool
+	}{{"dev", 2000, false}, {"max-5x", 10000, false}, {"max-20x", 20000, false}, {"free", 0, false}, {"enterprise", 0, true}} {
+		row := plan.New(adb)
+		row.Slug, row.Name, row.Price, row.ContactSales = p.slug, p.slug, currency.Cents(p.price), p.sales
+		if err := row.Create(); err != nil {
+			panic(err)
+		}
+	}
 }
 
 func at(t time.Time) *time.Time { return &t }
@@ -83,11 +102,11 @@ func TestFindCoupon(t *testing.T) {
 
 	now := time.Now().UTC()
 	setCoupon(t, ctx, "LIVE", CouponSpec{Percent: 50, Start: at(now.Add(-time.Hour)), End: at(now.Add(24 * time.Hour)), Limit: 5, Plans: []string{"dev", " MAX-5X ", "dev"}, Enabled: true})
-	setCoupon(t, ctx, "OPEN", CouponSpec{Percent: 10, Enabled: true})
-	setCoupon(t, ctx, "OLD", CouponSpec{Percent: 50, Start: at(now.Add(-48 * time.Hour)), End: at(now.Add(-time.Hour)), Enabled: true})
-	setCoupon(t, ctx, "SOON", CouponSpec{Percent: 50, Start: at(now.Add(time.Hour)), End: at(now.Add(48 * time.Hour)), Enabled: true})
-	setCoupon(t, ctx, "OFF", CouponSpec{Percent: 50, Enabled: false})
-	used := setCoupon(t, ctx, "GONE", CouponSpec{Percent: 50, Limit: 1, Enabled: true})
+	setCoupon(t, ctx, "OPEN", CouponSpec{Percent: 10, Plans: []string{"max-20x"}, Enabled: true})
+	setCoupon(t, ctx, "OLD", CouponSpec{Percent: 50, Start: at(now.Add(-48 * time.Hour)), End: at(now.Add(-time.Hour)), Plans: []string{"dev"}, Enabled: true})
+	setCoupon(t, ctx, "SOON", CouponSpec{Percent: 50, Start: at(now.Add(time.Hour)), End: at(now.Add(48 * time.Hour)), Plans: []string{"dev"}, Enabled: true})
+	setCoupon(t, ctx, "OFF", CouponSpec{Percent: 50, Plans: []string{"dev"}, Enabled: false})
+	used := setCoupon(t, ctx, "GONE", CouponSpec{Percent: 50, Limit: 1, Plans: []string{"dev"}, Enabled: true})
 	if _, err := Reserve(ctx, used.Code, "org-gone", "fp:gone", now); err != nil {
 		t.Fatalf("use GONE: %v", err)
 	}
@@ -153,8 +172,43 @@ func TestFindCoupon(t *testing.T) {
 		t.Errorf("LIVE end=%v label=%q", live.End, live.Label())
 	}
 	open, _ := FindCoupon(ctx, "OPEN", now)
-	if !open.AppliesTo("anything") || open.End != nil {
-		t.Errorf("OPEN covers every plan with no end; got end=%v", open.End)
+	if !open.AppliesTo("max-20x") || open.AppliesTo("dev") || open.End != nil {
+		t.Errorf("OPEN covers max-20x alone with no end; got end=%v", open.End)
+	}
+
+	// A plan coupon written with no plan list covers nothing, never everything.
+	bare := coupon.New(db)
+	bare.Code_ = "BARE"
+	bare.Type = coupon.Percent
+	bare.Filter = coupon.PlanFilter
+	bare.Amount = 50
+	bare.Enabled = true
+	if err := bare.Create(); err != nil {
+		t.Fatalf("seed bare coupon: %v", err)
+	}
+	if o, reason := FindCoupon(ctx, "BARE", now); reason != "" || o.AppliesTo("dev") || o.AppliesTo("max-20x") {
+		t.Errorf("a coupon naming no plan applies somewhere (reason %q)", reason)
+	}
+}
+
+// A coupon names the plans it covers, and each must be a paid plan on sale: an
+// empty list, a typo, a free plan and a contact-sales plan are refused at the PUT.
+func TestSetCoupon_PlansMustBePaidPlansOnSale(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	warmCoupons(ctx)
+
+	for _, plans := range [][]string{nil, {}, {" "}, {"pro"}, {"max"}, {"dev", "pro"}, {"free"}, {"enterprise"}} {
+		if _, err := SetCoupon(ctx, "PICKY", CouponSpec{Percent: 50, Plans: plans, Enabled: true}, "z"); !IsCouponSpecRefused(err) {
+			t.Errorf("plans %q = %v, want a spec refusal", plans, err)
+		}
+	}
+	if _, err := ReadCoupon(ctx, "PICKY"); !errors.Is(err, ErrCouponNotFound) {
+		t.Fatalf("a refused coupon was stored: %v", err)
+	}
+	v := setCoupon(t, ctx, "PICKY", CouponSpec{Percent: 50, Plans: []string{" DEV ", "max-5x", "dev"}, Enabled: true})
+	if len(v.Plans) != 2 || v.Plans[0] != "dev" || v.Plans[1] != "max-5x" {
+		t.Fatalf("plans stored as %v, want [dev max-5x]", v.Plans)
 	}
 }
 
@@ -165,8 +219,8 @@ func TestSetCoupon_DisabledStaysDisabled(t *testing.T) {
 	defer ctx.Close()
 	warmCoupons(ctx)
 
-	setCoupon(t, ctx, "FLIP", CouponSpec{Percent: 50, Enabled: true})
-	setCoupon(t, ctx, "FLIP", CouponSpec{Percent: 50, Enabled: false})
+	setCoupon(t, ctx, "FLIP", CouponSpec{Percent: 50, Plans: []string{"dev"}, Enabled: true})
+	setCoupon(t, ctx, "FLIP", CouponSpec{Percent: 50, Plans: []string{"dev"}, Enabled: false})
 	v, err := ReadCoupon(ctx, "flip")
 	if err != nil {
 		t.Fatalf("read: %v", err)
@@ -189,7 +243,7 @@ func TestReserve_OncePerOrgAndCard(t *testing.T) {
 	warmCoupons(ctx)
 	now := time.Now()
 
-	setCoupon(t, ctx, "ONCE", CouponSpec{Percent: 50, Limit: 10, Enabled: true})
+	setCoupon(t, ctx, "ONCE", CouponSpec{Percent: 50, Limit: 10, Plans: []string{"dev"}, Enabled: true})
 
 	h, err := Reserve(ctx, "once", "acme", "fp:a", now)
 	if err != nil {
@@ -231,7 +285,7 @@ func TestReserve_ConcurrentNeverExceedsLimit(t *testing.T) {
 	warmCoupons(ctx)
 
 	const limit, buyers = 5, 40
-	setCoupon(t, ctx, "RACE", CouponSpec{Percent: 50, Limit: limit, Enabled: true})
+	setCoupon(t, ctx, "RACE", CouponSpec{Percent: 50, Limit: limit, Plans: []string{"dev"}, Enabled: true})
 
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -408,7 +462,7 @@ func TestSetCoupon_RefusesNonPlanCode(t *testing.T) {
 	if err := cart.Create(); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	if _, err := SetCoupon(ctx, "STORE", CouponSpec{Percent: 50, Enabled: true}, "z"); !IsCouponSpecRefused(err) {
+	if _, err := SetCoupon(ctx, "STORE", CouponSpec{Percent: 50, Plans: []string{"dev"}, Enabled: true}, "z"); !IsCouponSpecRefused(err) {
 		t.Fatalf("SetCoupon over a cart coupon = %v, want a spec refusal", err)
 	}
 }

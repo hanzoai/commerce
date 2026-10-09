@@ -18,6 +18,7 @@ import (
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/mail"
+	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/billingevent"
 	"github.com/hanzoai/commerce/models/coupon"
 	"github.com/hanzoai/commerce/models/couponredemption"
@@ -33,12 +34,18 @@ import (
 // renewals at the catalog price, and nothing about any other price moves.
 
 // warmCouponNS opens the platform namespace's coupon kinds once, so the writes a
-// test drives and the reads it checks share one handle.
-func warmCouponNS(ctx context.Context) {
+// test drives and the reads it checks share one handle, and seeds the plan
+// authority from the catalog, as every boot does: a coupon may only name a paid
+// plan the authority sells.
+func warmCouponNS(t *testing.T, ctx context.Context) {
+	t.Helper()
 	db := datastore.New(nscontext.WithNamespace(ctx, "admin"))
 	_, _ = coupon.Query(db).Count()
 	_, _ = couponredemption.Query(db).Count()
 	_, _ = billingevent.Query(db).Count()
+	if _, _, err := SeedPlans(ctx); err != nil {
+		t.Fatalf("seed plans: %v", err)
+	}
 }
 
 // planCoupon stores a plan coupon through the SuperAdmin core.
@@ -91,7 +98,7 @@ func dueNow(t *testing.T, db *datastore.Datastore, id string) *subscription.Subs
 func TestSubscribeCoupon_FirstMonthHalfRenewalFull(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
-	warmCouponNS(ctx)
+	warmCouponNS(t, ctx)
 	fiftyOff(t, ctx)
 	org := moneyOrg("cp-first")
 	m := squareMock("cust_cf", "ccof_cf", "sqpay_cf")
@@ -164,7 +171,7 @@ func TestSubscribeCoupon_FirstMonthHalfRenewalFull(t *testing.T) {
 func TestSubscribeCoupon_StacksOnPromo(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
-	warmCouponNS(ctx)
+	warmCouponNS(t, ctx)
 	fiftyOff(t, ctx)
 	org := moneyOrg("cp-stack")
 	m := squareMock("cust_cs", "ccof_cs", "sqpay_cs")
@@ -208,16 +215,16 @@ func TestSubscribeCoupon_StacksOnPromo(t *testing.T) {
 func TestSubscribeCoupon_Refusals(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
-	warmCouponNS(ctx)
+	warmCouponNS(t, ctx)
 	fiftyOff(t, ctx)
 	now := time.Now().UTC()
 	past, future := now.Add(-time.Hour), now.Add(time.Hour)
-	planCoupon(t, ctx, "OLD", promo.CouponSpec{Percent: 50, End: &past, Enabled: true})
-	planCoupon(t, ctx, "SOON", promo.CouponSpec{Percent: 50, Start: &future, Enabled: true})
-	planCoupon(t, ctx, "DARK", promo.CouponSpec{Percent: 50, Enabled: false})
+	planCoupon(t, ctx, "OLD", promo.CouponSpec{Percent: 50, End: &past, Plans: []string{"dev"}, Enabled: true})
+	planCoupon(t, ctx, "SOON", promo.CouponSpec{Percent: 50, Start: &future, Plans: []string{"dev"}, Enabled: true})
+	planCoupon(t, ctx, "DARK", promo.CouponSpec{Percent: 50, Plans: []string{"dev"}, Enabled: false})
 	planCoupon(t, ctx, "MAXONLY", promo.CouponSpec{Percent: 50, Plans: []string{"max-5x"}, Enabled: true})
-	planCoupon(t, ctx, "ONEUSE", promo.CouponSpec{Percent: 50, Limit: 1, Enabled: true})
-	planCoupon(t, ctx, "FREEBIE", promo.CouponSpec{Percent: 100, Enabled: true})
+	planCoupon(t, ctx, "ONEUSE", promo.CouponSpec{Percent: 50, Limit: 1, Plans: []string{"dev"}, Enabled: true})
+	planCoupon(t, ctx, "FREEBIE", promo.CouponSpec{Percent: 100, Plans: []string{"dev"}, Enabled: true})
 	if _, err := promo.Reserve(ctx, "ONEUSE", "someone-else", "fp:else", now); err != nil {
 		t.Fatalf("spend ONEUSE: %v", err)
 	}
@@ -272,7 +279,7 @@ func TestSubscribeCoupon_Refusals(t *testing.T) {
 func TestSubscribeCoupon_OncePerOrgAndCard(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
-	warmCouponNS(ctx)
+	warmCouponNS(t, ctx)
 	fiftyOff(t, ctx)
 	m := squareMock("cust_oc", "ccof_oc", "sqpay_oc")
 	m.vaultCard = processor.Card{Brand: "VISA", Last4: "4242", ExpMonth: 12, ExpYear: 2030, Fingerprint: "fp_same_card"}
@@ -326,7 +333,7 @@ func TestSubscribeCoupon_OncePerOrgAndCard(t *testing.T) {
 func TestSubscribeCoupon_Idempotent(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
-	warmCouponNS(ctx)
+	warmCouponNS(t, ctx)
 	fiftyOff(t, ctx)
 	org := moneyOrg("cp-idem")
 	m := squareMock("cust_ci", "ccof_ci", "sqpay_ci")
@@ -366,7 +373,7 @@ func TestSubscribeCoupon_Idempotent(t *testing.T) {
 func TestSubscribeCoupon_DeclineReleasesTheUse(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
-	warmCouponNS(ctx)
+	warmCouponNS(t, ctx)
 	fiftyOff(t, ctx)
 	org := moneyOrg("cp-decline")
 	m := squareMock("cust_cd", "ccof_cd", "sqpay_cd")
@@ -398,7 +405,7 @@ func TestSubscribeCoupon_DeclineReleasesTheUse(t *testing.T) {
 func TestSubscribeCoupon_ConcurrentSalesNeverExceedLimit(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
-	warmCouponNS(ctx)
+	warmCouponNS(t, ctx)
 	const limit, buyers = 3, 12
 	planCoupon(t, ctx, "RUSH", promo.CouponSpec{Percent: 50, Limit: limit, Plans: []string{"dev"}, Enabled: true})
 	m := squareMock("", "", "sqpay_rush")
@@ -476,7 +483,7 @@ func (f senderFunc) Send(ctx context.Context, to []string, subject, body string)
 func TestSaleNotice(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
-	warmCouponNS(ctx)
+	warmCouponNS(t, ctx)
 	fiftyOff(t, ctx)
 	m := squareMock("cust_sn", "ccof_sn", "sqpay_sn")
 	withFakeSquare(t, m)
@@ -574,15 +581,41 @@ func TestSaleNotice(t *testing.T) {
 	if r := invokeSubscribeCard(moneyOrg("cp-note-4"), ctx, `{"sourceId":"cnon:4","planId":"dev"}`, nil); r.StatusCode != 201 {
 		t.Fatalf("sale behind a failing mail rail status=%d", r.StatusCode)
 	}
+	// A mail rail that PANICS is the notice's failure and nobody else's: unrecovered,
+	// it would take this test binary down, as it would the binary that embeds commerce.
+	panicked := make(chan struct{})
+	mail.Set(senderFunc(func(context.Context, []string, string, string) error {
+		close(panicked)
+		panic("rail exploded")
+	}))
+	if r := invokeSubscribeCard(moneyOrg("cp-note-5"), ctx, `{"sourceId":"cnon:5","planId":"dev"}`, nil); r.StatusCode != 201 {
+		t.Fatalf("sale behind a panicking mail rail status=%d", r.StatusCode)
+	}
+	select {
+	case <-panicked:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the panicking mail rail was never called")
+	}
+	time.Sleep(200 * time.Millisecond) // the recover runs; an unrecovered panic ends the binary here
 }
 
 func listPlansWith(t *testing.T, query string) (string, []map[string]any) {
 	t.Helper()
 	a := zip.New(zip.Config{DisableStartupMessage: true})
-	a.Raw(http.MethodGet, "/v1/billing/plans", ListPlans)
+	// The route as it is mounted: the catalog is cached at the edge for an hour.
+	a.Raw(http.MethodGet, "/v1/billing/plans", middleware.CachePublic(3600), ListPlans)
 	resp, err := a.Test(httptest.NewRequest(http.MethodGet, "/v1/billing/plans"+query, nil))
 	if err != nil || resp.StatusCode != 200 {
 		t.Fatalf("GET plans%s: err=%v status=%v", query, err, statusOf(resp))
+	}
+	// A coupon quote is never cached; the plain catalog keeps its public caching.
+	quoted := strings.Contains(query, "coupon=") && !strings.HasSuffix(query, "coupon=")
+	cc, cdn := resp.Header.Get("Cache-Control"), resp.Header.Get("CDN-Cache-Control")
+	if quoted && (cc != "no-store" || cdn != "no-store") {
+		t.Fatalf("GET plans%s: Cache-Control %q CDN-Cache-Control %q, want no-store for a coupon quote", query, cc, cdn)
+	}
+	if !quoted && !strings.HasPrefix(cc, "public") {
+		t.Fatalf("GET plans%s: Cache-Control %q, want the catalog's public caching", query, cc)
 	}
 	raw := bodyOf(resp)
 	var rows []map[string]any
@@ -608,7 +641,7 @@ func bySlug(rows []map[string]any) map[string]map[string]any {
 func TestPlansCouponQuote(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
-	warmCouponNS(ctx)
+	warmCouponNS(t, ctx)
 
 	before, rows := listPlansWith(t, "")
 	for _, r := range rows {
@@ -622,8 +655,8 @@ func TestPlansCouponQuote(t *testing.T) {
 	fiftyOff(t, ctx)
 	now := time.Now().UTC()
 	past := now.Add(-time.Hour)
-	planCoupon(t, ctx, "OLD", promo.CouponSpec{Percent: 50, End: &past, Enabled: true})
-	planCoupon(t, ctx, "ONEUSE", promo.CouponSpec{Percent: 50, Limit: 1, Enabled: true})
+	planCoupon(t, ctx, "OLD", promo.CouponSpec{Percent: 50, End: &past, Plans: []string{"dev"}, Enabled: true})
+	planCoupon(t, ctx, "ONEUSE", promo.CouponSpec{Percent: 50, Limit: 1, Plans: []string{"dev"}, Enabled: true})
 	if _, err := promo.Reserve(ctx, "ONEUSE", "someone", "fp:x", now); err != nil {
 		t.Fatalf("spend ONEUSE: %v", err)
 	}

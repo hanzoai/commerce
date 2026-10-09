@@ -50,6 +50,13 @@ func noticeSale(ctx context.Context, n saleNote) {
 	}
 	subject, body := n.render(time.Now().UTC())
 	go func() {
+		// A panic in the mail rail is the notice's failure, never the process's:
+		// this goroutine runs inside whatever binary embeds commerce.
+		defer func() {
+			if r := recover(); r != nil {
+				log.Error("sale notice for subscription %s (org %s) panicked: %v", n.Sale.SubscriptionID, n.Org, r)
+			}
+		}()
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), saleNoticeTimeout)
 		defer cancel()
 		if err := mail.Send(ctx, to, subject, body); err != nil {
