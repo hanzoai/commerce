@@ -17,7 +17,9 @@ package promo
 //   - The sale and the public plans quote read one place, as the promo does.
 //
 // A plan coupon is a models/coupon row with Filter == coupon.PlanFilter and
-// Type == percent; nothing else in the namespace is honoured as one. Each use
+// Type == percent; nothing else in the namespace is honoured as one. It covers
+// exactly the plan slugs it names — a coupon that names none covers nothing — and
+// SetCoupon refuses a slug that is not a paid plan on sale. Each use
 // is a models/couponredemption row keyed by (code, org) and by (code, card), so
 // an org and a card each redeem a code once, and Used counts uses against
 // Limit under the code's lock, so the limit cannot be raced past.
@@ -40,6 +42,7 @@ import (
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/coupon"
 	"github.com/hanzoai/commerce/models/couponredemption"
+	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/timeutil"
 
@@ -84,18 +87,15 @@ type Offer struct {
 	Percent int
 	// End is when the coupon stops being redeemable, nil when it never does.
 	End *time.Time
-	// plans is every slug the coupon names (Plans and ProductId); empty is
-	// every paid plan.
+	// plans is every slug the coupon names (Plans and ProductId).
 	plans []string
 }
 
-// AppliesTo reports whether the coupon covers a plan slug. Whether the plan
-// charges at all is the caller's question: a coupon never applies to a free
-// plan, because there is nothing to take a percent of.
+// AppliesTo reports whether the coupon covers a plan slug: only a slug it NAMES.
+// A coupon that names none covers nothing, so a row written without a plan list
+// can never discount the whole catalog. Whether the plan charges at all is the
+// caller's question too: a free plan has nothing to take a percent of.
 func (o *Offer) AppliesTo(slug string) bool {
-	if len(o.plans) == 0 {
-		return true
-	}
 	for _, s := range o.plans {
 		if s == slug {
 			return true
@@ -384,8 +384,8 @@ func putRedemption(db *datastore.Datastore, id, code, redeemer string) error {
 // CouponSpec is a SuperAdmin's whole statement of one plan coupon, the body of
 // PUT /v1/platform/coupons/{code}: percent off the first period (1..100), the
 // UTC window it is redeemable in (either end open when absent), how many uses
-// it has in all (0 = no limit), the plan slugs it covers (empty = every paid
-// plan), and whether it is on.
+// it has in all (0 = no limit), the plan slugs it covers (required: at least
+// one, each a paid plan on sale), and whether it is on.
 type CouponSpec struct {
 	Percent int        `json:"percent"`
 	Start   *time.Time `json:"start,omitempty"`
@@ -494,6 +494,18 @@ func SetCoupon(ctx context.Context, raw string, spec CouponSpec, by string) (*Co
 		seen[s] = true
 		plans = append(plans, s)
 	}
+	if len(plans) == 0 {
+		return nil, errCouponSpec{"plans must name at least one paid plan, such as [\"dev\"]"}
+	}
+	paid, err := paidPlans(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, s := range plans {
+		if !paid[s] {
+			return nil, errCouponSpec{fmt.Sprintf("plan %q is not a paid plan on sale", s)}
+		}
+	}
 
 	mu := couponLock(code)
 	mu.Lock()
@@ -547,6 +559,27 @@ func SetCoupon(ctx context.Context, raw string, spec CouponSpec, by string) (*Co
 	}
 	log.Info("plan coupon %s %s by %s: %d%% off, limit %d, plans %v, enabled %v", code, event, by, v.Percent, v.Limit, v.Plans, v.Enabled)
 	return &v, nil
+}
+
+// paidPlans is every plan slug sold for money: the plan authority's listed rows
+// with a price. A contact-sales plan is priced by a person, never by a code, and
+// a free plan has nothing to discount. An authority holding none is an error,
+// not an empty answer — a seed that did not run must not read as "no such plan".
+func paidPlans(ctx context.Context) (map[string]bool, error) {
+	rows := make([]*plan.Plan, 0)
+	if _, err := plan.Query(plan.AuthorityDB(ctx)).GetAll(&rows); err != nil {
+		return nil, fmt.Errorf("the plan catalog could not be read: %w", err)
+	}
+	paid := map[string]bool{}
+	for _, p := range rows {
+		if p.Listed() && p.Price > 0 && !p.ContactSales {
+			paid[p.Slug] = true
+		}
+	}
+	if len(paid) == 0 {
+		return nil, errors.New("the plan catalog holds no paid plan on sale")
+	}
+	return paid, nil
 }
 
 // GetCoupon reads one plan coupon (SuperAdmin only).

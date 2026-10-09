@@ -508,7 +508,20 @@ func ListPlans(c *zip.Ctx) error {
 	if err != nil {
 		return http.Fail(c, 500, "failed to list plans", err)
 	}
-	return c.JSON(200, QuoteCoupon(c.Context(), plans, c.Query("coupon")))
+	code := c.Query("coupon")
+	if strings.TrimSpace(code) != "" {
+		noStore(c)
+	}
+	return c.JSON(200, QuoteCoupon(c.Context(), plans, code))
+}
+
+// noStore marks an answer no cache may keep. A coupon quote is the code's
+// standing NOW — its uses left, its window — so the catalog's public caching
+// (an hour at the edge) must never answer it: a cached quote would advertise a
+// coupon that is already used up, or hide one that just opened.
+func noStore(c *zip.Ctx) {
+	c.SetHeader("Cache-Control", "no-store")
+	c.SetHeader("CDN-Cache-Control", "no-store")
 }
 
 // GetPlan returns a single plan by slug, annotated with the active platform promo.
