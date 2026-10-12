@@ -54,6 +54,11 @@ type canonicalPlan struct {
 	Category     string    `json:"category"`
 	Popular      bool      `json:"popular,omitempty"`
 	ContactSales bool      `json:"contactSales,omitempty"`
+	// Status is the catalog's word on whether the plan is sold: absent or "active"
+	// is on sale, "draft" is published for review and sold by nothing (see
+	// plan.Listed). A deploy that carries a draft row creates it unlisted, so no
+	// price in it is chargeable until the catalog makes it active.
+	Status string `json:"status,omitempty"`
 	// TrialPeriodDays is the base (no-card) free-trial length advertised for the
 	// plan. The actual on-ramp length is decided at signup by billing/trial
 	// (7 days without a card, 30 with one) — this only surfaces the base offer
@@ -132,6 +137,9 @@ type staticPlan struct {
 	TrialPeriodDays int     `json:"trialPeriodDays"`
 	ContactSales    bool    `json:"contactSales,omitempty"`
 	Popular         bool    `json:"popular,omitempty"`
+	// Status is plan.Plan.Status as the catalog states it: "" and "active" are on
+	// sale, "draft" is not. The public answer never carries a draft row.
+	Status string `json:"status,omitempty"`
 	// PromoPercent / PromoUntil surface the ACTIVE, admin-configured platform plan
 	// promo for this plan (percent off + when it ends) — sourced from the promo
 	// package (a Promotion), never hardcoded in the catalog. Zero/empty when no promo
@@ -308,6 +316,7 @@ func parsePlans(data []byte) ([]staticPlan, error) {
 			IntervalCount: 1,
 			ContactSales:  cp.ContactSales,
 			Popular:       cp.Popular,
+			Status:        cp.Status,
 			Features:      cp.Features,
 			Bundles:       cp.Bundles,
 			IncludedIn:    cp.IncludedIn,
@@ -438,7 +447,7 @@ func ReadPlans(ctx context.Context, host, category string, pr *promo.Promo) ([]P
 	// or query serves the known catalog, never a silently blank list.
 	plans, ok := planAuthorityRows(ctx)
 	if !ok {
-		plans = catalog
+		plans = listedCatalog()
 	}
 	if category == "" {
 		return views(withPromo(pr, plans)), nil
@@ -536,7 +545,7 @@ func GetPlan(c *zip.Ctx) error {
 	// DB authority first; embed is the loud-failing fallback (see ListPlans).
 	plans, ok := planAuthorityRows(c.Context())
 	if !ok {
-		plans = catalog
+		plans = listedCatalog()
 	}
 	for _, p := range plans {
 		if p.Slug == id {
@@ -768,9 +777,22 @@ type Plan struct {
 // exported Plan shape. The slice is freshly allocated so callers may
 // mutate freely without bleeding into the canonical catalog var.
 func StaticPlans() []Plan {
-	out := make([]Plan, len(catalog))
-	for i, p := range catalog {
-		out[i] = toPlan(&p)
+	out := make([]Plan, 0, len(catalog))
+	for _, p := range listedCatalog() {
+		out = append(out, toPlan(&p))
+	}
+	return out
+}
+
+// listedCatalog is the embedded catalog less its drafts: what the embed may SELL
+// when the plan authority cannot answer. A draft row resolves (lookupPlan) and is
+// never listed here, so the fallback cannot offer a price the seed holds unlisted.
+func listedCatalog() []staticPlan {
+	out := make([]staticPlan, 0, len(catalog))
+	for _, p := range catalog {
+		if p.Status != plan.StatusDraft {
+			out = append(out, p)
+		}
 	}
 	return out
 }

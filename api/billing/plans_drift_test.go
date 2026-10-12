@@ -20,6 +20,10 @@ import (
 // entry whose digests must equal the new bytes, and editing the bytes under the
 // current version breaks the current entry.
 var versionDigests = map[string]struct{ subscription, dns string }{
+	"1.8.17": {
+		subscription: "6d8eb673140bdfb63249025a3b5a3e61dbc284cc4c51950f10519d214e878536",
+		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
+	},
 	"1.8.16": {
 		subscription: "3c42fb9996ae69cb9a5bae01e279de62104f44bb807f89cea5bfa5a9b867d4b1",
 		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
@@ -115,12 +119,12 @@ func TestVendoredPlansMatchPinnedVersion(t *testing.T) {
 
 // TestVendoredPlanPrices is a diagnostic price-canary: if a money-bearing plan's
 // cents change, THIS test names which one (the digest test only says "drifted").
-// These are the @hanzo/plans@1.8.16 cents — monthly, the annual price tag shown
+// These are the @hanzo/plans@1.8.17 cents — monthly, the annual price tag shown
 // per month, and the year a yearly subscription is charged. contactSales plans
 // are null-priced → stored as 0 + ContactSales (never a chargeable $0).
 func TestVendoredPlanPrices(t *testing.T) {
-	if got := len(catalog); got != 11 { // 8 subscription + 3 dns
-		t.Fatalf("catalog = %d, want 11 (8 subscription + 3 dns)", got)
+	if got := len(catalog); got != 13 { // 10 subscription + 3 dns
+		t.Fatalf("catalog = %d, want 13 (10 subscription + 3 dns)", got)
 	}
 	if got := len(dnsPlans); got != 3 {
 		t.Fatalf("dnsPlans = %d, want 3", got)
@@ -144,6 +148,8 @@ func TestVendoredPlanPrices(t *testing.T) {
 		"dev":            {2000, 1667, 20000, false}, // shown as Pro
 		"max-5x":         {10000, 8333, 100000, false},
 		"max-20x":        {20000, 16667, 200000, false},
+		"max-50x":        {50000, 41667, 500000, false}, // draft: priced, held unlisted
+		"max-100x":       {100000, 83333, 1000000, false},
 		"team":           {2500, 2000, 24000, false}, // per seat
 		"advisory":       {499900, none, 0, false},   // agency, monthly only
 		"dedicated":      {999900, none, 0, false},
@@ -187,6 +193,8 @@ func TestVendoredPlanRoster(t *testing.T) {
 		"dev":        {10, 0}, // Pro, the $20 tier
 		"max-5x":     {10, 1}, // both Max multiples may run a resident bot
 		"max-20x":    {10, 1},
+		"max-50x":    {10, 1},
+		"max-100x":   {10, 1},
 		"max":        {10, 1}, // retired, and answered by max-5x for its holders
 		"advisory":   {10, 1},
 		"dedicated":  {-1, 1},

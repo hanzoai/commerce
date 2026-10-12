@@ -49,6 +49,12 @@ func TestProdPath_SeedReadbackAllFields(t *testing.T) {
 	for i := range catalog {
 		e := catalog[i]
 		g, present := list[e.Slug]
+		if e.Status == plan.StatusDraft {
+			if present {
+				t.Errorf("%s: a draft is on sale in ListPlans", e.Slug)
+			}
+			continue
+		}
 		if !present {
 			t.Errorf("%s: missing from ListPlans", e.Slug)
 			continue

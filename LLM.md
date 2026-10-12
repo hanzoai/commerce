@@ -521,6 +521,20 @@ held: the package decides, an admin edit overrides. Proven end to end by
 `api/billing/plans_converge_test.go`, which plants the real production catalog
 (Managed rows, retired tiers, old prices) and boots it against the published one.
 
+### A draft catalog row is created unlisted (plans 1.8.17)
+
+The boot seed makes a catalog price chargeable the moment a deploy carries it, so the
+catalog can publish a rung as `"status": "draft"` (`max-50x` $500 and `max-100x` $1,000
+are). `plan.Seed` reads the catalog's status in BOTH directions: a draft row is created
+unlisted, a row already where the catalog says is left alone, active makes a row
+sellable and draft takes a seed-written row back off sale. An admin edit still wins
+(`AdminEdited`). A draft still resolves (`lookupPlan`, `resolveSubscriptionPlan`) so a
+renewal or invoice could price itself; it is on sale nowhere: `planAuthorityRows`,
+the embed fallback (`listedCatalog`), `StaticPlans` and the three purchase entrypoints
+all go through `Listed()` / the draft filter. Activating a rung is one edit in
+`@hanzo/plans` (delete the `status` line), a release, a re-vendor and a deploy, and it
+needs the owner's word because it makes a live price chargeable.
+
 ### Lifecycle: archive, never delete (the Shopify product model)
 
 `plan.Status` is `active | draft | archived`, and **empty means active** — every

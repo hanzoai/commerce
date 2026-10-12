@@ -488,15 +488,16 @@ func Seed(db *datastore.Datastore, rows []*Plan) (created, corrected int, err er
 			// Status is carried by neither copyInto nor planEqual, so a
 			// republished row reconciles to the catalog's values and stays
 			// invisible — reported as present by the seed and absent by the public
-			// catalog, with nothing to read that says why.
-			back := !existing.Listed()
-			if !back && planEqual(existing, r) {
+			// catalog, with nothing to read that says why. The catalog's own status
+			// is the answer: active makes a row sellable, draft makes it unlisted,
+			// and a row already where the catalog says is left alone.
+			want := catalogStatus(r.Status)
+			moved := catalogStatus(existing.Status) != want
+			if !moved && planEqual(existing, r) {
 				continue // already the published value — write nothing
 			}
 			copyInto(existing, r)
-			if back {
-				existing.Status = StatusActive
-			}
+			existing.Status = want
 			existing.Managed = true
 			if uerr := existing.Update(); uerr != nil {
 				return created, corrected, uerr
@@ -506,6 +507,7 @@ func Seed(db *datastore.Datastore, rows []*Plan) (created, corrected int, err er
 		}
 		e := New(db)
 		copyInto(e, r)
+		e.Status = r.Status // a draft row is born unlisted
 		e.Managed = true
 		if cerr := e.Create(); cerr != nil {
 			return created, corrected, cerr
@@ -550,6 +552,15 @@ func Seed(db *datastore.Datastore, rows []*Plan) (created, corrected int, err er
 		corrected++
 	}
 	return created, corrected, nil
+}
+
+// catalogStatus is a status as the catalog states it: absent is active, so a row
+// written before the field existed and a catalog row that states none agree.
+func catalogStatus(s string) string {
+	if s == "" {
+		return StatusActive
+	}
+	return s
 }
 
 // planEqual reports whether a stored row already carries the catalog's values, so

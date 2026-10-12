@@ -249,7 +249,8 @@ func resolveSubscriptionPlan(db *datastore.Datastore, planId string) (*plan.Plan
 		p.Interval = types.Interval(staticP.Interval)
 		p.IntervalCount = staticP.IntervalCount
 		p.TrialPeriodDays = staticP.TrialPeriodDays
-		_ = p.Create() // best-effort; ignore dup-key errors
+		p.Status = staticP.Status // a draft stays unlisted when the embed materializes it
+		_ = p.Create()            // best-effort; ignore dup-key errors
 	}
 	return p, nil
 }

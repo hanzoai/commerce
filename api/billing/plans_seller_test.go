@@ -28,8 +28,8 @@ func TestReadPlansSellsOnlyOnTheSellersHosts(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%q: %v", host, err)
 		}
-		if len(rows) != len(catalog) {
-			t.Errorf("%q lists %d plans, the catalog has %d", host, len(rows), len(catalog))
+		if len(rows) != len(listedCatalog()) {
+			t.Errorf("%q lists %d plans, the catalog puts %d on sale", host, len(rows), len(listedCatalog()))
 		}
 	}
 

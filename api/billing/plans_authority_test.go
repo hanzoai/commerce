@@ -141,14 +141,14 @@ func TestPlanAuthorityRows_LoudFallbackThenAuthority(t *testing.T) {
 	if !ok {
 		t.Fatal("seeded authority must read ok")
 	}
-	if len(rows) != len(catalog) {
-		t.Fatalf("authority rows = %d, want %d", len(rows), len(catalog))
+	if len(rows) != len(listedCatalog()) {
+		t.Fatalf("authority rows = %d, want the %d the catalog puts on sale", len(rows), len(listedCatalog()))
 	}
 	bySlug := map[string]staticPlan{}
 	for _, r := range rows {
 		bySlug[r.Slug] = r
 	}
-	for _, embed := range catalog {
+	for _, embed := range listedCatalog() {
 		got := bySlug[embed.Slug]
 		if got.Price != embed.Price || got.Category != embed.Category || !sameCents(got.PriceAnnual, embed.PriceAnnual) {
 			t.Errorf("projected %q = %d/%s/%s, want %d/%s/%s", embed.Slug, got.Price, centsText(got.PriceAnnual), got.Category, embed.Price, centsText(embed.PriceAnnual), embed.Category)

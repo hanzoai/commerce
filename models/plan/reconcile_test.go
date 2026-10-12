@@ -151,3 +151,96 @@ func TestAnAdminUnlistingSurvivesTheSeed(t *testing.T) {
 			"is the source, an admin edit is an override, and reviving must not reverse that")
 	}
 }
+
+// A DRAFT ROW IS BORN UNLISTED AND STAYS SO. A catalog price is chargeable the
+// moment a deploy carries it, so the catalog can publish a rung as a draft: the
+// seed creates it, no purchase entrypoint sells it (Listed), and a second boot
+// leaves it exactly where the catalog put it.
+func TestADraftIsCreatedUnlistedAndStaysUnlisted(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	draft := &Plan{Slug: "max-100x", Category: "personal", Name: "Max 100x", Price: 100000, Currency: currency.USD, Status: StatusDraft}
+	for boot := 1; boot <= 2; boot++ {
+		if _, _, err := Seed(db, []*Plan{draft}); err != nil {
+			t.Fatalf("boot %d: %v", boot, err)
+		}
+		p := New(db)
+		if ok, _ := p.Query().Filter("Slug=", "max-100x").Get(); !ok {
+			t.Fatalf("boot %d: the draft was not created", boot)
+		}
+		if p.Listed() {
+			t.Fatalf("boot %d: a draft row is on sale", boot)
+		}
+	}
+}
+
+// THE CATALOG MAKES A DRAFT SELLABLE, AND CAN TAKE A ROW BACK TO DRAFT. Active and
+// draft are one field read in both directions, so activating a rung is one edit
+// to the catalog and withdrawing it is the same edit reversed.
+func TestTheCatalogActivatesAndWithdrawsADraft(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	row := &Plan{Slug: "max-50x", Category: "personal", Name: "Max 50x", Price: 50000, Currency: currency.USD, Status: StatusDraft}
+	listed := func() bool {
+		p := New(db)
+		if ok, _ := p.Query().Filter("Slug=", "max-50x").Get(); !ok {
+			t.Fatal("max-50x is missing")
+		}
+		return p.Listed()
+	}
+	if _, _, err := Seed(db, []*Plan{row}); err != nil {
+		t.Fatal(err)
+	}
+	if listed() {
+		t.Fatal("the draft is on sale")
+	}
+
+	row.Status = ""
+	if _, _, err := Seed(db, []*Plan{row}); err != nil {
+		t.Fatal(err)
+	}
+	if !listed() {
+		t.Fatal("the catalog made the row active and it is still not on sale")
+	}
+
+	row.Status = StatusDraft
+	if _, _, err := Seed(db, []*Plan{row}); err != nil {
+		t.Fatal(err)
+	}
+	if listed() {
+		t.Fatal("the catalog withdrew the row and it is still on sale")
+	}
+}
+
+// An admin's listing still beats the catalog's draft: the package is the source,
+// a human edit is an override.
+func TestAnAdminListingSurvivesACatalogDraft(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	row := &Plan{Slug: "max-50x", Category: "personal", Name: "Max 50x", Price: 50000, Currency: currency.USD, Status: StatusDraft}
+	if _, _, err := Seed(db, []*Plan{row}); err != nil {
+		t.Fatal(err)
+	}
+	p := New(db)
+	if ok, _ := p.Query().Filter("Slug=", "max-50x").Get(); !ok {
+		t.Fatal("max-50x is missing")
+	}
+	p.Status = StatusActive
+	p.AdminEdited = true
+	if err := p.Update(); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := Seed(db, []*Plan{row}); err != nil {
+		t.Fatal(err)
+	}
+	q := New(db)
+	if ok, _ := q.Query().Filter("Slug=", "max-50x").Get(); !ok || !q.Listed() {
+		t.Fatal("the seed reversed an admin's listing")
+	}
+}

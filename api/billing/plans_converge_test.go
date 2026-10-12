@@ -78,3 +78,52 @@ func TestCatalogConverges_OldStoreToPublishedLadder(t *testing.T) {
 }
 
 func currencyCents(v int64) currency.Cents { return currency.Cents(v) }
+
+// THE TOP OF THE LADDER IS PUBLISHED AND SOLD BY NOTHING. Max 50x ($500) and Max
+// 100x ($1,000) are drafts in the catalog: a boot creates their rows unlisted, the
+// public catalog does not list them, and every purchase entrypoint treats them as
+// a slug that never existed — so a deploy that carries the price charges no one.
+func TestDraftTiersAreSeededUnlistedAndSoldByNothing(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := datastore.New(nscontext.WithNamespace(c, plan.Namespace))
+	if _, _, err := SeedPlans(c); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	listed, ok := planAuthorityRows(c)
+	if !ok {
+		t.Fatal("authority read failed")
+	}
+	for _, r := range listed {
+		if r.Slug == "max-50x" || r.Slug == "max-100x" {
+			t.Errorf("%s is in the public catalog while it is a draft", r.Slug)
+		}
+	}
+	for slug, cents := range map[string]int64{"max-50x": 50000, "max-100x": 100000} {
+		p, err := resolveSubscriptionPlan(db, slug)
+		if err != nil {
+			t.Fatalf("%s must still resolve (renewals, invoices): %v", slug, err)
+		}
+		if int64(p.Price) != cents {
+			t.Errorf("%s resolves at %d cents, want %d", slug, p.Price, cents)
+		}
+		if p.Listed() {
+			t.Errorf("%s resolves as on sale: a card would be charged $%d", slug, cents/100)
+		}
+	}
+	// The embed fallback, used when the authority cannot answer, offers none.
+	for _, p := range listedCatalog() {
+		if p.Slug == "max-50x" || p.Slug == "max-100x" {
+			t.Errorf("the embed fallback offers %s", p.Slug)
+		}
+	}
+	for _, p := range StaticPlans() {
+		if p.Slug == "max-50x" || p.Slug == "max-100x" {
+			t.Errorf("StaticPlans hands %s to a seeder", p.Slug)
+		}
+	}
+	if lookupPlan("max-100x") == nil {
+		t.Error("a draft plan must still be answerable by lookupPlan")
+	}
+}

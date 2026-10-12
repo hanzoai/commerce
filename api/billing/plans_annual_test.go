@@ -3,6 +3,7 @@ package billing
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hanzoai/commerce/models/plan"
 	"math"
 	"testing"
 
@@ -45,6 +46,9 @@ func TestAnnualPriceIsTheCatalogs(t *testing.T) {
 			t.Fatalf("decode %s: %v", f.path, err)
 		}
 		for _, r := range rows {
+			if r.Status == plan.StatusDraft {
+				continue // a draft is on sale nowhere, so nothing serves its annual price
+			}
 			want[r.ID] = "null"
 			if r.PriceAnnual != nil {
 				want[r.ID] = fmt.Sprint(int64(math.Round(*r.PriceAnnual * 100)))
@@ -79,7 +83,7 @@ func TestAnnualPriceIsTheCatalogs(t *testing.T) {
 		}
 	}
 
-	served("embed", views(catalog))
+	served("embed", views(listedCatalog()))
 
 	c := ae.NewContext()
 	defer c.Close()
