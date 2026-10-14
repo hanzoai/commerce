@@ -2,6 +2,9 @@ package square
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -13,6 +16,12 @@ import (
 
 // CreateCustomer creates a customer profile in Square.
 // Returns the Square customer ID on success.
+//
+// metadata["reference"] names what the customer is for: it is stored as the
+// customer's reference_id, the field FindCustomer searches. The request carries
+// an idempotency key digested from its own body, so a create sent again with
+// the same inputs answers with the customer the first one made, and one key
+// never travels with two different bodies.
 func (sp *SquareProcessor) CreateCustomer(ctx context.Context, email, name string, metadata map[string]interface{}) (string, error) {
 	req := &square.CreateCustomerRequest{
 		EmailAddress: square.String(email),
@@ -31,6 +40,16 @@ func (sp *SquareProcessor) CreateCustomer(ctx context.Context, email, name strin
 	if note, ok := metadata["note"].(string); ok && note != "" {
 		req.Note = square.String(note)
 	}
+	if ref, ok := metadata["reference"].(string); ok && ref != "" {
+		req.ReferenceID = square.String(fit(ref, refMax))
+	}
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		return "", fmt.Errorf("square create customer: %w", err)
+	}
+	sum := sha256.Sum256(body)
+	req.IdempotencyKey = square.String(hex.EncodeToString(sum[:])[:keyMax])
 
 	resp, err := sp.customersClient.Create(ctx, req)
 	if err != nil {
@@ -40,6 +59,30 @@ func (sp *SquareProcessor) CreateCustomer(ctx context.Context, email, name strin
 		return "", fmt.Errorf("square create customer: empty response")
 	}
 	return *resp.Customer.ID, nil
+}
+
+// FindCustomer returns the id of the oldest Square customer whose reference_id
+// is reference, or "" when there is none. Square indexes customers for search
+// eventually, so one created seconds ago may not be found yet.
+func (sp *SquareProcessor) FindCustomer(ctx context.Context, reference string) (string, error) {
+	resp, err := sp.customersClient.Search(ctx, &square.SearchCustomersRequest{
+		Limit: square.Int64(1),
+		Query: &square.CustomerQuery{
+			Filter: &square.CustomerFilter{
+				ReferenceID: &square.CustomerTextFilter{Exact: square.String(fit(reference, refMax))},
+			},
+			Sort: &square.CustomerSort{Field: square.CustomerSortFieldCreatedAt.Ptr()},
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("square search customers: %w", err)
+	}
+	for _, c := range resp.Customers {
+		if c != nil && c.ID != nil {
+			return *c.ID, nil
+		}
+	}
+	return "", nil
 }
 
 // GetCustomer retrieves a Square customer profile by ID.

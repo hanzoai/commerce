@@ -21,7 +21,7 @@ func SetProcessorsForOrg(fn func(*organization.Organization) *processor.Registry
 }
 
 // MockSquareProcessor provides an in-memory Square processor implementing
-// PaymentProcessor, squareCustomerProcessor, and vaulter for tests and local simulation.
+// PaymentProcessor, squareCustomerProcessor, vaulter, and finder for tests and local simulation.
 type MockSquareProcessor struct {
 	processor.BaseProcessor
 
@@ -34,6 +34,9 @@ type MockSquareProcessor struct {
 	createCustomerErr   error
 	createdCustomerID   string
 	createCustomerCalls int
+	customers           map[string]string // reference → customer id, what FindCustomer finds
+	findErr             error
+	findCalls           int
 	addCardErr          error
 	addedCardID         string
 	addCardCustomerID   string
@@ -143,14 +146,36 @@ func (m *MockSquareProcessor) CancelAuthorization(ctx context.Context, paymentID
 }
 
 func (m *MockSquareProcessor) CreateCustomer(ctx context.Context, email, name string, metadata map[string]interface{}) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.createCustomerCalls++
 	if m.createCustomerErr != nil {
 		return "", m.createCustomerErr
 	}
+	if ref, _ := metadata["reference"].(string); ref != "" {
+		if m.customers == nil {
+			m.customers = map[string]string{}
+		}
+		m.customers[ref] = m.createdCustomerID
+	}
 	return m.createdCustomerID, nil
 }
 
+// FindCustomer answers with the customer CreateCustomer made under reference,
+// as Square's search does once it has indexed it.
+func (m *MockSquareProcessor) FindCustomer(ctx context.Context, reference string) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.findCalls++
+	if m.findErr != nil {
+		return "", m.findErr
+	}
+	return m.customers[reference], nil
+}
+
 func (m *MockSquareProcessor) AddPaymentMethod(ctx context.Context, customerID, token string) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.addCardCustomerID = customerID
 	m.addCardNonce = token
 	if m.addCardErr != nil {

@@ -13,6 +13,10 @@ import (
 // limits, so no caller should have to know this number.
 const keyMax = 45
 
+// refMax is Square's limit on a customer's reference_id. A longer reference
+// fails the create, so it is fitted the same way a key is.
+const refMax = 100
+
 // fitKey fits an idempotency key into Square's limit.
 //
 // A key already within the limit passes through UNCHANGED, so keys in flight
@@ -28,9 +32,16 @@ const keyMax = 45
 // can cut to the same key, and Square would answer the second with the first
 // one's payment — a charge that silently never happens.
 func fitKey(key string) string {
-	if len(key) <= keyMax {
-		return key
+	return fit(key, keyMax)
+}
+
+// fit returns s unchanged when it is within limit, else the hex sha256 of the
+// whole of s, cut to limit.
+func fit(s string, limit int) string {
+	if len(s) <= limit {
+		return s
 	}
-	sum := sha256.Sum256([]byte(key))
-	return hex.EncodeToString(sum[:])[:keyMax]
+	sum := sha256.Sum256([]byte(s))
+	d := hex.EncodeToString(sum[:])
+	return d[:min(len(d), limit)]
 }

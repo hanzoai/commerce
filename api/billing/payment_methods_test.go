@@ -105,54 +105,33 @@ func TestVerifyCardWithPreAuth_NoSquareProcessor(t *testing.T) {
 
 // ---- Card-on-file -----------------------------------------------------------
 
-func TestAttachSquareCardOnFile_CreatesCustomerAndCard(t *testing.T) {
-	m := newMockSquare(nil, "", nil)
-	m.createdCustomerID = "cust_new"
-	m.addedCardID = "ccof_new"
-
-	cof, err := attachSquareCardOnFile(context.Background(), m, "", "owner@acme.test", "acme", "cnon:fresh-nonce")
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-	if m.createCustomerCalls != 1 {
-		t.Errorf("expected CreateCustomer to be called once, got %d", m.createCustomerCalls)
-	}
-	if cof.CustomerID != "cust_new" || cof.CardID != "ccof_new" {
-		t.Errorf("unexpected card-on-file: %+v", cof)
-	}
-	if m.addCardCustomerID != "cust_new" {
-		t.Errorf("AddPaymentMethod got customer %q, want %q", m.addCardCustomerID, "cust_new")
-	}
-	if m.addCardNonce != "cnon:fresh-nonce" {
-		t.Errorf("AddPaymentMethod got nonce %q, want the single-use nonce", m.addCardNonce)
-	}
-}
-
-func TestAttachSquareCardOnFile_ReusesExistingCustomer(t *testing.T) {
+func TestAttachSquareCardOnFile_VaultsUnderTheCustomer(t *testing.T) {
 	m := newMockSquare(nil, "", nil)
 	m.addedCardID = "ccof_second"
 
-	cof, err := attachSquareCardOnFile(context.Background(), m, "cust_existing", "", "acme", "cnon:second-card")
+	cof, err := attachSquareCardOnFile(context.Background(), m, "cust_existing", "cnon:second-card")
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 	if m.createCustomerCalls != 0 {
-		t.Errorf("expected CreateCustomer NOT to be called when reusing a customer, got %d calls", m.createCustomerCalls)
+		t.Errorf("attaching a card must not create a customer, got %d calls", m.createCustomerCalls)
 	}
-	if cof.CustomerID != "cust_existing" {
-		t.Errorf("expected reused customer %q, got %q", "cust_existing", cof.CustomerID)
+	if cof.CustomerID != "cust_existing" || cof.CardID != "ccof_second" {
+		t.Errorf("unexpected card-on-file: %+v", cof)
 	}
 	if m.addCardCustomerID != "cust_existing" {
 		t.Errorf("AddPaymentMethod got customer %q, want %q", m.addCardCustomerID, "cust_existing")
+	}
+	if m.addCardNonce != "cnon:second-card" {
+		t.Errorf("AddPaymentMethod got nonce %q, want the single-use nonce", m.addCardNonce)
 	}
 }
 
 func TestAttachSquareCardOnFile_DeclinedCard(t *testing.T) {
 	m := newMockSquare(nil, "", nil)
-	m.createdCustomerID = "cust_decline"
 	m.addCardErr = errors.New("CARD_DECLINED")
 
-	if _, err := attachSquareCardOnFile(context.Background(), m, "", "", "acme", "cnon:bad"); err == nil {
+	if _, err := attachSquareCardOnFile(context.Background(), m, "cust_decline", "cnon:bad"); err == nil {
 		t.Fatal("expected an error when the card is declined, got nil")
 	}
 }

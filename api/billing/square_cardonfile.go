@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/paymentmethod"
 	"github.com/hanzoai/commerce/payment/processor"
+	"github.com/hanzoai/commerce/util/nscontext"
 )
 
 // squareCustomerProcessor is the subset of processor.CustomerProcessor needed to
@@ -41,6 +43,13 @@ type vaulter interface {
 // heal stored rows that predate vaulting returning card facts.
 type lister interface {
 	Cards(ctx context.Context, customerID string) ([]processor.Card, error)
+}
+
+// finder finds the processor customer already made under a reference, "" when
+// there is none. Optional; without it a subject with no saved card gets a
+// customer made for it.
+type finder interface {
+	FindCustomer(ctx context.Context, reference string) (string, error)
 }
 
 // squareCardOnFile holds the durable identifiers for a vaulted Square card.
@@ -87,29 +96,61 @@ func existingSquareCustomerID(db *datastore.Datastore, customerID string) string
 	return ""
 }
 
+// customerLocks serializes finding or making a subject's Square customer per
+// (namespace, subject), so saves at once for one subject make one customer. It
+// is its own lock, not defaultLock: it is held across processor calls, and the
+// default lock guards only the default decision.
+var customerLocks sync.Map // map[string]*sync.Mutex
+
+func customerLock(db *datastore.Datastore, subject string) *sync.Mutex {
+	m, _ := customerLocks.LoadOrStore(nscontext.GetNamespace(db.Context)+"\x00"+subject, &sync.Mutex{})
+	return m.(*sync.Mutex)
+}
+
+// squareCustomer returns the one Square customer of a billing subject, found or
+// made once: the customer a saved card already names, else the customer Square
+// holds under the subject's reference, else a new one made under it. The
+// reference is the subject qualified by its namespace, as the saved cards and
+// the locks are, because one Square account serves many orgs.
+//
+// Square indexes customers for search eventually, so a retry seconds after a
+// create may not find it; the create's idempotency key, digested from the same
+// request, answers that retry with the customer already made. Later retries find
+// it by reference. A failed search is logged and the keyed create still runs, so
+// a search outage never blocks a checkout.
+func squareCustomer(ctx context.Context, db *datastore.Datastore, cp squareCustomerProcessor, subject, email string) (string, error) {
+	mu := customerLock(db, subject)
+	mu.Lock()
+	defer mu.Unlock()
+
+	if id := existingSquareCustomerID(db, subject); id != "" {
+		return id, nil
+	}
+	ref := nscontext.GetNamespace(db.Context) + "/" + subject
+	if f, ok := cp.(finder); ok {
+		switch id, err := f.FindCustomer(ctx, ref); {
+		case err != nil:
+			log.Warn("squareCustomer: search for %s failed, creating under its key: %v", ref, err)
+		case id != "":
+			return id, nil
+		}
+	}
+	meta := map[string]interface{}{"reference": ref, "note": "Hanzo billing customer " + subject}
+	id, err := cp.CreateCustomer(ctx, email, subject, meta)
+	if err != nil {
+		return "", fmt.Errorf("create square customer: %w", err)
+	}
+	return id, nil
+}
+
 // attachSquareCardOnFile converts a single-use Square Web Payments nonce into a
-// reusable card-on-file. It reuses existingCustomerID when non-empty (one Square
-// customer per org), otherwise creates a new Square customer identified by
-// name/email.
+// reusable card-on-file under customerID, the subject's one Square customer.
 //
 // Creating the card on file also validates the card with Square, so this both
 // verifies AND saves in a single nonce use. A separate $1 pre-auth would consume
 // the single-use nonce and make the subsequent attach fail — that's why the
 // card-on-file path replaces verifyCardWithPreAuth rather than running after it.
-func attachSquareCardOnFile(ctx context.Context, cp squareCustomerProcessor, existingCustomerID, email, name, nonce string) (squareCardOnFile, error) {
-	customerID := existingCustomerID
-	if customerID == "" {
-		meta := map[string]interface{}{}
-		if name != "" {
-			meta["note"] = "Hanzo billing customer " + name
-		}
-		id, err := cp.CreateCustomer(ctx, email, name, meta)
-		if err != nil {
-			return squareCardOnFile{}, fmt.Errorf("create square customer: %w", err)
-		}
-		customerID = id
-	}
-
+func attachSquareCardOnFile(ctx context.Context, cp squareCustomerProcessor, customerID, nonce string) (squareCardOnFile, error) {
 	// Prefer the vault face that reports the card's facts; fall back to the
 	// id-only attach for processors (and fakes) that don't have it.
 	if v, ok := cp.(vaulter); ok {
@@ -127,9 +168,10 @@ func attachSquareCardOnFile(ctx context.Context, cp squareCustomerProcessor, exi
 }
 
 // saveCard is the ONE constructor for a vaulted-card payment method: it vaults
-// the nonce, refuses to stack a duplicate, and persists a row a customer can
-// recognize. Both endpoints that save a card — CreatePaymentMethod and
-// SubscribeWithCard — go through it, so they cannot drift.
+// the nonce under the subject's one Square customer (squareCustomer), refuses
+// to stack a duplicate, and persists a row a customer can recognize. Both
+// endpoints that save a card — CreatePaymentMethod and SubscribeWithCard — go
+// through it, so they cannot drift.
 //
 // Dedupe: the processor's Fingerprint identifies the card NUMBER across vaults.
 // When the freshly-vaulted card matches a row the subject already holds (same
@@ -140,8 +182,11 @@ func attachSquareCardOnFile(ctx context.Context, cp squareCustomerProcessor, exi
 // must only remove the Square card when created is true, or a retried checkout
 // would destroy the customer's existing saved card.
 func saveCard(ctx context.Context, db *datastore.Datastore, cp squareCustomerProcessor, subject, email, nonce string) (pm *paymentmethod.PaymentMethod, created bool, err error) {
-	existing := existingSquareCustomerID(db, subject)
-	cof, err := attachSquareCardOnFile(ctx, cp, existing, email, subject, nonce)
+	customerID, err := squareCustomer(ctx, db, cp, subject, email)
+	if err != nil {
+		return nil, false, err
+	}
+	cof, err := attachSquareCardOnFile(ctx, cp, customerID, nonce)
 	if err != nil {
 		return nil, false, err
 	}
