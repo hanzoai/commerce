@@ -13,7 +13,7 @@ import (
 	"github.com/hanzoai/money"
 )
 
-// SetProcessorsForOrg replaces the processor resolver for tests, returning a cleanup function.
+// SetProcessorsForOrg replaces the processor resolver, returning a cleanup function.
 func SetProcessorsForOrg(fn func(*organization.Organization) *processor.Registry) func() {
 	old := processorsForOrg
 	processorsForOrg = fn
