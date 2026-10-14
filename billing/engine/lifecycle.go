@@ -44,6 +44,11 @@ func StartSubscription(sub *subscription.Subscription, p *plan.Plan) {
 // row is never served a period it has not paid for, and one canceled at the end of
 // its period ends with the last period it paid for.
 //
+// A trial is billed the same way. The trial is what a trialing row has been
+// served (servedTo), so when it ends the period after it — the first paid one —
+// is invoiced and collected, and the row becomes active once that is paid or past
+// due when it is not. A trial canceled at its end ends with the trial, unbilled.
+//
 // It is idempotent per (subscription, period): a PastDue renewal re-runs the
 // SAME period (the row only moves on a successful collection), so this must NEVER
 // mint a second invoice for a period already invoiced. If an invoice for that
@@ -71,7 +76,7 @@ func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscr
 	// When the period after the held one has already gone by, its invoice still
 	// decides first: paid — however late — it moves the row on; unpaid, the period
 	// was never served, so it is owed no longer and its invoice is void.
-	if after := (period{sub.PeriodEnd, Advance(sub.PeriodEnd, &sub.Plan)}); after.start.Unix() != next.start.Unix() {
+	if after := (period{servedTo(sub), Advance(servedTo(sub), &sub.Plan)}); after.start.Unix() != next.start.Unix() {
 		prior, err := findInvoiceForPeriod(db, sub, after)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to look up the lapsed period's invoice: %w", err)
@@ -184,8 +189,9 @@ type period struct{ start, end time.Time }
 // customer is never charged for a period it was not served, nor at once for every
 // period since.
 func owed(sub *subscription.Subscription, now time.Time) period {
-	p := period{sub.PeriodEnd, Advance(sub.PeriodEnd, &sub.Plan)}
-	if sub.PeriodEnd.IsZero() {
+	end := servedTo(sub)
+	p := period{end, Advance(end, &sub.Plan)}
+	if end.IsZero() {
 		return p
 	}
 	for !p.end.After(now) {
@@ -194,25 +200,43 @@ func owed(sub *subscription.Subscription, now time.Time) period {
 	return p
 }
 
-// IsDue reports whether a subscription's current period has elapsed and it is
-// eligible to be (re)invoiced: Active or PastDue with a PeriodEnd in the past.
-// The single definition of "due", shared by the billing-cycle filter and
-// RenewSubscription's new-period gate.
+// IsDue reports whether a subscription has been served everything it holds and
+// is eligible to be (re)invoiced: Active or PastDue with a PeriodEnd in the past,
+// or Trialing on a card with a TrialEnd in the past. The single definition of
+// "due", shared by the billing-cycle filter and RenewSubscription's new-period
+// check.
 //
 // An externally collected subscription is never due. Its customer pays the
 // processor directly, so an invoice built here would bill a period nobody owes us
 // for, and collecting it would burn their credits, then their balance, then a card.
 // Its next period is recorded when that payment arrives, not renewed.
+//
+// A trial with no card on it is never due either: nothing was agreed to pay for
+// the period after it, so it lapses at its end and is never invoiced.
 func IsDue(sub *subscription.Subscription, now time.Time) bool {
 	if sub.Type == subscription.External {
 		return false
 	}
 	switch sub.Status {
 	case subscription.Active, subscription.PastDue:
-		return !sub.PeriodEnd.IsZero() && now.After(sub.PeriodEnd)
+	case subscription.Trialing:
+		if sub.DefaultPaymentMethod == "" {
+			return false
+		}
 	default:
 		return false
 	}
+	end := servedTo(sub)
+	return !end.IsZero() && now.After(end)
+}
+
+// servedTo is the end of what a row has been served: its trial while it is
+// trialing, else the period it holds. The period after it is the one it owes next.
+func servedTo(sub *subscription.Subscription) time.Time {
+	if sub.Status == subscription.Trialing {
+		return sub.TrialEnd
+	}
+	return sub.PeriodEnd
 }
 
 // CreatePaidFirstInvoice builds the invoice for the period the subscription holds,
@@ -376,19 +400,22 @@ func assignInvoiceNumber(db *datastore.Datastore, inv *billinginvoice.BillingInv
 	}
 }
 
-// ended ends a row canceled at the end of its period once that period is over:
-// it is canceled as of the period's end and reports true. Any other row is
-// untouched.
+// ended ends a row canceled at the end of what it has been served (servedTo: its
+// period, or its trial) once that is over: it is canceled as of that end and
+// reports true. Any other row is untouched.
 func ended(sub *subscription.Subscription, now time.Time) bool {
-	if !sub.EndCancel || sub.PeriodEnd.IsZero() || now.Before(sub.PeriodEnd) {
+	end := servedTo(sub)
+	if !sub.EndCancel || end.IsZero() || now.Before(end) {
 		return false
 	}
-	if sub.Status != subscription.Active && sub.Status != subscription.PastDue {
+	switch sub.Status {
+	case subscription.Active, subscription.PastDue, subscription.Trialing:
+	default:
 		return false
 	}
 	sub.Status = subscription.Canceled
 	sub.Canceled = true
-	sub.Ended = sub.PeriodEnd
+	sub.Ended = end
 	return true
 }
 
@@ -445,9 +472,12 @@ func voidUnpaid(db *datastore.Datastore, key datastore.Key) error {
 
 // settle moves the row by what its owed period's invoice says: paid moves it onto
 // that period and makes it active, anything else leaves it past due. Only a row
-// the cycle renews is moved; a canceled or trialing one is not the engine's.
+// the cycle renews is moved — active, past due, or trialing into its first paid
+// period; a canceled one is not the engine's.
 func settle(sub *subscription.Subscription, inv *billinginvoice.BillingInvoice) {
-	if sub.Status != subscription.Active && sub.Status != subscription.PastDue {
+	switch sub.Status {
+	case subscription.Active, subscription.PastDue, subscription.Trialing:
+	default:
 		return
 	}
 	if inv.Status != billinginvoice.Paid {
@@ -465,9 +495,7 @@ func settle(sub *subscription.Subscription, inv *billinginvoice.BillingInvoice) 
 	if !inv.PaidAt.IsZero() && (sub.Status == subscription.PastDue || !inv.PaidAt.Before(inv.PeriodEnd)) {
 		sub.PeriodStart, sub.PeriodEnd = inv.PaidAt, Advance(inv.PaidAt, &sub.Plan)
 	}
-	if sub.Status == subscription.PastDue {
-		sub.Status = subscription.Active
-	}
+	sub.Status = subscription.Active
 }
 
 // resultFromInvoice synthesizes a collection result from an invoice's persisted

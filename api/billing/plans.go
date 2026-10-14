@@ -59,10 +59,11 @@ type canonicalPlan struct {
 	// plan.Listed). A deploy that carries a draft row creates it unlisted, so no
 	// price in it is chargeable until the catalog makes it active.
 	Status string `json:"status,omitempty"`
-	// TrialPeriodDays is the base (no-card) free-trial length advertised for the
-	// plan. The actual on-ramp length is decided at signup by billing/trial
-	// (7 days without a card, 30 with one) — this only surfaces the base offer
-	// on GET /v1/billing/plans.
+	// TrialPeriodDays is the plan's free-trial length. A card sale of the plan
+	// (POST /v1/billing/subscribe/card) opens in a trial this long for a buyer
+	// and a card that have not had one, and charges the card when it ends. The
+	// entry plan's signup on-ramp is billing/trial's own (7 days without a card,
+	// 30 with one).
 	TrialPeriodDays *int        `json:"trialPeriodDays,omitempty"`
 	Features        []string    `json:"features"`
 	Bundles         []string    `json:"bundles,omitempty"`    // slugs of plans whose entitlement this plan also grants

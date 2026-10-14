@@ -180,7 +180,8 @@ type Sale struct {
 	// SubscriptionID is the subscription this sale opened.
 	SubscriptionID string `json:"subscriptionId"`
 	// InvoiceID is the PAID first-period invoice. Empty when the charge settled
-	// and the invoice record did not — the entitlement stands either way.
+	// and the invoice record did not — the entitlement stands either way — and
+	// for a trial, which bills nothing today.
 	InvoiceID string `json:"invoiceId"`
 	// PlanID is the plan bought.
 	PlanID string `json:"planId"`
@@ -192,8 +193,15 @@ type Sale struct {
 	// PaymentMethodID is the vaulted card that paid, and that renewals charge.
 	PaymentMethodID string `json:"paymentMethodId"`
 	// AmountCents is what the card was actually charged for the first period —
-	// price x seats, less any promotion and coupon.
+	// price x seats, less any promotion and coupon. Zero for a trial.
 	AmountCents int64 `json:"amountCents"`
+	// TrialEnd is when the free trial this sale opened ends and the first paid
+	// period is charged. Absent when the sale charged today.
+	TrialEnd *time.Time `json:"trialEnd,omitempty"`
+	// TrialEndCents is what the first paid period costs at TrialEnd — price x
+	// seats, less any promotion — collected as every renewal is. Absent when the
+	// sale charged today.
+	TrialEndCents int64 `json:"trialEndCents,omitempty"`
 	// Currency is the ISO code, the plan's own.
 	Currency string `json:"currency"`
 	// Status is "ok" on a settled sale. A failure is an error, never a status.
@@ -311,7 +319,8 @@ func SubscribeCard(ctx context.Context, org *organization.Organization, in Subsc
 
 // Subscribe vaults or reuses a card, charges it for the plan's FIRST period at
 // the SERVER-AUTHORITATIVE catalog price, and opens the subscription — one act,
-// all of it server-side.
+// all of it server-side. A plan with a free trial opens in its trial instead,
+// charging nothing until the trial ends (subscribe says when).
 //
 // The settled charge IS the mint authority here, which is why this path creates
 // a paid-tier subscription without the C1-a gate CreateBillingSubscription
@@ -346,7 +355,8 @@ func Subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 // refuses BEFORE the card is touched, the idempotency guard is taken before the
 // charge, the one-paid-subscription check sits AFTER the guard so a lost-response
 // retry replays its receipt instead of being told it already pays, and the
-// subscription is created only once the charge has settled.
+// subscription is created only once the charge has settled — or, for a trial,
+// once the card is vaulted, with nothing charged.
 func subscribe(ctx context.Context, org *organization.Organization, in SubscribeIn) (*saleOutcome, error) {
 	if org == nil {
 		return nil, errors.New("subscribe: no organization")
@@ -572,6 +582,11 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			heldSlug, held.Id())}
 	}
 
+	slug := p.Slug
+	if slug == "" {
+		slug = planID
+	}
+
 	// The coupon, resolved now that the guard is held: it must stand, cover this
 	// plan, and not have been redeemed by this org. Its percent comes off what
 	// the promo left, through the function the invoice prices with, so the charge
@@ -579,10 +594,6 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// the subscription never carries it, so every renewal bills the catalog price.
 	cpn := engine.Coupon{}
 	if couponCode != "" {
-		slug := p.Slug
-		if slug == "" {
-			slug = planID
-		}
 		offer, reason := promo.FindCoupon(ctx, couponCode, time.Now())
 		if reason == "" && !offer.AppliesTo(slug) {
 			reason = promo.CouponNotApplicable
@@ -701,6 +712,106 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			return nil, saleRefusal{saleDeclined, parseCardDeclineReason(&processor.PaymentResult{ErrorMessage: err.Error()}, err)}
 		}
 	}
+	// unvault removes a card vaulted BY THIS REQUEST when the sale ends without
+	// taking money, so the attempt leaves no orphan — but a card the customer
+	// already had on file (saved earlier, or the dedupe match) is theirs and stays.
+	unvault := func() {
+		if fresh {
+			_ = cp.RemovePaymentMethod(ctx, squareCustomerIDOf(pm), pm.ProviderRef)
+			_ = pm.Delete()
+		}
+	}
+
+	// A plan sold with a free trial opens in it when this is the plan's first
+	// trial for the buyer (heldBefore) and for the card, in any org
+	// (promo.TakeTrial). Nothing is charged: the card was validated when it was
+	// vaulted, and the renewal sweep charges it for the first paid period when the
+	// trial ends (engine.IsDue). A buyer or a card that has had the trial buys
+	// exactly as a plan without one does, charged now: the trial is an offer to new
+	// buyers, and refusing the sale instead would leave a returning buyer no way to
+	// buy the plan. A store that cannot answer ends the sale with nothing charged:
+	// neither a trial nor a charge the buyer did not expect.
+	if p.TrialPeriodDays > 0 {
+		held, err := heldBefore(db, slug, in.Subject, org.TestMode())
+		if err != nil {
+			unvault()
+			abandon()
+			return nil, fmt.Errorf("plan %q has a free trial and the subscriptions of %s could not be read, so nothing was charged: %w", slug, in.Subject, err)
+		}
+		var release func()
+		if !held {
+			release, err = promo.TakeTrial(ctx, slug, instrumentOf(pm), org.TestMode())
+			if err != nil && !errors.Is(err, promo.ErrTrialTaken) {
+				unvault()
+				abandon()
+				return nil, fmt.Errorf("plan %q has a free trial and the card's use of it was not recorded, so nothing was charged: %w", slug, err)
+			}
+		}
+		if release != nil {
+			if cpn.Code != "" {
+				// A coupon takes its percent off a charge made today, and a trial
+				// makes none. Refused rather than carried to the trial's end, so it
+				// never becomes a full-price charge the buyer was not shown.
+				release()
+				unvault()
+				abandon()
+				return nil, saleRefusal{saleRefused, fmt.Sprintf(
+					"coupon %s takes a percent off a charge made today, and plan %q starts with a %d-day free trial; buy without the coupon to start the trial",
+					cpn.Code, slug, p.TrialPeriodDays)}
+			}
+			if !pm.IsDefault {
+				pm.IsDefault = true
+				if err := pm.Update(); err != nil {
+					log.Error("subscribe: failed to mark method %s default (subject=%s): %v", pm.Id(), in.Subject, err)
+				}
+			}
+			sub, err := createSubscription(db, p, &createSubscriptionRequest{
+				UserId:               in.Subject,
+				PlanId:               planID,
+				StoreId:              in.StoreID,
+				DefaultPaymentMethod: pm.Id(),
+				Quantity:             qty,
+				Metadata:             map[string]interface{}{"source": "subscribe/card"},
+				Test:                 org.TestMode(),
+			})
+			if err != nil {
+				release()
+				unvault()
+				abandon()
+				return nil, err
+			}
+			// Square-backed like a paid sale, so it is the subject's subscription
+			// (billingSubscription) while it trials, and priced under the promo it
+			// was bought with when the trial ends.
+			sub.ProviderType = string(processor.Square)
+			sub.DiscountPercent, sub.DiscountName = promoPercent, promoName
+			if err := sub.Update(); err != nil {
+				log.Error("subscribe: failed to update trial subscription %s (subject=%s): %v", sub.Id(), in.Subject, err)
+			}
+			end := sub.TrialEnd
+			sale := &Sale{
+				SubscriptionID:  sub.Id(),
+				PlanID:          planID,
+				Level:           in.Level,
+				Interval:        p.Interval,
+				PaymentMethodID: pm.Id(),
+				Currency:        string(cur),
+				Status:          "ok",
+				TrialEnd:        &end,
+				TrialEndCents:   chargeCents,
+			}
+			if rec != nil {
+				if body, mErr := json.Marshal(sale); mErr == nil {
+					_ = idempotencykey.Complete(rec, string(body))
+				}
+			}
+			noticeSale(ctx, saleNote{
+				Org: org.Name, Email: in.Email, Plan: p, Seats: seatMult, Sale: sale,
+				ListCents: listCents, PromoName: promoName, Test: org.TestMode(),
+			})
+			return &saleOutcome{Sale: sale, Sub: sub}, nil
+		}
+	}
 
 	// The coupon's use is RESERVED before the card is charged, under the coupon's
 	// lock: the redemption rows for this org and this card are written and the use
@@ -712,10 +823,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	if cpn.Code != "" {
 		h, herr := promo.Reserve(ctx, cpn.Code, org.Name, instrumentOf(pm), time.Now())
 		if herr != nil {
-			if fresh {
-				_ = cp.RemovePaymentMethod(ctx, squareCustomerIDOf(pm), pm.ProviderRef)
-				_ = pm.Delete()
-			}
+			unvault()
 			abandon()
 			return nil, holdRefusal(cpn.Code, herr)
 		}
@@ -729,13 +837,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		fmt.Sprintf("Subscription %s — first period", p.Name))
 	if err != nil || res == nil || !res.Success {
 		hold.Release()
-		// A card vaulted BY THIS REQUEST is removed again so a declined attempt
-		// leaves no orphan — but a card the customer already had on file (saved
-		// earlier, or the dedupe match) is theirs and stays.
-		if fresh {
-			_ = cp.RemovePaymentMethod(ctx, squareCustomerIDOf(pm), pm.ProviderRef)
-			_ = pm.Delete()
-		}
+		unvault()
 		abandon()
 		log.Error("saved-card charge failed for subscribe (subject=%s): %v", in.Subject, err)
 		return nil, saleRefusal{saleDeclined, parseCardDeclineReason(res, err)}
@@ -870,6 +972,22 @@ func instrumentOf(pm *paymentmethod.PaymentMethod) string {
 	return "ref:" + strings.TrimSpace(pm.ProviderRef)
 }
 
+// heldBefore reports whether subject has held plan slug before, in any status,
+// among the rows that speak in this mode (speaks): a subject that has, has had
+// the plan's trial or paid for the plan, and is not offered the trial again.
+func heldBefore(db *datastore.Datastore, slug, subject string, test bool) (bool, error) {
+	subs := make([]*subscription.Subscription, 0)
+	if _, err := subscription.Query(db).Filter("UserId=", subject).GetAll(&subs); err != nil {
+		return false, err
+	}
+	for _, s := range subs {
+		if speaks(s, test) && subscriptionSlug(s) == slug {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // SubscribeWithCard vaults a Square card nonce as a reusable card-on-file, charges
 // it for the plan's FIRST period at the SERVER-AUTHORITATIVE catalog price, and
 // creates the subscription — all server-side, in one transaction of intent.
@@ -882,7 +1000,11 @@ func instrumentOf(pm *paymentmethod.PaymentMethod) string {
 // Header (optional): X-Idempotency-Key — a retry/double-submit with the same key
 // (or, absent a key, the same store/plan/level inside a window) never
 // double-charges: it replays the first result verbatim.
-// Returns: { subscriptionId, invoiceId, planId, level, interval, paymentMethodId, amountCents, currency, status, coupon?, couponPercent? }
+// Returns: { subscriptionId, invoiceId, planId, level, interval, paymentMethodId, amountCents, currency, status, coupon?, couponPercent?, trialEnd?, trialEndCents? }
+//
+// A plan with a free trial (trialPeriodDays) bought by a buyer and a card that
+// have not had it charges nothing today: amountCents is 0, invoiceId is empty,
+// and trialEnd and trialEndCents say when the card is charged and for how much.
 //
 // Everything below the bind is reading values off the request and handing them to
 // Subscribe: the buyer bounded to the caller's own org, the retry key from the

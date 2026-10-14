@@ -217,6 +217,28 @@ func TestIsDue_ExternalIsNeverDue(t *testing.T) {
 	}
 }
 
+// TestIsDue_TrialOnACardIsDueAtItsEnd: a trial opened against a card is due once
+// the trial is over, whatever its first paid period says; a trial with no card on
+// it — the signup on-ramp — is never due, so it lapses unbilled as it always has.
+func TestIsDue_TrialOnACardIsDueAtItsEnd(t *testing.T) {
+	trialEnd := time.Date(2026, 10, 21, 0, 0, 0, 0, time.UTC)
+	card := &subscription.Subscription{
+		Status: subscription.Trialing, DefaultPaymentMethod: "pm_1",
+		TrialEnd: trialEnd, PeriodStart: trialEnd, PeriodEnd: trialEnd.AddDate(0, 1, 0),
+	}
+	if IsDue(card, trialEnd.Add(-time.Minute)) {
+		t.Fatal("a card trial answered due before it ended")
+	}
+	if !IsDue(card, trialEnd.Add(time.Minute)) {
+		t.Fatal("a card trial past its end: want due")
+	}
+	noCard := *card
+	noCard.DefaultPaymentMethod = ""
+	if IsDue(&noCard, trialEnd.AddDate(1, 0, 0)) {
+		t.Fatal("a trial with no card answered due")
+	}
+}
+
 // TestRenewSubscription_TheExistingInvoiceDecidesTheRow: a row whose owed period
 // already has an invoice is never charged again here, but it is not left active
 // on nothing either. A paid invoice moves it onto that period; an unpaid one

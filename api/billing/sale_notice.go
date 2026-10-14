@@ -96,14 +96,23 @@ func (n saleNote) render(at time.Time) (subject, body string) {
 		mode = "test"
 	}
 
+	trial := n.Sale.TrialEnd != nil
 	subject = fmt.Sprintf("Sale: %s (%s) for %s, %s", name, n.Sale.Interval, n.Org, cents(n.Sale.AmountCents, cur))
+	if trial {
+		subject = fmt.Sprintf("Trial: %s (%s) for %s, %s from %s", name, n.Sale.Interval, n.Org,
+			cents(n.Sale.TrialEndCents, cur), n.Sale.TrialEnd.UTC().Format(time.DateOnly))
+	}
 	if n.Coupon.Code != "" {
 		subject += ", coupon " + n.Coupon.Code
 	}
 
 	var b strings.Builder
 	line := func(k, v string) { fmt.Fprintf(&b, "%-16s%s\n", k+":", v) }
-	b.WriteString("A paid plan subscription was sold.\n\n")
+	if trial {
+		b.WriteString("A free trial of a paid plan was started. Its card is charged when the trial ends.\n\n")
+	} else {
+		b.WriteString("A paid plan subscription was sold.\n\n")
+	}
 	line("Org", n.Org)
 	line("Customer email", email)
 	line("Plan", fmt.Sprintf("%s (%s)", name, n.Sale.PlanID))
@@ -112,6 +121,10 @@ func (n saleNote) render(at time.Time) (subject, body string) {
 		line("Seats", fmt.Sprintf("%d", n.Seats))
 	}
 	line("Charged", cents(n.Sale.AmountCents, cur))
+	if trial {
+		line("Trial ends", n.Sale.TrialEnd.UTC().Format(time.RFC3339))
+		line("Then charged", cents(n.Sale.TrialEndCents, cur))
+	}
 	line("List price", cents(n.ListCents, cur))
 	if n.PromoName != "" {
 		line("Promo", n.PromoName)

@@ -340,13 +340,18 @@ func (h *Hold) Release() {
 // that org or card unable to redeem the code again — the safe direction.
 func (h *Hold) undo(db *datastore.Datastore) {
 	for _, id := range []string{h.orgID, h.cardID} {
-		r := couponredemption.New(db)
-		if err := r.Get(db.NewKey(r.Kind(), id, 0, nil)); err != nil {
-			continue
-		}
-		if err := r.Delete(); err != nil {
-			log.Error("plan coupon %s: redemption %s was not removed: %v", h.code, id, err)
-		}
+		removeRedemption(db, h.code, id)
+	}
+}
+
+// removeRedemption deletes one redemption row of code, if it is there.
+func removeRedemption(db *datastore.Datastore, code, id string) {
+	r := couponredemption.New(db)
+	if err := r.Get(db.NewKey(r.Kind(), id, 0, nil)); err != nil {
+		return
+	}
+	if err := r.Delete(); err != nil {
+		log.Error("plan coupon %s: redemption %s was not removed: %v", code, id, err)
 	}
 }
 
