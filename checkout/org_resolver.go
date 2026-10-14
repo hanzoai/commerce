@@ -164,6 +164,12 @@ func returnHostsFor(slug string) []string {
 			"https://lux.tel",
 			"https://www.lux.tel",
 			"https://console.lux.tel",
+			// lux.cloud — the Lux console (hanzoai/console brand lux, home
+			// lux.cloud). Its top-ups and plans send the customer to
+			// pay.lux.cloud with returnUrl = the console page they left.
+			"https://lux.cloud",
+			"https://console.lux.cloud",
+			"https://cloud.lux.cloud",
 		}
 	case "zoo":
 		return []string{
@@ -172,6 +178,10 @@ func returnHostsFor(slug string) []string {
 			// zoolabs.id — Zoo's identity origin (brandZoo.iamIssuer), where
 			// sign-up sends a new customer here and expects them back.
 			"https://zoolabs.id",
+			// zoo.cloud — the Zoo console (hanzoai/console brand zoo, home
+			// zoo.cloud), which returns its buyers the same way.
+			"https://zoo.cloud",
+			"https://console.zoo.cloud",
 		}
 	case "pars":
 		return []string{

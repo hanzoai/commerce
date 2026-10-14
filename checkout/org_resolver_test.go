@@ -318,3 +318,34 @@ func TestReturnHosts_ZooIsZoolabsID(t *testing.T) {
 		t.Errorf("zoo return allowlist carries https://zoo.id")
 	}
 }
+
+// Each brand's console takes its buyers back after a top-up or a plan, and a
+// brand's list never carries another brand's console.
+func TestReturnHosts_EachConsoleIsItsBrands(t *testing.T) {
+	own := map[string][]string{
+		"hanzo": {"https://console.hanzo.ai", "https://platform.hanzo.ai", "https://hanzo.ai"},
+		"lux":   {"https://lux.cloud", "https://console.lux.cloud", "https://cloud.lux.cloud"},
+		"zoo":   {"https://zoo.cloud", "https://console.zoo.cloud"},
+	}
+	for slug, want := range own {
+		hosts := map[string]bool{}
+		for _, h := range returnHostsFor(slug) {
+			hosts[h] = true
+		}
+		for _, h := range want {
+			if !hosts[h] {
+				t.Errorf("%s return allowlist lacks %s", slug, h)
+			}
+		}
+		for other, theirs := range own {
+			if other == slug {
+				continue
+			}
+			for _, h := range theirs {
+				if hosts[h] {
+					t.Errorf("%s return allowlist carries %s, which is %s's", slug, h, other)
+				}
+			}
+		}
+	}
+}
