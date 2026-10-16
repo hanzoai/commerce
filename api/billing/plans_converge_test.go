@@ -79,10 +79,12 @@ func TestCatalogConverges_OldStoreToPublishedLadder(t *testing.T) {
 
 func currencyCents(v int64) currency.Cents { return currency.Cents(v) }
 
-// THE TOP OF THE LADDER IS PUBLISHED AND SOLD BY NOTHING. Max 50x ($500) and Max
-// 100x ($1,000) are drafts in the catalog: a boot creates their rows unlisted, the
-// public catalog does not list them, and every purchase entrypoint treats them as
-// a slug that never existed — so a deploy that carries the price charges no one.
+// THE TOP OF THE LADDER IS PUBLISHED AND SOLD BY NOTHING UNTIL THE OWNER SAYS. Max
+// 100x ($1,000) is a draft in the catalog: a boot creates its row unlisted, the
+// public catalog does not list it, and every purchase entrypoint treats it as a
+// slug that never existed — so a deploy that carries the price charges no one.
+// Max 50x ($500) left draft on the owner's word (@hanzo/plans 1.8.19): it is
+// listed and sold like every other rung.
 func TestDraftTiersAreSeededUnlistedAndSoldByNothing(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
@@ -95,10 +97,15 @@ func TestDraftTiersAreSeededUnlistedAndSoldByNothing(t *testing.T) {
 	if !ok {
 		t.Fatal("authority read failed")
 	}
+	sold := false
 	for _, r := range listed {
-		if r.Slug == "max-50x" || r.Slug == "max-100x" {
+		if r.Slug == "max-100x" {
 			t.Errorf("%s is in the public catalog while it is a draft", r.Slug)
 		}
+		sold = sold || r.Slug == "max-50x"
+	}
+	if !sold {
+		t.Error("max-50x is on sale and missing from the public catalog")
 	}
 	for slug, cents := range map[string]int64{"max-50x": 50000, "max-100x": 100000} {
 		p, err := resolveSubscriptionPlan(db, slug)
@@ -108,18 +115,18 @@ func TestDraftTiersAreSeededUnlistedAndSoldByNothing(t *testing.T) {
 		if int64(p.Price) != cents {
 			t.Errorf("%s resolves at %d cents, want %d", slug, p.Price, cents)
 		}
-		if p.Listed() {
-			t.Errorf("%s resolves as on sale: a card would be charged $%d", slug, cents/100)
+		if on := p.Listed(); on != (slug == "max-50x") {
+			t.Errorf("%s resolves listed=%v", slug, on)
 		}
 	}
-	// The embed fallback, used when the authority cannot answer, offers none.
+	// The embed fallback, used when the authority cannot answer, offers the draft to no one.
 	for _, p := range listedCatalog() {
-		if p.Slug == "max-50x" || p.Slug == "max-100x" {
+		if p.Slug == "max-100x" {
 			t.Errorf("the embed fallback offers %s", p.Slug)
 		}
 	}
 	for _, p := range StaticPlans() {
-		if p.Slug == "max-50x" || p.Slug == "max-100x" {
+		if p.Slug == "max-100x" {
 			t.Errorf("StaticPlans hands %s to a seeder", p.Slug)
 		}
 	}

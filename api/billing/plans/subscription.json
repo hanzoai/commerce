@@ -7,10 +7,15 @@
     "priceMonthly": 0,
     "priceAnnual": 0,
     "features": [
-      "Chat with Enso Free and Zen Free",
+      "Chat on the web with Enso Free and Zen Free",
       "50 free requests every day",
+      "Search the web from chat",
+      "Write, edit and create content",
+      "Make code, pages and charts beside the chat",
+      "Choose how hard it thinks",
       "Build apps with Hanzo Dev",
-      "Use Hanzo in your terminal, code editor and AI apps"
+      "Connect any MCP server in Hanzo Dev",
+      "The Hanzo CLI for macOS, Windows and Linux"
     ],
     "limits": {
       "agents": 1,
@@ -45,8 +50,7 @@
       "Every model, including Enso Ultra and Kai",
       "Usage included on every model",
       "Hanzo Team: chat, meetings, calendar and contacts in one workspace",
-      "Automations, with daily runs included",
-      "Invite up to 3 guests"
+      "Automations, with daily runs included"
     ],
     "payouts": {
       "idleResalePercent": 20,
@@ -232,7 +236,6 @@
   },
   {
     "id": "max-50x",
-    "status": "draft",
     "name": "Max 50x",
     "category": "personal",
     "description": "For the biggest workloads: 50x the usage of Pro.",
