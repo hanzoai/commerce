@@ -94,6 +94,9 @@ func seedSavedCard(t *testing.T, db *datastore.Datastore, subject, cardID, custo
 func invokeTopup(org *organization.Organization, ctx context.Context, body string, headers map[string]string) *http.Response {
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/topup", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
+	// The org's card on file is charged by the org's admin; a test that is about
+	// something else drives as one, and headers may say otherwise.
+	req.Header.Set("X-User-IsOrgAdmin", "true")
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}

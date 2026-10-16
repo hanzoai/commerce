@@ -27,6 +27,14 @@ type AutoRecharge struct {
 	// top-up — used for observability and as a light guard against a runaway
 	// recharge loop within a single cron window.
 	LastRechargedAt string `json:"lastRechargedAt,omitempty"`
+
+	// Day is the UTC date ("2006-01-02") Reloads counts, and Reloads how many
+	// reloads charged the card on that day. The sweep stops at its daily limit.
+	Day     string `json:"day,omitempty"`
+	Reloads int    `json:"reloads,omitempty"`
+	// Txn is the transaction of the last reload counted, so a replayed charge
+	// (the same reload answered twice) is counted once.
+	Txn string `json:"txn,omitempty"`
 }
 
 func (a *AutoRecharge) Validator() *val.Validator {

@@ -43,6 +43,14 @@ var (
 	errMethodUnchargeable = errors.New("saved payment method has no chargeable card")
 )
 
+// unasked reports a chargeAndCredit failure refused before the processor was
+// asked to charge — out of bounds, no guard, already in flight, no processor —
+// so the card saw nothing. Every other failure reached the processor.
+func unasked(err error) bool {
+	return errors.Is(err, errAmountOutOfBounds) || errors.Is(err, errGuardUnavailable) ||
+		errors.Is(err, errChargeInFlight) || errors.Is(err, errNoProcessor)
+}
+
 // The classes a top-up can fail in, published so a caller outside this package
 // answers them the way the endpoint answers them. Each is a different thing for the
 // asker to do — fix the request, retry later, use another card, call support —
@@ -430,6 +438,10 @@ func Topup(c *zip.Ctx) error {
 	org, ok := middleware.GetOrganizationOK(c)
 	if !ok || org == nil {
 		return jsonhttp.Fail(c, 401, "sign in to add funds", nil)
+	}
+	// A card on file is the wallet's: charging the org's is its admins' act.
+	if !mayChangeWallet(c) {
+		return jsonhttp.Fail(c, 403, askAnAdmin(c, "charge its card on file"), nil)
 	}
 
 	var req topupRequest

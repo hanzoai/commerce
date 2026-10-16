@@ -125,12 +125,17 @@ func TestDetachPaymentMethod_TenantIsolation(t *testing.T) {
 
 	idA := seedCard(t, "detach-org-a")
 
-	// org B handed org A's id: 404, and the card is still there afterwards.
-	// Both profiles, because Admin bypasses the intra-org owner guard.
+	// org B handed org A's id: a member of B is refused outright (the org's cards
+	// are its admins'), B's admin misses with 404, and the card is still there
+	// afterwards. Both profiles, because Admin bypasses the intra-org owner guard.
 	for _, admin := range []bool{false, true} {
-		if status := portalDetach(t, "detach-org-b", idA, admin); status != 404 {
-			t.Fatalf("CROSS-TENANT DELETE: org B (admin=%v) detaching org A's card %s got status=%d, want 404",
-				admin, idA, status)
+		want := http.StatusNotFound
+		if !admin {
+			want = http.StatusForbidden
+		}
+		if status := portalDetach(t, "detach-org-b", idA, admin); status != want {
+			t.Fatalf("CROSS-TENANT DELETE: org B (admin=%v) detaching org A's card %s got status=%d, want %d",
+				admin, idA, status, want)
 		}
 		if status, ids := portalList(t, "detach-org-a", "detach-org-a", false); status != 200 || len(ids) != 1 {
 			t.Fatalf("CROSS-TENANT DELETE: org A's card is gone after org B (admin=%v) tried to detach it (status=%d ids=%v)",
@@ -138,8 +143,12 @@ func TestDetachPaymentMethod_TenantIsolation(t *testing.T) {
 		}
 	}
 
-	// org A detaches its OWN card: 200, and the list is empty afterwards.
-	if status := portalDetach(t, "detach-org-a", idA, false); status != 200 {
+	// A member of org A cannot remove the org's card; org A's admin can: 200, and
+	// the list is empty afterwards.
+	if status := portalDetach(t, "detach-org-a", idA, false); status != http.StatusForbidden {
+		t.Fatalf("org A member detach: status=%d, want 403", status)
+	}
+	if status := portalDetach(t, "detach-org-a", idA, true); status != 200 {
 		t.Fatalf("org A own detach: status=%d, want 200", status)
 	}
 	if status, ids := portalList(t, "detach-org-a", "detach-org-a", false); status != 200 || len(ids) != 0 {

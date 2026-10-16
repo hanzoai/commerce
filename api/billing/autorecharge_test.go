@@ -56,7 +56,7 @@ func TestReadAutoRechargeWire_NoRowOmitsLastRecharged(t *testing.T) {
 	org := moneyOrg("recharge-norow")
 
 	got := readRecharge(t, org, ctx)
-	want := `{"amountCents":0,"currency":"usd","enabled":false,"thresholdCents":0,"userId":"recharge-norow"}`
+	want := `{"amountCents":0,"currency":"usd","enabled":false,"perDay":3,"thresholdCents":0,"userId":"recharge-norow"}`
 	if got != want {
 		t.Fatalf("no-row body:\n got %s\nwant %s", got, want)
 	}
@@ -83,7 +83,7 @@ func TestReadAutoRechargeWire_StoredRowKeepsEmptyLastRecharged(t *testing.T) {
 	}
 
 	got := readRecharge(t, org, ctx)
-	want := `{"amountCents":5000,"currency":"usd","enabled":true,"lastRechargedAt":"","thresholdCents":1000,"userId":"recharge-row"}`
+	want := `{"amountCents":5000,"currency":"usd","enabled":true,"lastRechargedAt":"","perDay":3,"thresholdCents":1000,"userId":"recharge-row"}`
 	if got != want {
 		t.Fatalf("stored-row body:\n got %s\nwant %s", got, want)
 	}

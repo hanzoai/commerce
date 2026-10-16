@@ -171,6 +171,7 @@ func TestSetDefaultPaymentMethod_AnUnknownIdKeepsTheDefault(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/customers/defroute/default-payment-method",
 		bytes.NewBufferString(`{"paymentMethodId":"pm_nothing"}`))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-User-IsOrgAdmin", "true") // the org's default card is its admin's to choose
 	resp := driveSeeded(func(c *zip.Ctx) {
 		c.Locals("organization", org)
 		c.SetContext(ctx)
@@ -196,6 +197,7 @@ func TestSetDefaultPaymentMethod_MovesTheDefaultAndKeepsTheCardsListed(t *testin
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/customers/defroutemove/default-payment-method",
 		bytes.NewBufferString(`{"paymentMethodId":"`+b.Id()+`"}`))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-User-IsOrgAdmin", "true") // the org's default card is its admin's to choose
 	resp := driveSeeded(func(c *zip.Ctx) {
 		c.Locals("organization", org)
 		c.SetContext(ctx)

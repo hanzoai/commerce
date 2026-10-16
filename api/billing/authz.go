@@ -3,6 +3,7 @@ package billing
 import (
 	"strings"
 
+	"github.com/hanzoai/account"
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
@@ -75,4 +76,23 @@ func callerMayReachBillingSubject(c *zip.Ctx, ownerIDs ...string) bool {
 // the request acts in.
 func mayActForOrg(c *zip.Ctx) bool {
 	return isPrivilegedBillingCaller(c) || iammiddleware.ActsAsOrgAdmin(c)
+}
+
+// mayChangeWallet reports whether the caller may change what the wallet it pays
+// from pays with — save, change or remove a card, or charge one on file: anyone
+// who may act for the org, and a member whose wallet is their own person account
+// in the org (the shared signup org's members). A member billed from the org's
+// pool may not, because the org's cards are its admins' to change; nor may a
+// credential billed from any other account it does not own, such as a project.
+func mayChangeWallet(c *zip.Ctx) bool {
+	if mayActForOrg(c) {
+		return true
+	}
+	own := userBillingKey(c)
+	return own != "" && own == account.Person(orgBillingKey(c), c.Header("X-User-Id")).Subject()
+}
+
+// askAnAdmin is what a member is told when an act is the org's admins' to take.
+func askAnAdmin(c *zip.Ctx, act string) string {
+	return "Only an admin of " + orgBillingKey(c) + " can " + act + ". Ask an admin to do it."
 }

@@ -338,6 +338,9 @@ func CreatePaymentMethod(c *zip.Ctx) error {
 	if !ok || org == nil {
 		return http.Fail(c, 401, "sign in to add a payment method", nil)
 	}
+	if !mayChangeWallet(c) {
+		return http.Fail(c, 403, askAnAdmin(c, "change its cards"), nil)
+	}
 
 	var in CreateMethodIn
 	if err := c.Bind(&in); err != nil {
@@ -498,6 +501,9 @@ type updatePaymentMethodRequest struct {
 //	PATCH /v1/billing/methods/:id
 func UpdatePaymentMethod(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
+	if !mayChangeWallet(c) {
+		return http.Fail(c, 403, askAnAdmin(c, "change its cards"), nil)
+	}
 	db := datastore.New(org.Namespaced(c.Context()))
 
 	pm := paymentmethod.New(db)
@@ -616,6 +622,9 @@ func DetachPaymentMethod(c *zip.Ctx) error {
 	org, ok := middleware.GetOrganizationOK(c)
 	if !ok || org == nil {
 		return http.Fail(c, 401, "sign in to remove a payment method", nil)
+	}
+	if !mayChangeWallet(c) {
+		return http.Fail(c, 403, askAnAdmin(c, "remove its cards"), nil)
 	}
 
 	creds, _ := c.Locals("kms").(*kms.CachedClient)
@@ -756,6 +765,9 @@ func SetDefaultPaymentMethod(c *zip.Ctx) error {
 	org, ok := middleware.GetOrganizationOK(c)
 	if !ok || org == nil {
 		return http.Fail(c, 401, "sign in to choose a default payment method", nil)
+	}
+	if !mayChangeWallet(c) {
+		return http.Fail(c, 403, askAnAdmin(c, "change its default card"), nil)
 	}
 	customerId := c.Param("id")
 
