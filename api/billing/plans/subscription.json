@@ -3,14 +3,14 @@
     "id": "free",
     "name": "Free",
     "category": "personal",
-    "description": "Meet Hanzo. Chat and build with Hanzo's free models.",
+    "description": "Chat and build with Hanzo, free.",
     "priceMonthly": 0,
     "priceAnnual": 0,
     "features": [
-      "Hanzo's free models: enso-free and zen-free",
-      "Chat on free models, with limited usage",
-      "The app's core features",
-      "Upgrade any time from inside the app"
+      "Chat with Enso Free and Zen Free",
+      "50 free requests every day",
+      "Build apps with Hanzo Dev",
+      "Use Hanzo in your terminal, code editor and AI apps"
     ],
     "limits": {
       "agents": 1,
@@ -37,16 +37,16 @@
     "id": "dev",
     "name": "Pro",
     "category": "personal",
-    "description": "For one person: every room in the hanzo.ai app, with premium and Hanzo model usage included each month.",
+    "description": "For one person: every model, more usage and your own Hanzo Team workspace.",
     "priceMonthly": 20,
     "priceAnnual": 16.67,
     "features": [
-      "Everything in Free and:",
-      "Every room in the hanzo.ai app",
-      "Includes premium and Hanzo model usage each month",
-      "Top up prepaid credit anytime for more",
-      "Limited free usage when you reach your plan's included usage",
-      "MCP, the SDK and the CLI are not metered"
+      "Everything in Free, plus:",
+      "Every model, including Enso Ultra and Kai",
+      "Usage included on every model",
+      "Hanzo Team: chat, meetings, calendar and contacts in one workspace",
+      "Automations, with daily runs included",
+      "Invite up to 3 guests"
     ],
     "payouts": {
       "idleResalePercent": 20,
@@ -98,18 +98,13 @@
     ],
     "name": "Max 5x",
     "category": "personal",
-    "description": "More included usage than Pro, with Enso orchestration, managed agents and a resident bot.",
+    "description": "For all-day work: 5x the usage of Pro.",
     "priceMonthly": 100,
     "priceAnnual": 83.33,
     "features": [
       "Everything in Pro, plus:",
-      "More included usage than Pro",
-      "Includes premium and Hanzo model usage each month",
-      "Top up prepaid credit anytime for more",
-      "Limited free usage when you reach your plan's included usage",
-      "Enso orchestration — dedicated routing through Hanzo's foundational framework model",
-      "Managed agents and a resident bot, scheduled in the background",
-      "Priority GPU inference queues"
+      "5x more usage than Pro",
+      "5x higher limits every 5 hours and every day"
     ],
     "payouts": {
       "idleResalePercent": 20,
@@ -171,18 +166,13 @@
     "id": "max-20x",
     "name": "Max 20x",
     "category": "personal",
-    "description": "The most included usage of any personal plan, with Enso orchestration, managed agents and a resident bot.",
+    "description": "For the heaviest work: 20x the usage of Pro.",
     "priceMonthly": 200,
     "priceAnnual": 166.67,
     "features": [
       "Everything in Pro, plus:",
-      "The most included usage of any personal plan",
-      "Includes premium and Hanzo model usage each month",
-      "Top up prepaid credit anytime for more",
-      "Limited free usage when you reach your plan's included usage",
-      "Enso orchestration — dedicated routing through Hanzo's foundational framework model",
-      "Managed agents and a resident bot, scheduled in the background",
-      "Priority GPU inference queues"
+      "20x more usage than Pro",
+      "20x higher limits every 5 hours and every day"
     ],
     "payouts": {
       "idleResalePercent": 20,
@@ -245,18 +235,13 @@
     "status": "draft",
     "name": "Max 50x",
     "category": "personal",
-    "description": "More included usage than any smaller Max plan, with Enso orchestration, managed agents and a resident bot.",
+    "description": "For the biggest workloads: 50x the usage of Pro.",
     "priceMonthly": 500,
     "priceAnnual": 416.67,
     "features": [
       "Everything in Pro, plus:",
-      "More included usage than any smaller Max plan",
-      "Includes premium and Hanzo model usage each month",
-      "Top up prepaid credit anytime for more",
-      "Limited free usage when you reach your plan's included usage",
-      "Enso orchestration — dedicated routing through Hanzo's foundational framework model",
-      "Managed agents and a resident bot, scheduled in the background",
-      "Priority GPU inference queues"
+      "50x more usage than Pro",
+      "50x higher limits every 5 hours and every day"
     ],
     "payouts": {
       "idleResalePercent": 20,
@@ -319,18 +304,13 @@
     "status": "draft",
     "name": "Max 100x",
     "category": "personal",
-    "description": "The most included usage of any personal plan, with Enso orchestration, managed agents and a resident bot.",
+    "description": "For the very largest workloads: 100x the usage of Pro.",
     "priceMonthly": 1000,
     "priceAnnual": 833.33,
     "features": [
       "Everything in Pro, plus:",
-      "The most included usage of any personal plan",
-      "Includes premium and Hanzo model usage each month",
-      "Top up prepaid credit anytime for more",
-      "Limited free usage when you reach your plan's included usage",
-      "Enso orchestration — dedicated routing through Hanzo's foundational framework model",
-      "Managed agents and a resident bot, scheduled in the background",
-      "Priority GPU inference queues"
+      "100x more usage than Pro",
+      "100x higher limits every 5 hours and every day"
     ],
     "payouts": {
       "idleResalePercent": 20,
@@ -391,18 +371,17 @@
   {
     "id": "team",
     "name": "Team",
-    "description": "For teams building together: Pro's limits for every member, one org, one bill.",
+    "description": "For teams of 2 to 100: every model and usage for each member, one workspace, one bill.",
     "priceMonthly": 25,
     "priceAnnual": 20,
     "category": "team",
     "features": [
-      "$25 per member per month, or $240 per member per year ($20 a month) — minimum 2 members",
-      "Includes premium and Hanzo model usage per member each month",
-      "Top up prepaid credit anytime for more",
-      "Limited free usage when you reach your plan's included usage",
-      "Org workspaces with shared history and projects",
-      "SSO via Hanzo IAM, roles and an audit log",
-      "One bill for the whole org, with KMS-backed credentials"
+      "$25 per member a month, or $20 per member a month billed yearly",
+      "Every model, with usage included for each member",
+      "One shared workspace: chat, meetings, calendar and contacts",
+      "Single sign-on, roles and an audit log",
+      "One bill for the whole team",
+      "Automations, with daily runs included"
     ],
     "limits": {
       "agents": 10,
@@ -606,17 +585,17 @@
     "id": "enterprise",
     "name": "Enterprise",
     "category": "enterprise",
-    "description": "Dedicated capacity, on-prem or air-gapped deployment, custom SLAs and model hosting.",
+    "description": "For large organizations: Hanzo on your own infrastructure, on your terms.",
     "priceMonthly": null,
     "priceAnnual": null,
     "contactSales": true,
     "features": [
-      "Dedicated compute cluster",
-      "On-premise or air-gapped deployment",
-      "Custom SLA",
-      "Custom model training and hosting",
-      "SOC 2 support and compliance review",
-      "White-glove onboarding and 24/7 engineering support"
+      "Unlimited members",
+      "Run Hanzo in your cloud, on your servers or fully offline",
+      "Dedicated compute for your organization",
+      "Train and host your own models",
+      "An uptime guarantee and security review in your contract",
+      "24/7 engineering support and hands-on onboarding"
     ],
     "payouts": {
       "idleResalePercent": 20,
