@@ -100,7 +100,7 @@ func SetTestMode(ctx context.Context, org *organization.Organization, testMode b
 	if err := org.Update(); err != nil {
 		return nil, err
 	}
-	return &Mode{OrgId: org.Id(), OrgName: org.Name, Live: org.Live, TestMode: !org.Live}, nil
+	return &Mode{OrgId: org.Id(), OrgName: org.Name, Live: !org.TestMode(), TestMode: org.TestMode()}, nil
 }
 
 // SetOrgTestMode toggles the org's live flag (org.Live) and its test-mode view.

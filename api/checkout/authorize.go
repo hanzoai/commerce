@@ -167,7 +167,7 @@ func authorize(c *zip.Ctx, org *organization.Organization, ord *order.Order) (*p
 	}
 
 	// Set test mode based on org live status
-	if !org.Live {
+	if org.TestMode() {
 		ord.Test = true
 		if pay != nil {
 			pay.Test = true

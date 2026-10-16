@@ -78,7 +78,7 @@ func Create(c *zip.Ctx) error {
 		trans.SetContext(mintauth.WithAuthorized(trans.Context()))
 	}
 
-	if !org.Live {
+	if org.TestMode() {
 		log.Info("Transaction created in test mode.", c)
 		trans.Test = true
 	}
@@ -92,7 +92,7 @@ func Create(c *zip.Ctx) error {
 
 	err := db.RunInTransaction(func(db *datastore.Datastore) error {
 		if trans.Type == transaction.Transfer || trans.Type == transaction.Withdraw {
-			datas, err := util.GetTransactionsByCurrency(db.Context, trans.SourceId, trans.SourceKind, trans.Currency, !org.Live)
+			datas, err := util.GetTransactionsByCurrency(db.Context, trans.SourceId, trans.SourceKind, trans.Currency, org.TestMode())
 			if err != nil {
 				return err
 			}

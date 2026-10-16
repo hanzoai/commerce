@@ -421,7 +421,7 @@ func (o Organization) SquareConfig(sandbox bool) integration.SquareConnection {
 }
 
 func (o Organization) StripeToken() string {
-	if o.Live {
+	if !o.TestMode() {
 		return o.Stripe.Live.AccessToken
 	}
 

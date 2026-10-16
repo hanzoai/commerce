@@ -62,7 +62,7 @@ func withdraw(c *zip.Ctx) error {
 
 	// Check against the balance
 	err = nsDb.RunInTransaction(func(db *datastore.Datastore) error {
-		test := !org.Live
+		test := org.TestMode()
 		datas, err := util.GetTransactionsByCurrency(nsDb.Context, usr.Id(), "user", cur, test)
 		if err != nil {
 			return err
@@ -70,7 +70,7 @@ func withdraw(c *zip.Ctx) error {
 
 		data, ok := datas.Data[cur]
 		if !ok {
-			log.Error("Source has no funds %v, %v", json.Encode(datas), !org.Live, c)
+			log.Error("Source has no funds %v, %v", json.Encode(datas), org.TestMode(), c)
 			return ErrorInsufficientFunds
 		}
 

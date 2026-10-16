@@ -101,7 +101,7 @@ func LoadShopJS(c *zip.Ctx) error {
 	res := LoadShopJSRes{StoreId: req.StoreId}
 
 	// Determine Test Mode
-	res.Live = org.Live
+	res.Live = !org.TestMode()
 
 	if !req.HasCountries ||
 		req.LastChecked.Before(CountryLastUpdated) {

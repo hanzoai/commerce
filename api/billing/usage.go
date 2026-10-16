@@ -363,7 +363,7 @@ func writeUsage(c *zip.Ctx, req usageRequest, idemKey string) (map[string]any, [
 		// Referral revenue share and the OSS-developer payout accrue on money
 		// actually debited. Fire-and-forget: neither may fail the usage write.
 		go engine.TrackRevenueShare(d, req.User, currency.Cents(amountCents), cur, trans.Id(), org.TestMode())
-		go engine.AccrueOSSPayout(d, org.Name, req.User, currency.Cents(amountCents), cur, trans.Id(), !org.Live)
+		go engine.AccrueOSSPayout(d, org.Name, req.User, currency.Cents(amountCents), cur, trans.Id(), org.TestMode())
 	}
 
 	// Emit the api-usage debit to the analytics collector (commerce.events) so the

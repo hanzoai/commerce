@@ -116,7 +116,7 @@ func getTransactions(c *zip.Ctx) error {
 	ctx := org.Namespaced(c.Context())
 	id := c.Param("userid")
 
-	res, err := util.GetTransactions(ctx, id, "user", !org.Live)
+	res, err := util.GetTransactions(ctx, id, "user", org.TestMode())
 	if err != nil {
 		log.Error("transaction/%v/%v error: '%v'", id, "user", err, c)
 		return http.Fail(c, 400, err.Error(), err)

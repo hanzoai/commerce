@@ -17,9 +17,9 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 	pay.Type = accounts.BalanceType
 
 	pay.Account.Type = accounts.BalanceType
-	pay.Live = org.Live
+	pay.Live = !org.TestMode()
 
-	if err := usr.CalculateBalances(!org.Live); err != nil {
+	if err := usr.CalculateBalances(org.TestMode()); err != nil {
 		return err
 	}
 

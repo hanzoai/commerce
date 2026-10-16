@@ -22,7 +22,7 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 	con := org.AuthorizeNetToken(ord.Test)
 
 	log.Warn("Connection: %v", con, ctx)
-	log.Warn("Test?: %v", !org.Live, ctx)
+	log.Warn("Test?: %v", org.TestMode(), ctx)
 
 	loginId := con.LoginId
 	transactionKey := con.TransactionKey
@@ -30,7 +30,7 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 
 	pay.Amount = ord.Total
 
-	client := authorizenet.New(ctx, loginId, transactionKey, key, !org.Live)
+	client := authorizenet.New(ctx, loginId, transactionKey, key, org.TestMode())
 
 	if ord.Total > 0 {
 		// Do authorization
@@ -45,7 +45,7 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 	}
 
 	usr.Accounts.AuthorizeNet = pay.Account.AuthorizeNet
-	pay.Live = org.Live
+	pay.Live = !org.TestMode()
 
 	now := time.Now()
 

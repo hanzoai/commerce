@@ -103,6 +103,22 @@ type EmbedConfig struct {
 	// Only the host knows which world it runs in, so it declares it. Anything
 	// but Live, "" included, is Test.
 	Born organization.Kind
+
+	// Ceiling is the most any org transacts in (organization.Ceiling): Test
+	// where the host's network holds no real money, so even a record marked
+	// Live charges sandbox credentials and writes the test books. "" and Live
+	// are no cap; any other value caps at Test.
+	Ceiling organization.Kind
+}
+
+// ceilingOf is the cap a host's declaration puts on every org: none for "" or
+// Live, Test for anything else, so a value nobody recognises caps rather than
+// lifts.
+func ceilingOf(k organization.Kind) organization.Kind {
+	if k == "" || k == organization.Live {
+		return organization.Live
+	}
+	return organization.Test
 }
 
 // Embedded is the handle to a running in-process Commerce server. The
@@ -166,6 +182,10 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 	if cfg.Born == organization.Live {
 		organization.Born = organization.Live
 	}
+	// The cap every org transacts under, declared in the same act and for the
+	// same reason. Stated whole each embed: one that declares no cap clears a
+	// cap an earlier embed in the process set.
+	organization.Ceiling = ceilingOf(cfg.Ceiling)
 
 	app := NewWithConfig(appCfg)
 

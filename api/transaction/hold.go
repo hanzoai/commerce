@@ -62,7 +62,7 @@ func CreateHold(c *zip.Ctx) error {
 		return http.Fail(c, 500, ErrorCurrencyRequired.Error(), ErrorCurrencyRequired)
 	}
 
-	if !org.Live {
+	if org.TestMode() {
 		log.Info("Hold created in test mode.", c)
 		trans.Test = true
 	}
@@ -74,7 +74,7 @@ func CreateHold(c *zip.Ctx) error {
 	defer lockFunds(trans.SourceKind, trans.SourceId, string(trans.Currency), trans.Test)()
 
 	err := db.RunInTransaction(func(db *datastore.Datastore) error {
-		datas, err := util.GetTransactionsByCurrency(db.Context, trans.SourceId, trans.SourceKind, trans.Currency, !org.Live)
+		datas, err := util.GetTransactionsByCurrency(db.Context, trans.SourceId, trans.SourceKind, trans.Currency, org.TestMode())
 		if err != nil {
 			return err
 		}

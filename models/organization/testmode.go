@@ -29,8 +29,11 @@ package organization
 // charge real cards. What improves over the env gate is isolation — one org's
 // misconfiguration can no longer drag every other tenant on the pod into the
 // wrong environment, in either direction.
+//
+// Above the record sits the deployment's Ceiling: where it is Test, every org
+// transacts in test, a record marked Live included.
 func (o Organization) TestMode() bool {
-	return !o.Live
+	return !o.Live || Ceiling != Live
 }
 
 // SquareEnvironment returns "sandbox" or "production" — the value the Square SDK
@@ -63,6 +66,17 @@ const (
 // TestMode describes. A host whose network exists to take real money declares
 // Live (EmbedConfig.Born), and its customers are born able to pay.
 var Born = Test
+
+// Ceiling is the most an org may transact in, deployment-wide. Where it is Test,
+// TestMode is true for every org whatever its record says, so a record marked
+// Live — restored, copied, or set by a caller this deployment never meant to
+// trust — still charges sandbox credentials and writes the test books. Live is
+// no cap, and is what a deployment that declares nothing gets: the record
+// decides, as TestMode describes.
+//
+// The deployment declares it (EmbedConfig.Ceiling), because only the host knows
+// that no real money exists where it runs. Any value but Live caps at Test.
+var Ceiling = Live
 
 // An org may hold as many environments as it likes, and each one CHOOSES its
 // kind. That is the point of choosing rather than deriving it from the name: a
@@ -104,10 +118,10 @@ func (k Kind) Word(processor string) string {
 // and two different answers to "what kind is this" is how the wrong one gets
 // read.
 func (o Organization) kind() Kind {
-	if o.Live {
-		return Live
+	if o.TestMode() {
+		return Test
 	}
-	return Test
+	return Live
 }
 
 // In returns this org as it transacts in an environment of one kind.

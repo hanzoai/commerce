@@ -220,7 +220,7 @@ func create(c *zip.Ctx) error {
 
 	enabled := org.SignUpOptions.AccountsEnabledByDefault || usr.PreApproved
 	// Test key users are automatically confirmed
-	if !org.Live {
+	if org.TestMode() {
 		usr.Enabled = true
 	} else {
 		log.Info("User is enabled? %v", usr.Enabled, enabled, c)
@@ -253,7 +253,7 @@ func create(c *zip.Ctx) error {
 			if _, err := ref.SaveReferral(org.Datastore().Context, org.Id(), referral.NewUser, &Referrent{
 				usr.Id(),
 				usr.Kind(),
-			}, usr.Id(), !org.Live); err != nil {
+			}, usr.Id(), org.TestMode()); err != nil {
 				log.Warn("Unable to save referral: %v", err, c)
 			}
 		}

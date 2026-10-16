@@ -16,7 +16,7 @@ func List(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	ctx := org.Namespaced(c.Context())
 
-	res, err := util.GetTransactions(ctx, id, kind, !org.Live)
+	res, err := util.GetTransactions(ctx, id, kind, org.TestMode())
 
 	if err != nil {
 		log.Error("transaction/%v/%v error: '%v'", id, kind, err, c)

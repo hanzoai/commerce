@@ -39,7 +39,7 @@ func get(c *zip.Ctx) error {
 		return http.Fail(c, 500, "User token transaction data could get be queried", err)
 	}
 
-	if err := usr.CalculateBalances(!org.Live); err != nil {
+	if err := usr.CalculateBalances(org.TestMode()); err != nil {
 		return http.Fail(c, 500, "User balance data could get be queried", err)
 	}
 
