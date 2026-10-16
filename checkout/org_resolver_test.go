@@ -65,9 +65,11 @@ func TestBrandForHost(t *testing.T) {
 // we want here: a host with no org record behind it must never have the pay SPA
 // tokenizing against a production Square application.
 func TestOrgResolver_ResolvesOrgAsTenant(t *testing.T) {
-	t.Setenv("SQUARE_ENVIRONMENT", "production") // hostile: ignored
-	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-TESTAPP")
-	t.Setenv("SQUARE_LOCATION_ID", "TESTLOC")
+	t.Setenv("SQUARE_ENVIRONMENT", "production")     // hostile: ignored
+	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-PROD") // hostile: a sandbox org never reads it
+	t.Setenv("SQUARE_LOCATION_ID", "PRODLOC")        // hostile
+	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "sandbox-sq0idb-TESTAPP")
+	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "TESTLOC")
 
 	r := NewOrgResolver(nil) // nil loader → brand-default synthetic org + env
 
@@ -81,8 +83,8 @@ func TestOrgResolver_ResolvesOrgAsTenant(t *testing.T) {
 	if ten.IAM.Issuer != "https://hanzo.id" || ten.IAM.ClientID != "hanzo-app" {
 		t.Errorf("org IAM = %+v, want hanzo.id/hanzo-app", ten.IAM)
 	}
-	if ten.Square.ApplicationID != "sq0idp-TESTAPP" || ten.Square.LocationID != "TESTLOC" {
-		t.Errorf("org Square = %+v, want env app/location", ten.Square)
+	if ten.Square.ApplicationID != "sandbox-sq0idb-TESTAPP" || ten.Square.LocationID != "TESTLOC" {
+		t.Errorf("org Square = %+v, want the env's sandbox app/location", ten.Square)
 	}
 	if ten.Square.Environment != "sandbox" {
 		t.Errorf("org Square env = %q, want sandbox (synthetic org is not Live ⇒ fail closed)", ten.Square.Environment)
@@ -118,9 +120,10 @@ func TestOrgResolver_MalformedHostRejected(t *testing.T) {
 // The public org JSON built from an org resolution must carry the Square
 // block and enabled square provider, and never leak a secret.
 func TestOrgResolver_PublicViewCarriesSquare(t *testing.T) {
-	t.Setenv("SQUARE_ENVIRONMENT", "production") // hostile: ignored, org decides
-	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-PUBVIEW")
-	t.Setenv("SQUARE_LOCATION_ID", "LOCPUB")
+	t.Setenv("SQUARE_ENVIRONMENT", "production")     // hostile: ignored, org decides
+	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-PROD") // hostile: a sandbox org never reads it
+	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "sandbox-sq0idb-PUBVIEW")
+	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "LOCPUB")
 
 	r := NewOrgResolver(nil)
 	ten, err := r.Resolve("pay.hanzo.ai")
@@ -128,7 +131,7 @@ func TestOrgResolver_PublicViewCarriesSquare(t *testing.T) {
 		t.Fatalf("Resolve err = %v", err)
 	}
 	pv := toPublicView(ten)
-	if pv.Square.ApplicationID != "sq0idp-PUBVIEW" || pv.Square.Environment != "sandbox" {
+	if pv.Square.ApplicationID != "sandbox-sq0idb-PUBVIEW" || pv.Square.Environment != "sandbox" {
 		t.Errorf("publicView.Square = %+v, want env app + sandbox (synthetic org fails closed)", pv.Square)
 	}
 }
@@ -259,8 +262,8 @@ func TestTenantPayloadCarriesTheBrandLogo(t *testing.T) {
 // with no account of its own publishes no card: no Square block and no square
 // provider, so its pay host never tokenizes against another brand's merchant.
 func TestOrgResolver_SquareIsTheBrandsOwn(t *testing.T) {
-	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-DEPLOY")
-	t.Setenv("SQUARE_LOCATION_ID", "LOCDEPLOY")
+	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "sandbox-sq0idb-DEPLOY")
+	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "LOCDEPLOY")
 
 	hasSquare := func(o Org) bool {
 		for _, p := range o.Providers {
@@ -286,7 +289,7 @@ func TestOrgResolver_SquareIsTheBrandsOwn(t *testing.T) {
 	}
 
 	o, _ := r.Resolve("pay.hanzo.ai")
-	if o.Square.ApplicationID != "sq0idp-DEPLOY" || !hasSquare(o) {
+	if o.Square.ApplicationID != "sandbox-sq0idb-DEPLOY" || !hasSquare(o) {
 		t.Errorf("pay.hanzo.ai lost its card: %+v %+v", o.Square, o.Providers)
 	}
 

@@ -85,3 +85,19 @@ func TestConfigFromEnvSandboxAndAbsent(t *testing.T) {
 		t.Error("configFromEnv ok without an access token")
 	}
 }
+
+// A sandbox deployment with no sandbox account configures nothing: the
+// production names are never read on the sandbox switch.
+func TestConfigFromEnvSandboxReadsNoProductionName(t *testing.T) {
+	t.Setenv("SQUARE_ENVIRONMENT", "sandbox")
+	t.Setenv("SQUARE_ACCESS_TOKEN", "EAAA-prod-hostile")
+	t.Setenv("SQUARE_LOCATION_ID", "PRODLOC-hostile")
+	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-hostile")
+	t.Setenv("SQUARE_SANDBOX_ACCESS_TOKEN", "")
+	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "")
+	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "")
+
+	if cfg, ok := configFromEnv(); ok {
+		t.Fatalf("sandbox configured from production names: %+v", cfg)
+	}
+}

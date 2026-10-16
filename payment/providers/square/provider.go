@@ -86,37 +86,25 @@ func init() {
 
 // configFromEnv builds a Config from the deployment environment — the same
 // variables thirdparty/square's standalone init reads (SQUARE_ENVIRONMENT
-// picking the sandbox credential set). ok is false when the minimum charge
+// picking the sandbox credential set, and only that set: thirdparty.FromEnv). ok is false when the minimum charge
 // credentials (access token + location) are absent; webhook fields may still
 // be empty, in which case ValidateWebhook fail-closes per its own contract.
 func configFromEnv() (Config, bool) {
 	env := strings.ToLower(strings.TrimSpace(os.Getenv("SQUARE_ENVIRONMENT")))
-	isSandbox := env == "sandbox" || env == "test"
-
-	token := strings.TrimSpace(os.Getenv("SQUARE_ACCESS_TOKEN"))
-	locationID := strings.TrimSpace(os.Getenv("SQUARE_LOCATION_ID"))
-	appID := strings.TrimSpace(os.Getenv("SQUARE_APPLICATION_ID"))
-	if isSandbox {
-		if t := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_ACCESS_TOKEN")); t != "" {
-			token = t
-		}
-		if l := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_LOCATION_ID")); l != "" {
-			locationID = l
-		}
-		if a := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_APPLICATION_ID")); a != "" {
-			appID = a
-		}
+	sandbox := thirdparty.SandboxEnv()
+	creds := thirdparty.FromEnv(sandbox)
+	if sandbox {
 		env = "sandbox"
 	} else if env == "" {
 		env = "production"
 	}
-	if token == "" || locationID == "" {
+	if creds.AccessToken == "" || creds.LocationID == "" {
 		return Config{}, false
 	}
 	return Config{
-		ApplicationID:       appID,
-		AccessToken:         token,
-		LocationID:          locationID,
+		ApplicationID:       creds.ApplicationID,
+		AccessToken:         creds.AccessToken,
+		LocationID:          creds.LocationID,
 		WebhookSignatureKey: strings.TrimSpace(os.Getenv("SQUARE_WEBHOOK_SIGNATURE_KEY")),
 		WebhookURL:          strings.TrimSpace(os.Getenv("SQUARE_WEBHOOK_URL")),
 		Environment:         env,

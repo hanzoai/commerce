@@ -1,10 +1,8 @@
 package payment
 
 import (
-	"os"
-	"strings"
-
 	"github.com/hanzoai/commerce/models/organization"
+	square "github.com/hanzoai/commerce/thirdparty/square"
 )
 
 // SquarePublic is the PUBLIC Square Web Payments config the browser needs to
@@ -44,25 +42,18 @@ func SquarePublicConfig(org *organization.Organization) SquarePublic {
 
 	// Env fallback (KMS disabled or no per-org Square creds — the common case
 	// for cloud orgs). The SAME useSandbox authority picks the sandbox vs
-	// production public vars, so the app id always matches `env`.
+	// production public vars, so the app id always matches `env`; a sandbox
+	// org is never shown the production application (square.FromEnv).
 	if appID == "" || locationID == "" {
-		appID = strings.TrimSpace(os.Getenv("SQUARE_APPLICATION_ID"))
-		locationID = strings.TrimSpace(os.Getenv("SQUARE_LOCATION_ID"))
-		if useSandbox {
-			if a := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_APPLICATION_ID")); a != "" {
-				appID = a
-			}
-			if l := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_LOCATION_ID")); l != "" {
-				locationID = l
-			}
-		}
+		creds := square.FromEnv(useSandbox)
+		appID, locationID = creds.ApplicationID, creds.LocationID
 	}
 
 	return SquarePublic{
 		ApplicationID: appID,
 		LocationID:    locationID,
 		Environment:   env,
-		Live:          org.Live,
+		Live:          !org.TestMode(),
 	}
 }
 

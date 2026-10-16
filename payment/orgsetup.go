@@ -93,18 +93,11 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 
 		// Env-var credential fallback (KMS disabled or no stored Square creds).
 		// The SAME useSandbox authority picks the sandbox vs production env vars,
-		// so the credential set always matches `env`.
+		// so the credential set always matches `env`, and a sandbox org reads
+		// the sandbox names only (square.FromEnv).
 		if token == "" {
-			token = strings.TrimSpace(os.Getenv("SQUARE_ACCESS_TOKEN"))
-			locationID = strings.TrimSpace(os.Getenv("SQUARE_LOCATION_ID"))
-			if useSandbox {
-				if t := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_ACCESS_TOKEN")); t != "" {
-					token = t
-				}
-				if l := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_LOCATION_ID")); l != "" {
-					locationID = l
-				}
-			}
+			creds := square.FromEnv(useSandbox)
+			token, locationID = creds.AccessToken, creds.LocationID
 			if webhookKey == "" {
 				webhookKey = strings.TrimSpace(os.Getenv("SQUARE_WEBHOOK_SIGNATURE_KEY"))
 			}
@@ -147,7 +140,7 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 	// Map securityUserId → clientID, securityPassword → clientSecret.
 	ppCreds := org.Paypal.Live
 	ppSandbox := false
-	if !org.Live {
+	if org.TestMode() {
 		ppCreds = org.Paypal.Test
 		ppSandbox = true
 	}

@@ -30,6 +30,7 @@ import (
 	"github.com/hanzoai/commerce/models/store"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
+	sqenv "github.com/hanzoai/commerce/thirdparty/square"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -312,19 +313,14 @@ func squareCheckoutClientForOrg(org *organization.Organization) (*sqpaymentlinks
 	// fallback and no platform-org special case for live money — the whole
 	// "anonymous env-token / platform-org" lending path is gone. Only SANDBOX
 	// (no money at risk) keeps the env fallback, so the per-org storefront
-	// sandbox demo still mints intents behind authentication.
+	// sandbox demo still mints intents behind authentication, on the sandbox
+	// names only (sqenv.FromEnv).
 	if token == "" {
 		if !isSandbox {
 			return nil, "", errors.New("square is not configured for this organization")
 		}
-		token = strings.TrimSpace(os.Getenv("SQUARE_ACCESS_TOKEN"))
-		locationID = strings.TrimSpace(os.Getenv("SQUARE_LOCATION_ID"))
-		if t := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_ACCESS_TOKEN")); t != "" {
-			token = t
-		}
-		if l := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_LOCATION_ID")); l != "" {
-			locationID = l
-		}
+		creds := sqenv.FromEnv(true)
+		token, locationID = creds.AccessToken, creds.LocationID
 	}
 
 	if token == "" || locationID == "" {
