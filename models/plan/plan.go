@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/models/types/refs"
@@ -450,6 +451,8 @@ func Query(db *datastore.Datastore) datastore.Query {
 //   - MISSING            → create it.
 //   - present, ADMIN-EDITED → LEAVE. A human decided this value; the catalog does
 //     not get to overwrite it. That is the whole point of an editable authority.
+//     Once the catalog publishes exactly what the human decided, the row is the
+//     catalog's again: the mark is cleared and the next catalog change reaches it.
 //   - present, otherwise → RECONCILE its typed money fields + display envelope to
 //     the catalog. This covers both a row the seed itself wrote earlier (which it
 //     previously could never correct — see AdminEdited) and a partial row written
@@ -480,6 +483,25 @@ func Seed(db *datastore.Datastore, rows []*Plan) (created, corrected int, err er
 		}
 		if ok {
 			if existing.AdminEdited {
+				// The catalog caught up with the edit: hand the row back, so a
+				// later reprice or rewording in the catalog is not stopped by a
+				// decision the catalog already carries.
+				if catalogStatus(existing.Status) == catalogStatus(r.Status) && planEqual(existing, r) {
+					// The admin CRUD does not take seedMu, so the release is a swap:
+					// it writes only while the row is still the one read here, and
+					// an edit landing in between keeps the row the admin's.
+					existing.AdminEdited = false
+					existing.Managed = true
+					wrote, serr := existing.Swap()
+					if serr != nil {
+						return created, corrected, serr
+					}
+					if !wrote {
+						continue
+					}
+					log.Info("plan authority: %q matches the catalog and is the catalog's again", r.Slug)
+					corrected++
+				}
 				continue
 			}
 			// THE CATALOG DECIDES WHETHER A PLAN IS SOLD, IN BOTH DIRECTIONS. The

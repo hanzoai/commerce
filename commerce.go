@@ -893,8 +893,9 @@ func (app *App) Bootstrap() error {
 	// changes NO charge"), which stopped being true the moment the seed could
 	// correct rows it had written itself. Shipping a new @hanzo/plans reprices the
 	// live catalog on the next boot, and retires what the catalog stopped
-	// publishing by archiving it. An admin edit (plan.AdminEdited) is never
-	// touched, and no row is ever deleted.
+	// publishing by archiving it. An admin edit (plan.AdminEdited) is left as the
+	// admin set it until the catalog publishes the same values, when the row is
+	// the catalog's again; no row is ever deleted.
 	//
 	// So a catalog change is a DEPLOY, with the same review a deploy gets — not a
 	// script someone runs against production holding a SuperAdmin bearer.

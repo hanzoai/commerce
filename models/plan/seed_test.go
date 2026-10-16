@@ -135,6 +135,74 @@ func TestSeed_PreservesAdminEdit(t *testing.T) {
 	}
 }
 
+// TestSeed_ReleasesAnEditTheCatalogCaughtUpWith: a row a human edited to exactly
+// what the catalog now publishes is the catalog's again. The seed clears the mark,
+// and the catalog's next change reaches the row instead of being stopped by an
+// edit the catalog already carries. An edit the catalog does not carry stays.
+func TestSeed_ReleasesAnEditTheCatalogCaughtUpWith(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	if _, _, err := Seed(db, sampleRows()); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	p := New(db)
+	if ok, _ := p.Query().Filter("Slug=", "pro").Get(); !ok {
+		t.Fatal("pro missing")
+	}
+	// The admin rewords the plan; the catalog then publishes the same words.
+	p.Description = "Every model, more usage."
+	p.AdminEdited = true
+	if err := p.Update(); err != nil {
+		t.Fatalf("edit: %v", err)
+	}
+	rows := sampleRows()
+	for _, r := range rows {
+		if r.Slug == "pro" {
+			r.Description = "Every model, more usage."
+		}
+	}
+	if _, corrected, err := Seed(db, rows); err != nil || corrected != 1 {
+		t.Fatalf("seed over a caught-up edit: corrected=%d err=%v, want the one row released", corrected, err)
+	}
+	got := New(db)
+	if ok, _ := got.Query().Filter("Slug=", "pro").Get(); !ok {
+		t.Fatal("pro gone")
+	}
+	if got.AdminEdited {
+		t.Fatal("an edit the catalog now carries still holds the row against the catalog")
+	}
+
+	// The catalog's next change reaches the released row.
+	for _, r := range rows {
+		if r.Slug == "pro" {
+			r.Price = 5900
+		}
+	}
+	if _, _, err := Seed(db, rows); err != nil {
+		t.Fatalf("seed a reprice: %v", err)
+	}
+	again := New(db)
+	if ok, _ := again.Query().Filter("Slug=", "pro").Get(); !ok || again.Price != 5900 {
+		t.Fatalf("a reprice after the release read price=%d, want 5900", again.Price)
+	}
+
+	// An edit the catalog does not carry stays the human's.
+	again.Price = 9900
+	again.AdminEdited = true
+	if err := again.Update(); err != nil {
+		t.Fatalf("second edit: %v", err)
+	}
+	if _, corrected, err := Seed(db, rows); err != nil || corrected != 0 {
+		t.Fatalf("seed over a live edit: corrected=%d err=%v, want 0", corrected, err)
+	}
+	kept := New(db)
+	if ok, _ := kept.Query().Filter("Slug=", "pro").Get(); !ok || !kept.AdminEdited || kept.Price != 9900 {
+		t.Fatalf("a live edit was released or overwritten: edited=%v price=%d", kept.AdminEdited, kept.Price)
+	}
+}
+
 // TestSeed_ConcurrentNoDuplicate: seedMu makes the per-slug check-then-write
 // atomic, so N concurrent seeds create each plan exactly once (no dup slug).
 func TestSeed_ConcurrentNoDuplicate(t *testing.T) {
