@@ -115,6 +115,10 @@ type subscribeCardRequest struct {
 	// Coupon is a plan coupon CODE (case-insensitive) for a percent off the first
 	// month — a code, never an amount: the percent is the stored coupon's.
 	Coupon string `json:"coupon,omitempty"`
+	// Wallet says SourceID is a wallet's single-use token (Apple Pay, Google Pay,
+	// Cash App Pay): it pays the first period itself and is kept nowhere, so the
+	// subscription renews from the prepaid balance.
+	Wallet bool `json:"wallet,omitempty"`
 }
 
 // SubscribeIn is the whole input of a card subscription. Every field is a VALUE
@@ -155,6 +159,10 @@ type SubscribeIn struct {
 	// or was redeemed by this org or card REFUSES the sale before the card is
 	// charged — it never silently sells at full price.
 	Coupon string
+	// Wallet says SourceID is a wallet's single-use token: the first period is
+	// authorized on it, captured once any coupon's use is reserved against the
+	// card behind it, and every renewal is drawn from the prepaid balance.
+	Wallet bool
 	// IdempotencyKey is the caller's explicit retry key. Empty falls back to the
 	// windowed derivation over the stable facts (store, plan, level).
 	IdempotencyKey string
@@ -380,6 +388,9 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	planID := strings.TrimSpace(in.PlanID)
 	if (sourceID == "") == (methodID == "") && sourceID != "credits" && sourceID != "balance" {
 		return nil, saleRefusal{saleRefused, "send exactly one of sourceId (a new card) or paymentMethodId (a saved card)"}
+	}
+	if in.Wallet && (sourceID == "" || sourceID == "credits" || sourceID == "balance") {
+		return nil, saleRefusal{saleRefused, "a wallet pays with the token it minted: send it as sourceId"}
 	}
 	if planID == "" {
 		return nil, saleRefusal{saleRefused, "planId is required"}
@@ -673,6 +684,15 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			ListCents: listCents, PromoName: promoName, Test: org.TestMode(),
 		})
 		return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil
+	}
+
+	if in.Wallet {
+		return walletSale(ctx, db, org, in, walletTerms{
+			plan: p, planID: planID, slug: slug, qty: qty, seats: seatMult,
+			charge: chargeCents, list: listCents, cur: cur, coupon: cpn,
+			promoPercent: promoPercent, promoName: promoName,
+			sourceID: sourceID, guard: guard, rec: rec, abandon: abandon,
+		})
 	}
 
 	// Resolve the card to charge. A fresh nonce is vaulted through saveCard (the
@@ -1069,6 +1089,7 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		Currency:       req.Currency,
 		Email:          iamEmail,
 		Coupon:         req.Coupon,
+		Wallet:         req.Wallet,
 		IdempotencyKey: strings.TrimSpace(c.Header("X-Idempotency-Key")),
 		Promo:          promo.Active(c),
 		KMS:            kmsOf(c),

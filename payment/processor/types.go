@@ -79,6 +79,13 @@ type PaymentResult struct {
 	ErrorMessage  string                 `json:"error,omitempty"`
 	Metadata      map[string]interface{} `json:"metadata,omitempty"`
 	Status        string                 `json:"status"`
+	// Card is the card the payment was made with, as the processor names it — a
+	// card-backed wallet (Apple Pay, Google Pay) names its card too. Nil when the
+	// processor said nothing about one.
+	Card *Card `json:"card,omitempty"`
+	// Wallet is the brand of a wallet that pays without naming a card ("CASH_APP"),
+	// empty otherwise.
+	Wallet string `json:"wallet,omitempty"`
 }
 
 // RefundRequest represents a refund to be processed

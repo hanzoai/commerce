@@ -205,13 +205,24 @@ func (sp *SquareProcessor) Charge(ctx context.Context, req processor.PaymentRequ
 	}, nil
 }
 
-// Authorize authorizes a payment without capturing
+// Authorize authorizes a payment without capturing it (Autocomplete=false), and
+// says which card stands behind the token (`paidWith`): a wallet's payment carries
+// its card's fingerprint, brand, last four and expiry, which is what a caller that
+// must know the card before money moves reads. The caller's idempotency key is
+// honoured, so Square de-duplicates a repeated authorization; a random key is the
+// fallback for a caller that has none.
+//
+// Only an APPROVED payment is an authorization. Anything else is a 200 with no
+// hold on the buyer's money, and reads as a decline.
 func (sp *SquareProcessor) Authorize(ctx context.Context, req processor.PaymentRequest) (*processor.PaymentResult, error) {
 	if err := processor.ValidateRequest(req); err != nil {
 		return nil, err
 	}
 
-	idempotencyKey := uuid.New().String()
+	idempotencyKey := req.IdempotencyKey
+	if idempotencyKey == "" {
+		idempotencyKey = uuid.New().String()
+	}
 
 	paymentReq := &square.CreatePaymentRequest{
 		SourceID:       req.Token,
@@ -232,6 +243,10 @@ func (sp *SquareProcessor) Authorize(ctx context.Context, req processor.PaymentR
 		paymentReq.Note = square.String(req.Description)
 	}
 
+	if req.OrderID != "" {
+		paymentReq.ReferenceID = square.String(req.OrderID)
+	}
+
 	resp, err := sp.paymentsClient.Create(ctx, paymentReq)
 	if err != nil {
 		return &processor.PaymentResult{
@@ -241,18 +256,54 @@ func (sp *SquareProcessor) Authorize(ctx context.Context, req processor.PaymentR
 		}, err
 	}
 
+	payment := resp.Payment
+	status := ""
+	if payment.Status != nil {
+		status = *payment.Status
+	}
+	approved := strings.EqualFold(status, "APPROVED")
+	errMsg := ""
+	if !approved {
+		errMsg = "payment not authorized (status: " + status + ")"
+	}
+	card, wallet := paidWith(payment)
 	return &processor.PaymentResult{
-		Success:       true,
-		TransactionID: *resp.Payment.ID,
-		ProcessorRef:  *resp.Payment.ID,
-		Status:        "authorized",
+		Success:       approved,
+		TransactionID: *payment.ID,
+		ProcessorRef:  *payment.ID,
+		Status:        status,
+		ErrorMessage:  errMsg,
+		Card:          card,
+		Wallet:        wallet,
 		Metadata: map[string]interface{}{
-			"order_id": resp.Payment.OrderID,
+			"order_id": payment.OrderID,
 		},
 	}, nil
 }
 
-// Capture captures a previously authorized payment
+// paidWith is what a payment was made with, as far as Square says: the card for a
+// card or a card-backed wallet (Apple Pay, Google Pay) — its fingerprint, brand,
+// last four and expiry — and the wallet's brand for a wallet that names no card
+// (Cash App Pay). Nil and "" where Square said nothing.
+func paidWith(payment *square.Payment) (*processor.Card, string) {
+	if payment == nil {
+		return nil, ""
+	}
+	var card *processor.Card
+	if d := payment.CardDetails; d != nil && d.Card != nil {
+		c := cardOf(d.Card)
+		card = &c
+	}
+	wallet := ""
+	if w := payment.WalletDetails; w != nil && w.Brand != nil {
+		wallet = *w.Brand
+	}
+	return card, wallet
+}
+
+// Capture completes a previously authorized payment. Only a payment Square says
+// is COMPLETED is captured (processor.Settled); anything else is an answer that
+// moved no money.
 func (sp *SquareProcessor) Capture(ctx context.Context, transactionID string, amount money.Amount) (*processor.PaymentResult, error) {
 	resp, err := sp.paymentsClient.Complete(ctx, &square.CompletePaymentRequest{
 		PaymentID: transactionID,
@@ -270,13 +321,25 @@ func (sp *SquareProcessor) Capture(ctx context.Context, transactionID string, am
 	if len(payment.ProcessingFee) > 0 && payment.ProcessingFee[0].AmountMoney != nil {
 		fee = currency.Cents(*payment.ProcessingFee[0].AmountMoney.Amount)
 	}
-
+	status := ""
+	if payment.Status != nil {
+		status = *payment.Status
+	}
+	settled := processor.Settled(status)
+	errMsg := ""
+	if !settled {
+		errMsg = "payment not captured (status: " + status + ")"
+	}
+	card, wallet := paidWith(payment)
 	return &processor.PaymentResult{
-		Success:       true,
+		Success:       settled,
 		TransactionID: *payment.ID,
 		ProcessorRef:  *payment.ID,
 		Fee:           fee,
-		Status:        "captured",
+		Status:        status,
+		ErrorMessage:  errMsg,
+		Card:          card,
+		Wallet:        wallet,
 	}, nil
 }
 

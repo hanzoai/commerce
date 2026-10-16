@@ -5,6 +5,7 @@ package billing
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/hanzoai/commerce/models/organization"
@@ -58,6 +59,18 @@ type MockSquareProcessor struct {
 	lastChargeCustomer string
 	lastChargeAmount   int64
 	chargedKeys        map[string]*processor.PaymentResult
+
+	// A wallet's payment: authorized (naming walletCard, or walletBrand for a
+	// wallet that names none), then captured or voided.
+	walletCard          *processor.Card
+	walletBrand         string
+	authorizeCalls      int
+	lastAuthorizeAmount int64
+	authorizeKeys       []string
+	captureErr          error
+	captureStatus       string // "" captures (COMPLETED)
+	captureCalls        int
+	cancelCalls         int
 }
 
 // NewMockSquareProcessor creates a mock Square processor that vaults to (customerID, cardID)
@@ -110,19 +123,47 @@ func (m *MockSquareProcessor) Charge(ctx context.Context, req processor.PaymentR
 }
 
 func (m *MockSquareProcessor) Authorize(ctx context.Context, req processor.PaymentRequest) (*processor.PaymentResult, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.authorizeCalls++
+	m.lastAuthorizeAmount = int64(req.Amount)
+	m.authorizeKeys = append(m.authorizeKeys, req.IdempotencyKey)
 	if m.authorizeErr != nil {
 		return &processor.PaymentResult{Success: false, ErrorMessage: m.authorizeErr.Error(), Error: m.authorizeErr}, m.authorizeErr
 	}
+	ref := m.authorizeID
+	if ref == "" {
+		ref = fmt.Sprintf("sqauth_%d", m.authorizeCalls)
+	}
 	return &processor.PaymentResult{
 		Success:       true,
-		TransactionID: m.authorizeID,
-		ProcessorRef:  m.authorizeID,
-		Status:        "authorized",
+		TransactionID: ref,
+		ProcessorRef:  ref,
+		Status:        "APPROVED",
+		Card:          m.walletCard,
+		Wallet:        m.walletBrand,
 	}, nil
 }
 
 func (m *MockSquareProcessor) Capture(ctx context.Context, txID string, amount money.Amount) (*processor.PaymentResult, error) {
-	return nil, errors.New("not implemented")
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.captureCalls++
+	if m.captureErr != nil {
+		return nil, m.captureErr
+	}
+	status := m.captureStatus
+	if status == "" {
+		status = "COMPLETED"
+	}
+	return &processor.PaymentResult{
+		Success:       processor.Settled(status),
+		TransactionID: txID,
+		ProcessorRef:  txID,
+		Status:        status,
+		Card:          m.walletCard,
+		Wallet:        m.walletBrand,
+	}, nil
 }
 
 func (m *MockSquareProcessor) Refund(ctx context.Context, req processor.RefundRequest) (*processor.RefundResult, error) {
@@ -140,6 +181,9 @@ func (m *MockSquareProcessor) ValidateWebhook(ctx context.Context, payload []byt
 func (m *MockSquareProcessor) IsAvailable(ctx context.Context) bool { return true }
 
 func (m *MockSquareProcessor) CancelAuthorization(ctx context.Context, paymentID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.cancelCalls++
 	m.cancelCalled = true
 	m.cancelledID = paymentID
 	return m.cancelErr
