@@ -148,8 +148,10 @@ func TestSeedApiRouteAgreesWithApiPath(t *testing.T) {
 	}
 }
 
-// billedRetail is what the enso service CHARGES, per MTok, as its billing
-// catalog states it.
+// billedRetail is what an Enso SKU is CHARGED, per MTok, as the model API sets
+// it: hanzoai/ai controllers/rates.go ensoPrices, each paid SKU at one fixed
+// price, 2 to 3 times the list price of the upstream its route typically answers
+// on (owner, 2026-10-15). enso is served free.
 //
 // This table is the SECOND WITNESS to the seed, and that is its whole job. The
 // bug it exists to stop is not a typo — it is someone changing the published
@@ -157,16 +159,17 @@ func TestSeedApiRouteAgreesWithApiPath(t *testing.T) {
 // while charging 4/20, and to advertise 3/12 BELOW what it charged. Editing the
 // seed now costs a deliberate edit here too, next to the reason.
 //
-// If enso reprices, BOTH sides move together, in one commit, and the numbers
-// come from the billing catalog — never from marketing copy, never from a docs
-// page, never from the pre-reprice figures (20/60, 2/6, 40/120) which are stale
-// and must not be restored.
-var billedRetail = map[string]struct{ in, out string }{
-	"enso":        {"4.00", "20.00"},
-	"enso-flash":  {"2.00", "4.00"},
-	"enso-ultra":  {"5.00", "25.00"},
-	"enso-vl":     {"2.28", "9.60"},
-	"enso-vl-pro": {"9.00", "45.00"},
+// If Enso reprices, BOTH sides move together, in one commit, and the numbers
+// come from ensoPrices — never from marketing copy, never from a docs page, and
+// never from a figure an earlier price list carried (20/60, 2/6, 40/120, 4/20,
+// 2/4, 5/25).
+var billedRetail = map[string]struct{ in, out, read, write string }{
+	"enso":        {"0.00", "0.00", "", ""},
+	"enso-flash":  {"0.33", "1.65", "0.033", "0.4125"},
+	"enso-pro":    {"4.40", "22.00", "0.22", "5.50"},
+	"enso-ultra":  {"5.50", "27.50", "0.275", "6.875"},
+	"enso-vl":     {"2.28", "9.60", "", ""},
+	"enso-vl-pro": {"9.00", "45.00", "", ""},
 }
 
 func TestEnsoSeedPublishesTheBilledPrice(t *testing.T) {
@@ -205,6 +208,10 @@ func TestEnsoSeedPublishesTheBilledPrice(t *testing.T) {
 		if got[RateOut] != want.out {
 			t.Errorf("%s output: seed publishes %q, enso bills %q — published price must EQUAL billed price",
 				r.Slug, got[RateOut], want.out)
+		}
+		if got[RateCacheRead] != want.read || got[RateCacheWrite] != want.write {
+			t.Errorf("%s cache: seed publishes %q / %q, enso bills %q / %q — published price must EQUAL billed price",
+				r.Slug, got[RateCacheRead], got[RateCacheWrite], want.read, want.write)
 		}
 	}
 }
@@ -248,7 +255,7 @@ func TestEnsoSeedKeepsTheVisionEnginesUnlisted(t *testing.T) {
 			t.Errorf("%s is seeded published — it is an internal vision engine, never a listed SKU", r.Slug)
 		}
 		if !internal[r.Slug] && !r.Published {
-			t.Errorf("%s is seeded unpublished — the three public SKUs must be listed for discovery", r.Slug)
+			t.Errorf("%s is seeded unpublished — the four public SKUs must be listed for discovery", r.Slug)
 		}
 	}
 }
@@ -319,5 +326,91 @@ func TestEnsoSeedRespectsCuration(t *testing.T) {
 	}
 	if created != 0 {
 		t.Errorf("re-seeded %d rows after the seed had run — a deletion must stay deleted", created)
+	}
+}
+
+// A row born at an old price keeps it forever unless something reads the seed
+// back over it: production's Enso rows were seeded at 4/20, 2/4 and 5/25 and the
+// model API bills neither. Reprice moves the price and nothing else, adds a class
+// the row lacks, leaves a row the seed does not name, and twice is once.
+func TestRepriceMovesTheEnsoPriceAndNothingElse(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	if _, err := SeedEnsoModels(db); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	// Age the store the way production aged: the rows hold the old prices beside a
+	// cost a sync wrote, and a human has renamed one.
+	old := map[string][2]string{"enso": {"4.00", "20.00"}, "enso-flash": {"2.00", "4.00"}, "enso-ultra": {"5.00", "25.00"}}
+	for slug, p := range old {
+		e := New(db)
+		if ok, err := e.Query().Filter("Slug=", slug).Get(); err != nil || !ok {
+			t.Fatalf("%s: ok=%v err=%v", slug, ok, err)
+		}
+		e.Rates = []Rate{
+			{Key: RateIn, Unit: UnitMTok, Cost: "1.392", Price: p[0]},
+			{Key: RateOut, Unit: UnitMTok, Cost: "2.784", Price: p[1]},
+		}
+		if slug == "enso-ultra" {
+			e.Name = "Ultra, renamed in the CMS"
+		}
+		if err := e.Update(); err != nil {
+			t.Fatalf("age %s: %v", slug, err)
+		}
+	}
+	foreign := New(db)
+	foreign.Slug = "enso-free"
+	foreign.Category = CategoryEnso
+	foreign.Rates = []Rate{{Key: RateIn, Unit: UnitMTok, Price: "1.00"}}
+	if err := foreign.Put(); err != nil {
+		t.Fatalf("foreign row: %v", err)
+	}
+
+	moved, err := Reprice(db)
+	if err != nil {
+		t.Fatalf("reprice: %v", err)
+	}
+	if moved != len(old) {
+		t.Fatalf("repriced %d rows, want the %d that had drifted", moved, len(old))
+	}
+	for slug, want := range billedRetail {
+		e := New(db)
+		if ok, err := e.Query().Filter("Slug=", slug).Get(); err != nil || !ok {
+			t.Fatalf("reread %s: ok=%v err=%v", slug, ok, err)
+		}
+		got := map[string]Rate{}
+		for _, r := range e.Rates {
+			got[r.Key] = r
+		}
+		if got[RateIn].Price != want.in || got[RateOut].Price != want.out ||
+			got[RateCacheRead].Price != want.read || got[RateCacheWrite].Price != want.write {
+			t.Errorf("%s: %+v, want %+v", slug, e.Rates, want)
+		}
+		if _, drifted := old[slug]; drifted && (got[RateIn].Cost != "1.392" || got[RateOut].Cost != "2.784") {
+			t.Errorf("%s: a sync's cost was overwritten: %+v", slug, e.Rates)
+		}
+	}
+	e := New(db)
+	if ok, _ := e.Query().Filter("Slug=", "enso-ultra").Get(); !ok || e.Name != "Ultra, renamed in the CMS" {
+		t.Errorf("enso-ultra's name = %q — a reprice that overwrites a human's merchandising undoes admin.hanzo.ai", e.Name)
+	}
+	f := New(db)
+	if ok, _ := f.Query().Filter("Slug=", "enso-free").Get(); !ok || len(f.Rates) != 1 || f.Rates[0].Price != "1.00" {
+		t.Errorf("a row the seed does not name was repriced: %+v", f.Rates)
+	}
+
+	// Twice is once, and a decimal spelled another way is the same price.
+	flash := New(db)
+	if ok, _ := flash.Query().Filter("Slug=", "enso-flash").Get(); !ok {
+		t.Fatal("enso-flash missing")
+	}
+	flash.Rates[0].Price = "0.330"
+	if err := flash.Update(); err != nil {
+		t.Fatal(err)
+	}
+	if again, err := Reprice(db); err != nil || again != 0 {
+		t.Fatalf("re-reprice wrote %d rows (err %v), want 0", again, err)
 	}
 }

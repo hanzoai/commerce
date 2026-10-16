@@ -2,6 +2,7 @@ package catalogentry
 
 import (
 	_ "embed"
+	"slices"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -31,11 +32,14 @@ var hanzoCatalogSeed []byte
 //go:embed seed/infra-tiers.json
 var infraTiersSeed []byte
 
-// ensoModelsSeed is the initial Enso family: the five SKUs the enso service
-// serves, at the retail it bills. It exists because retail is the one number a
-// sync may not write — UpsertModels strips Price by design — so the family's
-// opening prices arrive as a seeded admin decision, after which the admin owns
-// them like any other. It carries no cost: cost comes only from a sync.
+// ensoModelsSeed is the Enso family: the six SKUs the enso service serves, at
+// the price the model API bills. Each paid SKU sells at ONE fixed price
+// (hanzoai/ai controllers/rates.go ensoPrices, owner 2026-10-15): enso-flash
+// 0.33 / 1.65, enso-pro 4.40 / 22.00, enso-ultra 5.50 / 27.50 a million tokens,
+// with cache reads and writes in the same multiple; enso is served free. Retail
+// is the one number a sync may not write — UpsertModels strips Price by design —
+// so the prices arrive here, and [Reprice] reads them back over the store on
+// every boot. It carries no cost: cost comes only from a sync.
 //
 // enso-vl and enso-vl-pro are seeded UNPUBLISHED. They are internal vision
 // engines the family reaches through its vision fallback, never listed SKUs, so
@@ -424,6 +428,73 @@ func SeedEnsoModels(db *datastore.Datastore) (created int, err error) {
 		created++
 	}
 	return created, nil
+}
+
+// Reprice sets each Enso row the seed names to the seed's price, rate by rate,
+// and returns how many rows it moved. A rate the row lacks is added; a cost (a
+// sync's), a name, an order, whether it is published, a row the seed does not
+// name and a row an admin deleted are left alone. Prices compare as decimals, so
+// "4.4" where the seed says "4.40" moves nothing, and twice is once.
+//
+// # Why an Enso price is no longer an admin's
+//
+// Everywhere else on the catalog a price is a decision a human makes in
+// admin.hanzo.ai, and every seed is non-destructive so a deploy cannot undo one.
+// Enso's is not that kind of value any more. The model API sells each Enso SKU
+// at one price set in code and bills that price whatever a row here says, so a
+// row stating another number is a price nobody is charged — the drift that once
+// had the estate advertising 20/60 while charging 4/20. Like an address
+// ([Correct]), it is read back from the place it is declared, on every boot, and
+// a change to it is a deploy.
+func Reprice(db *datastore.Datastore) (repriced int, err error) {
+	rows, err := EnsoSeedRows()
+	if err != nil {
+		return 0, err
+	}
+	for _, r := range rows {
+		e := New(db)
+		ok, qerr := e.Query().Filter("Slug=", r.Slug).Get()
+		if qerr != nil {
+			return repriced, qerr
+		}
+		if !ok {
+			continue
+		}
+		rates, moved := priced(e.Rates, r.Rates)
+		if !moved {
+			continue
+		}
+		e.Rates = rates
+		if err := e.Update(); err != nil {
+			return repriced, err
+		}
+		repriced++
+	}
+	return repriced, nil
+}
+
+// priced is have with each of want's prices laid over the rate of the same
+// identity (key, unit, context rung) and each rate of want's that have lacks
+// appended, and whether anything moved.
+func priced(have, want []Rate) ([]Rate, bool) {
+	out := slices.Clone(have)
+	moved := false
+	for _, w := range want {
+		i := slices.IndexFunc(out, w.same)
+		if i < 0 {
+			out = append(out, w)
+			moved = true
+			continue
+		}
+		a, okA := dec(out[i].Price)
+		b, okB := dec(w.Price)
+		if okA && okB && a.Equal(b) {
+			continue
+		}
+		out[i].Price = w.Price
+		moved = true
+	}
+	return out, moved
 }
 
 // SeedEnsoModelsIfEmpty seeds the Enso family only when this seed has never been

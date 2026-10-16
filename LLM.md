@@ -1777,6 +1777,21 @@ exactly — the shape is NOT ours to change.
   read ns from `d.Context`), a latent gotcha `api/billing/osspayout systemDB`
   also trips (works only because its reads+writes are symmetric in default ns).
 
+### Enso's prices are the model API's, read back on every boot (`catalogentry.Reprice`)
+Each paid Enso SKU sells at ONE fixed price set in hanzoai/ai
+`controllers/rates.go` (`ensoPrices`, owner 2026-10-15): enso-flash 0.33 / 1.65,
+enso-pro 4.40 / 22.00, enso-ultra 5.50 / 27.50 a million tokens, cache reads and
+writes in the same multiple; enso is free. ai lists and bills that number whatever
+a catalog row says, so an Enso price is not an admin's merchandising choice.
+`seed/enso-models.json` carries it (`seed_test.go` `billedRetail` is the second
+witness, moved in the same commit), and `runEnsoCatalogSeed` calls `Reprice` after
+the first-boot seed: each Enso row the seed names takes the seed's price, rate by
+rate (a missing class is added), compared as decimals so twice is once. Cost (a
+sync's), name, order, published, a row the seed does not name (enso-free) and a
+deleted row are untouched. A new SKU in the seed (enso-pro) is created only on a
+store the seed has never run on; production's admin adds it, or the price list
+(cloud `apps/pricing/enso.go`) appends it from ai's answer.
+
 ### Model catalog — the OpenRouter cost sync (models/catalogentry/{openrouter,sync}.go)
 
 A model IS a `catalogentry` (`model.go`): same kind, same `system` store, same

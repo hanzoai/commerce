@@ -994,11 +994,17 @@ func (app *App) runInfraCatalogSeed() {
 }
 
 // runEnsoCatalogSeed populates the Enso family's model rows on first boot from
-// the embedded snapshot, at the retail the enso service already bills. Gated
-// SEPARATELY (SeedEnsoModelsIfEmpty counts only enso-category rows) so the family
-// seeds independently of the product and infra snapshots — per-family isolation,
-// the same rule sync.go applies so one family's failure cannot touch another's.
+// the embedded snapshot, at the price the model API bills. Gated SEPARATELY
+// (SeedEnsoModelsIfEmpty counts only enso-category rows) so the family seeds
+// independently of the product and infra snapshots — per-family isolation, the
+// same rule sync.go applies so one family's failure cannot touch another's.
 // Cheap count-gated no-op once populated; failures are logged, never fatal.
+//
+// Every boot then reads the snapshot's prices back over the rows it names
+// (catalogentry.Reprice): an Enso price is set in the model API's code and billed
+// from there, so a row stating another is a price nobody is charged. Logged,
+// because a boot that moves a published price is a boot someone has to be able
+// to audit.
 func (app *App) runEnsoCatalogSeed() {
 	db := catalogentry.SystemDB(context.Background())
 	created, err := catalogentry.SeedEnsoModelsIfEmpty(db)
@@ -1008,6 +1014,14 @@ func (app *App) runEnsoCatalogSeed() {
 	}
 	if created > 0 {
 		slog.Info("enso catalog seeded", "models", created)
+	}
+	repriced, err := catalogentry.Reprice(db)
+	if err != nil {
+		slog.Error("enso catalog reprice failed", "err", err)
+		return
+	}
+	if repriced > 0 {
+		slog.Info("enso catalog repriced", "models", repriced)
 	}
 }
 
