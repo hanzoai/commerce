@@ -12,6 +12,7 @@ import (
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/billinginvoice"
+	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/util/test/ae"
@@ -77,6 +78,9 @@ func TestWalletCoupon_FirstUseIsHalfPaidByTheWallet(t *testing.T) {
 	sub := parentSub(t, db, "wl-first", "dev")
 	if sub == nil {
 		t.Fatal("no subscription")
+	}
+	if v := viewSubscription(sub); v.Plan.Slug != "dev" {
+		t.Fatalf("the row reads as plan %+v, want slug dev so a reader can match the catalog", v.Plan)
 	}
 	if sub.DefaultPaymentMethod != "credits" || sub.ProviderType != "credit" || sub.DiscountPercent != 0 {
 		t.Fatalf("subscription pm=%q provider=%q discount=%d, want credits/credit/0", sub.DefaultPaymentMethod, sub.ProviderType, sub.DiscountPercent)
@@ -263,8 +267,9 @@ func TestWalletCoupon_CashAppTakesNoCode(t *testing.T) {
 	}
 }
 
-// A payment Square will not take gives the coupon's use back and voids the hold;
-// a capture that goes unanswered keeps the attempt held, so a retry pays nothing.
+// A payment Square will not take gives the coupon's use back and voids the hold.
+// A capture with no answer is settled by reading the payment back: taken opens
+// the plan, let go gives the use back, and unknown seals the attempt for good.
 func TestWalletCoupon_CaptureOutcomes(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -283,23 +288,129 @@ func TestWalletCoupon_CaptureOutcomes(t *testing.T) {
 		t.Fatalf("refused capture: voided %d, used %d; want the hold voided and the use given back", m.cancelCalls, couponUses(t, ctx, "50OFF"))
 	}
 
+	// No answer, and the payment reads back COMPLETED: the plan is opened once.
+	taken := walletMock("fp_taken")
+	taken.captureLost = 1
+	taken.readStatus = "COMPLETED"
+	withFakeSquare(t, taken)
+	if r := invokeSubscribeCard(moneyOrg("wl-taken"), ctx, walletBody("wnon:t", "dev", "50OFF", ""), nil); r.StatusCode != http.StatusCreated {
+		t.Fatalf("capture read back as taken: status=%d %s, want 201", r.StatusCode, bodyOf(r))
+	}
+	if taken.authorizeCalls != 1 || taken.captureCalls != 1 || taken.readCalls != 1 || taken.cancelCalls != 0 {
+		t.Fatalf("held %d captured %d read %d voided %d, want one of each read and no void",
+			taken.authorizeCalls, taken.captureCalls, taken.readCalls, taken.cancelCalls)
+	}
+
+	// No answer, and the payment is still held: it is taken now.
+	held := walletMock("fp_held")
+	held.captureLost = 1
+	held.readStatus = "APPROVED"
+	withFakeSquare(t, held)
+	if r := invokeSubscribeCard(moneyOrg("wl-held"), ctx, walletBody("wnon:h", "dev", "", ""), nil); r.StatusCode != http.StatusCreated || held.captureCalls != 2 {
+		t.Fatalf("held after a lost capture: status=%d %s captures=%d, want 201 after a second capture", r.StatusCode, bodyOf(r), held.captureCalls)
+	}
+
+	// No answer, and the payment reads back CANCELED: nothing was taken.
+	gone := walletMock("fp_gone")
+	gone.captureLost = 1
+	gone.readStatus = "CANCELED"
+	withFakeSquare(t, gone)
+	r = invokeSubscribeCard(moneyOrg("wl-gone"), ctx, walletBody("wnon:g", "dev", "50OFF", ""), map[string]string{"X-Idempotency-Key": "gone-1"})
+	if r.StatusCode != http.StatusPaymentRequired || promo.Redeemed(ctx, "50OFF", "wl-gone") {
+		t.Fatalf("capture read back as canceled: status=%d %s redeemed=%v, want 402 and the use given back",
+			r.StatusCode, bodyOf(r), promo.Redeemed(ctx, "50OFF", "wl-gone"))
+	}
+	gone.readStatus = ""
+	if r := invokeSubscribeCard(moneyOrg("wl-gone"), ctx, walletBody("wnon:g2", "dev", "50OFF", ""), map[string]string{"X-Idempotency-Key": "gone-1"}); r.StatusCode != http.StatusCreated {
+		t.Fatalf("retry after nothing was taken: status=%d %s, want 201", r.StatusCode, bodyOf(r))
+	}
+
+	// No answer either way: the attempt is sealed, so its key never pays again.
 	lost := walletMock("fp_lost")
 	lost.captureErr = errors.New("connection reset")
 	withFakeSquare(t, lost)
 	org2 := moneyOrg("wl-caplost")
 	hdr := map[string]string{"X-Idempotency-Key": "lost-1"}
-	if r := invokeSubscribeCard(org2, ctx, walletBody("wnon:y", "dev", "50OFF", ""), hdr); r.StatusCode < 500 {
-		t.Fatalf("unanswered capture: status=%d %s, want a 5xx", r.StatusCode, bodyOf(r))
+	if r := invokeSubscribeCard(org2, ctx, walletBody("wnon:y", "dev", "50OFF", ""), hdr); r.StatusCode != http.StatusBadGateway {
+		t.Fatalf("unconfirmed capture: status=%d %s, want 502", r.StatusCode, bodyOf(r))
+	}
+	db := datastore.New(org2.Namespaced(ctx))
+	if rec, replay, err := idempotencykey.Begin(db, "billing-subscribe:wl-caplost:", "lost-1"); err != nil || !replay || rec.Status != idempotencykey.StatusCompleted {
+		t.Fatalf("the attempt was not sealed: replay=%v err=%v", replay, err)
 	}
 	lost.captureErr = nil
 	if r := invokeSubscribeCard(org2, ctx, walletBody("wnon:y2", "dev", "50OFF", ""), hdr); r.StatusCode != http.StatusConflict {
-		t.Fatalf("retry after an unanswered capture: status=%d %s, want 409 in progress", r.StatusCode, bodyOf(r))
+		t.Fatalf("retry after an unconfirmed capture: status=%d %s, want 409", r.StatusCode, bodyOf(r))
 	}
 	if lost.authorizeCalls != 1 || lost.cancelCalls != 0 {
-		t.Fatalf("held %d voided %d after an unanswered capture, want one hold and no void", lost.authorizeCalls, lost.cancelCalls)
+		t.Fatalf("held %d voided %d after an unconfirmed capture, want one hold and no void", lost.authorizeCalls, lost.cancelCalls)
 	}
 	if !promo.Redeemed(ctx, "50OFF", "wl-caplost") {
 		t.Fatal("the use of a payment that may have been taken was given back")
+	}
+}
+
+// An authorization with no answer is asked again under the same key, which
+// Square answers with the first call's payment. A decline is Square's answer
+// and is not asked again. Two silences hold the attempt and take nothing.
+func TestWalletSale_AuthorizeOutcomes(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	warmCouponNS(t, ctx)
+
+	once := walletMock("fp_once")
+	once.authorizeLost = 1
+	withFakeSquare(t, once)
+	if r := invokeSubscribeCard(moneyOrg("wl-auth1"), ctx, walletBody("wnon:a", "dev", "", ""), nil); r.StatusCode != http.StatusCreated {
+		t.Fatalf("one lost authorization: status=%d %s, want 201", r.StatusCode, bodyOf(r))
+	}
+	if once.authorizeCalls != 2 || once.authorizeKeys[0] != once.authorizeKeys[1] || once.captureCalls != 1 {
+		t.Fatalf("authorized %d under %v, captured %d; want the same key twice and one capture", once.authorizeCalls, once.authorizeKeys, once.captureCalls)
+	}
+
+	no := walletMock("fp_no")
+	no.authorizeErr = &processor.Answer{Err: errors.New("402: CARD_DECLINED")}
+	withFakeSquare(t, no)
+	if r := invokeSubscribeCard(moneyOrg("wl-auth2"), ctx, walletBody("wnon:b", "dev", "", ""), nil); r.StatusCode != http.StatusPaymentRequired {
+		t.Fatalf("declined: status=%d %s, want 402", r.StatusCode, bodyOf(r))
+	}
+	if no.authorizeCalls != 1 {
+		t.Fatalf("a decline was asked %d times, want once", no.authorizeCalls)
+	}
+
+	silent := walletMock("fp_silent")
+	silent.authorizeLost = 2
+	withFakeSquare(t, silent)
+	hdr := map[string]string{"X-Idempotency-Key": "silent-1"}
+	org := moneyOrg("wl-auth3")
+	if r := invokeSubscribeCard(org, ctx, walletBody("wnon:c", "dev", "", ""), hdr); r.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("two lost authorizations: status=%d %s, want 503", r.StatusCode, bodyOf(r))
+	}
+	if r := invokeSubscribeCard(org, ctx, walletBody("wnon:c2", "dev", "", ""), hdr); r.StatusCode != http.StatusConflict || silent.authorizeCalls != 2 {
+		t.Fatalf("retry inside the attempt: status=%d authorized %d, want 409 and no new hold", r.StatusCode, silent.authorizeCalls)
+	}
+}
+
+// Seats are bounded on every path that opens or resizes a plan, so price times
+// seats never wraps: a team of seven quadrillion is refused, not sold for $8.84.
+func TestSale_SeatsAreBounded(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	warmCouponNS(t, ctx)
+	m := walletMock("fp_seats")
+	withFakeSquare(t, m)
+	org := moneyOrg("wl-seats")
+	for _, q := range []int{7378697629483821, maxSeats("team") + 1} {
+		body := fmt.Sprintf(`{"sourceId":"wnon:s","wallet":true,"planId":"team","quantity":%d}`, q)
+		if r := invokeSubscribeCard(org, ctx, body, nil); r.StatusCode != http.StatusBadRequest || !strings.Contains(bodyOf(r), "at most") {
+			t.Fatalf("%d seats: status=%d, want 400", q, r.StatusCode)
+		}
+	}
+	if m.authorizeCalls != 0 {
+		t.Fatalf("an unbounded seat count reached the wallet %d time(s)", m.authorizeCalls)
+	}
+	if maxSeats("team") != 100 || maxSeats("dev") != seatCeiling {
+		t.Fatalf("maxSeats team=%d dev=%d, want the catalog's 100 and the ceiling", maxSeats("team"), maxSeats("dev"))
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -249,6 +250,7 @@ func (sp *SquareProcessor) Authorize(ctx context.Context, req processor.PaymentR
 
 	resp, err := sp.paymentsClient.Create(ctx, paymentReq)
 	if err != nil {
+		err = said(err)
 		return &processor.PaymentResult{
 			Success:      false,
 			Error:        err,
@@ -281,6 +283,17 @@ func (sp *SquareProcessor) Authorize(ctx context.Context, req processor.PaymentR
 	}, nil
 }
 
+// said marks an error that is Square's own answer, a 4xx other than a timeout,
+// as a processor.Answer: Square was reached and did nothing. Anything else may be
+// a call that never got an answer.
+func said(err error) error {
+	var api *core.APIError
+	if errors.As(err, &api) && api.StatusCode >= 400 && api.StatusCode < 500 && api.StatusCode != 408 {
+		return &processor.Answer{Err: err}
+	}
+	return err
+}
+
 // paidWith is what a payment was made with, as far as Square says: the card for a
 // card or a card-backed wallet (Apple Pay, Google Pay) — its fingerprint, brand,
 // last four and expiry — and the wallet's brand for a wallet that names no card
@@ -309,6 +322,7 @@ func (sp *SquareProcessor) Capture(ctx context.Context, transactionID string, am
 		PaymentID: transactionID,
 	})
 	if err != nil {
+		err = said(err)
 		return &processor.PaymentResult{
 			Success:      false,
 			Error:        err,

@@ -708,6 +708,32 @@ func minSeats(slug string) int {
 	return *p.Limits.MinSeats
 }
 
+// seatCeiling is the most seats any subscription holds. Every path that charges
+// a per-seat plan multiplies its price by the seats in int64 cents, and this
+// keeps that product far inside int64 for any price the catalog can state.
+const seatCeiling = 10000
+
+// maxSeats is the most seats a subscription to slug may hold: a per-seat plan's
+// limits.maxMembers where the catalog states one, since a seat past it could
+// seat no one, else seatCeiling.
+func maxSeats(slug string) int {
+	p := lookupPlan(slug)
+	if p != nil && p.PerSeat && p.Limits != nil && p.Limits.MaxMembers != nil &&
+		*p.Limits.MaxMembers > 0 && *p.Limits.MaxMembers < seatCeiling {
+		return *p.Limits.MaxMembers
+	}
+	return seatCeiling
+}
+
+// overSeats is why quantity is more seats than a subscription to slug may hold,
+// or "" when it is not.
+func overSeats(slug string, quantity int) string {
+	if most := maxSeats(slug); quantity > most {
+		return fmt.Sprintf("plan %q holds at most %d seats (got %d)", slug, most, quantity)
+	}
+	return ""
+}
+
 // AgentsIncluded and BotsIncluded report how many of each the plan may RUN,
 // read from the catalog by slug — the same embed every other gate reads, so
 // what is enforced cannot disagree with what was published.

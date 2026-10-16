@@ -233,6 +233,8 @@ const (
 	saleHeld                         // an identical sale is in flight, or this account already pays
 	saleUnchargeable                 // no card rail can take this org's money
 	saleDeclined                     // the card said no
+	saleUnavailable                  // nothing was charged and the sale could not go on now; try again
+	saleUnsettled                    // the processor did not confirm a payment it may have taken
 )
 
 // saleRefusal is a card subscription that did not happen, carrying which kind of
@@ -272,6 +274,16 @@ func IsSaleUnchargeable(err error) bool { return isSale(err, saleUnchargeable) }
 // already the customer-facing sentence parseCardDeclineReason produced, which is
 // why the endpoint sends it verbatim rather than writing a second one.
 func IsSaleDeclined(err error) bool { return isSale(err, saleDeclined) }
+
+// IsSaleUnavailable reports that nothing was charged and the sale could not be
+// made just now: the attempt could not be recorded, or the processor could not
+// be reached. Trying again is the remedy.
+func IsSaleUnavailable(err error) bool { return isSale(err, saleUnavailable) }
+
+// IsSaleUnsettled reports that the processor may have taken a payment it did not
+// confirm. The attempt is sealed, so its retry is refused rather than charged
+// again, and the payment is reconciled.
+func IsSaleUnsettled(err error) bool { return isSale(err, saleUnsettled) }
 
 // saleOutcome is what the subscribe worker learned, carried by VALUE.
 //
@@ -434,6 +446,9 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	qty := in.Quantity
 	if qty < 1 {
 		qty = 1
+	}
+	if why := overSeats(planID, qty); why != "" {
+		return nil, saleRefusal{saleRefused, why}
 	}
 	seatMult := int64(1)
 	if perSeat(planID) {
@@ -1107,6 +1122,10 @@ func SubscribeWithCard(c *zip.Ctx) error {
 			return http.Fail(c, 422, err.Error(), nil)
 		case IsSaleDeclined(err):
 			return http.Fail(c, 402, err.Error(), nil)
+		case IsSaleUnavailable(err):
+			return http.Fail(c, 503, err.Error(), nil)
+		case IsSaleUnsettled(err):
+			return http.Fail(c, 502, err.Error(), nil)
 		case IsMethodNotFound(err):
 			return http.Fail(c, 404, "payment method not found", err)
 		case IsMethodUnchargeable(err):

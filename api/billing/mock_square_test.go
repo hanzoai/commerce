@@ -71,6 +71,14 @@ type MockSquareProcessor struct {
 	captureStatus       string // "" captures (COMPLETED)
 	captureCalls        int
 	cancelCalls         int
+	// authorizeLost is how many authorizations go unanswered before one is
+	// answered; Square answers a repeated key with the first call's payment.
+	authorizeLost int
+	// captureLost is how many captures go unanswered before captureErr applies.
+	captureLost int
+	// readStatus is the status a payment reads back as; "" goes unanswered.
+	readStatus string
+	readCalls  int
 }
 
 // NewMockSquareProcessor creates a mock Square processor that vaults to (customerID, cardID)
@@ -128,6 +136,10 @@ func (m *MockSquareProcessor) Authorize(ctx context.Context, req processor.Payme
 	m.authorizeCalls++
 	m.lastAuthorizeAmount = int64(req.Amount)
 	m.authorizeKeys = append(m.authorizeKeys, req.IdempotencyKey)
+	if m.authorizeLost > 0 {
+		m.authorizeLost--
+		return nil, errors.New("authorize: connection reset")
+	}
 	if m.authorizeErr != nil {
 		return &processor.PaymentResult{Success: false, ErrorMessage: m.authorizeErr.Error(), Error: m.authorizeErr}, m.authorizeErr
 	}
@@ -149,6 +161,10 @@ func (m *MockSquareProcessor) Capture(ctx context.Context, txID string, amount m
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.captureCalls++
+	if m.captureLost > 0 {
+		m.captureLost--
+		return nil, errors.New("capture: connection reset")
+	}
 	if m.captureErr != nil {
 		return nil, m.captureErr
 	}
@@ -171,7 +187,13 @@ func (m *MockSquareProcessor) Refund(ctx context.Context, req processor.RefundRe
 }
 
 func (m *MockSquareProcessor) GetTransaction(ctx context.Context, txID string) (*processor.Transaction, error) {
-	return nil, errors.New("not implemented")
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.readCalls++
+	if m.readStatus == "" {
+		return nil, errors.New("read: connection reset")
+	}
+	return &processor.Transaction{ID: txID, ProcessorRef: txID, Status: m.readStatus}, nil
 }
 
 func (m *MockSquareProcessor) ValidateWebhook(ctx context.Context, payload []byte, sig string) (*processor.WebhookEvent, error) {

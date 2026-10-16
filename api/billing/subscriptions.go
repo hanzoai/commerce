@@ -153,6 +153,9 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 	if qty < 1 {
 		qty = 1
 	}
+	if why := overSeats(p.Slug, qty); why != "" {
+		return http.Fail(c, 400, why, nil)
+	}
 	if perSeat(p.Slug) {
 		if min := minSeats(p.Slug); qty < min {
 			return http.Fail(c, 400, fmt.Sprintf("plan %q requires at least %d seats (got %d)", p.Slug, min, qty), nil)
@@ -858,6 +861,9 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 	if quantity < 1 {
 		quantity = 1
 	}
+	if why := overSeats(slug, quantity); why != "" {
+		return http.Fail(c, 400, why, nil)
+	}
 	if perSeat(slug) {
 		if min := minSeats(slug); quantity < min {
 			return http.Fail(c, 400,
@@ -1011,7 +1017,11 @@ type Subscription struct {
 // because renewals invoice off this snapshot — the two are meant to be free to
 // disagree, and one shared type would quietly make every price edit retroactive.
 type SubscriptionPlan struct {
-	ID       string `json:"id"`
+	ID string `json:"id"`
+	// Slug is the catalog plan the row was opened on, e.g. "max-20x": what a
+	// reader matches against GET /v1/billing/plans. Empty on a row whose snapshot
+	// predates it.
+	Slug     string `json:"slug,omitempty"`
 	Name     string `json:"name"`
 	Price    int64  `json:"price"`
 	Currency string `json:"currency"`
@@ -1036,6 +1046,7 @@ func viewSubscription(sub *subscription.Subscription) *Subscription {
 		DefaultPaymentMethod: sub.DefaultPaymentMethod,
 		Plan: SubscriptionPlan{
 			ID:       sub.Plan.Id(),
+			Slug:     sub.Plan.Slug,
 			Name:     sub.Plan.Name,
 			Price:    int64(sub.Plan.Price),
 			Currency: string(sub.Plan.Currency),
@@ -1318,6 +1329,7 @@ func subscriptionResponse(sub *subscription.Subscription) map[string]any {
 		"defaultPaymentMethod": sub.DefaultPaymentMethod,
 		"plan": map[string]any{
 			"id":       sub.Plan.Id(),
+			"slug":     sub.Plan.Slug,
 			"name":     sub.Plan.Name,
 			"price":    sub.Plan.Price,
 			"currency": sub.Plan.Currency,
@@ -1352,6 +1364,9 @@ func subscriptionResponse(sub *subscription.Subscription) map[string]any {
 func seats(planID string, quantity, members int) (int, error) {
 	if quantity < 1 {
 		quantity = 1
+	}
+	if why := overSeats(planID, quantity); why != "" {
+		return 0, subValidationError{why}
 	}
 	if !perSeat(planID) {
 		return quantity, nil

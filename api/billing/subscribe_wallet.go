@@ -20,6 +20,14 @@ package billing
 // No ledger moves for the first period: the money is the Square payment, the
 // invoice it pays says so, and the coupon discounts that invoice alone. Cash and
 // credit are untouched; nothing is credited to make a discount work.
+//
+// AN UNANSWERED CALL IS ASKED AGAIN, NEVER GUESSED. Everything from the
+// authorization on runs whether or not the buyer is still waiting. An
+// authorization with no answer is sent again under the same key, which Square
+// answers with the first one's result; a capture with no answer is settled by
+// reading the payment back. Only a payment Square says it did not take lets the
+// attempt go. One that stays unknown seals the attempt, so a retry under its key
+// is refused rather than paying again, and is named for reconciliation.
 
 import (
 	"context"
@@ -50,6 +58,54 @@ type walletRail interface {
 	Authorize(ctx context.Context, req processor.PaymentRequest) (*processor.PaymentResult, error)
 	Capture(ctx context.Context, transactionID string, amount money.Amount) (*processor.PaymentResult, error)
 	CancelAuthorization(ctx context.Context, paymentID string) error
+	GetTransaction(ctx context.Context, txID string) (*processor.Transaction, error)
+}
+
+// walletWait bounds one call to the processor once the buyer may have gone.
+const walletWait = 20 * time.Second
+
+// settlement is where a held payment ended up.
+type settlement int
+
+const (
+	settledTaken    settlement = iota // the payment is COMPLETED
+	settledReleased                   // Square holds nothing: canceled, failed or voided
+	settledUnknown                    // Square did not say
+)
+
+// settle reads a held payment back and finishes it: COMPLETED is taken;
+// CANCELED or FAILED took nothing; one still APPROVED is captured, since the
+// sale already decided to take it. A read is never a second charge.
+func settle(ctx context.Context, wr walletRail, id string) settlement {
+	for range 2 {
+		c, cancel := context.WithTimeout(ctx, walletWait)
+		tx, err := wr.GetTransaction(c, id)
+		cancel()
+		if err != nil || tx == nil {
+			continue
+		}
+		switch status := strings.ToUpper(strings.TrimSpace(tx.Status)); {
+		case processor.Settled(status):
+			return settledTaken
+		case status == "CANCELED" || status == "FAILED":
+			return settledReleased
+		case status == "APPROVED":
+			c, cancel := context.WithTimeout(ctx, walletWait)
+			res, err := wr.Capture(c, id, money.Amount{})
+			cancel()
+			if err == nil && res != nil && res.Success {
+				return settledTaken
+			}
+		}
+	}
+	return settledUnknown
+}
+
+// answered reports whether a processor error is the processor's own answer
+// (it said no, so nothing is held) rather than a call that never got one.
+func answered(err error) bool {
+	var a interface{ Answered() bool }
+	return errors.As(err, &a) && a.Answered()
 }
 
 // walletRailFrom is the org's Square processor, when it can hold and take a
@@ -116,7 +172,7 @@ func walletSale(ctx context.Context, db *datastore.Datastore, org *organization.
 	// would.
 	if t.rec == nil {
 		t.abandon()
-		return nil, errors.New("the attempt could not be recorded, so the wallet was not charged; try again")
+		return nil, saleRefusal{saleUnavailable, "the attempt could not be recorded, so the wallet was not charged; try again"}
 	}
 	// A free trial starts on a card kept on file, which a wallet is not.
 	if t.plan.TrialPeriodDays > 0 {
@@ -131,27 +187,70 @@ func walletSale(ctx context.Context, db *datastore.Datastore, org *organization.
 		return nil, saleRefusal{saleUnchargeable, "no wallet payment processor available for this organization"}
 	}
 
-	// The Square key names this token as well as the attempt. The guard already
-	// keeps one attempt from reaching Square twice; a new attempt after a voided
-	// one carries a new token, which Square would refuse under the old key.
-	auth, err := wr.Authorize(ctx, processor.PaymentRequest{
+	// From here the sale finishes whether or not the buyer is still waiting: a
+	// hang-up mid-call is not an answer from Square.
+	work := context.WithoutCancel(ctx)
+	// seal keeps this attempt's guard for good when Square may have taken the
+	// money: a retry under its key is refused instead of paying again.
+	seal := func() {
+		if err := idempotencykey.Complete(t.rec, ""); err != nil {
+			log.Error("subscribe: the wallet attempt %s was not sealed (subject=%s): %v", t.guard, in.Subject, err)
+		}
+	}
+
+	// The Square key names this token as well as the attempt. The guard keeps one
+	// attempt from reaching Square twice; a new attempt after a voided one carries
+	// a new token, which Square would refuse under the old key.
+	req := processor.PaymentRequest{
 		Token:          t.sourceID,
 		Amount:         currency.Cents(t.charge),
 		Currency:       t.cur,
 		IdempotencyKey: gatewayKey("subscribe-wallet", in.Subject, t.guard+":"+tokenTag(t.sourceID)),
 		Description:    fmt.Sprintf("Subscription %s — first period", t.plan.Name),
-	})
-	if err != nil || auth == nil || !auth.Success {
-		t.abandon()
-		log.Error("wallet authorization failed for subscribe (subject=%s): %v", in.Subject, err)
-		return nil, saleRefusal{saleDeclined, parseCardDeclineReason(auth, err)}
 	}
-	// void lets the authorization go. It must run even when the buyer has hung up.
-	void := func() {
-		if verr := wr.CancelAuthorization(context.WithoutCancel(ctx), auth.ProcessorRef); verr != nil {
-			log.Error("subscribe: wallet authorization %s was not voided (subject=%s); Square lets it lapse: %v",
+	authorize := func() (*processor.PaymentResult, error) {
+		c, cancel := context.WithTimeout(work, walletWait)
+		defer cancel()
+		return wr.Authorize(c, req)
+	}
+	auth, err := authorize()
+	if err != nil && !answered(err) {
+		// No answer. The same key again is answered with the first call's result,
+		// so this either finds the hold the first call made or makes the only one.
+		auth, err = authorize()
+	}
+	switch {
+	case err == nil && auth != nil && auth.Success:
+	case err == nil || answered(err):
+		// Square said no: nothing is held.
+		t.abandon()
+		log.Error("wallet authorization declined for subscribe (subject=%s): %v", in.Subject, err)
+		return nil, saleRefusal{saleDeclined, parseCardDeclineReason(auth, err)}
+	default:
+		// Still no answer: a hold may exist that this attempt cannot name. The guard
+		// stays held so a retry waits out the attempt rather than holding twice.
+		log.Error("RECONCILE: a wallet authorization for subscribe went unanswered twice (subject=%s attempt=%s): %v",
+			in.Subject, t.guard, err)
+		return nil, saleRefusal{saleUnavailable, "the wallet could not be reached, and nothing was taken; try again in a few minutes"}
+	}
+	// void lets the authorization go, and says whether Square confirmed it.
+	void := func() bool {
+		c, cancel := context.WithTimeout(work, walletWait)
+		defer cancel()
+		if verr := wr.CancelAuthorization(c, auth.ProcessorRef); verr != nil {
+			log.Error("subscribe: wallet authorization %s was not voided (subject=%s): %v",
 				auth.ProcessorRef, in.Subject, verr)
+			return false
 		}
+		return true
+	}
+	// unsettled is the end of an attempt Square may have taken money for: sealed,
+	// named for reconciliation, and told plainly.
+	unsettled := func(ref, why string) error {
+		seal()
+		uncredited(work, in.Events, org.Name, in.Subject, ref, why, t.charge, false)
+		return saleRefusal{saleUnsettled, fmt.Sprintf(
+			"the wallet payment %s could not be confirmed and nothing more will be charged for it; it is being reconciled", ref)}
 	}
 
 	// The coupon's use, reserved against the card behind the wallet under the
@@ -166,7 +265,7 @@ func walletSale(ctx context.Context, db *datastore.Datastore, org *organization.
 			return nil, saleRefusal{saleRefused, fmt.Sprintf(
 				"coupon %s is redeemed with a card, Apple Pay or Google Pay, and this wallet names no card", t.coupon.Code)}
 		}
-		h, herr := promo.Reserve(ctx, t.coupon.Code, org.Name, card, time.Now())
+		h, herr := promo.Reserve(work, t.coupon.Code, org.Name, card, time.Now())
 		if herr != nil {
 			void()
 			t.abandon()
@@ -175,28 +274,32 @@ func walletSale(ctx context.Context, db *datastore.Datastore, org *organization.
 		hold = h
 	}
 
-	res, err := wr.Capture(ctx, auth.ProcessorRef, money.Amount{})
+	c, cancel := context.WithTimeout(work, walletWait)
+	res, err := wr.Capture(c, auth.ProcessorRef, money.Amount{})
+	cancel()
+	state := settledTaken
 	switch {
 	case err == nil && res != nil && res.Success:
-	case err == nil:
-		// Square answered, and the payment is not taken: nothing moved.
+	case err == nil && res != nil && void():
+		// Square answered and did not take it, and the hold is let go.
+		state = settledReleased
+	default:
+		// No answer, or a hold that would not let go: read it back.
+		state = settle(work, wr, auth.ProcessorRef)
+	}
+	switch state {
+	case settledReleased:
 		hold.Release()
-		void()
 		t.abandon()
 		return nil, saleRefusal{saleDeclined, parseCardDeclineReason(res, nil)}
-	default:
-		// No answer: the payment may have been taken. The guard stays held so a
-		// retry pays nothing more, the coupon's use stays spent, and the payment
-		// is named for reconciliation.
-		uncredited(ctx, in.Events, org.Name, in.Subject, auth.ProcessorRef,
-			"a wallet payment's capture went unanswered and no subscription was opened: "+err.Error(),
-			t.charge, false)
-		return nil, fmt.Errorf("the wallet payment %s could not be confirmed; nothing more will be charged for this attempt: %w",
-			auth.ProcessorRef, err)
+	case settledUnknown:
+		// The coupon's use stays spent with the payment it may have paid for.
+		return nil, unsettled(auth.ProcessorRef, fmt.Sprintf(
+			"a wallet payment's capture was not confirmed and no subscription was opened: %v", err))
 	}
-	ref := res.ProcessorRef
-	if ref == "" {
-		ref = auth.ProcessorRef
+	ref := auth.ProcessorRef
+	if res != nil && res.ProcessorRef != "" {
+		ref = res.ProcessorRef
 	}
 
 	// The subscription, opened as one paid from the balance is, because that is
@@ -220,18 +323,21 @@ func walletSale(ctx context.Context, db *datastore.Datastore, org *organization.
 		Test:                 org.TestMode(),
 	})
 	if err != nil {
-		uncredited(ctx, in.Events, org.Name, in.Subject, ref,
-			"the first period was paid by a wallet and no subscription was opened: "+err.Error(),
-			t.charge, false)
-		return nil, err
+		return nil, unsettled(ref, "the first period was paid by a wallet and no subscription was opened: "+err.Error())
 	}
 	sub.ProviderType = "credit"
 	// Stamped before the invoice is built, which prices the promo off the row.
 	sub.DiscountPercent, sub.DiscountName = t.promoPercent, t.promoName
+	// The paid first invoice is what makes a balance-renewed plan payment-backed,
+	// so it is written twice before it is given up on, and then reconciled.
 	inv, err := engine.CreatePaidFirstInvoice(db, sub, "wallet", ref, t.coupon)
 	if err != nil {
-		log.Error("RECONCILE: subscription %s (subject=%s) was paid by wallet payment %s and its first invoice was not recorded: %v",
-			sub.Id(), in.Subject, ref, err)
+		inv, err = engine.CreatePaidFirstInvoice(db, sub, "wallet", ref, t.coupon)
+	}
+	if err != nil {
+		uncredited(work, in.Events, org.Name, in.Subject, ref, fmt.Sprintf(
+			"subscription %s was paid by a wallet and its first invoice was not recorded, so it confers nothing: %v", sub.Id(), err),
+			t.charge, false)
 	} else if err := paymentorg.Put(ref, org.Name, in.Subject, inv.Id(), org.TestMode()); err != nil {
 		log.Warn("subscribe: payment %s: the index to its invoice was not written, so its refund or dispute will not find the period it paid: %v", ref, err)
 	}
@@ -259,7 +365,7 @@ func walletSale(ctx context.Context, db *datastore.Datastore, org *organization.
 	if body, mErr := json.Marshal(sale); mErr == nil {
 		_ = idempotencykey.Complete(t.rec, string(body))
 	}
-	noticeSale(ctx, saleNote{
+	noticeSale(work, saleNote{
 		Org: org.Name, Email: in.Email, Plan: t.plan, Seats: t.seats, Sale: sale,
 		ListCents: t.list, PromoName: t.promoName, Coupon: t.coupon, Test: org.TestMode(),
 	})

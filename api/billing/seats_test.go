@@ -199,6 +199,13 @@ func TestUpdateSubscription_SeatFloorAndMemberIdempotency(t *testing.T) {
 	if r := invokeSubPatch(org, ctx, c1MintPrincipal, id, `{"quantity":1}`); r.StatusCode != http.StatusBadRequest {
 		t.Fatalf("PATCH quantity=1 on team: status=%d body=%s, want 400", r.StatusCode, bodyOf(r))
 	}
+	// Above the most seats the plan holds → 400, so a renewal never multiplies a
+	// price by a count that wraps.
+	for _, q := range []string{"101", "7378697629483821"} {
+		if r := invokeSubPatch(org, ctx, c1MintPrincipal, id, `{"quantity":`+q+`}`); r.StatusCode != http.StatusBadRequest {
+			t.Fatalf("PATCH quantity=%s on team: status=%d body=%s, want 400", q, r.StatusCode, bodyOf(r))
+		}
+	}
 
 	// Members above the effective seats → 400.
 	if r := invokeSubPatch(org, ctx, c1MintPrincipal, id,
