@@ -20,6 +20,10 @@ import (
 // entry whose digests must equal the new bytes, and editing the bytes under the
 // current version breaks the current entry.
 var versionDigests = map[string]struct{ subscription, dns string }{
+	"1.8.20": {
+		subscription: "0264a179610f25f0cd04f0e2b7bbe1f402169df445bffb6f31a42edbc53ed39d",
+		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
+	},
 	"1.8.19": {
 		subscription: "d10182cbf79a1df8117b68eb99422af2777427be438c7ce17bc64a87b2c6b135",
 		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
@@ -131,8 +135,8 @@ func TestVendoredPlansMatchPinnedVersion(t *testing.T) {
 // per month, and the year a yearly subscription is charged. contactSales plans
 // are null-priced → stored as 0 + ContactSales (never a chargeable $0).
 func TestVendoredPlanPrices(t *testing.T) {
-	if got := len(catalog); got != 13 { // 10 subscription + 3 dns
-		t.Fatalf("catalog = %d, want 13 (10 subscription + 3 dns)", got)
+	if got := len(catalog); got != 14 { // 11 subscription + 3 dns
+		t.Fatalf("catalog = %d, want 14 (11 subscription + 3 dns)", got)
 	}
 	if got := len(dnsPlans); got != 3 {
 		t.Fatalf("dnsPlans = %d, want 3", got)
@@ -158,8 +162,9 @@ func TestVendoredPlanPrices(t *testing.T) {
 		"max-20x":        {20000, 16667, 200000, false},
 		"max-50x":        {50000, 41667, 500000, false}, // draft: priced, held unlisted
 		"max-100x":       {100000, 83333, 1000000, false},
-		"team":           {2500, 2000, 24000, false}, // per seat
-		"advisory":       {499900, none, 0, false},   // agency, monthly only
+		"team":           {2500, 2000, 24000, false},  // per seat
+		"team-premium":   {10000, 8000, 96000, false}, // per seat, the team's premium seat
+		"advisory":       {499900, none, 0, false},    // agency, monthly only
 		"dedicated":      {999900, none, 0, false},
 		"enterprise":     {0, none, 0, true}, // null price → 0 + contactSales
 		"dns-free":       {0, 0, 0, false},
@@ -197,17 +202,18 @@ func TestVendoredPlanPrices(t *testing.T) {
 // would pass while the exported answer was wrong.
 func TestVendoredPlanRoster(t *testing.T) {
 	cases := map[string]struct{ agents, bots int }{
-		"free":       {1, 0},  // one personal agent, no bot
-		"dev":        {10, 0}, // Pro, the $20 tier
-		"max-5x":     {10, 1}, // both Max multiples may run a resident bot
-		"max-20x":    {10, 1},
-		"max-50x":    {10, 1},
-		"max-100x":   {10, 1},
-		"max":        {10, 1}, // retired, and answered by max-5x for its holders
-		"advisory":   {10, 1},
-		"dedicated":  {-1, 1},
-		"team":       {10, 0},
-		"enterprise": {-1, -1}, // -1 is unlimited, as it is for maxMembers
+		"free":         {1, 0},  // one personal agent, no bot
+		"dev":          {10, 0}, // Pro, the $20 tier
+		"max-5x":       {10, 1}, // both Max multiples may run a resident bot
+		"max-20x":      {10, 1},
+		"max-50x":      {10, 1},
+		"max-100x":     {10, 1},
+		"max":          {10, 1}, // retired, and answered by max-5x for its holders
+		"advisory":     {10, 1},
+		"dedicated":    {-1, 1},
+		"team":         {10, 0},
+		"team-premium": {10, 0},
+		"enterprise":   {-1, -1}, // -1 is unlimited, as it is for maxMembers
 	}
 	for slug, w := range cases {
 		agents, ok := AgentsIncluded(slug)
@@ -293,7 +299,7 @@ func TestRetiredSlugsAreNotInTheEmbed(t *testing.T) {
 // TestVendoredAllotmentAmounts canaries what a plan gives away: no rung mints
 // prepaid credit — the ledger holds only credit a buyer bought.
 func TestVendoredAllotmentAmounts(t *testing.T) {
-	for _, slug := range []string{"free", "dev", "max-5x", "max-20x", "max", "team", "advisory", "dedicated", "enterprise", "dns-pro", "go", "pro"} {
+	for _, slug := range []string{"free", "dev", "max-5x", "max-20x", "max", "team", "team-premium", "advisory", "dedicated", "enterprise", "dns-pro", "go", "pro"} {
 		if got := IncludedMonthlyCents(slug); got != 0 {
 			t.Errorf("IncludedMonthlyCents(%q) = %d, want 0 — no rung mints credit", slug, got)
 		}
@@ -306,18 +312,19 @@ func TestVendoredAllotmentAmounts(t *testing.T) {
 // by name.
 func TestVendoredMoveScores(t *testing.T) {
 	for slug, cents := range map[string]int64{
-		"free":       0,
-		"dev":        2000,
-		"max-5x":     10000,
-		"max-20x":    20000,
-		"max":        10000, // retired; scored as max-5x
-		"team":       2500,  // per seat
-		"advisory":   499900,
-		"dedicated":  999900,
-		"enterprise": math.MaxInt64, // priced by negotiation
-		"dns-pro":    500,
-		"go":         0, // retired with no successor
-		"pro":        0,
+		"free":         0,
+		"dev":          2000,
+		"max-5x":       10000,
+		"max-20x":      20000,
+		"max":          10000, // retired; scored as max-5x
+		"team":         2500,  // per seat
+		"team-premium": 10000, // per seat
+		"advisory":     499900,
+		"dedicated":    999900,
+		"enterprise":   math.MaxInt64, // priced by negotiation
+		"dns-pro":      500,
+		"go":           0, // retired with no successor
+		"pro":          0,
 	} {
 		if got := listCents(slug); got != cents {
 			t.Errorf("listCents(%q) = %d, want %d", slug, got, cents)

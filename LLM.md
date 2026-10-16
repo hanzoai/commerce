@@ -616,6 +616,46 @@ argues for the embed; the AdminEdited override argues the other way — and it
 should be answered deliberately rather than by whichever call site a reader
 happens to open.
 
+### A team mixes seat types on ONE subscription (plans 1.8.20)
+
+Team is sold in two seat types one team can mix: `team` (standard, $25 or $240
+a year) and `team-premium` ($100 or $960). The catalog's `group` ("team" on
+both) says they are seat types of one team, and its `minSeats` (2) and
+`maxMembers` (100) count every seat: 1 standard + 1 premium is a team, 1 alone
+is not.
+
+The model is one row, not one per seat type: `Plan`/`Quantity` are the first
+seat type and `subscription.Line`s the others (`Lines`, each with its slug,
+price for the row's period, quantity and pending quantity). So one charge pays
+the period, one invoice carries one plan line per seat type
+(`buildPeriodInvoice`), one renewal moves them together (pending quantities
+included), and "one paid subscription per subject" (`billingSubscription`) and
+the tier resolver still see the team as one row. Two rows would have needed a
+second notion of which subscription governs the subject, two charges that can
+half-fail, and a minimum that a single cancel breaks.
+
+- Buy: `POST /v1/billing/subscribe/card` `{"planId":"team","quantity":1,
+  "lines":[{"planId":"team-premium","quantity":1}],"interval":"month"|"year"}`.
+  `linesAt` refuses a line outside the plan's group, the plan itself, a type
+  named twice, zero seats, or another currency, before any charge; `teamSeats`
+  is the floor and ceiling over every seat. A different mix is a different
+  idempotency fact.
+- Change seats: PATCH `lines` (pending to the renewal, as `quantity`).
+  `engine.ChangePlan` refuses a team with lines: a move prices one plan's seats
+  against another's.
+- Offers: a promotion or coupon takes its percent off a team only when it covers
+  every seat type bought (`everyLine`), since the charge and the invoice
+  discount every plan line together.
+- Read: the view's `lines` carry each type's seats paid for (`periodPaid` keys
+  plan lines by `PlanId`: the row's plan id for the first type, the slug for a
+  line); `seats` and `chargedCents` count all of them. MRR includes lines.
+- Assign: `PUT /v1/billing/subscriptions/:id/seats {"assigned":[{"member",
+  "plan"}]}` (`AssignSeats`) replaces who holds which seat type, never more
+  members on a type than its seats paid now. It moves no money and bounds no
+  usage: cloud's limiter pools a team's seats. The older `members` →
+  bundle-child rows (`provisionMembers`) is standalone-only and never removes a
+  row; it is not the assignment.
+
 ### A plan states no AI usage
 
 What a plan allows of AI — per model class, per session and day, per model — is

@@ -98,7 +98,9 @@ type subscribeCardRequest struct {
 	UserID   string `json:"userId,omitempty"`
 	StoreID  string `json:"storeId,omitempty"`
 	Quantity int    `json:"quantity,omitempty"`
-	Currency string `json:"currency,omitempty"`
+	// Lines are the team's other seat types, bought with it (see LineIn).
+	Lines    []LineIn `json:"lines,omitempty"`
+	Currency string   `json:"currency,omitempty"`
 	// Level picks which of the plan's published prices to buy at — an INDEX into
 	// the catalog's `prices`, never an amount. 0 (the default) is the plan's base
 	// price, so every client that predates levels keeps buying exactly what it
@@ -142,6 +144,10 @@ type SubscribeIn struct {
 	// Quantity is the billable seat count for a per-seat plan, floored at the
 	// catalog's minSeats. A flat plan always bills once.
 	Quantity int
+	// Lines are a team's other seat types, bought on the same subscription: plans
+	// of PlanID's catalog group, each with its seats. The team's floor and ceiling
+	// count every seat, and the charge is every seat type's price times its seats.
+	Lines []LineIn
 	// Level picks which of the plan's published prices to buy at — an INDEX into
 	// the catalog's prices, never an amount.
 	Level int
@@ -444,46 +450,6 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		return nil, saleRefusal{saleRefused,
 			fmt.Sprintf("plan %q is free — no card charge required; use POST /v1/billing/subscriptions", planID)}
 	}
-	// Billable seats: a per-seat plan charges Price × quantity (floored at the
-	// catalog's minSeats); a flat plan is always ×1. This MUST match
-	// buildPeriodInvoice's seat math so the first charge equals the invoice's
-	// AmountDue — never under-collect a per-seat plan yet record it paid in full.
-	qty := in.Quantity
-	if qty < 1 {
-		qty = 1
-	}
-	if why := overSeats(planID, qty); why != "" {
-		return nil, saleRefusal{saleRefused, why}
-	}
-	seatMult := int64(1)
-	if perSeat(planID) {
-		if min := minSeats(planID); qty < min {
-			return nil, saleRefusal{saleRefused,
-				fmt.Sprintf("plan %q requires at least %d seats (got %d)", planID, min, qty)}
-		}
-		seatMult = int64(qty)
-	}
-	chargeCents := int64(p.Price) * seatMult
-	// The advertised promo, actually applied. GET /v1/billing/plans annotates each
-	// plan with promoPercent off the SAME gate (active + inside its window +
-	// AppliesTo), and until now nothing subtracted it here: the page could say
-	// "50% off" while this line charged full price and the receipt agreed with the
-	// charge, not the offer. Resolved once, carried on the subscription, so every
-	// renewal prices identically — and computed through engine.Discounted, the
-	// same function that discounts the invoice, so charge == AmountDue by
-	// construction rather than by two implementations agreeing.
-	promoPercent, promoName := 0, ""
-	if pr := in.Promo; pr != nil && pr.AppliesTo(planID) {
-		promoPercent, promoName = pr.PercentOff, pr.Name()
-		chargeCents = engine.Discounted(chargeCents, promoPercent)
-	}
-	if chargeCents <= 0 {
-		// A 100%-off promo leaves nothing to charge, and a card sale of $0 is not a
-		// sale — Square rejects a zero charge, so this would surface as a decline.
-		// Refuse BEFORE the card is touched and name the real reason.
-		return nil, saleRefusal{saleRefused,
-			fmt.Sprintf("plan %q costs nothing after the current promotion — no card charge required; use POST /v1/billing/subscriptions", planID)}
-	}
 	// Currency is SERVER-AUTHORITATIVE: the plan's own currency (default USD). A
 	// client currency is honored ONLY when it matches the plan's; a mismatched
 	// currency (e.g. "jpy" for a USD-priced plan) is rejected — otherwise the
@@ -497,7 +463,52 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		return nil, saleRefusal{saleRefused,
 			fmt.Sprintf("plan priced in %s; currency %s not accepted", cur, reqCur)}
 	}
-
+	// A team's other seat types, priced at the period bought, as the plan is. A
+	// line naming a plan not on sale is the same miss as the plan itself.
+	lines, err := linesAt(db, planID, in.Lines, p.Interval, cur)
+	switch {
+	case errors.Is(err, errLinePlan):
+		return nil, saleRefusal{saleMissing, "plan not found"}
+	case err != nil:
+		return nil, saleRefusal{saleRefused, err.Error()}
+	}
+	// Billable seats: a per-seat plan charges Price × quantity, and a team each of
+	// its other seat types' price × its seats, the team floored at the catalog's
+	// minSeats over every seat; a flat plan is always ×1. This MUST match
+	// buildPeriodInvoice's seat math so the first charge equals the invoice's
+	// AmountDue — never under-collect a per-seat plan yet record it paid in full.
+	qty := in.Quantity
+	if qty < 1 {
+		qty = 1
+	}
+	if why := teamSeats(planID, qty, lines); why != "" {
+		return nil, saleRefusal{saleRefused, why}
+	}
+	seatMult := int64(1)
+	if perSeat(planID) {
+		seatMult = int64(qty)
+	}
+	chargeCents := int64(p.Price)*seatMult + lineCents(lines)
+	// The advertised promo, actually applied. GET /v1/billing/plans annotates each
+	// plan with promoPercent off the SAME gate (active + inside its window +
+	// AppliesTo), and until now nothing subtracted it here: the page could say
+	// "50% off" while this line charged full price and the receipt agreed with the
+	// charge, not the offer. Resolved once, carried on the subscription, so every
+	// renewal prices identically — and computed through engine.Discounted, the
+	// same function that discounts the invoice, so charge == AmountDue by
+	// construction rather than by two implementations agreeing.
+	promoPercent, promoName := 0, ""
+	if pr := in.Promo; pr != nil && everyLine(planID, lines, pr.AppliesTo) {
+		promoPercent, promoName = pr.PercentOff, pr.Name()
+		chargeCents = engine.Discounted(chargeCents, promoPercent)
+	}
+	if chargeCents <= 0 {
+		// A 100%-off promo leaves nothing to charge, and a card sale of $0 is not a
+		// sale — Square rejects a zero charge, so this would surface as a decline.
+		// Refuse BEFORE the card is touched and name the real reason.
+		return nil, saleRefusal{saleRefused,
+			fmt.Sprintf("plan %q costs nothing after the current promotion — no card charge required; use POST /v1/billing/subscriptions", planID)}
+	}
 	// A coupon's request shape is checked here, before anything is held. Whether
 	// the coupon stands, covers this plan and is still this org's to redeem is
 	// state, and is asked after the idempotency guard, for the reason the
@@ -549,6 +560,10 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			":level:" + strconv.Itoa(in.Level) + ":interval:" + string(p.Interval)
 		if couponCode != "" {
 			facts += ":coupon:" + couponCode
+		}
+		// A team's other seat types are facts too: another mix is another purchase.
+		for _, l := range lines {
+			facts += ":line:" + l.Plan + ":" + strconv.Itoa(l.Quantity)
 		}
 		guard = windowKey(facts)
 	}
@@ -626,7 +641,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	cpn := engine.Coupon{}
 	if couponCode != "" {
 		offer, reason := promo.FindCoupon(ctx, couponCode, time.Now())
-		if reason == "" && !offer.AppliesTo(slug) {
+		if reason == "" && !everyLine(slug, lines, offer.AppliesTo) {
 			reason = promo.CouponNotApplicable
 		}
 		if reason != "" {
@@ -645,7 +660,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 				fmt.Sprintf("coupon %s leaves nothing to charge for plan %q, and a card sale must charge something", couponCode, planID)}
 		}
 	}
-	listCents := int64(p.Price) * seatMult
+	listCents := int64(p.Price)*seatMult + lineCents(lines)
 
 	if sourceID == "credits" || sourceID == "balance" {
 		// The first period is paid from prepaid money, all or nothing, before the
@@ -669,6 +684,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			Quantity:             qty,
 			Metadata:             map[string]interface{}{"source": "subscribe/credits"},
 			Test:                 org.TestMode(),
+			priced:               lines,
 		}, promoPercent, promoName, drawn)
 		if err != nil {
 			// The money moved and no subscription holds it. Leave the guard
@@ -700,7 +716,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			}
 		}
 		noticeSale(ctx, saleNote{
-			Org: org.Name, Email: in.Email, Plan: p, Seats: seatMult, Sale: sale,
+			Org: org.Name, Email: in.Email, Plan: p, Seats: seatMult + int64(lineSeats(lines)), Sale: sale,
 			ListCents: listCents, PromoName: promoName, Test: org.TestMode(),
 		})
 		return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil
@@ -708,7 +724,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 
 	if in.Wallet {
 		return walletSale(ctx, db, org, in, walletTerms{
-			plan: p, planID: planID, slug: slug, qty: qty, seats: seatMult,
+			plan: p, planID: planID, slug: slug, qty: qty, seats: seatMult, lines: lines,
 			charge: chargeCents, list: listCents, cur: cur, coupon: cpn,
 			promoPercent: promoPercent, promoName: promoName,
 			sourceID: sourceID, guard: guard, rec: rec, abandon: abandon,
@@ -813,6 +829,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 				Quantity:             qty,
 				Metadata:             map[string]interface{}{"source": "subscribe/card"},
 				Test:                 org.TestMode(),
+				priced:               lines,
 			})
 			if err != nil {
 				release()
@@ -846,7 +863,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 				}
 			}
 			noticeSale(ctx, saleNote{
-				Org: org.Name, Email: in.Email, Plan: p, Seats: seatMult, Sale: sale,
+				Org: org.Name, Email: in.Email, Plan: p, Seats: seatMult + int64(lineSeats(lines)), Sale: sale,
 				ListCents: listCents, PromoName: promoName, Test: org.TestMode(),
 			})
 			return &saleOutcome{Sale: sale, Sub: sub}, nil
@@ -908,6 +925,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		Quantity:             qty,
 		Metadata:             meta,
 		Test:                 org.TestMode(),
+		priced:               lines,
 	})
 	if err != nil {
 		// Money moved + card saved; surface the failure. Leave the guard STARTED so a
@@ -965,7 +983,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		}
 	}
 	noticeSale(ctx, saleNote{
-		Org: org.Name, Email: in.Email, Plan: p, Seats: seatMult, Sale: sale,
+		Org: org.Name, Email: in.Email, Plan: p, Seats: seatMult + int64(lineSeats(lines)), Sale: sale,
 		ListCents: listCents, PromoName: promoName, Coupon: cpn, Test: org.TestMode(),
 	})
 	return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil
@@ -1034,7 +1052,10 @@ func heldBefore(db *datastore.Datastore, slug, subject string, test bool) (bool,
 //
 //	POST /v1/billing/subscribe/card
 //
-// Body: { sourceId | paymentMethodId, planId, userId?, quantity?, level?, interval?, currency?, coupon? }
+// Body: { sourceId | paymentMethodId, planId, userId?, quantity?, lines?, level?, interval?, currency?, coupon? }
+// — lines are a team's other seat types, [{planId, quantity}]: a team of one
+// standard and one premium seat is planId "team", quantity 1, lines
+// [{"planId":"team-premium","quantity":1}], charged both seats' prices
 // — NO client amount: the price is the plan's catalog price, always. coupon is a
 // plan coupon code for a percent off the first month only.
 // Header (optional): X-Idempotency-Key — a retry/double-submit with the same key
@@ -1104,6 +1125,7 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		Subject:        subject,
 		StoreID:        req.StoreID,
 		Quantity:       req.Quantity,
+		Lines:          req.Lines,
 		Level:          req.Level,
 		Interval:       req.Interval,
 		Currency:       req.Currency,

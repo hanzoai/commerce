@@ -135,7 +135,12 @@ func SubscriptionMRRCents(sub *subscription.Subscription) int64 {
 		qty = 1
 	}
 	monthly := MonthlyNormalizedCents(int64(sub.Plan.Price), string(sub.Plan.Interval), sub.Plan.IntervalCount)
-	return monthly * int64(qty)
+	mrr := monthly * int64(qty)
+	// A team's other seat types recur at the row's interval, each at its own price.
+	for _, l := range sub.Lines {
+		mrr += MonthlyNormalizedCents(int64(l.Price), string(sub.Plan.Interval), sub.Plan.IntervalCount) * int64(l.Quantity)
+	}
+	return mrr
 }
 
 // planCategoryForSlug resolves a plan's mix category from the static catalog
@@ -180,7 +185,7 @@ func subscriptionEvent(orgName string, sub *subscription.Subscription) *events.S
 		Interval:    interval,
 		PriceCents:  price,
 		MRRCents:    SubscriptionMRRCents(sub),
-		Seats:       sub.Quantity,
+		Seats:       sub.Seats(),
 		Trial:       trial,
 		PeriodStart: rfc3339(sub.PeriodStart),
 		PeriodEnd:   rfc3339(sub.PeriodEnd),

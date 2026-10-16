@@ -49,6 +49,7 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentorg"
 	"github.com/hanzoai/commerce/models/plan"
+	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 )
@@ -128,8 +129,9 @@ type walletTerms struct {
 	slug         string
 	qty          int
 	seats        int64
-	charge       int64 // what the wallet pays today: price x seats, less promo and coupon
-	list         int64 // price x seats
+	lines        []subscription.Line // the team's other seat types, priced
+	charge       int64               // what the wallet pays today: price x seats, less promo and coupon
+	list         int64               // price x seats
 	cur          currency.Type
 	coupon       engine.Coupon
 	promoPercent int
@@ -321,6 +323,7 @@ func walletSale(ctx context.Context, db *datastore.Datastore, org *organization.
 		Quantity:             t.qty,
 		Metadata:             meta,
 		Test:                 org.TestMode(),
+		priced:               t.lines,
 	})
 	if err != nil {
 		return nil, unsettled(ref, "the first period was paid by a wallet and no subscription was opened: "+err.Error())
@@ -366,7 +369,7 @@ func walletSale(ctx context.Context, db *datastore.Datastore, org *organization.
 		_ = idempotencykey.Complete(t.rec, string(body))
 	}
 	noticeSale(work, saleNote{
-		Org: org.Name, Email: in.Email, Plan: t.plan, Seats: t.seats, Sale: sale,
+		Org: org.Name, Email: in.Email, Plan: t.plan, Seats: t.seats + int64(lineSeats(t.lines)), Sale: sale,
 		ListCents: t.list, PromoName: t.promoName, Coupon: t.coupon, Test: org.TestMode(),
 	})
 	return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil

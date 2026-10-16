@@ -50,10 +50,14 @@ type canonicalPlan struct {
 	PriceAnnual  *float64 `json:"priceAnnual"`  // dollars per month billed annually (null for custom)
 	// Prices is every price the plan is sold at, in dollars per month, ascending,
 	// with Prices[0] == PriceMonthly. Absent for a plan sold at one price.
-	Prices       []float64 `json:"prices,omitempty"`
-	Category     string    `json:"category"`
-	Popular      bool      `json:"popular,omitempty"`
-	ContactSales bool      `json:"contactSales,omitempty"`
+	Prices   []float64 `json:"prices,omitempty"`
+	Category string    `json:"category"`
+	// Group is the team this per-seat plan is a seat type of ("team"): plans of
+	// one group are sold together on one subscription, and the group's minSeats
+	// and maxMembers count all their seats.
+	Group        string `json:"group,omitempty"`
+	Popular      bool   `json:"popular,omitempty"`
+	ContactSales bool   `json:"contactSales,omitempty"`
 	// Status is the catalog's word on whether the plan is sold: absent or "active"
 	// is on sale, "draft" is published for review and sold by nothing (see
 	// plan.Listed). A deploy that carries a draft row creates it unlisted, so no
@@ -117,7 +121,10 @@ type staticPlan struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Category    string `json:"category"`
-	Price       int64  `json:"price"` // monthly price in cents (0 = free)
+	// Group is canonicalPlan.Group: the team this plan is a seat type of, which a
+	// checkout reads to sell its seat types together.
+	Group string `json:"group,omitempty"`
+	Price int64  `json:"price"` // monthly price in cents (0 = free)
 	// PriceAnnual is the annual price in cents per month, for display, and null
 	// where the catalog states none: a plan sold by the month only (advisory,
 	// dedicated) or a sales call. Null is not $0 — a $0 annual price on a plan
@@ -312,6 +319,7 @@ func parsePlans(data []byte) ([]staticPlan, error) {
 			Name:          cp.Name,
 			Description:   cp.Description,
 			Category:      cp.Category,
+			Group:         cp.Group,
 			Currency:      "usd",
 			Interval:      string(types.Monthly),
 			IntervalCount: 1,
@@ -688,6 +696,15 @@ func subscriptionSlug(s *subscription.Subscription) string {
 		return s.Plan.Slug
 	}
 	return s.PlanId
+}
+
+// group is the team a plan is a seat type of, read from the catalog by slug: ""
+// for a plan sold alone.
+func group(slug string) string {
+	if p := lookupPlan(slug); p != nil {
+		return p.Group
+	}
+	return ""
 }
 
 // perSeat reports whether the catalog bills the plan per seat

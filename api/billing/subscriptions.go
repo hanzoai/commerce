@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -39,6 +40,10 @@ type createSubscriptionRequest struct {
 	// Empty (the default) and "month" both open at the recurring price; "year"
 	// opens at the catalog's annual one. See planAtInterval.
 	Interval types.Interval `json:"interval,omitempty"`
+	// Lines are the team's other seat types (see LineIn): a team of one standard
+	// and one premium seat is planId "team", quantity 1, and one line of
+	// "team-premium". The team's floor and ceiling count every seat.
+	Lines []LineIn `json:"lines,omitempty"`
 	// Members are the seat holders of a per-seat subscription. Each gets a
 	// zero-price bundle-child subscription row so the monthly allotment run
 	// grants their own per-user included credit. Never more than Quantity.
@@ -50,13 +55,20 @@ type createSubscriptionRequest struct {
 	// Collected opens the row as a plan paid OUTSIDE checkout, on the period that
 	// payment covers. Only RecordSubscription sets it, never a request body.
 	Collected *collected `json:"-"`
+	// priced is Lines priced at the period bought (linesAt), set by the caller
+	// that resolved them; it is what the row is opened with.
+	priced []subscription.Line
 }
 
 type updateSubscriptionRequest struct {
-	PlanId   string   `json:"planId"`
-	Prorate  bool     `json:"prorate"`
-	Quantity int      `json:"quantity"`
-	Members  []string `json:"members"` // see createSubscriptionRequest.Members
+	PlanId   string `json:"planId"`
+	Prorate  bool   `json:"prorate"`
+	Quantity int    `json:"quantity"`
+	// Lines change the seats of a team's other seat types, as quantity does the
+	// plan's: each names a seat type the row holds and the seats the next period
+	// opens at.
+	Lines   []LineIn `json:"lines"`
+	Members []string `json:"members"` // see createSubscriptionRequest.Members
 }
 
 type cancelSubscriptionRequest struct {
@@ -149,17 +161,24 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 		delete(req.Metadata, "compedBy") // client input never forges the audit field
 	}
 
+	cur := p.Currency
+	if cur == "" {
+		cur = currency.USD
+	}
+	lines, err := linesAt(db, p.Slug, req.Lines, p.Interval, cur)
+	switch {
+	case errors.Is(err, errLinePlan):
+		return http.Fail(c, 404, "plan not found", nil)
+	case err != nil:
+		return http.Fail(c, 400, err.Error(), nil)
+	}
+	req.priced = lines
 	qty := req.Quantity
 	if qty < 1 {
 		qty = 1
 	}
-	if why := overSeats(p.Slug, qty); why != "" {
+	if why := teamSeats(p.Slug, qty, lines); why != "" {
 		return http.Fail(c, 400, why, nil)
-	}
-	if perSeat(p.Slug) {
-		if min := minSeats(p.Slug); qty < min {
-			return http.Fail(c, 400, fmt.Sprintf("plan %q requires at least %d seats (got %d)", p.Slug, min, qty), nil)
-		}
 	}
 
 	sub, err := createSubscription(db, p, &req)
@@ -367,7 +386,7 @@ func createSubscription(db *datastore.Datastore, p *plan.Plan, req *createSubscr
 	// seat floor. A per-seat plan bills Price × quantity, never below
 	// limits.minSeats, and member rows (each minting a per-user allotment) can
 	// never exceed the seats paid for.
-	quantity, err := seats(req.PlanId, req.Quantity, len(req.Members))
+	quantity, err := seats(req.PlanId, req.Quantity, req.priced, len(req.Members))
 	if err != nil {
 		return nil, err
 	}
@@ -382,6 +401,7 @@ func createSubscription(db *datastore.Datastore, p *plan.Plan, req *createSubscr
 	sub.DefaultPaymentMethod = req.DefaultPaymentMethod
 	sub.ProviderType = "internal"
 	sub.Quantity = quantity
+	sub.Lines = req.priced
 	sub.Test = req.Test
 
 	if req.Metadata != nil {
@@ -684,6 +704,9 @@ func Subscriptions(ctx context.Context, org *organization.Organization, userID, 
 		v := viewSubscription(s)
 		pay := periodPaid(db, s)
 		v.Settled, v.Seats, v.ChargedCents = pay.settled, pay.seats, pay.charged
+		for i := range v.Lines {
+			v.Lines[i].Seats = pay.by[v.Lines[i].Plan]
+		}
 		out = append(out, *v)
 	}
 	return out, nil
@@ -691,9 +714,10 @@ func Subscriptions(ctx context.Context, org *organization.Organization, userID, 
 
 // periodPayment is how a subscription's period in hand was paid, and for what.
 type periodPayment struct {
-	settled string // Subscription.Settled
-	seats   int    // Subscription.Seats
-	charged int64  // Subscription.ChargedCents
+	settled string         // Subscription.Settled
+	seats   int            // Subscription.Seats
+	charged int64          // Subscription.ChargedCents
+	by      map[string]int // the seats each seat type's plan line charged, by plan
 }
 
 // periodPaid is how the subscription's period in hand was paid: from that period's
@@ -712,7 +736,7 @@ func periodPaid(db *datastore.Datastore, s *subscription.Subscription) periodPay
 			if inv.Disputed() || (inv.AmountPaid > 0 && inv.Refunded() >= inv.AmountPaid) {
 				return periodPayment{}
 			}
-			fee, seats := int64(0), int64(0)
+			fee, seats, by := int64(0), int64(0), map[string]int{}
 			for _, li := range inv.LineItems {
 				if li.Type != billinginvoice.LineSubscription {
 					continue
@@ -724,12 +748,14 @@ func periodPaid(db *datastore.Datastore, s *subscription.Subscription) periodPay
 					n = li.Amount / li.UnitPrice
 				}
 				fee, seats = fee+li.Amount, seats+max(n, 1)
+				by[li.PlanId] += int(max(n, 1))
 			}
 			charged := min(fee-inv.Discount, inv.AmountPaid) - inv.Refunded()
 			return periodPayment{
 				settled: strings.ToLower(strings.TrimSpace(inv.PaymentMethod)),
 				seats:   int(seats),
 				charged: max(charged, 0),
+				by:      by,
 			}
 		}
 	}
@@ -869,15 +895,33 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 	if quantity < 1 {
 		quantity = 1
 	}
-	if why := overSeats(slug, quantity); why != "" {
+	// A team's other seat types: the seats each opens the next period at, after
+	// this update, and the fewer of those and the period in hand's, which is what
+	// is paid for now.
+	next, paid := slices.Clone(sub.Lines), 0
+	for i := range next {
+		if next[i].PendingQuantity > 0 {
+			next[i].Quantity, next[i].PendingQuantity = next[i].PendingQuantity, 0
+		}
+	}
+	for _, l := range req.Lines {
+		i := slices.IndexFunc(next, func(n subscription.Line) bool { return n.Plan == strings.TrimSpace(l.PlanID) })
+		switch {
+		case i < 0:
+			return http.Fail(c, 400, fmt.Sprintf("seat type %q is not on this subscription", l.PlanID), nil)
+		case l.Quantity < 1:
+			return http.Fail(c, 400, fmt.Sprintf("seat type %q needs at least 1 seat (got %d)", l.PlanID, l.Quantity), nil)
+		}
+		next[i].Quantity = l.Quantity
+	}
+	for i, l := range next {
+		paid += min(l.Quantity, max(sub.Lines[i].Quantity, 1))
+	}
+	if why := teamSeats(slug, quantity, next); why != "" {
 		return http.Fail(c, 400, why, nil)
 	}
 	if perSeat(slug) {
-		if min := minSeats(slug); quantity < min {
-			return http.Fail(c, 400,
-				fmt.Sprintf("plan %q requires at least %d seats (got %d)", slug, min, quantity), nil)
-		}
-		if paidSeats := min(quantity, max(sub.Quantity, 1)); len(req.Members) > paidSeats {
+		if paidSeats := min(quantity, max(sub.Quantity, 1)) + paid; len(req.Members) > paidSeats {
 			return http.Fail(c, 400,
 				fmt.Sprintf("members (%d) exceed seats paid for (%d)", len(req.Members), paidSeats), nil)
 		}
@@ -948,6 +992,15 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 	default:
 		sub.PendingQuantity = req.Quantity
 	}
+	for i := range sub.Lines {
+		l := &sub.Lines[i]
+		switch n := next[i].Quantity; {
+		case n == l.Quantity:
+			l.PendingQuantity = 0
+		default:
+			l.PendingQuantity = n
+		}
+	}
 
 	if err := sub.Update(); err != nil {
 		log.Error("Failed to update subscription: %v", err, c)
@@ -1007,6 +1060,13 @@ type Subscription struct {
 
 	Plan SubscriptionPlan `json:"plan"`
 
+	// Lines are a team's other seat types beside Plan: each one's plan, price per
+	// seat for the period, seats held and pending, and the seats of it the period
+	// in hand was paid for. Seats above counts every seat type, these included.
+	Lines []SubscriptionLine `json:"lines,omitempty"`
+	// Assigned is which member holds which seat type (AssignSeats).
+	Assigned []subscription.Seat `json:"assigned,omitempty"`
+
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 
@@ -1039,6 +1099,22 @@ type SubscriptionPlan struct {
 	Interval string `json:"interval"`
 }
 
+// SubscriptionLine is one of a team's other seat types as the subscription holds
+// it (subscription.Line), with the seats of it the period in hand was paid for.
+type SubscriptionLine struct {
+	// Plan is the seat type's catalog plan, e.g. "team-premium".
+	Plan string `json:"plan"`
+	Name string `json:"name"`
+	// Price is one seat of it for the row's period, in cents.
+	Price int64 `json:"price"`
+	// Quantity is the seats of it the row holds; PendingQuantity the seats the next
+	// period opens at, when a change waits for the renewal that charges it.
+	Quantity        int `json:"quantity"`
+	PendingQuantity int `json:"pendingQuantity,omitempty"`
+	// Seats is the seats of it the period in hand was paid for; 0 when unpaid.
+	Seats int `json:"seats,omitempty"`
+}
+
 // viewSubscription projects the row onto the typed answer. ONE projection, so
 // two cores cannot describe the same subscription two ways.
 func viewSubscription(sub *subscription.Subscription) *Subscription {
@@ -1066,6 +1142,11 @@ func viewSubscription(sub *subscription.Subscription) *Subscription {
 		},
 		CreatedAt: sub.CreatedAt,
 		UpdatedAt: sub.UpdatedAt,
+		Assigned:  sub.Assigned,
+	}
+	for _, l := range sub.Lines {
+		v.Lines = append(v.Lines, SubscriptionLine{Plan: l.Plan, Name: l.Name, Price: int64(l.Price),
+			Quantity: l.Quantity, PendingQuantity: l.PendingQuantity})
 	}
 	if !sub.TrialStart.IsZero() {
 		start, end := sub.TrialStart, sub.TrialEnd
@@ -1355,6 +1436,12 @@ func subscriptionResponse(sub *subscription.Subscription) map[string]any {
 	if sub.PendingQuantity > 0 {
 		resp["pendingQuantity"] = sub.PendingQuantity
 	}
+	if len(sub.Lines) > 0 {
+		resp["lines"] = viewSubscription(sub).Lines
+	}
+	if len(sub.Assigned) > 0 {
+		resp["assigned"] = sub.Assigned
+	}
 	if !sub.TrialStart.IsZero() {
 		resp["trialStart"] = sub.TrialStart
 		resp["trialEnd"] = sub.TrialEnd
@@ -1374,21 +1461,21 @@ func subscriptionResponse(sub *subscription.Subscription) map[string]any {
 // and never fewer seats than members. It is the ONE seat rule, asked by every path
 // that opens a subscription — and by a path that takes money for one, BEFORE it takes
 // the money.
-func seats(planID string, quantity, members int) (int, error) {
+//
+// A team holds its other seat types as lines, and the floor, the ceiling and the
+// members count the whole team: quantity seats of planID and every line's.
+func seats(planID string, quantity int, lines []subscription.Line, members int) (int, error) {
 	if quantity < 1 {
 		quantity = 1
 	}
-	if why := overSeats(planID, quantity); why != "" {
+	if why := teamSeats(planID, quantity, lines); why != "" {
 		return 0, subValidationError{why}
 	}
 	if !perSeat(planID) {
 		return quantity, nil
 	}
-	if min := minSeats(planID); quantity < min {
-		return 0, subValidationError{fmt.Sprintf("plan %q requires at least %d seats (got %d)", planID, min, quantity)}
-	}
-	if members > quantity {
-		return 0, subValidationError{fmt.Sprintf("members (%d) exceed seats (%d)", members, quantity)}
+	if team := quantity + lineSeats(lines); members > team {
+		return 0, subValidationError{fmt.Sprintf("members (%d) exceed seats (%d)", members, team)}
 	}
 	return quantity, nil
 }

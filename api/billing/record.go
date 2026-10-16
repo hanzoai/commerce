@@ -201,7 +201,7 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 	}
 
 	// Every rule that can refuse the plan is asked before anything moves.
-	qty, err := seats(planID, in.Quantity, 0)
+	qty, err := seats(planID, in.Quantity, nil, 0)
 	if err != nil {
 		return nil, saleRefusal{saleRefused, err.Error()}
 	}
@@ -488,7 +488,7 @@ func recordFromBalance(ctx context.Context, org *organization.Organization, db *
 		return nil, saleRefusal{saleRefused, "a period paid from the balance is the one running now: it must have started and not yet ended"}
 	}
 	// Every rule that can refuse the plan is asked before anything moves.
-	qty, err := seats(planID, in.Quantity, 0)
+	qty, err := seats(planID, in.Quantity, nil, 0)
 	if err != nil {
 		return nil, saleRefusal{saleRefused, err.Error()}
 	}

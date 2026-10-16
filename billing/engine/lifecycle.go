@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -139,17 +140,24 @@ func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscr
 	}
 
 	// A change of seats waiting for this period takes effect here: the period's
-	// invoice bills it, and the row holds it from now on.
+	// invoice bills it, and the row holds it from now on. A team's other seat
+	// types take theirs the same way.
 	quantity, pending := sub.Quantity, sub.PendingQuantity
 	if pending > 0 {
 		sub.Quantity, sub.PendingQuantity = pending, 0
+	}
+	lines := slices.Clone(sub.Lines)
+	for i := range sub.Lines {
+		if l := &sub.Lines[i]; l.PendingQuantity > 0 {
+			l.Quantity, l.PendingQuantity = l.PendingQuantity, 0
+		}
 	}
 
 	// Generate a fresh, sequentially-numbered invoice: the owed period's fee in
 	// advance, and the metered usage since the held period began, in arrears.
 	inv, err := buildPeriodInvoice(db, sub, next, period{sub.PeriodStart, next.start}, Coupon{})
 	if err != nil {
-		sub.Quantity, sub.PendingQuantity = quantity, pending
+		sub.Quantity, sub.PendingQuantity, sub.Lines = quantity, pending, lines
 		if rec != nil {
 			_ = rec.Delete() // release the guard so a later attempt can rebuild
 		}
@@ -296,6 +304,26 @@ func buildPeriodInvoice(db *datastore.Datastore, sub *subscription.Subscription,
 			Quantity:    n,
 			UnitPrice:   int64(sub.Plan.Price),
 			Amount:      int64(sub.Plan.Price) * n,
+			Currency:    sub.Plan.Currency,
+			PeriodStart: fee.start,
+			PeriodEnd:   fee.end,
+		})
+	}
+	// A team's other seat types, each its own plan line: its price per seat times
+	// its seats.
+	for _, l := range sub.Lines {
+		if l.Price <= 0 || l.Quantity < 1 {
+			continue
+		}
+		inv.LineItems = append(inv.LineItems, billinginvoice.LineItem{
+			Id:          "li_plan_" + l.Plan,
+			Type:        billinginvoice.LineSubscription,
+			Description: l.Name + " subscription",
+			PlanId:      l.Plan,
+			PlanName:    l.Name,
+			Quantity:    int64(l.Quantity),
+			UnitPrice:   int64(l.Price),
+			Amount:      int64(l.Price) * int64(l.Quantity),
 			Currency:    sub.Plan.Currency,
 			PeriodStart: fee.start,
 			PeriodEnd:   fee.end,
@@ -559,7 +587,14 @@ func ReactivateSubscription(sub *subscription.Subscription) error {
 
 // ChangePlan updates a subscription to a new plan. If prorate is true,
 // a proration line item will be added to the current period's invoice.
+//
+// A team holding more than one seat type (sub.Lines) is refused: a move prices
+// one plan's seats against another's, and such a team changes its seats instead,
+// which its next renewal charges.
 func ChangePlan(sub *subscription.Subscription, newPlan *plan.Plan, prorate bool) (*billinginvoice.LineItem, error) {
+	if len(sub.Lines) > 0 {
+		return nil, fmt.Errorf("a team with more than one seat type changes its seats, not its plan")
+	}
 	oldPlan := sub.Plan
 	sub.Plan = *newPlan
 	sub.PlanId = newPlan.Id()

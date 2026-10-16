@@ -9,6 +9,7 @@ import (
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/types/accounts"
+	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/models/types/refs"
 	"github.com/hanzoai/commerce/util/hashid"
 	"github.com/hanzoai/commerce/util/json"
@@ -133,6 +134,16 @@ type Subscription struct {
 	// change of seats waits for the renewal whose invoice charges it; 0 when none.
 	PendingQuantity int `json:"pendingQuantity,omitempty"`
 
+	// Lines are a team's other seat types, beside Plan and Quantity: a team bought
+	// with standard and premium seats holds Plan "team" and one line of
+	// "team-premium". Every period's invoice bills Plan's price times Quantity and
+	// each line's price times its quantity; the team is all of their seats.
+	Lines []Line `json:"lines,omitempty"`
+
+	// Assigned is which member holds which seat type, as the org's admin set it:
+	// never more members on a seat type than the seats of it paid for.
+	Assigned []Seat `json:"assigned,omitempty"`
+
 	Metadata  Map    `json:"metadata" datastore:"-" orm:"default:{}"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 
@@ -164,6 +175,39 @@ type Subscription struct {
 
 	Account accounts.Account  `json:"account,omitempty"`
 	Ref     refs.EcommerceRef `json:"ref,omitempty"`
+}
+
+// Line is one more seat type on a team's subscription: a plan of the catalog group
+// the subscription's own plan is in, priced per seat for the row's period.
+type Line struct {
+	// Plan is the line's catalog plan slug, e.g. "team-premium".
+	Plan string `json:"plan"`
+	// Name is the plan's display name, as the subscription bought it.
+	Name string `json:"name"`
+	// Price is one seat of it for the row's period, in cents, as the subscription
+	// bought it: a later catalog price does not move it.
+	Price currency.Cents `json:"price"`
+	// Quantity is the seats of it the row holds.
+	Quantity int `json:"quantity"`
+	// PendingQuantity is the seats of it the next period opens at, set when a
+	// change waits for the renewal whose invoice charges it; 0 when none.
+	PendingQuantity int `json:"pendingQuantity,omitempty"`
+}
+
+// Seat is one member's seat on a team: the member, and the seat type (a plan
+// slug the subscription holds seats of) they hold.
+type Seat struct {
+	Member string `json:"member"`
+	Plan   string `json:"plan"`
+}
+
+// Seats is every seat the row holds: Quantity and each line's.
+func (s Subscription) Seats() int {
+	n := s.Quantity
+	for _, l := range s.Lines {
+		n += l.Quantity
+	}
+	return n
 }
 
 func (s *Subscription) Load(ps []datastore.Property) (err error) {

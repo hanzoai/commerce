@@ -125,6 +125,7 @@ func Route(r *zip.Group, args ...zip.Handler) {
 	api.Raw(http.MethodGet, "/subscriptions", ListBillingSubscriptions)
 	api.Raw(http.MethodGet, "/subscriptions/:id", GetBillingSubscription)
 	api.Raw(http.MethodPatch, "/subscriptions/:id", UpdateBillingSubscription)
+	api.Raw(http.MethodPut, "/subscriptions/:id/seats", AssignBillingSeats)
 	api.Raw(http.MethodPost, "/subscriptions/:id/cancel", CancelBillingSubscription)
 	api.Raw(http.MethodPost, "/subscriptions/:id/reactivate", ReactivateBillingSubscription)
 	api.Raw(http.MethodPost, "/subscriptions/:id/renew", RenewBillingSubscription)

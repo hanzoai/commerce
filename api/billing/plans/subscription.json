@@ -378,9 +378,11 @@
     "priceMonthly": 25,
     "priceAnnual": 20,
     "category": "team",
+    "group": "team",
     "features": [
       "$25 per member a month, or $20 per member a month billed yearly",
       "Every model, with usage included for each member",
+      "Give any member a premium seat for more usage",
       "One shared workspace: chat, meetings, calendar and contacts",
       "Single sign-on, roles and an audit log",
       "One bill for the whole team",
@@ -404,6 +406,67 @@
         "annual_usd": 20,
         "per_seat": true,
         "stripe_lookup_key": "hanzo_team_25"
+      },
+      "metered": [
+        {
+          "entitlement": "ai.tokens_per_min",
+          "unit": "per_mtok",
+          "source": "zen-gateway",
+          "included": -1
+        }
+      ]
+    },
+    "entitlements": {
+      "ai.priority_inference": true,
+      "ai.models": [
+        "tier:max"
+      ],
+      "licensing.product_ids": [
+        "crm",
+        "team"
+      ],
+      "commerce.members": 100,
+      "commerce.sso": true,
+      "commerce.shared_billing": true,
+      "commerce.audit_log": true,
+      "commerce.support_tier": "priority",
+      "commerce.idle_resale_percent": 20,
+      "ai.agents": 10,
+      "ai.bots": 0
+    }
+  },
+  {
+    "id": "team-premium",
+    "name": "Team Premium",
+    "description": "For teams of 2 to 100: premium seats for the members who need the most usage, on the team's one bill.",
+    "priceMonthly": 100,
+    "priceAnnual": 80,
+    "category": "team",
+    "group": "team",
+    "features": [
+      "$100 per member a month, or $80 per member a month billed yearly",
+      "Everything in Team, plus:",
+      "5x the usage of a standard seat",
+      "Mix premium and standard seats on one team and one bill"
+    ],
+    "limits": {
+      "agents": 10,
+      "bots": 0,
+      "maxMembers": 100,
+      "minSeats": 2
+    },
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    },
+    "price_ref": {
+      "currency": "USD",
+      "recurring": {
+        "monthly_usd": 100,
+        "annual_total_usd": 960,
+        "annual_usd": 80,
+        "per_seat": true,
+        "stripe_lookup_key": "hanzo_team_premium_100"
       },
       "metered": [
         {
