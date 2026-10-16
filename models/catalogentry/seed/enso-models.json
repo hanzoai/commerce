@@ -2,7 +2,7 @@
   {
     "slug": "enso",
     "name": "Enso",
-    "description": "Hanzo's proprietary frontier model — Opus-class reasoning at a 1M context window.",
+    "description": "Routes each request to one Enso tier by the reasoning depth it asks for, and bills at the tier that answers; the price shown is a request's that states no depth.",
     "published": true,
     "order": 1,
     "spec": {
@@ -14,8 +14,10 @@
       "enabled": true
     },
     "rates": [
-      { "key": "in", "unit": "mtok", "price": "0.00" },
-      { "key": "out", "unit": "mtok", "price": "0.00" }
+      { "key": "in", "unit": "mtok", "price": "0.33" },
+      { "key": "out", "unit": "mtok", "price": "1.65" },
+      { "key": "cacheRead", "unit": "mtok", "price": "0.033" },
+      { "key": "cacheWrite", "unit": "mtok", "price": "0.4125" }
     ]
   },
   {

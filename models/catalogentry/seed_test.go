@@ -151,7 +151,8 @@ func TestSeedApiRouteAgreesWithApiPath(t *testing.T) {
 // billedRetail is what an Enso SKU is CHARGED, per MTok, as the model API sets
 // it: hanzoai/ai controllers/rates.go ensoPrices, each paid SKU at one fixed
 // price, 2 to 3 times the list price of the upstream its route typically answers
-// on (owner, 2026-10-15). enso is served free.
+// on (owner, 2026-10-15). enso is the router over the three tiers, billed at the
+// tier that answers and listed at a request's that states no depth: enso-flash's.
 //
 // This table is the SECOND WITNESS to the seed, and that is its whole job. The
 // bug it exists to stop is not a typo — it is someone changing the published
@@ -164,7 +165,7 @@ func TestSeedApiRouteAgreesWithApiPath(t *testing.T) {
 // never from a figure an earlier price list carried (20/60, 2/6, 40/120, 4/20,
 // 2/4, 5/25).
 var billedRetail = map[string]struct{ in, out, read, write string }{
-	"enso":        {"0.00", "0.00", "", ""},
+	"enso":        {"0.33", "1.65", "0.033", "0.4125"},
 	"enso-flash":  {"0.33", "1.65", "0.033", "0.4125"},
 	"enso-pro":    {"4.40", "22.00", "0.22", "5.50"},
 	"enso-ultra":  {"5.50", "27.50", "0.275", "6.875"},

@@ -1781,8 +1781,10 @@ exactly — the shape is NOT ours to change.
 Each paid Enso SKU sells at ONE fixed price set in hanzoai/ai
 `controllers/rates.go` (`ensoPrices`, owner 2026-10-15): enso-flash 0.33 / 1.65,
 enso-pro 4.40 / 22.00, enso-ultra 5.50 / 27.50 a million tokens, cache reads and
-writes in the same multiple; enso is free. ai lists and bills that number whatever
-a catalog row says, so an Enso price is not an admin's merchandising choice.
+writes in the same multiple. enso is the router over the three (ai v1.833.349),
+billed at the tier that answers and listed at a request's that states no depth,
+enso-flash's; enso-free is the one free model. ai lists and bills those numbers
+whatever a catalog row says, so an Enso price is not an admin's merchandising choice.
 `seed/enso-models.json` carries it (`seed_test.go` `billedRetail` is the second
 witness, moved in the same commit), and `runEnsoCatalogSeed` calls `Reprice` after
 the first-boot seed: each Enso row the seed names takes the seed's price, rate by

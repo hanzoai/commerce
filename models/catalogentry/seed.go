@@ -36,7 +36,9 @@ var infraTiersSeed []byte
 // the price the model API bills. Each paid SKU sells at ONE fixed price
 // (hanzoai/ai controllers/rates.go ensoPrices, owner 2026-10-15): enso-flash
 // 0.33 / 1.65, enso-pro 4.40 / 22.00, enso-ultra 5.50 / 27.50 a million tokens,
-// with cache reads and writes in the same multiple; enso is served free. Retail
+// with cache reads and writes in the same multiple. enso is the router over the
+// three (hanzoai/ai v1.833.349), billed at the tier that answers and listed at a
+// request's that states no depth, enso-flash's. Retail
 // is the one number a sync may not write — UpsertModels strips Price by design —
 // so the prices arrive here, and [Reprice] reads them back over the store on
 // every boot. It carries no cost: cost comes only from a sync.
