@@ -79,8 +79,8 @@ func TestWalletCoupon_FirstUseIsHalfPaidByTheWallet(t *testing.T) {
 	if sub == nil {
 		t.Fatal("no subscription")
 	}
-	if v := viewSubscription(sub); v.Plan.Slug != "dev" {
-		t.Fatalf("the row reads as plan %+v, want slug dev so a reader can match the catalog", v.Plan)
+	if v := viewSubscription(sub); v.Plan.Slug != "dev" || !v.Held {
+		t.Fatalf("the row reads as plan %+v held=%v, want slug dev and held", v.Plan, v.Held)
 	}
 	if sub.DefaultPaymentMethod != "credits" || sub.ProviderType != "credit" || sub.DiscountPercent != 0 {
 		t.Fatalf("subscription pm=%q provider=%q discount=%d, want credits/credit/0", sub.DefaultPaymentMethod, sub.ProviderType, sub.DiscountPercent)
@@ -411,6 +411,32 @@ func TestSale_SeatsAreBounded(t *testing.T) {
 	}
 	if maxSeats("team") != 100 || maxSeats("dev") != seatCeiling {
 		t.Fatalf("maxSeats team=%d dev=%d, want the catalog's 100 and the ceiling", maxSeats("team"), maxSeats("dev"))
+	}
+}
+
+// A plan named by its row id is the same plan: priced per seat, held to its
+// floor and its most seats, as its slug is.
+func TestSale_APlanByRowIDIsItsSlug(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	warmCouponNS(t, ctx)
+	org := moneyOrg("wl-rowid")
+	p, err := resolveSubscriptionPlan(datastore.New(org.Namespaced(ctx)), "team")
+	if err != nil || p.Id() == "" || p.Id() == "team" {
+		t.Fatalf("resolve team: id=%q err=%v", p.Id(), err)
+	}
+	m := walletMock("fp_rowid")
+	withFakeSquare(t, m)
+	for _, q := range []int{1, 101} {
+		body := fmt.Sprintf(`{"sourceId":"wnon:r","wallet":true,"planId":%q,"quantity":%d}`, p.Id(), q)
+		if r := invokeSubscribeCard(org, ctx, body, nil); r.StatusCode != http.StatusBadRequest {
+			t.Fatalf("team by row id at %d seats: status=%d %s, want 400", q, r.StatusCode, bodyOf(r))
+		}
+	}
+	body := fmt.Sprintf(`{"sourceId":"wnon:r","wallet":true,"planId":%q,"quantity":5}`, p.Id())
+	r := invokeSubscribeCard(org, ctx, body, nil)
+	if r.StatusCode != http.StatusCreated || m.lastAuthorizeAmount != 5*lookupPlan("team").Price {
+		t.Fatalf("team by row id at 5 seats: status=%d %s held %d, want 201 for five seats", r.StatusCode, bodyOf(r), m.lastAuthorizeAmount)
 	}
 }
 

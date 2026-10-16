@@ -597,20 +597,28 @@ func billingSubscription(db *datastore.Datastore, subject string, test bool) *su
 		return nil
 	}
 	for _, s := range subs {
-		switch s.Status {
-		case subscription.Active, subscription.Trialing:
-		default:
-			continue
-		}
-		// A bundle child is an entitlement row the parent minted, not a purchase.
-		if strings.EqualFold(strings.TrimSpace(s.ProviderType), "bundle") {
-			continue
-		}
-		if paidRow(s) && subscriptionPaymentBacked(s) {
+		if holdsPlan(s) {
 			return s
 		}
 	}
 	return nil
+}
+
+// holdsPlan reports whether s is a subject's one paid plan, the row a second
+// paid sale is refused over (billingSubscription): active or trialing, not a
+// bundle child, a paid tier, and payment-backed. Every subscription view states
+// it (Subscription.Held), so a reader asks commerce rather than restating it.
+func holdsPlan(s *subscription.Subscription) bool {
+	switch s.Status {
+	case subscription.Active, subscription.Trialing:
+	default:
+		return false
+	}
+	// A bundle child is an entitlement row the parent minted, not a purchase.
+	if strings.EqualFold(strings.TrimSpace(s.ProviderType), "bundle") {
+		return false
+	}
+	return paidRow(s) && subscriptionPaymentBacked(s)
 }
 
 // ListSubscriptions is the org's subscriptions, filtered — the QUERY, with no
@@ -993,6 +1001,9 @@ type Subscription struct {
 	// PendingQuantity is the seat count the next period opens at, when a change of
 	// seats waits for the renewal that charges it.
 	PendingQuantity int `json:"pendingQuantity,omitempty"`
+	// Held reports that this row is the subject's one paid plan: while it stands,
+	// a second paid sale is refused (409).
+	Held bool `json:"held"`
 
 	Plan SubscriptionPlan `json:"plan"`
 
@@ -1044,6 +1055,7 @@ func viewSubscription(sub *subscription.Subscription) *Subscription {
 		MRRCents:             SubscriptionMRRCents(sub),
 		ProviderType:         sub.ProviderType,
 		DefaultPaymentMethod: sub.DefaultPaymentMethod,
+		Held:                 holdsPlan(sub),
 		Plan: SubscriptionPlan{
 			ID:       sub.Plan.Id(),
 			Slug:     sub.Plan.Slug,
@@ -1327,6 +1339,7 @@ func subscriptionResponse(sub *subscription.Subscription) map[string]any {
 		"mrrCents":             SubscriptionMRRCents(sub),
 		"providerType":         sub.ProviderType,
 		"defaultPaymentMethod": sub.DefaultPaymentMethod,
+		"held":                 holdsPlan(sub),
 		"plan": map[string]any{
 			"id":       sub.Plan.Id(),
 			"slug":     sub.Plan.Slug,

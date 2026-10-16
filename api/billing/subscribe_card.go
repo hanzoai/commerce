@@ -421,6 +421,11 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	if err != nil {
 		return nil, saleRefusal{saleMissing, "plan not found"}
 	}
+	// Every rule below reads the catalog by slug. A plan named by its row id is
+	// the same plan, so it is priced, seated and promoted as its slug is.
+	if p.Slug != "" {
+		planID = p.Slug
+	}
 	if !p.Listed() {
 		// Refused BEFORE the card is charged — a retired tier must never take money.
 		return nil, saleRefusal{saleMissing, "plan not found"}
