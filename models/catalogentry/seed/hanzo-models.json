@@ -1,0 +1,543 @@
+[
+  {
+    "slug": "kai",
+    "name": "Kai",
+    "description": "Hanzo's decision model: a typed answer with a probability on every option, at POST /v1/decisions.",
+    "published": true,
+    "order": 1,
+    "spec": {
+      "vendor": "Hanzo",
+      "family": "",
+      "modality": "decision",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "key": "in",
+        "unit": "mtok",
+        "price": "0.021"
+      },
+      {
+        "key": "out",
+        "unit": "mtok",
+        "price": "0"
+      }
+    ]
+  },
+  {
+    "slug": "hanzo/kai",
+    "name": "Kai",
+    "description": "Hanzo's decision model: a typed answer with a probability on every option, at POST /v1/decisions.",
+    "published": false,
+    "order": 2,
+    "spec": {
+      "vendor": "Hanzo",
+      "family": "",
+      "modality": "decision",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "key": "in",
+        "unit": "mtok",
+        "price": "0.021"
+      },
+      {
+        "key": "out",
+        "unit": "mtok",
+        "price": "0"
+      }
+    ]
+  },
+  {
+    "slug": "typesafe/jev-1.13",
+    "name": "Jev 1.13",
+    "description": "TypeSafe's decision model, reached through OpenRouter's vendor id.",
+    "published": false,
+    "order": 3,
+    "spec": {
+      "vendor": "TypeSafe",
+      "family": "",
+      "modality": "decision",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "key": "in",
+        "unit": "mtok",
+        "price": "0.042"
+      },
+      {
+        "key": "out",
+        "unit": "mtok",
+        "price": "0"
+      }
+    ]
+  },
+  {
+    "slug": "~typesafe/jev-latest",
+    "name": "Jev",
+    "description": "TypeSafe's latest decision model, reached through OpenRouter's vendor id.",
+    "published": false,
+    "order": 4,
+    "spec": {
+      "vendor": "TypeSafe",
+      "family": "",
+      "modality": "decision",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "key": "in",
+        "unit": "mtok",
+        "price": "0.042"
+      },
+      {
+        "key": "out",
+        "unit": "mtok",
+        "price": "0"
+      }
+    ]
+  },
+  {
+    "slug": "zenlm/zen6",
+    "name": "Zen 6 (decisions)",
+    "description": "Zen answering a decision with a completion. Provisional launch price.",
+    "published": false,
+    "order": 5,
+    "spec": {
+      "vendor": "Hanzo",
+      "family": "",
+      "modality": "decision",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "key": "in",
+        "unit": "mtok",
+        "price": "2.28"
+      },
+      {
+        "key": "out",
+        "unit": "mtok",
+        "price": "7.26"
+      }
+    ]
+  },
+  {
+    "slug": "zenlm/zen6-flash",
+    "name": "Zen 6 Flash (decisions)",
+    "description": "Zen Flash answering a decision with a completion. Provisional launch price.",
+    "published": false,
+    "order": 6,
+    "spec": {
+      "vendor": "Hanzo",
+      "family": "",
+      "modality": "decision",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "key": "in",
+        "unit": "mtok",
+        "price": "2.28"
+      },
+      {
+        "key": "out",
+        "unit": "mtok",
+        "price": "7.26"
+      }
+    ]
+  },
+  {
+    "slug": "zen-scribe",
+    "name": "Zen Scribe",
+    "description": "Speech-to-text, billed per second of audio heard ($0.006 a minute).",
+    "published": false,
+    "order": 7,
+    "spec": {
+      "vendor": "Hanzo",
+      "family": "",
+      "modality": "audio",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "unit": "second",
+        "price": "0.0001"
+      }
+    ]
+  },
+  {
+    "slug": "zen-scribe-mini",
+    "name": "Zen Scribe Mini",
+    "description": "Speech-to-text, billed per second of audio heard ($0.006 a minute).",
+    "published": false,
+    "order": 8,
+    "spec": {
+      "vendor": "Hanzo",
+      "family": "",
+      "modality": "audio",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "unit": "second",
+        "price": "0.0001"
+      }
+    ]
+  },
+  {
+    "slug": "parakeet",
+    "name": "Parakeet",
+    "description": "Speech-to-text, billed per second of audio heard ($0.006 a minute).",
+    "published": false,
+    "order": 9,
+    "spec": {
+      "vendor": "Hanzo",
+      "family": "",
+      "modality": "audio",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "unit": "second",
+        "price": "0.0001"
+      }
+    ]
+  },
+  {
+    "slug": "whisper",
+    "name": "Whisper",
+    "description": "Speech-to-text, billed per second of audio heard ($0.006 a minute).",
+    "published": false,
+    "order": 10,
+    "spec": {
+      "vendor": "Hanzo",
+      "family": "",
+      "modality": "audio",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "unit": "second",
+        "price": "0.0001"
+      }
+    ]
+  },
+  {
+    "slug": "whisper-small",
+    "name": "Whisper Small",
+    "description": "Speech-to-text, billed per second of audio heard ($0.006 a minute).",
+    "published": false,
+    "order": 11,
+    "spec": {
+      "vendor": "Hanzo",
+      "family": "",
+      "modality": "audio",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "unit": "second",
+        "price": "0.0001"
+      }
+    ]
+  },
+  {
+    "slug": "zen-voice-mini",
+    "name": "Zen Voice Mini",
+    "description": "Text-to-speech, billed per million characters spoken.",
+    "published": false,
+    "order": 12,
+    "spec": {
+      "vendor": "Hanzo",
+      "family": "",
+      "modality": "audio",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "unit": "mchar",
+        "price": "15"
+      }
+    ]
+  },
+  {
+    "slug": "kokoro",
+    "name": "Kokoro",
+    "description": "Text-to-speech, billed per million characters spoken.",
+    "published": false,
+    "order": 13,
+    "spec": {
+      "vendor": "Hanzo",
+      "family": "",
+      "modality": "audio",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "unit": "mchar",
+        "price": "15"
+      }
+    ]
+  },
+  {
+    "slug": "fal-ai/flux/schnell",
+    "name": "FLUX.1 schnell",
+    "description": "Image generation, billed per image.",
+    "published": false,
+    "order": 14,
+    "spec": {
+      "vendor": "fal",
+      "family": "",
+      "modality": "image",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "unit": "image",
+        "price": "0.05"
+      }
+    ]
+  },
+  {
+    "slug": "fal-ai/fast-sdxl",
+    "name": "SDXL",
+    "description": "Image generation, billed per image.",
+    "published": false,
+    "order": 15,
+    "spec": {
+      "vendor": "fal",
+      "family": "",
+      "modality": "image",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "unit": "image",
+        "price": "0.06"
+      }
+    ]
+  },
+  {
+    "slug": "stable-diffusion-3.5-large",
+    "name": "Stable Diffusion 3.5 Large",
+    "description": "Image generation, billed per image.",
+    "published": false,
+    "order": 16,
+    "spec": {
+      "vendor": "DigitalOcean",
+      "family": "",
+      "modality": "image",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "unit": "image",
+        "price": "0.08"
+      }
+    ]
+  },
+  {
+    "slug": "gpt-image-1",
+    "name": "GPT Image 1",
+    "description": "Image generation, billed per image.",
+    "published": false,
+    "order": 17,
+    "spec": {
+      "vendor": "OpenAI",
+      "family": "",
+      "modality": "image",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "unit": "image",
+        "price": "0.08"
+      }
+    ]
+  },
+  {
+    "slug": "dall-e-3",
+    "name": "DALL-E 3",
+    "description": "Image generation, billed per image.",
+    "published": false,
+    "order": 18,
+    "spec": {
+      "vendor": "OpenAI",
+      "family": "",
+      "modality": "image",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "unit": "image",
+        "price": "0.08"
+      }
+    ]
+  },
+  {
+    "slug": "dall-e-2",
+    "name": "DALL-E 2",
+    "description": "Image generation, billed per image.",
+    "published": false,
+    "order": 19,
+    "spec": {
+      "vendor": "OpenAI",
+      "family": "",
+      "modality": "image",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "unit": "image",
+        "price": "0.02"
+      }
+    ]
+  },
+  {
+    "slug": "wan2-2-t2v-a14b",
+    "name": "Wan 2.2 T2V",
+    "description": "Text-to-video, billed per video.",
+    "published": false,
+    "order": 20,
+    "spec": {
+      "vendor": "DigitalOcean",
+      "family": "",
+      "modality": "video",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "unit": "video",
+        "price": "0.40"
+      }
+    ]
+  },
+  {
+    "slug": "bge-m3",
+    "name": "bge-m3",
+    "description": "Text embeddings, billed per million input tokens.",
+    "published": false,
+    "order": 21,
+    "spec": {
+      "vendor": "DigitalOcean",
+      "family": "",
+      "modality": "embedding",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "key": "in",
+        "unit": "mtok",
+        "price": "0.02"
+      },
+      {
+        "key": "out",
+        "unit": "mtok",
+        "price": "0"
+      }
+    ]
+  },
+  {
+    "slug": "e5-large-v2",
+    "name": "e5-large-v2",
+    "description": "Text embeddings, billed per million input tokens.",
+    "published": false,
+    "order": 22,
+    "spec": {
+      "vendor": "DigitalOcean",
+      "family": "",
+      "modality": "embedding",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "key": "in",
+        "unit": "mtok",
+        "price": "0.02"
+      },
+      {
+        "key": "out",
+        "unit": "mtok",
+        "price": "0"
+      }
+    ]
+  },
+  {
+    "slug": "gte-large-en-v1.5",
+    "name": "gte-large-en-v1.5",
+    "description": "Text embeddings, billed per million input tokens.",
+    "published": false,
+    "order": 23,
+    "spec": {
+      "vendor": "DigitalOcean",
+      "family": "",
+      "modality": "embedding",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "key": "in",
+        "unit": "mtok",
+        "price": "0.02"
+      },
+      {
+        "key": "out",
+        "unit": "mtok",
+        "price": "0"
+      }
+    ]
+  },
+  {
+    "slug": "all-mini-lm-l6-v2",
+    "name": "all-mini-lm-l6-v2",
+    "description": "Text embeddings, billed per million input tokens.",
+    "published": false,
+    "order": 24,
+    "spec": {
+      "vendor": "DigitalOcean",
+      "family": "",
+      "modality": "embedding",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "key": "in",
+        "unit": "mtok",
+        "price": "0.02"
+      },
+      {
+        "key": "out",
+        "unit": "mtok",
+        "price": "0"
+      }
+    ]
+  },
+  {
+    "slug": "multi-qa-mpnet-base-dot-v1",
+    "name": "multi-qa-mpnet-base-dot-v1",
+    "description": "Text embeddings, billed per million input tokens.",
+    "published": false,
+    "order": 25,
+    "spec": {
+      "vendor": "DigitalOcean",
+      "family": "",
+      "modality": "embedding",
+      "enabled": true
+    },
+    "rates": [
+      {
+        "key": "in",
+        "unit": "mtok",
+        "price": "0.02"
+      },
+      {
+        "key": "out",
+        "unit": "mtok",
+        "price": "0"
+      }
+    ]
+  }
+]

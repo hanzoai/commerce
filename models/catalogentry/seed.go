@@ -51,6 +51,16 @@ var infraTiersSeed []byte
 //go:embed seed/enso-models.json
 var ensoModelsSeed []byte
 
+// modelsSeed is every other model the model API charges for that no family
+// prices: decisions (Kai, Jev, Zen answering one), speech, image and video
+// generation, embeddings. These rates were tables in hanzoai/ai's code; they are
+// rows here, at the prices production billed, and an admin owns each price from
+// the row's birth (no reprice). A model none of the catalog's rows names is not
+// sold. Seeded unpublished except Kai: they price calls, not the public list.
+//
+//go:embed seed/hanzo-models.json
+var modelsSeed []byte
+
 // infraCategories is the exact set of infra-tier categories. It is BOTH the
 // "infra" brand's category scope (see brandCategories in projection.go, which
 // surfaces these — and only these — under GET /v1/commerce/catalog?brand=infra)
@@ -395,16 +405,45 @@ func EnsoSeedRows() ([]ModelSeedRow, error) {
 	return rows, nil
 }
 
-// SeedEnsoModels loads the embedded Enso family into db (which MUST be
-// namespaced to the catalog-owning "system" org). IDEMPOTENT + NON-DESTRUCTIVE
-// exactly like Seed and SeedInfra: a slug that already exists is left UNTOUCHED,
-// so a price an admin has since edited is never reset to the seed. Only missing
-// slugs are created. Returns the number created.
+// SeedEnsoModels creates each Enso row the embedded family names that db (which
+// MUST be namespaced to the catalog-owning "system" org) lacks, and returns how
+// many. A row that exists is left to Reprice, which owns its price.
+//
+// It runs on EVERY boot, because the pricing catalog is what Enso is charged at:
+// the model API sells an Enso SKU only while its row is listed here, so a SKU the
+// seed names and the store lacks is a SKU nobody can buy — and a SKU added to the
+// seed after a store was first seeded must still reach it. To retire a SKU, take it
+// out of the seed.
 func SeedEnsoModels(db *datastore.Datastore) (created int, err error) {
 	rows, err := EnsoSeedRows()
 	if err != nil {
 		return 0, err
 	}
+	return seedModels(db, rows)
+}
+
+// ModelSeedRows returns the parsed embedded rows of the models no family prices.
+func ModelSeedRows() ([]ModelSeedRow, error) {
+	var rows []ModelSeedRow
+	if err := json.DecodeBytes(modelsSeed, &rows); err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+// SeedModels creates each row of the models no family prices that db lacks, on
+// every boot, and returns how many. A row that exists keeps the price an admin set.
+func SeedModels(db *datastore.Datastore) (created int, err error) {
+	rows, err := ModelSeedRows()
+	if err != nil {
+		return 0, err
+	}
+	return seedModels(db, rows)
+}
+
+// seedModels creates each of rows that db lacks, whole: at birth there is no human
+// decision to preserve.
+func seedModels(db *datastore.Datastore, rows []ModelSeedRow) (created int, err error) {
 	for _, r := range rows {
 		existing := New(db)
 		ok, qerr := existing.Query().Filter("Slug=", r.Slug).Get()
@@ -442,12 +481,11 @@ func SeedEnsoModels(db *datastore.Datastore) (created int, err error) {
 //
 // Everywhere else on the catalog a price is a decision a human makes in
 // admin.hanzo.ai, and every seed is non-destructive so a deploy cannot undo one.
-// Enso's is not that kind of value any more. The model API sells each Enso SKU
-// at one price set in code and bills that price whatever a row here says, so a
-// row stating another number is a price nobody is charged — the drift that once
-// had the estate advertising 20/60 while charging 4/20. Like an address
-// ([Correct]), it is read back from the place it is declared, on every boot, and
-// a change to it is a deploy.
+// Enso's is not that kind of value. Its price is the owner's (2026-10-15), set
+// in the seed and carried by a deploy, and the model API bills each Enso SKU at
+// this row — so a row that drifted from the seed is a price nobody decided. Like
+// an address ([Correct]), it is read back from the place it is declared, on every
+// boot, and a change to it is a deploy.
 func Reprice(db *datastore.Datastore) (repriced int, err error) {
 	rows, err := EnsoSeedRows()
 	if err != nil {
@@ -497,39 +535,4 @@ func priced(have, want []Rate) ([]Rate, bool) {
 		moved = true
 	}
 	return out, moved
-}
-
-// SeedEnsoModelsIfEmpty seeds the Enso family only when this seed has never been
-// applied, so it is safe on every bootstrap (mirrors SeedInfraIfEmpty). Gated
-// per-family, so seeding Enso is independent of Zen, of the third-party mirror,
-// and of the product catalog. Once the seed has run it never re-runs, leaving CMS
-// state — INCLUDING DELETIONS — authoritative.
-//
-// "Has this seed been applied" is asked of the SEED'S OWN SLUGS, not of the enso
-// category. It used to count category rows, which answers a different question
-// and got it wrong in production: a deployment carried one enso row that this
-// seed does not contain (enso-free, created by another path), the count came back
-// non-zero, and the five SKUs the enso service actually sells — enso, enso-flash,
-// enso-ultra and the two vision rows — were never created. The catalog served a
-// single free tier while every paid tier 400'd as an unknown model, and the guard
-// read as working correctly the whole time.
-//
-// A foreign row cannot answer whether we have seeded, so it no longer votes. A
-// row we DID seed still does, which is what keeps a deletion authoritative.
-func SeedEnsoModelsIfEmpty(db *datastore.Datastore) (created int, err error) {
-	rows, err := EnsoSeedRows()
-	if err != nil {
-		return 0, err
-	}
-	for _, r := range rows {
-		e := New(db)
-		ok, qerr := e.Query().Filter("Slug=", r.Slug).Get()
-		if qerr != nil {
-			return 0, qerr
-		}
-		if ok {
-			return 0, nil // the seed has run; curation wins from here
-		}
-	}
-	return SeedEnsoModels(db)
 }

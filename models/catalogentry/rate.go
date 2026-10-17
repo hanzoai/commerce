@@ -26,7 +26,7 @@ import (
 // float would lose the upstream's published precision.
 type Rate struct {
 	Key        string `json:"key,omitempty"`        // "" (single) | in | out | cacheRead | cacheWrite
-	Unit       string `json:"unit"`                 // mtok | month | hour | image | call | second
+	Unit       string `json:"unit"`                 // mtok | month | hour | image | video | call | second | mchar
 	MaxContext int    `json:"maxContext,omitempty"` // rung ceiling this rate applies up to; 0 = all
 	Cost       string `json:"cost,omitempty"`       // upstream unit cost, USD — SYNCED
 	Price      string `json:"price,omitempty"`      // retail unit price, USD — SET IN ADMIN
@@ -46,8 +46,10 @@ const (
 	UnitMonth  = "month"
 	UnitHour   = "hour"
 	UnitImage  = "image"
+	UnitVideo  = "video"
 	UnitCall   = "call"
-	UnitSecond = "second"
+	UnitSecond = "second" // per second of audio heard
+	UnitMChar  = "mchar"  // per million characters spoken
 )
 
 // same reports whether two rates address the same metered component — the rate

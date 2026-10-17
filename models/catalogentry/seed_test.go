@@ -148,10 +148,10 @@ func TestSeedApiRouteAgreesWithApiPath(t *testing.T) {
 	}
 }
 
-// billedRetail is what an Enso SKU is CHARGED, per MTok, as the model API sets
-// it: hanzoai/ai controllers/rates.go ensoPrices, each paid SKU at one fixed
-// price, 2 to 3 times the list price of the upstream its route typically answers
-// on (owner, 2026-10-15). enso is the router over the three tiers, billed at the
+// billedRetail is what an Enso SKU is CHARGED, per MTok: the seed is the price,
+// and the model API bills each SKU at its row (hanzoai/ai controllers/tariff.go),
+// each paid SKU at one fixed price, 2 to 3 times the list price of the upstream its
+// route typically answers on (owner, 2026-10-15). enso is the router over the three tiers, billed at the
 // tier that answers and listed at a request's that states no depth: enso-flash's.
 //
 // This table is the SECOND WITNESS to the seed, and that is its whole job. The
@@ -161,7 +161,7 @@ func TestSeedApiRouteAgreesWithApiPath(t *testing.T) {
 // seed now costs a deliberate edit here too, next to the reason.
 //
 // If Enso reprices, BOTH sides move together, in one commit, and the numbers
-// come from ensoPrices — never from marketing copy, never from a docs page, and
+// come from the owner's decision — never from marketing copy, never from a docs page, and
 // never from a figure an earlier price list carried (20/60, 2/6, 40/120, 4/20,
 // 2/4, 5/25).
 var billedRetail = map[string]struct{ in, out, read, write string }{
@@ -261,19 +261,14 @@ func TestEnsoSeedKeepsTheVisionEnginesUnlisted(t *testing.T) {
 	}
 }
 
-// TestEnsoSeedIsNotBlockedByAForeignRow is the production defect, pinned.
-//
-// A deployment carried one enso-category row this seed does not contain
-// (enso-free, created by another path). The old guard counted CATEGORY rows, saw
-// one, and skipped — so enso, enso-flash and enso-ultra were never created and
-// every paid tier answered as an unknown model while the catalog served a lone
-// free tier. Nothing went red: the guard was doing exactly what it said.
+// TestEnsoSeedIsNotBlockedByAForeignRow: a row in the enso category the seed does
+// not contain (enso-free, created by another path) never stops the seed's own SKUs
+// being created — the defect that once left every paid tier an unknown model.
 func TestEnsoSeedIsNotBlockedByAForeignRow(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
 	db := sysDB(c)
 
-	// A row in the enso category that the seed does not contain.
 	foreign := New(db)
 	foreign.Slug = "enso-free"
 	foreign.Name = "Enso Free"
@@ -282,14 +277,14 @@ func TestEnsoSeedIsNotBlockedByAForeignRow(t *testing.T) {
 		t.Fatalf("seeding the foreign row: %v", err)
 	}
 
-	created, err := SeedEnsoModelsIfEmpty(db)
+	created, err := SeedEnsoModels(db)
 	if err != nil {
-		t.Fatalf("SeedEnsoModelsIfEmpty: %v", err)
+		t.Fatalf("SeedEnsoModels: %v", err)
 	}
 	if created == 0 {
 		t.Fatal("a foreign enso row blocked the seed — the paid tiers would never exist")
 	}
-	for _, slug := range []string{"enso", "enso-flash", "enso-ultra"} {
+	for _, slug := range []string{"enso", "enso-flash", "enso-pro", "enso-ultra"} {
 		e := New(db)
 		ok, qerr := e.Query().Filter("Slug=", slug).Get()
 		if qerr != nil {
@@ -301,32 +296,36 @@ func TestEnsoSeedIsNotBlockedByAForeignRow(t *testing.T) {
 	}
 }
 
-// TestEnsoSeedRespectsCuration is the half the guard exists for: once the seed
-// HAS run, a deletion is authoritative and re-running must not resurrect it.
-func TestEnsoSeedRespectsCuration(t *testing.T) {
+// TestEnsoSeedCreatesASKUTheStoreLacks is the production defect after it: enso-pro
+// joined the seed after the first boot ran it, and a seed that ran once never made
+// it, so the model API — which sells an Enso SKU only at its row — could not sell it.
+// Every boot creates what the seed names and the store lacks, and nothing twice.
+func TestEnsoSeedCreatesASKUTheStoreLacks(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
 	db := sysDB(c)
 
-	if _, err := SeedEnsoModelsIfEmpty(db); err != nil {
+	if _, err := SeedEnsoModels(db); err != nil {
 		t.Fatalf("first seed: %v", err)
 	}
-	// An admin retires one SKU.
 	e := New(db)
-	ok, err := e.Query().Filter("Slug=", "enso-ultra").Get()
+	ok, err := e.Query().Filter("Slug=", "enso-pro").Get()
 	if err != nil || !ok {
-		t.Fatalf("enso-ultra missing after the seed: ok=%v err=%v", ok, err)
+		t.Fatalf("enso-pro missing after the seed: ok=%v err=%v", ok, err)
 	}
 	if err := e.Delete(); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
 
-	created, err := SeedEnsoModelsIfEmpty(db)
+	created, err := SeedEnsoModels(db)
 	if err != nil {
 		t.Fatalf("second seed: %v", err)
 	}
-	if created != 0 {
-		t.Errorf("re-seeded %d rows after the seed had run — a deletion must stay deleted", created)
+	if created != 1 {
+		t.Errorf("the next boot created %d rows, want enso-pro alone", created)
+	}
+	if again, _ := SeedEnsoModels(db); again != 0 {
+		t.Errorf("a third boot created %d rows; the seed is idempotent", again)
 	}
 }
 

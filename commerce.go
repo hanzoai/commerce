@@ -994,21 +994,17 @@ func (app *App) runInfraCatalogSeed() {
 	}
 }
 
-// runEnsoCatalogSeed populates the Enso family's model rows on first boot from
-// the embedded snapshot, at the price the model API bills. Gated SEPARATELY
-// (SeedEnsoModelsIfEmpty counts only enso-category rows) so the family seeds
-// independently of the product and infra snapshots — per-family isolation, the
-// same rule sync.go applies so one family's failure cannot touch another's.
-// Cheap count-gated no-op once populated; failures are logged, never fatal.
-//
-// Every boot then reads the snapshot's prices back over the rows it names
-// (catalogentry.Reprice): an Enso price is set in the model API's code and billed
-// from there, so a row stating another is a price nobody is charged. Logged,
-// because a boot that moves a published price is a boot someone has to be able
-// to audit.
+// runEnsoCatalogSeed creates each Enso row the embedded family names that the
+// store lacks (catalogentry.SeedEnsoModels), then reads the snapshot's prices back
+// over the rows it names (catalogentry.Reprice), on every boot: the model API
+// charges each Enso SKU at its row, so a missing row is a SKU nobody can buy and a
+// drifted price one nobody decided. Then the rows of every other model the model
+// API charges for (catalogentry.SeedModels): created when missing, priced by an
+// admin after. Logged, because a boot that moves a published price is a boot
+// someone has to be able to audit; failures are logged, never fatal.
 func (app *App) runEnsoCatalogSeed() {
 	db := catalogentry.SystemDB(context.Background())
-	created, err := catalogentry.SeedEnsoModelsIfEmpty(db)
+	created, err := catalogentry.SeedEnsoModels(db)
 	if err != nil {
 		slog.Error("enso catalog seed failed", "err", err)
 		return
@@ -1023,6 +1019,14 @@ func (app *App) runEnsoCatalogSeed() {
 	}
 	if repriced > 0 {
 		slog.Info("enso catalog repriced", "models", repriced)
+	}
+	seeded, err := catalogentry.SeedModels(db)
+	if err != nil {
+		slog.Error("model catalog seed failed", "err", err)
+		return
+	}
+	if seeded > 0 {
+		slog.Info("model catalog seeded", "models", seeded)
 	}
 }
 
