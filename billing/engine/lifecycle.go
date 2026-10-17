@@ -310,7 +310,9 @@ func buildPeriodInvoice(db *datastore.Datastore, sub *subscription.Subscription,
 		})
 	}
 	// A team's other seat types, each its own plan line: its price per seat times
-	// its seats.
+	// its seats. A seat type added after the sale (Line.Full) is billed in full,
+	// outside the promotion the row was sold under.
+	full := int64(0)
 	for _, l := range sub.Lines {
 		if l.Price <= 0 || l.Quantity < 1 {
 			continue
@@ -328,6 +330,9 @@ func buildPeriodInvoice(db *datastore.Datastore, sub *subscription.Subscription,
 			PeriodStart: fee.start,
 			PeriodEnd:   fee.end,
 		})
+		if l.Full {
+			full += int64(l.Price) * int64(l.Quantity)
+		}
 	}
 
 	// Add usage line items (non-fatal: an aggregation error yields no usage).
@@ -352,7 +357,7 @@ func buildPeriodInvoice(db *datastore.Datastore, sub *subscription.Subscription,
 				planFee += li.Amount
 			}
 		}
-		afterPromo := Discounted(planFee, sub.DiscountPercent)
+		afterPromo := Discounted(planFee-full, sub.DiscountPercent) + full
 		couponCents := afterPromo - Discounted(afterPromo, coupon.Percent)
 		names := make([]string, 0, 2)
 		if afterPromo < planFee {

@@ -192,6 +192,10 @@ type Line struct {
 	// PendingQuantity is the seats of it the next period opens at, set when a
 	// change waits for the renewal whose invoice charges it; 0 when none.
 	PendingQuantity int `json:"pendingQuantity,omitempty"`
+	// Full is a seat type the row added after its sale. It is billed at its full
+	// price: the promotion the row was sold under (DiscountPercent) was sold for
+	// the seat types bought then, not for this one.
+	Full bool `json:"full,omitempty"`
 }
 
 // Seat is one member's seat on a team: the member, and the seat type (a plan

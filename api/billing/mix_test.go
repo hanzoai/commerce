@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hanzoai/commerce/api/promo"
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/subscription"
@@ -231,5 +232,134 @@ func TestARecordedTeamPaysForEverySeatType(t *testing.T) {
 	next.Lines, next.PriceCents = premiumLine, 12500
 	if got, err = RecordSubscription(ctx, org, next); err != nil || got.Outcome != RecordExtended {
 		t.Fatalf("the next period at $125: %+v, %v", got, err)
+	}
+}
+
+// A seat type added after a sale is billed in full: the promotion the team was
+// sold under was sold for its standard seats, not for premium ones added later.
+func TestAnAddedSeatTypeIsBilledOutsideTheTeamsPromotion(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("team-promo")
+	m := squareMock("cust_tp", "ccof_tp", "sqpay_tp")
+	withFakeSquare(t, m)
+	sold, err := SubscribeCard(ctx, org, SubscribeIn{SourceID: "cnon:ok", PlanID: "team", Subject: org.Name, Quantity: 2,
+		Promo: &promo.Promo{PercentOff: 50, Active: true, Plans: []string{"team"}}})
+	if err != nil || sold.Sale.AmountCents != 2500 {
+		t.Fatalf("team x2 at 50%% off: %+v, %v", sold, err)
+	}
+	id := sold.Sale.SubscriptionID
+	if r := invokeSubPatch(org, ctx, c1MintPrincipal, id, `{"lines":[{"planId":"team-premium","quantity":10}]}`); r.StatusCode != http.StatusOK {
+		t.Fatalf("add 10 premium seats: %d %s", r.StatusCode, bodyOf(r))
+	}
+	db := datastore.New(org.Namespaced(ctx))
+	row := subscription.New(db)
+	if err := row.GetById(id); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	row.PeriodStart, row.PeriodEnd = time.Now().AddDate(0, -2, -10), time.Now().AddDate(0, -1, -10)
+	if err := row.Update(); err != nil {
+		t.Fatalf("rewind: %v", err)
+	}
+	m.chargeRef = "sqpay_tp_renew"
+	if r := invokeRenew(org, ctx, id); r.StatusCode != http.StatusOK {
+		t.Fatalf("renew: %d %s", r.StatusCode, bodyOf(r))
+	}
+	if want := int64(2*2500/2 + 10*10000); m.lastChargeAmount != want {
+		t.Fatalf("renewal charged %d cents, want %d: 2 standard seats at half price and 10 premium seats in full", m.lastChargeAmount, want)
+	}
+}
+
+// A seat type added and not yet charged is taken back by asking for none of it;
+// one a period has paid for keeps at least one seat.
+func TestASeatTypeNotYetChargedIsTakenBack(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("team-undo")
+	withFakeSquare(t, squareMock("cust_tu", "ccof_tu", "sqpay_tu"))
+	sold, err := SubscribeCard(ctx, org, SubscribeIn{SourceID: "cnon:ok", PlanID: "team", Subject: org.Name, Quantity: 2})
+	if err != nil {
+		t.Fatalf("subscribe: %v", err)
+	}
+	id := sold.Sale.SubscriptionID
+	if _, err := ChangeSeats(ctx, org, AnyHolder, id, 0, premiumLine); err != nil {
+		t.Fatalf("add premium: %v", err)
+	}
+	v, err := ChangeSeats(ctx, org, AnyHolder, id, 0, []LineIn{{PlanID: "team-premium", Quantity: 0}})
+	if err != nil || len(v.Lines) != 0 {
+		t.Fatalf("taking back a premium seat type no period paid for: %+v, %v; want no lines", v, err)
+	}
+
+	paid := moneyOrg("team-keep")
+	mixed, err := SubscribeCard(ctx, paid, SubscribeIn{SourceID: "cnon:ok", PlanID: "team", Subject: paid.Name, Quantity: 1, Lines: premiumLine})
+	if err != nil {
+		t.Fatalf("subscribe 1+1: %v", err)
+	}
+	if _, err := ChangeSeats(ctx, paid, AnyHolder, mixed.Sale.SubscriptionID, 2, []LineIn{{PlanID: "team-premium", Quantity: 0}}); !IsSubscriptionRefused(err) {
+		t.Fatalf("a paid premium seat type cut to none: %v, want refused", err)
+	}
+}
+
+// A recorded team reads back what each seat type's period paid for, as a charged
+// one does, so cloud serves a recorded premium seat as premium.
+func TestARecordedTeamReadsEachSeatTypesSeats(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("team-recseats")
+	withFakeSquare(t, squareMock("cust_trs", "ccof_trs", "sqpay_trs"))
+	now := time.Now().UTC()
+	if _, err := RecordSubscription(ctx, org, RecordIn{
+		Subject: org.Name, PlanID: "team", Quantity: 1, Lines: []LineIn{{PlanID: "team-premium", Quantity: 2}}, PriceCents: 22500,
+		PeriodStart: now.AddDate(0, 0, -1), PeriodEnd: now.AddDate(0, 1, -1),
+		Processor: "square", Reference: map[string]string{"invoice": "inv:trs-1"},
+	}); err != nil {
+		t.Fatalf("record 1+2 at $225: %v", err)
+	}
+	v := viewOf(t, ctx, org, org.Name)
+	if v.Seats != 3 || len(v.Lines) != 1 || v.Lines[0].Seats != 2 {
+		t.Fatalf("a recorded 1 standard + 2 premium reads %d seats and lines %+v; want 3, and 2 premium paid for", v.Seats, v.Lines)
+	}
+}
+
+// A comp's seats are the ones its approval gave: a change of seats adds no seat
+// type to one, and a record names them.
+func TestACompAddsNoSeatType(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("team-comp")
+	withFakeSquare(t, squareMock("cust_tc", "ccof_tc", "sqpay_tc"))
+	got, err := RecordSubscription(ctx, org, RecordIn{
+		Subject: org.Name, PlanID: "team", Quantity: 2, PeriodStart: recStart, PeriodEnd: recEnd, Processor: "comp",
+		Reference: map[string]string{"order": "approval-1"}, Terms: "design partner",
+	})
+	if err != nil {
+		t.Fatalf("record comp: %v", err)
+	}
+	if _, err := ChangeSeats(ctx, org, AnyHolder, got.Subscription.ID, 0, []LineIn{{PlanID: "team-premium", Quantity: 98}}); !IsSubscriptionRefused(err) {
+		t.Fatalf("98 premium seats added to a comp: %v, want refused", err)
+	}
+}
+
+// A member billed from the org's pool changes none of the team's seats over
+// HTTP, and a member row names a person of the org.
+func TestOnlyAnAdminChangesATeamOverHTTP(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("team-patch")
+	withFakeSquare(t, squareMock("cust_tq", "ccof_tq", "sqpay_tq"))
+	sold, err := SubscribeCard(ctx, org, SubscribeIn{SourceID: "cnon:ok", PlanID: "team", Subject: org.Name, Quantity: 2})
+	if err != nil {
+		t.Fatalf("subscribe: %v", err)
+	}
+	pooled := func(c *zip.Ctx) {
+		c.Locals("iam_authenticated", true)
+		c.Locals("permissions", bit.Field(permission.None))
+		c.Locals("iam_claims", &auth.IAMClaims{Owner: org.Name})
+	}
+	if r := invokeSubPatch(org, ctx, pooled, sold.Sale.SubscriptionID, `{"lines":[{"planId":"team-premium","quantity":98}]}`); r.StatusCode != http.StatusForbidden {
+		t.Fatalf("a pooled member adding 98 premium seats: %d %s, want 403", r.StatusCode, bodyOf(r))
+	}
+	if r := invokeSubPatch(org, ctx, c1MintPrincipal, sold.Sale.SubscriptionID, `{"members":["evil/eve"]}`); r.StatusCode != http.StatusBadRequest {
+		t.Fatalf("a member of another org: %d %s, want 400", r.StatusCode, bodyOf(r))
 	}
 }

@@ -71,6 +71,15 @@ func callerMayReachBillingSubject(c *zip.Ctx, ownerIDs ...string) bool {
 	return false
 }
 
+// mayChange reports whether an HTTP caller may change a subscription it holds:
+// the org's own authority (mayActForOrg), or a person changing one their own
+// wallet holds. A member billed from the org's pool holds the org's
+// subscriptions as that wallet does, and changes none of them: the rule cloud's
+// steward applies before a change reaches commerce over the plane.
+func mayChange(c *zip.Ctx) bool {
+	return mayActForOrg(c) || !strings.EqualFold(callerHolder(c), orgBillingKey(c))
+}
+
 // mayActForOrg reports whether the caller may act for the org's own account: a
 // privileged billing caller (service, platform SuperAdmin) or an admin of the org
 // the request acts in.

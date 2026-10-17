@@ -227,7 +227,7 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 		UserId:    subject,
 		PlanId:    planID,
 		Quantity:  qty,
-		Metadata:  recordMetadata(nil, collectionExternal, processor, reference, in.Terms, start, end, seatMult+int64(lineSeats(lines)), in.PriceCents),
+		Metadata:  recordMetadata(nil, collectionExternal, processor, reference, in.Terms, start, end, seatMult+int64(lineSeats(lines)), in.PriceCents, lines),
 		Test:      org.TestMode(),
 		Collected: &collected{processor: processor, start: start, end: end, external: true},
 		priced:    lines,
@@ -381,7 +381,7 @@ func extendRecorded(ctx context.Context, org *organization.Organization, held *s
 	}
 	sub.PeriodStart, sub.PeriodEnd = start, end
 	sub.Quantity, sub.PendingQuantity, sub.Lines = quantity, 0, lines
-	sub.Metadata = recordMetadata(sub.Metadata, collectionExternal, sub.ProviderType, reference, in.Terms, start, end, seatMult+int64(lineSeats(lines)), in.PriceCents)
+	sub.Metadata = recordMetadata(sub.Metadata, collectionExternal, sub.ProviderType, reference, in.Terms, start, end, seatMult+int64(lineSeats(lines)), in.PriceCents, lines)
 	if err := sub.Update(); err != nil {
 		return nil, err
 	}
@@ -459,7 +459,11 @@ const (
 // recordMetadata carries the collection on the row: how it is collected, who
 // collected it, the latest payment's references, the terms, and every period
 // recorded so far with the seats and the price its payment was checked against.
-func recordMetadata(prev types.Map, collection, processor string, reference map[string]string, terms string, start, end time.Time, seats, priceCents int64) types.Map {
+//
+// A team's other seat types are recorded beside the seats (lines: each seat
+// type's seats that period), so what the period paid for reads back by seat type
+// (periodPaid), as a charged invoice's plan lines do.
+func recordMetadata(prev types.Map, collection, processor string, reference map[string]string, terms string, start, end time.Time, seats, priceCents int64, lines []subscription.Line) types.Map {
 	m := types.Map{}
 	for k, v := range prev {
 		m[k] = v
@@ -474,14 +478,23 @@ func recordMetadata(prev types.Map, collection, processor string, reference map[
 	if t := strings.TrimSpace(terms); t != "" {
 		m["terms"] = t
 	}
-	periods, _ := m["periods"].([]interface{})
-	m["periods"] = append(periods, map[string]interface{}{
+	period := map[string]interface{}{
 		"start":      start.Format(time.RFC3339),
 		"end":        end.Format(time.RFC3339),
 		"reference":  ref,
 		"quantity":   seats,
 		"priceCents": priceCents,
-	})
+	}
+	if by := map[string]interface{}{}; len(lines) > 0 {
+		for _, l := range lines {
+			if l.Quantity > 0 {
+				by[l.Plan] = int64(l.Quantity)
+			}
+		}
+		period["lines"] = by
+	}
+	periods, _ := m["periods"].([]interface{})
+	m["periods"] = append(periods, period)
 	return m
 }
 
@@ -655,7 +668,7 @@ func recordFromBalance(ctx context.Context, org *organization.Organization, db *
 	if inv != nil {
 		paid["invoice"] = inv.Id()
 	}
-	sub.Metadata = recordMetadata(sub.Metadata, collectionBalance, processorBalance, paid, in.Terms, start, end, seatMult+int64(lineSeats(lines)), in.PriceCents)
+	sub.Metadata = recordMetadata(sub.Metadata, collectionBalance, processorBalance, paid, in.Terms, start, end, seatMult+int64(lineSeats(lines)), in.PriceCents, lines)
 	if err := sub.Update(); err != nil {
 		log.Error("RECONCILE: subscription %s (subject=%s) was paid from the balance and its reference was not saved: %v", sub.Id(), subject, err)
 	}

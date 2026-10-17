@@ -646,11 +646,22 @@ half-fail, and a minimum that a single cancel breaks.
   seats now and the renewal that opens the next period charges it. So a team
   bought with one seat type, before premium existed or from a checkout that sent
   no lines, mixes later; a second sale stays refused (one paid subscription).
+  An added seat type is `Line.Full`: billed outside the promotion the row was
+  sold under (`buildPeriodInvoice` discounts only the rest), since the promotion
+  was sold for what was bought. One not yet charged is taken back by asking for
+  0; a charged one keeps a seat. A comp adds none. Over HTTP a member billed
+  from the org's pool changes nothing (`mayChange`), and `members` are
+  `<org>/<name>`. The renewal still writes its row back after the charge, so a
+  change of seats made during the charge is lost to it, as a change of quantity
+  always was; making the renewal a `Swap` is its own change to the engine.
   `engine.ChangePlan` refuses a team with lines: a move prices one plan's seats
   against another's.
 - Record: `RecordIn.Lines` opens a recorded team with both seat types, its price
   checked against every seat; extending one checks the price of every seat it
-  holds for the period, and a payment naming other lines is refused.
+  holds for the period, and a payment naming other lines is refused. Each
+  recorded period keeps its seats per seat type (`periods[].lines`), which
+  `periodPaid` reads back as a charged invoice's plan lines, so cloud serves a
+  recorded premium seat as premium.
 - Offers: a promotion or coupon takes its percent off a team only when it covers
   every seat type bought (`everyLine`), since the charge and the invoice
   discount every plan line together.

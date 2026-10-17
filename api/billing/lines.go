@@ -143,6 +143,12 @@ func everyLine(slug string, lines []subscription.Line, covers func(string) bool)
 // (linesAt) at the row's period and currency. paid is the seats of them paid for
 // now: the fewer of the period in hand's and the next one's, which is none for a
 // seat type added here, since the renewal that opens it is what charges it.
+//
+// An added seat type is billed in full (Line.Full), outside the promotion the
+// row was sold under. A comp adds none: its seats are the ones its approval
+// gave, and a record names them. One added and not yet charged is taken back by
+// asking for 0 of it; a seat type the row has been charged for keeps at least
+// one seat.
 func nextLines(db *datastore.Datastore, sub *subscription.Subscription, slug string, in []LineIn) ([]subscription.Line, int, error) {
 	next := slices.Clone(sub.Lines)
 	for i := range next {
@@ -156,10 +162,14 @@ func nextLines(db *datastore.Datastore, sub *subscription.Subscription, slug str
 	}
 	for _, l := range in {
 		id := strings.TrimSpace(l.PlanID)
+		i := slices.IndexFunc(next, func(n subscription.Line) bool { return n.Plan == id })
+		if l.Quantity == 0 && i >= 0 && i < len(sub.Lines) && sub.Lines[i].Quantity == 0 {
+			next[i].Quantity = 0
+			continue
+		}
 		if l.Quantity < 1 {
 			return nil, 0, subValidationError{fmt.Sprintf("seat type %q needs at least 1 seat (got %d)", id, l.Quantity)}
 		}
-		i := slices.IndexFunc(next, func(n subscription.Line) bool { return n.Plan == id })
 		if i < 0 {
 			added, err := linesAt(db, slug, []LineIn{{PlanID: id, Quantity: l.Quantity}}, sub.Plan.Interval, cur)
 			if err != nil {
@@ -168,7 +178,12 @@ func nextLines(db *datastore.Datastore, sub *subscription.Subscription, slug str
 			// linesAt names the plan by its slug: a line the row holds, asked for by
 			// another of its ids, is that line and not a second one.
 			if i = slices.IndexFunc(next, func(n subscription.Line) bool { return n.Plan == added[0].Plan }); i < 0 {
-				next = append(next, added[0])
+				if sub.ProviderType == processorComp {
+					return nil, 0, subValidationError{"a comp's seats are the ones its approval gave: record it again to change them"}
+				}
+				line := added[0]
+				line.Full = true
+				next = append(next, line)
 				continue
 			}
 		}
@@ -189,7 +204,7 @@ func nextLines(db *datastore.Datastore, sub *subscription.Subscription, slug str
 func pendLines(sub *subscription.Subscription, next []subscription.Line) {
 	for i, n := range next {
 		if i == len(sub.Lines) {
-			sub.Lines = append(sub.Lines, subscription.Line{Plan: n.Plan, Name: n.Name, Price: n.Price})
+			sub.Lines = append(sub.Lines, subscription.Line{Plan: n.Plan, Name: n.Name, Price: n.Price, Full: n.Full})
 		}
 		l := &sub.Lines[i]
 		if n.Quantity == l.Quantity {
@@ -198,6 +213,9 @@ func pendLines(sub *subscription.Subscription, next []subscription.Line) {
 			l.PendingQuantity = n.Quantity
 		}
 	}
+	// A seat type taken back before any period charged it holds nothing now and
+	// opens nothing next: it is no longer the row's.
+	sub.Lines = slices.DeleteFunc(sub.Lines, func(l subscription.Line) bool { return l.Quantity == 0 && l.PendingQuantity == 0 })
 }
 
 // pendQuantity sets the seats of the plan's own seat type the next period opens

@@ -777,10 +777,19 @@ func periodPaid(db *datastore.Datastore, s *subscription.Subscription) periodPay
 		if !ok {
 			charged = int64(s.Plan.Price) * seats
 		}
+		// A team's other seat types, each with the seats the period paid for.
+		by := map[string]int{}
+		lines, _ := m["lines"].(map[string]interface{})
+		for plan := range lines {
+			if n, ok := numberField(lines, plan); ok && n > 0 {
+				by[plan] = int(n)
+			}
+		}
 		return periodPayment{
 			settled: "external:" + strings.ToLower(strings.TrimSpace(s.ProviderType)),
 			seats:   int(seats),
 			charged: charged,
+			by:      by,
 		}
 	}
 	return periodPayment{}
@@ -866,10 +875,18 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 	if err := sub.GetById(id); err != nil || !Holds(callerHolder(c), sub.UserId) {
 		return http.Fail(c, 404, "subscription not found", err)
 	}
+	if !mayChange(c) {
+		return http.Fail(c, 403, "only an admin of the org changes its subscription", nil)
+	}
 
 	var req updateSubscriptionRequest
 	if err := c.Bind(&req); err != nil {
 		return http.Fail(c, 400, "invalid request body", err)
+	}
+	for _, m := range req.Members {
+		if member(org.Name, m) == "" {
+			return http.Fail(c, 400, fmt.Sprintf("member %q is not a person of %s: name them %s/<name>", strings.TrimSpace(m), org.Name, org.Name), nil)
+		}
 	}
 
 	planChanged := req.PlanId != "" && req.PlanId != sub.PlanId
