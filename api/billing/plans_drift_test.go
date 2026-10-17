@@ -21,7 +21,7 @@ import (
 // current version breaks the current entry.
 var versionDigests = map[string]struct{ subscription, dns string }{
 	"1.8.20": {
-		subscription: "0264a179610f25f0cd04f0e2b7bbe1f402169df445bffb6f31a42edbc53ed39d",
+		subscription: "a381018ffcf670f47772405376c279810cfea24eebe421ac4a0d81f10d758dac",
 		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
 	},
 	"1.8.19": {

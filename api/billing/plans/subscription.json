@@ -381,8 +381,8 @@
     "group": "team",
     "features": [
       "$25 per member a month, or $20 per member a month billed yearly",
-      "Every model, with usage included for each member",
-      "Give any member a premium seat for more usage",
+      "Every model, with usage included for every seat and shared by the team",
+      "Add premium seats to raise the team's shared usage",
       "One shared workspace: chat, meetings, calendar and contacts",
       "Single sign-on, roles and an audit log",
       "One bill for the whole team",
@@ -438,7 +438,7 @@
   {
     "id": "team-premium",
     "name": "Team Premium",
-    "description": "For teams of 2 to 100: premium seats for the members who need the most usage, on the team's one bill.",
+    "description": "For teams of 2 to 100: premium seats that raise the team's shared usage, on the team's one bill.",
     "priceMonthly": 100,
     "priceAnnual": 80,
     "category": "team",

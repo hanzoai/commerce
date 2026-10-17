@@ -46,6 +46,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -74,6 +76,10 @@ type RecordIn struct {
 	Interval types.Interval
 	// Quantity is the seat count of a per-seat plan. 0 reads as 1.
 	Quantity int
+	// Lines are a team's other seat types the payment bought beside PlanID's seats
+	// (LineIn): a team of one standard and one premium seat is PlanID "team",
+	// Quantity 1 and one line of "team-premium". PriceCents covers every seat.
+	Lines []LineIn
 	// PriceCents is what the customer paid for one period, all seats. It is a
 	// CHECK and never a price: it must equal the plan's price for that period.
 	PriceCents int64
@@ -201,19 +207,18 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 	}
 
 	// Every rule that can refuse the plan is asked before anything moves.
-	qty, err := seats(planID, in.Quantity, nil, 0)
+	lines, qty, seatMult, err := recordSeats(db, p, planID, in)
 	if err != nil {
-		return nil, saleRefusal{saleRefused, err.Error()}
-	}
-	seatMult := int64(1)
-	if perSeat(planID) {
-		seatMult = int64(qty)
+		return nil, err
 	}
 	if comp {
 		// Held at price 0: what the row's plan costs is what MRR and every
 		// reader of the row sum, and nobody pays for a comp.
 		p.Price = 0
-	} else if err := priceMatches(planID, int64(p.Price)*seatMult, in.PriceCents); err != nil {
+		for i := range lines {
+			lines[i].Price = 0
+		}
+	} else if err := priceMatches(planID, int64(p.Price)*seatMult+lineCents(lines), in.PriceCents); err != nil {
 		return nil, err
 	}
 
@@ -222,9 +227,10 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 		UserId:    subject,
 		PlanId:    planID,
 		Quantity:  qty,
-		Metadata:  recordMetadata(nil, collectionExternal, processor, reference, in.Terms, start, end, seatMult, in.PriceCents),
+		Metadata:  recordMetadata(nil, collectionExternal, processor, reference, in.Terms, start, end, seatMult+int64(lineSeats(lines)), in.PriceCents),
 		Test:      org.TestMode(),
 		Collected: &collected{processor: processor, start: start, end: end, external: true},
+		priced:    lines,
 	})
 	if err != nil {
 		return nil, err
@@ -341,11 +347,22 @@ func extendRecorded(ctx context.Context, org *organization.Organization, held *s
 	if held.Plan.PerSeat && quantity > 1 {
 		seatMult = int64(quantity)
 	}
-	// The row keeps the price it was opened at, so a later payment is checked
-	// against that price and not against whatever the catalog sells today. A comp
-	// is held at 0 and was checked at the door.
+	// A team's other seat types hold their seats for the period the same way,
+	// and a payment that names its lines names the ones the row holds.
+	lines := slices.Clone(held.Lines)
+	for i := range lines {
+		if l := &lines[i]; !same && l.PendingQuantity > 0 {
+			l.Quantity, l.PendingQuantity = l.PendingQuantity, 0
+		}
+	}
+	if why := sameLines(lines, in.Lines); why != "" {
+		return nil, saleRefusal{saleRefused, fmt.Sprintf("subscription %s %s for this period; a payment for other seats cannot extend it", held.Id(), why)}
+	}
+	// The row keeps the prices it was opened at, so a later payment is checked
+	// against them and not against whatever the catalog sells today. A comp is
+	// held at 0 and was checked at the door.
 	if !comp {
-		if err := priceMatches(slug, int64(held.Plan.Price)*seatMult, in.PriceCents); err != nil {
+		if err := priceMatches(slug, int64(held.Plan.Price)*seatMult+lineCents(lines), in.PriceCents); err != nil {
 			return nil, err
 		}
 	}
@@ -363,8 +380,8 @@ func extendRecorded(ctx context.Context, org *organization.Organization, held *s
 		return nil, err
 	}
 	sub.PeriodStart, sub.PeriodEnd = start, end
-	sub.Quantity, sub.PendingQuantity = quantity, 0
-	sub.Metadata = recordMetadata(sub.Metadata, collectionExternal, sub.ProviderType, reference, in.Terms, start, end, seatMult, in.PriceCents)
+	sub.Quantity, sub.PendingQuantity, sub.Lines = quantity, 0, lines
+	sub.Metadata = recordMetadata(sub.Metadata, collectionExternal, sub.ProviderType, reference, in.Terms, start, end, seatMult+int64(lineSeats(lines)), in.PriceCents)
 	if err := sub.Update(); err != nil {
 		return nil, err
 	}
@@ -372,6 +389,53 @@ func extendRecorded(ctx context.Context, org *organization.Organization, held *s
 		go ev.EmitSubscriptionRenewed(context.WithoutCancel(ctx), subscriptionEvent(org.Name, sub))
 	}
 	return &Recorded{Subscription: *viewSubscription(sub), Outcome: RecordExtended}, nil
+}
+
+// recordSeats is what a record opens a plan with, refused before anything moves:
+// a team's other seat types priced at the period paid (linesAt), the seats of the
+// plan's own, and the seats its price is multiplied by — one for a flat plan.
+func recordSeats(db *datastore.Datastore, p *plan.Plan, planID string, in RecordIn) ([]subscription.Line, int, int64, error) {
+	cur := p.Currency
+	if cur == "" {
+		cur = currency.USD
+	}
+	lines, err := linesAt(db, planID, in.Lines, p.Interval, cur)
+	switch {
+	case errors.Is(err, errLinePlan):
+		return nil, 0, 0, saleRefusal{saleMissing, "plan not found"}
+	case err != nil:
+		return nil, 0, 0, saleRefusal{saleRefused, err.Error()}
+	}
+	qty, err := seats(planID, in.Quantity, lines, 0)
+	if err != nil {
+		return nil, 0, 0, saleRefusal{saleRefused, err.Error()}
+	}
+	if perSeat(planID) {
+		return lines, qty, int64(qty), nil
+	}
+	return lines, qty, 1, nil
+}
+
+// sameLines is why a payment naming lines does not name the seat types a row
+// holds for the period, "" when it does or names none.
+func sameLines(held []subscription.Line, in []LineIn) string {
+	if len(in) == 0 {
+		return ""
+	}
+	want := make(map[string]int, len(held))
+	for _, l := range held {
+		if l.Quantity > 0 {
+			want[l.Plan] = l.Quantity
+		}
+	}
+	got := make(map[string]int, len(in))
+	for _, l := range in {
+		got[strings.TrimSpace(l.PlanID)] += l.Quantity
+	}
+	if !maps.Equal(want, got) {
+		return fmt.Sprintf("holds seat types %v", want)
+	}
+	return ""
 }
 
 // priceMatches refuses a payment that is not what the plan costs for the period.
@@ -488,15 +552,11 @@ func recordFromBalance(ctx context.Context, org *organization.Organization, db *
 		return nil, saleRefusal{saleRefused, "a period paid from the balance is the one running now: it must have started and not yet ended"}
 	}
 	// Every rule that can refuse the plan is asked before anything moves.
-	qty, err := seats(planID, in.Quantity, nil, 0)
+	lines, qty, seatMult, err := recordSeats(db, p, planID, in)
 	if err != nil {
-		return nil, saleRefusal{saleRefused, err.Error()}
+		return nil, err
 	}
-	seatMult := int64(1)
-	if perSeat(planID) {
-		seatMult = int64(qty)
-	}
-	if err := priceMatches(planID, int64(p.Price)*seatMult, in.PriceCents); err != nil {
+	if err := priceMatches(planID, int64(p.Price)*seatMult+lineCents(lines), in.PriceCents); err != nil {
 		return nil, err
 	}
 
@@ -564,6 +624,7 @@ func recordFromBalance(ctx context.Context, org *organization.Organization, db *
 		Quantity:             qty,
 		Test:                 org.TestMode(),
 		Collected:            &collected{processor: "credit", start: start, end: end},
+		priced:               lines,
 	}, 0, "", drawn)
 	if err != nil {
 		// The money moved and no subscription holds it, so the period it paid for is
@@ -594,7 +655,7 @@ func recordFromBalance(ctx context.Context, org *organization.Organization, db *
 	if inv != nil {
 		paid["invoice"] = inv.Id()
 	}
-	sub.Metadata = recordMetadata(sub.Metadata, collectionBalance, processorBalance, paid, in.Terms, start, end, seatMult, in.PriceCents)
+	sub.Metadata = recordMetadata(sub.Metadata, collectionBalance, processorBalance, paid, in.Terms, start, end, seatMult+int64(lineSeats(lines)), in.PriceCents)
 	if err := sub.Update(); err != nil {
 		log.Error("RECONCILE: subscription %s (subject=%s) was paid from the balance and its reference was not saved: %v", sub.Id(), subject, err)
 	}

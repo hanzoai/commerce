@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 	"time"
 
@@ -898,24 +897,14 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 	// A team's other seat types: the seats each opens the next period at, after
 	// this update, and the fewer of those and the period in hand's, which is what
 	// is paid for now.
-	next, paid := slices.Clone(sub.Lines), 0
-	for i := range next {
-		if next[i].PendingQuantity > 0 {
-			next[i].Quantity, next[i].PendingQuantity = next[i].PendingQuantity, 0
-		}
-	}
-	for _, l := range req.Lines {
-		i := slices.IndexFunc(next, func(n subscription.Line) bool { return n.Plan == strings.TrimSpace(l.PlanID) })
-		switch {
-		case i < 0:
-			return http.Fail(c, 400, fmt.Sprintf("seat type %q is not on this subscription", l.PlanID), nil)
-		case l.Quantity < 1:
-			return http.Fail(c, 400, fmt.Sprintf("seat type %q needs at least 1 seat (got %d)", l.PlanID, l.Quantity), nil)
-		}
-		next[i].Quantity = l.Quantity
-	}
-	for i, l := range next {
-		paid += min(l.Quantity, max(sub.Lines[i].Quantity, 1))
+	// A seat type of the team's group the row does not hold yet is added, and
+	// waits for the renewal that charges it as every change of seats does.
+	next, paid, err := nextLines(db, sub, slug, req.Lines)
+	switch {
+	case errors.Is(err, errLinePlan):
+		return http.Fail(c, 404, "plan not found", nil)
+	case err != nil:
+		return http.Fail(c, 400, err.Error(), nil)
 	}
 	if why := teamSeats(slug, quantity, next); why != "" {
 		return http.Fail(c, 400, why, nil)
@@ -985,22 +974,8 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 
 	// The period in hand keeps the seats it was paid for; the next period opens
 	// at the seats asked for, and the renewal that opens it charges them.
-	switch {
-	case req.Quantity <= 0:
-	case req.Quantity == sub.Quantity:
-		sub.PendingQuantity = 0
-	default:
-		sub.PendingQuantity = req.Quantity
-	}
-	for i := range sub.Lines {
-		l := &sub.Lines[i]
-		switch n := next[i].Quantity; {
-		case n == l.Quantity:
-			l.PendingQuantity = 0
-		default:
-			l.PendingQuantity = n
-		}
-	}
+	pendQuantity(sub, req.Quantity)
+	pendLines(sub, next)
 
 	if err := sub.Update(); err != nil {
 		log.Error("Failed to update subscription: %v", err, c)

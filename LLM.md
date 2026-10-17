@@ -640,9 +640,17 @@ half-fail, and a minimum that a single cancel breaks.
   named twice, zero seats, or another currency, before any charge; `teamSeats`
   is the floor and ceiling over every seat. A different mix is a different
   idempotency fact.
-- Change seats: PATCH `lines` (pending to the renewal, as `quantity`).
+- Change seats: PATCH `lines`, or `ChangeSeats` (cloud's plane op), pending to
+  the renewal as `quantity` is. A seat type of the group the row does not hold
+  yet is ADDED (`nextLines`, priced by `linesAt` at the row's period): it holds 0
+  seats now and the renewal that opens the next period charges it. So a team
+  bought with one seat type, before premium existed or from a checkout that sent
+  no lines, mixes later; a second sale stays refused (one paid subscription).
   `engine.ChangePlan` refuses a team with lines: a move prices one plan's seats
   against another's.
+- Record: `RecordIn.Lines` opens a recorded team with both seat types, its price
+  checked against every seat; extending one checks the price of every seat it
+  holds for the period, and a payment naming other lines is refused.
 - Offers: a promotion or coupon takes its percent off a team only when it covers
   every seat type bought (`everyLine`), since the charge and the invoice
   discount every plan line together.
@@ -650,8 +658,11 @@ half-fail, and a minimum that a single cancel breaks.
   plan lines by `PlanId`: the row's plan id for the first type, the slug for a
   line); `seats` and `chargedCents` count all of them. MRR includes lines.
 - Assign: `PUT /v1/billing/subscriptions/:id/seats {"assigned":[{"member",
-  "plan"}]}` (`AssignSeats`) replaces who holds which seat type, never more
-  members on a type than its seats paid now. It moves no money and bounds no
+  "plan"}]}` (`AssignSeats`, admins only over HTTP: `mayActForOrg`) replaces who
+  holds which seat type, never more members on a type than its seats paid now.
+  A member is a person of the org as accounts name one, `<org>/<name>` folded
+  (`member`); anything else is refused. It writes by `Swap`, so it never puts
+  back what a renewal or a change of seats wrote meanwhile. It moves no money and bounds no
   usage: cloud's limiter pools a team's seats. The older `members` →
   bundle-child rows (`provisionMembers`) is standalone-only and never removes a
   row; it is not the assignment.
