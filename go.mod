@@ -25,8 +25,8 @@ require (
 	github.com/hanzoai/base v1.5.18
 	github.com/hanzoai/cek v0.2.3
 	github.com/hanzoai/decimal v0.1.2
-	github.com/hanzoai/goauthorizenet v0.0.0-20180920213706-626992b83568
-	github.com/hanzoai/gochimp3 v0.0.0-20241127054040-6051f77e24f1
+	github.com/hanzoai/goauthorizenet v1.0.0
+	github.com/hanzoai/gochimp3 v1.0.0
 	github.com/hanzoai/money v0.2.5
 	github.com/hanzoai/namespace v1.2.0
 	github.com/hanzoai/orm v0.6.26
