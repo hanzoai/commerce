@@ -321,9 +321,9 @@ func TestARecordedTeamReadsEachSeatTypesSeats(t *testing.T) {
 	}
 }
 
-// A comp's seats are the ones its approval gave: a change of seats adds no seat
-// type to one, and a record names them.
-func TestACompAddsNoSeatType(t *testing.T) {
+// A comp's seats are the ones its approval gave: a change of seats moves none of
+// them, and a record names them.
+func TestACompsSeatsAreItsApprovals(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	org := moneyOrg("team-comp")
@@ -335,8 +335,15 @@ func TestACompAddsNoSeatType(t *testing.T) {
 	if err != nil {
 		t.Fatalf("record comp: %v", err)
 	}
-	if _, err := ChangeSeats(ctx, org, AnyHolder, got.Subscription.ID, 0, []LineIn{{PlanID: "team-premium", Quantity: 98}}); !IsSubscriptionRefused(err) {
+	id := got.Subscription.ID
+	if _, err := ChangeSeats(ctx, org, AnyHolder, id, 0, []LineIn{{PlanID: "team-premium", Quantity: 98}}); !IsSubscriptionRefused(err) {
 		t.Fatalf("98 premium seats added to a comp: %v, want refused", err)
+	}
+	if _, err := ChangeSeats(ctx, org, AnyHolder, id, 40, nil); !IsSubscriptionRefused(err) {
+		t.Fatalf("a comp raised to 40 seats: %v, want refused", err)
+	}
+	if r := invokeSubPatch(org, ctx, c1MintPrincipal, id, `{"quantity":40}`); r.StatusCode != http.StatusBadRequest {
+		t.Fatalf("a comp raised to 40 seats over HTTP: %d %s, want 400", r.StatusCode, bodyOf(r))
 	}
 }
 

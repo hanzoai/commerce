@@ -145,10 +145,8 @@ func everyLine(slug string, lines []subscription.Line, covers func(string) bool)
 // seat type added here, since the renewal that opens it is what charges it.
 //
 // An added seat type is billed in full (Line.Full), outside the promotion the
-// row was sold under. A comp adds none: its seats are the ones its approval
-// gave, and a record names them. One added and not yet charged is taken back by
-// asking for 0 of it; a seat type the row has been charged for keeps at least
-// one seat.
+// row was sold under. One added and not yet charged is taken back by asking for
+// 0 of it; a seat type the row has been charged for keeps at least one seat.
 func nextLines(db *datastore.Datastore, sub *subscription.Subscription, slug string, in []LineIn) ([]subscription.Line, int, error) {
 	next := slices.Clone(sub.Lines)
 	for i := range next {
@@ -178,9 +176,6 @@ func nextLines(db *datastore.Datastore, sub *subscription.Subscription, slug str
 			// linesAt names the plan by its slug: a line the row holds, asked for by
 			// another of its ids, is that line and not a second one.
 			if i = slices.IndexFunc(next, func(n subscription.Line) bool { return n.Plan == added[0].Plan }); i < 0 {
-				if sub.ProviderType == processorComp {
-					return nil, 0, subValidationError{"a comp's seats are the ones its approval gave: record it again to change them"}
-				}
 				line := added[0]
 				line.Full = true
 				next = append(next, line)
@@ -218,6 +213,10 @@ func pendLines(sub *subscription.Subscription, next []subscription.Line) {
 	sub.Lines = slices.DeleteFunc(sub.Lines, func(l subscription.Line) bool { return l.Quantity == 0 && l.PendingQuantity == 0 })
 }
 
+// compSeats is why a comp's seats are not changed: they are the ones its
+// approval gave, and a record of the comp names them.
+const compSeats = "a comp's seats are the ones its approval gave: record it again to change them"
+
 // pendQuantity sets the seats of the plan's own seat type the next period opens
 // at: quantity 0 leaves them as they are.
 func pendQuantity(sub *subscription.Subscription, quantity int) {
@@ -245,6 +244,9 @@ func ChangeSeats(ctx context.Context, org *organization.Organization, holder, id
 		slug := subscriptionSlug(sub)
 		if !perSeat(slug) {
 			return nil, subValidationError{fmt.Sprintf("plan %q has no seats to change", slug)}
+		}
+		if sub.ProviderType == processorComp {
+			return nil, subValidationError{compSeats}
 		}
 		next, _, err := nextLines(sub.Datastore(), sub, slug, lines)
 		if err != nil {

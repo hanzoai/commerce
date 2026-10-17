@@ -649,8 +649,9 @@ half-fail, and a minimum that a single cancel breaks.
   An added seat type is `Line.Full`: billed outside the promotion the row was
   sold under (`buildPeriodInvoice` discounts only the rest), since the promotion
   was sold for what was bought. One not yet charged is taken back by asking for
-  0; a charged one keeps a seat. A comp adds none. Over HTTP a member billed
-  from the org's pool changes nothing (`mayChange`), and `members` are
+  0; a charged one keeps a seat. A comp's seats do not change (`compSeats`): a
+  record names them. Over HTTP a member billed from the org's pool changes
+  nothing (`mayChangeWallet`, the one wallet rule), and `members` are
   `<org>/<name>`. The renewal still writes its row back after the charge, so a
   change of seats made during the charge is lost to it, as a change of quantity
   always was; making the renewal a `Swap` is its own change to the engine.

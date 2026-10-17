@@ -875,8 +875,10 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 	if err := sub.GetById(id); err != nil || !Holds(callerHolder(c), sub.UserId) {
 		return http.Fail(c, 404, "subscription not found", err)
 	}
-	if !mayChange(c) {
-		return http.Fail(c, 403, "only an admin of the org changes its subscription", nil)
+	// A member billed from the org's pool holds its subscriptions as that wallet
+	// does and changes none of them; a person changes one their own wallet holds.
+	if !mayChangeWallet(c) {
+		return http.Fail(c, 403, askAnAdmin(c, "change its subscription"), nil)
 	}
 
 	var req updateSubscriptionRequest
@@ -887,6 +889,10 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 		if member(org.Name, m) == "" {
 			return http.Fail(c, 400, fmt.Sprintf("member %q is not a person of %s: name them %s/<name>", strings.TrimSpace(m), org.Name, org.Name), nil)
 		}
+	}
+	// A comp's seats are the ones its approval gave, and a record names them.
+	if sub.ProviderType == processorComp && (req.Quantity > 0 || len(req.Lines) > 0) {
+		return http.Fail(c, 400, compSeats, nil)
 	}
 
 	planChanged := req.PlanId != "" && req.PlanId != sub.PlanId
