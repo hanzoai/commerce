@@ -32,7 +32,7 @@ require (
 	github.com/hanzoai/orm v0.6.26
 	github.com/hanzoai/pubsub-go v1.0.0
 	github.com/hanzoai/search-go v0.36.0
-	github.com/hanzoai/sendgrid-go v1.2.1-0.20260728181054-2fdddb0d8dba
+	github.com/hanzoai/sendgrid-go v1.3.1
 	github.com/hanzoai/sqlite v0.5.2
 	github.com/hanzoai/tasks v1.52.9
 	github.com/hanzokv/go/v9 v9.22.0
