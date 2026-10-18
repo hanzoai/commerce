@@ -278,6 +278,80 @@ func TestReserve_OncePerOrgAndCard(t *testing.T) {
 	}
 }
 
+// A campaign is redeemed once per org and once per card across all its codes;
+// a released use frees the campaign as well as the code.
+func TestReserve_OncePerCampaign(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	warmCoupons(ctx)
+	now := time.Now()
+
+	a := setCoupon(t, ctx, "CAMP-A", CouponSpec{Percent: 50, Limit: 1, Plans: []string{"dev"}, Enabled: true, Campaign: "beta"})
+	setCoupon(t, ctx, "CAMP-B", CouponSpec{Percent: 50, Limit: 1, Plans: []string{"dev"}, Enabled: true, Campaign: "BETA"})
+	setCoupon(t, ctx, "LONE", CouponSpec{Percent: 50, Limit: 1, Plans: []string{"dev"}, Enabled: true})
+	if a.Campaign != "BETA" {
+		t.Fatalf("campaign stored as %q, want BETA", a.Campaign)
+	}
+
+	h, err := Reserve(ctx, "camp-a", "acme", "fp:a", now)
+	if err != nil {
+		t.Fatalf("first code: %v", err)
+	}
+	if _, err := Reserve(ctx, "CAMP-B", "acme", "fp:b", now); !errors.Is(err, ErrCouponCampaignRedeemed) {
+		t.Fatalf("same org, other code of the campaign = %v, want ErrCouponCampaignRedeemed", err)
+	}
+	if _, err := Reserve(ctx, "CAMP-B", "other", "fp:a", now); !errors.Is(err, ErrCouponCampaignRedeemed) {
+		t.Fatalf("same card, other code of the campaign = %v, want ErrCouponCampaignRedeemed", err)
+	}
+	if !Redeemed(ctx, "CAMP-B", "acme") {
+		t.Fatal("Redeemed does not see the org's use of the campaign")
+	}
+	if _, err := Reserve(ctx, "LONE", "acme", "fp:a", now); err != nil {
+		t.Fatalf("a code outside the campaign is the org's to use: %v", err)
+	}
+	if v, _ := ReadCoupon(ctx, "CAMP-B"); v.Used != 0 {
+		t.Fatalf("a refused code counted a use: %d", v.Used)
+	}
+
+	h.Release()
+	if Redeemed(ctx, "CAMP-B", "acme") {
+		t.Fatal("a released use still marks the campaign")
+	}
+	if _, err := Reserve(ctx, "CAMP-B", "acme", "fp:b", now); err != nil {
+		t.Fatalf("after a release the org may use the campaign's other code: %v", err)
+	}
+}
+
+// A minted code is fresh, single-use, in its campaign, and covers every paid
+// plan on sale when it names none.
+func TestMintCoupon(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	warmCoupons(ctx)
+	end := time.Now().Add(30 * 24 * time.Hour).UTC().Truncate(time.Second)
+
+	v, err := MintCoupon(ctx, "beta", CouponSpec{Percent: 50, End: &end, Limit: 9, Enabled: true, Campaign: "beta"}, "marketing")
+	if err != nil {
+		t.Fatalf("mint: %v", err)
+	}
+	if len(v.Code) != len("BETA-")+mintLength || v.Code[:5] != "BETA-" || CouponCode(v.Code) != v.Code {
+		t.Fatalf("code %q is not BETA- and %d symbols", v.Code, mintLength)
+	}
+	if v.Limit != 1 || v.Percent != 50 || !v.Enabled || v.Campaign != "BETA" || v.End == nil || !v.End.Equal(end) {
+		t.Fatalf("minted %+v", v)
+	}
+	if fmt.Sprint(v.Plans) != "[dev max-20x max-5x]" {
+		t.Fatalf("plans = %v, want every paid plan on sale", v.Plans)
+	}
+	w, err := MintCoupon(ctx, "beta", CouponSpec{Percent: 50, Enabled: true}, "marketing")
+	if err != nil || w.Code == v.Code {
+		t.Fatalf("second mint = %v, %v; want a different code", w, err)
+	}
+	if _, err := MintCoupon(ctx, "", CouponSpec{Percent: 50, Enabled: true}, "marketing"); !IsCouponSpecRefused(err) {
+		t.Fatalf("an empty prefix = %v, want refused", err)
+	}
+}
+
 // Concurrent buyers never take more uses than the limit.
 func TestReserve_ConcurrentNeverExceedsLimit(t *testing.T) {
 	ctx := ae.NewContext()

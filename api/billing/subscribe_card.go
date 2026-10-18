@@ -1005,13 +1005,14 @@ func couponRefusal(code, slug, reason string) string {
 
 // holdRefusal is a coupon reservation's refusal as a sale refusal: the coupon
 // no longer standing is the request's 400, an org or card that already redeemed
-// it is a 409, and a store that could not record the use is the sale failing.
+// it, or another code of its campaign, is a 409, and a store that could not
+// record the use is the sale failing.
 func holdRefusal(code string, err error) error {
 	var cr promo.CouponRefusal
 	switch {
 	case errors.As(err, &cr):
 		return saleRefusal{saleRefused, couponRefusal(code, "", cr.Reason)}
-	case errors.Is(err, promo.ErrCouponRedeemedByOrg), errors.Is(err, promo.ErrCouponRedeemedByCard):
+	case errors.Is(err, promo.ErrCouponRedeemedByOrg), errors.Is(err, promo.ErrCouponRedeemedByCard), errors.Is(err, promo.ErrCouponCampaignRedeemed):
 		return saleRefusal{saleHeld, fmt.Sprintf("%v (%s)", err, code)}
 	}
 	return fmt.Errorf("coupon %s: the use was not recorded, so the card was not charged: %w", code, err)

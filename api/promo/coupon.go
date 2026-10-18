@@ -23,13 +23,20 @@ package promo
 // is a models/couponredemption row keyed by (code, org) and by (code, card), so
 // an org and a card each redeem a code once, and Used counts uses against
 // Limit under the code's lock, so the limit cannot be raced past.
+//
+// A coupon may name a CAMPAIGN: one offer handed out as many single-use codes,
+// one to each person (MintCoupon). Its uses are also keyed by (campaign, org)
+// and (campaign, card), under the campaign's lock, so an org and a card each
+// redeem ONE code of a campaign however many of its codes they hold.
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -209,6 +216,9 @@ func couponLock(code string) *sync.Mutex {
 var (
 	ErrCouponRedeemedByOrg  = errors.New("this organization has already redeemed this coupon")
 	ErrCouponRedeemedByCard = errors.New("this card has already redeemed this coupon")
+	// ErrCouponCampaignRedeemed is a code whose campaign the org or the card has
+	// already redeemed with another of its codes.
+	ErrCouponCampaignRedeemed = errors.New("this organization or card has already redeemed this offer")
 )
 
 // CouponRefusal is a reservation refused because the coupon no longer stands:
@@ -221,11 +231,12 @@ func (e CouponRefusal) Error() string { return "coupon " + e.Reason }
 // counted. Release gives the use back when the sale it was reserved for did
 // not take the money.
 type Hold struct {
-	ctx      context.Context
-	code     string
-	org      string
-	cardID   string
-	orgID    string
+	ctx  context.Context
+	code string
+	org  string
+	// ids are the redemption rows the hold wrote: (code, org), (code, card) and,
+	// for a campaign's code, (campaign, org) and (campaign, card).
+	ids      []string
 	released bool
 }
 
@@ -238,9 +249,22 @@ func Redeemed(ctx context.Context, raw, org string) bool {
 	if code == "" {
 		return false
 	}
-	ok, _ := redemptionExists(platform(ctx), couponredemption.DeterministicID(code, orgRedeemer(org)))
-	return ok
+	db := platform(ctx)
+	ids := []string{couponredemption.DeterministicID(code, orgRedeemer(org))}
+	if cpn, _, err := loadCoupon(db, code); err == nil && cpn != nil && cpn.CampaignId != "" {
+		ids = append(ids, couponredemption.DeterministicID(campaignOf(cpn.CampaignId), orgRedeemer(org)))
+	}
+	for _, id := range ids {
+		if ok, _ := redemptionExists(db, id); ok {
+			return true
+		}
+	}
+	return false
 }
+
+// campaignOf is a campaign's name as its redemption rows and its lock key it,
+// apart from every code's.
+func campaignOf(campaign string) string { return "campaign:" + campaign }
 
 // Reserve takes one use of code for org paying with instrument, before any
 // money moves. Under the code's lock it re-reads the coupon and refuses one
@@ -290,16 +314,34 @@ func Reserve(ctx context.Context, raw, org, instrument string, now time.Time) (*
 		return nil, ErrCouponRedeemedByCard
 	}
 
+	rows := [][2]string{{orgID, orgRedeemer(org)}, {cardID, card}}
+	if cpn.CampaignId != "" {
+		// The campaign's lock after the code's, always in that order, so two codes
+		// of one campaign reserved at once cannot both pass the check below.
+		key := campaignOf(cpn.CampaignId)
+		cmu := couponLock(key)
+		cmu.Lock()
+		defer cmu.Unlock()
+		for _, r := range [][2]string{{couponredemption.DeterministicID(key, orgRedeemer(org)), orgRedeemer(org)}, {couponredemption.DeterministicID(key, card), card}} {
+			if ok, err := redemptionExists(db, r[0]); err != nil {
+				return nil, err
+			} else if ok {
+				return nil, ErrCouponCampaignRedeemed
+			}
+			rows = append(rows, r)
+		}
+	}
+
 	// The hold outlives nothing but this sale, and its release must still run
 	// when the buyer has hung up, so it keeps the context's values and drops its
 	// cancellation.
-	h := &Hold{ctx: context.WithoutCancel(ctx), code: code, org: org, orgID: orgID, cardID: cardID}
-	if err := putRedemption(db, orgID, code, orgRedeemer(org)); err != nil {
-		return nil, err
-	}
-	if err := putRedemption(db, cardID, code, card); err != nil {
-		h.undo(db)
-		return nil, err
+	h := &Hold{ctx: context.WithoutCancel(ctx), code: code, org: org}
+	for _, r := range rows {
+		if err := putRedemption(db, r[0], code, r[1]); err != nil {
+			h.undo(db)
+			return nil, err
+		}
+		h.ids = append(h.ids, r[0])
 	}
 	cpn.Used++
 	if err := cpn.Update(); err != nil {
@@ -339,7 +381,7 @@ func (h *Hold) Release() {
 // undo removes the hold's redemption rows. A row that cannot be removed leaves
 // that org or card unable to redeem the code again — the safe direction.
 func (h *Hold) undo(db *datastore.Datastore) {
-	for _, id := range []string{h.orgID, h.cardID} {
+	for _, id := range h.ids {
 		removeRedemption(db, h.code, id)
 	}
 }
@@ -398,6 +440,10 @@ type CouponSpec struct {
 	Limit   int        `json:"limit"`
 	Plans   []string   `json:"plans"`
 	Enabled bool       `json:"enabled"`
+	// Campaign names the offer the code is one of; an org and a card redeem one
+	// code of a campaign. Empty is a code on its own. Stored as CouponCode spells
+	// a code.
+	Campaign string `json:"campaign,omitempty"`
 }
 
 // CouponView is a plan coupon read back: its code, its spec and how many uses
@@ -412,10 +458,11 @@ func viewOf(c *coupon.Coupon) CouponView {
 	v := CouponView{
 		Code: c.Code_,
 		CouponSpec: CouponSpec{
-			Percent: c.Amount,
-			Limit:   c.Limit,
-			Plans:   append([]string{}, c.Plans...),
-			Enabled: c.Enabled,
+			Percent:  c.Amount,
+			Limit:    c.Limit,
+			Plans:    append([]string{}, c.Plans...),
+			Enabled:  c.Enabled,
+			Campaign: c.CampaignId,
 		},
 		Used: c.Used,
 	}
@@ -433,7 +480,7 @@ func viewOf(c *coupon.Coupon) CouponView {
 func (v CouponView) audit(by string) Map {
 	return Map{
 		"code": v.Code, "percent": v.Percent, "start": v.Start, "end": v.End,
-		"limit": v.Limit, "plans": v.Plans, "enabled": v.Enabled, "used": v.Used, "by": by,
+		"limit": v.Limit, "plans": v.Plans, "enabled": v.Enabled, "campaign": v.Campaign, "used": v.Used, "by": by,
 	}
 }
 
@@ -489,6 +536,10 @@ func SetCoupon(ctx context.Context, raw string, spec CouponSpec, by string) (*Co
 	case spec.Start != nil && spec.End != nil && !spec.End.After(*spec.Start):
 		return nil, errCouponSpec{"end must be after start"}
 	}
+	campaign := CouponCode(spec.Campaign)
+	if strings.TrimSpace(spec.Campaign) != "" && campaign == "" {
+		return nil, errCouponSpec{fmt.Sprintf("campaign must be 1-%d of A-Z, 0-9, '-' and '_'", maxCouponCode)}
+	}
 	plans := make([]string, 0, len(spec.Plans))
 	seen := map[string]bool{}
 	for _, s := range spec.Plans {
@@ -542,6 +593,7 @@ func SetCoupon(ctx context.Context, raw string, spec CouponSpec, by string) (*Co
 	cpn.Plans = plans
 	cpn.ProductId = ""
 	cpn.Enabled = spec.Enabled
+	cpn.CampaignId = campaign
 	cpn.StartDate, cpn.EndDate = time.Time{}, time.Time{}
 	if spec.Start != nil {
 		cpn.StartDate = spec.Start.UTC()
@@ -570,6 +622,58 @@ func SetCoupon(ctx context.Context, raw string, spec CouponSpec, by string) (*Co
 // with a price. A contact-sales plan is priced by a person, never by a code, and
 // a free plan has nothing to discount. An authority holding none is an error,
 // not an empty answer — a seed that did not run must not read as "no such plan".
+// mintAlphabet is what a minted code's random part is drawn from: A-Z and 2-9,
+// without the 0, 1, O and I a person misreads off a page.
+const mintAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+// mintLength is a minted code's random part: 10 of 32 symbols, 50 bits, so a
+// code cannot be guessed from another.
+const mintLength = 10
+
+// MintCoupon creates a new single-use plan coupon under a fresh code,
+// prefix + "-" + 10 random symbols, from spec with Limit 1. Plans left empty
+// are every paid plan on sale, read when it is minted. A code already held is
+// never replaced: the draw is made again.
+func MintCoupon(ctx context.Context, prefix string, spec CouponSpec, by string) (*CouponView, error) {
+	prefix = CouponCode(prefix)
+	if prefix == "" || len(prefix)+1+mintLength > maxCouponCode {
+		return nil, errCouponSpec{"prefix must be a short code of A-Z, 0-9, '-' and '_'"}
+	}
+	spec.Limit = 1
+	if len(spec.Plans) == 0 {
+		paid, err := paidPlans(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for slug := range paid {
+			spec.Plans = append(spec.Plans, slug)
+		}
+		slices.Sort(spec.Plans)
+	}
+	for range 4 {
+		var b [mintLength]byte
+		if _, err := rand.Read(b[:]); err != nil {
+			return nil, err
+		}
+		for i := range b {
+			b[i] = mintAlphabet[int(b[i])%len(mintAlphabet)]
+		}
+		code := prefix + "-" + string(b[:])
+		mu := couponLock(code)
+		mu.Lock()
+		held, _, err := loadCoupon(platform(ctx), code)
+		mu.Unlock()
+		if err != nil {
+			return nil, err
+		}
+		if held != nil {
+			continue
+		}
+		return SetCoupon(ctx, code, spec, by)
+	}
+	return nil, errors.New("no free code was drawn")
+}
+
 func paidPlans(ctx context.Context) (map[string]bool, error) {
 	rows := make([]*plan.Plan, 0)
 	if _, err := plan.Query(plan.AuthorityDB(ctx)).GetAll(&rows); err != nil {
