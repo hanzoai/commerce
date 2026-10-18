@@ -42,14 +42,15 @@
     "id": "dev",
     "name": "Pro",
     "category": "personal",
-    "description": "For one person: every model, more usage and your own Hanzo Team workspace.",
+    "description": "For one person: every model, more usage and priority inference.",
     "priceMonthly": 20,
     "priceAnnual": 16.67,
     "features": [
       "Everything in Free, plus:",
       "Every model, including Enso Ultra and Kai",
       "Usage included on every model",
-      "Hanzo Team: chat, meetings, calendar and contacts in one workspace",
+      "Priority inference and priority support",
+      "Your own agents, working in the background",
       "Automations, with daily runs included"
     ],
     "payouts": {
