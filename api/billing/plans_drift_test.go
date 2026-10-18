@@ -20,6 +20,10 @@ import (
 // entry whose digests must equal the new bytes, and editing the bytes under the
 // current version breaks the current entry.
 var versionDigests = map[string]struct{ subscription, dns string }{
+	"1.8.21": {
+		subscription: "daabfab8b2e954f6c6e4b5337127aa93fd47f8416f06dc80308fc5b51b29a11a",
+		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
+	},
 	"1.8.20": {
 		subscription: "a381018ffcf670f47772405376c279810cfea24eebe421ac4a0d81f10d758dac",
 		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
