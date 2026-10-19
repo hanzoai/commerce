@@ -79,7 +79,7 @@ func Redeem(c *zip.Ctx) error {
 func Mint(c *zip.Ctx) error {
 	claims := iammiddleware.GetIAMClaims(c)
 	if claims == nil || !claims.IsSuperAdmin() {
-		return http.Fail(c, 403, "platform admin required to mint an invite code", errors.New("not a global admin"))
+		return http.Fail(c, 403, "platform admin required to mint an invite code", errors.New("not a SuperAdmin"))
 	}
 
 	var req request

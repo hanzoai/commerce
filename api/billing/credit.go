@@ -44,7 +44,7 @@ type creditRequest struct {
 // MINT-GATED. The route is registered through middleware.Mint, which puts it
 // behind middleware.PlatformOnly and records it in middleware.MintRoutes(),
 // so ONLY the internal service token (cloud-api → commerce, COMMERCE_SERVICE_TOKEN)
-// or a platform global admin (auth.IAMClaims.IsSuperAdmin, owner=="admin") reaches
+// or a SuperAdmin (auth.IAMClaims.IsSuperAdmin, owner=="admin") reaches
 // it; every self-service / org-owner / no-auth caller is refused (403/401) BEFORE
 // the handler. A client-supplied mint amount is exactly what must never be
 // self-service — that is why this is mint-gated and a user cannot credit itself.

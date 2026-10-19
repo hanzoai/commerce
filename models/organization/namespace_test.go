@@ -30,7 +30,7 @@ func TestNamespace_StrictScoping(t *testing.T) {
 	cases := map[string]string{
 		"maxpower": "maxpower",
 		"hanzo":    "hanzo",
-		"admin":    "admin", // even the global-admin org is name-scoped here;
+		"admin":    "admin", // even the reserved admin org is name-scoped here;
 		//                       cross-org access is granted by IsSuperAdmin(), not by Namespace().
 		"": "",
 	}

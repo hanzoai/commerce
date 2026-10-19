@@ -18,7 +18,7 @@ import (
 //
 // External (gateway) path: GET /v1/commerce/metrics/saas. Internal (this bundle):
 // GET /v1/metrics/saas — where the cloud admin proxy and the console's
-// global-admin-gated commerce proxy reach it with the service token.
+// SuperAdmin-gated commerce proxy reach it with the service token.
 func Route(r *zip.Group, args ...zip.Handler) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 

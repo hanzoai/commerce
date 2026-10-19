@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt"
+	"github.com/hanzoai/authz"
 )
 
 // Standard OAuth2/OIDC errors
@@ -223,21 +224,21 @@ type IAMClaims struct {
 	Azp       string `json:"azp,omitempty"` // Authorized party
 
 	// Authorization
+	//
+	// IsAdmin is the ORG-level admin bit: an admin of the org the request acts in.
+	// It is never platform authority.
 	IsAdmin bool `json:"isAdmin,omitempty"`
-	// HomeOrg is the caller's HOME org — the identity anchor (the JWT `owner`).
-	// It is DISTINCT from Owner in the header-sourced path (GetIAMClaims), where
-	// Owner is the EFFECTIVE org (X-Org-Id, which a platform SuperAdmin can switch
-	// to another tenant): there HomeOrg carries the un-switchable home org from the
-	// gateway/EdgeAuth X-User-Owner header, so IsSuperAdmin (owner=="admin") survives
-	// an org-switch. In the JWT-validated path (EdgeAuth) it is empty and Owner already
-	// holds the JWT `owner` claim (== home). homeOrg() resolves the right one. NOT a
-	// JWT claim — populated only from the trusted X-User-Owner header.
-	HomeOrg string `json:"-"`
-	// Attested marks claims read from the identity boundary's headers
-	// (GetIAMClaims). There HomeOrg is exactly what the boundary attested, and an
-	// empty one means it attested no home: Owner is then the caller's own
-	// X-Org-Id, which homeOrg must never read as a home. NOT a JWT claim.
-	Attested    bool      `json:"-"`
+	// Orgs is the signed membership set, home org first, and Type the subject's
+	// class ("application" for a client_credentials program). They are what the
+	// one SuperAdmin predicate, authz.Claims.Sudo, is asked of — see Authz.
+	Orgs []authz.Membership `json:"orgs,omitempty"`
+	Type string             `json:"type,omitempty"`
+	// Sudo is the identity edge's SuperAdmin verdict: authz.Claims.Sudo, a PERSON
+	// whose own org is the reserved "admin" org, compared verbatim. The edge decides
+	// it — cloud's SanitizeIdentity or authz/edge in front of commerce, EdgeAuth at a
+	// standalone one — and writes it as X-User-IsAdmin, which every edge strips from
+	// client input. NOT a JWT claim, and never decoded from one.
+	Sudo        bool      `json:"-"`
 	Groups      []string  `json:"groups,omitempty"`
 	Roles       FlexRoles `json:"roles,omitempty"`
 	Permissions []string  `json:"permissions,omitempty"`
@@ -247,32 +248,23 @@ type IAMClaims struct {
 	Properties map[string]string `json:"properties,omitempty"`
 }
 
-// homeOrg resolves the caller's HOME org. On the header-sourced path (Attested)
-// it is HomeOrg, from X-User-Owner, and nothing else. On the JWT-validated path it
-// is HomeOrg when set, else Owner, which there IS the `owner` claim. nil-safe.
-func (c *IAMClaims) homeOrg() string {
+// Authz is these verified claims as the shape the one SuperAdmin predicate reads.
+// The standalone edge (middleware.EdgeAuth) asks it after verifying the token, and
+// nothing else does: behind cloud or a gateway the verdict arrives decided.
+func (c *IAMClaims) Authz() *authz.Claims {
 	if c == nil {
-		return ""
+		return nil
 	}
-	if h := strings.TrimSpace(c.HomeOrg); h != "" || c.Attested {
-		return h
-	}
-	return strings.TrimSpace(c.Owner)
+	return &authz.Claims{Owner: c.Owner, Orgs: c.Orgs, Type: c.Type}
 }
 
 // IsSuperAdmin reports whether these claims belong to a Hanzo PLATFORM SuperAdmin —
-// the ONLY predicate safe to gate cross-org / superadmin actions on. ONE signal:
-// membership in the reserved "admin" org (the HOME owner == "admin", the slug Hanzo
-// IAM seeds SuperAdmins into). It keys on the HOME org (homeOrg), NEVER the effective
-// X-Org-Id, so a SuperAdmin org-switch (acting in another tenant) cannot strip sudo
-// and a switched-into org can never be mistaken for admin.
-//
-// Plain IsAdmin is deliberately excluded: it is an ORG-level role (an org owner
-// carries IsAdmin=true within their own org). Gating cross-org actions on IsAdmin —
-// or on an org-mintable role name like "superadmin", or a spoofable boolean header —
-// is the privilege escalation this predicate exists to prevent. nil-safe.
+// the ONLY predicate safe to gate cross-org and money-minting actions on. It is the
+// edge's verdict (Sudo) and nothing else: no org comparison happens here, so no
+// spelling of an org, no `owner` claim (the minting application's org), no machine
+// and no org-level admin role can satisfy it. nil-safe.
 func (c *IAMClaims) IsSuperAdmin() bool {
-	return strings.EqualFold(c.homeOrg(), "admin")
+	return c != nil && c.Sudo
 }
 
 // Tier returns the user's billing tier from the "tier" property.

@@ -67,26 +67,27 @@ func TestPlatformOnly_OrgAdminDeniedMint(t *testing.T) {
 	}
 }
 
-// TestPlatformOnly_SuperAdminMints proves a PLATFORM (global) admin — the explicit
-// the reserved "admin" org (owner=="admin") — passes the same chain
-// (the legitimate human-superadmin path RED's spec requires to still work).
+// TestPlatformOnly_SuperAdminMints proves a SuperAdmin — the edge's verdict, in
+// any org it acts in — passes the same chain (the legitimate human path RED's spec
+// requires to still work).
 func TestPlatformOnly_SuperAdminMints(t *testing.T) {
 	for _, gc := range []*auth.IAMClaims{
-		{HomeOrg: "admin", Owner: "hanzo"}, // home org grants sudo even from a non-admin effective org
-		{Owner: "admin"},                   // the global-admin org
+		{Owner: "hanzo", Sudo: true}, // acting in a tenant
+		{Owner: "admin", Sudo: true}, // acting in its own org
 	} {
 		status, reached := runMintGate(t, iamIdentity(bit.Field(permission.Admin|permission.Live), gc), nil)
 		if status != http.StatusOK || !reached {
-			t.Fatalf("global admin %+v: status=%d reached=%v, want 200 & reached", gc, status, reached)
+			t.Fatalf("SuperAdmin %+v: status=%d reached=%v, want 200 & reached", gc, status, reached)
 		}
 	}
 }
 
-// TestPlatformOnly_PlatformAppMints proves the platform's own application — an IAM
-// identity minted under the reserved admin org, which is how the scheduled money
-// work reaches commerce — passes the chain. This is the legitimate money path that
-// MUST keep working, and it is the same predicate a human SuperAdmin satisfies.
-func TestPlatformOnly_PlatformAppMints(t *testing.T) {
+// TestPlatformOnly_AdminOrgMachineDenied: an application IAM minted under the admin
+// org is a MACHINE, and no machine is SuperAdmin (authz.Claims.Sudo refuses every
+// one; owner decision D1 is "no" until the owner says otherwise). It used to pass
+// this chain on the org alone, which also passed an admin-org person's API key —
+// both carry owner "admin" and neither is a SuperAdmin anywhere else.
+func TestPlatformOnly_AdminOrgMachineDenied(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
@@ -97,8 +98,8 @@ func TestPlatformOnly_PlatformAppMints(t *testing.T) {
 	status, reached := runMintGate(t, seed, func(r *http.Request) {
 		r.Header.Set("X-Org-Id", "svc-org")
 	})
-	if status != http.StatusOK || !reached {
-		t.Fatalf("platform app: status=%d reached=%v, want 200 & reached (money path must keep working)", status, reached)
+	if status != http.StatusForbidden || reached {
+		t.Fatalf("admin-org machine: status=%d reached=%v, want 403 & not reached", status, reached)
 	}
 }
 

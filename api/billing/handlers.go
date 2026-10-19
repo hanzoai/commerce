@@ -28,7 +28,7 @@ func Route(r *zip.Group, args ...zip.Handler) {
 
 	// mint is the money-MINT surface: every route registered through it (those
 	// that credit spendable balance from a client-supplied amount) is gated on
-	// the internal service token OR a platform global admin ONLY — NEVER the
+	// the internal service token OR a SuperAdmin ONLY — NEVER the
 	// org-level Admin bit. Without that gate, TokenRequired(permission.Admin)
 	// admitted any org OWNER (org-level IAM isAdmin → Admin|Live), who could then
 	// self-credit unlimited balance → unlimited free inference (the
@@ -56,7 +56,7 @@ func Route(r *zip.Group, args ...zip.Handler) {
 	api.Raw(http.MethodGet, "/balance/all", GetBalanceAll)
 	api.Raw(http.MethodGet, "/usage", GetUsage)
 	api.Raw(http.MethodPost, "/usage", RecordUsage)
-	// Money-MINT routes: service-token / global-admin ONLY.
+	// Money-MINT routes: service-token / SuperAdmin ONLY.
 	mint.Raw(http.MethodPost, "/deposit", Deposit)
 
 	// Chain-backed credit ledger (HUSD): the indexer backfill/reconcile pass and
@@ -90,13 +90,13 @@ func Route(r *zip.Group, args ...zip.Handler) {
 	api.Raw(http.MethodGet, "/tier-check", TierCheck)
 
 	// Credit — THE ONE way credit enters an org ledger (money-MINT: service-token /
-	// global-admin ONLY). A client-supplied amount is exactly what must never be
+	// SuperAdmin ONLY). A client-supplied amount is exactly what must never be
 	// self-service, so this is mint-gated; the on-signup "starter" credit is just a
 	// parameterized call (tag=starter-credit, amountCents=500, expiry=+365d) from
 	// cloud-api / chat, not a separate route. Idempotent on idempotencyKey.
 	mint.Raw(http.MethodPost, "/credit", Credit)
 
-	// Credit grants (money-MINT: service-token / global-admin ONLY). Reads moved
+	// Credit grants (money-MINT: service-token / SuperAdmin ONLY). Reads moved
 	// to the user group below. Void is a grant mutation in the same resource
 	// family — same platform-only bar, so an org owner can neither create nor
 	// alter a grant.
@@ -171,13 +171,13 @@ func Route(r *zip.Group, args ...zip.Handler) {
 	api.Raw(http.MethodPost, "/disputes/:id/close", CloseDispute)
 
 	// Customer balance (reads stay admin; the adjustment MINTS balance →
-	// service-token / global-admin ONLY).
+	// service-token / SuperAdmin ONLY).
 	api.Raw(http.MethodGet, "/customer-balance", GetCustomerBalance)
 	mint.Raw(http.MethodPost, "/customer-balance/adjustments", AdjustCustomerBalance)
 	api.Raw(http.MethodGet, "/balance-transactions", ListBalanceTransactions)
 
 	// Payouts. Creating/cancelling a payout MOVES money out — money-MINT bar
-	// (service-token / global-admin ONLY). Reads stay admin-scoped.
+	// (service-token / SuperAdmin ONLY). Reads stay admin-scoped.
 	mint.Raw(http.MethodPost, "/payouts", CreatePayout)
 	api.Raw(http.MethodGet, "/payouts", ListBillingPayouts)
 	api.Raw(http.MethodGet, "/payouts/:id", GetPayout)
@@ -266,7 +266,7 @@ func Route(r *zip.Group, args ...zip.Handler) {
 
 	// Billing cycle automation (platform scheduler / service). Collecting a
 	// cycle charges cards across orgs — money-MINT bar (service-token /
-	// global-admin ONLY), never an org owner's Admin bit. run-all sweeps EVERY
+	// SuperAdmin ONLY), never an org owner's Admin bit. run-all sweeps EVERY
 	// org, so it is emphatically platform-only.
 	mint.Raw(http.MethodPost, "/cycle/run", RunBillingCycle)
 	mint.Raw(http.MethodPost, "/cycle/run-user", RunBillingCycleUser)
@@ -274,14 +274,14 @@ func Route(r *zip.Group, args ...zip.Handler) {
 
 	// Auto-recharge sweep (called by the platform scheduler / CronJob): charge
 	// the default card for orgs whose balance dropped below their threshold.
-	// Platform-wide card charging — money-MINT bar (service-token / global-admin
+	// Platform-wide card charging — money-MINT bar (service-token / SuperAdmin
 	// ONLY). An org owner reaching this could sweep-charge saved cards across
 	// every org.
 	mint.Raw(http.MethodPost, "/recharge/run-all", RunAutoRechargeAllOrgs)
 
 	// Test mode toggle: move an org between Square sandbox and production. This
 	// flips whether charges hit real cards, so it is a money-mode change —
-	// service-token / global-admin ONLY, never an org owner.
+	// service-token / SuperAdmin ONLY, never an org owner.
 	mint.Raw(http.MethodPost, "/mode", SetOrgTestMode)
 
 	// ── User-facing billing endpoints ─────────────────────────────────────

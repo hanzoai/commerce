@@ -49,7 +49,7 @@ func planDB(c *zip.Ctx) *datastore.Datastore {
 func requireSuperAdmin(c *zip.Ctx) bool {
 	claims := iammiddleware.GetIAMClaims(c)
 	if claims == nil || !claims.IsSuperAdmin() {
-		http.Fail(c, 403, "platform admin required to edit plans", errors.New("not a global admin"))
+		http.Fail(c, 403, "platform admin required to edit plans", errors.New("not a SuperAdmin"))
 		return false
 	}
 	return true

@@ -82,7 +82,7 @@ func TestTheOrgAccountIsSubscribedByPrivilegedCallers(t *testing.T) {
 	for name, seed := range map[string]func(*zip.Ctx){
 		"superadmin": func(c *zip.Ctx) {
 			c.Locals("iam_authenticated", true)
-			c.Locals("iam_claims", &auth.IAMClaims{Owner: "admin", IsAdmin: true})
+			c.Locals("iam_claims", &auth.IAMClaims{Owner: "admin", Sudo: true, IsAdmin: true})
 		},
 		"service": func(c *zip.Ctx) { c.Locals("permissions", bit.Field(permission.Admin|permission.Live)) },
 	} {

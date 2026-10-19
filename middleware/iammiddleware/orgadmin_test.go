@@ -60,15 +60,16 @@ func TestOrgAdminGrant_ExcludesMoneyAuthority(t *testing.T) {
 	}
 }
 
-// TestIsOrgAdmin pins the trusted-header contract: only X-User-IsAdmin=="true"
-// (case-insensitive) marks an org admin; absent or any other value fails closed.
+// TestIsOrgAdmin pins the trusted-header contract: the org-admin flag
+// (X-User-IsOrgAdmin) or the SuperAdmin verdict (X-User-IsAdmin), exactly "true";
+// absent or any other value fails closed.
 func TestIsOrgAdmin(t *testing.T) {
 	cases := []struct {
 		val  string
 		want bool
 	}{
 		{"true", true},
-		{"TRUE", true},
+		{"TRUE", false},
 		{"", false},
 		{"false", false},
 		{"1", false},

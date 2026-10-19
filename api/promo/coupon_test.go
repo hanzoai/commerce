@@ -406,7 +406,7 @@ func couponApp(super bool) *zip.App {
 		if super {
 			c.Locals("iam_authenticated", true)
 			c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
-			c.Locals("iam_claims", &auth.IAMClaims{Owner: "admin", Email: "z@hanzo.ai"})
+			c.Locals("iam_claims", &auth.IAMClaims{Owner: "admin", Sudo: true, Email: "z@hanzo.ai"})
 		} else {
 			c.Locals("iam_authenticated", true)
 			c.Locals("permissions", bit.Field(permission.Admin|permission.Live))

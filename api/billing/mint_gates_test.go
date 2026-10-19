@@ -30,7 +30,7 @@ import (
 
 // orgAdminSeed sets the exact C1 adversary: an org-level admin (org-level
 // isAdmin, NOT a SuperAdmin) — a gateway-minted org owner or legacy per-org
-// Admin token. NOT the internal service token, NOT a platform global admin.
+// Admin token. NOT the internal service token, NOT a SuperAdmin.
 // platformApp stamps the identity the platform's own service work carries: an
 // application IAM minted under the reserved admin org (client_credentials), which
 // IsSuperAdmin() admits because its home owner is "admin". It stands where a shared
@@ -38,7 +38,7 @@ import (
 func platformApp(c *zip.Ctx) {
 	c.Locals("iam_authenticated", true)
 	c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
-	cl := &auth.IAMClaims{Owner: "admin"}
+	cl := &auth.IAMClaims{Owner: "admin", Sudo: true}
 	cl.Subject = "app_platform"
 	c.Locals("iam_claims", cl)
 }

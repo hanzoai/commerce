@@ -19,7 +19,7 @@ func TestMintRunsTheHandlerOnce(t *testing.T) {
 	defer ctx.Close()
 
 	runs := 0
-	platform := &auth.IAMClaims{Owner: "admin"}
+	platform := &auth.IAMClaims{Owner: "admin", Sudo: true}
 	platform.Subject = "app_platform"
 	identity := iamIdentity(bit.Field(permission.Admin|permission.Live), platform)
 	app := zip.New(zip.Config{DisableStartupMessage: true})

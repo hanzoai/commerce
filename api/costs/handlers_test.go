@@ -31,14 +31,11 @@ func gateCtx(claims *auth.IAMClaims, perms *bit.Field) *zip.Ctx {
 
 // iamUser builds claims for a JWT-verified IAM user (a non-empty Subject, the sub
 // the gateway always mints). Subject is promoted from the embedded StandardClaims.
-// superAdmin maps to the ONE platform-sudo signal: the HOME org == "admin"
-// (X-User-Owner). Set independently of owner (the effective org) so a case can
-// model a SuperAdmin acting from any effective org (the masquerade path).
+// superAdmin is the identity edge's verdict (Sudo, written as X-User-IsAdmin), set
+// independently of owner (the effective org) so a case can model a SuperAdmin
+// acting in any org.
 func iamUser(subject, owner string, isAdmin, superAdmin bool) *auth.IAMClaims {
-	cl := &auth.IAMClaims{Owner: owner, IsAdmin: isAdmin}
-	if superAdmin {
-		cl.HomeOrg = "admin"
-	}
+	cl := &auth.IAMClaims{Owner: owner, IsAdmin: isAdmin, Sudo: superAdmin}
 	cl.Subject = subject
 	return cl
 }
@@ -49,7 +46,7 @@ func adminPerms() *bit.Field {
 }
 
 // TestRequireCostsAdmin is the CRITICAL authz gate: the vendor-cost god-view is
-// platform spend, so ONLY a global admin (or the trusted M2M service token) may
+// platform spend, so ONLY a SuperAdmin (or the trusted M2M service token) may
 // read it. The route-level TokenRequired(permission.Admin) is a no-op on the IAM
 // path, so this in-handler gate is the real boundary.
 func TestRequireCostsAdmin(t *testing.T) {
@@ -59,12 +56,14 @@ func TestRequireCostsAdmin(t *testing.T) {
 		perms  *bit.Field
 		want   bool
 	}{
-		// A global admin is admitted.
-		{"superadmin (home org, effective=acme)", iamUser("u1", "acme", false, true), adminPerms(), true},
-		// The built-in admin org (owner=="admin") is a global admin.
-		{"superadmin (owner==home==admin)", iamUser("u1", "admin", false, false), adminPerms(), true},
+		// A SuperAdmin is admitted, in any org it acts in.
+		{"superadmin (acting in acme)", iamUser("u1", "acme", false, true), adminPerms(), true},
+		{"superadmin (acting in admin)", iamUser("u1", "admin", false, true), adminPerms(), true},
+		// The org "admin" without the edge's verdict is not: an admin-org
+		// application or API key carries it too.
+		{"org admin without the verdict — REJECT", iamUser("app_platform", "admin", false, false), adminPerms(), false},
 		// The trusted M2M service token: Admin bit AND no IAM user identity (empty
-		// Subject). This is the console's own global-admin-gated proxy forwarding.
+		// Subject). This is the console's own SuperAdmin-gated proxy forwarding.
 		{"legacy token (Admin bit, no IAM user) — REJECT", &auth.IAMClaims{}, adminPerms(), false},
 		{"no claims at all, Admin bit — REJECT", nil, adminPerms(), false},
 

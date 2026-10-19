@@ -3,7 +3,7 @@ package billing
 // credit_test.go is the acceptance suite for POST /v1/billing/credit — the ONE
 // mint-gated way credit enters an org ledger. It proves the money-critical core:
 //   - service token  → grant (the cloud-api path)
-//   - global admin   → grant (the human superadmin path)
+//   - SuperAdmin   → grant (the human superadmin path)
 //   - org admin / plain user / no auth → 403/401, NO grant (a user cannot
 //     credit themselves — the whole point of the consolidation)
 //   - idempotencyKey → at most ONE grant
@@ -74,9 +74,9 @@ func TestCredit_PlatformAppGrants(t *testing.T) {
 	}
 }
 
-// TestCredit_GlobalAdminGrants proves the human superadmin (owner=="admin") may
+// TestCredit_SuperAdminGrants proves the human superadmin (owner=="admin") may
 // credit any org named in the body — no X-Org-Id needed; the org is the account.
-func TestCredit_GlobalAdminGrants(t *testing.T) {
+func TestCredit_SuperAdminGrants(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
@@ -84,16 +84,16 @@ func TestCredit_GlobalAdminGrants(t *testing.T) {
 		c.SetContext(ctx)
 		c.Locals("iam_authenticated", true)
 		c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
-		c.Locals("iam_claims", &auth.IAMClaims{Owner: "admin", IsAdmin: true}) // global admin
+		c.Locals("iam_claims", &auth.IAMClaims{Owner: "admin", Sudo: true, IsAdmin: true}) // SuperAdmin
 	})
 	resp := postCredit(eng, "", "", `{"org":"adminorg","amountCents":1000,"reason":"comp"}`)
 	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("global-admin credit: status=%d body=%s, want 201", resp.StatusCode, respBodyStr(resp))
+		t.Fatalf("SuperAdmin credit: status=%d body=%s, want 201", resp.StatusCode, respBodyStr(resp))
 	}
 }
 
 // TestCredit_OrgAdminDenied is THE money assertion: an org-level admin (org owner,
-// NOT a global admin, NOT the service token) is 403 — it can never self-credit,
+// NOT a SuperAdmin, NOT the service token) is 403 — it can never self-credit,
 // even though it holds the org Admin bit and passes TokenRequired(Admin).
 func TestCredit_OrgAdminDenied(t *testing.T) {
 	eng := engineWithSeed(orgAdminSeed) // owner="acme", IsAdmin=true (org-level)

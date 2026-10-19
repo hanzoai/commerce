@@ -31,7 +31,7 @@ func seed(ns string) zip.Handler {
 		c.Locals("organization", org)
 		c.SetContext(nscontext.WithNamespace(context.Background(), ns))
 		c.Locals("iam_authenticated", true)
-		claims := &auth.IAMClaims{Owner: "admin", IsAdmin: true}
+		claims := &auth.IAMClaims{Owner: "admin", Sudo: true, IsAdmin: true}
 		claims.Subject = "z@hanzo.ai"
 		c.Locals("iam_claims", claims)
 		return c.Next()

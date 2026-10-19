@@ -36,7 +36,7 @@ func TestRedeem_AdmitsOrgAdmin(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/commerce/invite/redeem", strings.NewReader(`{"code":"WELCOME"}`))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set(iammiddleware.HeaderUserIsAdmin, "true")
+	req.Header.Set(iammiddleware.HeaderUserIsOrgAdmin, "true")
 	req.Header.Set("X-Org-Id", "acme")
 	req.Header.Set("X-User-Id", "user-acme-owner")
 

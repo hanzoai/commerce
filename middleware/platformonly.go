@@ -33,14 +33,13 @@ func AuthorizeMint(c *zip.Ctx) {
 	c.SetContext(mintauth.WithAuthorized(c.Context()))
 }
 
-// PlatformOnly restricts a route to the ONLY two principals allowed to MINT
-// money / spendable balance:
-//
-// a Hanzo PLATFORM SuperAdmin — auth.IAMClaims.IsSuperAdmin(): membership in the
-// reserved "admin" org (HOME owner=="admin", from the gateway/EdgeAuth X-User-Owner
-// header or the validated JWT), NOT any spoofable boolean. The platform's own
-// service work is the same principal in machine form: an application IAM minted
-// under the admin org, presenting a client_credentials token.
+// PlatformOnly restricts a route to the ONE principal allowed to MINT money /
+// spendable balance: a Hanzo PLATFORM SuperAdmin — auth.IAMClaims.IsSuperAdmin(),
+// the identity edge's authz.Claims.Sudo verdict (X-User-IsAdmin): a PERSON whose
+// own org is the reserved "admin" org. No machine is one. An application IAM
+// minted under the admin org, and an admin-org person's API key, both carry the
+// org and used to be admitted on it; neither is SuperAdmin anywhere else, and
+// neither is here.
 //
 // There used to be a second one — a bearer equal to COMMERCE_SERVICE_TOKEN,
 // verified here. That was commerce doing IAM's job with a secret of its own.
@@ -52,7 +51,7 @@ func AuthorizeMint(c *zip.Ctx) {
 // bit — via TokenRequired(permission.Admin) alone — let ANY org owner self-credit
 // unlimited balance (POST /v1/billing/deposit &c.) → unlimited free inference.
 // That is the real-money-GA blocker this gate closes. It is the same
-// org-admin-vs-global-admin anti-conflation the codebase enforces for cross-org
+// org-admin-vs-SuperAdmin anti-conflation the codebase enforces for cross-org
 // actions (checkout tenant admin, the edge billing ?org override).
 //
 // MOUNT IT AFTER TokenRequired(permission.Admin): TokenRequired resolves the org
@@ -95,12 +94,12 @@ func PlatformOnlyMW(next zip.Handler) zip.Handler {
 
 // IsPlatform is THE definition of the PLATFORM PRINCIPAL — a caller acting for
 // the platform itself rather than for a tenant: a Hanzo PLATFORM SuperAdmin,
-// auth.IAMClaims.IsSuperAdmin(), the reserved "admin" org membership
-// (owner=="admin"). A scheduled job is the same principal as a machine — an
-// application IAM minted under the admin org — so it needs no door of its own.
+// auth.IAMClaims.IsSuperAdmin(), the edge's verdict. The platform's own scheduled
+// work runs in process (plane ops, the in-process transport, which states the
+// platform principal itself), so it needs no door of its own.
 //
 // It deliberately does NOT admit the org-level Admin bit (an org OWNER's IAM
-// isAdmin, or a legacy per-org access token).
+// isAdmin, or a legacy per-org access token), nor any machine.
 func IsPlatform(c *zip.Ctx) bool {
 	return iammiddleware.GetIAMClaims(c).IsSuperAdmin()
 }

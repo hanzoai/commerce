@@ -10,11 +10,10 @@ import (
 	"github.com/zap-proto/zip"
 )
 
-// TestGetIAMClaims_HomeIsWhatTheBoundaryAttests: SuperAdmin is read from the home
-// org the identity boundary attests (X-User-Owner) and from nothing else. A
-// request the boundary validated nobody on carries only the caller's own
-// X-Org-Id, and naming the reserved org there grants nothing.
-func TestGetIAMClaims_HomeIsWhatTheBoundaryAttests(t *testing.T) {
+// TestGetIAMClaims_HomeIsNotAuthority: the home org the boundary attests
+// (X-User-Owner) is an anchor, not authority. Naming the reserved org there, or in
+// X-Org-Id, grants nothing; only the edge's verdict does (sudo_test.go).
+func TestGetIAMClaims_HomeIsNotAuthority(t *testing.T) {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
 	cases := []struct {
 		name    string
@@ -23,10 +22,10 @@ func TestGetIAMClaims_HomeIsWhatTheBoundaryAttests(t *testing.T) {
 	}{
 		{"nobody validated, X-Org-Id admin", map[string]string{"X-Org-Id": "admin"}, false},
 		{"nobody validated, X-Org-Id Admin", map[string]string{"X-Org-Id": "Admin"}, false},
-		{"home admin", map[string]string{"X-User-Owner": "admin", "X-Org-Id": "admin"}, true},
-		{"home admin, switched into a tenant", map[string]string{"X-User-Owner": "admin", "X-Org-Id": "acme"}, true},
+		{"home admin, no verdict", map[string]string{"X-User-Owner": "admin", "X-Org-Id": "admin"}, false},
+		{"home admin with the verdict, switched into a tenant", map[string]string{"X-User-Owner": "admin", "X-Org-Id": "acme", HeaderUserIsAdmin: "true"}, true},
 		{"home brand org, X-Org-Id admin", map[string]string{"X-User-Owner": "hanzo", "X-Org-Id": "admin"}, false},
-		{"org admin of its own org", map[string]string{"X-User-Owner": "acme", "X-Org-Id": "acme", HeaderUserIsAdmin: "true"}, false},
+		{"org admin of its own org", map[string]string{"X-User-Owner": "acme", "X-Org-Id": "acme", HeaderUserIsOrgAdmin: "true"}, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

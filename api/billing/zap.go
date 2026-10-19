@@ -79,7 +79,7 @@ func ZapDispatch(c *zip.Ctx) error {
 	}
 
 	// Money-MINT methods over ZAP are gated to the internal service token / a
-	// platform global admin ONLY — the SAME principal PlatformOnly enforces on the
+	// SuperAdmin ONLY — the SAME principal PlatformOnly enforces on the
 	// REST mint routes. This is the ZAP counterpart of that gate: without it, /zap
 	// billing.deposit let ANY org owner (Admin bit) mint unlimited iam-user balance
 	// while /deposit correctly 403'd them (C1). It is a real HTTP 403 (an auth

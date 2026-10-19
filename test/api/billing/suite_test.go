@@ -63,6 +63,7 @@ var _ = BeforeSuite(func() {
 	cl.Defaults(func(r *http.Request) {
 		r.Header.Set("X-User-Id", "app_platform")
 		r.Header.Set("X-User-Owner", "admin")
+		r.Header.Set("X-User-IsAdmin", "true")
 		r.Header.Set("X-Org-Id", org.Name)
 		r.Header.Set("X-User-Permissions", perms)
 	})

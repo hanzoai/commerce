@@ -84,8 +84,8 @@ func TestPublic_ReturnsProjection_NoAuth(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
 
-	// Seed the catalog in the system namespace via a global-admin seed call.
-	if code, body := callCatalog(t, &auth.IAMClaims{Owner: "admin"}, http.MethodPost, "/v1/catalog/seed", nil, SeedCatalog); code != 200 {
+	// Seed the catalog in the system namespace via a SuperAdmin seed call.
+	if code, body := callCatalog(t, &auth.IAMClaims{Owner: "admin", Sudo: true}, http.MethodPost, "/v1/catalog/seed", nil, SeedCatalog); code != 200 {
 		t.Fatalf("seed status = %d; body=%s", code, body)
 	}
 
@@ -136,7 +136,7 @@ func TestAdminCatalog_GatesAndCarriesMargin(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
 
-	admin := &auth.IAMClaims{Owner: "admin"}
+	admin := &auth.IAMClaims{Owner: "admin", Sudo: true}
 	// A priced product with an upstream cost: public price $1.00, cost $0.40 →
 	// derived margin 60%.
 	body, _ := json.Marshal(map[string]any{
@@ -195,9 +195,9 @@ func TestCreateEntry_RequiresSuperAdmin(t *testing.T) {
 		t.Fatalf("org-admin create status = %d, want 403 (platform-admin only); body=%s", code, b)
 	}
 
-	// Global admin — allowed 201.
-	if code, b := callCatalog(t, &auth.IAMClaims{Owner: "admin"}, http.MethodPost, "/v1/catalog/entries", body, CreateEntry); code != 201 {
-		t.Fatalf("global-admin create status = %d, want 201; body=%s", code, b)
+	// SuperAdmin — allowed 201.
+	if code, b := callCatalog(t, &auth.IAMClaims{Owner: "admin", Sudo: true}, http.MethodPost, "/v1/catalog/entries", body, CreateEntry); code != 201 {
+		t.Fatalf("SuperAdmin create status = %d, want 201; body=%s", code, b)
 	}
 
 	// The created entry is now visible in the public projection.
@@ -222,7 +222,7 @@ func TestCreateEntry_DuplicateSlugRejected(t *testing.T) {
 	body, _ := json.Marshal(map[string]any{
 		"slug": "dup", "brand": "hanzo", "name": "Dup", "category": "AI", "iconKey": "Box",
 	})
-	admin := &auth.IAMClaims{Owner: "admin"}
+	admin := &auth.IAMClaims{Owner: "admin", Sudo: true}
 
 	if code, _ := callCatalog(t, admin, http.MethodPost, "/v1/catalog/entries", body, CreateEntry); code != 201 {
 		t.Fatalf("first create = %d, want 201", code)
@@ -242,7 +242,7 @@ func TestModelCatalog_OneListForEveryCaller(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
 
-	admin := &auth.IAMClaims{Owner: "admin"}
+	admin := &auth.IAMClaims{Owner: "admin", Sudo: true}
 	rows := []map[string]any{
 		{
 			"slug": "enso", "name": "Enso", "category": catalogentry.CategoryEnso,
@@ -333,7 +333,7 @@ func TestModelPrice_EditableFromAdmin(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
 
-	admin := &auth.IAMClaims{Owner: "admin"}
+	admin := &auth.IAMClaims{Owner: "admin", Sudo: true}
 	create, _ := json.Marshal(map[string]any{
 		"slug": "zen5", "name": "Zen 5", "category": catalogentry.CategoryZen,
 		"spec":      map[string]any{"vendor": "Hanzo", "family": catalogentry.FamilyZen, "enabled": true},
@@ -396,7 +396,7 @@ func TestSyncModels_GatedAndCostOnly(t *testing.T) {
 		t.Fatalf("org-admin sync = %d, want 403; %s", code, b)
 	}
 
-	admin := &auth.IAMClaims{Owner: "admin"}
+	admin := &auth.IAMClaims{Owner: "admin", Sudo: true}
 	code, body := callCatalog(t, admin, http.MethodPost, "/v1/catalog/models", rows, SyncModels)
 	if code != 200 {
 		t.Fatalf("sync = %d; %s", code, body)
@@ -437,7 +437,7 @@ func TestUpdateEntry_RefusesToMoveTheAddress(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
 
-	admin := &auth.IAMClaims{Owner: "admin"}
+	admin := &auth.IAMClaims{Owner: "admin", Sudo: true}
 	create, _ := json.Marshal(map[string]any{
 		"slug": "gateway", "name": "Gateway", "category": "Network",
 		"apiPath": "/v1/gateway", "apiRoute": "api.hanzo.ai/v1/gateway", "published": true,

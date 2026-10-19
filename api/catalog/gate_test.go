@@ -65,7 +65,7 @@ func TestSyncGate_AdmitsThePlatformApp(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
 
-	app := &auth.IAMClaims{Owner: "admin"}
+	app := &auth.IAMClaims{Owner: "admin", Sudo: true}
 	app.Subject = "app_catalog_sync"
 	status, admitted := probeGate(t, requirePlatform, iamIdentity(app), "")
 	if status != http.StatusOK || !admitted {
@@ -111,7 +111,7 @@ func TestSyncGate_AdmitsASuperAdmin(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
 
-	superAdmin := &auth.IAMClaims{Owner: "admin", IsAdmin: true}
+	superAdmin := &auth.IAMClaims{Owner: "admin", Sudo: true, IsAdmin: true}
 	status, admitted := probeGate(t, requirePlatform, iamIdentity(superAdmin), "")
 	if status != http.StatusOK || !admitted {
 		t.Fatalf("super admin on the sync gate: status=%d admitted=%v, want 200 & admitted", status, admitted)

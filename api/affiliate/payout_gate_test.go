@@ -2,7 +2,7 @@ package affiliate
 
 // payout_gate_test.go proves the [MEDIUM] C1 miss is closed: the OSS-contributor
 // treasury payout machinery (executePayouts and friends) is service-token /
-// platform-global-admin ONLY — an org-level admin can no longer drive treasury
+// SuperAdmin ONLY — an org-level admin can no longer drive treasury
 // disbursement (CreditGrants / Stripe transfers / on-chain HUSD).
 
 import (
@@ -97,7 +97,7 @@ func TestPayoutExecute_PlatformAppReaches(t *testing.T) {
 		c.SetContext(ctx)
 		c.Locals("iam_authenticated", true)
 		c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
-		cl := &auth.IAMClaims{Owner: "admin"}
+		cl := &auth.IAMClaims{Owner: "admin", Sudo: true}
 		cl.Subject = "app_platform"
 		c.Locals("iam_claims", cl)
 	}

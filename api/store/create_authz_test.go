@@ -36,8 +36,8 @@ func postStore(cl *zipclient.Client, headers map[string]string) *httptest.Respon
 	return cl.Do(req)
 }
 
-// TestCreateStore_OrgAdminOwnOrg is onboarding step 1: a gateway-verified ORG
-// admin (X-User-IsAdmin=="true") creating a store in ITS OWN org (X-Org-Id) must
+// TestCreateStore_OrgAdminOwnOrg is onboarding step 1: an edge-verified ORG
+// admin (X-User-IsOrgAdmin=="true") creating a store in ITS OWN org (X-Org-Id) must
 // succeed. Before the fix the org owner's permissions carried no WriteStore bit,
 // so rest.CheckPermissions("create") 403'd and self-serve onboarding died here.
 func TestCreateStore_OrgAdminOwnOrg(t *testing.T) {
@@ -46,10 +46,10 @@ func TestCreateStore_OrgAdminOwnOrg(t *testing.T) {
 	cl := newStoreAPI(ctx)
 
 	w := postStore(cl, map[string]string{
-		iammiddleware.HeaderUserIsAdmin: "true",
-		iammiddleware.HeaderUserOwner:   "acme", // HOME org
-		"X-Org-Id":                      "acme", // EFFECTIVE org — equal, so the grant applies
-		"X-User-Id":                     "user-acme-owner",
+		iammiddleware.HeaderUserIsOrgAdmin: "true",
+		iammiddleware.HeaderUserOwner:      "acme", // HOME org
+		"X-Org-Id":                         "acme", // EFFECTIVE org — equal, so the grant applies
+		"X-User-Id":                        "user-acme-owner",
 	})
 	if w.Code != http.StatusCreated {
 		t.Fatalf("org admin create store in own org: got %d, want 201\nbody: %s", w.Code, w.Body.String())
@@ -74,7 +74,7 @@ func TestCreateStore_NonAdminRefused(t *testing.T) {
 }
 
 // TestCreateStore_CrossOrgRefused proves the grant can never cross tenants — the
-// ADVERSARIAL case: the caller carries X-User-IsAdmin=="true" AND a HOME org
+// ADVERSARIAL case: the caller carries X-User-IsOrgAdmin=="true" AND a HOME org
 // (X-User-Owner="acme") but the EFFECTIVE org (X-Org-Id="other") is a DIFFERENT
 // tenant. Commerce must NOT apply orgAdminGrant when home != effective (it enforces
 // the coupling itself via orgAdminHomeMatches, rather than trusting the gateway's
@@ -86,10 +86,10 @@ func TestCreateStore_CrossOrgRefused(t *testing.T) {
 	cl := newStoreAPI(ctx)
 
 	w := postStore(cl, map[string]string{
-		iammiddleware.HeaderUserIsAdmin: "true",  // admin flag present…
-		iammiddleware.HeaderUserOwner:   "acme",  // …of the HOME org acme…
-		"X-Org-Id":                      "other", // …but acting in a DIFFERENT (victim) org
-		"X-User-Id":                     "user-acme-owner",
+		iammiddleware.HeaderUserIsOrgAdmin: "true",  // org-admin flag present…
+		iammiddleware.HeaderUserOwner:      "acme",  // …of the HOME org acme…
+		"X-Org-Id":                         "other", // …but acting in a DIFFERENT (victim) org
+		"X-User-Id":                        "user-acme-owner",
 	})
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("cross-org create store (home!=effective): got %d, want 403\nbody: %s", w.Code, w.Body.String())

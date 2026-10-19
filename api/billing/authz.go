@@ -23,7 +23,7 @@ import (
 //     (X-User-Permissions). This is the ONLY signal a stripped-identity service
 //     token carries (EdgeAuth deletes its X-* headers), so it must be checked.
 //   - the org-level IsAdmin claim (an org owner acting inside their own org); or
-//   - a platform global admin (IsSuperAdmin() — owner=="admin" — the
+//   - a SuperAdmin (IsSuperAdmin() — owner=="admin" — the
 //     "admin" org), who may retarget any org via EdgeAuth's ?org override.
 //
 // It reads c["permissions"] defensively (no MustGet) so a handler reached

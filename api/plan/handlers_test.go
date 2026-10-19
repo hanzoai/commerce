@@ -55,7 +55,7 @@ func callPlanSeed(t *testing.T, claims *auth.IAMClaims, method, target string, b
 	return resp.StatusCode, b
 }
 
-var admin = &auth.IAMClaims{Owner: "admin"}
+var admin = &auth.IAMClaims{Owner: "admin", Sudo: true}
 
 // TestCRUD_RequiresSuperAdmin: a non-platform-admin (org owner) and an anonymous
 // caller are BOTH refused every mutating verb — the plan authority is cross-tenant

@@ -350,15 +350,18 @@ func TestPermsHeader_AdminBitIsSuperAdminOnly(t *testing.T) {
 		// Org owner (maxpower): live mode YES (real Square top-up must work),
 		// Admin money bit NO. This is the exact principal that exploited the hole.
 		{"org-admin-live-not-admin", &auth.IAMClaims{Owner: "maxpower", IsAdmin: true}, live},
-		// SuperAdmin via the admin org (owner==home==admin): full Admin+Live.
-		{"global-admin-org", &auth.IAMClaims{Owner: "admin", IsAdmin: true}, adminLive},
-		// SuperAdmin via the HOME org (X-User-Owner==admin), any effective org: full Admin+Live.
-		{"superadmin-by-homeorg", &auth.IAMClaims{Owner: "hanzo", HomeOrg: "admin", IsAdmin: true}, adminLive},
-		// SuperAdmin (home org) WITHOUT org-level IsAdmin still carries Admin (the
-		// money authority), and also Live is absent (IsAdmin gates Live) —
-		// documents the orthogonality: authority (Admin) and mode (Live) are
+		// SuperAdmin by the edge's verdict: full Admin+Live.
+		{"SuperAdmin", &auth.IAMClaims{Owner: "admin", IsAdmin: true, Sudo: true}, adminLive},
+		// The verdict holds in any org the SuperAdmin acts in.
+		{"SuperAdmin acting in hanzo", &auth.IAMClaims{Owner: "hanzo", IsAdmin: true, Sudo: true}, adminLive},
+		// SuperAdmin WITHOUT org-level IsAdmin still carries Admin (the money
+		// authority) and not Live (IsAdmin gates Live): authority and mode are
 		// independent signals.
-		{"superadmin-homeorg-no-orgadmin", &auth.IAMClaims{Owner: "hanzo", HomeOrg: "admin"}, admin},
+		{"SuperAdmin, no org admin", &auth.IAMClaims{Owner: "hanzo", Sudo: true}, admin},
+		// The `owner` claim "admin" without the verdict is the minting application's
+		// org, not the subject's, and carries no money authority.
+		{"owner claim admin, no verdict", &auth.IAMClaims{Owner: "admin", IsAdmin: true}, live},
+		{"owner claim Admin, no verdict", &auth.IAMClaims{Owner: "Admin"}, 0},
 	}
 	for _, tc := range cases {
 		got, err := strconv.ParseInt(permsHeader(tc.claims), 10, 64)
@@ -366,9 +369,9 @@ func TestPermsHeader_AdminBitIsSuperAdminOnly(t *testing.T) {
 			t.Fatalf("%s: permsHeader returned non-integer: %v", tc.name, err)
 		}
 		if got != tc.want {
-			t.Fatalf("%s: permsHeader=%d want %d (admin bit set iff global admin)", tc.name, got, tc.want)
+			t.Fatalf("%s: permsHeader=%d want %d (admin bit set iff SuperAdmin)", tc.name, got, tc.want)
 		}
-		// Belt-and-suspenders: the Admin bit is present iff the caller is a global admin.
+		// Belt-and-suspenders: the Admin bit is present iff the caller is a SuperAdmin.
 		hasAdmin := got&admin != 0
 		if hasAdmin != tc.claims.IsSuperAdmin() {
 			t.Fatalf("%s: Admin bit=%v but IsSuperAdmin=%v — must match exactly", tc.name, hasAdmin, tc.claims.IsSuperAdmin())
@@ -376,11 +379,11 @@ func TestPermsHeader_AdminBitIsSuperAdminOnly(t *testing.T) {
 	}
 }
 
-// TestResolveBillingSubject_AdminOverride: a global admin may retarget the
+// TestResolveBillingSubject_AdminOverride: a SuperAdmin may retarget the
 // billing view to another org via ?org=, and the namespace follows it.
 func TestResolveBillingSubject_AdminOverride(t *testing.T) {
 	req := billingReq("GET", "/v1/billing/balance?user=admin/z&org=hanzo&currency=usd", "")
-	subject, override := resolveBillingSubject(req, &auth.IAMClaims{Owner: "admin"})
+	subject, override := resolveBillingSubject(req, &auth.IAMClaims{Owner: "admin", Sudo: true})
 	if subject != "hanzo" || !override {
 		t.Fatalf("admin ?org=hanzo => subject=%q override=%v, want hanzo,true", subject, override)
 	}
@@ -394,10 +397,10 @@ func TestResolveBillingSubject_AdminOverride(t *testing.T) {
 }
 
 // TestResolveBillingSubject_NonAdminIgnoresOverride is the isolation proof:
-// a non-global-admin cannot use ?org= to read another org. The override is
+// a non-SuperAdmin cannot use ?org= to read another org. The override is
 // stripped and the subject stays pinned to the caller's own org.
 func TestResolveBillingSubject_NonAdminIgnoresOverride(t *testing.T) {
-	// Dave: org owner with IsAdmin=true (org-level), NOT a global admin.
+	// Dave: org owner with IsAdmin=true (org-level), NOT a SuperAdmin.
 	req := billingReq("GET", "/v1/billing/balance?org=hanzo&currency=usd", "")
 	subject, override := resolveBillingSubject(req, &auth.IAMClaims{Owner: "maxpower", IsAdmin: true})
 	if subject != "maxpower" || override {
@@ -410,10 +413,10 @@ func TestResolveBillingSubject_NonAdminIgnoresOverride(t *testing.T) {
 }
 
 // TestResolveBillingSubject_NoOverride: without ?org, every caller (incl. a
-// global admin) defaults to their own org and the namespace is untouched.
+// SuperAdmin) defaults to their own org and the namespace is untouched.
 func TestResolveBillingSubject_NoOverride(t *testing.T) {
 	req := billingReq("GET", "/v1/billing/balance?currency=usd", "")
-	subject, override := resolveBillingSubject(req, &auth.IAMClaims{Owner: "admin"})
+	subject, override := resolveBillingSubject(req, &auth.IAMClaims{Owner: "admin", Sudo: true})
 	if subject != "admin" || override {
 		t.Fatalf("no ?org => subject=%q override=%v, want admin,false", subject, override)
 	}
@@ -424,7 +427,7 @@ func TestResolveBillingSubject_NoOverride(t *testing.T) {
 // smuggled value.
 func TestResolveBillingSubject_RejectsBadSlug(t *testing.T) {
 	req := billingReq("GET", "/v1/billing/balance?org=hanzo%2Fevil", "")
-	subject, override := resolveBillingSubject(req, &auth.IAMClaims{Owner: "admin"})
+	subject, override := resolveBillingSubject(req, &auth.IAMClaims{Owner: "admin", Sudo: true})
 	if subject != "admin" || override {
 		t.Fatalf("bad ?org slug => subject=%q override=%v, want admin,false", subject, override)
 	}

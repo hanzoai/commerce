@@ -33,7 +33,7 @@ func TestPrivilegedMoneyActsRecordWhoTookThem(t *testing.T) {
 	app := engineWithSeed(func(c *zip.Ctx) {
 		c.Locals("iam_authenticated", true)
 		c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
-		c.Locals("iam_claims", &auth.IAMClaims{Owner: "admin", Email: who})
+		c.Locals("iam_claims", &auth.IAMClaims{Owner: "admin", Sudo: true, Email: who})
 		c.Locals("organization", org)
 		c.SetContext(ctx)
 	})

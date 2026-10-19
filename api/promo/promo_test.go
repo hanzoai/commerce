@@ -37,7 +37,7 @@ func app(super bool) *zip.App {
 		if super {
 			c.Locals("iam_authenticated", true)
 			c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
-			c.Locals("iam_claims", &auth.IAMClaims{Owner: "admin"})
+			c.Locals("iam_claims", &auth.IAMClaims{Owner: "admin", Sudo: true})
 		}
 		return c.Next()
 	}))

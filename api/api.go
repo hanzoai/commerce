@@ -139,7 +139,7 @@ func Route(api *zip.Group) {
 	accountApi.Route(api, tokenRequired)
 	billingApi.Route(api, tokenRequired)
 	costsApi.Route(api, tokenRequired)
-	metricsApi.Route(api, tokenRequired) // SaaS ops god-view (revenue/subs/usage/customers) — global-admin gated inside
+	metricsApi.Route(api, tokenRequired) // SaaS ops god-view (revenue/subs/usage/customers) — SuperAdmin gated inside
 
 	cartApi.Route(api, tokenRequired)
 	couponApi.Route(api, tokenRequired)
@@ -181,11 +181,11 @@ func Route(api *zip.Group) {
 	claimApi.Route(api, tokenRequired)                     // order claims (damaged/wrong/missing → refund or replacement)
 	draftorderApi.Route(api, tokenRequired, requireAccess) // admin order builder: draft orders + line items → complete into a real order
 	producttaxonomyApi.Route(api, tokenRequired)           // product options/values, categories, tags, types, return/refund reasons
-	catalogApi.AdminRoute(api, adminRequired)              // platform product catalog CMS (global-admin gated inside)
+	catalogApi.AdminRoute(api, adminRequired)              // platform product catalog CMS (SuperAdmin gated inside)
 	// Public catalog projection GET /v1/commerce/catalog is wired on the
 	// commerce public group (commerce.go) so it serves that exact path.
 
-	// Platform subscription/DNS plan authority CRUD (global-admin gated inside).
+	// Platform subscription/DNS plan authority CRUD (SuperAdmin gated inside).
 	// Public read stays GET /v1/billing/plans; the embed seed source is injected
 	// here (the composition root) so api/plan stays free of an api/billing import.
 	planApi.AdminRoute(api, billingApi.SeedRows, adminRequired)

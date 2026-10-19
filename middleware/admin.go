@@ -31,7 +31,7 @@ import (
 //     org-level IsAdmin OR platform SuperAdmin.
 //
 // These are per-ORG money actions (the caller acts within its own resolved
-// namespace), so org-level admin suffices and a global admin is also allowed
+// namespace), so org-level admin suffices and a SuperAdmin is also allowed
 // (superset). Cross-tenant/platform actions gate on the STRICTER SuperAdmin
 // predicate instead (api/catalog.requireSuperAdmin, and the same gate in
 // api/plan and api/rate), never this one.

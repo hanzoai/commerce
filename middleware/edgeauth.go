@@ -47,7 +47,8 @@ var identityHeaders = append(append([]string{}, authz.Headers...), authz.Retired
 //     (fail-closed, RSA-pinned) and mints X-Org-Id / X-User-Id /
 //     X-User-Email / X-User-IsAdmin / X-User-Permissions from the
 //     validated claims, so the existing IAMTokenRequired + handlers
-//     resolve the caller's org exactly as in the gateway path.
+//     resolve the caller's org exactly as in the gateway path. X-User-IsAdmin
+//     is the SuperAdmin verdict, decided here by authz.Claims.Sudo.
 //
 //  3. For /billing/ requests, locks the billing-subject to the caller's
 //     own org slug — in the query params (user / userId / customerId) for
@@ -104,13 +105,21 @@ func EdgeAuth() zip.Handler {
 			case claims == nil || claims.Owner == "":
 				log.Debug("EdgeAuth: validated JWT has no owner claim")
 			default:
-				// X-User-Owner is the HOME org — the validated JWT `owner`, minted
-				// BEFORE the /billing/ ?org override below so it always carries the
-				// caller's un-switchable home org even when X-Org-Id is re-pointed at
-				// another tenant for a SuperAdmin view. IsSuperAdmin (owner=="admin")
-				// reads it, so an org-switch never strips sudo — and no spoofable
-				// boolean is minted (the org IS the signal).
-				req.Header.Set("X-User-Owner", claims.Owner)
+				// This edge decides the SuperAdmin verdict, with the one predicate:
+				// authz.Claims.Sudo over the verified token's signed membership set — a
+				// PERSON whose own org (orgs[0]) is "admin", verbatim. The `owner` claim
+				// is the minting application's org and decides nothing; a machine never
+				// qualifies. It is written once, as X-User-IsAdmin, and everything
+				// downstream reads that.
+				ac := claims.Authz()
+				claims.Sudo = ac.Sudo()
+				// X-User-Owner is the subject's HOME org (authz Home: orgs[0]; empty for
+				// a machine), minted BEFORE the /billing/ ?org override below so it
+				// keeps naming the caller's own org when X-Org-Id is re-pointed at
+				// another tenant for a SuperAdmin view.
+				if home := ac.Home(); home != "" {
+					req.Header.Set("X-User-Owner", home)
+				}
 				req.Header.Set("X-Org-Id", claims.Owner)
 				if uid := claims.Subject; uid != "" {
 					req.Header.Set("X-User-Id", uid)
@@ -120,14 +129,14 @@ func EdgeAuth() zip.Handler {
 				if claims.Email != "" {
 					req.Header.Set("X-User-Email", claims.Email)
 				}
-				if claims.IsAdmin {
-					req.Header.Set("X-User-IsAdmin", "true")
+				if claims.Sudo {
+					req.Header.Set(iammiddleware.HeaderUserIsAdmin, "true")
 				}
 				req.Header.Set("X-User-Permissions", permsHeader(claims))
 
 				// (3) Per-org isolation: the browser never chooses whose
 				// billing it reads — the subject is locked to the caller's
-				// own org slug. A GLOBAL ADMIN (and only a global admin) may
+				// own org slug. A SuperAdmin (and only a SuperAdmin) may
 				// redirect the view to another org via ?org=<slug>; for
 				// everyone else the override is consumed-and-ignored so
 				// isolation can never be weakened (fail-closed).
@@ -139,9 +148,9 @@ func EdgeAuth() zip.Handler {
 					lockBillingSubject(req, subject)
 					lockBillingSubjectBody(req, subject)
 				}
-				// An admin of the token's own org administers the org the request
-				// acts in only while that org is still its own.
-				if claims.IsAdmin && strings.EqualFold(string(req.Header.Peek("X-Org-Id")), claims.Owner) {
+				// The org-admin bit, for the org the request acts in, by the same
+				// published predicate (authz.Claims.OrgAdmin), never by a role name.
+				if ac.OrgAdmin(string(req.Header.Peek("X-Org-Id"))) {
 					req.Header.Set(iammiddleware.HeaderUserIsOrgAdmin, "true")
 				}
 			}
@@ -178,11 +187,11 @@ func looksLikeJWT(tok string) bool {
 // (api/billing/handlers.go — deposit, credit-grants, customer-balance/adjustments,
 // auto-recharge/run-all, cycle/run-all, payouts, test-mode). Because
 // bit.Field.Has is intersection semantics, granting Admin to a caller lets that
-// caller satisfy those gates. It is therefore GLOBAL-admin-only: an org-level
+// caller satisfy those gates. It is therefore SuperAdmin-only: an org-level
 // admin (claims.IsAdmin — an org OWNER like maxpower carries it within their own
 // org) must NOT mint free balance or charge cards platform-wide. Only
-// claims.IsSuperAdmin() — the same spoof-proof predicate this file uses for the
-// cross-org ?org billing-view override (resolveBillingSubject) — grants Admin.
+// claims.IsSuperAdmin() — the verdict this edge decided above, the same one the
+// cross-org ?org billing-view override (resolveBillingSubject) reads — grants Admin.
 //
 // Live is the "real money, not sandbox" mode bit, orthogonal to authority: an org
 // owner running live payment flows is exactly right. It stays on claims.IsAdmin so
@@ -194,7 +203,7 @@ func permsHeader(claims *auth.IAMClaims) string {
 	var f int64
 	if claims.IsAdmin {
 		// Org-level admin ⇒ live (non-sandbox) mode. Deliberately NOT the Admin
-		// (money/admin) bit — that is global-admin-only below.
+		// (money/admin) bit — that is SuperAdmin-only below.
 		f |= int64(permission.Live)
 	}
 	if claims.IsSuperAdmin() {
@@ -247,7 +256,7 @@ const maxBillingBodyBytes = 1 << 20 // 1 MiB
 // a /billing/ POST/PUT/PATCH with a JSON object body it pins the same
 // billing-subject fields (user/userId/customerId) to subject before the
 // handler binds them, so a client can never persist a billing record under a
-// subject other than its own (global-admin ?org= override still honored,
+// subject other than its own (the SuperAdmin ?org= override still honored,
 // because subject already reflects it). It is body-shape-agnostic: only those
 // keys are rewritten, and only when present; arrays, primitives, other shapes,
 // non-JSON content, and unparseable bodies all pass through untouched. Reads
@@ -324,8 +333,8 @@ func pinJSONSubjectFields(raw []byte, subject string) ([]byte, bool) {
 // and whether the org namespace header must follow that choice.
 //
 // Default (every caller): the subject is the caller's OWN org slug
-// (claims.Owner) — strict per-org isolation. A global admin, and ONLY a
-// global admin, may redirect the view to another org with ?org=<slug>.
+// (claims.Owner) — strict per-org isolation. A SuperAdmin, and ONLY a
+// SuperAdmin, may redirect the view to another org with ?org=<slug>.
 //
 // The ?org override is consumed (stripped from the query) unconditionally so
 // it can never reach a handler as anything but the admin-gated signal decided
@@ -334,9 +343,9 @@ func pinJSONSubjectFields(raw []byte, subject string) ([]byte, bool) {
 // Returns (subject, override) where override means the namespace header
 // (X-Org-Id) must be re-pointed at subject.
 //
-// SuperAdmin is the ONE canonical predicate (auth.IAMClaims.IsSuperAdmin, owner
-// =="admin"), shared by every cross-tenant gate (this override, checkout tenant
-// admin, the money-mint gate). Plain IsAdmin is deliberately NOT trusted: it is an
+// SuperAdmin is the ONE canonical predicate (auth.IAMClaims.IsSuperAdmin: the edge's
+// authz.Claims.Sudo verdict), shared by every cross-tenant gate (this override,
+// checkout tenant admin, the money-mint gate). Plain IsAdmin is deliberately NOT trusted: it is an
 // ORG-level role (an org owner carries IsAdmin=true within their own org), so gating
 // cross-org reads on it would let any org owner view another org via ?org= — the
 // exact isolation break this boundary exists to stop.

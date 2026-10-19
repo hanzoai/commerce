@@ -23,7 +23,7 @@ import (
 // reach it", and the answer has to be the same at every address under /rates —
 // including one added tomorrow by someone who did not read this file.
 
-var admin = &auth.IAMClaims{Owner: "admin"}
+var admin = &auth.IAMClaims{Owner: "admin", Sudo: true}
 var orgAdmin = &auth.IAMClaims{Owner: "acme", IsAdmin: true}
 
 // mount drives the REAL route table — AdminRoute, not a handler in isolation —

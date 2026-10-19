@@ -3,7 +3,7 @@
 // ledger) so admin.hanzo.ai only renders — never re-aggregates client-side and
 // never calls Stripe directly. It is a cross-tenant aggregate (MRR/ARR, plan mix,
 // usage tops, top customers), so every handler is gated on the STRICT
-// middleware.RequirePlatformAdmin predicate (global admin or the trusted internal
+// middleware.RequirePlatformAdmin predicate (SuperAdmin or the trusted internal
 // service token) — the same gate api/costs uses. Org-level admins are refused.
 //
 // Sources of truth (all local to commerce; nothing fabricated):

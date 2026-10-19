@@ -64,7 +64,7 @@ func Create(c *zip.Ctx) error {
 	// C1-b: this generic ledger endpoint reaches the SAME mint sink as
 	// /v1/billing/deposit. A Deposit (no funded source) or a credit into the
 	// gateway-spendable IAM-user wallet MINTS money, so the mint case is gated on
-	// MayMintMoney (internal service token / platform global admin) — NOT the
+	// MayMintMoney (internal service token / SuperAdmin) — NOT the
 	// org-level RequireAdmin above, which admits any org owner. Withdraws and
 	// transfers between the org's OWN funded accounts are not mints and remain
 	// org-admin. mintauth.Enforce at the datastore sink is the fail-closed

@@ -17,15 +17,15 @@ import (
 // aggregate that spans every tenant. It admits exactly the principals a
 // platform god-view trusts, and fails closed for everyone else:
 //
-// a Hanzo PLATFORM SuperAdmin — auth.IAMClaims.IsSuperAdmin(): home owner=="admin",
-// the reserved admin org, from the gateway/EdgeAuth X-User-Owner header or the
-// validated JWT `owner`. The platform's own scheduled work reaches this the same
-// way, as an application IAM minted under the admin org (client_credentials), so
-// the one predicate covers a person and a machine and there is no second door.
+// a Hanzo PLATFORM SuperAdmin — auth.IAMClaims.IsSuperAdmin(): the identity edge's
+// authz.Claims.Sudo verdict (X-User-IsAdmin), a PERSON whose own org is the
+// reserved "admin" org. No machine is one, so an admin-org application or API key
+// reads nothing here.
 //
-// Two admissions this used to have are gone. A shared COMMERCE_SERVICE_TOKEN,
-// compared against a bearer here, was commerce authenticating callers on its own
-// with a secret IAM had never seen. And "the Admin permission bit with no IAM
+// Three admissions this used to have are gone. An application under the admin
+// org, and an admin-org person's key, were admitted on the org alone. A shared
+// COMMERCE_SERVICE_TOKEN, compared against a bearer here, was commerce
+// authenticating callers on its own with a secret IAM had never seen. And "the Admin permission bit with no IAM
 // Subject", which was meant to spot that token structurally, admitted exactly the
 // thing it was argued not to — a legacy per-org access token holding Admin has
 // no Subject either — so an org owner's old token could read the fleet's revenue.
@@ -34,7 +34,7 @@ import (
 // by an org OWNER: the gateway mints permission.Admin from a tenant's own
 // IsAdmin (edgeauth.permsHeader), so gating cross-org reads on that bit would let
 // ANY org owner read the whole fleet's revenue. Only a SuperAdmin may. This is
-// the same org-admin-vs-global-admin anti-conflation
+// the same org-admin-vs-SuperAdmin anti-conflation
 // PlatformOnly/MayMintMoney enforce for the money-MINT side.
 //
 // Reads c["permissions"] without MustGet so a handler mounted without the token

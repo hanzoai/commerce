@@ -354,6 +354,8 @@ github.com/hanzoai/account v0.2.0 h1:WxIut3YMz8JNdHerlRIqP1a+k3P79BIKM1mjfRFDG0Y
 github.com/hanzoai/account v0.2.0/go.mod h1:8OzIGRphAhlabOI74O4GoL3RM0y8mbUV0pQUKgXLjkw=
 github.com/hanzoai/authz v1.10.29 h1:b4vWtI9g4Mvay1zizW7cwly/hDk06r+oAdA/y+317Do=
 github.com/hanzoai/authz v1.10.29/go.mod h1:xkzFdiIFx4UQMlU0NkmSRz0dgRQYqSXpKgVjn8ijn3E=
+github.com/hanzoai/authz v1.10.47 h1:ary/mw4lUYRetRlX+Ou61QXh8ig8EbD/ALR9fpg23EU=
+github.com/hanzoai/authz v1.10.47/go.mod h1:UaE7uejr8GTgosNO/teyBOItT85/T6+L3hpFPkSOzWE=
 github.com/hanzoai/base v1.5.18 h1:vYM9dxbl/ChMD+s19JTONG0cL3B437EZbbA9HolkAjo=
 github.com/hanzoai/base v1.5.18/go.mod h1:YhQQ8lFwGzla14dM9TMTczfCjVKMDIrRpMNkeY2fFS8=
 github.com/hanzoai/cek v0.2.3 h1:wOVav3abWAWiIyqTr9pKK/b4PjUCT1j3mdU5LzKpxSQ=
@@ -374,6 +376,8 @@ github.com/hanzoai/namespace v1.2.0 h1:FLEHzR/GyE/OltXozMvT2n2FfUUxTuVVbILKZBkEj
 github.com/hanzoai/namespace v1.2.0/go.mod h1:vGuxMDHg5MdhH5q2bqqjZL/afINBWJubP4WD1YwZTm4=
 github.com/hanzoai/orm v0.6.26 h1:3AgS45D/7TgB2xJRLo7NOUeTYSDJq+1v4dffWIMGS10=
 github.com/hanzoai/orm v0.6.26/go.mod h1:mnnchBPY8Z0gEsI0qzBWQnFKj3LerqHOk7wfoOn6MNA=
+github.com/hanzoai/outbound v1.0.0 h1:itECYttNivqnYxMq8UVF4GxR/DWUq1vBqZwy8T3GPVU=
+github.com/hanzoai/outbound v1.0.0/go.mod h1:wFzR9DZ+VPtrO6WIESu1k/lUnWsRWaxjnHwoMmsUTo8=
 github.com/hanzoai/pubsub-go v1.0.0 h1:nUZ4jK+MFlFQ5qTMri/Yffnqs/R5avI99SfZ9e3t6Cs=
 github.com/hanzoai/pubsub-go v1.0.0/go.mod h1:ZHWDgSLsYHK4TiitzNwGc7Cn+oApKyMp0uK8cU7jwpg=
 github.com/hanzoai/search-go v0.36.0 h1:bQfbAs/bc/s3qZDCtSqEAxp48koHkb0Z4ezUknt2AQc=

@@ -35,7 +35,7 @@ func invokeSub(org *organization.Organization, ctx context.Context, identity fun
 }
 
 // c1OrgAdmin models the adversary: an org owner (org-level isAdmin) who is NOT a
-// platform global admin and NOT the platform's application → MayMintMoney false.
+// SuperAdmin and NOT the platform's application → MayMintMoney false.
 func c1OrgAdmin(c *zip.Ctx) {
 	c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
 	c.Locals("iam_authenticated", true)

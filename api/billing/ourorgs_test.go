@@ -193,7 +193,8 @@ func TestTierIgnoresAnOverrideFromASuperAdmin(t *testing.T) {
 	for _, h := range []zip.Handler{GetTier, TierCheck} {
 		for _, target := range []string{"/t?user=tier-ovr/alice&tier=enterprise", "/t?user=tier-ovr/alice"} {
 			req := httptest.NewRequest(http.MethodGet, target, nil)
-			req.Header.Set("X-User-Owner", "admin") // SuperAdmin
+			req.Header.Set("X-User-Owner", "admin")
+			req.Header.Set("X-User-IsAdmin", "true") // SuperAdmin: the edge's verdict
 			req.Header.Set("X-Tier", "enterprise")
 			w := driveSeeded(tierSeed(org), "/t", req, h)
 			var out map[string]any

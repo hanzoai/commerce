@@ -37,8 +37,8 @@ import (
 	"github.com/hanzoai/commerce/util/permission"
 )
 
-// orgAdminGrant is the org-SCOPED merchant-management authority a gateway-verified
-// ORG admin (X-User-IsAdmin=="true") carries for its OWN org — the catalog
+// orgAdminGrant is the org-SCOPED merchant-management authority an edge-verified
+// ORG admin (X-User-IsOrgAdmin=="true") carries for its OWN org — the catalog
 // primitives self-serve onboarding needs (create a store, then its products,
 // collections and variants). IAMTokenRequired ORs it into the request permissions
 // ONLY for the caller's resolved namespace (X-Org-Id), so it never crosses tenants.
@@ -55,19 +55,20 @@ var orgAdminGrant = bit.Field(
 )
 
 // isOrgAdmin reports whether the identity edge marked this request's caller an
-// ORG-level admin via a trusted (stripped-then-reminted on ingress) header. The
-// in-process host (cloud SanitizeIdentity) mints X-User-IsOrgAdmin for an org admin
-// and X-User-IsAdmin only for a SUPERADMIN — so a real merchant admin carries the
-// FORMER, not the latter; reading only X-User-IsAdmin here (the gateway-era name)
-// left every non-superadmin org admin without WriteStore → self-serve create-store
-// 403'd. Accept EITHER: X-User-IsOrgAdmin (the org admin) OR X-User-IsAdmin (a
-// superadmin, who administers their own org too). Both are authority headers,
-// stripped+re-minted on ingress, so neither is client-forgeable. Only "true"
-// (case-insensitive) counts; absent/any other value fails closed. The caller's
-// call site additionally binds the grant to home==effective (orgAdminHomeMatches).
+// admin of its own org: X-User-IsOrgAdmin (the org admin) or the SuperAdmin
+// verdict (X-User-IsAdmin), who administers their own org too. Both are authority
+// headers, stripped and re-written by the edge, so neither is client-forgeable;
+// only "true" counts. The caller's call site additionally binds the grant to
+// home==effective (orgAdminHomeMatches).
 func isOrgAdmin(c *zip.Ctx) bool {
-	return strings.EqualFold(strings.TrimSpace(c.Header(HeaderUserIsOrgAdmin)), "true") ||
-		strings.EqualFold(strings.TrimSpace(c.Header(HeaderUserIsAdmin)), "true")
+	return ActsAsOrgAdmin(c) || sudo(c)
+}
+
+// sudo is the identity edge's SuperAdmin verdict on this request: X-User-IsAdmin,
+// which every edge in front of commerce deletes from the request and writes back
+// from authz.Claims.Sudo alone. It is the one reading of that header here.
+func sudo(c *zip.Ctx) bool {
+	return c.Header(HeaderUserIsAdmin) == "true"
 }
 
 // ActsAsOrgAdmin reports whether the caller administers the org this request acts
@@ -76,7 +77,7 @@ func isOrgAdmin(c *zip.Ctx) bool {
 // belongs to never carries it. It is an authority header, stripped and re-minted
 // on ingress.
 func ActsAsOrgAdmin(c *zip.Ctx) bool {
-	return strings.EqualFold(strings.TrimSpace(c.Header(HeaderUserIsOrgAdmin)), "true")
+	return c.Header(HeaderUserIsOrgAdmin) == "true"
 }
 
 // orgAdminHomeMatches reports whether the caller's HOME org (X-User-Owner) equals
@@ -244,12 +245,12 @@ func IAMTokenRequired() zip.Handler {
 		// no Live. The gateway is the trust boundary; this binary
 		// trusts the bits it provides and nothing else.
 		perms := parsePermissionsHeader(c.Header(HeaderUserPermissions))
-		// The platform principal — home owner "admin", a SuperAdmin or the
-		// platform's own application — holds the Admin bit by what it IS, not by
-		// a permissions header. The gateway mints no X-User-Permissions for it,
-		// and a shared service token used to supply these bits in a branch of
-		// its own; that token is gone, so the claim supplies them.
-		if strings.EqualFold(strings.TrimSpace(c.Header(HeaderUserOwner)), "admin") {
+		// The platform principal — a SuperAdmin, by the edge's verdict — holds the
+		// Admin bit by what it IS, not by a permissions header. It is the verdict and
+		// not the org: X-User-Owner names an admin-org application or an admin-org
+		// person's API key too, and neither is a SuperAdmin (no machine is), so
+		// reading the owner granted the money bits to callers cloud itself refuses.
+		if sudo(c) {
 			if liveFromHeaders(c) {
 				perms |= bit.Field(permission.Admin | permission.Live)
 			} else {
@@ -257,8 +258,8 @@ func IAMTokenRequired() zip.Handler {
 			}
 		}
 
-		// An ORG-level admin (gateway/EdgeAuth-minted X-User-IsAdmin=="true", e.g.
-		// an org owner like maxpower) additionally carries org-SCOPED merchant
+		// An ORG-level admin (edge-written X-User-IsOrgAdmin=="true", e.g. an org
+		// owner like maxpower) additionally carries org-SCOPED merchant
 		// authority for its OWN org, so self-serve onboarding works: create a store,
 		// then its catalog (products/collections/variants). It deliberately EXCLUDES
 		// permission.Admin — the money/platform authority (credit-mint, card-charge,
@@ -375,26 +376,17 @@ func GetIAMClaims(c *zip.Ctx) *auth.IAMClaims {
 	owner := strings.TrimSpace(c.Header(pkgAuth.HeaderOrgID))
 	user := strings.TrimSpace(c.Header(pkgAuth.HeaderUserID))
 	email := strings.TrimSpace(c.Header(pkgAuth.HeaderUserEmail))
-	isAdmin := strings.EqualFold(strings.TrimSpace(c.Header(HeaderUserIsAdmin)), "true")
-	// HOME org — the identity + platform-sudo anchor (the gateway/EdgeAuth
-	// X-User-Owner header, the validated JWT `owner`). DISTINCT from Owner (==
-	// X-Org-Id, the EFFECTIVE org a SuperAdmin may switch to another tenant):
-	// IsSuperAdmin gates on this, so owner=="admin" survives an org-switch. The
-	// boundary mints it for every validated principal, so its absence means no
-	// validated home, and Attested keeps homeOrg() from reading the caller's own
-	// X-Org-Id in its place. No spoofable isGlobalAdmin boolean is read — the org
-	// IS the signal.
-	homeOrg := strings.TrimSpace(c.Header(HeaderUserOwner))
 	roles := parseRolesHeader(c.Header(HeaderRoles))
 
 	claims := &auth.IAMClaims{
-		Owner:    owner,
-		HomeOrg:  homeOrg,
-		Attested: true,
-		Name:     user,
-		Email:    email,
-		IsAdmin:  isAdmin,
-		Roles:    roles,
+		Owner: owner,
+		Name:  user,
+		Email: email,
+		// The org admin of the org this request acts in, and the SuperAdmin verdict:
+		// two headers, two questions, each read once.
+		IsAdmin: ActsAsOrgAdmin(c),
+		Sudo:    sudo(c),
+		Roles:   roles,
 	}
 	// Subject is the canonical user id field IAMClaims callers read;
 	// the gateway puts the JWT sub into X-User-Id.
@@ -402,25 +394,22 @@ func GetIAMClaims(c *zip.Ctx) *auth.IAMClaims {
 	return claims
 }
 
-// HeaderUserIsAdmin is the gateway-minted "true"/"" ORG-level admin flag
-// (set for an org owner). Only "true" (case-insensitive) is treated as admin;
-// any other value (including absent) fails closed to false. It is org-scoped
-// only — NEVER gate cross-org/superadmin actions on it; use IsSuperAdmin().
+// HeaderUserIsAdmin is the identity edge's SuperAdmin verdict (authz.HeaderUserAdmin):
+// "true" for a PERSON whose own org is the reserved "admin" org, absent for anyone
+// else — machines, API keys and org admins included. The edge strips it from every
+// request and writes it from authz.Claims.Sudo alone; only exactly "true" counts.
 const HeaderUserIsAdmin = "X-User-IsAdmin"
 
-// HeaderUserIsOrgAdmin is the identity edge's ORG-level admin flag. cloud's
-// SanitizeIdentity (commerce's in-process host) mints THIS for an org admin
-// (claims.IsAdmin) and reserves X-User-IsAdmin for a SUPERADMIN — so a real merchant
-// admin carries X-User-IsOrgAdmin, not X-User-IsAdmin. It is an authority header,
-// stripped-then-reminted on ingress (unforgeable). isOrgAdmin reads it (OR
-// X-User-IsAdmin) so a non-superadmin org admin gets the self-serve store grant.
+// HeaderUserIsOrgAdmin is the identity edge's ORG-level admin flag
+// (authz.HeaderUserOrgAdmin): admin or owner of the org the request ACTS in. Never
+// platform authority. Stripped and re-written by the edge, so unforgeable.
 const HeaderUserIsOrgAdmin = "X-User-IsOrgAdmin"
 
-// HeaderUserOwner is the gateway/EdgeAuth-minted HOME-org header — the validated
-// JWT `owner`, the identity + platform-sudo anchor. DISTINCT from X-Org-Id (the
-// EFFECTIVE org a SuperAdmin can switch to another tenant): IsSuperAdmin gates on
-// this so owner=="admin" survives an org-switch. Replaces the removed
-// X-User-IsGlobalAdmin boolean — the org IS the signal, not a spoofable flag.
+// HeaderUserOwner is the edge-written HOME org (authz.HeaderUserOwner): the org the
+// subject's account lives in, DISTINCT from X-Org-Id (the org it acts in). It is an
+// identity and billing anchor and the home==effective binding of the org-admin
+// grant. It is not authority: an admin-org application or API key carries "admin"
+// here too, so SuperAdmin is read from HeaderUserIsAdmin and never from this.
 const HeaderUserOwner = "X-User-Owner"
 
 // HeaderRoles is the canonical comma-joined role-name header set by

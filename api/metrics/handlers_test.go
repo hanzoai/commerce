@@ -82,8 +82,9 @@ func TestGetSaaS_RefusesNonPlatformAdmin(t *testing.T) {
 }
 
 // TestGate_AdmitsPlatformPrincipals proves the accept side of the shared gate: a
-// SuperAdmin (home org == the built-in "admin" org) and the trusted M2M service
-// token (Admin bit + no IAM Subject) are admitted; org admins are not.
+// SuperAdmin — the edge's verdict — is admitted. Nobody else is: not an org admin,
+// not an admin-org caller without the verdict, and not an Admin bit with no IAM
+// subject (the shared service token that bit once stood for is gone).
 func TestGate_AdmitsPlatformPrincipals(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -91,9 +92,10 @@ func TestGate_AdmitsPlatformPrincipals(t *testing.T) {
 		perms  *bit.Field
 		want   bool
 	}{
-		{"superadmin (admin org)", iamUser("u1", "admin", false), adminPerms(), true},
-		{"service token (Admin bit, no IAM user)", &auth.IAMClaims{}, adminPerms(), true},
-		{"service token (nil claims, Admin bit)", nil, adminPerms(), true},
+		{"superadmin", &auth.IAMClaims{Owner: "admin", Sudo: true}, adminPerms(), true},
+		{"admin org, no verdict — REJECT", iamUser("u1", "admin", false), adminPerms(), false},
+		{"Admin bit, no IAM user — REJECT", &auth.IAMClaims{}, adminPerms(), false},
+		{"Admin bit, nil claims — REJECT", nil, adminPerms(), false},
 		{"org admin tenant — REJECT", iamUser("u2", "acme", true), adminPerms(), false},
 		{"plain tenant — REJECT", iamUser("u3", "acme", false), nil, false},
 	}
