@@ -334,9 +334,13 @@ func resolve(t *testing.T, org *organization.Organization, ctx context.Context, 
 	t.Helper()
 	db := datastore.New(org.Namespaced(ctx))
 	pay := unwrapObject(object, "payment")
-	return settlementDestination(db, org,
+	who, why, err := settlementDestination(db, org,
 		&processor.WebhookEvent{Type: eventType, Processor: processor.Square, Data: object},
 		pay, "square-payment", stringField(pay, "id"))
+	if err != nil {
+		t.Fatalf("settlementDestination: %v", err)
+	}
+	return who, why
 }
 
 // RULE 1, alone: a stamped receipt makes a settlement ACCOUNTED FOR — silent, not an

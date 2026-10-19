@@ -22,6 +22,7 @@ import (
 	dbpkg "github.com/hanzoai/commerce/db"
 	"github.com/hanzoai/commerce/payment/processor"
 	squareprovider "github.com/hanzoai/commerce/payment/providers/square"
+	"github.com/hanzoai/commerce/util/test/ae"
 )
 
 // squareSigHeader is the exact header Square sends with each webhook
@@ -31,7 +32,7 @@ const squareSigHeader = "x-square-hmacsha256-signature"
 // testWebhookURL is the notification URL the tests pretend is configured in
 // the Square dashboard. Square signs HMAC over this URL + the raw body, so
 // every test signature must be computed over the same value.
-const testWebhookURL = "https://api.test.example/v1/billing/webhooks/square"
+const testWebhookURL = "https://api.test.example/v1/commerce/webhooks/square"
 
 // squareSign reproduces the REAL Square HMAC-SHA256(base64) signature:
 // HMAC over notificationURL + rawBody (NOT body-only). This is the exact
@@ -170,7 +171,7 @@ func TestGlobalRegistryPopulated(t *testing.T) {
 // tests exercise routing + handler exactly as production does.
 func newTestEngine() *zip.App {
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Raw(http.MethodPost, "/v1/billing/webhooks/:provider", HandleProviderWebhook)
+	app.Raw(http.MethodPost, "/v1/commerce/webhooks/:provider", HandleProviderWebhook)
 	return app
 }
 
@@ -205,7 +206,7 @@ func squareEvent(eventID, objectID string, created time.Time) []byte {
 func TestHandleProviderWebhook_MissingSignature(t *testing.T) {
 	r := newTestEngine()
 
-	req := httptest.NewRequest(http.MethodPost, "/v1/billing/webhooks/square", strings.NewReader(`{}`))
+	req := httptest.NewRequest(http.MethodPost, "/v1/commerce/webhooks/square", strings.NewReader(`{}`))
 	resp, terr := r.Test(req)
 	if terr != nil {
 		t.Fatalf("Test: %v", terr)
@@ -226,7 +227,7 @@ func TestHandleProviderWebhook_BadSignatureReachesSquare(t *testing.T) {
 	registerSquare(t, "whsec_test")
 
 	r := newTestEngine()
-	req := httptest.NewRequest(http.MethodPost, "/v1/billing/webhooks/square", strings.NewReader(`{"type":"payment.created"}`))
+	req := httptest.NewRequest(http.MethodPost, "/v1/commerce/webhooks/square", strings.NewReader(`{"type":"payment.created"}`))
 	req.Header.Set(squareSigHeader, "dGhpcy1pcy1ub3QtdmFsaWQ=") // valid base64, wrong digest
 	resp, terr := r.Test(req)
 	if terr != nil {
@@ -271,7 +272,7 @@ func TestHandleProviderWebhook_BodyOnlySignatureFails(t *testing.T) {
 	sig := squareSignBodyOnly(secret, body) // OLD buggy scheme
 
 	r := newTestEngine()
-	req := httptest.NewRequest(http.MethodPost, "/v1/billing/webhooks/square", strings.NewReader(string(body)))
+	req := httptest.NewRequest(http.MethodPost, "/v1/commerce/webhooks/square", strings.NewReader(string(body)))
 	req.Header.Set(squareSigHeader, sig)
 	resp, terr := r.Test(req)
 	if terr != nil {
@@ -348,31 +349,27 @@ func TestSquareValidateWebhook_RequiresURL(t *testing.T) {
 	}
 }
 
-// ─── replay rejection ────────────────────────────────────────────────────
+// ─── replay: the event id, not the clock ─────────────────────────────────
 
-// TestSquareValidateWebhook_ReplayRejected proves the time-bounded replay
-// guard: an event stamped older than the tolerance is rejected even with a
-// valid signature; a fresh one passes.
-func TestSquareValidateWebhook_ReplayRejected(t *testing.T) {
+// TestHandleProviderWebhook_ReplayIsADuplicate pins where replay is stopped. Square
+// resends an event's original body — created_at included — on every retry, so a
+// delivery ten minutes old is a retry and verifies; delivering it again is
+// acknowledged as a duplicate and applies nothing a second time.
+func TestHandleProviderWebhook_ReplayIsADuplicate(t *testing.T) {
 	const secret = "whsec_replay"
+	registerSquare(t, secret)
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	webhookOrg(t, ctx, "wh-dup", true)
 
-	p := squareprovider.NewProvider(squareprovider.Config{
-		AccessToken:         "test-token",
-		LocationID:          "L1",
-		WebhookSignatureKey: secret,
-		WebhookURL:          testWebhookURL,
-		Environment:         "sandbox",
-	})
-
-	stale := squareEvent("evt_stale", "sub_replay", time.Now().Add(-10*time.Minute))
-	staleSig := squareSign(secret, testWebhookURL, stale)
-	if _, err := p.ValidateWebhook(context.Background(), stale, staleSig); err == nil {
-		t.Fatal("expected stale event (10m old) to be rejected as replay, got nil error")
+	body := squareEvent("evt_retried", "sub_replay", time.Now().Add(-10*time.Minute))
+	first := deliverWebhook(ctx, "wh-dup", secret, body, "")
+	if first.StatusCode != http.StatusOK {
+		t.Fatalf("a genuine 10-minute-old retry answered %d, want 200", first.StatusCode)
 	}
-
-	fresh := squareEvent("evt_fresh", "sub_replay", time.Now())
-	freshSig := squareSign(secret, testWebhookURL, fresh)
-	if _, err := p.ValidateWebhook(context.Background(), fresh, freshSig); err != nil {
-		t.Fatalf("expected fresh event to pass, got %v", err)
+	second := deliverWebhook(ctx, "wh-dup", secret, body, "")
+	raw, _ := io.ReadAll(second.Body)
+	if second.StatusCode != http.StatusOK || !strings.Contains(string(raw), `"duplicate":true`) {
+		t.Fatalf("the same event delivered again answered %d %s, want 200 and duplicate", second.StatusCode, raw)
 	}
 }

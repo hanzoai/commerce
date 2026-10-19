@@ -268,12 +268,10 @@ go run cmd/commerce/main.go serve --dev     # Development
 | `DATASTORE_URL` | - | Datastore DSN |
 | `INSIGHTS_ENABLED` | `false` | Hanzo Insights product analytics |
 | `ANALYTICS_ENABLED` | `false` | Umami-like web analytics |
-| `KMS_ENABLED` | `false` | Enable KMS secret management |
-| `KMS_URL` | - | KMS base URL |
-| `KMS_CLIENT_ID` | - | KMS Universal Auth client ID |
-| `KMS_CLIENT_SECRET` | - | KMS Universal Auth client secret |
-| `KMS_PROJECT_ID` | - | KMS project/workspace ID |
-| `KMS_ENVIRONMENT` | `prod` | KMS environment |
+| `KMS_URL` | - | Standalone only: Hanzo KMS server; unset = no secret reader |
+| `KMS_ORG` | - | Standalone only: the org the KMS identity belongs to (required with `KMS_URL`) |
+| `KMS_CLIENT_ID` / `KMS_CLIENT_SECRET` | - | Standalone only: the KMS machine identity, exchanged at `HANZO_IAM_URL` |
+| `SQUARE_WEBHOOK_SIGNATURE_KEY` / `SQUARE_WEBHOOK_URL` | - | The deployment's Square webhook subscription key and its exact notification URL |
 
 ## Analytics Endpoints
 
@@ -319,47 +317,100 @@ captured nowhere in the stack; per-model error rate is in Datastore
 **Infra**: go-redis/v9, hanzos3/go (the house S3 client — package `minio`, republishes storage-go under the s3-go import path), meilisearch-go, nats.go, temporal SDK
 **Vector**: Qdrant via REST/HTTP (port 6333). No gRPC, no vector-go SDK -- plain net/http + encoding/json.
 
-## KMS Integration (2026-02-17)
+## Secrets: the host's KMS, one reader (`secrets`)
 
-Secrets management via KMS (REST API). KMS is the **single source of truth** for all payment provider credentials — no fallback to org-stored fields, no raw K8s secrets for payment providers.
+Commerce holds no KMS client. It reads through `secrets.Reader`, which the host
+installs at embed time (`EmbedConfig.Secrets`): the cloud binary passes its own KMS
+handle (`deps.KMS`, `KMSPeer` over the internal plane), and the standalone binary
+(`cmd/commerce`) passes `hanzoai/kms/sdk/go` as its machine identity (`KMS_URL`,
+`KMS_ORG`, `KMS_CLIENT_ID/SECRET`, `HANZO_IAM_URL`). `thirdparty/kms` is deleted: it
+read `/v1/kms/orgs/<org>/secrets/...`, which cloud stopped serving, so per-org
+payment credentials never loaded — and it was off in production anyway
+(`KMS_ENABLED` unset).
 
-**Architecture**: Credential Hydration (KMS-only, no fallback).
+**One address.** An org's own material is `orgs/<org>/<provider>/<NAME>` in the
+`default` env — cloud's `OrgPath` and the convention every in-process reader uses.
+`secrets.Org(ctx, org, name)` is the only way to read it, and it asks AS `org`: cloud's
+KMS (`apps/kms` `admit`) serves a tenant ref only to a call acting for that tenant,
+and a request's caller is the PAYER when a customer pays a brand, so the read
+re-points that caller with `zip.ActingAs` (the call names who is acting; the KMS
+writes no audit row of it). A raw handler passes `c.Forward()`, which carries the
+request's caller; its `c.Context()` carries none. A call with no caller reads nothing — cloud's KMS answers
+an unstated call as its own brand. `org` must already be a `namespace.Sanitize`-clean
+slug. The ref carries no leading slash, so the tenancy check runs. `/tenants/<org>/<provider>` was the old
+client's layout and nothing reads it now.
 
-```
-READ paths (hydration → org fields → downstream):
-  checkout handlers → getOrganizationAndOrder() → kms.Hydrate() → org.StripeToken() etc.
-  checkout sessions → Sessions() → kms.Hydrate() → org.StripeToken()
-  subscriptions     → Subscribe/Update/Unsubscribe → hydrateOrg() → org.StripeToken()
-  stripe webhooks   → Webhook() → getToken() + kms.Hydrate() → GetStripeAccessToken()
+**Who loads which credentials.** `payment.Hydrate(ctx, org, providers...)` fills an
+org's integration fields from those refs. It is called where the org RECEIVES the
+money: storefront checkout (`api/checkout`), storefront subscriptions
+(`api/subscription`), storefront wire instructions, and the billing wire rail, where
+the receiving org is the brand that owns the host (`orgs/hanzo/wire/*` for
+pay.hanzo.ai). Hanzo's own billing (`api/billing` top-ups, plans, invoices,
+renewals, auto-recharge, saved cards) never hydrates the PAYING org: its Square
+account is not where that money goes. That path charges the deployment's own
+account through `ProcessorsForOrg`'s environment fallback (`SQUARE_*`, KMS
+`/commerce-secrets` → KMSSecret → env). Moving it onto the brand org's own
+credential is an open owner decision.
 
-WRITE paths (credentials → KMS):
-  seed command      → commerce seed → Client.SetSecret() for Stripe + Square
-  stripe connect    → OAuth callback → org.Update() + Client.SetSecret()
-  integration sync  → admin Upsert → org.Update() + Client.SetSecret()
-```
+**Nothing is cached.** The store is the process next door; a rotation lands on the
+next read. `commerce seed` no longer copies env credentials into KMS — a second copy
+of a secret is a second place for it to go stale.
 
-**Hydration**: `kms.Hydrate(cc, org)` fetches all 25 provider credential fields from KMS and populates the org's integration struct fields. Called once after org resolution at every entry point. Missing secrets are silently skipped. The CachedClient's 5min TTL prevents repeated KMS calls.
+## Square webhooks: one route, one verifier
 
-**Secret path convention**:
-```
-/tenants/{orgName}/stripe/STRIPE_LIVE_ACCESS_TOKEN
-/tenants/{orgName}/stripe/STRIPE_TEST_ACCESS_TOKEN
-/tenants/{orgName}/stripe/STRIPE_PUBLISHABLE_KEY
-/tenants/{orgName}/square/SQUARE_PRODUCTION_ACCESS_TOKEN (+ LOCATION_ID, APPLICATION_ID)
-/tenants/{orgName}/square/SQUARE_SANDBOX_ACCESS_TOKEN (+ LOCATION_ID, APPLICATION_ID)
-/tenants/{orgName}/authorizenet/AUTHORIZENET_LIVE_LOGIN_ID (+ TRANSACTION_KEY)
-/tenants/{orgName}/authorizenet/AUTHORIZENET_SANDBOX_LOGIN_ID (+ TRANSACTION_KEY)
-/tenants/{orgName}/paypal/PAYPAL_LIVE_* (EMAIL, SECURITY_USER_ID, SECURITY_PASSWORD, SECURITY_SIGNATURE, APPLICATION_ID)
-/tenants/{orgName}/paypal/PAYPAL_TEST_* (same 5 fields)
-```
-
-**Write paths**: `commerce seed` writes env vars TO KMS. Stripe Connect OAuth callback writes tokens to KMS after exchange. Admin integration upsert syncs Stripe creds to KMS.
-
-**Config**: `KMS_ENABLED`, `KMS_URL`, `KMS_CLIENT_ID`, `KMS_CLIENT_SECRET`, `KMS_PROJECT_ID`, `KMS_ENVIRONMENT`
-
-**Cache**: 5min TTL, extends to 30min on KMS failure (stale-while-revalidate).
-
-**K8s**: Single "secret zero" (`commerce-kms-auth`) holds KMS Universal Auth credentials. All payment credentials live in KMS only.
+- **Route:** `POST /v1/commerce/webhooks/:provider`, declared once in `setupRoutes`
+  on the public `/v1/commerce` group, so standalone and embedded serve the same
+  address from one declaration (cloud no longer declares it). `/v1/billing/webhooks`
+  is gone. The URL is part of Square's signature: it moves only with the Square
+  subscription (`payment/orgsetup.go` `defaultSquareWebhookURL`).
+- **Verifier:** `payment/providers/square` `ValidateWebhook`, reached through
+  `processor.Global()`. `thirdparty/square` is the API client only — no HMAC, no
+  `init` registration, not a `PaymentProcessor` — so no second Square type can be
+  registered. Every registry holds `*square.Provider` (`ProcessorsForOrg` too).
+- **The path names the processor, and it must hold its secret.** Only the
+  processor registered under `:provider` verifies a delivery, and only if it is a
+  `processor.WebhookReceiver` that `ReceivesWebhooks()` — it holds the secret its
+  deliveries are signed with (Square: key and URL; MPC: `MPC_WEBHOOK_SECRET`).
+  Every provider package registers itself configured or not, and some verifiers
+  need no secret (Solana Pay's chain lookup, Circle's certificate fetched from a
+  URL the payload names), so asking one of them would let a caller author an
+  event; an unknown name or a secretless processor is refused. The receiver set
+  is pinned to {mpc, square} by `TestTheWebhookReceiversAreTheSecretHolders`.
+  `payment/router`, a second dispatcher that tried every processor, is deleted.
+- **A clawback stays in the verifying account's org.** When the event names an
+  org (a per-org account) and the payment's receipt is another org's, the
+  refund or dispute moves nothing (RECONCILE).
+- **No freshness window; the event id is the replay guard.** Square keeps an
+  event's `created_at` across every retry, so the old 5-minute window refused every
+  retry of an event first sent during a deploy, forever. Each verified event is
+  recorded once for the whole deployment — `idempotencykey` in the `system`
+  namespace, scope `webhook`, key `<processor>:<event id>`, an insert-if-absent
+  swap — so a repeat is acked `duplicate:true` (or 409 while the first is still
+  being applied) whatever path or org it is presented under. Every money posting is
+  also keyed on the payment, refund or dispute id. A signed body with no
+  `event_id` is refused.
+- **An effect that did not land leaves the delivery open.** The settlement,
+  clawback and subscription steps return an error when a store or the ledger did
+  not answer; the handler then answers 503 without completing the guard, so the
+  provider redelivers and the guard is re-claimed after `StartedTTL`. Every effect
+  is safe to apply twice. Unattributable money, and a receipt naming an invoice
+  these books do not hold, are not errors: RECONCILE, refused, acknowledged. The
+  org's `billing_event` audit row is written once, by the delivery that applied
+  the event.
+- **The books are the verifying account's.** `bookedOrg` reads
+  `processor.WebhookEvent.Org` (the org the Square account belongs to; the
+  deployment's env-seeded account names none) and falls back to
+  `checkout.DefaultBrandSlug()`. No header or session picks the org: a provider
+  sends no identity, and one on a replay is the replayer's.
+- **Accounted for, wherever:** `settlementDestination` reads the payment index
+  (`models/paymentorg`) first. An in-session charge writes its receipt in the PAYER's
+  org and indexes it; the delivery resolves the processor account's org, so without
+  the index every such payment raised a false RECONCILE.
+- **Production (2026-10-19):** one Square subscription, `wbhk_44c9077bfece4c0c96a463ac9fe56e0f`,
+  created 2026-09-23, notification URL `https://pay.hanzo.ai/v1/commerce/webhooks/square`;
+  its key is KMS org `hanzo` `/commerce-secrets/SQUARE_WEBHOOK_SIGNATURE_KEY@prod`
+  (measured equal to Square's). Square's Events API holds nothing to replay: event
+  search was never enabled on the account.
 
 ## Checkout Sessions
 

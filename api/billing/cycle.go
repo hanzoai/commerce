@@ -12,7 +12,6 @@ import (
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/subscription"
-	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -27,7 +26,6 @@ type cycleUserRequest struct {
 //	POST /v1/billing/cycle/run
 func RunBillingCycle(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	hydratePaymentCreds(c, org)
 	db := datastore.New(org.Namespaced(c.Context()))
 
 	results := renewDue(c.Context(), org, "")
@@ -52,7 +50,6 @@ func RunBillingCycle(c *zip.Ctx) error {
 //	POST /v1/billing/cycle/run-user
 func RunBillingCycleUser(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	hydratePaymentCreds(c, org)
 
 	var req cycleUserRequest
 	if err := c.Bind(&req); err != nil {
@@ -77,7 +74,7 @@ func RunBillingCycleUser(c *zip.Ctx) error {
 //
 //	POST /v1/billing/cycle/run-all
 func RunBillingCycleAllOrgs(c *zip.Ctx) error {
-	run, err := RenewDue(c.Context(), kmsOf(c))
+	run, err := RenewDue(c.Context())
 	if err != nil {
 		log.Error("Failed to list organizations for billing cycle: %v", err, c)
 		return http.Fail(c, 500, "failed to list organizations", err)
@@ -130,20 +127,13 @@ type RenewalRun struct {
 // It takes values because the caller is a SCHEDULE, not a person. A failure to
 // collect one subscription is that subscription's result, not the sweep's: the
 // loop continues. Only the population read failing ends the run.
-func RenewDue(ctx context.Context, kmsClient *kms.CachedClient) (*RenewalRun, error) {
+func RenewDue(ctx context.Context) (*RenewalRun, error) {
 	orgs := make([]*organization.Organization, 0)
 	if _, err := organization.Query(datastore.New(ctx)).GetAll(&orgs); err != nil {
 		return nil, err
 	}
 	run := &RenewalRun{Orgs: len(orgs), Results: make([]Renewal, 0)}
 	for _, org := range orgs {
-		// Hydrate each org's payment creds so a due renewal can charge its
-		// subscribers' vaulted cards through that org's own processor.
-		if kmsClient != nil {
-			if err := kms.Hydrate(kmsClient, org); err != nil {
-				log.Error("KMS hydration failed for org %q during renewal: %v", org.Name, err)
-			}
-		}
 		for _, r := range renewDue(ctx, org, "") {
 			run.Due++
 			if r.Success {

@@ -14,7 +14,7 @@ import (
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/organization"
-	"github.com/hanzoai/commerce/thirdparty/kms"
+	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/permission"
 )
@@ -23,7 +23,8 @@ var orderEndpoint = config.UrlFor("api", "/order/")
 
 // authedOrg returns the authenticated caller's organization — set by the route's
 // TokenRequired branch (service token / legacy org-bound token) or the IAM
-// identity middleware — with its payment credentials hydrated from KMS. It is the
+// identity middleware — with its own payment credentials loaded (payment.Hydrate):
+// on this path the org is the merchant. It is the
 // ONE org source for every checkout money handler: the org is always the
 // validated principal's, never client-supplied. Returns ok=false when no
 // authenticated org is present so callers fail closed (401).
@@ -33,14 +34,9 @@ func authedOrg(c *zip.Ctx) (*organization.Organization, bool) {
 		return nil, false
 	}
 
-	// Hydrate payment credentials from KMS.
-	if v := c.Locals("kms"); v != nil {
-		if kmsClient, ok := v.(*kms.CachedClient); ok {
-			if err := kms.Hydrate(kmsClient, org); err != nil {
-				log.Error("KMS hydration failed for org %q: %v", org.Name, err, c)
-			}
-		}
-	}
+	// Forward carries the request's caller, which the host's KMS reads to admit
+	// the read; a raw handler's Context does not.
+	payment.Hydrate(c.Forward(), org)
 	return org, true
 }
 

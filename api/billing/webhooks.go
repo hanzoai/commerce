@@ -2,6 +2,8 @@ package billing
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"math"
 	"net/http"
 	nethttp "net/http"
@@ -12,20 +14,20 @@ import (
 
 	"github.com/hanzoai/commerce/billing/creditledger"
 	"github.com/hanzoai/commerce/billing/engine"
+	"github.com/hanzoai/commerce/checkout"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
-	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/mintauth"
 	"github.com/hanzoai/commerce/models/billingevent"
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/dispute"
+	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentorg"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
-	"github.com/hanzoai/commerce/secret"
 	"github.com/hanzoai/commerce/util/nscontext"
 
 	// Blank-import the provider barrel so every provider's init() registers
@@ -41,22 +43,24 @@ import (
 )
 
 // HandleProviderWebhook is the single ingress for payment-provider webhooks.
-// It dispatches to the matching processor in payment/router, validates the
-// signature, records the event in billing_events, and — for subscription
-// lifecycle events — updates the local subscription row keyed by ProviderId.
 //
 //	POST /v1/commerce/webhooks/:provider
 //
-// The :provider path segment is informational; signature verification picks
-// the right processor regardless. We pass the path segment as a lightweight
-// filter so webhook endpoints are URL-scoped per-provider (easier in Stripe
-// dashboard configuration).
+// The path names the processor, and only that processor verifies the delivery: a
+// name no processor is registered under is refused, never tried against the rest.
+// The verified event is recorded once — globally, by (processor, event id) — then
+// written to the billing events of the org the processor account belongs to, and
+// its settlement, subscription and clawback effects are applied.
+//
+// Nothing about WHERE an event lands comes from the request. The org is the one
+// the verifying processor names (processor.WebhookEvent.Org), else the
+// deployment's own brand: a provider sends no identity, and a header or session
+// on a replayed delivery is the replayer's.
 func HandleProviderWebhook(c *zip.Ctx) error {
 	providerHint := strings.ToLower(strings.TrimSpace(c.Param("provider")))
 	payload := c.Body()
 
-	// Every provider puts its signature in a different header; let the router
-	// try each processor with the one most likely to match.
+	// Every provider puts its signature in a different header.
 	reqHeaders := http.Header{}
 	for k, vals := range c.Fiber().GetReqHeaders() {
 		for _, v := range vals {
@@ -77,30 +81,64 @@ func HandleProviderWebhook(c *zip.Ctx) error {
 		return jsonhttp.Fail(c, nethttp.StatusUnauthorized, "invalid webhook signature", err)
 	}
 
-	// Persist the raw event so the app has an audit trail independent of
-	// processor-side retention. Webhooks arrive with no session, so resolve
-	// the owning org the same way service-token calls do.
-	org := resolveWebhookOrg(c)
-	if org == nil {
-		return jsonhttp.Fail(c, nethttp.StatusServiceUnavailable, "organization context unavailable", nil)
-	}
-	db := datastore.New(org.Namespaced(c.Context()))
-
-	// Idempotency: providers retry aggressively (Square retries for up to
-	// 72h until it gets a 2xx). If we already recorded this event ID, ack
-	// without re-applying side effects.
-	if event.ID != "" && eventAlreadyProcessed(db, providerHint, event.ID) {
+	// ONCE, AND FOR THE WHOLE DEPLOYMENT. A provider retries a delivery until it
+	// sees a 2xx, and resends the same body each time, so the event id is what
+	// makes the second one a duplicate. The guard is keyed on the processor that
+	// verified it and the event id, in the system namespace, and taken with an
+	// insert-if-absent swap — not on the path segment and not inside one org's
+	// books, either of which a replayer chooses.
+	guard, seen, err := idempotencykey.Begin(webhookGuardDB(ctx), "webhook", string(event.Processor)+":"+event.ID)
+	switch {
+	case err != nil:
+		log.Error("webhook %s %s: the delivery guard could not be read: %v", event.Processor, event.ID, err)
+		return jsonhttp.Fail(c, nethttp.StatusServiceUnavailable, "webhook guard unavailable", err)
+	case seen && guard.Status == idempotencykey.StatusCompleted:
 		return c.JSON(nethttp.StatusOK, map[string]any{
 			"received":  true,
 			"type":      event.Type,
 			"id":        event.ID,
 			"duplicate": true,
 		})
+	case seen:
+		// Another delivery of this event is being applied right now. Refuse this one
+		// so the provider retries it, rather than acknowledging work that may not land.
+		return jsonhttp.Fail(c, nethttp.StatusConflict, "webhook delivery already in progress", nil)
 	}
 
+	org := bookedOrg(c.Context(), event)
+	if org == nil {
+		return jsonhttp.Fail(c, nethttp.StatusServiceUnavailable, "organization context unavailable", nil)
+	}
+	db := datastore.New(org.Namespaced(c.Context()))
+
+	// The effects. Each one is safe to apply again — a credit is keyed on the
+	// payment id, a clawback on the refund or dispute id, a dispute report on its
+	// version — so one that could not land (a store or ledger that did not answer)
+	// is reported here and the delivery is left OPEN: no Complete, a 503, and the
+	// provider redelivers. The guard is re-claimed once StartedTTL has passed.
+	var effects []error
+	if strings.HasPrefix(event.Type, "subscription.") || strings.HasPrefix(event.Type, "invoice.") {
+		effects = append(effects, applySubscriptionEvent(db, event))
+	}
+	// Settle funds for completed payments. This is the path Square's
+	// payment.updated(status=COMPLETED) callback exercises once a card
+	// authorization captures — the moment funds are guaranteed.
+	if isSettlementEvent(event.Type) {
+		effects = append(effects, applySettlementEvent(ctx, db, org, event))
+	}
+	if isClawbackEvent(event.Type) {
+		effects = append(effects, applyClawbackEvent(ctx, db, org, event))
+	}
+	if err := errors.Join(effects...); err != nil {
+		log.Error("webhook %s %s: an effect did not land; the delivery stays open for the provider to redeliver: %v", event.Processor, event.ID, err)
+		return jsonhttp.Fail(c, nethttp.StatusServiceUnavailable, "webhook effect did not land; redeliver", err)
+	}
+
+	// The org's own record of the event, an audit trail independent of the
+	// processor's retention. Written once, by the delivery that applied it.
 	evt := billingevent.New(db)
 	evt.Type = event.Type
-	evt.ObjectType = providerHint
+	evt.ObjectType = string(event.Processor)
 	evt.ObjectId = event.ID
 	evt.Livemode = !org.TestMode() // one authority for the books and the record of them: the org
 	if event.Data != nil {
@@ -108,24 +146,11 @@ func HandleProviderWebhook(c *zip.Ctx) error {
 	}
 	if err := evt.Create(); err != nil {
 		log.Warn("failed to persist billing event %s: %v", event.ID, err)
-		// Do not 500 — event was validated; duplicate persistence is fine.
 	}
 
-	// Update local subscription state for lifecycle events.
-	if strings.HasPrefix(event.Type, "subscription.") || strings.HasPrefix(event.Type, "invoice.") {
-		applySubscriptionEvent(db, event)
+	if err := idempotencykey.Complete(guard, ""); err != nil {
+		log.Warn("webhook %s %s: applied, and the delivery guard was not marked complete: %v", event.Processor, event.ID, err)
 	}
-
-	// Settle funds for completed payments. This is the path Square's
-	// payment.updated(status=COMPLETED) callback exercises once a card
-	// authorization captures — the moment funds are guaranteed.
-	if isSettlementEvent(event.Type) {
-		applySettlementEvent(ctx, db, org, event)
-	}
-	if isClawbackEvent(event.Type) {
-		applyClawbackEvent(ctx, db, org, event)
-	}
-
 	return c.JSON(nethttp.StatusOK, map[string]any{
 		"received": true,
 		"type":     event.Type,
@@ -133,65 +158,32 @@ func HandleProviderWebhook(c *zip.Ctx) error {
 	})
 }
 
-// resolveWebhookOrg determines which org a sessionless provider webhook
-// belongs to. Order: X-Org-Id header, then the
-// default "hanzo" org. Mirrors the service-token resolution in
-// middleware/accesstoken.go so webhooks and service calls agree on scope.
-func resolveWebhookOrg(c *zip.Ctx) *organization.Organization {
-	// GetOrganizationOK, not GetOrganization: webhook ingress runs OUTSIDE the
-	// auth-token group, so no middleware ever set "organization" — the MustGet
-	// variant panics (500) on every sessionless delivery, exactly the case this
-	// resolver exists to handle.
-	if org, ok := middleware.GetOrganizationOK(c); ok && org != nil {
-		return org
-	}
-	db := datastore.New(c.Context())
-	orgName := strings.TrimSpace(c.Header("X-Org-Id"))
-	if orgName == "" {
-		orgName = "hanzo"
-	}
-	// A webhook caller must not be able to provision an org named after a raw
-	// API key: reject a bearer-shaped selector before GetOrCreate (incident
-	// 2026-07-02).
-	if secret.Like(orgName) {
-		log.Warn("webhook org resolve: bearer-shaped org selector; refusing to provision")
-		return nil
-	}
-	org := organization.New(db)
-	org.Name = orgName
-	if err := org.GetOrCreate("Name=", orgName); err != nil {
-		log.Warn("webhook org resolve for '%s' failed: %v", orgName, err)
-		return nil
-	}
-	// THE ORG RECORD SAYS WHICH BOOKS, and this used to overwrite it.
-	//
-	// The line here was `org.Live = true`, justified by a deployment-wide
-	// SQUARE_ENVIRONMENT that overrode the flag — so forcing it looked free. That
-	// override is GONE: organization.TestMode is now `!o.Live` and nothing else, and
-	// its own note says the authority is the org record "and nothing else". So the
-	// forcing stopped being a no-op and became the whole answer: every settlement,
-	// including a sandbox merchant's, was stamped live and credited the spendable
-	// books. A Square SANDBOX callback — signed with the sandbox key, funding nothing
-	// — minted balance that buys real inference.
-	//
-	// Loading the org and believing it is also what fails CLOSED, per that same note:
-	// an org that does not say Live transacts in sandbox, so a new or half-configured
-	// tenant credits the test books rather than the spendable ones. The wrong
-	// direction here is money a customer has to ask for; the other direction is money
-	// nobody paid for.
-	return org
+// webhookGuardDB is the deployment-wide namespace the delivery guard lives in, so
+// one event is one record whichever org it is booked to.
+func webhookGuardDB(ctx context.Context) *datastore.Datastore {
+	return datastore.New(nscontext.WithNamespace(ctx, "system"))
 }
 
-// eventAlreadyProcessed reports whether a billing event with this provider
-// object type and ID was already recorded — the idempotency guard against
-// provider retries.
-func eventAlreadyProcessed(db *datastore.Datastore, objectType, eventID string) bool {
-	existing := billingevent.New(db)
-	found, err := existing.Query().
-		Filter("ObjectType=", objectType).
-		Filter("ObjectId=", eventID).
-		Get()
-	return err == nil && found
+// bookedOrg is the org a verified delivery is booked to: the org the verifying
+// processor's account belongs to, or the deployment's own brand when the
+// processor names none (the deployment's Square account, seeded from its
+// environment). The request contributes nothing — no header, no session.
+//
+// THE ORG RECORD SAYS WHICH BOOKS. It is loaded and believed, never forced live:
+// an org that does not say Live transacts in sandbox, so a sandbox callback can
+// never credit the spendable books.
+func bookedOrg(ctx context.Context, event *processor.WebhookEvent) *organization.Organization {
+	name := strings.TrimSpace(event.Org)
+	if name == "" {
+		name = checkout.DefaultBrandSlug()
+	}
+	org := organization.New(datastore.New(ctx))
+	org.Name = name
+	if err := org.GetOrCreate("Name=", name); err != nil {
+		log.Warn("webhook org resolve for '%s' failed: %v", name, err)
+		return nil
+	}
+	return org
 }
 
 // isSettlementEvent reports whether an event represents settled (captured)
@@ -246,9 +238,9 @@ func isSettlementEvent(eventType string) bool {
 //
 // A "payment.updated" event only settles when the payment object reports a
 // terminal completed/captured status; pending or failed updates are ignored.
-func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *organization.Organization, event *processor.WebhookEvent) {
+func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *organization.Organization, event *processor.WebhookEvent) error {
 	if event.Data == nil {
-		return
+		return nil
 	}
 
 	// Square nests the changed resource under data.object.<kind> (e.g.
@@ -260,7 +252,7 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 
 	paymentID := stringField(pay, "id")
 	if paymentID == "" {
-		return
+		return nil
 	}
 
 	// Only act on CAPTURED funds. Whenever the payment object reports a status it
@@ -277,30 +269,33 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 	// An event whose object carries no status at all (invoice.paid) is settled by
 	// its event type, which isSettlementEvent already gated.
 	if st := stringField(pay, "status"); st != "" && !processor.Settled(st) {
-		return
+		return nil
 	}
 
 	kind := chargeSourceKind(event.Processor)
 	if kind == "" {
 		reconcileSettlement(org, event, paymentID, "the delivery names no processor, so this payment has no reference this ledger can key on")
-		return
+		return nil
 	}
 
 	amount, cur := settlementAmount(pay)
 	if amount <= 0 {
 		log.Warn("settlement %s: non-positive amount, recorded event only", paymentID)
-		return
+		return nil
 	}
 
 	// WHOSE MONEY THIS IS, or nobody's. Everything below this line addresses the
 	// wallet this answers with; nothing below it can invent one.
-	who, why := settlementDestination(db, org, event, pay, kind, paymentID)
+	who, why, err := settlementDestination(db, org, event, pay, kind, paymentID)
+	if err != nil {
+		return fmt.Errorf("settlement %s: %w", paymentID, err)
+	}
 	if who == nil {
 		if why == "" {
-			return // already accounted for by an endpoint that owns the credit
+			return nil // already accounted for by an endpoint that owns the credit
 		}
 		reconcileSettlement(org, event, paymentID, why)
-		return
+		return nil
 	}
 
 	// THE SPENDABLE LEDGER FIRST, the local receipt second, and that order is the
@@ -327,7 +322,7 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 			// them succeeds this is a payment that settled and a balance that did not.
 			log.Error("RECONCILE: settlement %s (%s %d %s) settled and the spendable balance was NOT credited: org=%s subject=%s test=%v: %v — retryable: the provider redelivers and the credit is keyed on the payment id",
 				paymentID, event.Type, amount, cur, who.org, who.subject, who.test, err)
-			return
+			return fmt.Errorf("settlement %s: credit: %w", paymentID, err)
 		}
 	}
 
@@ -361,6 +356,7 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 	if err := paymentorg.Put(paymentID, org.Name, who.subject, "", who.test); err != nil {
 		log.Warn("settlement %s: the org index was not written: %v", paymentID, err)
 	}
+	return nil
 }
 
 // destination is WHERE a settled payment's money belongs: the ledger, the account
@@ -385,8 +381,14 @@ type destination struct {
 //	(nil, why) — UNATTRIBUTABLE. The money moved and this process cannot say whose
 //	it is. Refused and reconciled by hand; there is no safe address to guess.
 //
-// The three lookups are all keyed on the provider's payment id, and each one is a
+// An error means a record could not be READ, so none of the three is known yet:
+// the delivery stays open and the provider redelivers it.
+//
+// The lookups are all keyed on the provider's payment id, and each one is a
 // record commerce wrote itself:
+//
+//	THE PAYMENT INDEX names the org and wallet of every receipt a charge endpoint
+//	wrote, wherever it wrote it. Indexed means credited, in whichever books.
 //
 //	A STAMPED LEDGER ROW is an in-session charge. Both card endpoints stamp the deposit
 //	they write with (SourceKind, SourceId) at charge time, so this row means either
@@ -416,29 +418,42 @@ type destination struct {
 // two stopped describing one payment: a delivery nesting its object one level down
 // answered a real id for the payment and nothing at all for the subscription, which is
 // precisely the blank key the guard below now refuses.
-func settlementDestination(db *datastore.Datastore, org *organization.Organization, event *processor.WebhookEvent, pay map[string]interface{}, kind, paymentID string) (*destination, string) {
+func settlementDestination(db *datastore.Datastore, org *organization.Organization, event *processor.WebhookEvent, pay map[string]interface{}, kind, paymentID string) (*destination, string, error) {
+	// THE PAYMENT INDEX FIRST, because it is the one record that is not in this
+	// org's books. A charge taken in session writes its receipt in the PAYER's org
+	// and then indexes the payment id to it (models/paymentorg); this delivery
+	// resolved the org the processor account belongs to, which is a different
+	// namespace for every payer but one. Without this read, every in-session charge
+	// by a payer outside that org came back "no charge this process wrote", a
+	// RECONCILE alarm for money that was already credited.
+	if _, found, err := paymentorg.Get(paymentID); err != nil {
+		return nil, "", fmt.Errorf("the payment index could not be read: %w", err)
+	} else if found {
+		return nil, "", nil
+	}
+
 	stamped := transaction.New(db)
 	if found, err := stamped.Query().
 		Filter("SourceKind=", kind).
 		Filter("SourceId=", paymentID).
 		Get(); err != nil {
-		return nil, "the ledger could not be read to tell whether this payment was already credited"
+		return nil, "", fmt.Errorf("the ledger could not be read: %w", err)
 	} else if found {
-		return nil, ""
+		return nil, "", nil
 	}
 
 	inv := billinginvoice.New(db)
 	if found, err := inv.Query().Filter("PaymentRef=", paymentID).Get(); err != nil {
-		return nil, "the invoices could not be read to tell whether this payment settled one"
+		return nil, "", fmt.Errorf("the invoices could not be read: %w", err)
 	} else if found {
-		return nil, ""
+		return nil, "", nil
 	}
 
 	// Only a subscription lifecycle delivery carries a subscription to resolve. A
 	// payment.* event that reached here named no subscription and matched no record
 	// commerce wrote, which is exactly the unattributable case.
 	if !strings.HasPrefix(event.Type, "subscription.") && !strings.HasPrefix(event.Type, "invoice.") {
-		return nil, "no charge this process wrote carries this payment reference, and the payload names no subscription — the payer is unknown"
+		return nil, "no charge this process wrote carries this payment reference, and the payload names no subscription — the payer is unknown", nil
 	}
 	// A BLANK KEY IS NOT A LOOKUP, IT IS A WILDCARD, and this is the guard that says so.
 	//
@@ -454,16 +469,19 @@ func settlementDestination(db *datastore.Datastore, org *organization.Organizati
 	// never REACHES not-found: the emptier the payload, the more it matches.
 	ref := subscriptionRef(event.Type, pay)
 	if ref == "" {
-		return nil, "the settlement names no subscription, so there is nothing to resolve a payer from"
+		return nil, "the settlement names no subscription, so there is nothing to resolve a payer from", nil
 	}
 	sub := subscription.New(db)
 	found, err := sub.Query().Filter("ProviderId=", ref).Get()
-	if err != nil || !found {
-		return nil, "the subscription this settlement names is not in these books, so the payer is unknown"
+	if err != nil {
+		return nil, "", fmt.Errorf("the subscriptions could not be read: %w", err)
+	}
+	if !found {
+		return nil, "the subscription this settlement names is not in these books, so the payer is unknown", nil
 	}
 	subject := strings.ToLower(strings.TrimSpace(sub.UserId))
 	if subject == "" {
-		return nil, "the subscription this settlement names states no owner, so the payer is unknown"
+		return nil, "the subscription this settlement names states no owner, so the payer is unknown", nil
 	}
 	return &destination{
 		org:     strings.ToLower(strings.TrimSpace(org.Name)),
@@ -472,7 +490,7 @@ func settlementDestination(db *datastore.Datastore, org *organization.Organizati
 		// deployment's settlement funds the sandbox ledger and can never buy live
 		// inference.
 		test: org.TestMode(),
-	}, ""
+	}, "", nil
 }
 
 // subscriptionRef is the provider's SUBSCRIPTION id in a lifecycle delivery, or "".
@@ -632,21 +650,24 @@ func firstNonEmpty(vals ...string) string {
 
 // applySubscriptionEvent reconciles the local subscription row with a
 // lifecycle event from the payment provider.
-func applySubscriptionEvent(db *datastore.Datastore, event *processor.WebhookEvent) {
+func applySubscriptionEvent(db *datastore.Datastore, event *processor.WebhookEvent) error {
 	// The provider's SUBSCRIPTION id, which for an invoice delivery is not the
 	// object's own id — see [subscriptionRef]. Reading "id" alone meant every
 	// invoice.* event looked a subscription up by an INVOICE id, found none, and
 	// silently left the local row stale.
 	id := subscriptionRef(event.Type, event.Data)
 	if id == "" {
-		return
+		return nil
 	}
 
 	sub := subscription.New(db)
 	found, err := sub.Query().Filter("ProviderId=", id).Get()
-	if err != nil || !found {
+	if err != nil {
+		return fmt.Errorf("subscription %s: %w", id, err)
+	}
+	if !found {
 		// Unknown subscription — likely created outside commerce.
-		return
+		return nil
 	}
 
 	if status, ok := event.Data["status"].(string); ok && status != "" {
@@ -657,41 +678,42 @@ func applySubscriptionEvent(db *datastore.Datastore, event *processor.WebhookEve
 		sub.CanceledAt = time.Now().UTC()
 	}
 	if err := sub.Update(); err != nil {
-		log.Warn("webhook: failed to update subscription %s: %v", sub.Id(), err)
+		return fmt.Errorf("subscription %s: %w", sub.Id(), err)
 	}
+	return nil
 }
 
-// tryValidateWebhook walks registered payment processors looking for one that
-// validates the signature. If providerHint is non-empty, we try that processor
-// first (fast path); otherwise we iterate all available processors.
+// tryValidateWebhook asks the processor the path names, and only it, to verify a
+// delivery. A name no processor is registered under, and a processor that holds
+// no webhook secret, are refused.
+//
+// Inbound validation ignores the disabled-processor deny policy (which governs
+// OUTBOUND charge selection only): a processor disabled for new charges — e.g.
+// Stripe — must still validate its existing customers' webhook deliveries. Hence
+// Registered, not Get.
 func tryValidateWebhook(ctx context.Context, providerHint string, payload []byte, signature string) (*processor.WebhookEvent, error) {
-	registry := processor.Global()
-
-	// Inbound validation ignores the disabled-processor deny policy (which
-	// governs OUTBOUND charge selection only): a processor disabled for new
-	// charges — e.g. Stripe — must still validate its existing customers' webhook
-	// deliveries. Hence Registered / RegisteredProcessors, not Get / Available.
-
-	// Fast path: provider hint specified.
-	if providerHint != "" {
-		if p, err := registry.Registered(processor.ProcessorType(providerHint)); err == nil {
-			return p.ValidateWebhook(ctx, payload, signature)
-		}
+	p, err := processor.Global().Registered(processor.ProcessorType(providerHint))
+	if err != nil {
+		return nil, fmt.Errorf("%w: no processor named %q", processor.ErrWebhookValidationFailed, providerHint)
 	}
-
-	// Fallback: try every registered, configured processor until one succeeds.
-	var lastErr error
-	for _, p := range registry.RegisteredProcessors() {
-		if !p.IsAvailable(ctx) {
-			continue
-		}
-		evt, err := p.ValidateWebhook(ctx, payload, signature)
-		if err == nil && evt != nil {
-			return evt, nil
-		}
-		lastErr = err
+	// Only a processor that holds the secret its deliveries are signed with may
+	// verify one. Every provider package is registered, configured or not, and
+	// some verifiers need no secret at all (a public-chain lookup, a certificate
+	// fetched from a URL the payload names); asking one of those would let a
+	// caller author an event.
+	if rx, ok := p.(processor.WebhookReceiver); !ok || !rx.ReceivesWebhooks() {
+		return nil, fmt.Errorf("%w: %q holds no webhook secret", processor.ErrWebhookValidationFailed, providerHint)
 	}
-	return nil, lastErr
+	evt, err := p.ValidateWebhook(ctx, payload, signature)
+	if err != nil {
+		return nil, err
+	}
+	if evt != nil && evt.ID == "" {
+		// The event id is the delivery guard's key; an event without one cannot
+		// be recorded once, so it is not applied at all.
+		return nil, fmt.Errorf("%w: %s delivery carries no event id", processor.ErrWebhookValidationFailed, providerHint)
+	}
+	return evt, nil
 }
 
 // pickSignatureHeader returns the signature header for the given provider.
@@ -767,9 +789,9 @@ func isClawbackEvent(eventType string) bool {
 // dispute report is ordered by the dispute's version, else its updated_at, and one
 // older than the report already recorded changes nothing. The ledger posts each once
 // per refund or dispute id, and never takes back more than the payment brought in.
-func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organization.Organization, event *processor.WebhookEvent) {
+func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organization.Organization, event *processor.WebhookEvent) error {
 	if event.Data == nil {
-		return
+		return nil
 	}
 	obj := unwrapObject(event.Data, "refund")
 	paymentID := stringField(obj, "payment_id")
@@ -787,7 +809,7 @@ func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organi
 		version, _ = numberField(obj, "version")
 		at, _ = time.Parse(time.RFC3339, stringField(obj, "updated_at"))
 	} else if st := stringField(obj, "status"); !strings.EqualFold(st, "COMPLETED") {
-		return
+		return nil
 	}
 	id := stringField(obj, "id")
 	amount, _ := settlementAmount(obj)
@@ -797,14 +819,22 @@ func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organi
 	// What is recorded: a refund, and any state a dispute reports.
 	records := (!isDispute && amount > 0) || state != ""
 	if paymentID == "" || id == "" || !records {
-		return
+		return nil
 	}
 	where, found, err := paymentorg.Get(paymentID)
-	if err != nil || !found {
+	if err != nil {
+		return fmt.Errorf("%s %s: the payment index could not be read: %w", event.Type, id, err)
+	}
+	if !found {
 		if moves {
-			log.Error("RECONCILE: %s %s concerns payment %s, which no receipt recorded (err=%v) — settle it by hand", event.Type, id, paymentID, err)
+			log.Error("RECONCILE: %s %s concerns payment %s, which no receipt recorded — settle it by hand", event.Type, id, paymentID)
 		}
-		return
+		return nil
+	}
+	if event.Org != "" && event.Org != where.Org {
+		// An account that belongs to one org reports on its own payments only.
+		log.Error("RECONCILE: %s %s from %s's account names payment %s, whose receipt is %s's — refused", event.Type, id, event.Org, paymentID, where.Org)
+		return nil
 	}
 	if where.Invoice != "" {
 		db := datastore.New(nscontext.WithNamespace(ctx, where.Org))
@@ -813,25 +843,28 @@ func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organi
 		} else {
 			err = engine.RecordRefund(db, where.Invoice, id, int64(amount))
 		}
-		if err != nil {
-			log.Error("RECONCILE: %s %s on payment %s did not reach invoice %s in %s: %v — record it on the invoice by hand",
-				event.Type, id, paymentID, where.Invoice, where.Org, err)
+		switch {
+		case errors.Is(err, datastore.ErrNoSuchEntity):
+			// The receipt names an invoice these books do not hold; redelivering
+			// cannot make it appear.
+			log.Error("RECONCILE: %s %s on payment %s names invoice %s in %s, which does not exist — record it by hand", event.Type, id, paymentID, where.Invoice, where.Org)
+		case err != nil:
+			return fmt.Errorf("%s %s on payment %s did not reach invoice %s in %s: %w", event.Type, id, paymentID, where.Invoice, where.Org, err)
 		}
-		return
+		return nil
 	}
 	if isDispute {
 		latest, err := engine.RecordPaymentDispute(paymentID, state, version, at)
 		if err != nil {
-			log.Error("RECONCILE: %s %s on payment %s: the dispute's state was not recorded: %v — retryable: the provider redelivers", event.Type, id, paymentID, err)
-			return
+			return fmt.Errorf("%s %s on payment %s: the dispute's state was not recorded: %w", event.Type, id, paymentID, err)
 		}
 		if !latest {
-			return // an earlier report than the one recorded moves nothing
+			return nil // an earlier report than the one recorded moves nothing
 		}
 	}
 	led := creditledger.Get()
 	if led == nil || !moves {
-		return
+		return nil
 	}
 	kind := "refund"
 	if isDispute {
@@ -847,8 +880,8 @@ func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organi
 		_, err = led.Clawback(ctx, in)
 	}
 	if err != nil {
-		log.Error("RECONCILE: %s %s on payment %s for %s/%s did not post: %v — retryable: the provider redelivers",
-			event.Type, id, paymentID, where.Org, where.Subject, err)
+		return fmt.Errorf("%s %s on payment %s for %s/%s did not post: %w", event.Type, id, paymentID, where.Org, where.Subject, err)
 	}
 	_ = org
+	return nil
 }

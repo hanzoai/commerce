@@ -387,6 +387,10 @@ func BrandSlugForHost(host string) string {
 	return brandForHost(normalizeHost(host)).slug
 }
 
+// DefaultBrandSlug is the deployment's own brand: the org its own processor
+// accounts belong to.
+func DefaultBrandSlug() string { return defaultBrand().slug }
+
 // defaultBrand is the deployment's fallback org. It is brandHanzo unless
 // COMMERCE_DEFAULT_ORG names another known brand (so a lux/zoo/pars-only
 // commerce deploy can flip its default without code changes).

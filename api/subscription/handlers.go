@@ -7,26 +7,20 @@ import (
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/subscription"
-	"github.com/hanzoai/commerce/thirdparty/kms"
+	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/permission"
 )
 
 var subscriptionEndpoint = config.UrlFor("api", "/subscription/")
 
-// hydrateOrg populates payment credentials from KMS onto the org.
+// hydrateOrg loads the org's own payment credentials: on this path the org is
+// the merchant.
 func hydrateOrg(c *zip.Ctx, org *organization.Organization) {
-	if v := c.Locals("kms"); v != nil {
-		if kmsClient, ok := v.(*kms.CachedClient); ok {
-			if err := kms.Hydrate(kmsClient, org); err != nil {
-				log.Error("KMS hydration failed for org %q: %v", org.Name, err, c)
-			}
-		}
-	}
+	payment.Hydrate(c.Forward(), org) // Forward carries the caller the host's KMS admits
 }
 
 func getSubscription(c *zip.Ctx) (*subscription.Subscription, error) {

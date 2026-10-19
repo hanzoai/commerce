@@ -34,8 +34,8 @@ package billing
 //     as a value; an empty one falls back to the SAME windowKey derivation the
 //     header-less browser path has always used, so the two endpoints cannot drift
 //     into disagreeing about what "the same request" means.
-//   - It does not choose sandbox or production. That is the org's KMS-hydrated
-//     Square credentials and org.TestMode(), exactly as before — the caller
+//   - It does not choose sandbox or production. That is org.TestMode(), exactly
+//     as before — the caller
 //     cannot ask for a test charge, because a caller that could would be able to
 //     mint spendable balance from a sandbox card.
 
@@ -55,7 +55,6 @@ import (
 	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
-	"github.com/hanzoai/commerce/thirdparty/kms"
 
 	"github.com/hanzoai/commerce/datastore"
 )
@@ -83,9 +82,6 @@ type TakePaymentIn struct {
 	// windowed derivation over the stable request facts, which is what the
 	// browser path does when it sends no X-Idempotency-Key.
 	IdempotencyKey string
-	// KMS is the request-scoped cached client used to hydrate the org's payment
-	// credentials. Nil is legitimate and non-fatal (dev/tests, env-var creds).
-	KMS *kms.CachedClient
 }
 
 // TakePaymentOut is the settled result. The first three fields are the response
@@ -164,14 +160,6 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		return nil, fault(401, "missing identity headers", nil)
 	}
 
-	// Best-effort credential hydration, exactly as the browser path did: a
-	// missing KMS client is dev/test with env-var creds, not a failure.
-	if in.KMS != nil {
-		if err := kms.Hydrate(in.KMS, org); err != nil {
-			log.Error("KMS hydration failed for org %q: %v", org.Name, err)
-		}
-	}
-
 	db := datastore.New(org.Namespaced(ctx))
 
 	// Server-authoritative amount bounds (money-critical). This is the ONLY
@@ -229,9 +217,8 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		Description:    fmt.Sprintf("Top-up %d %s for org %s", in.AmountCents, cur, in.Subject),
 	}
 
-	// The per-org processor registry, built from the org's KMS-hydrated payment
-	// credentials. The global registry holds unconfigured singletons, so a charge
-	// must go through the org-scoped one to reach the provider with real creds.
+	// The per-org processor registry. The global registry holds the webhook
+	// verifier, so a charge goes through the org-scoped one.
 	reg := processorsForOrg(org)
 	proc, err := reg.SelectProcessor(ctx, chargeReq)
 	if err != nil {

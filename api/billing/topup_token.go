@@ -72,8 +72,8 @@ func envCents(key string, def int64) int64 {
 //
 // This is the BROWSER projection of TakePayment (payment_core.go), which holds the
 // whole money move. Everything below the Bind is reading values off the request —
-// the subject from the caller's signed identity, the retry key from the header,
-// the KMS client from the request locals — and handing them to the one core. The
+// the subject from the caller's signed identity, the retry key from the header —
+// and handing them to the one core. The
 // typed op an agent calls is the other projection of the same core, so the
 // bounds, the idempotency derivation and the ledger write are shared rather than
 // reimplemented.
@@ -110,7 +110,6 @@ func TopupWithToken(c *zip.Ctx) error {
 		Currency:       req.Currency,
 		Subject:        userBillingKey(c),
 		IdempotencyKey: strings.TrimSpace(c.Header("X-Idempotency-Key")),
-		KMS:            kmsOf(c),
 	})
 	if f != nil {
 		return jsonhttp.Fail(c, f.Status, f.Message, f.Err)

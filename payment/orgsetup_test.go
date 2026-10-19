@@ -8,7 +8,7 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
-	square "github.com/hanzoai/commerce/thirdparty/square"
+	"github.com/hanzoai/commerce/payment/providers/square"
 )
 
 // ensureDefaultProcessorPolicy guarantees COMMERCE_DISABLED_PROCESSORS is UNSET
@@ -32,15 +32,15 @@ func orgWithSquareCreds() *organization.Organization {
 	return org
 }
 
-func squareProcFromReg(t *testing.T, reg *processor.Registry) *square.SquareProcessor {
+func squareProcFromReg(t *testing.T, reg *processor.Registry) *square.Provider {
 	t.Helper()
 	p, err := reg.Get(processor.Square)
 	if err != nil {
 		t.Fatalf("Square not registered/selectable: %v", err)
 	}
-	sp, ok := p.(*square.SquareProcessor)
+	sp, ok := p.(*square.Provider)
 	if !ok {
-		t.Fatalf("registered Square is %T, want *square.SquareProcessor", p)
+		t.Fatalf("registered Square is %T, want *square.Provider", p)
 	}
 	return sp
 }

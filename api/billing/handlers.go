@@ -187,11 +187,6 @@ func Route(r *zip.Group, args ...zip.Handler) {
 	api.Raw(http.MethodGet, "/events", ListBillingEvents)
 	api.Raw(http.MethodGet, "/events/:id", GetBillingEvent)
 
-	// Inbound webhook ingress (unauthenticated — signature-verified per provider).
-	// Registered outside the admin-token group because providers do not carry
-	// commerce admin tokens; the provider's signature is the trust anchor.
-	r.Raw(http.MethodPost, "/billing/webhooks/:provider", HandleProviderWebhook)
-
 	// Customer portal — the SERVICE-TOKEN face of the same customer surface the
 	// `user` group below serves directly. A host that fronts commerce owns the
 	// customer address itself (cloud's billing app owns /v1/billing/methods) and

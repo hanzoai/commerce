@@ -21,7 +21,6 @@ import (
 	"github.com/hanzoai/commerce/models/paymentmethod"
 	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/thirdparty/kms"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -425,7 +424,7 @@ type RechargeRun struct {
 // A failure to charge one org is that org's result, not the sweep's: the loop
 // continues, so one bad card cannot leave every later customer unfunded. Only
 // the population read failing ends the run.
-func RunAutoRecharge(ctx context.Context, kmsClient *kms.CachedClient, ev *events.Client) (*RechargeRun, error) {
+func RunAutoRecharge(ctx context.Context, ev *events.Client) (*RechargeRun, error) {
 	rootDb := datastore.New(ctx)
 	orgs := make([]*organization.Organization, 0)
 	if _, err := organization.Query(rootDb).GetAll(&orgs); err != nil {
@@ -510,14 +509,6 @@ func RunAutoRecharge(ctx context.Context, kmsClient *kms.CachedClient, ev *event
 			continue
 		}
 
-		// Hydrate this org's payment credentials so ProcessorsForOrg sees real
-		// Square creds for the off-session charge.
-		if kmsClient != nil {
-			if err := kms.Hydrate(kmsClient, org); err != nil {
-				log.Error("KMS hydration failed for org %q during auto-recharge: %v", org.Name, err)
-			}
-		}
-
 		// The cron is not a client request, so it has NO X-Idempotency-Key to read
 		// — and reading the run-all request's header would be actively wrong, since
 		// one header would then be shared by every org this loop charges. The key
@@ -599,7 +590,7 @@ func release(db *datastore.Datastore, org, today string) {
 //
 //	POST /v1/billing/recharge/run-all
 func RunAutoRechargeAllOrgs(c *zip.Ctx) error {
-	run, err := RunAutoRecharge(c.Context(), kmsOf(c), eventsOf(c))
+	run, err := RunAutoRecharge(c.Context(), eventsOf(c))
 	if err != nil {
 		log.Error("Failed to list organizations for auto-recharge: %v", err, c)
 		return jsonhttp.Fail(c, 500, "failed to list organizations", err)

@@ -528,6 +528,12 @@ func (mp *MPCProcessor) ValidateWebhook(ctx context.Context, payload []byte, sig
 	}, nil
 }
 
+// ReceivesWebhooks reports whether the rail can verify the MPC service's
+// deliveries: it holds the secret they are signed with.
+func (mp *MPCProcessor) ReceivesWebhooks() bool { return mp.webhookSecret != "" }
+
+var _ processor.WebhookReceiver = (*MPCProcessor)(nil)
+
 // IsAvailable checks if the MPC and KMS services are reachable.
 //
 // The probe rides the SAME wire keygen does, which is the point: a rail that

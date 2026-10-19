@@ -67,7 +67,7 @@ func TestMount_EquivalentToStandalone(t *testing.T) {
 
 	// Cloud boot — a host zip.App with commerce mounted onto it.
 	zapp := zip.New(zip.Config{Logger: luxlog.New("test")})
-	if err := Mount(zapp, filepath.Join(tmp, "cloud"), luxlog.New("test")); err != nil {
+	if err := Mount(zapp, filepath.Join(tmp, "cloud"), luxlog.New("test"), nil); err != nil {
 		t.Fatalf("Mount: %v", err)
 	}
 
@@ -126,7 +126,7 @@ func TestMount_EquivalentToStandalone(t *testing.T) {
 // for this subsystem.
 func TestMount_ServesScopedHealthz(t *testing.T) {
 	zapp := zip.New(zip.Config{Logger: luxlog.New("test")})
-	if err := Mount(zapp, t.TempDir(), luxlog.New("test")); err != nil {
+	if err := Mount(zapp, t.TempDir(), luxlog.New("test"), nil); err != nil {
 		t.Fatalf("Mount: %v", err)
 	}
 	resp, err := zapp.Test(httptest.NewRequest(http.MethodGet, "/v1/commerce/health", nil))

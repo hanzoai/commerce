@@ -187,9 +187,12 @@ type SubscriptionUpdate struct {
 
 // WebhookEvent represents an incoming webhook from a processor
 type WebhookEvent struct {
-	ID        string                 `json:"id"`
-	Type      string                 `json:"type"`
-	Processor ProcessorType          `json:"processor"`
+	ID        string        `json:"id"`
+	Type      string        `json:"type"`
+	Processor ProcessorType `json:"processor"`
+	// Org is the org whose processor account verified the event — the books it
+	// is applied to. Empty means the deployment's own account.
+	Org       string                 `json:"org,omitempty"`
 	Data      map[string]interface{} `json:"data"`
 	Timestamp int64                  `json:"timestamp"`
 }

@@ -103,17 +103,13 @@ type EmbedConfig struct {
 	// per-org account the AI spend-gate reads (one ledger, no split). nil →
 	// commerce falls back to its own datastore (standalone-safe).
 	Ledger creditledger.CreditLedger
-	// Secrets reads deployment configuration the host already holds, IN-PROCESS.
+	// Secrets is commerce's one secret reader: the host's KMS handle (the cloud
+	// binary passes deps.KMS) or, for the standalone binary, hanzoai/kms/sdk/go.
+	// Commerce holds no KMS client of its own. An org's payment credentials are
+	// read through it at orgs/<org>/<provider>/<NAME> (payment.Hydrate). The same
+	// inversion Ledger uses: a plugin reads secrets through its host.
 	//
-	// The alternative was an env fan-out: KMS -> a k8s Secret -> WIRE_* on the
-	// pod -> os.Getenv here. That is three places for one value to go stale and
-	// a restart to pick up a rotation, and it exists only because commerce's own
-	// KMS client is HTTP and switched off on this deployment (KMS_ENABLED unset).
-	// The host already holds an in-process KMS handle; handing it over is the
-	// same inversion Ledger uses, and it means a plugin reads secrets the way it
-	// reads everything else — through the host, not through the environment.
-	//
-	// nil is fine: callers fall back to whatever they did before.
+	// nil reads nothing: every credential is then absent.
 	Secrets SecretReader
 
 	// Mail delivers commerce's outbound mail — the sale notice to the operator

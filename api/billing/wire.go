@@ -4,18 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/checkout"
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/organization"
-	"github.com/hanzoai/commerce/secrets"
-	"github.com/hanzoai/commerce/thirdparty/kms"
-	"github.com/hanzoai/commerce/types/integration"
+	"github.com/hanzoai/commerce/payment"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -51,14 +47,10 @@ func IsWireUnconfigured(err error) bool { return errors.Is(err, errNoWire) }
 // The host→brand reduction lives HERE rather than at the caller because the
 // brand table is this module's; a caller doing it would keep a second copy of
 // which hostnames are whose, and the two would drift the first time a domain is
-// added. Everything a request holds that this needs — the host string, the
-// caller's billing key, the host's KMS handle — arrives as a value, so a caller
-// with no request and no datastore can still ask.
-//
-// kmsClient may be nil: per-org hydration only runs where KMS is enabled, and
-// where it is not, the host's secret plane below is the answer rather than an
-// error.
-func WireFor(ctx context.Context, host, payer string, kmsClient *kms.CachedClient) (WireInstructions, error) {
+// added. Everything a request holds that this needs — the host string and the
+// caller's billing key — arrives as a value, so a caller with no request can
+// still ask.
+func WireFor(ctx context.Context, host, payer string) (WireInstructions, error) {
 	// The receiving side is a property of the HOST the customer is paying on,
 	// resolved by the same brand table the tenant endpoint uses.
 	brand := checkout.BrandSlugForHost(host)
@@ -72,15 +64,10 @@ func WireFor(ctx context.Context, host, payer string, kmsClient *kms.CachedClien
 		return WireInstructions{}, fmt.Errorf("%w: no org serves %q", errNoWire, brand)
 	}
 
-	if kmsClient != nil {
-		// Not fatal: the host's own secret plane is the fallback, and refusing a
-		// configured rail because one hydration hiccupped would cost a top-up.
-		if err := kms.Hydrate(kmsClient, recv); err != nil {
-			log.Error("KMS hydration failed for org %q: %v", recv.Name, err)
-		}
-	}
-
-	return GetWireInstructions(ctx, recv, brand, payer)
+	// The brand is the org the money is sent to, so its own bank details are read:
+	// orgs/<brand>/wire/<NAME>, through the host's secret plane.
+	payment.Hydrate(ctx, recv, "wire")
+	return GetWireInstructions(recv, payer)
 }
 
 // GetWireInstructions assembles the RECEIVING bank details for a wire top-up —
@@ -90,33 +77,19 @@ func WireFor(ctx context.Context, host, payer string, kmsClient *kms.CachedClien
 // the admin wire/credit verb once the bank confirms receipt. No balance is ever
 // minted here.
 //
-// It takes the RESOLVED receiving org rather than looking one up, so a caller
-// that already holds the row — WireFor, having just hydrated it — does not read
-// it twice, and recv is allowed to be nil: that is not an error but the ordinary
-// state of a deployment whose bank lives only in the host's secret plane.
+// It takes the RESOLVED, hydrated receiving org rather than looking one up.
 //
 // The payer must be named. The reference is the only thing that links arriving
 // money to an account, so an anonymous one would be a destination that credits
 // nobody — the exact failure a wire reference exists to prevent.
-func GetWireInstructions(ctx context.Context, recv *organization.Organization, brand, payer string) (WireInstructions, error) {
+func GetWireInstructions(recv *organization.Organization, payer string) (WireInstructions, error) {
 	if payer == "" {
 		return WireInstructions{}, fmt.Errorf("%w: no payer, so an arriving wire would name nobody", errNoWire)
 	}
-
-	var w integration.WireTransfer
-	if recv != nil {
-		w = recv.Wire
+	if recv == nil {
+		return WireInstructions{}, errNoWire
 	}
-	// Per-org KMS hydration only runs under KMS_ENABLED, which the co-resident
-	// deployment does not set — so the org row is empty there and the rail 503s
-	// however carefully the details were stored. Ask the HOST instead: it holds
-	// an in-process KMS handle already. A per-org row still wins when present.
-	//
-	// The BRAND decides whose bank this is, so it decides which org's secrets to
-	// read — the same slug that selected the receiving org row.
-	if w.AccountNumber == "" && w.IBAN == "" {
-		w = wireFromHost(ctx, brand)
-	}
+	w := recv.Wire
 	if w.AccountNumber == "" && w.IBAN == "" {
 		return WireInstructions{}, errNoWire
 	}
@@ -142,7 +115,7 @@ func GetWireInstructions(ctx context.Context, recv *organization.Organization, b
 
 // GetBillingWireInstructions is the customer's endpoint for those details. It
 // resolves the two things only a request knows — who is asking, and which host
-// they are paying on — and hands the host's KMS handle to the read.
+// they are paying on — and hands them to the read.
 //
 //	GET /v1/billing/wire
 func GetBillingWireInstructions(c *zip.Ctx) error {
@@ -150,9 +123,9 @@ func GetBillingWireInstructions(c *zip.Ctx) error {
 	if payer == "" {
 		return jsonhttp.Fail(c, 401, "Authentication required", nil)
 	}
-	kmsClient, _ := c.Locals("kms").(*kms.CachedClient)
-
-	out, err := WireFor(c.Context(), checkout.RequestHost(c), payer, kmsClient)
+	// Forward carries the request's caller, which the host's KMS reads to admit
+	// the brand's bank read; a raw handler's Context carries none.
+	out, err := WireFor(c.Forward(), checkout.RequestHost(c), payer)
 	if err != nil {
 		return jsonhttp.Fail(c, 503, "Wire transfer not configured", err)
 	}
@@ -175,53 +148,4 @@ func wireReference(payer string) string {
 		}
 	}
 	return b.String()
-}
-
-// wireFromHost reads the receiving-bank details from the HOST'S SECRET PLANE —
-// in-process, by reference, no env and no HTTP.
-//
-// This replaced an env fan-out (KMS -> a k8s Secret -> WIRE_* on the pod ->
-// os.Getenv). That chain worked, and it was three places for one value to go
-// stale plus a pod restart to pick up a rotation, for a value the host already
-// held. Every other plugin asks its host; so does this.
-//
-// THE ADDRESS IS `/orgs/<org>/wire/<NAME>`, which is the host's own convention
-// and not a spelling invented here. cloud writes and reads every in-process KMS
-// secret under `/orgs/{org}/…` — apps/destinations builds
-// "/orgs/"+org+"/destinations/"+platform, apps/integrations the same for
-// integrations, credz the same for service credentials — and its REST surface
-// folds every write under that prefix from the validated org claim, because the
-// org is the tenant boundary and belongs in the key.
-//
-// This read used `/tenants/hanzo/wire/<NAME>`, which nothing writes. Both sides
-// hit the same store keyed by (path, name, env), so an address only one of them
-// spells is a read that can never hit: the rail answered "Wire transfer not
-// configured" no matter how carefully the details were stored, and would have
-// gone on doing so silently. The org also stops being hardcoded — the brand
-// serving the page decides whose bank is shown, so it decides whose secrets are
-// read, and pay.lux.network resolves lux's bank rather than Hanzo's.
-//
-// os.Getenv survives ONLY as the last fallback for a standalone commerce with
-// no host to ask.
-func wireFromHost(ctx context.Context, org string) integration.WireTransfer {
-	org = strings.TrimSpace(org)
-	get := func(name string) string {
-		if org != "" {
-			if v := secrets.String(ctx, "/orgs/"+org+"/wire/"+name); v != "" {
-				return v
-			}
-		}
-		return strings.TrimSpace(os.Getenv(name))
-	}
-	return integration.WireTransfer{
-		BankName:      get("WIRE_BANK_NAME"),
-		AccountHolder: get("WIRE_ACCOUNT_HOLDER"),
-		AccountNumber: get("WIRE_ACCOUNT_NUMBER"),
-		RoutingNumber: get("WIRE_ROUTING_NUMBER"),
-		SWIFT:         get("WIRE_SWIFT"),
-		IBAN:          get("WIRE_IBAN"),
-		BankAddress:   get("WIRE_BANK_ADDRESS"),
-		Reference:     get("WIRE_REFERENCE"),
-		Instructions:  get("WIRE_INSTRUCTIONS"),
-	}
 }

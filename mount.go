@@ -35,7 +35,7 @@ import (
 // per HIP-0302. Empty falls back to the cloud default tree. log is the host's
 // logger — nil means slog.Default(), the same rule Embed uses, so a missing
 // log sink never costs a deployment its checkout router.
-func Mount(app *zip.App, dataDir string, log Log) error {
+func Mount(app *zip.App, dataDir string, log Log, secrets SecretReader) error {
 	if app == nil {
 		return fmt.Errorf("commerce.Mount: nil zip.App")
 	}
@@ -55,6 +55,7 @@ func Mount(app *zip.App, dataDir string, log Log) error {
 		DataDir: dataDir,
 		App:     app,
 		Logger:  log,
+		Secrets: secrets,
 		// RequireIdentity stays env-driven; the gateway in front of the
 		// cloud binary is the trust boundary per HIP-0026.
 		RequireIdentity: false,

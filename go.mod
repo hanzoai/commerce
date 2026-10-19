@@ -27,6 +27,7 @@ require (
 	github.com/hanzoai/decimal v0.1.2
 	github.com/hanzoai/goauthorizenet v1.0.0
 	github.com/hanzoai/gochimp3 v1.0.0
+	github.com/hanzoai/kms/sdk/go v1.1.7
 	github.com/hanzoai/money v0.2.5
 	github.com/hanzoai/namespace v1.2.0
 	github.com/hanzoai/orm v0.6.26
@@ -36,14 +37,14 @@ require (
 	github.com/hanzoai/sqlite v0.5.2
 	github.com/hanzoai/tasks v1.52.9
 	github.com/hanzokv/go/v9 v9.22.0
-	github.com/hanzos3/go v1.0.1
+	github.com/hanzos3/go v1.0.2
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/huandu/facebook v2.3.1+incompatible
 	github.com/icrowley/fake v0.0.0-20240710202011-f797eb4a99c0
 	github.com/keighl/mandrill v0.0.0-20170605120353-1775dd4b3b41
 	github.com/lib/pq v1.12.1
-	github.com/luxfi/crypto v1.20.2
-	github.com/luxfi/geth v1.20.1
+	github.com/luxfi/crypto v1.20.5
+	github.com/luxfi/geth v1.20.2
 	github.com/luxfi/log v1.5.0
 	github.com/luxfi/zap v1.2.7
 	github.com/mholt/binding v0.3.0
@@ -68,6 +69,7 @@ require (
 )
 
 require (
+	filippo.io/hpke v0.4.0 // indirect
 	github.com/ALTree/bigfloat v0.2.0 // indirect
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/andybalholm/brotli v1.2.1 // indirect
@@ -124,14 +126,20 @@ require (
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
 	github.com/luxfi/accel v1.2.4 // indirect
+	github.com/luxfi/address v1.1.1 // indirect
+	github.com/luxfi/age v1.6.0 // indirect
 	github.com/luxfi/cache v1.3.1 // indirect
 	github.com/luxfi/consensus v1.36.11 // indirect
 	github.com/luxfi/constants v1.6.2 // indirect
-	github.com/luxfi/container v0.2.1 // indirect
+	github.com/luxfi/container v0.2.2 // indirect
 	github.com/luxfi/corona v0.10.4 // indirect
 	github.com/luxfi/crypto/ipa v1.2.4 // indirect
 	github.com/luxfi/dkg v0.3.5 // indirect
+	github.com/luxfi/go-bip32 v1.1.0 // indirect
+	github.com/luxfi/go-bip39 v1.2.0 // indirect
 	github.com/luxfi/ids v1.3.2 // indirect
+	github.com/luxfi/keys v1.4.2 // indirect
+	github.com/luxfi/kms v1.12.26 // indirect
 	github.com/luxfi/lattice/v7 v7.1.4 // indirect
 	github.com/luxfi/lens v0.2.1 // indirect
 	github.com/luxfi/magnetar v1.2.3 // indirect
@@ -145,6 +153,7 @@ require (
 	github.com/luxfi/pulsar v1.9.2 // indirect
 	github.com/luxfi/sampler v1.1.0 // indirect
 	github.com/luxfi/threshold v1.12.3 // indirect
+	github.com/luxfi/tls v1.1.1 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/miekg/dns v1.1.72 // indirect

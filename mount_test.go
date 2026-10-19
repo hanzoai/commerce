@@ -25,7 +25,7 @@ import (
 // below.
 func TestMount_RegistersHealth(t *testing.T) {
 	app := zip.New(zip.Config{Logger: luxlog.New("test")})
-	if err := Mount(app, t.TempDir(), luxlog.New("test")); err != nil {
+	if err := Mount(app, t.TempDir(), luxlog.New("test"), nil); err != nil {
 		t.Fatalf("Mount: %v", err)
 	}
 
@@ -61,7 +61,7 @@ func TestMount_RegistersHealth(t *testing.T) {
 // registered nothing at all. Which is the regression it was written to catch.
 func TestMount_PublicSurfaceReachable(t *testing.T) {
 	app := zip.New(zip.Config{Logger: luxlog.New("test")})
-	if err := Mount(app, t.TempDir(), luxlog.New("test")); err != nil {
+	if err := Mount(app, t.TempDir(), luxlog.New("test"), nil); err != nil {
 		t.Fatalf("Mount: %v", err)
 	}
 
@@ -108,7 +108,7 @@ func TestMount_PublicSurfaceReachable(t *testing.T) {
 // zip >= v1.8.3, or MCP disabled) before deleting this guard.
 func TestMount_NoUngatedTypedOpSurface(t *testing.T) {
 	app := zip.New(zip.Config{Logger: luxlog.New("test")})
-	if err := Mount(app, t.TempDir(), luxlog.New("test")); err != nil {
+	if err := Mount(app, t.TempDir(), luxlog.New("test"), nil); err != nil {
 		t.Fatalf("Mount: %v", err)
 	}
 

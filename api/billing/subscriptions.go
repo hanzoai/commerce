@@ -1367,9 +1367,6 @@ func ReactivateBillingSubscription(c *zip.Ctx) error {
 //	POST /v1/billing/subscriptions/:id/renew
 func RenewBillingSubscription(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	// Hydrate the org's payment credentials so the renewal can re-charge the
-	// subscription's vaulted card via the per-org Square processor.
-	hydratePaymentCreds(c, org)
 	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")

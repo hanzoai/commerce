@@ -43,6 +43,14 @@ type PaymentProcessor interface {
 	IsAvailable(ctx context.Context) bool
 }
 
+// WebhookReceiver is a processor that can verify its own inbound deliveries,
+// because it holds the secret they are signed with. The webhook route asks only
+// a processor that is one and says so: a verifier that needs no secret, or one
+// with nothing configured, never admits an event.
+type WebhookReceiver interface {
+	ReceivesWebhooks() bool
+}
+
 // CryptoProcessor extends PaymentProcessor with crypto-specific methods
 type CryptoProcessor interface {
 	PaymentProcessor

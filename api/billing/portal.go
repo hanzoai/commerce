@@ -10,7 +10,6 @@ import (
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/paymentmethod"
 	"github.com/hanzoai/commerce/models/subscription"
-	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -138,8 +137,7 @@ func PortalPaymentMethods(c *zip.Ctx) error {
 		return http.Fail(c, 400, "customerId is required", nil)
 	}
 
-	creds, _ := c.Locals("kms").(*kms.CachedClient)
-	methods, err := ListMethods(c.Context(), org, customerId, "", creds)
+	methods, err := ListMethods(c.Context(), org, customerId, "")
 	if err != nil {
 		// A store that cannot be read has always answered an honest empty list
 		// here rather than a 500 — the portal renders no cards, not an error page.

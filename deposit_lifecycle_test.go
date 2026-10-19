@@ -53,7 +53,6 @@ func TestBootstrapFailsClosedOnAnIncoherentWatchTable(t *testing.T) {
 		HTTPAddr: "127.0.0.1:0", QueryTimeout: 30e9,
 	}
 	cfg.IAM.Enabled = false
-	cfg.KMS.Enabled = false
 	t.Setenv("STRIPE_SECRET_KEY", "")
 	t.Setenv("COMMERCE_STRIPE_SEED", "false")
 	t.Setenv("SQL_URL", "")

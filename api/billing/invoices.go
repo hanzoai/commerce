@@ -239,7 +239,7 @@ func FinalizeInvoice(c *zip.Ctx) error {
 //
 //	POST /v1/billing/invoices/:id/pay
 func PayInvoice(c *zip.Ctx) error {
-	oc, f := collectInvoice(c.Context(), middleware.GetOrganization(c), c.Param("id"), kmsOf(c), eventsOf(c))
+	oc, f := collectInvoice(c.Context(), middleware.GetOrganization(c), c.Param("id"), eventsOf(c))
 	if f != nil {
 		return http.Fail(c, f.Status, f.Message, f.Err)
 	}

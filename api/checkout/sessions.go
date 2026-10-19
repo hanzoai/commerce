@@ -298,8 +298,8 @@ func websiteURLs(org *organization.Organization) []string {
 }
 
 // squareCheckoutClientForOrg creates a Square Payment Links client using the
-// org's KMS-hydrated credentials. Falls back to env vars if the org has no
-// Square credentials configured (backwards compat for single-tenant deploys).
+// org's own credentials (payment.Hydrate). A sandbox org with none uses the
+// deployment's sandbox account; a live org with none is refused.
 func squareCheckoutClientForOrg(org *organization.Organization) (*sqpaymentlinks.Client, string, error) {
 	isSandbox := org.TestMode()
 	sqCfg := org.SquareConfig(isSandbox)

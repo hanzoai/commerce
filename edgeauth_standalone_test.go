@@ -55,7 +55,6 @@ func bootEdgeCommerce(t *testing.T) *App {
 		QueryTimeout: 30e9,
 	}
 	cfg.IAM.Enabled = false
-	cfg.KMS.Enabled = false
 	t.Setenv("COMMERCE_DATA_DIR", cfg.DataDir)
 	t.Setenv("COMMERCE_BASE_URL", "")
 

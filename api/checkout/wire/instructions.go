@@ -5,9 +5,8 @@ import (
 
 	"github.com/zap-proto/zip"
 
-	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
-	"github.com/hanzoai/commerce/thirdparty/kms"
+	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -39,12 +38,8 @@ func Instructions(c *zip.Ctx) error {
 			errors.New("no authenticated organization for wire instructions"))
 	}
 
-	// Hydrate payment credentials from KMS
-	if kmsClient, ok := c.Locals("kms").(*kms.CachedClient); ok {
-		if err := kms.Hydrate(kmsClient, org); err != nil {
-			log.Error("KMS hydration failed for org %q: %v", org.Name, err, c)
-		}
-	}
+	// The org is the merchant here, so its own wire details are read.
+	payment.Hydrate(c.Forward(), org, "wire") // Forward carries the caller the host's KMS admits
 
 	w := org.Wire
 	if w.BankName == "" && w.AccountHolder == "" {

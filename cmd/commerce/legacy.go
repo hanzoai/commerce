@@ -27,12 +27,17 @@ func bootLegacy(dataDir, httpAddr string, dev, requireIdentity bool) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	secrets, err := secretReader()
+	if err != nil {
+		return err
+	}
 	srv, err := commerce.Embed(ctx, commerce.EmbedConfig{
 		DataDir:         dataDir,
 		HTTPAddr:        httpAddr,
 		Dev:             dev,
 		RequireIdentity: requireIdentity,
 		Logger:          logger,
+		Secrets:         secrets,
 	})
 	if err != nil {
 		return err

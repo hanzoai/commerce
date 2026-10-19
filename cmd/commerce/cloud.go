@@ -51,7 +51,11 @@ func bootCloud(dataDir, httpAddr string, dev, requireIdentity bool) error {
 		_ = os.Setenv("COMMERCE_DEV", "true")
 	}
 
-	if err := commerce.Mount(app, dataDir, logger); err != nil {
+	secrets, err := secretReader()
+	if err != nil {
+		return err
+	}
+	if err := commerce.Mount(app, dataDir, logger, secrets); err != nil {
 		return err
 	}
 

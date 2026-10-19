@@ -448,7 +448,7 @@ func TestRenewDue_PayingThePastDueInvoiceBringsThePlanBack(t *testing.T) {
 	}
 
 	deposit(t, db, balSubject, balPrice)
-	paid, f := CollectInvoice(ctx, org, out[0].InvoiceId, nil, nil)
+	paid, f := CollectInvoice(ctx, org, out[0].InvoiceId, nil)
 	if f != nil || !paid.Paid || paid.BalanceUsedCents != balPrice {
 		t.Fatalf("pay the invoice: %+v, %v", paid, f)
 	}
@@ -574,7 +574,7 @@ func TestCollectInvoice_ADrawThatLandedIsNotTakenTwice(t *testing.T) {
 	// Credit arrives before the retry, so a split measured anew would differ from
 	// the one already posted. The retry posts the recorded one.
 	g := grant(t, db, subject, 1000)
-	if paid, f := CollectInvoice(ctx, org, out[0].InvoiceId, nil, nil); f != nil || !paid.Paid {
+	if paid, f := CollectInvoice(ctx, org, out[0].InvoiceId, nil); f != nil || !paid.Paid {
 		t.Fatalf("collect again: %+v, %v", paid, f)
 	}
 	if bal, _ := led.Balance(ctx, org.Name, subject, "usd", false); bal != 20000-2*balPrice {
@@ -669,7 +669,7 @@ func TestRenewDue_APeriodPaidAfterItEndedBuysTheNextOne(t *testing.T) {
 	s, stale := lapsed(t, ctx, org, db)
 
 	deposit(t, db, balSubject, balPrice)
-	if paid, f := CollectInvoice(ctx, org, stale.Id(), nil, nil); f != nil || !paid.Paid {
+	if paid, f := CollectInvoice(ctx, org, stale.Id(), nil); f != nil || !paid.Paid {
 		t.Fatalf("pay the lapsed invoice: %+v, %v", paid, f)
 	}
 	if out := renewDue(ctx, org, ""); len(out) != 1 || !out[0].Success || out[0].InvoiceId != stale.Id() {
@@ -717,7 +717,7 @@ func TestCollectInvoice_OnePeriodIsDrawnOnce(t *testing.T) {
 	if err := second.Create(); err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	if _, f := CollectInvoice(ctx, org, second.Id(), nil, nil); f != nil {
+	if _, f := CollectInvoice(ctx, org, second.Id(), nil); f != nil {
 		t.Fatalf("collect the second invoice: %v", f)
 	}
 	if b := walletOf(t, ctx, org, balSubject); b != 20000-2*balPrice {

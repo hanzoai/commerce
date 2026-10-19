@@ -5,8 +5,8 @@
 // credentials would be shared across orgs.
 //
 // ProcessorsForOrg creates a FRESH registry with per-org processor instances,
-// each configured with credentials from the KMS-hydrated Organization model.
-// Call kms.Hydrate(cc, org) before calling ProcessorsForOrg.
+// each configured with the credentials on the Organization: the org's own when
+// a merchant path loaded them (Hydrate), else the deployment's environment.
 package payment
 
 import (
@@ -20,8 +20,9 @@ import (
 	"github.com/hanzoai/commerce/payment/providers/lemonsqueezy"
 	"github.com/hanzoai/commerce/payment/providers/paypal"
 	"github.com/hanzoai/commerce/payment/providers/recurly"
+	"github.com/hanzoai/commerce/payment/providers/square"
 	"github.com/hanzoai/commerce/payment/providers/stripe"
-	square "github.com/hanzoai/commerce/thirdparty/square"
+	sqenv "github.com/hanzoai/commerce/thirdparty/square"
 )
 
 // defaultSquareWebhookURL is the canonical commerce API ingress URL that
@@ -63,7 +64,7 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 	}
 
 	// Square. The ORG is the single authority for sandbox-vs-production (see
-	// org.TestMode): it selects BOTH which KMS-hydrated credential set to use AND
+	// org.TestMode): it selects BOTH which credential set to use AND
 	// the Environment passed to the provider (which drives the Square API base
 	// URL). This used to be the deployment's SQUARE_ENVIRONMENT, which forced every
 	// tenant in the process into one mode; per-org resolution is what lets one
@@ -78,6 +79,7 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 		sqCfg := org.SquareConfig(useSandbox)
 		token := sqCfg.AccessToken
 		locationID := sqCfg.LocationId
+		appID := sqCfg.ApplicationId
 		webhookKey := org.Square.WebhookSignatureKey
 		// Notification URL that Square signs deliveries against. Prefer the
 		// org's configured value, then the deployment env, then the canonical
@@ -94,22 +96,24 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 		// Env-var credential fallback (KMS disabled or no stored Square creds).
 		// The SAME useSandbox authority picks the sandbox vs production env vars,
 		// so the credential set always matches `env`, and a sandbox org reads
-		// the sandbox names only (square.FromEnv).
+		// the sandbox names only (sqenv.FromEnv).
 		if token == "" {
-			creds := square.FromEnv(useSandbox)
-			token, locationID = creds.AccessToken, creds.LocationID
+			creds := sqenv.FromEnv(useSandbox)
+			token, locationID, appID = creds.AccessToken, creds.LocationID, creds.ApplicationID
 			if webhookKey == "" {
 				webhookKey = strings.TrimSpace(os.Getenv("SQUARE_WEBHOOK_SIGNATURE_KEY"))
 			}
 		}
 
 		if token != "" && locationID != "" {
-			reg.Register(square.NewProcessor(square.Config{
-				AccessToken:   token,
-				LocationID:    locationID,
-				WebhookSecret: webhookKey,
-				WebhookURL:    webhookURL,
-				Environment:   env,
+			reg.Register(square.NewProvider(square.Config{
+				ApplicationID:       appID,
+				AccessToken:         token,
+				LocationID:          locationID,
+				WebhookSignatureKey: webhookKey,
+				WebhookURL:          webhookURL,
+				Environment:         env,
+				Org:                 org.Name,
 			}))
 		}
 	}

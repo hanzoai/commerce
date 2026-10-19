@@ -261,6 +261,3 @@ func safeStr(s *string) string {
 	}
 	return *s
 }
-
-// Compile-time assertion: SquareProcessor satisfies CustomerProcessor.
-var _ processor.CustomerProcessor = (*SquareProcessor)(nil)

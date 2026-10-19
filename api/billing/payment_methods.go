@@ -19,7 +19,6 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
-	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/nscontext"
@@ -193,19 +192,10 @@ type CreateMethodIn struct {
 //
 // email is the caller's own address, resolved at the endpoint from its credential: it
 // names the Square customer profile, and a core must never read an identity it
-// was not handed. creds hydrates the org's processor credentials; nil is
-// legitimate (dev/tests, env-var creds).
-func CreateMethod(ctx context.Context, org *organization.Organization, email string, creds *kms.CachedClient, in CreateMethodIn) (*Method, bool, error) {
+// was not handed.
+func CreateMethod(ctx context.Context, org *organization.Organization, email string, in CreateMethodIn) (*Method, bool, error) {
 	if org == nil {
 		return nil, false, errors.New("payment methods: no organization")
-	}
-
-	// Hydrate payment credentials from KMS so the per-org Square processor
-	// used for card verification carries real credentials.
-	if creds != nil {
-		if err := kms.Hydrate(creds, org); err != nil {
-			log.Error("KMS hydration failed for org %q: %v", org.Name, err)
-		}
 	}
 
 	db := datastore.New(org.Namespaced(ctx))
@@ -347,13 +337,11 @@ func CreatePaymentMethod(c *zip.Ctx) error {
 		return http.Fail(c, 400, "invalid request body", err)
 	}
 
-	// Both come off the request and neither may be re-derived in the core: the
-	// email is who the credential says the caller is, the KMS client is this
-	// request's cached one.
+	// The email comes off the request and may not be re-derived in the core: it
+	// is who the credential says the caller is.
 	email, _ := c.Locals("iam_email").(string)
-	creds, _ := c.Locals("kms").(*kms.CachedClient)
 
-	method, created, err := CreateMethod(c.Context(), org, email, creds, in)
+	method, created, err := CreateMethod(c.Context(), org, email, in)
 	if err != nil {
 		switch {
 		case IsMethodRefused(err):
@@ -412,13 +400,11 @@ func GetPaymentMethod(c *zip.Ctx) error {
 // endpoint, from the credential, and never re-derived here. An empty kind means "any
 // type", which is what an absent ?type has always meant.
 //
-// creds hydrates the org's processor credentials before card facts are healed
-// onto rows vaulted before the vault reported them; nil is legitimate (dev/tests,
-// env-var creds). Nothing is hydrated when the subject holds no methods, because
-// this read sits in front of a card field and a slow KMS must not stall it.
+// Card facts are healed onto rows vaulted before the vault reported them, and only
+// when the subject holds methods, because this read sits in front of a card field.
 //
 // The list is always a list, never nil: an org with no saved cards answers [].
-func ListMethods(ctx context.Context, org *organization.Organization, subject, kind string, creds *kms.CachedClient) ([]Method, error) {
+func ListMethods(ctx context.Context, org *organization.Organization, subject, kind string) ([]Method, error) {
 	methods := make([]Method, 0)
 	if org == nil {
 		return methods, errors.New("payment methods: no organization")
@@ -442,11 +428,6 @@ func ListMethods(ctx context.Context, org *organization.Organization, subject, k
 	// reported card facts, so a customer can tell their saved cards apart.
 	// Best-effort — see heal.
 	if len(rows) > 0 {
-		if creds != nil {
-			if err := kms.Hydrate(creds, org); err != nil {
-				log.Error("KMS hydration failed for org %q: %v", org.Name, err)
-			}
-		}
 		heal(ctx, payment.ProcessorsForOrg(org), rows)
 	}
 
@@ -480,8 +461,7 @@ func ListPaymentMethods(c *zip.Ctx) error {
 		return c.JSON(200, []Method{})
 	}
 
-	creds, _ := c.Locals("kms").(*kms.CachedClient)
-	methods, err := ListMethods(c.Context(), org, subject, c.Query("type"), creds)
+	methods, err := ListMethods(c.Context(), org, subject, c.Query("type"))
 	if err != nil {
 		// A store that cannot be read has always answered an honest empty list
 		// here rather than a 500: the saved-cards panel renders empty instead of
@@ -559,10 +539,7 @@ type Detachment struct {
 // A method the org's namespace does not hold and a method belonging to another
 // subject both answer errNoMethod, so the refusal cannot be used to prove a card
 // id exists.
-//
-// creds hydrates the org's processor credentials, and only when the row actually
-// carries a Square card to detach; nil is legitimate (dev/tests, env-var creds).
-func DetachMethod(ctx context.Context, org *organization.Organization, id, subject string, privileged bool, creds *kms.CachedClient) (*Detachment, error) {
+func DetachMethod(ctx context.Context, org *organization.Organization, id, subject string, privileged bool) (*Detachment, error) {
 	if org == nil {
 		return nil, errors.New("payment methods: no organization")
 	}
@@ -589,11 +566,6 @@ func DetachMethod(ctx context.Context, org *organization.Organization, id, subje
 		custID, _ := pm.Metadata["squareCustomerId"].(string)
 		cardID, _ := pm.Metadata["squareCardId"].(string)
 		if custID != "" && cardID != "" {
-			if creds != nil {
-				if err := kms.Hydrate(creds, org); err != nil {
-					log.Error("KMS hydration failed for org %q: %v", org.Name, err)
-				}
-			}
 			reg := payment.ProcessorsForOrg(org)
 			if cp, ok := squareCustomerProcessorFrom(reg); ok {
 				if err := cp.RemovePaymentMethod(ctx, custID, cardID); err != nil {
@@ -627,9 +599,8 @@ func DetachPaymentMethod(c *zip.Ctx) error {
 		return http.Fail(c, 403, askAnAdmin(c, "remove its cards"), nil)
 	}
 
-	creds, _ := c.Locals("kms").(*kms.CachedClient)
 	detached, err := DetachMethod(c.Context(), org, c.Param("id"),
-		orgBillingKey(c), isPrivilegedBillingCaller(c), creds)
+		orgBillingKey(c), isPrivilegedBillingCaller(c))
 	if err != nil {
 		if IsMethodNotFound(err) {
 			return http.Fail(c, 404, "payment method not found", err)

@@ -7,8 +7,8 @@ import (
 
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
+	"github.com/hanzoai/commerce/payment/providers/square"
 	"github.com/hanzoai/commerce/payment/providers/stripe"
-	square "github.com/hanzoai/commerce/thirdparty/square"
 )
 
 // withDefaultDisabledPolicy guarantees COMMERCE_DISABLED_PROCESSORS is UNSET for
@@ -33,7 +33,7 @@ func configuredStripe() processor.PaymentProcessor {
 
 // configuredSquare returns a REAL Square processor with creds (IsAvailable()==true).
 func configuredSquare() processor.PaymentProcessor {
-	return square.NewProcessor(square.Config{
+	return square.NewProvider(square.Config{
 		AccessToken: "sq-access", LocationID: "sq-loc", Environment: "production",
 	})
 }

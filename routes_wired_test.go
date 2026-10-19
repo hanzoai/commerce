@@ -16,7 +16,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	luxlog "github.com/luxfi/log"
+	"github.com/zap-proto/zip"
 )
 
 // bootTestCommerce constructs a real App with the lightest viable config and
@@ -35,7 +39,6 @@ func bootTestCommerce(t *testing.T) *App {
 		QueryTimeout: 30e9,
 	}
 	cfg.IAM.Enabled = false // no JWKS fetch; admin routes still register, caller JWT absent → 401
-	cfg.KMS.Enabled = false
 
 	// Ensure we do not touch the environment's STRIPE / SQL vars.
 	t.Setenv("STRIPE_SECRET_KEY", "")
@@ -168,5 +171,40 @@ func TestRoutes_NoRouteRefunds(t *testing.T) {
 				t.Fatalf("POST %s reached a handler: status=%d body=%s", path, resp.StatusCode, body)
 			}
 		})
+	}
+}
+
+// TestRoutes_OneWebhookAddress pins the one payment-provider webhook route. It is
+// declared once, in setupRoutes, and answers at /v1/commerce/webhooks/<provider>
+// both standalone and mounted on a host's app; the /v1/billing spelling is gone,
+// in both. A delivery with no signature header reaching the handler is its 400 —
+// which proves the route resolved to HandleProviderWebhook and nothing earlier.
+func TestRoutes_OneWebhookAddress(t *testing.T) {
+	standalone := bootTestCommerce(t)
+	mounted := zip.New(zip.Config{Logger: luxlog.New("test")})
+	if err := Mount(mounted, t.TempDir(), luxlog.New("test"), nil); err != nil {
+		t.Fatalf("Mount: %v", err)
+	}
+	send := map[string]func(*http.Request) (*http.Response, error){
+		"standalone": func(r *http.Request) (*http.Response, error) { return standalone.Router.Test(r) },
+		"mounted":    func(r *http.Request) (*http.Response, error) { return mounted.Test(r) },
+	}
+	for mode, do := range send {
+		resp, err := do(httptest.NewRequest(http.MethodPost, "/v1/commerce/webhooks/square", strings.NewReader(`{}`)))
+		if err != nil {
+			t.Fatalf("%s: %v", mode, err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode != http.StatusBadRequest || !strings.Contains(string(body), "missing webhook signature header") {
+			t.Errorf("%s: POST /v1/commerce/webhooks/square = %d %s, want the handler's 400", mode, resp.StatusCode, body)
+		}
+		resp, err = do(httptest.NewRequest(http.MethodPost, "/v1/billing/webhooks/square", strings.NewReader(`{}`)))
+		if err != nil {
+			t.Fatalf("%s: %v", mode, err)
+		}
+		body, _ = io.ReadAll(resp.Body)
+		if strings.Contains(string(body), "webhook signature") {
+			t.Errorf("%s: POST /v1/billing/webhooks/square reached the webhook handler (%d %s); it must have one address", mode, resp.StatusCode, body)
+		}
 	}
 }

@@ -173,7 +173,7 @@ func TestNoGrantIsMintedForOurOrgs(t *testing.T) {
 			t.Fatalf("seed org %s: %v", name, err)
 		}
 	}
-	if _, err := RunAutoRecharge(ctx, nil, nil); err != nil {
+	if _, err := RunAutoRecharge(ctx, nil); err != nil {
 		t.Fatalf("RunAutoRecharge: %v", err)
 	}
 	for _, name := range ourOrgs {

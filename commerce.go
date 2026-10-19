@@ -61,7 +61,6 @@ import (
 	"github.com/hanzoai/commerce/models/sbomrecord"
 	"github.com/hanzoai/commerce/models/types/currency"
 	commercestore "github.com/hanzoai/commerce/store"
-	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/treasury"
 	"github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/ui"
@@ -139,9 +138,6 @@ type Config struct {
 	// Query timeout
 	QueryTimeout time.Duration
 
-	// KMS configuration for secret management
-	KMS kms.Config
-
 	// IAM configuration for hanzo.id JWT validation
 	IAM struct {
 		Enabled           bool     `json:"enabled"`
@@ -168,14 +164,6 @@ func DefaultConfig() *Config {
 		Infra:             *infraConfigFromEnv(),
 		QueryTimeout:      30 * time.Second,
 	}
-
-	cfg.KMS.Enabled = getEnv("KMS_ENABLED", "false") == "true"
-	cfg.KMS.URL = getEnv("KMS_URL", "")
-	cfg.KMS.ClientID = getEnv("KMS_CLIENT_ID", "")
-	cfg.KMS.ClientSecret = getEnv("KMS_CLIENT_SECRET", "")
-	cfg.KMS.ProjectID = getEnv("KMS_PROJECT_ID", "")
-	cfg.KMS.Org = getEnv("KMS_ORG", "hanzo")
-	cfg.KMS.Environment = getEnv("KMS_ENVIRONMENT", "prod")
 
 	cfg.IAM.Enabled = getEnv("IAM_ENABLED", "true") == "true"
 	cfg.IAM.Issuer = getEnv("IAM_ISSUER", "https://hanzo.id")
@@ -317,9 +305,6 @@ type App struct {
 
 	// Publisher sends commerce events to NATS/JetStream
 	Publisher *events.Publisher
-
-	// KMS client for secret management
-	KMS *kms.CachedClient
 
 	// ZAP node for inter-service vector operations
 	ZAP *infra.ZAPNode
@@ -464,35 +449,6 @@ func (app *App) seedOrganization(orgName string) error {
 	org.AddDefaultTokens()
 
 	org.MustPut()
-
-	// Write payment credentials to KMS (if enabled)
-	if app.KMS != nil {
-		client := app.KMS.Client()
-		squarePath := kms.Path(orgName, "square")
-
-		seedSecrets := []struct{ path, name, envVar string }{
-			// Square — Production
-			{squarePath, "SQUARE_PRODUCTION_APPLICATION_ID", "SQUARE_APPLICATION_ID"},
-			{squarePath, "SQUARE_PRODUCTION_ACCESS_TOKEN", "SQUARE_ACCESS_TOKEN"},
-			{squarePath, "SQUARE_PRODUCTION_LOCATION_ID", "SQUARE_LOCATION_ID"},
-			// Square — Sandbox
-			{squarePath, "SQUARE_SANDBOX_APPLICATION_ID", "SQUARE_SANDBOX_APPLICATION_ID"},
-			{squarePath, "SQUARE_SANDBOX_ACCESS_TOKEN", "SQUARE_SANDBOX_ACCESS_TOKEN"},
-			{squarePath, "SQUARE_SANDBOX_LOCATION_ID", "SQUARE_SANDBOX_LOCATION_ID"},
-			// Square — Webhook
-			{squarePath, "SQUARE_WEBHOOK_SIGNATURE_KEY", "SQUARE_WEBHOOK_SIGNATURE_KEY"},
-		}
-
-		for _, s := range seedSecrets {
-			if v := os.Getenv(s.envVar); v != "" {
-				if err := client.SetSecret(s.path, s.name, v); err != nil {
-					fmt.Fprintf(os.Stderr, "Warning: failed to write %s to KMS: %v\n", s.name, err)
-				} else {
-					fmt.Printf("KMS: wrote %s to %s\n", s.name, s.path)
-				}
-			}
-		}
-	}
 
 	// Get the test-secret-key token for API access
 	tok, err := org.GetTokenByName("test-secret-key")
@@ -810,13 +766,6 @@ func (app *App) Bootstrap() error {
 		}
 	}
 
-	// Initialize KMS client for secret management
-	if app.config.KMS.Enabled && app.config.KMS.URL != "" {
-		kmsClient := kms.NewClient(&app.config.KMS)
-		app.KMS = kms.NewCachedClient(kmsClient)
-		fmt.Println("KMS client initialized")
-	}
-
 	// Initialize analytics client (sends events to analytics-collector via HTTP)
 	if app.config.AnalyticsEndpoint != "" {
 		app.Events = events.NewClient(app.config.AnalyticsEndpoint)
@@ -1110,11 +1059,8 @@ func (app *App) setupRoutes() {
 		// Individual route groups or handlers may override with CachePublic().
 		api.Use(middleware.CachePrivate())
 
-		// Inject KMS, Events, Publisher, and KV into request locals for handlers.
+		// Inject Events, Publisher, and KV into request locals for handlers.
 		api.Use(zip.H(func(c *zip.Ctx) error {
-			if app.KMS != nil {
-				c.Locals("kms", app.KMS)
-			}
 			if app.Events != nil {
 				c.Locals("events", app.Events)
 			}
@@ -1205,6 +1151,12 @@ func (app *App) setupRoutes() {
 			"not echo the host back, so it cannot be used to discover which orgs exist.",
 	})
 	public.Raw(http.MethodGet, "/org", checkout.OrgJSON(orgResolver))
+	// The one payment-provider webhook route, in both modes: a standalone commerce
+	// and the cloud binary that embeds it serve the same address from this one
+	// declaration. Sessionless — the provider's signature over the raw body is the
+	// authentication — and the address is part of what Square signs, so it moves
+	// only with the processor dashboards (payment/orgsetup.go).
+	public.Raw(http.MethodPost, "/webhooks/:provider", middleware.RequestContext(), billingPkg.HandleProviderWebhook)
 	// Public platform product catalog projection (the CMS SOT other surfaces —
 	// docs, console sidebar, pricing — consume). Public + brand-scoped (?brand).
 	public.Raw(http.MethodGet, "/catalog", catalogapi.Public)

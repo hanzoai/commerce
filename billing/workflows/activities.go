@@ -67,7 +67,7 @@ type BillingActivities struct {
 	// ChargeProvider charges the subscription's vaulted card for whatever prepaid
 	// money did not cover (injected like Prepaid to avoid import cycles). nil
 	// keeps the prepaid-only waterfall — the workflow driver leaves it unset
-	// unless it can build a KMS-hydrated per-org charger.
+	// unless it can build a per-org charger.
 	ChargeProvider engine.ProviderCharger
 }
 

@@ -22,7 +22,6 @@ import (
 	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
-	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/treasury"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 )
@@ -108,11 +107,10 @@ type topupRequest struct {
 	Currency        string `json:"currency,omitempty"`
 }
 
-// chargeAndCredit charges a saved payment method via the org's KMS-hydrated
-// processor registry and, on success, credits the user's prepaid balance with a
-// Deposit transaction. The org MUST already be KMS-hydrated by the caller (so
-// payment.ProcessorsForOrg sees real Square credentials). Returns the deposit
-// transaction id and the new balance.
+// chargeAndCredit charges a saved payment method through the org's processor
+// registry (processorsForOrg) and, on success, credits the user's prepaid balance
+// with a Deposit transaction. Returns the deposit transaction id and the new
+// balance.
 //
 // This is the single charge primitive reused by both the on-session top-up
 // (TopupCard) and the off-session auto-recharge cron. For a Square card-on-file
@@ -317,9 +315,6 @@ type TopupCardIn struct {
 	// customer reads it. The two callers say different true things there ("Top-up"
 	// versus "Auto-recharge"), so it is a value rather than a sentence invented here.
 	Description string
-	// KMS is the request-scoped cached client used to hydrate the org's payment
-	// credentials. Nil is legitimate and non-fatal (dev/tests, env-var creds).
-	KMS *kms.CachedClient
 	// Events is the analytics collector the money alarm fires on when a settled
 	// charge fails to move the ledger. Nil is a no-op.
 	Events *events.Client
@@ -364,14 +359,6 @@ func TopupCard(ctx context.Context, org *organization.Organization, in TopupCard
 	}
 	if strings.TrimSpace(in.MethodID) == "" {
 		return nil, methodValidationError{"paymentMethodId is required"}
-	}
-
-	// Best-effort credential hydration, exactly as the browser path did: a
-	// missing KMS client is dev/test with env-var creds, not a failure.
-	if in.KMS != nil {
-		if err := kms.Hydrate(in.KMS, org); err != nil {
-			log.Error("KMS hydration failed for org %q: %v", org.Name, err)
-		}
 	}
 
 	db := datastore.New(org.Namespaced(ctx))
@@ -426,7 +413,7 @@ func TopupCard(ctx context.Context, org *organization.Organization, in TopupCard
 //
 // Everything below the bind is reading values off the request and handing them
 // to TopupCard: the payer from the caller's signed identity, the retry key from
-// the header, the KMS and analytics clients from the request locals. The status
+// the header, the analytics client from the request locals. The status
 // each failure carries is the endpoint's to decide, which is why the core answers
 // with a class and this maps it.
 func Topup(c *zip.Ctx) error {
@@ -465,7 +452,6 @@ func Topup(c *zip.Ctx) error {
 		Currency:       req.Currency,
 		Subject:        subject,
 		IdempotencyKey: strings.TrimSpace(c.Header("X-Idempotency-Key")),
-		KMS:            kmsOf(c),
 		Events:         eventsOf(c),
 	})
 	if err != nil {

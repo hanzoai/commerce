@@ -36,7 +36,6 @@ import (
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/zap-proto/zip"
 )
 
@@ -282,8 +281,8 @@ func voidInvoice(ctx context.Context, org *organization.Organization, id string,
 // sealing a decline would wedge dunning behind a replayed failure and, because
 // only a successful collection emits invoicePaid, would also fire phantom revenue
 // if it were ever treated as terminal. Only success is sealed.
-func CollectInvoice(ctx context.Context, org *organization.Organization, id string, kmsClient *kms.CachedClient, ev *events.Client) (*InvoiceCollection, *PaymentFault) {
-	oc, f := collectInvoice(ctx, org, id, kmsClient, ev)
+func CollectInvoice(ctx context.Context, org *organization.Organization, id string, ev *events.Client) (*InvoiceCollection, *PaymentFault) {
+	oc, f := collectInvoice(ctx, org, id, ev)
 	if f != nil {
 		return nil, f
 	}
@@ -320,17 +319,10 @@ type collectOutcome struct {
 }
 
 // collectInvoice is the worker. See raiseInvoice.
-func collectInvoice(ctx context.Context, org *organization.Organization, id string, kmsClient *kms.CachedClient, ev *events.Client) (*collectOutcome, *PaymentFault) {
+func collectInvoice(ctx context.Context, org *organization.Organization, id string, ev *events.Client) (*collectOutcome, *PaymentFault) {
 	inv, db, f := loadInvoice(ctx, org, id)
 	if f != nil {
 		return nil, f
-	}
-	// Hydrate payment creds so an invoice unpaid by credits+balance can be settled
-	// on the subscription's vaulted card via the per-org Square processor.
-	if kmsClient != nil {
-		if err := kms.Hydrate(kmsClient, org); err != nil {
-			log.Error("KMS hydration failed for org %q: %v", org.Name, err)
-		}
 	}
 
 	rec, replay, gerr := idempotencykey.Begin(db, "billing-pay", "invoice:"+inv.Id())
@@ -418,23 +410,14 @@ func emitInvoiceCtx(ctx context.Context, ev *events.Client, orgName string, inv 
 // otherwise default itself.
 var _ = currency.USD
 
-// eventsOf and kmsOf lift the two request-scoped side channels a core takes as
-// values off a *zip.Ctx. They exist so the HTTP endpoint — and only the HTTP endpoint —
-// knows that these live in locals; the cores take them as parameters and are
-// therefore callable from a typed op, a cron, or a test with no request at all.
+// eventsOf lifts the request-scoped analytics client a core takes as a value off a
+// *zip.Ctx. It exists so the HTTP endpoint — and only the HTTP endpoint — knows that
+// it lives in locals; the cores take it as a parameter and are therefore callable
+// from a typed op, a cron, or a test with no request at all.
 func eventsOf(c *zip.Ctx) *events.Client {
 	if v := c.Locals("events"); v != nil {
 		if ev, ok := v.(*events.Client); ok {
 			return ev
-		}
-	}
-	return nil
-}
-
-func kmsOf(c *zip.Ctx) *kms.CachedClient {
-	if v := c.Locals("kms"); v != nil {
-		if k, ok := v.(*kms.CachedClient); ok {
-			return k
 		}
 	}
 	return nil

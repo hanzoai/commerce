@@ -25,10 +25,9 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 
 	sqCfg := org.SquareConfig(org.TestMode())
 	proc := squarelib.NewProcessor(squarelib.Config{
-		AccessToken:   sqCfg.AccessToken,
-		LocationID:    sqCfg.LocationId,
-		WebhookSecret: org.Square.WebhookSignatureKey,
-		Environment:   org.SquareEnvironment(),
+		AccessToken: sqCfg.AccessToken,
+		LocationID:  sqCfg.LocationId,
+		Environment: org.SquareEnvironment(),
 	})
 
 	for _, p := range payments {

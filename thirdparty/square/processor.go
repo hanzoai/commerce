@@ -2,10 +2,6 @@ package square
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -26,24 +22,13 @@ import (
 	"github.com/hanzoai/commerce/payment/processor"
 )
 
-// webhookMaxAge bounds how old a Square webhook may be before we reject it
-// as a replay. Square stamps each notification with created_at; anything
-// outside this window is refused even if the HMAC is valid. Mirrors the
-// Stripe processor's 5-minute tolerance so both providers behave the same.
-const webhookMaxAge = 5 * time.Minute
-
-// SquareProcessor implements the processor.PaymentProcessor interface
+// SquareProcessor is the Square API client: payments, refunds, customers and
+// cards. payment/providers/square is the processor the registries hold; it
+// delegates every call here and verifies webhooks itself.
 type SquareProcessor struct {
 	*processor.BaseProcessor
-	accessToken   string
-	locationID    string
-	webhookSecret string
-	// webhookURL is the EXACT notification URL configured in the Square
-	// dashboard webhook subscription. Square signs HMAC-SHA256 over
-	// notificationURL + rawBody, so we must verify against the configured
-	// URL — never one derived from the inbound request Host, which a proxy
-	// can rewrite or an attacker can spoof.
-	webhookURL      string
+	accessToken     string
+	locationID      string
 	environment     string // "sandbox" or "production"
 	paymentsClient  *payments.Client
 	refundsClient   *refunds.Client
@@ -51,15 +36,10 @@ type SquareProcessor struct {
 	cardsClient     *cards.Client
 }
 
-// Config holds Square processor configuration
+// Config holds the Square API credentials.
 type Config struct {
-	AccessToken   string
-	LocationID    string
-	WebhookSecret string
-	// WebhookURL is the notification URL registered with Square's webhook
-	// subscription (e.g. https://api.hanzo.ai/v1/commerce/webhooks/square).
-	// Required to validate live Square signatures; see SquareProcessor.webhookURL.
-	WebhookURL  string
+	AccessToken string
+	LocationID  string
 	Environment string // "sandbox" or "production"
 }
 
@@ -69,8 +49,6 @@ func NewProcessor(cfg Config) *SquareProcessor {
 		BaseProcessor: processor.NewBaseProcessor(processor.Square, SquareSupportedCurrencies()),
 		accessToken:   cfg.AccessToken,
 		locationID:    cfg.LocationID,
-		webhookSecret: cfg.WebhookSecret,
-		webhookURL:    cfg.WebhookURL,
 		environment:   cfg.Environment,
 	}
 
@@ -443,124 +421,6 @@ func (sp *SquareProcessor) GetTransaction(ctx context.Context, txID string) (*pr
 	}, nil
 }
 
-// ValidateWebhook validates an incoming webhook and parses the event.
-//
-// Square signs each notification as
-//
-//	base64(HMAC-SHA256(signatureKey, notificationURL + rawBody))
-//
-// where notificationURL is the EXACT URL configured in the dashboard webhook
-// subscription — not the body alone, and not a URL derived from the inbound
-// request (which a proxy can rewrite). The signature arrives base64-encoded in
-// the x-square-hmacsha256-signature header. We decode both the header and our
-// computed digest to raw bytes and compare with hmac.Equal for a clean
-// constant-time check.
-//
-// In addition to the existing event_id idempotency, events older than
-// webhookMaxAge are rejected as replays.
-func (sp *SquareProcessor) ValidateWebhook(ctx context.Context, payload []byte, signature string) (*processor.WebhookEvent, error) {
-	if sp.webhookSecret == "" {
-		return nil, processor.ErrWebhookValidationFailed
-	}
-	if sp.webhookURL == "" {
-		// Square's documented signature is HMAC over notificationURL+body. With
-		// no configured URL we cannot reproduce it and must refuse rather than
-		// silently fall back to a body-only scheme that live Square would never
-		// match. Configure SQUARE_WEBHOOK_URL to the exact dashboard URL.
-		return nil, fmt.Errorf("%w: square webhook URL not configured", processor.ErrWebhookValidationFailed)
-	}
-
-	// Square signs notificationURL + rawBody (NOT the body alone).
-	// See https://developer.squareup.com/docs/webhooks/step3validate
-	mac := hmac.New(sha256.New, []byte(sp.webhookSecret))
-	mac.Write([]byte(sp.webhookURL))
-	mac.Write(payload)
-	expected := mac.Sum(nil)
-
-	// Constant-time comparison defeats timing analysis on the signature.
-	// Square sends the signature base64-encoded; decode to compare raw bytes.
-	provided, err := base64.StdEncoding.DecodeString(strings.TrimSpace(signature))
-	if err != nil {
-		return nil, processor.ErrWebhookValidationFailed
-	}
-	if !hmac.Equal(provided, expected) {
-		return nil, processor.ErrWebhookValidationFailed
-	}
-
-	// Parse the webhook event JSON
-	var evt struct {
-		MerchantID string `json:"merchant_id"`
-		Type       string `json:"type"`
-		EventID    string `json:"event_id"`
-		CreatedAt  string `json:"created_at"`
-		Data       struct {
-			Type   string                 `json:"type"`
-			ID     string                 `json:"id"`
-			Object map[string]interface{} `json:"object"`
-		} `json:"data"`
-	}
-
-	if err := json.Unmarshal(payload, &evt); err != nil {
-		return nil, fmt.Errorf("failed to parse Square webhook: %w", err)
-	}
-
-	// Replay protection: reject events whose created_at is older than the
-	// tolerance. Mirrors the Stripe processor's timestamp check.
-	ts := time.Now().Unix()
-	if evt.CreatedAt != "" {
-		t, perr := time.Parse(time.RFC3339, evt.CreatedAt)
-		if perr != nil {
-			return nil, fmt.Errorf("%w: unparseable created_at %q", processor.ErrWebhookValidationFailed, evt.CreatedAt)
-		}
-		if time.Since(t) > webhookMaxAge {
-			return nil, fmt.Errorf("%w: event %s older than %s", processor.ErrWebhookValidationFailed, evt.EventID, webhookMaxAge)
-		}
-		ts = t.Unix()
-	}
-
-	return &processor.WebhookEvent{
-		ID:        evt.EventID,
-		Type:      mapSquareEventType(evt.Type),
-		Processor: processor.Square,
-		Data:      evt.Data.Object,
-		Timestamp: ts,
-	}, nil
-}
-
-// mapSquareEventType converts Square event types to normalized types.
-func mapSquareEventType(sqType string) string {
-	switch sqType {
-	case "payment.completed":
-		return "payment.completed"
-	case "payment.created":
-		return "payment.created"
-	case "payment.updated":
-		return "payment.updated"
-	case "refund.created":
-		return "refund.created"
-	case "refund.updated":
-		return "refund.updated"
-	case "invoice.payment_made":
-		return "invoice.paid"
-	case "subscription.created":
-		return "subscription.created"
-	case "subscription.updated":
-		return "subscription.updated"
-	case "dispute.created":
-		return "dispute.created"
-	case "dispute.state.updated", "dispute.state.changed":
-		return "dispute.updated"
-	case "customer.created":
-		return "customer.created"
-	case "customer.updated":
-		return "customer.updated"
-	case "customer.deleted":
-		return "customer.deleted"
-	default:
-		return sqType
-	}
-}
-
 // CancelAuthorization voids a previously authorized (uncaptured) payment.
 // Call this immediately after a successful pre-auth to release the hold.
 func (sp *SquareProcessor) CancelAuthorization(ctx context.Context, paymentID string) error {
@@ -584,6 +444,3 @@ func squareCurrency(c currency.Type) *square.Currency {
 	curr := square.Currency(strings.ToUpper(string(c)))
 	return &curr
 }
-
-// Ensure SquareProcessor implements PaymentProcessor
-var _ processor.PaymentProcessor = (*SquareProcessor)(nil)

@@ -3,10 +3,16 @@ package billing
 import (
 	"context"
 	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/zap-proto/zip"
+
 	"github.com/hanzoai/commerce/secrets"
+	"github.com/hanzoai/commerce/util/test/ae"
 )
 
 // wireReference must survive a bank memo field: uppercase [A-Z0-9-] only, and
@@ -26,61 +32,91 @@ func TestWireReference(t *testing.T) {
 	}
 }
 
-// TestWireFromHostReadsTheOrgScopedAddress pins the KMS ADDRESS, because getting
-// it wrong is silent: both sides reach the same store keyed by (path, name, env),
-// so a read at a path nothing writes returns "" and the rail answers "Wire
-// transfer not configured" exactly as it would if no one had ever stored the
-// bank. It read /tenants/hanzo/wire/<NAME> while cloud writes every in-process
-// secret under /orgs/{org}/… — one spelling each, and no test in between.
-//
-// The fake records what was ASKED FOR rather than what came back, which is the
-// only way a test can tell a missing value from a mis-addressed one.
-func TestWireFromHostReadsTheOrgScopedAddress(t *testing.T) {
-	asked := []string{}
+// brandStore is the host's secret plane with cloud's tenancy rule: orgs/<org>/…
+// answers only a call acting for <org>.
+type brandStore map[string]string
+
+func (s brandStore) GetSecret(ctx context.Context, ref string) ([]byte, error) {
+	rest, ok := strings.CutPrefix(ref, "orgs/")
+	if !ok {
+		return nil, errors.New("not a tenant ref")
+	}
+	if org, _, _ := strings.Cut(rest, "/"); zip.CallerOf(ctx).Org != org {
+		return nil, errors.New("refused: the call acts for another org")
+	}
+	if v, ok := s[ref]; ok {
+		return []byte(v), nil
+	}
+	return nil, errors.New("no such secret")
+}
+
+// The brand that owns the host is where the wire is sent, so a customer of any
+// org paying on pay.lux.network reads lux's bank and one on pay.hanzo.ai reads
+// Hanzo's — each from orgs/<brand>/wire, asked as the brand, whoever is asking.
+func TestWireForReadsTheBrandsOwnBank(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	webhookOrg(t, ctx, "hanzo", true)
+	webhookOrg(t, ctx, "lux", true)
 	prev := secrets.Get()
-	secrets.Set(refRecorder{asked: &asked, values: map[string]string{
-		"/orgs/hanzo/wire/WIRE_ACCOUNT_NUMBER": "488108457818",
-		"/orgs/hanzo/wire/WIRE_SWIFT":          "BOFAUS3N",
-	}})
+	secrets.Set(brandStore{
+		"orgs/hanzo/wire/WIRE_ACCOUNT_NUMBER": "000488108457",
+		"orgs/hanzo/wire/WIRE_BANK_NAME":      "Hanzo Bank",
+		"orgs/lux/wire/WIRE_ACCOUNT_NUMBER":   "000999900001",
+		"orgs/lux/wire/WIRE_BANK_NAME":        "Lux Bank",
+	})
 	t.Cleanup(func() { secrets.Set(prev) })
 
-	w := wireFromHost(context.Background(), "hanzo")
-	if w.AccountNumber != "488108457818" || w.SWIFT != "BOFAUS3N" {
-		t.Fatalf("wireFromHost read nothing at the org-scoped address; asked for %v", asked)
-	}
-	for _, ref := range asked {
-		if strings.HasPrefix(ref, "/tenants/") {
-			t.Fatalf("still reading the address nothing writes: %q", ref)
+	payer := zip.WithCaller(ctx, zip.Caller{Org: "acme", User: "alice"})
+	for host, want := range map[string]string{"pay.hanzo.ai": "000488108457", "pay.lux.network": "000999900001"} {
+		w, err := WireFor(payer, host, "acme/alice")
+		if err != nil {
+			t.Fatalf("%s: %v", host, err)
+		}
+		if w.AccountNumber != want || w.Reference != "TOPUP-ACME-ALICE" {
+			t.Fatalf("%s: account %q reference %q, want %q and the payer's reference", host, w.AccountNumber, w.Reference, want)
 		}
 	}
 }
 
-// TestWireFromHostIsPerBrand — the brand serving the page decides whose bank is
-// shown, so a lux page must not read Hanzo's account out of the same store.
-func TestWireFromHostIsPerBrand(t *testing.T) {
+// A brand with no bank in its secrets has nowhere to send the money: one refusal.
+func TestWireForWithNoBankRefuses(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	webhookOrg(t, ctx, "hanzo", true)
 	prev := secrets.Get()
-	secrets.Set(refRecorder{asked: &[]string{}, values: map[string]string{
-		"/orgs/hanzo/wire/WIRE_ACCOUNT_NUMBER": "488108457818",
-		"/orgs/lux/wire/WIRE_ACCOUNT_NUMBER":   "999900001111",
-	}})
+	secrets.Set(brandStore{})
+	t.Cleanup(func() { secrets.Set(prev) })
+	if _, err := WireFor(ctx, "pay.hanzo.ai", "acme/alice"); !IsWireUnconfigured(err) {
+		t.Fatalf("err = %v, want the wire rail's one refusal", err)
+	}
+}
+
+// GET /v1/billing/wire, through the handler: the request's caller reaches the
+// host's KMS (Forward), so a customer of acme paying on pay.hanzo.ai reads
+// Hanzo's bank.
+func TestWireEndpointReadsTheBrandsBankAsTheCaller(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	webhookOrg(t, ctx, "hanzo", true)
+	acme := webhookOrg(t, ctx, "acme", true)
+	prev := secrets.Get()
+	secrets.Set(brandStore{
+		"orgs/hanzo/wire/WIRE_ACCOUNT_NUMBER": "000488108457",
+		"orgs/hanzo/wire/WIRE_BANK_NAME":      "Hanzo Bank",
+	})
 	t.Cleanup(func() { secrets.Set(prev) })
 
-	if got := wireFromHost(context.Background(), "lux").AccountNumber; got != "999900001111" {
-		t.Fatalf("lux read %q — a brand must resolve its OWN bank", got)
+	req := httptest.NewRequest(http.MethodGet, "/v1/billing/wire", nil)
+	req.Host = "pay.hanzo.ai"
+	req.Header.Set(zip.HeaderOrg, "acme")
+	req.Header.Set(zip.HeaderUser, "alice")
+	resp := driveSeeded(func(c *zip.Ctx) {
+		c.SetContext(ctx)
+		c.Locals("organization", acme)
+	}, "/v1/billing/wire", req, GetBillingWireInstructions)
+	raw, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK || !strings.Contains(string(raw), "000488108457") {
+		t.Fatalf("GET /v1/billing/wire = %d %s, want Hanzo's bank", resp.StatusCode, raw)
 	}
 }
-
-type refRecorder struct {
-	asked  *[]string
-	values map[string]string
-}
-
-func (r refRecorder) GetSecret(_ context.Context, ref string) ([]byte, error) {
-	*r.asked = append(*r.asked, ref)
-	if v, ok := r.values[ref]; ok {
-		return []byte(v), nil
-	}
-	return nil, errNoSecret
-}
-
-var errNoSecret = errors.New("no such secret")

@@ -23,11 +23,8 @@ import (
 	_ "github.com/hanzoai/commerce/payment/providers/recurly"
 	_ "github.com/hanzoai/commerce/payment/providers/solanapay"
 
-	// Unified Square provider — follows the braintree/ shape so BD can
-	// resolve it via processor.Get(processor.Square) and Configure()
-	// per-request from payment_providers creds. This init() wins the
-	// registry race over thirdparty/square's env-var init() because it
-	// is imported after.
+	// The one Square processor; its init() seeds the global webhook verifier
+	// from the deployment environment.
 	_ "github.com/hanzoai/commerce/payment/providers/square"
 	_ "github.com/hanzoai/commerce/payment/providers/stripe"
 	_ "github.com/hanzoai/commerce/thirdparty/mpc"

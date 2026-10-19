@@ -27,7 +27,6 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
-	"github.com/hanzoai/commerce/thirdparty/kms"
 	types "github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/util/json/http"
 )
@@ -35,23 +34,12 @@ import (
 // processorsForOrg resolves the per-org payment processor registry — the ONE seam
 // through which saved-card subscription code reaches the payment provider. It is a
 // package var so tests can inject a registry with a fake Square processor;
-// production is payment.ProcessorsForOrg (built from the org's KMS-hydrated
-// credentials). Callers MUST hydrate the org's creds first (hydratePaymentCreds).
+// production is payment.ProcessorsForOrg.
+//
+// Billing is a customer paying the brand, so the paying org's own payment
+// credentials are never loaded here (payment.Hydrate is for the org that receives
+// the money): ProcessorsForOrg falls back to the deployment's own Square account.
 var processorsForOrg = payment.ProcessorsForOrg
-
-// hydratePaymentCreds loads the org's payment-provider credentials from KMS (via
-// the request-scoped cached client in c.Locals) so processorsForOrg sees real
-// Square credentials. Best-effort + non-fatal — mirrors TopupWithToken /
-// CreatePaymentMethod. A no-op when KMS is not wired (dev/tests / env-var creds).
-func hydratePaymentCreds(c *zip.Ctx, org *organization.Organization) {
-	if v := c.Locals("kms"); v != nil {
-		if kmsClient, ok := v.(*kms.CachedClient); ok {
-			if err := kms.Hydrate(kmsClient, org); err != nil {
-				log.Error("KMS hydration failed for org %q: %v", org.Name, err, c)
-			}
-		}
-	}
-}
 
 // inOrgSubject narrows a requested billing subject to the caller's OWN org: it
 // returns the requested subject only when it is the org slug or a <org>/<user>
@@ -178,9 +166,6 @@ type SubscribeIn struct {
 	// this core charges is still the catalog's, discounted by an offer, never a
 	// number the caller chose.
 	Promo *promo.Promo
-	// KMS is the request-scoped cached client used to hydrate the org's payment
-	// credentials. Nil is legitimate and non-fatal (dev/tests, env-var creds).
-	KMS *kms.CachedClient
 	// Events is the analytics collector the money alarm fires on when a settled
 	// charge leaves no subscription behind. Nil is a no-op.
 	Events *events.Client
@@ -389,15 +374,6 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	}
 	if in.Subject == "" {
 		return nil, errors.New("subscribe: no subject")
-	}
-
-	// Hydrate the org's payment credentials so the per-org Square processor used
-	// to vault + charge the card carries real credentials. Best-effort: a missing
-	// KMS client is dev/test with env-var creds, not a failure.
-	if in.KMS != nil {
-		if err := kms.Hydrate(in.KMS, org); err != nil {
-			log.Error("KMS hydration failed for org %q: %v", org.Name, err)
-		}
 	}
 	db := datastore.New(org.Namespaced(ctx))
 
@@ -1135,7 +1111,6 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		Wallet:         req.Wallet,
 		IdempotencyKey: strings.TrimSpace(c.Header("X-Idempotency-Key")),
 		Promo:          promo.Active(c),
-		KMS:            kmsOf(c),
 		Events:         eventsOf(c),
 	})
 	if err != nil {
@@ -1203,9 +1178,8 @@ func chargeSavedCard(ctx context.Context, reg *processor.Registry, cardID, custo
 // open invoice, it resolves the invoice's subscription → DefaultPaymentMethod →
 // the vaulted card (paymentmethod.ProviderRef = card-on-file id, Metadata
 // squareCustomerId) and charges the remaining amount on it via the org's Square
-// processor, returning the processor ref. org MUST already be KMS-hydrated by the
-// caller (as TopupWithToken / auto-recharge do) so processorsForOrg sees real
-// credentials. A resolution/charge failure returns an error → CollectInvoice
+// processor (processorsForOrg), returning the processor ref. A resolution/charge
+// failure returns an error → CollectInvoice
 // leaves the invoice OPEN (no double-charge on retry).
 func chargeProviderForOrg(org *organization.Organization) engine.ProviderCharger {
 	return func(ctx context.Context, db *datastore.Datastore, inv *billinginvoice.BillingInvoice, amountCents int64) (string, error) {

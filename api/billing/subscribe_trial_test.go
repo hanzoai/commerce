@@ -380,7 +380,7 @@ func TestSubscribeTrial_EndDeclineIsARenewalDecline(t *testing.T) {
 	}
 
 	m.chargeErr = nil
-	paid, f := CollectInvoice(ctx, org, invs[0].Id(), nil, nil)
+	paid, f := CollectInvoice(ctx, org, invs[0].Id(), nil)
 	if f != nil || !paid.Paid || paid.CardChargedCents != trialCents {
 		t.Fatalf("pay the invoice: %+v, %v", paid, f)
 	}

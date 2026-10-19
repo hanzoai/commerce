@@ -53,7 +53,7 @@ func registerMPC(t *testing.T, secret string) {
 
 // TestMPCWebhook_ForgedSignatureRejected is the end-to-end regression test for
 // the unauthenticated credit-mint bug. The mpc rail is registered in the global
-// registry by the provider barrel, and /v1/billing/webhooks/:provider is
+// registry by the provider barrel, and /v1/commerce/webhooks/:provider is
 // deliberately unauthenticated — the signature is the only trust anchor. Before
 // the fix this exact request returned 200 and reached the mint with an
 // attacker-chosen tenant, beneficiary and amount. It must now be a 401.
@@ -70,7 +70,7 @@ func TestMPCWebhook_ForgedSignatureRejected(t *testing.T) {
 	for _, sig := range forged {
 		t.Run(sig, func(t *testing.T) {
 			r := newTestEngine()
-			req := httptest.NewRequest(http.MethodPost, "/v1/billing/webhooks/mpc",
+			req := httptest.NewRequest(http.MethodPost, "/v1/commerce/webhooks/mpc",
 				strings.NewReader(string(mpcSettlementEvent("evt_forged"))))
 			req.Header.Set(mpcSigHeader, sig)
 			// Attacker also chooses the tenant.
@@ -93,7 +93,7 @@ func TestMPCWebhook_MissingSignatureRejected(t *testing.T) {
 	registerMPC(t, "whsec_mpc")
 
 	r := newTestEngine()
-	req := httptest.NewRequest(http.MethodPost, "/v1/billing/webhooks/mpc",
+	req := httptest.NewRequest(http.MethodPost, "/v1/commerce/webhooks/mpc",
 		strings.NewReader(string(mpcSettlementEvent("evt_nosig"))))
 	resp, terr := r.Test(req)
 	if terr != nil {
@@ -112,7 +112,7 @@ func TestMPCWebhook_UnsetSecretRejects(t *testing.T) {
 
 	body := mpcSettlementEvent("evt_nosecret")
 	r := newTestEngine()
-	req := httptest.NewRequest(http.MethodPost, "/v1/billing/webhooks/mpc", strings.NewReader(string(body)))
+	req := httptest.NewRequest(http.MethodPost, "/v1/commerce/webhooks/mpc", strings.NewReader(string(body)))
 	// Even a well-formed digest cannot help: there is no key to verify against.
 	req.Header.Set(mpcSigHeader, mpcSign("", body))
 	resp, terr := r.Test(req)
@@ -134,7 +134,7 @@ func TestMPCWebhook_CorrectSignatureReachesTheRail(t *testing.T) {
 
 	body := mpcSettlementEvent("evt_genuine")
 	r := newTestEngine()
-	req := httptest.NewRequest(http.MethodPost, "/v1/billing/webhooks/mpc", strings.NewReader(string(body)))
+	req := httptest.NewRequest(http.MethodPost, "/v1/commerce/webhooks/mpc", strings.NewReader(string(body)))
 	req.Header.Set(mpcSigHeader, mpcSign(secret, body))
 	resp, terr := r.Test(req)
 	if terr != nil {
