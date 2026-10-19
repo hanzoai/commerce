@@ -153,45 +153,46 @@ which EdgeAuth stashes and only `TokenRequired`'s service-token branch reads,
 AFTER verifying the bearer — the mechanism described further down this file.
 Regression: `middleware/edgeauth_test.go`.
 
-| Header                | Source                  | Use                                         |
-|-----------------------|-------------------------|---------------------------------------------|
-| X-Org-Id              | JWT `owner` claim       | Org slug; namespace + scope                 |
-| X-User-Id             | JWT `sub` claim         | User identity                               |
-| X-User-Email          | JWT `email` claim       | Email; audit + notifications                |
-| X-User-IsAdmin        | JWT `isAdmin` claim     | "true" iff ORG-level admin (an org owner)   |
-| X-User-Owner          | JWT `owner` claim       | HOME org — the platform-sudo anchor         |
-| X-Roles               | JWT `roles` claim       | Comma-joined role names (admin/owner/etc.)  |
-| X-User-Permissions    | gateway-derived         | bit.Field as base-10 int; 0 fails closed    |
+| Header                | Written by the edge from                 | Use                                       |
+|-----------------------|------------------------------------------|-------------------------------------------|
+| X-Org-Id              | the org the request acts in              | Org slug; namespace + scope               |
+| X-User-Id             | JWT `sub`                                | User identity                             |
+| X-User-Email          | JWT `email`                              | Email; audit + notifications              |
+| X-User-IsAdmin        | `authz.Claims.Sudo`                      | "true" iff a SuperAdmin — the ONE verdict |
+| X-User-IsOrgAdmin     | `authz.Claims.OrgAdmin(acting org)`      | "true" iff admin of the org acted in      |
+| X-User-Owner          | `authz.Claims.Home` (orgs[0])            | HOME org — identity and billing anchor    |
+| X-User-Permissions    | edge-derived                             | bit.Field as base-10 int; 0 fails closed  |
 
-`X-User-Owner` is minted BEFORE the `/billing/` `?org` override, so it carries the
-caller's un-switchable home org even when `X-Org-Id` is re-pointed at another
-tenant for a SuperAdmin view. `X-User-IsGlobalAdmin` is RETIRED: no longer minted
-by anything, still stripped on ingress so a stale client copy never survives
-(`middleware/edgeauth.go:31-38`).
+The edge in front of commerce — cloud's `SanitizeIdentity` in production, authz/edge
+behind a gateway, `middleware.EdgeAuth` at a standalone one — strips every one of
+these from the request and writes them back from a verified token alone.
+`X-User-IsGlobalAdmin` and `X-Roles` are RETIRED and still stripped.
 
-Fail-closed contract: missing X-User-IsAdmin -> IsAdmin=false; missing
-X-User-Owner -> no home org -> IsSuperAdmin() false. Missing X-User-Permissions ->
-bit.Field(0). Identity headers absent -> handler chain falls through to legacy
-auth (or 401 when COMMERCED_REQUIRE_IDENTITY).
+**SuperAdmin is the edge's verdict, read in one place.** `auth.IAMClaims.Sudo` is
+`X-User-IsAdmin == "true"` (`iammiddleware.GetIAMClaims`), and
+`IAMClaims.IsSuperAdmin()` returns it and nothing else. No org comparison happens in
+commerce. It used to: `IsSuperAdmin` was `strings.EqualFold(homeOrg(), "admin")`,
+with `homeOrg` falling back to the `owner` claim (the MINTING APPLICATION's org), and
+the money bits (Admin|Live) were granted on `X-User-Owner == "admin"`. Cloud writes
+`X-User-Owner` for an application (its own org) and an API key (its holder's org) as
+well as a person, so an admin-org application or an admin-org person's `sk-` key
+could mint money and edit the catalog here while being nobody in the rest of the
+same process, and an org spelled `Admin` would have passed the fold (IAM refuses to
+store one: `schema.OrgName`). No machine is SuperAdmin (owner decision D1, until
+answered: no). `middleware.PlatformOnly`, `IsPlatform`, `MayMintMoney`,
+`MayReadPlatform` and every catalog/plan/rate/promo/invite gate read the verdict.
+The standalone `EdgeAuth` decides it with the one predicate, `IAMClaims.Authz().Sudo()`
+over the verified token's signed `orgs`/`type`, and writes `X-User-Owner` from
+`Home()`.
 
-**Org-admin vs SuperAdmin (anti-conflation):** `X-User-IsAdmin` is the ORG-level
-admin role — an org owner carries `isAdmin=true` within their own org. It is ONLY
-for org-scoped RBAC. Cross-org / platform actions (editing the catalog, plans or
-rates) MUST gate on `auth.IAMClaims.IsSuperAdmin()` — NEVER on `IsAdmin`, never on
-an org-mintable role NAME like "superadmin".
-
-ONE signal, and it is an org rather than a flag: `IsSuperAdmin()` is
-`homeOrg() == "admin"` (`auth/iam.go:269`), membership in the reserved org Hanzo
-IAM seeds SuperAdmins into. It keys on the HOME org, so a SuperAdmin acting inside
-another tenant does not lose sudo, and a switched-into org can never be mistaken
-for `admin`. No boolean is minted at all, which is what makes it unforgeable —
-there is nothing to spoof, and the header that used to carry one is retired.
-
-Enforced at `api/catalog.requireSuperAdmin` (`handlers.go:41`) and the same gate
-open-coded in `api/plan` and `api/rate`, each asking the predicate itself rather
-than trusting a mount. `middleware.RequireAdmin` is the LOOSER org-money gate —
-`IsAdmin || IsSuperAdmin()` — and is never the cross-tenant one.
-Tests: `auth/superadmin_test.go`, `middleware/edgeauth_test.go`.
+**Org-admin vs SuperAdmin (anti-conflation):** `IAMClaims.IsAdmin` is the org-level
+admin of the org the request acts in (`X-User-IsOrgAdmin`), for org-scoped RBAC only.
+`middleware.RequireAdmin` is the LOOSER org-money gate — `IsAdmin || IsSuperAdmin()`
+— and is never the cross-tenant one. Never gate platform work on `IsAdmin` or on an
+org-mintable role NAME like "superadmin".
+Tests: `auth/superadmin_test.go`, `auth/sudo_test.go`,
+`middleware/iammiddleware/sudo_test.go`, `middleware/platformonly_test.go`,
+`middleware/edgeauth_test.go`.
 
 ### EdgeAuth admin billing-view override (middleware/edgeauth.go, 1.42.36+)
 
@@ -213,6 +214,25 @@ Call sites read identity via:
   headers (Owner=X-Org-Id, Subject=X-User-Id, Name=X-User-Id, Email=X-User-Email,
   IsAdmin=X-User-IsAdmin=="true", Roles split from X-Roles). Never nil; do not
   add nil-guards downstream.
+
+## Webhooks — the platform's, not commerce's
+
+An org's webhooks are cloud's `/v1/webhook` (apps/webhook: HMAC-signed, retried,
+every platform event). Commerce's own per-org webhooks are being retired:
+
+- No route creates or edits a row (the `/v1/commerce/webhook` CRUD is gone).
+- The legacy sender (`models/webhook/tasks`) posts `{"data": ...}` and nothing
+  else — the hook's `AccessToken` used to ride in every body — through
+  `hanzoai/outbound`, so a subscriber URL is never a private address.
+- What it reaches, measured (`TestEmitReadsOnlyTheSystemStore`): rows in the
+  SYSTEM store, which are sent every org's events; never a row in an org's own
+  store, where the CRUD wrote every row (it set a namespace on a datastore whose
+  queries ignore one). So CRUD-made rows have received nothing.
+- `models/webhook/census` reads both stores without creating anything, and
+  `Embed` logs it once per boot: one `commerce: legacy webhook subscriber` line per
+  row (store, org, id, host, a digest of the URL, events, enabled, live — never a
+  credential) and a `commerce: legacy webhook census` total. Read it with
+  `kubectl logs` before the sender, the model and the census are deleted.
 
 ## Key Directories
 

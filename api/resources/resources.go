@@ -1,6 +1,6 @@
 // Package resources is the merchant CRUD table — the surfaces a shop owner
 // edits: products and their variants, collections, discounts, sales channels,
-// stock locations, subscribers, webhooks.
+// stock locations, subscribers.
 //
 // It is its OWN package, and that is the whole point. The table used to live
 // inside api.Route, so reaching it meant importing api — which drags checkout,
@@ -45,7 +45,6 @@ import (
 	"github.com/hanzoai/commerce/models/variant"
 	"github.com/hanzoai/commerce/models/wallet"
 	"github.com/hanzoai/commerce/models/watchlist"
-	"github.com/hanzoai/commerce/models/webhook"
 
 	"github.com/hanzoai/commerce/util/rest"
 )
@@ -75,7 +74,9 @@ func Route(api *zip.Group, tokenRequired, adminRequired, requireAccess, productE
 	rest.New(variant.Variant{}).Route(api, tokenRequired, requireAccess)
 	rest.New(wallet.Wallet{}).Route(api, adminRequired)
 	rest.New(watchlist.Watchlist{}).Route(api, tokenRequired)
-	rest.New(webhook.Webhook{}).Route(api, adminRequired)
+	// No webhook CRUD: an org's webhooks are the platform's one webhook layer,
+	// /v1/webhook (signed, retried, every platform event). The legacy rows are
+	// read by models/webhook/census until they are moved there.
 
 	rest.New(saleschannel.SalesChannel{}).Route(api, tokenRequired, requireAccess)
 	rest.New(stocklocation.StockLocation{}).Route(api, tokenRequired, requireAccess)

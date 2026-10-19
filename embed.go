@@ -17,6 +17,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
+	"time"
 
 	"github.com/hanzoai/commerce/secrets"
 
@@ -26,7 +28,29 @@ import (
 	"github.com/hanzoai/commerce/billing/depositledger"
 	"github.com/hanzoai/commerce/mail"
 	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/webhook/census"
 )
+
+// legacyWebhooks logs the census of commerce's legacy webhook rows: one line per
+// row (store, org, host, a digest of the URL, the events it takes — never a
+// credential) and one line with the totals. See models/webhook/census.
+func legacyWebhooks(l Log) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	subs, err := census.Subscribers(ctx)
+	if err != nil {
+		l.Warn("commerce: legacy webhook census failed", "err", err.Error(), "read", len(subs))
+		return
+	}
+	stores := map[string]int{}
+	for _, s := range subs {
+		stores[s.Store]++
+		l.Warn("commerce: legacy webhook subscriber", "store", s.Store, "org", s.Org, "id", s.ID,
+			"name", s.Name, "host", s.Host, "url_hash", s.URLHash, "all", s.All,
+			"events", strings.Join(s.Events, ","), "enabled", s.Enabled, "live", s.Live)
+	}
+	l.Info("commerce: legacy webhook census", "rows", len(subs), "system", stores["system"], "org", stores["org"])
+}
 
 // EmbedConfig configures the in-process Commerce server. Empty values
 // fall through to commerce.DefaultConfig (env-based) so commerced binds
@@ -213,6 +237,11 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 	// tests that Embed a bare commerce spin up nothing.
 	depositWatcher := depositledger.Default()
 	depositWatcher.Start()
+
+	// Who commerce's legacy webhook rows deliver to, logged once per boot so the
+	// move to /v1/webhook names every subscriber before the rows are deleted.
+	// Detached and bounded: it reads every org's store, and a boot waits for none.
+	go legacyWebhooks(cfg.Logger)
 
 	cfg.Logger.Info("commerce.Embed ready",
 		"http", appCfg.HTTPAddr,

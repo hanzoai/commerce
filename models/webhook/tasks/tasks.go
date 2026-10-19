@@ -1,11 +1,24 @@
+// Copyright (c) 2014-present Hanzo AI, Inc.
+// Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
+
+// Package tasks delivers commerce's legacy per-org webhooks while their rows move
+// to the platform's one webhook layer, /v1/webhook (hanzo-inc/cloud apps/webhook:
+// HMAC-signed, retried, every platform event). It is on its way out: no route
+// creates a row any more, and the sender goes once the census
+// (census.Subscribers) has been read and its subscribers re-registered there.
+//
+// Until then a delivery carries the event and nothing else, and it reaches only
+// a public address.
 package tasks
 
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
+
+	"github.com/hanzoai/outbound"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/delay"
@@ -14,90 +27,60 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 )
 
+// Payload is the delivery body: the event's data. The hook's AccessToken is NOT
+// in it — it used to be, so every subscriber endpoint, and anything that logged
+// one, held a credential of the org's.
 type Payload struct {
-	Data        interface{} `json:"data"`
-	AccessToken string      `json:"accessToken"`
+	Data interface{} `json:"data"`
 }
 
-type Client struct {
-	ctx    context.Context
-	client *http.Client
-}
+// client is the one way commerce dials a subscriber URL: hanzoai/outbound, judged
+// at the dial on the address connected, following no redirect. A variable so this
+// package's tests can reach an httptest server; nothing else assigns it.
+var client = outbound.Client(outbound.Options{Timeout: 20 * time.Second, Limit: 64 << 10})
 
-func (c *Client) Post(url string, data interface{}) error {
-	req, err := http.NewRequest("POST", url, json.EncodeBuffer(data))
+// post delivers one payload. A failure is returned, never swallowed.
+func post(ctx context.Context, url string, data interface{}) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, json.EncodeBuffer(data))
 	if err != nil {
 		return err
 	}
-
 	req.Header.Set("User-Agent", "Hanzo/1.0")
 	req.Header.Set("Content-Type", "application/json")
-
-	res, err := c.client.Do(req)
+	res, err := client.Do(req)
 	if err != nil {
 		return err
 	}
 	defer res.Body.Close()
-
-	// Read response
-	body, _ := ioutil.ReadAll(res.Body)
-	log.Debug("Webhook endpoint '%s' responded with %v", url, body)
-
+	_, _ = io.Copy(io.Discard, res.Body)
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		return fmt.Errorf("status %d", res.StatusCode)
+	}
 	return nil
 }
 
-func createClient(ctx context.Context) *Client {
-	// Set timeout
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, time.Second*20)
-	defer cancel()
-
-	client := &http.Client{
-		Timeout: 20 * time.Second,
-	}
-
-	return &Client{ctx: ctx, client: client}
-}
-
-// Fire webhooks
+// Emit fires an org's webhooks for one event.
 var Emit = delay.Func("webhook-emit", func(ctx context.Context, org string, event string, data interface{}) {
-	log.JSON(fmt.Sprintf("Emit webhook '%s' for '%s'", event, org), data, ctx)
-
 	db := datastore.New(ctx)
 	db.SetNamespace(org)
 
-	// Fetch any webhooks for this organization
 	hooks := make([]*webhook.Webhook, 0)
-	_, err := webhook.Query(db).GetAll(&hooks)
-	if err != nil {
-		log.Warn("Failed to retrieve webhooks for organization '%s': %v", org, err, ctx)
-	}
-
-	// No hooks! Bye!
-	if len(hooks) == 0 {
-		log.Debug("No webhooks defined for organization '%s'", org, ctx)
+	if _, err := webhook.Query(db).GetAll(&hooks); err != nil {
+		log.Warn("webhook: list the hooks of %q: %v", org, err, ctx)
 		return
 	}
-
-	// Create client to send event data
-	client := createClient(ctx)
-
 	for _, hook := range hooks {
-		// Has all events enabled
-		if hook.All {
-			client.Post(hook.Url, Payload{
-				Data:        data,
-				AccessToken: hook.AccessToken,
-			})
+		// Who receives is unchanged while the rows move: every hook that names the
+		// event or takes all of them, as before. (Enabled was never read here; the
+		// census reports it so the move can.)
+		if !hook.All && !hook.Events[event] {
 			continue
 		}
-
-		// Check if current event is enabled
-		if enabled, ok := hook.Events[event]; ok && enabled {
-			client.Post(hook.Url, Payload{
-				Data:        data,
-				AccessToken: hook.AccessToken,
-			})
+		dctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+		err := post(dctx, hook.Url, Payload{Data: data})
+		cancel()
+		if err != nil {
+			log.Warn("webhook: %q for %q to hook %s: %v", event, org, hook.Id(), err, ctx)
 		}
 	}
 })
