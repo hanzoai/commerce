@@ -1015,10 +1015,13 @@ pool waits until a target is resolved + onboarded.
 - **Privileged money acts name who took them**: `/credit`, `/deposit`,
   `/credits` (+ void), customer-balance adjustments, bank-transfer matches and
   comp subscriptions stamp `minter(c)` on the row they write.
-- **metering has no off switch.** No `METERING_DISABLED`/`_FAIL_OPEN`/`_TEST`/
-  `_TIER_AWARE`, no `FailOpen`/`Test`/`TierAware` config. A spend-cap error
-  refuses (503); `New` refuses an empty BaseURL; a nil client, a missing
-  `Price` and a proxy with no meter all refuse.
+- **commerce keeps no metering client.** Every product meters through cloud's
+  one package (`hanzo-inc/cloud/metering`), which has no off switch: a balance or
+  spend cap it cannot read refuses the call (503 `balance_unavailable` /
+  `spend_cap_unavailable`). The `metering/` module that was here — its own copy of
+  that client, the `meter-proxy` sidecar and the `deploy` renderer — is deleted.
+  No deployment ran the sidecar, and its tagged releases (`metering/v0.1.x`) stay
+  resolvable for the one module that still pins one.
 
 ## Three money buckets — credits vs prepaid vs card (billing/bucket)
 
