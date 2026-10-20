@@ -379,60 +379,6 @@ func TestPermsHeader_AdminBitIsSuperAdminOnly(t *testing.T) {
 	}
 }
 
-// TestResolveBillingSubject_AdminOverride: a SuperAdmin may retarget the
-// billing view to another org via ?org=, and the namespace follows it.
-func TestResolveBillingSubject_AdminOverride(t *testing.T) {
-	req := billingReq("GET", "/v1/billing/balance?user=admin/z&org=hanzo&currency=usd", "")
-	subject, override := resolveBillingSubject(req, &auth.IAMClaims{Owner: "admin", Sudo: true})
-	if subject != "hanzo" || !override {
-		t.Fatalf("admin ?org=hanzo => subject=%q override=%v, want hanzo,true", subject, override)
-	}
-	q, _ := url.ParseQuery(string(req.URI().QueryString()))
-	if q.Has("org") {
-		t.Fatalf("?org must be stripped from the query, got %q", req.URI().QueryString())
-	}
-	if q.Get("currency") != "usd" {
-		t.Fatalf("unrelated query param clobbered: %q", req.URI().QueryString())
-	}
-}
-
-// TestResolveBillingSubject_NonAdminIgnoresOverride is the isolation proof:
-// a non-SuperAdmin cannot use ?org= to read another org. The override is
-// stripped and the subject stays pinned to the caller's own org.
-func TestResolveBillingSubject_NonAdminIgnoresOverride(t *testing.T) {
-	// Dave: org owner with IsAdmin=true (org-level), NOT a SuperAdmin.
-	req := billingReq("GET", "/v1/billing/balance?org=hanzo&currency=usd", "")
-	subject, override := resolveBillingSubject(req, &auth.IAMClaims{Owner: "maxpower", IsAdmin: true})
-	if subject != "maxpower" || override {
-		t.Fatalf("non-admin ?org=hanzo => subject=%q override=%v, want maxpower,false (isolation)", subject, override)
-	}
-	q, _ := url.ParseQuery(string(req.URI().QueryString()))
-	if q.Has("org") {
-		t.Fatalf("?org must be stripped even for non-admins, got %q", req.URI().QueryString())
-	}
-}
-
-// TestResolveBillingSubject_NoOverride: without ?org, every caller (incl. a
-// SuperAdmin) defaults to their own org and the namespace is untouched.
-func TestResolveBillingSubject_NoOverride(t *testing.T) {
-	req := billingReq("GET", "/v1/billing/balance?currency=usd", "")
-	subject, override := resolveBillingSubject(req, &auth.IAMClaims{Owner: "admin", Sudo: true})
-	if subject != "admin" || override {
-		t.Fatalf("no ?org => subject=%q override=%v, want admin,false", subject, override)
-	}
-}
-
-// TestResolveBillingSubject_RejectsBadSlug: a malformed ?org is discarded
-// (treated as absent), so even an admin stays on their own org rather than a
-// smuggled value.
-func TestResolveBillingSubject_RejectsBadSlug(t *testing.T) {
-	req := billingReq("GET", "/v1/billing/balance?org=hanzo%2Fevil", "")
-	subject, override := resolveBillingSubject(req, &auth.IAMClaims{Owner: "admin", Sudo: true})
-	if subject != "admin" || override {
-		t.Fatalf("bad ?org slug => subject=%q override=%v, want admin,false", subject, override)
-	}
-}
-
 func TestValidOrgSlug(t *testing.T) {
 	good := []string{"hanzo", "admin", "max-power", "a", "org123"}
 	bad := []string{"", "-lead", "Caps", "has space", "slash/x", "under_score", "dot.org"}

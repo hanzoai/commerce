@@ -87,13 +87,11 @@ func ActsAsOrgAdmin(c *zip.Ctx) bool {
 // authority over a foreign org. Fail closed: a missing/blank home org never matches
 // a non-empty effective org. Both are gateway-minted + stripped-on-ingress, so
 // neither is client-forgeable; this enforces their coupling rather than assuming it.
+// The two are compared verbatim, as every org is: folding case or space would let
+// one org's name stand for another's.
 func orgAdminHomeMatches(c *zip.Ctx, effectiveOrg string) bool {
-	home := strings.TrimSpace(c.Header(HeaderUserOwner))
-	eff := strings.TrimSpace(effectiveOrg)
-	if home == "" || eff == "" {
-		return false
-	}
-	return strings.EqualFold(home, eff)
+	home := c.Header(HeaderUserOwner)
+	return home != "" && home == effectiveOrg
 }
 
 var (

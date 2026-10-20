@@ -147,11 +147,10 @@ only to routes registered AFTER the call. It is now installed in `Bootstrap`
 bundle. The boundary NEVER 401s opaque
 service tokens (not JWTs), so the cloud-api → commerce per-org billing money path
 is untouched (`require=false`; `COMMERCED_REQUIRE_IDENTITY` is incompatible with
-the service-token path). The billing header, `X-Org-Id`, is stripped UNCONDITIONALLY along with every other identity
-header. What carries the org through is the private ctx key `ctxKeyClientOrg`,
-which EdgeAuth stashes and only `TokenRequired`'s service-token branch reads,
-AFTER verifying the bearer — the mechanism described further down this file.
-Regression: `middleware/edgeauth_test.go`.
+the service-token path). Every identity header is stripped UNCONDITIONALLY. A
+client's `X-Org-Id` survives only as a SELECTION that `tenancy` grants or refuses
+against a verified JWT's signed membership set (below); an opaque bearer selects
+nothing. Regression: `middleware/edgeauth_test.go`, `middleware/edgeauth_tenancy_test.go`.
 
 | Header                | Written by the edge from                 | Use                                       |
 |-----------------------|------------------------------------------|-------------------------------------------|
@@ -194,19 +193,27 @@ Tests: `auth/superadmin_test.go`, `auth/sudo_test.go`,
 `middleware/iammiddleware/sudo_test.go`, `middleware/platformonly_test.go`,
 `middleware/edgeauth_test.go`.
 
-### EdgeAuth admin billing-view override (middleware/edgeauth.go, 1.42.36+)
+### EdgeAuth tenancy (middleware/edgeauth.go)
 
-At the standalone edge (COMMERCE_EDGE_AUTH=true) EdgeAuth normally locks every
-`/billing/` request to the caller's OWN org (X-Org-Id + user/userId/customerId
-== claims.Owner) — strict per-org isolation. A SuperAdmin may retarget the
-view to another org via `?org=<slug>`: `resolveBillingSubject()` sets both the
-namespace (X-Org-Id) and the locked subject to the requested org. The override
-is HONORED only when `claims.IsSuperAdmin()` holds — `owner=="admin"`, NOT plain
-`IsAdmin`, which is an org-level role every org owner carries. For everyone else
-the `?org` param is consumed-and-ignored (stripped, never honored) so isolation
-can never be weakened. The strip is unconditional, so `?org` can only ever reach
-a handler as the gated signal `resolveBillingSubject` decided. Tests:
-middleware/edgeauth_test.go (admin-switch, non-admin-isolation, bad-slug reject).
+At the standalone edge (COMMERCE_EDGE_AUTH=true) `tenancy` resolves a verified
+token to two orgs by the rule cloud's `SanitizeIdentity` applies, so one token is
+one tenant whichever edge commerce sits behind:
+
+- `X-User-Owner`, the HOME org: a person's `orgs[0]` (`authz.Claims.Home`).
+- `X-Org-Id`, the org the request ACTS in: the client's selection (`X-Org-Id`, or
+  `?org=<slug>` on a `/billing/` path, consumed either way) when the signed set
+  admits it, else the default (`authz.Claims.EffectiveOrg`). A SuperAdmin may
+  select any org; anyone else an org the set opens, never the admin org, a brand's
+  directory, or a platform org held as a plain member.
+- A program (`type: application`) is its application: both are the `owner` claim,
+  and it selects nothing. A person's token without `orgs` acts in no org.
+
+The `owner` claim of a person's token is the org of the application they signed
+in through (the brand app every customer uses), and decides nothing: it used to
+set `X-Org-Id` and the billing subject, so every self-serve user signing in
+through the brand app acted in and billed to the brand's org.
+`/billing/` requests pin user/userId/customerId (query and JSON write body) to the
+acting org. Tests: `middleware/edgeauth_tenancy_test.go`.
 
 Call sites read identity via:
 - `pkg/auth.OrgID(ctx)` / `UserID(ctx)` / `UserEmail(ctx)` (preferred)
@@ -421,9 +428,7 @@ storefront token, or an IAM principal. **There is no anonymous path** — an
 unauthenticated POST is 401 BEFORE any org resolution or Square call.
 
 An opaque (non-JWT) bearer never selects an org. EdgeAuth
-(`middleware/edgeauth.go`) strips a client `X-Org-Id` and stashes it in a
-PRIVATE ctx key (`ctxKeyClientOrg`) that ONLY `TokenRequired`'s service-token
-branch reads, AFTER verifying the bearer == `COMMERCE_SERVICE_TOKEN`.
+(`middleware/edgeauth.go`) strips a client `X-Org-Id` and puts nothing back.
 `TokenRequired`'s IAM branch ENFORCES the requested masks
 (`len(masks)==0 || hasScope(c, permissions)`), and `IAMTokenRequired` requires a
 validated principal (X-User-Id), not merely an `X-Org-Id` selector — the same

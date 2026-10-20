@@ -44,16 +44,17 @@ var identityHeaders = append(append([]string{}, authz.Headers...), authz.Retired
 //     it — but commerce-api is not behind the gateway).
 //
 //  2. If a Bearer IAM JWT is present, verifies it against the IAM JWKS
-//     (fail-closed, RSA-pinned) and mints X-Org-Id / X-User-Id /
-//     X-User-Email / X-User-IsAdmin / X-User-Permissions from the
-//     validated claims, so the existing IAMTokenRequired + handlers
-//     resolve the caller's org exactly as in the gateway path. X-User-IsAdmin
-//     is the SuperAdmin verdict, decided here by authz.Claims.Sudo.
+//     (fail-closed, RSA-pinned) and mints X-Org-Id / X-User-Owner / X-User-Id /
+//     X-User-Email / X-User-IsAdmin / X-User-IsOrgAdmin / X-User-Permissions
+//     from the validated claims, by the rule cloud's identity boundary applies
+//     (tenancy), so IAMTokenRequired and the handlers resolve the caller's org
+//     exactly as behind cloud. X-User-IsAdmin is the SuperAdmin verdict, decided
+//     here by authz.Claims.Sudo.
 //
-//  3. For /billing/ requests, locks the billing-subject to the caller's
-//     own org slug — in the query params (user / userId / customerId) for
-//     reads, AND in the JSON body of writes (POST/PUT/PATCH) — so a browser
-//     can only ever read or WRITE its OWN org's billing (per-org isolation)
+//  3. For /billing/ requests, locks the billing subject to the org the request
+//     acts in — in the query params (user / userId / customerId) for reads, AND
+//     in the JSON body of writes (POST/PUT/PATCH) — so a browser can only ever
+//     read or WRITE the billing of an org it acts in (per-org isolation)
 //     regardless of what it puts on the URL or in the body. Without the body
 //     half, a write whose body customerId differs from the locked query
 //     subject lands under an arbitrary key that every read (forced to the
@@ -84,7 +85,10 @@ func EdgeAuth() zip.Handler {
 
 		req := c.Fiber().Request()
 
-		// (1) Never trust client-supplied identity at a directly-exposed edge.
+		// (1) Never trust client-supplied identity at a directly-exposed edge. The
+		// client's X-Org-Id is kept as a SELECTION, which tenancy grants or refuses
+		// against the signed membership set below; it is never identity.
+		sel := string(req.Header.Peek("X-Org-Id"))
 		for _, h := range identityHeaders {
 			req.Header.Del(h)
 		}
@@ -102,8 +106,8 @@ func EdgeAuth() zip.Handler {
 				// TokenRequired returns a clean 401. Do NOT 401 here so
 				// legacy-token requests still flow through.
 				log.Debug("EdgeAuth: JWT rejected: %v", err)
-			case claims == nil || claims.Owner == "":
-				log.Debug("EdgeAuth: validated JWT has no owner claim")
+			case claims == nil:
+				log.Debug("EdgeAuth: validated JWT has no claims")
 			default:
 				// This edge decides the SuperAdmin verdict, with the one predicate:
 				// authz.Claims.Sudo over the verified token's signed membership set — a
@@ -113,14 +117,24 @@ func EdgeAuth() zip.Handler {
 				// downstream reads that.
 				ac := claims.Authz()
 				claims.Sudo = ac.Sudo()
-				// X-User-Owner is the subject's HOME org (authz Home: orgs[0]; empty for
-				// a machine), minted BEFORE the /billing/ ?org override below so it
-				// keeps naming the caller's own org when X-Org-Id is re-pointed at
-				// another tenant for a SuperAdmin view.
-				if home := ac.Home(); home != "" {
+				// A billing view selects its org with ?org=<slug>, which is consumed
+				// here whoever sends it and is then a selection like any other.
+				billing := strings.Contains(string(req.URI().Path()), "/billing/")
+				if billing {
+					if o := consumeOrgOverride(req); o != "" {
+						sel = o
+					}
+				}
+				// X-User-Owner is the subject's HOME org and X-Org-Id the org the
+				// request acts in; they differ when a person selects another org of
+				// their set, or a SuperAdmin any org.
+				home, org := tenancy(ac, sel)
+				if home != "" {
 					req.Header.Set("X-User-Owner", home)
 				}
-				req.Header.Set("X-Org-Id", claims.Owner)
+				if org != "" {
+					req.Header.Set("X-Org-Id", org)
+				}
 				if uid := claims.Subject; uid != "" {
 					req.Header.Set("X-User-Id", uid)
 				} else if claims.Name != "" {
@@ -134,23 +148,16 @@ func EdgeAuth() zip.Handler {
 				}
 				req.Header.Set("X-User-Permissions", permsHeader(claims))
 
-				// (3) Per-org isolation: the browser never chooses whose
-				// billing it reads — the subject is locked to the caller's
-				// own org slug. A SuperAdmin (and only a SuperAdmin) may
-				// redirect the view to another org via ?org=<slug>; for
-				// everyone else the override is consumed-and-ignored so
-				// isolation can never be weakened (fail-closed).
-				if strings.Contains(string(req.URI().Path()), "/billing/") {
-					subject, override := resolveBillingSubject(req, claims)
-					if override {
-						req.Header.Set("X-Org-Id", subject)
-					}
-					lockBillingSubject(req, subject)
-					lockBillingSubjectBody(req, subject)
+				// (3) Per-org isolation: the browser never chooses whose billing
+				// it reads beyond the org it acts in. With no org, nothing is pinned
+				// and IAMTokenRequired resolves no principal (fail closed).
+				if billing {
+					lockBillingSubject(req, org)
+					lockBillingSubjectBody(req, org)
 				}
 				// The org-admin bit, for the org the request acts in, by the same
 				// published predicate (authz.Claims.OrgAdmin), never by a role name.
-				if ac.OrgAdmin(string(req.Header.Peek("X-Org-Id"))) {
+				if ac.OrgAdmin(org) {
 					req.Header.Set(iammiddleware.HeaderUserIsOrgAdmin, "true")
 				}
 			}
@@ -190,8 +197,8 @@ func looksLikeJWT(tok string) bool {
 // caller satisfy those gates. It is therefore SuperAdmin-only: an org-level
 // admin (claims.IsAdmin — an org OWNER like maxpower carries it within their own
 // org) must NOT mint free balance or charge cards platform-wide. Only
-// claims.IsSuperAdmin() — the verdict this edge decided above, the same one the
-// cross-org ?org billing-view override (resolveBillingSubject) reads — grants Admin.
+// claims.IsSuperAdmin() — the verdict this edge decided above, the same one that
+// lets a SuperAdmin select any org (tenancy) — grants Admin.
 //
 // Live is the "real money, not sandbox" mode bit, orthogonal to authority: an org
 // owner running live payment flows is exactly right. It stays on claims.IsAdmin so
@@ -329,44 +336,47 @@ func pinJSONSubjectFields(raw []byte, subject string) ([]byte, bool) {
 	return bytes.TrimRight(b.Bytes(), "\n"), true
 }
 
-// resolveBillingSubject decides whose billing a verified request may read,
-// and whether the org namespace header must follow that choice.
+// tenancy names the subject's HOME org and the org a request ACTS in, by the rule
+// cloud's identity boundary applies (SanitizeIdentity), so a standalone commerce
+// and one behind cloud resolve one token to one tenant.
 //
-// Default (every caller): the subject is the caller's OWN org slug
-// (claims.Owner) — strict per-org isolation. A SuperAdmin, and ONLY a
-// SuperAdmin, may redirect the view to another org with ?org=<slug>.
+// A person's home is the first entry of the signed membership set (authz Home),
+// and the org they act in is the selection that set admits, else their default
+// (authz.Claims.EffectiveOrg): any org for a SuperAdmin; for anyone else an org
+// the set opens, which is never the admin org, a brand's directory, or an org the
+// platform runs held as a plain member. The `owner` claim of a person's token is
+// the org of whichever application minted it — the brand app every customer signs
+// in through — and decides neither.
 //
-// The ?org override is consumed (stripped from the query) unconditionally so
-// it can never reach a handler as anything but the admin-gated signal decided
-// here. It is HONORED only when claims.IsSuperAdmin() holds; a non-admin's
-// ?org is read, discarded, and the subject stays pinned to their own org.
-// Returns (subject, override) where override means the namespace header
-// (X-Org-Id) must be re-pointed at subject.
-//
-// SuperAdmin is the ONE canonical predicate (auth.IAMClaims.IsSuperAdmin: the edge's
-// authz.Claims.Sudo verdict), shared by every cross-tenant gate (this override,
-// checkout tenant admin, the money-mint gate). Plain IsAdmin is deliberately NOT trusted: it is an
-// ORG-level role (an org owner carries IsAdmin=true within their own org), so gating
-// cross-org reads on it would let any org owner view another org via ?org= — the
-// exact isolation break this boundary exists to stop.
-func resolveBillingSubject(r *fasthttp.Request, claims *auth.IAMClaims) (string, bool) {
-	own := strings.ToLower(strings.TrimSpace(claims.Owner))
-	reqOrg := consumeOrgOverride(r)
-	if reqOrg != "" && claims.IsSuperAdmin() {
-		return reqOrg, true
+// A program (a client_credentials token, IAM's signed `type`) IS its application,
+// whose org is the `owner` claim; it carries no membership set and selects
+// nothing. A person's token without a membership set, or whose home bears an
+// unsafe rune, acts in no org, and every org gate downstream refuses it.
+func tenancy(ac *authz.Claims, sel string) (home, org string) {
+	if ac.Program() {
+		if ac.Owner == "" || authz.HasUnsafeRune(ac.Owner) {
+			return "", ""
+		}
+		return ac.Owner, ac.Owner
 	}
-	return own, false
+	home = ac.Home()
+	if home == "" || authz.HasUnsafeRune(home) {
+		return "", ""
+	}
+	org, _ = ac.EffectiveOrg(sel)
+	return home, org
 }
 
-// consumeOrgOverride removes and returns a normalized ?org=<slug> billing-view
-// override. It ALWAYS deletes the param (so it never leaks downstream) and
-// returns "" when the param is absent or not a syntactically valid org slug.
+// consumeOrgOverride removes and returns a ?org=<slug> billing-view selection. It
+// ALWAYS deletes the param (so it never leaks downstream) and returns "" when the
+// param is absent or not an org slug. The slug is taken verbatim: folding case or
+// space would make one org's name select another.
 func consumeOrgOverride(r *fasthttp.Request) string {
 	q, _ := url.ParseQuery(string(r.URI().QueryString()))
 	if !q.Has("org") {
 		return ""
 	}
-	raw := strings.ToLower(strings.TrimSpace(q.Get("org")))
+	raw := q.Get("org")
 	q.Del("org")
 	r.URI().SetQueryString(q.Encode())
 	if !validOrgSlug(raw) {

@@ -85,3 +85,30 @@ func TestIsOrgAdmin(t *testing.T) {
 		}
 	}
 }
+
+// The org-admin grant holds in the caller's home org only, and the home org is
+// compared with the effective org verbatim: "Acme" is not "acme", and a padded name
+// is no org at all.
+func TestOrgAdminHomeMatches_IsVerbatim(t *testing.T) {
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	for _, tc := range []struct {
+		home, eff string
+		want      bool
+	}{
+		{"acme", "acme", true},
+		{"Acme", "acme", false},
+		{"acme", "ACME", false},
+		{" acme", "acme", false},
+		{"acme", "acme ", false},
+		{"", "", false},
+		{"acme", "", false},
+	} {
+		c := app.TestCtx(http.MethodPost, "/v1/store")
+		if tc.home != "" {
+			c.Fiber().Request().Header.Set(HeaderUserOwner, tc.home)
+		}
+		if got := orgAdminHomeMatches(c, tc.eff); got != tc.want {
+			t.Errorf("orgAdminHomeMatches(home %q, effective %q) = %v, want %v", tc.home, tc.eff, got, tc.want)
+		}
+	}
+}
