@@ -98,6 +98,9 @@ type canonicalPlan struct {
 		Apps     []string `json:"licensing.app_ids,omitempty"`
 		Features []string `json:"licensing.engine_features,omitempty"`
 		Seats    *int     `json:"licensing.seats,omitempty"`
+		// EarlyAccess is licensing.early_access: the tier's subscribers open every
+		// product in beta without applying.
+		EarlyAccess bool `json:"licensing.early_access,omitempty"`
 	} `json:"entitlements,omitempty"`
 }
 
@@ -107,10 +110,10 @@ type canonicalPlan struct {
 // the row — Backfill only fills the second.
 func licensingOf(cp *canonicalPlan) *plan.Licensing {
 	e := cp.Entitlements
-	if len(e.Products) == 0 && len(e.Apps) == 0 && len(e.Features) == 0 && e.Seats == nil {
+	if len(e.Products) == 0 && len(e.Apps) == 0 && len(e.Features) == 0 && e.Seats == nil && !e.EarlyAccess {
 		return nil
 	}
-	return &plan.Licensing{Products: e.Products, Apps: e.Apps, Features: e.Features, Seats: e.Seats}
+	return &plan.Licensing{Products: e.Products, Apps: e.Apps, Features: e.Features, Seats: e.Seats, EarlyAccess: e.EarlyAccess}
 }
 
 // staticPlan is a plan as this package reads it — from the embed or an authority

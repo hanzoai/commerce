@@ -12,10 +12,7 @@
       "Search the web from chat",
       "Write, edit and create content",
       "Make code, pages and charts beside the chat",
-      "Choose how hard it thinks",
-      "Build apps with Hanzo Dev",
-      "Connect any MCP server in Hanzo Dev",
-      "The Hanzo CLI for macOS, Windows and Linux"
+      "Choose how hard it thinks"
     ],
     "limits": {
       "agents": 1,
@@ -47,6 +44,9 @@
     "priceAnnual": 16.67,
     "features": [
       "Everything in Free, plus:",
+      "Build apps with Hanzo Dev",
+      "Connect any MCP server in Hanzo Dev",
+      "The Hanzo CLI for macOS, Windows and Linux",
       "Every model, including Enso Ultra and Kai",
       "Usage included on every model",
       "Priority inference and priority support",
@@ -109,7 +109,12 @@
     "features": [
       "Everything in Pro, plus:",
       "5x more usage than Pro",
-      "5x higher limits every 5 hours and every day"
+      "5x higher limits every 5 hours and every day",
+      "Hanzo Bot: 1 bot of your own",
+      "Early access to new models and features",
+      "Train custom models on your data",
+      "Hanzo Engine to run models on your own hardware",
+      "Dedicated support"
     ],
     "payouts": {
       "idleResalePercent": 20,
@@ -137,6 +142,7 @@
         "vision",
         "audio"
       ],
+      "licensing.early_access": true,
       "commerce.support_tier": "dedicated",
       "commerce.idle_resale_percent": 20,
       "team.guests": 3,
@@ -177,7 +183,12 @@
     "features": [
       "Everything in Pro, plus:",
       "20x more usage than Pro",
-      "20x higher limits every 5 hours and every day"
+      "20x higher limits every 5 hours and every day",
+      "Hanzo Bot: 3 bots of your own",
+      "Early access to new models and features",
+      "Train custom models on your data",
+      "Hanzo Engine to run models on your own hardware",
+      "Dedicated support"
     ],
     "payouts": {
       "idleResalePercent": 20,
@@ -205,16 +216,17 @@
         "vision",
         "audio"
       ],
+      "licensing.early_access": true,
       "commerce.support_tier": "dedicated",
       "commerce.idle_resale_percent": 20,
       "team.guests": 3,
       "ai.agents": 10,
-      "ai.bots": 1
+      "ai.bots": 3
     },
     "limits": {
       "teamGuests": 3,
       "agents": 10,
-      "bots": 1
+      "bots": 3
     },
     "price_ref": {
       "currency": "USD",
@@ -245,7 +257,12 @@
     "features": [
       "Everything in Pro, plus:",
       "50x more usage than Pro",
-      "50x higher limits every 5 hours and every day"
+      "50x higher limits every 5 hours and every day",
+      "Hanzo Bot: 5 bots of your own",
+      "Early access to new models and features",
+      "Train custom models on your data",
+      "Hanzo Engine to run models on your own hardware",
+      "Dedicated support"
     ],
     "payouts": {
       "idleResalePercent": 20,
@@ -273,16 +290,17 @@
         "vision",
         "audio"
       ],
+      "licensing.early_access": true,
       "commerce.support_tier": "dedicated",
       "commerce.idle_resale_percent": 20,
       "team.guests": 3,
       "ai.agents": 10,
-      "ai.bots": 1
+      "ai.bots": 5
     },
     "limits": {
       "teamGuests": 3,
       "agents": 10,
-      "bots": 1
+      "bots": 5
     },
     "price_ref": {
       "currency": "USD",
@@ -314,7 +332,12 @@
     "features": [
       "Everything in Pro, plus:",
       "100x more usage than Pro",
-      "100x higher limits every 5 hours and every day"
+      "100x higher limits every 5 hours and every day",
+      "Hanzo Bot: 10 bots of your own",
+      "Early access to new models and features",
+      "Train custom models on your data",
+      "Hanzo Engine to run models on your own hardware",
+      "Dedicated support"
     ],
     "payouts": {
       "idleResalePercent": 20,
@@ -342,16 +365,17 @@
         "vision",
         "audio"
       ],
+      "licensing.early_access": true,
       "commerce.support_tier": "dedicated",
       "commerce.idle_resale_percent": 20,
       "team.guests": 3,
       "ai.agents": 10,
-      "ai.bots": 1
+      "ai.bots": 10
     },
     "limits": {
       "teamGuests": 3,
       "agents": 10,
-      "bots": 1
+      "bots": 10
     },
     "price_ref": {
       "currency": "USD",

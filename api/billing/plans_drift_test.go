@@ -20,6 +20,10 @@ import (
 // entry whose digests must equal the new bytes, and editing the bytes under the
 // current version breaks the current entry.
 var versionDigests = map[string]struct{ subscription, dns string }{
+	"1.8.22": {
+		subscription: "e7ef23f2926f1d1b54aa0802a2cbdc69c1aa4738db94b54738ea1e8ac0711b5b",
+		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
+	},
 	"1.8.21": {
 		subscription: "daabfab8b2e954f6c6e4b5337127aa93fd47f8416f06dc80308fc5b51b29a11a",
 		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
@@ -208,10 +212,10 @@ func TestVendoredPlanRoster(t *testing.T) {
 	cases := map[string]struct{ agents, bots int }{
 		"free":         {1, 0},  // one personal agent, no bot
 		"dev":          {10, 0}, // Pro, the $20 tier
-		"max-5x":       {10, 1}, // both Max multiples may run a resident bot
-		"max-20x":      {10, 1},
-		"max-50x":      {10, 1},
-		"max-100x":     {10, 1},
+		"max-5x":       {10, 1}, // a Max rung's own bots grow with it: 1, 3, 5, 10
+		"max-20x":      {10, 3},
+		"max-50x":      {10, 5},
+		"max-100x":     {10, 10},
 		"max":          {10, 1}, // retired, and answered by max-5x for its holders
 		"advisory":     {10, 1},
 		"dedicated":    {-1, 1},

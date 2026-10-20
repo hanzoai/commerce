@@ -309,6 +309,11 @@ type Licensing struct {
 	// unlimited, nil is unstated. (Distinct from Limits.MaxMembers, which counts
 	// billing-org membership.)
 	Seats *int `json:"seats,omitempty"`
+	// EarlyAccess opens every product in beta to a subscriber's org without an
+	// application to the beta (catalog licensing.early_access; every Max rung).
+	// Cloud's beta predicate reads it here, on the row, so a retired tier keeps it
+	// the way it keeps its products.
+	EarlyAccess bool `json:"earlyAccess,omitempty"`
 }
 
 // Limits is a plan's limits block — capacities, seat floors, included credit and
@@ -614,7 +619,8 @@ func licensingEqual(a, b *Licensing) bool {
 	return slices.Equal(a.Products, b.Products) &&
 		slices.Equal(a.Apps, b.Apps) &&
 		slices.Equal(a.Features, b.Features) &&
-		eqInt(a.Seats, b.Seats)
+		eqInt(a.Seats, b.Seats) &&
+		a.EarlyAccess == b.EarlyAccess
 }
 
 // limitsEqual compares Limits BY VALUE.

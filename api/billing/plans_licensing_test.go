@@ -43,6 +43,50 @@ func TestPublishedTiersCarryLicensing(t *testing.T) {
 	}
 }
 
+// TestEarlyAccessIsMaxs: licensing.early_access lands on the row of every Max rung
+// and of nothing else, because cloud's beta predicate reads the row, never the
+// catalog: a plan that carried it only in the catalog would open no beta, and one
+// that carried it by accident would open the betas to every subscriber of it.
+func TestEarlyAccessIsMaxs(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	if _, _, err := SeedPlans(c); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	max := map[string]bool{"max-5x": true, "max-20x": true, "max-50x": true, "max-100x": true}
+	for _, r := range SeedRows() {
+		p := plan.New(plan.AuthorityDB(c))
+		ok, err := p.Query().Filter("Slug=", r.Slug).Get()
+		if err != nil || !ok {
+			t.Fatalf("seeded plan %q missing: ok=%v err=%v", r.Slug, ok, err)
+		}
+		got := p.Licensing != nil && p.Licensing.EarlyAccess
+		if got != max[r.Slug] {
+			t.Errorf("plan %q early access = %v, want %v", r.Slug, got, max[r.Slug])
+		}
+	}
+	// A row that lost it is corrected by the next boot, and a converged one is not
+	// rewritten: early access is compared, not only copied.
+	if _, corrected, err := SeedPlans(c); err != nil || corrected != 0 {
+		t.Fatalf("re-seed = corrected %d, err %v; want 0 — a converged catalog rewrites nothing", corrected, err)
+	}
+	p := plan.New(plan.AuthorityDB(c))
+	if ok, err := p.Query().Filter("Slug=", "max-20x").Get(); err != nil || !ok {
+		t.Fatalf("max-20x: ok=%v err=%v", ok, err)
+	}
+	p.Licensing.EarlyAccess = false
+	if err := p.Update(); err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	if _, corrected, err := SeedPlans(c); err != nil || corrected != 1 {
+		t.Fatalf("re-seed = corrected %d, err %v; want 1", corrected, err)
+	}
+	p = plan.New(plan.AuthorityDB(c))
+	if ok, err := p.Query().Filter("Slug=", "max-20x").Get(); err != nil || !ok || !p.Licensing.EarlyAccess {
+		t.Fatalf("max-20x after re-seed: early access %v, want true", p.Licensing)
+	}
+}
+
 // TestLicensingSurvivesRetirement is the whole point, stated as the rule: a tier
 // the catalog STOPS publishing keeps knowing what it licensed.
 //
