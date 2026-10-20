@@ -17,6 +17,7 @@ package promo
 
 import (
 	"context"
+	"errors"
 	nethttp "net/http"
 	"strconv"
 	"strings"
@@ -37,8 +38,9 @@ import (
 
 // Route mounts the SuperAdmin plan-promo surface at /v1/platform/promo. Like the
 // metrics god-view the route-level token gate is a NO-OP on the IAM path, so each
-// handler re-enforces RequirePlatformAdmin — the real boundary. cloud's
-// /v1/admin/promos (core.Guard) proxies here with the service token.
+// handler re-enforces RequirePlatformAdmin — the real boundary. This is the
+// standalone binary's face; cloud's /v1/admin/promos asks ReadPromo and SetPromo
+// over its internal plane, where the store is.
 func Route(r *zip.Group, args ...zip.Handler) {
 	api := r.Group("platform")
 	api.Use(middleware.TokenRequired(permission.Admin))
@@ -75,13 +77,9 @@ type Promo struct {
 	Active     bool       `json:"active"`
 }
 
-// platformDB opens the reserved platform namespace, regardless of the caller's own
-// org — the singleton promo and the plan coupons are platform-global, read by the
+// platform opens the reserved platform namespace, regardless of the caller's own
+// org: the singleton promo and the plan coupons are platform-global, read by the
 // public plans view and the sale, and written only by a SuperAdmin.
-func platformDB(c *zip.Ctx) *datastore.Datastore { return platform(c.Context()) }
-
-// platform is platformDB asked from a context alone, for the callers that hold
-// no request: the plan catalog read over the internal plane, and the sale.
 func platform(ctx context.Context) *datastore.Datastore {
 	return datastore.New(nscontext.WithNamespace(ctx, platformNS))
 }
@@ -128,41 +126,78 @@ func GetPromo(c *zip.Ctx) error {
 	if !middleware.RequirePlatformAdmin(c) {
 		return nil
 	}
-	db := platformDB(c)
-	p, err := load(db)
+	p, err := ReadPromo(c.Context())
 	if err != nil {
 		return http.Fail(c, 500, "failed to load promo", err)
 	}
-	if p == nil {
-		return c.JSON(200, Promo{Plans: []string{}})
-	}
-	return c.JSON(200, toPromo(p))
+	return c.JSON(200, p)
 }
 
-// PutPromo upserts the singleton platform plan promo (SuperAdmin only). percentOff
-// is clamped to (0,100]; the window/plans/active are stored on the one Promotion.
+// PutPromo upserts the singleton platform plan promo (SuperAdmin only).
 //
 //	PUT /v1/platform/promo
 func PutPromo(c *zip.Ctx) error {
 	if !middleware.RequirePlatformAdmin(c) {
 		return nil
 	}
-
 	var req Promo
 	if err := c.Bind(&req); err != nil {
 		return http.Fail(c, 400, "invalid request body", err)
 	}
-	if req.PercentOff < 0 || req.PercentOff > 100 {
-		return http.Fail(c, 400, "percentOff must be between 0 and 100", nil)
+	p, err := SetPromo(c.Context(), req)
+	switch {
+	case IsPromoSpecRefused(err):
+		return http.Fail(c, 400, err.Error(), nil)
+	case err != nil:
+		log.Error("failed to save promo: %v", err, c)
+		return http.Fail(c, 500, "failed to save promo", err)
 	}
-	if req.Start != nil && req.End != nil && req.End.Before(*req.Start) {
-		return http.Fail(c, 400, "end must not precede start", nil)
-	}
+	return c.JSON(200, p)
+}
 
-	db := platformDB(c)
+// errPromoSpec is a promo the singleton cannot be stored as.
+type errPromoSpec struct{ msg string }
+
+func (e errPromoSpec) Error() string { return e.msg }
+
+// IsPromoSpecRefused reports whether SetPromo refused the promo itself — a percent
+// outside 0-100 or a window that ends before it starts — rather than failing to
+// store it.
+func IsPromoSpecRefused(err error) bool {
+	var e errPromoSpec
+	return errors.As(err, &e)
+}
+
+// ReadPromo returns the platform plan promo as stored, whether or not it is on
+// sale now (Current answers that), or a zeroed, inactive promo when none is
+// configured. It is the value-taking core GetPromo serves and the internal plane
+// asks, so a peer that holds no store reads the one row the same way.
+func ReadPromo(ctx context.Context) (Promo, error) {
+	p, err := load(platform(ctx))
+	if err != nil {
+		return Promo{}, err
+	}
+	if p == nil {
+		return Promo{Plans: []string{}}, nil
+	}
+	return toPromo(p), nil
+}
+
+// SetPromo replaces the platform plan promo with in, creating the singleton when
+// there is none: percentOff 0-100, the window [start, end] (an end before the
+// start is refused), the plan slugs it covers (empty is every paid plan) and
+// whether it is on. It returns the promo as stored.
+func SetPromo(ctx context.Context, in Promo) (Promo, error) {
+	if in.PercentOff < 0 || in.PercentOff > 100 {
+		return Promo{}, errPromoSpec{"percentOff must be between 0 and 100"}
+	}
+	if in.Start != nil && in.End != nil && in.End.Before(*in.Start) {
+		return Promo{}, errPromoSpec{"end must not precede start"}
+	}
+	db := platform(ctx)
 	p, err := load(db)
 	if err != nil {
-		return http.Fail(c, 500, "failed to load promo", err)
+		return Promo{}, err
 	}
 	if p == nil {
 		p = promotionModel.New(db)
@@ -170,32 +205,29 @@ func PutPromo(c *zip.Ctx) error {
 	}
 	p.Type = promoType
 	p.IsAutomatic = true
-	p.StartsAt = req.Start
-	p.EndsAt = req.End
-	if req.Active {
+	p.StartsAt = in.Start
+	p.EndsAt = in.End
+	if in.Active {
 		p.Status = "active"
 	} else {
 		p.Status = "draft"
 	}
-	plans := make([]interface{}, 0, len(req.Plans))
-	for _, s := range req.Plans {
+	plans := make([]interface{}, 0, len(in.Plans))
+	for _, s := range in.Plans {
 		if s = strings.TrimSpace(s); s != "" {
 			plans = append(plans, s)
 		}
 	}
-	p.Metadata = Map{"percentOff": req.PercentOff, "plans": plans}
-
-	var serr error
+	p.Metadata = Map{"percentOff": in.PercentOff, "plans": plans}
 	if p.Id() == "" {
-		serr = p.Create()
+		err = p.Create()
 	} else {
-		serr = p.Update()
+		err = p.Update()
 	}
-	if serr != nil {
-		log.Error("failed to save promo: %v", serr, c)
-		return http.Fail(c, 500, "failed to save promo", serr)
+	if err != nil {
+		return Promo{}, err
 	}
-	return c.JSON(200, toPromo(p))
+	return toPromo(p), nil
 }
 
 // Active reports the platform plan promo IF it is active AND within its UTC window

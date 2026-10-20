@@ -166,3 +166,34 @@ func TestPromo_AppliesTo(t *testing.T) {
 		t.Fatal("listed plans must apply only to listed slugs")
 	}
 }
+
+// The promo is a value a peer holding no store can read and set over the plane, so
+// the cores take a context and the spec, and the HTTP handlers are their faces.
+func TestPromo_Cores(t *testing.T) {
+	tc := ae.NewContext()
+	defer tc.Close()
+	warmPlatformNS()
+	ctx := context.Background()
+
+	got, err := ReadPromo(ctx)
+	if err != nil || got.PercentOff != 0 || got.Active || got.Plans == nil {
+		t.Fatalf("ReadPromo with none = %+v, %v; want a zeroed inactive promo with an empty plan list", got, err)
+	}
+	end := time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC)
+	if _, err := SetPromo(ctx, Promo{PercentOff: 40, Plans: []string{" pro ", ""}, Active: true, End: &end}); err != nil {
+		t.Fatalf("SetPromo: %v", err)
+	}
+	got, err = ReadPromo(ctx)
+	if err != nil || got.PercentOff != 40 || !got.Active || len(got.Plans) != 1 || got.Plans[0] != "pro" || got.End == nil {
+		t.Fatalf("ReadPromo = %+v, %v; want the promo just set", got, err)
+	}
+	start := end.Add(time.Hour)
+	for _, bad := range []Promo{{PercentOff: 101}, {PercentOff: -1}, {PercentOff: 10, Start: &start, End: &end}} {
+		if _, err := SetPromo(ctx, bad); !IsPromoSpecRefused(err) {
+			t.Errorf("SetPromo(%+v) = %v, want a refused spec", bad, err)
+		}
+	}
+	if got, _ := ReadPromo(ctx); got.PercentOff != 40 {
+		t.Errorf("a refused spec moved the promo: %+v", got)
+	}
+}
