@@ -565,6 +565,23 @@ never both.
 
 All require `permission.Admin` token (org live/test JWT). Cloud-api connects via `commerceEndpoint` + `commerceToken` env vars.
 
+## The invoice PDF (api/billing/invoice_pdf.go, pdf.go)
+
+`InvoicePDF(ctx, org, id, brand)` renders one invoice; `brand` is the slug of the
+brand that bills (hanzo, lux, zoo, pars; anything else is hanzo). Cloud passes the
+caller's brand; the standalone route reads it from the request host
+(`checkout.BrandSlugForHost`). The page is US Letter in Zen Regular and SemiBold
+(embedded TrueType subsets in `fonts/`, OFL, credited in NOTICE) and two inks: the
+brand's mark (vector paths from @hanzo/logo, @hanzo/brand and @zooai/logo) and name
+top left, the number and a status pill top right (PAID is the one solid pill), billed
+to / issued / due or paid / period, the amount in words, a ruled line-item table,
+totals right-aligned, and the brand's legal name and address at the foot (Hanzo
+Industries Inc., 995 Market St, San Francisco, CA 94103; Lux and Zoo state none and
+close with their name and site). Long invoices continue onto numbered pages. Text is
+Windows-1252 (accents kept, other scripts read "?") and uncompressed, so the number
+and amounts stay greppable; the output is a pure function of the row. Tests:
+`invoice_pdf_test.go`.
+
 ## One way to price a plan — the published catalog, applied by a DEPLOY
 
 The plan catalog is `@hanzo/plans` (npm, public). `scripts/fetch-plans.sh` vendors

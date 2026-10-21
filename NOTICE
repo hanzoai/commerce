@@ -32,3 +32,10 @@ Medusa Next.js starter
 Medusa ships no NOTICE file; there are no further attributions to propagate.
 The Go backend is not a Medusa fork -- it is an independent native
 implementation that reaches API parity with Medusa v2's admin domains.
+
+The invoice PDF (api/billing/fonts) embeds Zen Regular and Zen SemiBold, the
+Hanzo type family (@hanzo/font), cut to the Windows-1252 repertoire, under the
+SIL Open Font License 1.1 (api/billing/fonts/OFL.txt):
+
+    Copyright (c) 2023 Vercel, in collaboration with basement.studio
+    Copyright (c) 2026 Hanzo AI, Inc.

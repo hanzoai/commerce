@@ -38,7 +38,7 @@ func TestRenderInvoicePDF_ValidStructure(t *testing.T) {
 	inv.CreditApplied = 0
 	inv.AmountDue = 3334
 
-	pdf := renderInvoicePDF(inv, "Acme Inc")
+	pdf := renderInvoicePDF(inv, "Acme Inc", "hanzo")
 
 	if !bytes.HasPrefix(pdf, []byte("%PDF-")) {
 		t.Fatalf("PDF must start with %%PDF-")
@@ -60,14 +60,14 @@ func TestRenderInvoicePDF_ValidStructure(t *testing.T) {
 	}
 
 	// Deterministic: same invoice → identical bytes (idempotent render).
-	if pdf2 := renderInvoicePDF(inv, "Acme Inc"); !bytes.Equal(pdf, pdf2) {
+	if pdf2 := renderInvoicePDF(inv, "Acme Inc", "hanzo"); !bytes.Equal(pdf, pdf2) {
 		t.Fatalf("render is not deterministic")
 	}
 }
 
 // TestRenderInvoicePDF_EscapesAndDefaults proves PDF string metacharacters in
-// user-controlled text are escaped (no stream break) and the org name defaults
-// to Hanzo when empty.
+// user-controlled text are escaped (no stream break), and that an invoice with
+// no brand is billed by Hanzo.
 func TestRenderInvoicePDF_EscapesAndDefaults(t *testing.T) {
 	inv := &billinginvoice.BillingInvoice{}
 	inv.SetNumber(1)
@@ -78,12 +78,12 @@ func TestRenderInvoicePDF_EscapesAndDefaults(t *testing.T) {
 	inv.Subtotal = 500
 	inv.AmountDue = 500
 
-	pdf := renderInvoicePDF(inv, "")
+	pdf := renderInvoicePDF(inv, "", "")
 	if !bytes.HasPrefix(pdf, []byte("%PDF-")) || !bytes.HasSuffix(pdf, []byte("%%EOF\n")) {
 		t.Fatalf("escaped PDF is malformed")
 	}
-	if !bytes.Contains(pdf, []byte("Hanzo")) {
-		t.Fatalf("empty org name must default to Hanzo")
+	if !bytes.Contains(pdf, []byte("(Hanzo)")) {
+		t.Fatalf("an invoice with no brand must be billed by Hanzo")
 	}
 	// The raw '(' / ')' / '\' must appear only in escaped form inside the item text.
 	if !bytes.Contains(pdf, []byte(`\(name\)`)) {
@@ -91,6 +91,69 @@ func TestRenderInvoicePDF_EscapesAndDefaults(t *testing.T) {
 	}
 	if !bytes.Contains(pdf, []byte(`\\`)) {
 		t.Fatalf("backslash in item text was not escaped")
+	}
+}
+
+// TestRenderInvoicePDF_Issuer proves each brand bills under its own name and
+// mark: Hanzo's footer carries its legal name and address, and a Lux or Zoo
+// invoice names neither Hanzo nor Hanzo's address.
+func TestRenderInvoicePDF_Issuer(t *testing.T) {
+	inv := &billinginvoice.BillingInvoice{}
+	inv.SetNumber(3)
+	inv.Status = billinginvoice.Paid
+	inv.LineItems = []billinginvoice.LineItem{{Description: "Pro", Amount: 2000}}
+	inv.Subtotal, inv.AmountDue, inv.AmountPaid = 2000, 2000, 2000
+
+	hanzo := renderInvoicePDF(inv, "Acme Inc", "hanzo")
+	for _, want := range []string{"(Hanzo)", "Hanzo Industries Inc.", "995 Market St, San Francisco, CA 94103", "(PAID)", "/FontFile2", "Zen-Regular", "Zen-SemiBold"} {
+		if !bytes.Contains(hanzo, []byte(want)) {
+			t.Errorf("hanzo invoice lacks %q", want)
+		}
+	}
+	for brand, name := range map[string]string{"lux": "(Lux)", "zoo": "(Zoo)", "LUX ": "(Lux)"} {
+		pdf := renderInvoicePDF(inv, "Acme Inc", brand)
+		if !bytes.Contains(pdf, []byte(name)) {
+			t.Errorf("%s invoice lacks its name %s", brand, name)
+		}
+		if bytes.Contains(pdf, []byte("Hanzo")) || bytes.Contains(pdf, []byte("995 Market")) {
+			t.Errorf("%s invoice names Hanzo", brand)
+		}
+	}
+	if bytes.Equal(renderInvoicePDF(inv, "Acme Inc", "lux"), renderInvoicePDF(inv, "Acme Inc", "zoo")) {
+		t.Fatalf("lux and zoo invoices are the same file")
+	}
+}
+
+// TestRenderInvoicePDF_Pages proves a long invoice carries on to further pages
+// and numbers them, rather than writing rows off the bottom of one.
+func TestRenderInvoicePDF_Pages(t *testing.T) {
+	inv := &billinginvoice.BillingInvoice{}
+	inv.SetNumber(9)
+	inv.Status = billinginvoice.Open
+	for i := 0; i < 60; i++ {
+		inv.LineItems = append(inv.LineItems, billinginvoice.LineItem{Description: "Usage", Amount: 100, Quantity: 1, UnitPrice: 100})
+	}
+	inv.Subtotal, inv.AmountDue = 6000, 6000
+	pdf := renderInvoicePDF(inv, "Acme Inc", "hanzo")
+	if !bytes.Contains(pdf, []byte("/Count 3")) {
+		t.Fatalf("60 rows should take three pages")
+	}
+	if !bytes.Contains(pdf, []byte("Page 3 of 3")) || !bytes.Contains(pdf, []byte("(continued)")) {
+		t.Fatalf("continued pages are not marked")
+	}
+}
+
+// TestRenderInvoicePDF_Latin1 proves a name with accents keeps them, encoded in
+// the pages' Windows-1252 as octal escapes, and a character outside it reads "?".
+func TestRenderInvoicePDF_Latin1(t *testing.T) {
+	inv := &billinginvoice.BillingInvoice{}
+	inv.SetNumber(5)
+	inv.LineItems = []billinginvoice.LineItem{{Description: "Caf\u00e9 \u2014 \u6771", Amount: 100}}
+	pdf := renderInvoicePDF(inv, "Zo\u00eb GmbH", "hanzo")
+	for _, want := range []string{`Zo\353 GmbH`, `Caf\351 \227 ?`} {
+		if !bytes.Contains(pdf, []byte(want)) {
+			t.Errorf("PDF lacks %s", want)
+		}
 	}
 }
 

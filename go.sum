@@ -360,8 +360,6 @@ github.com/hanzo-ds/native v0.71.0 h1:4kXkUzXuoX7TEqoW7AhGqRcvCufHXkHRkppgQsKRF5
 github.com/hanzo-ds/native v0.71.0/go.mod h1:11FZtFdtfXMnmpybDEW6+uPRWFeC3TOT59YaV+lED+E=
 github.com/hanzoai/account v0.2.0 h1:WxIut3YMz8JNdHerlRIqP1a+k3P79BIKM1mjfRFDG0Y=
 github.com/hanzoai/account v0.2.0/go.mod h1:8OzIGRphAhlabOI74O4GoL3RM0y8mbUV0pQUKgXLjkw=
-github.com/hanzoai/authz v1.10.29 h1:b4vWtI9g4Mvay1zizW7cwly/hDk06r+oAdA/y+317Do=
-github.com/hanzoai/authz v1.10.29/go.mod h1:xkzFdiIFx4UQMlU0NkmSRz0dgRQYqSXpKgVjn8ijn3E=
 github.com/hanzoai/authz v1.10.47 h1:ary/mw4lUYRetRlX+Ou61QXh8ig8EbD/ALR9fpg23EU=
 github.com/hanzoai/authz v1.10.47/go.mod h1:UaE7uejr8GTgosNO/teyBOItT85/T6+L3hpFPkSOzWE=
 github.com/hanzoai/base v1.5.18 h1:vYM9dxbl/ChMD+s19JTONG0cL3B437EZbbA9HolkAjo=
