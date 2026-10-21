@@ -10,6 +10,7 @@ import (
 
 	"github.com/hanzoai/commerce/billing/bucket"
 	"github.com/hanzoai/commerce/billing/creditledger"
+	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/billing/tier"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -440,8 +441,13 @@ func deriveTier(db *datastore.Datastore, user string, test bool) (tier.Name, err
 }
 
 // rowTier is the tier one subscription confers: a trialing row Starter, an active
-// row its plan's (activeTier), and past_due / unpaid / canceled none.
+// row its plan's (activeTier), and past_due / unpaid / canceled none. A row
+// canceled at the end of its period confers none once that period is over
+// (engine.Over), swept or not.
 func rowTier(s *subscription.Subscription) tier.Name {
+	if engine.Over(s, time.Now()) {
+		return tier.Free
+	}
 	switch s.Status {
 	case subscription.Trialing:
 		return tier.Starter

@@ -444,14 +444,24 @@ func assignInvoiceNumber(db *datastore.Datastore, inv *billinginvoice.BillingInv
 	}
 }
 
-// ended ends a row canceled at the end of what it has been served (servedTo: its
-// period, or its trial) once that is over: it is canceled as of that end and
-// reports true. Any other row is untouched.
-func ended(sub *subscription.Subscription, now time.Time) bool {
+// Over reports whether a row canceled at the end of what it has been served
+// (servedTo: its period, or its trial) has reached that end. Such a row confers
+// nothing from then on, whether or not a sweep has yet marked it canceled
+// ([ended] is that mark), so a reader never serves a plan past its last day
+// because the renewal sweep has not run.
+func Over(sub *subscription.Subscription, now time.Time) bool {
 	end := servedTo(sub)
-	if !sub.EndCancel || end.IsZero() || now.Before(end) {
+	return sub.EndCancel && !end.IsZero() && !now.Before(end)
+}
+
+// ended ends a row canceled at the end of what it has been served once that is
+// over (Over): it is canceled as of that end and reports true. Any other row is
+// untouched.
+func ended(sub *subscription.Subscription, now time.Time) bool {
+	if !Over(sub, now) {
 		return false
 	}
+	end := servedTo(sub)
 	switch sub.Status {
 	case subscription.Active, subscription.PastDue, subscription.Trialing:
 	default:

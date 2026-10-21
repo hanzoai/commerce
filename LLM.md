@@ -889,6 +889,27 @@ on the row the caller persists, and restores it when no invoice was built.
 renewal whose row was not saved after its invoice cannot hand it to a second
 period. Cloud reaches it as the plane op `billing_subscription_coupon`.
 
+## One way to give plan time — `billing.Gift` (api/billing/gift.go)
+
+Days of a plan given, never sold: a referral's free week. A subject on a paid
+plan has the period it holds run the days longer (the next renewal moves with
+it, no invoice). A subject on none is given the entry plan (`dev`, sold as Pro)
+on a `manual_gift` row canceled at the end of the days, so it lapses to Free on
+its own. One key gives once (idempotency guard plus the key written in the row's
+`gifts` metadata, which a re-claimed guard finds). A sandbox gift (`Test`) lands
+only on test rows. A gift row cannot be reactivated.
+
+`engine.Over(sub, now)`: a row canceled at the end of its period confers nothing
+once that period is over, swept or not. `rowTier`, `holdsPlan` and
+`servedSubscription` ask it, because the renewal sweep (`billing_renew`) is off
+in production and `ended` only runs inside it.
+
+`billing.PaymentsOf(org, subject)` is what a referral reads: the earliest
+subscription period a card paid in full (`PaymentMethod == "card"`; credit,
+balance and mixed are not a card), with its refunds, dispute and the paying
+card's fingerprint, plus every fingerprint the subject keeps on file. Both are
+platform-only plane ops in cloud (`billing_gift`, `billing_payments`).
+
 ## Cross-Compilation (2026-02-23)
 
 Colima QEMU crashes Go's HTTP/2 and module loader on ARM Mac. Use zig for cross-compilation:

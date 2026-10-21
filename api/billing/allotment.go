@@ -9,6 +9,7 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/allotment"
+	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
@@ -83,11 +84,15 @@ func servedSubscription(db *datastore.Datastore, user string, test bool) *subscr
 	}
 
 	var best *subscription.Subscription
+	now := time.Now()
 	for _, s := range subs {
 		switch s.Status {
 		case subscription.Active, subscription.Trialing:
 		default:
 			continue
+		}
+		if engine.Over(s, now) {
+			continue // canceled at the end of a period that is over
 		}
 		// C1-a: a PAID tier's included allotment may anchor ONLY on a
 		// payment-backed subscription — never a zero-payment self-created internal

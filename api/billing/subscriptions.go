@@ -633,6 +633,10 @@ func holdsPlan(s *subscription.Subscription) bool {
 	default:
 		return false
 	}
+	// Canceled at the end of a period that is over, it holds nothing, swept or not.
+	if engine.Over(s, time.Now()) {
+		return false
+	}
 	// A bundle child is an entitlement row the parent minted, not a purchase.
 	if strings.EqualFold(strings.TrimSpace(s.ProviderType), "bundle") {
 		return false
@@ -1292,6 +1296,12 @@ func reactivateSubscription(ctx context.Context, org *organization.Organization,
 	sub, err := heldSubscription(ctx, org, holder, id)
 	if err != nil {
 		return nil, err
+	}
+	if sub.ProviderType == giftProvider {
+		// A gift is days given, canceled at the end of them so it lapses with no
+		// card. Reactivated, it would renew onto whatever the subject can be
+		// charged or, with no renewal, serve forever.
+		return nil, subValidationError{"a gift ends when its days do and cannot be reactivated"}
 	}
 	if err := engine.ReactivateSubscription(sub); err != nil {
 		return nil, subValidationError{err.Error()}
