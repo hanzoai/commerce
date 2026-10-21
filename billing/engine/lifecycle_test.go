@@ -2,11 +2,13 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"math"
 	"testing"
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/db"
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/plan"
@@ -463,5 +465,116 @@ func TestCreatePaidFirstInvoice_CouponIsTheFirstInvoiceOnly(t *testing.T) {
 	}
 	if inv.AmountDue != 8000 || inv.Discount != 2000 || inv.DiscountName != "20% off" || inv.Metadata["coupon"] != nil {
 		t.Fatalf("renewal due=%d discount=%d %q meta=%v, want 8000 with the promo alone", inv.AmountDue, inv.Discount, inv.DiscountName, inv.Metadata)
+	}
+}
+
+// nextCoupon is a $100 plan carrying a 20% promo whose held period has ended,
+// with WINBACK at 50% waiting for its next renewal.
+func nextCoupon(t *testing.T, db *datastore.Datastore, user string) *subscription.Subscription {
+	t.Helper()
+	sub := subscription.New(db)
+	sub.UserId = user
+	sub.PlanId = "plan_max"
+	sub.Plan = plan.Plan{Name: "Max", Price: currency.Cents(10000), Currency: currency.USD, Interval: types.Monthly, IntervalCount: 1}
+	sub.Status = subscription.Active
+	sub.DiscountPercent, sub.DiscountName = 20, "20% off"
+	sub.NextCouponCode, sub.NextCouponPercent = "WINBACK", 50
+	sub.PeriodStart, sub.PeriodEnd = time.Now().AddDate(0, -1, 0), time.Now().Add(-time.Minute)
+	if err := sub.Create(); err != nil {
+		t.Fatalf("create sub: %v", err)
+	}
+	return sub
+}
+
+// TestRenewSubscription_TheNextCouponIsOneRenewal: the coupon staff put on a row
+// discounts the invoice of its next renewal, after the promo, names itself there,
+// and leaves the row. A renewal whose row was not saved after its invoice was
+// built finds that invoice again and does not hand the coupon on; the period
+// after bills the plan less only the promo.
+func TestRenewSubscription_TheNextCouponIsOneRenewal(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := datastore.New(c)
+	db.SetNamespace("next-coupon")
+
+	sub := nextCoupon(t, db, "next-coupon/alice")
+	pre := &purse{balance: 100000}
+	inv, res, err := RenewSubscription(context.Background(), db, sub, pre, nil)
+	if err != nil || !res.Success {
+		t.Fatalf("renew: %+v, %v", res, err)
+	}
+	if inv.AmountDue != Discounted(10000, 20, 50) || inv.Discount != 6000 ||
+		inv.DiscountName != "20% off; WINBACK — 50% off this renewal" || inv.Metadata["coupon"] != "WINBACK" {
+		t.Fatalf("renewal due=%d discount=%d %q meta=%v, want 4000 with the promo and WINBACK", inv.AmountDue, inv.Discount, inv.DiscountName, inv.Metadata)
+	}
+	if sub.NextCouponCode != "" || sub.NextCouponPercent != 0 {
+		t.Fatalf("the renewal left %q at %d on the row", sub.NextCouponCode, sub.NextCouponPercent)
+	}
+
+	// The row as stored was never saved after that renewal, so it still carries
+	// the coupon. Renewing it finds the invoice the coupon already discounted.
+	stale := subscription.New(db)
+	if err := stale.GetById(sub.Id()); err != nil || stale.NextCouponCode != "WINBACK" {
+		t.Fatalf("stored row %q, %v; want it still carrying WINBACK", stale.NextCouponCode, err)
+	}
+	again, _, err := RenewSubscription(context.Background(), db, stale, pre, nil)
+	if err != nil || again.Id() != inv.Id() {
+		t.Fatalf("renewing the unsaved row: %v, %v; want invoice %s again", again, err, inv.Id())
+	}
+	if stale.NextCouponCode != "" || stale.NextCouponPercent != 0 {
+		t.Fatalf("the invoice that billed the coupon left %q at %d on the row", stale.NextCouponCode, stale.NextCouponPercent)
+	}
+
+	stale.PeriodStart, stale.PeriodEnd = stale.PeriodStart.AddDate(0, -1, 0), time.Now().Add(-time.Second)
+	after, res, err := RenewSubscription(context.Background(), db, stale, pre, nil)
+	if err != nil || !res.Success || after.Id() == inv.Id() {
+		t.Fatalf("the period after: %v, %+v, %v", after, res, err)
+	}
+	if after.AmountDue != 8000 || after.DiscountName != "20% off" || after.Metadata["coupon"] != nil {
+		t.Fatalf("the period after due=%d %q meta=%v, want 8000 with the promo alone", after.AmountDue, after.DiscountName, after.Metadata)
+	}
+}
+
+// refusing is a store that refuses to write one kind, so a renewal fails while it
+// builds the invoice.
+type refusing struct {
+	db.DB
+	kind string
+}
+
+func (r refusing) Put(ctx context.Context, key db.Key, src interface{}) (db.Key, error) {
+	if key.Kind() == r.kind {
+		return nil, errors.New("store refused the write")
+	}
+	return r.DB.Put(ctx, key, src)
+}
+
+// TestRenewSubscription_AFailedRenewalKeepsTheNextCoupon: a renewal that built no
+// invoice billed nothing, so the row keeps the coupon for the renewal that does.
+func TestRenewSubscription_AFailedRenewalKeepsTheNextCoupon(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := datastore.New(c)
+	db.SetNamespace("next-coupon-fail")
+	sub := nextCoupon(t, db, "next-coupon-fail/bob")
+
+	broken := datastore.NewWithDB(c, refusing{DB: db.DB(), kind: "billing-invoice"})
+	broken.SetNamespace("next-coupon-fail")
+	row := subscription.New(broken)
+	if err := row.GetById(sub.Id()); err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	pre := &purse{balance: 100000}
+	if inv, _, err := RenewSubscription(context.Background(), broken, row, pre, nil); err == nil {
+		t.Fatalf("a renewal that could not store its invoice succeeded: %v", inv)
+	}
+	if row.NextCouponCode != "WINBACK" || row.NextCouponPercent != 50 || len(pre.draws) != 0 {
+		t.Fatalf("after a failed renewal the row carries %q at %d, drew %v; want WINBACK at 50, nothing drawn",
+			row.NextCouponCode, row.NextCouponPercent, pre.draws)
+	}
+
+	inv, res, err := RenewSubscription(context.Background(), db, row, pre, nil)
+	if err != nil || !res.Success || inv.AmountDue != 4000 || row.NextCouponCode != "" {
+		t.Fatalf("the retry: due=%v %+v %v, row %q; want 4000 with WINBACK spent", inv, res, err, row.NextCouponCode)
 	}
 }

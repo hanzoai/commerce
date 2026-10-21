@@ -44,19 +44,28 @@ func Discounted(fee int64, percents ...int) int64 {
 	return fee
 }
 
-// Coupon is a percent off ONE invoice: the first period of a subscription bought
-// with a coupon code. It is handed to the invoice that period's charge paid and
-// never stored on the subscription, so every later period bills at the plan's
-// price, less only the promo the subscription carries.
+// Coupon is a percent off ONE invoice. A plan coupon code discounts the first
+// period of the subscription bought with it: it is handed to the invoice that
+// period's charge paid and never stored on the subscription. A Renewal coupon is
+// the one staff put on a subscription for its next renewal
+// (subscription.NextCouponCode): RenewSubscription hands it to the invoice that
+// renewal builds and the row stops carrying it. Every other period bills at the
+// plan's price, less only the promo the subscription carries.
 type Coupon struct {
 	Code    string
 	Percent int
+	// Renewal marks a coupon a renewal invoice carries, which reads as off that
+	// renewal rather than off the first month.
+	Renewal bool
 }
 
 // Label is how the coupon reads on the invoice it discounts.
 func (c Coupon) Label() string {
 	if c.Code == "" || c.Percent <= 0 {
 		return ""
+	}
+	if c.Renewal {
+		return c.Code + " — " + strconv.Itoa(c.Percent) + "% off this renewal"
 	}
 	return c.Code + " — " + strconv.Itoa(c.Percent) + "% off first month"
 }

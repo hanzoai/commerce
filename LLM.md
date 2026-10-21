@@ -874,6 +874,21 @@ type CreditLedger interface {
 type CreditInput struct { Org, Currency, Reason, Tag, IdempotencyKey string; AmountCents int64; ExpiresAt *time.Time }
 ```
 
+## A coupon for the next renewal (`api/billing.SetNextCoupon`)
+
+Staff put a percent off ONE renewal invoice on a subject's live subscription
+(its held paid plan, or a trial of one): `SetNextCoupon(ctx, org, subject, code,
+percent)` writes `Subscription.NextCouponCode`/`NextCouponPercent` (percent 0
+clears; 1..100 needs a `promo.CouponCode` code; an external row is refused,
+nothing renews it; no live row is `IsSubscriptionNotFound`). It is not a plan
+coupon: no window, limit or redemption. `engine.RenewSubscription` hands it to
+`buildPeriodInvoice` as `Coupon{Renewal: true}` (after the promo, plan fee only;
+label "CODE — N% off this renewal", invoice metadata `couponRenewal`), clears it
+on the row the caller persists, and restores it when no invoice was built.
+`settle` clears it too when the owed period's invoice already carries it, so a
+renewal whose row was not saved after its invoice cannot hand it to a second
+period. Cloud reaches it as the plane op `billing_subscription_coupon`.
+
 ## Cross-Compilation (2026-02-23)
 
 Colima QEMU crashes Go's HTTP/2 and module loader on ARM Mac. Use zig for cross-compilation:

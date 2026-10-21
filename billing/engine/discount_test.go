@@ -92,7 +92,10 @@ func TestCouponLabel(t *testing.T) {
 	if got := (Coupon{Code: "50OFF", Percent: 50}).Label(); got != "50OFF — 50% off first month" {
 		t.Fatalf("label %q", got)
 	}
-	if (Coupon{}).Label() != "" || (Coupon{Code: "X"}).Label() != "" {
+	if got := (Coupon{Code: "WINBACK", Percent: 25, Renewal: true}).Label(); got != "WINBACK — 25% off this renewal" {
+		t.Fatalf("renewal label %q", got)
+	}
+	if (Coupon{}).Label() != "" || (Coupon{Code: "X"}).Label() != "" || (Coupon{Code: "X", Renewal: true}).Label() != "" {
 		t.Fatal("a coupon that discounts nothing must print no label")
 	}
 }

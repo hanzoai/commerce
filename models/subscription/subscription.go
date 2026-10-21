@@ -165,6 +165,14 @@ type Subscription struct {
 	DiscountPercent int    `json:"discountPercent,omitempty"`
 	DiscountName    string `json:"discountName,omitempty"`
 
+	// NextCouponCode and NextCouponPercent are a percent off the NEXT renewal
+	// invoice only, set by staff (api/billing.SetNextCoupon). The renewal that
+	// bills the next period takes NextCouponPercent off its plan fee, after the
+	// promo above, and clears both on the row it persists; every period after it
+	// bills as before. Empty and 0 when none waits.
+	NextCouponCode    string `json:"nextCouponCode,omitempty"`
+	NextCouponPercent int    `json:"nextCouponPercent,omitempty"`
+
 	// Stripe livemode
 	Live bool `json:"live"`
 

@@ -1055,6 +1055,10 @@ type Subscription struct {
 	// Held reports that this row is the subject's one paid plan: while it stands,
 	// a second paid sale is refused (409).
 	Held bool `json:"held"`
+	// NextCouponCode and NextCouponPercent are the percent off the next renewal
+	// invoice staff put on the row (SetNextCoupon); absent when none waits.
+	NextCouponCode    string `json:"nextCouponCode,omitempty"`
+	NextCouponPercent int    `json:"nextCouponPercent,omitempty"`
 
 	Plan SubscriptionPlan `json:"plan"`
 
@@ -1130,6 +1134,8 @@ func viewSubscription(sub *subscription.Subscription) *Subscription {
 		ProviderType:         sub.ProviderType,
 		DefaultPaymentMethod: sub.DefaultPaymentMethod,
 		Held:                 holdsPlan(sub),
+		NextCouponCode:       sub.NextCouponCode,
+		NextCouponPercent:    sub.NextCouponPercent,
 		Plan: SubscriptionPlan{
 			ID:       sub.Plan.Id(),
 			Slug:     sub.Plan.Slug,
