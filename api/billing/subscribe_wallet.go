@@ -134,6 +134,7 @@ type walletTerms struct {
 	list         int64               // price x seats
 	cur          currency.Type
 	coupon       engine.Coupon
+	couponPlans  []string // the plan slugs the coupon covers, granted with it
 	promoPercent int
 	promoName    string
 	sourceID     string
@@ -329,13 +330,15 @@ func walletSale(ctx context.Context, db *datastore.Datastore, org *organization.
 		return nil, unsettled(ref, "the first period was paid by a wallet and no subscription was opened: "+err.Error())
 	}
 	sub.ProviderType = "credit"
-	// Stamped before the invoice is built, which prices the promo off the row.
+	// Stamped before the invoice is built, which prices the promo and the coupon
+	// off the row.
 	sub.DiscountPercent, sub.DiscountName = t.promoPercent, t.promoName
+	engine.Grant(sub, t.coupon, t.couponPlans, sub.PeriodStart)
 	// The paid first invoice is what makes a balance-renewed plan payment-backed,
 	// so it is written twice before it is given up on, and then reconciled.
-	inv, err := engine.CreatePaidFirstInvoice(db, sub, "wallet", ref, t.coupon)
+	inv, err := engine.CreatePaidFirstInvoice(db, sub, "wallet", ref)
 	if err != nil {
-		inv, err = engine.CreatePaidFirstInvoice(db, sub, "wallet", ref, t.coupon)
+		inv, err = engine.CreatePaidFirstInvoice(db, sub, "wallet", ref)
 	}
 	if err != nil {
 		uncredited(work, in.Events, org.Name, in.Subject, ref, fmt.Sprintf(
@@ -364,6 +367,7 @@ func walletSale(ctx context.Context, db *datastore.Datastore, org *organization.
 		Status:          "ok",
 		Coupon:          t.coupon.Code,
 		CouponPercent:   t.coupon.Percent,
+		CouponMonths:    t.coupon.Months,
 	}
 	if body, mErr := json.Marshal(sale); mErr == nil {
 		_ = idempotencykey.Complete(t.rec, string(body))

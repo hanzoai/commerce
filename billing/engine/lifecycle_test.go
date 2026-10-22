@@ -323,7 +323,7 @@ func TestRenewSubscription_BillsTheNextPeriodInAdvance(t *testing.T) {
 	if err := sub.Create(); err != nil {
 		t.Fatalf("create sub: %v", err)
 	}
-	first, err := CreatePaidFirstInvoice(db, sub, "balance", "led_1", Coupon{})
+	first, err := CreatePaidFirstInvoice(db, sub, "balance", "led_1")
 	if err != nil {
 		t.Fatalf("first invoice: %v", err)
 	}
@@ -428,27 +428,29 @@ func TestVoidOpen_LeavesAnInvoiceBeingPaid(t *testing.T) {
 	}
 }
 
-// TestCreatePaidFirstInvoice_CouponIsTheFirstInvoiceOnly: a coupon discounts the
-// first period's invoice, after the promo the row carries, and names itself
-// there; the period after it bills the plan less only the promo.
+// TestCreatePaidFirstInvoice_CouponIsTheFirstInvoiceOnly: a first-month coupon
+// granted at the sale discounts the first period's invoice, after the promo the
+// row carries, and names itself there; the period after it bills the plan less
+// only the promo.
 func TestCreatePaidFirstInvoice_CouponIsTheFirstInvoiceOnly(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
 	db := datastore.New(c)
 	db.SetNamespace("first-coupon")
 
-	start := time.Now().AddDate(0, 0, -3)
+	start := time.Now()
 	sub := subscription.New(db)
 	sub.UserId = "first-coupon/alice"
 	sub.PlanId = "plan_max"
-	sub.Plan = plan.Plan{Name: "Max", Price: currency.Cents(10000), Currency: currency.USD, Interval: types.Monthly, IntervalCount: 1}
+	sub.Plan = plan.Plan{Name: "Max", Slug: "max-5x", Price: currency.Cents(10000), Currency: currency.USD, Interval: types.Monthly, IntervalCount: 1}
 	sub.Status = subscription.Active
 	sub.DiscountPercent, sub.DiscountName = 20, "20% off"
 	sub.PeriodStart, sub.PeriodEnd = start, Advance(start, &sub.Plan)
+	Grant(sub, Coupon{Code: "50OFF", Percent: 50}, []string{"max-5x"}, sub.PeriodStart)
 	if err := sub.Create(); err != nil {
 		t.Fatalf("create sub: %v", err)
 	}
-	first, err := CreatePaidFirstInvoice(db, sub, "card", "sq_1", Coupon{Code: "50OFF", Percent: 50})
+	first, err := CreatePaidFirstInvoice(db, sub, "card", "sq_1")
 	if err != nil {
 		t.Fatalf("first invoice: %v", err)
 	}
@@ -457,9 +459,8 @@ func TestCreatePaidFirstInvoice_CouponIsTheFirstInvoiceOnly(t *testing.T) {
 		t.Fatalf("first invoice due=%d discount=%d %q meta=%v", first.AmountDue, first.Discount, first.DiscountName, first.Metadata)
 	}
 
-	sub.PeriodStart, sub.PeriodEnd = sub.PeriodStart.AddDate(0, -1, 0), time.Now().Add(-time.Minute)
 	pre := &purse{balance: 100000}
-	inv, res, err := RenewSubscription(context.Background(), db, sub, pre, nil)
+	inv, res, err := renewAt(context.Background(), db, sub, pre, nil, sub.PeriodEnd.Add(time.Hour))
 	if err != nil || !res.Success {
 		t.Fatalf("renew: %+v, %v", res, err)
 	}
@@ -504,7 +505,7 @@ func TestRenewSubscription_TheNextCouponIsOneRenewal(t *testing.T) {
 		t.Fatalf("renew: %+v, %v", res, err)
 	}
 	if inv.AmountDue != Discounted(10000, 20, 50) || inv.Discount != 6000 ||
-		inv.DiscountName != "20% off; WINBACK — 50% off this renewal" || inv.Metadata["coupon"] != "WINBACK" {
+		inv.DiscountName != "20% off; WINBACK — 50% off this renewal" || inv.Metadata["renewalCoupon"] != "WINBACK" || inv.Metadata["coupon"] != nil {
 		t.Fatalf("renewal due=%d discount=%d %q meta=%v, want 4000 with the promo and WINBACK", inv.AmountDue, inv.Discount, inv.DiscountName, inv.Metadata)
 	}
 	if sub.NextCouponCode != "" || sub.NextCouponPercent != 0 {
@@ -530,7 +531,7 @@ func TestRenewSubscription_TheNextCouponIsOneRenewal(t *testing.T) {
 	if err != nil || !res.Success || after.Id() == inv.Id() {
 		t.Fatalf("the period after: %v, %+v, %v", after, res, err)
 	}
-	if after.AmountDue != 8000 || after.DiscountName != "20% off" || after.Metadata["coupon"] != nil {
+	if after.AmountDue != 8000 || after.DiscountName != "20% off" || after.Metadata["renewalCoupon"] != nil {
 		t.Fatalf("the period after due=%d %q meta=%v, want 8000 with the promo alone", after.AmountDue, after.DiscountName, after.Metadata)
 	}
 }

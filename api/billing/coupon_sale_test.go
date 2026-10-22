@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -15,11 +16,13 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/api/promo"
+	"github.com/hanzoai/commerce/billing/creditledger"
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/mail"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/billingevent"
+	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/coupon"
 	"github.com/hanzoai/commerce/models/couponredemption"
 	"github.com/hanzoai/commerce/models/organization"
@@ -30,8 +33,9 @@ import (
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
-// A plan coupon at checkout: 50% off the FIRST month of one plan purchase,
-// renewals at the catalog price, and nothing about any other price moves.
+// A plan coupon at checkout: 50% off the first months of one plan purchase (one
+// unless the coupon says more), renewals after them at the catalog price, and
+// nothing about any other price moves.
 
 // warmCouponNS opens the platform namespace's coupon kinds once, so the writes a
 // test drives and the reads it checks share one handle, and seeds the plan
@@ -76,20 +80,46 @@ func couponUses(t *testing.T, ctx context.Context, code string) int {
 	return v.Used
 }
 
-// dueNow moves a subscription's held period into the past, so the next renewal
-// bills the period after it.
-func dueNow(t *testing.T, db *datastore.Datastore, id string) *subscription.Subscription {
+// soldAgo moves a subscription's sale days into the past: the period it was sold
+// in, its invoice, and its coupon's months start that long ago, as if it was
+// bought then. A renewal now bills the period after the one sold.
+func soldAgo(t *testing.T, db *datastore.Datastore, id string, days int) *subscription.Subscription {
 	t.Helper()
 	s := subscription.New(db)
 	if err := s.GetById(id); err != nil {
 		t.Fatalf("load subscription: %v", err)
 	}
-	s.PeriodEnd = time.Now().AddDate(0, 0, -25)
-	s.PeriodStart = s.PeriodEnd.AddDate(0, -1, 0)
+	at := s.PeriodStart.AddDate(0, 0, -days)
+	for _, listed := range invoicesForSub(t, db, id) {
+		if listed.PeriodStart.Unix() != s.PeriodStart.Unix() {
+			continue
+		}
+		inv := billinginvoice.New(db)
+		if err := inv.GetById(listed.Id()); err != nil {
+			t.Fatalf("load invoice: %v", err)
+		}
+		inv.PeriodStart, inv.PeriodEnd = at, engine.Advance(at, &s.Plan)
+		if err := inv.Update(); err != nil {
+			t.Fatalf("move invoice: %v", err)
+		}
+	}
+	s.PeriodStart, s.PeriodEnd = at, engine.Advance(at, &s.Plan)
+	if s.CouponCode != "" {
+		engine.Grant(s, engine.Coupon{Code: s.CouponCode, Percent: s.CouponPercent, Months: s.CouponMonths}, s.CouponPlans, at)
+	}
 	if err := s.Update(); err != nil {
 		t.Fatalf("move period: %v", err)
 	}
 	return s
+}
+
+// betaOff is 50OFFBETA as the owner set it: 50% off Pro for three months.
+func betaOff(t *testing.T, ctx context.Context) {
+	now := time.Now().UTC()
+	start, end := now.Add(-time.Minute), now.Add(30*24*time.Hour)
+	planCoupon(t, ctx, "50OFFBETA", promo.CouponSpec{
+		Percent: 50, Months: 3, Start: &start, End: &end, Limit: 100, Plans: []string{"dev"}, Enabled: true,
+	})
 }
 
 // The whole contract in one sale: the card is charged half, the first invoice
@@ -112,8 +142,8 @@ func TestSubscribeCoupon_FirstMonthHalfRenewalFull(t *testing.T) {
 		t.Fatalf("status=%d body=%s, want 201", resp.StatusCode, bodyOf(resp))
 	}
 	out := jsonBody(t, resp)
-	if int64(out["amountCents"].(float64)) != half || out["coupon"] != "50OFF" || out["couponPercent"].(float64) != 50 {
-		t.Fatalf("receipt %+v, want amountCents %d with coupon 50OFF at 50%%", out, half)
+	if int64(out["amountCents"].(float64)) != half || out["coupon"] != "50OFF" || out["couponPercent"].(float64) != 50 || out["couponMonths"].(float64) != 1 {
+		t.Fatalf("receipt %+v, want amountCents %d with coupon 50OFF at 50%% for one month", out, half)
 	}
 	if m.chargeCalls != 1 || m.lastChargeAmount != half {
 		t.Fatalf("charged %d time(s) for %d, want once for %d", m.chargeCalls, m.lastChargeAmount, half)
@@ -125,7 +155,11 @@ func TestSubscribeCoupon_FirstMonthHalfRenewalFull(t *testing.T) {
 		t.Fatal("no subscription")
 	}
 	if sub.DiscountPercent != 0 || sub.DiscountName != "" {
-		t.Fatalf("subscription carries discount %d%% %q; the coupon must not reach renewals", sub.DiscountPercent, sub.DiscountName)
+		t.Fatalf("subscription carries discount %d%% %q; the coupon is not a promo", sub.DiscountPercent, sub.DiscountName)
+	}
+	if sub.CouponCode != "50OFF" || sub.CouponMonths != 1 || !sub.CouponFrom.Equal(sub.PeriodStart) {
+		t.Fatalf("subscription coupon %q %d month(s) from %v, want 50OFF for one month from the period sold %v",
+			sub.CouponCode, sub.CouponMonths, sub.CouponFrom, sub.PeriodStart)
 	}
 	if sub.Metadata["coupon"] != "50OFF" {
 		t.Fatalf("subscription metadata %v, want the coupon noted", sub.Metadata)
@@ -152,7 +186,7 @@ func TestSubscribeCoupon_FirstMonthHalfRenewalFull(t *testing.T) {
 	}
 
 	// The renewal: full catalog price, no discount, nothing about the coupon.
-	s := dueNow(t, db, sub.Id())
+	s := soldAgo(t, db, sub.Id(), 35)
 	inv, _, err := engine.RenewSubscription(ctx, db, s, prepaidFor(ctx, org), chargeProviderForOrg(org))
 	if err != nil || inv == nil {
 		t.Fatalf("renew: inv=%v err=%v", inv, err)
@@ -162,6 +196,105 @@ func TestSubscribeCoupon_FirstMonthHalfRenewalFull(t *testing.T) {
 	}
 	if inv.AmountDue != list || inv.Discount != 0 || inv.DiscountName != "" || inv.Metadata["coupon"] != nil {
 		t.Fatalf("renewal invoice due=%d discount=%d %q meta=%v, want %d undiscounted", inv.AmountDue, inv.Discount, inv.DiscountName, inv.Metadata, list)
+	}
+}
+
+// 50OFFBETA, the whole way: the quote says three months, the sale charges $10 and
+// grants the subscription three months from the period it sold, the first
+// invoice reads month 1 of 3, and the renewal a month later is drawn from the
+// ledger for $10 and reads month 2 of 3 — the discount recorded on its invoice
+// exactly as the first month's is.
+func TestSubscribeCoupon_ThreeMonthsOnTheLedger(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	warmCouponNS(t, ctx)
+	betaOff(t, ctx)
+	org := moneyOrg("cp-beta")
+	m := squareMock("cust_cb", "ccof_cb", "sqpay_cb")
+	withFakeSquare(t, m)
+
+	_, rows := listPlansWith(t, "?coupon=50offbeta")
+	if dev := bySlug(rows)["dev"]; dev["couponMonths"] != float64(3) || dev["couponPercent"] != float64(50) || dev["couponFirstCents"] != float64(1000) {
+		t.Fatalf("dev quote %v, want 50%% for 3 months, 1000 a month", dev)
+	}
+
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev","coupon":"50OFFBETA"}`, nil)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("status=%d body=%s, want 201", resp.StatusCode, bodyOf(resp))
+	}
+	out := jsonBody(t, resp)
+	if out["amountCents"] != float64(1000) || out["coupon"] != "50OFFBETA" || out["couponMonths"] != float64(3) || m.lastChargeAmount != 1000 {
+		t.Fatalf("receipt %+v charged %d, want 1000 under 50OFFBETA for 3 months", out, m.lastChargeAmount)
+	}
+	db := datastore.New(org.Namespaced(ctx))
+	sub := parentSub(t, db, "cp-beta", "dev")
+	if sub.CouponCode != "50OFFBETA" || sub.CouponPercent != 50 || sub.CouponMonths != 3 || len(sub.CouponPlans) != 1 || sub.CouponPlans[0] != "dev" ||
+		!sub.CouponFrom.Equal(sub.PeriodStart) {
+		t.Fatalf("granted %q %d%% %d months %v from %v, want 50OFFBETA 50%% 3 months [dev] from %v",
+			sub.CouponCode, sub.CouponPercent, sub.CouponMonths, sub.CouponPlans, sub.CouponFrom, sub.PeriodStart)
+	}
+	first := invoicesForSub(t, db, sub.Id())[0]
+	if first.AmountDue != 1000 || first.DiscountName != "50OFFBETA — 50% off, month 1 of 3" {
+		t.Fatalf("first invoice due %d %q", first.AmountDue, first.DiscountName)
+	}
+
+	// A month on, the renewal is paid from the org's balance on the ledger.
+	led := newFakeLedger()
+	injectLedger(t, led)
+	if _, _, err := led.Credit(ctx, creditledger.CreditInput{Org: ledgerOrg(org), Subject: "cp-beta", Currency: "usd", AmountCents: 100000, Cash: true}); err != nil {
+		t.Fatalf("fund: %v", err)
+	}
+	s := soldAgo(t, db, sub.Id(), 35)
+	inv, res, err := engine.RenewSubscription(ctx, db, s, prepaidFor(ctx, org), chargeProviderForOrg(org))
+	if err != nil || inv == nil || !res.Success {
+		t.Fatalf("renew: inv=%v res=%+v err=%v", inv, res, err)
+	}
+	if inv.AmountDue != 1000 || inv.Discount != 1000 || inv.DiscountName != "50OFFBETA — 50% off, month 2 of 3" ||
+		inv.Metadata["coupon"] != "50OFFBETA" || inv.Metadata["couponPercent"] != 50 || inv.Metadata["couponCents"] != int64(1000) {
+		t.Fatalf("month 2 due %d discount %d %q meta %v", inv.AmountDue, inv.Discount, inv.DiscountName, inv.Metadata)
+	}
+	ref := "sub:" + s.Id() + ":period:" + strconv.FormatInt(inv.PeriodStart.Unix(), 10)
+	if len(led.debits) != 1 || led.debits[0].AmountCents != 1000 || led.debits[0].Ref != ref || led.debits[0].Reason != "subscription "+ref {
+		t.Fatalf("ledger debits %+v, want one of 1000 under %s", led.debits, ref)
+	}
+	if m.chargeCalls != 1 {
+		t.Fatalf("the card was charged %d times, want only the sale", m.chargeCalls)
+	}
+}
+
+// Canceled inside its months and bought again, the org has redeemed the code:
+// the coupon is refused, and the plan bought without it is the catalog price,
+// with no months granted.
+func TestSubscribeCoupon_CancelThenBuyAgain(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	warmCouponNS(t, ctx)
+	betaOff(t, ctx)
+	org := moneyOrg("cp-again")
+	m := squareMock("cust_ca", "ccof_ca", "sqpay_ca")
+	withFakeSquare(t, m)
+
+	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev","coupon":"50OFFBETA"}`, nil); r.StatusCode != http.StatusCreated {
+		t.Fatalf("sale: status=%d %s", r.StatusCode, bodyOf(r))
+	}
+	db := datastore.New(org.Namespaced(ctx))
+	sub := parentSub(t, db, "cp-again", "dev")
+	if _, err := CancelSubscription(ctx, org, "cp-again", sub.Id(), false); err != nil {
+		t.Fatalf("cancel: %v", err)
+	}
+	r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok2","planId":"dev","coupon":"50OFFBETA"}`, map[string]string{"X-Idempotency-Key": "again-1"})
+	if body := bodyOf(r); r.StatusCode != http.StatusConflict || !strings.Contains(body, "already redeemed") {
+		t.Fatalf("again with the coupon: status=%d %s, want 409", r.StatusCode, body)
+	}
+	r = invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok3","planId":"dev"}`, map[string]string{"X-Idempotency-Key": "again-2"})
+	if r.StatusCode != http.StatusCreated {
+		t.Fatalf("again without: status=%d %s", r.StatusCode, bodyOf(r))
+	}
+	if out := jsonBody(t, r); out["amountCents"] != float64(2000) || out["coupon"] != nil {
+		t.Fatalf("again without: %+v, want 2000 and no coupon", out)
+	}
+	if n := couponUses(t, ctx, "50OFFBETA"); n != 1 {
+		t.Fatalf("coupon used %d, want 1", n)
 	}
 }
 
@@ -200,7 +333,7 @@ func TestSubscribeCoupon_StacksOnPromo(t *testing.T) {
 		t.Fatalf("subscription discount %d%%, want the promo's 20", sub.DiscountPercent)
 	}
 
-	s := dueNow(t, db, sub.Id())
+	s := soldAgo(t, db, sub.Id(), 35)
 	inv, _, err := engine.RenewSubscription(ctx, db, s, prepaidFor(ctx, org), chargeProviderForOrg(org))
 	if err != nil || inv == nil {
 		t.Fatalf("renew: %v", err)
@@ -674,7 +807,7 @@ func TestPlansCouponQuote(t *testing.T) {
 	for _, slug := range []string{"dev", "max-5x", "max-20x"} {
 		r := plans[slug]
 		price := int64(r["price"].(float64))
-		if r["couponCode"] != "50OFF" || r["couponPercent"] != float64(50) ||
+		if r["couponCode"] != "50OFF" || r["couponPercent"] != float64(50) || r["couponMonths"] != float64(1) ||
 			int64(r["couponFirstCents"].(float64)) != price-engine.DiscountCents(price, 50) ||
 			r["couponEnds"] != v.End.UTC().Format(time.RFC3339) || r["couponError"] != nil {
 			t.Errorf("%s quote %v", slug, r)

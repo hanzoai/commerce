@@ -1063,6 +1063,14 @@ type Subscription struct {
 	// invoice staff put on the row (SetNextCoupon); absent when none waits.
 	NextCouponCode    string `json:"nextCouponCode,omitempty"`
 	NextCouponPercent int    `json:"nextCouponPercent,omitempty"`
+	// CouponCode, CouponPercent and CouponMonths are the plan coupon the row was
+	// bought with: CouponPercent off each of its first CouponMonths billing
+	// cycles, counted from CouponFrom, the first paid period. Absent when it was
+	// bought without one.
+	CouponCode    string     `json:"couponCode,omitempty"`
+	CouponPercent int        `json:"couponPercent,omitempty"`
+	CouponMonths  int        `json:"couponMonths,omitempty"`
+	CouponFrom    *time.Time `json:"couponFrom,omitempty"`
 
 	Plan SubscriptionPlan `json:"plan"`
 
@@ -1155,6 +1163,10 @@ func viewSubscription(sub *subscription.Subscription) *Subscription {
 	for _, l := range sub.Lines {
 		v.Lines = append(v.Lines, SubscriptionLine{Plan: l.Plan, Name: l.Name, Price: int64(l.Price),
 			Quantity: l.Quantity, PendingQuantity: l.PendingQuantity})
+	}
+	if sub.CouponCode != "" {
+		from := sub.CouponFrom
+		v.CouponCode, v.CouponPercent, v.CouponMonths, v.CouponFrom = sub.CouponCode, sub.CouponPercent, sub.CouponMonths, &from
 	}
 	if !sub.TrialStart.IsZero() {
 		start, end := sub.TrialStart, sub.TrialEnd

@@ -3,9 +3,10 @@
 
 package promo
 
-// Plan coupons — a CODE a buyer types at checkout for a percent off the FIRST
-// period of one plan purchase. They are the per-purchase companion of the
-// platform promo above and live beside it, in the reserved platform namespace:
+// Plan coupons — a CODE a buyer types at checkout for a percent off the first
+// MONTHS monthly periods of one plan purchase (one, a first-month coupon, unless
+// a SuperAdmin says more). They are the per-purchase companion of the platform
+// promo above and live beside it, in the reserved platform namespace:
 //
 //   - The plan catalog is the platform's, not any tenant's, so the store that
 //     sells a plan is the platform itself.
@@ -17,7 +18,11 @@ package promo
 //   - The sale and the public plans quote read one place, as the promo does.
 //
 // A plan coupon is a models/coupon row with Filter == coupon.PlanFilter and
-// Type == percent; nothing else in the namespace is honoured as one. It covers
+// Type == percent; nothing else in the namespace is honoured as one. The sale
+// puts it on the subscription it opens as a window of months
+// (billing/engine.Grant), and every invoice of a period starting inside the
+// window takes the percent off, the first at the sale and the rest at renewal;
+// what a SuperAdmin changes later moves no window already granted. It covers
 // exactly the plan slugs it names — a coupon that names none covers nothing — and
 // SetCoupon refuses a slug that is not a paid plan on sale. Each use
 // is a models/couponredemption row keyed by (code, org) and by (code, card), so
@@ -69,6 +74,10 @@ const (
 // maxCouponCode bounds a code before it reaches a query.
 const maxCouponCode = 64
 
+// MaxCouponMonths is the most monthly periods one coupon discounts: three years.
+// A longer run is a price, not a coupon.
+const MaxCouponMonths = 36
+
 // CouponCode is a code as it is stored and compared: trimmed and upper-cased,
 // so codes are case-insensitive. A code that could not have been stored —
 // empty, longer than maxCouponCode, or holding anything but A-Z, 0-9, '-' and
@@ -90,12 +99,15 @@ func CouponCode(raw string) string {
 type Offer struct {
 	// Code is the canonical code (CouponCode).
 	Code string
-	// Percent is the whole percent off the first period, 1..100.
+	// Percent is the whole percent off each month it discounts, 1..100.
 	Percent int
+	// Months is how many monthly periods it discounts, from the first paid one:
+	// 1 for a first-month coupon.
+	Months int
 	// End is when the coupon stops being redeemable, nil when it never does.
 	End *time.Time
-	// plans is every slug the coupon names (Plans and ProductId).
-	plans []string
+	// Plans is every slug the coupon names (Plans and ProductId).
+	Plans []string
 }
 
 // AppliesTo reports whether the coupon covers a plan slug: only a slug it NAMES.
@@ -103,17 +115,12 @@ type Offer struct {
 // can never discount the whole catalog. Whether the plan charges at all is the
 // caller's question too: a free plan has nothing to take a percent of.
 func (o *Offer) AppliesTo(slug string) bool {
-	for _, s := range o.plans {
-		if s == slug {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(o.Plans, slug)
 }
 
-// Label is how the coupon reads on the invoice it discounts.
-func (o *Offer) Label() string {
-	return engine.Coupon{Code: o.Code, Percent: o.Percent}.Label()
+// Coupon is the offer as the invoice of the first month it discounts carries it.
+func (o *Offer) Coupon() engine.Coupon {
+	return engine.Coupon{Code: o.Code, Percent: o.Percent, Month: 1, Months: o.Months}
 }
 
 // FindCoupon resolves raw to an Offer redeemable at now, or names why not
@@ -156,14 +163,14 @@ func standing(c *coupon.Coupon, now time.Time) string {
 }
 
 func offerOf(c *coupon.Coupon) *Offer {
-	o := &Offer{Code: c.Code_, Percent: c.Amount}
+	o := &Offer{Code: c.Code_, Percent: c.Amount, Months: max(c.Months, 1)}
 	if !timeutil.IsZero(c.EndDate) {
 		end := c.EndDate.UTC()
 		o.End = &end
 	}
-	o.plans = append(o.plans, c.Plans...)
+	o.Plans = append(o.Plans, c.Plans...)
 	if p := strings.TrimSpace(c.ProductId); p != "" {
-		o.plans = append(o.plans, p)
+		o.Plans = append(o.Plans, p)
 	}
 	return o
 }
@@ -426,15 +433,41 @@ func putRedemption(db *datastore.Datastore, id, code, redeemer string) error {
 	return r.Create()
 }
 
+// Redeemers is every org holding a use of code, by name, sorted: the
+// organizations its redemption rows name, the rows Reserve writes and a released
+// use takes back. A code's own uses only; another code of its campaign answers
+// for its own.
+func Redeemers(ctx context.Context, raw string) ([]string, error) {
+	code := CouponCode(raw)
+	if code == "" {
+		return nil, ErrCouponNotFound
+	}
+	rows := make([]*couponredemption.CouponRedemption, 0)
+	if _, err := couponredemption.Query(platform(ctx)).Filter("CouponCode=", code).GetAll(&rows); err != nil {
+		return nil, err
+	}
+	orgs := make([]string, 0, len(rows))
+	for _, r := range rows {
+		if org, ok := strings.CutPrefix(r.UserId, "org:"); ok && org != "" && !slices.Contains(orgs, org) {
+			orgs = append(orgs, org)
+		}
+	}
+	slices.Sort(orgs)
+	return orgs, nil
+}
+
 // ---- SuperAdmin surface ---------------------------------------------------
 
 // CouponSpec is a SuperAdmin's whole statement of one plan coupon, the body of
-// PUT /v1/platform/coupons/{code}: percent off the first period (1..100), the
-// UTC window it is redeemable in (either end open when absent), how many uses
-// it has in all (0 = no limit), the plan slugs it covers (required: at least
-// one, each a paid plan on sale), and whether it is on.
+// PUT /v1/platform/coupons/{code}: percent off each month it discounts
+// (1..100), how many monthly periods that is from the first paid one (1..36;
+// absent or 0 is 1, a first-month coupon), the UTC window it is redeemable in
+// (either end open when absent), how many uses it has in all (0 = no limit),
+// the plan slugs it covers (required: at least one, each a paid plan on sale),
+// and whether it is on.
 type CouponSpec struct {
 	Percent int        `json:"percent"`
+	Months  int        `json:"months"`
 	Start   *time.Time `json:"start,omitempty"`
 	End     *time.Time `json:"end,omitempty"`
 	Limit   int        `json:"limit"`
@@ -459,6 +492,7 @@ func viewOf(c *coupon.Coupon) CouponView {
 		Code: c.Code_,
 		CouponSpec: CouponSpec{
 			Percent:  c.Amount,
+			Months:   max(c.Months, 1),
 			Limit:    c.Limit,
 			Plans:    append([]string{}, c.Plans...),
 			Enabled:  c.Enabled,
@@ -479,7 +513,7 @@ func viewOf(c *coupon.Coupon) CouponView {
 
 func (v CouponView) audit(by string) Map {
 	return Map{
-		"code": v.Code, "percent": v.Percent, "start": v.Start, "end": v.End,
+		"code": v.Code, "percent": v.Percent, "months": v.Months, "start": v.Start, "end": v.End,
 		"limit": v.Limit, "plans": v.Plans, "enabled": v.Enabled, "campaign": v.Campaign, "used": v.Used, "by": by,
 	}
 }
@@ -490,7 +524,8 @@ type errCouponSpec struct{ msg string }
 func (e errCouponSpec) Error() string { return e.msg }
 
 // IsCouponSpecRefused reports whether SetCoupon refused the request itself — a
-// bad code, percent, window, limit or plan list — rather than failing to store it.
+// bad code, percent, months, window, limit or plan list — rather than failing to
+// store it.
 func IsCouponSpecRefused(err error) bool {
 	var e errCouponSpec
 	return errors.As(err, &e)
@@ -531,6 +566,8 @@ func SetCoupon(ctx context.Context, raw string, spec CouponSpec, by string) (*Co
 		return nil, errCouponSpec{fmt.Sprintf("code must be 1-%d of A-Z, 0-9, '-' and '_'", maxCouponCode)}
 	case spec.Percent < 1 || spec.Percent > 100:
 		return nil, errCouponSpec{"percent must be between 1 and 100"}
+	case spec.Months < 0 || spec.Months > MaxCouponMonths:
+		return nil, errCouponSpec{fmt.Sprintf("months must be between 1 and %d (0 is 1, the first month)", MaxCouponMonths)}
 	case spec.Limit < 0:
 		return nil, errCouponSpec{"limit must not be negative (0 is no limit)"}
 	case spec.Start != nil && spec.End != nil && !spec.End.After(*spec.Start):
@@ -589,6 +626,7 @@ func SetCoupon(ctx context.Context, raw string, spec CouponSpec, by string) (*Co
 	cpn.Filter = coupon.PlanFilter
 	cpn.Once = true
 	cpn.Amount = spec.Percent
+	cpn.Months = max(spec.Months, 1)
 	cpn.Limit = spec.Limit
 	cpn.Plans = plans
 	cpn.ProductId = ""
@@ -614,7 +652,7 @@ func SetCoupon(ctx context.Context, raw string, spec CouponSpec, by string) (*Co
 	if _, err := engine.EmitBillingEvent(db, event, "coupon", code, "", v.audit(by), before); err != nil {
 		return nil, fmt.Errorf("coupon %s was stored and its audit record was not: %w", code, err)
 	}
-	log.Info("plan coupon %s %s by %s: %d%% off, limit %d, plans %v, enabled %v", code, event, by, v.Percent, v.Limit, v.Plans, v.Enabled)
+	log.Info("plan coupon %s %s by %s: %d%% off for %d month(s), limit %d, plans %v, enabled %v", code, event, by, v.Percent, v.Months, v.Limit, v.Plans, v.Enabled)
 	return &v, nil
 }
 
@@ -711,7 +749,7 @@ func GetCoupon(c *zip.Ctx) error {
 // PutCoupon creates or replaces one plan coupon (SuperAdmin only), audited.
 //
 //	PUT /v1/platform/coupons/:code
-//	{"percent":50,"start":"…Z","end":"…Z","limit":5,"plans":["dev"],"enabled":true}
+//	{"percent":50,"months":3,"start":"…Z","end":"…Z","limit":5,"plans":["dev"],"enabled":true}
 func PutCoupon(c *zip.Ctx) error {
 	if !middleware.RequirePlatformAdmin(c) {
 		return nil

@@ -874,6 +874,34 @@ type CreditLedger interface {
 type CreditInput struct { Org, Currency, Reason, Tag, IdempotencyKey string; AmountCents int64; ExpiresAt *time.Time }
 ```
 
+## A plan coupon runs for months (`engine.Grant`)
+
+A plan coupon (`api/promo`, `models/coupon` with `Filter == "plan"`) is a percent
+off the first `Months` billing cycles of one purchase (`Months` 0 reads as 1, the
+first month; 1..36). The sale grants the subscription the coupon (`engine.Grant`:
+`CouponCode/Percent/Months/Plans`, `CouponFrom` = the period the sale holds, which
+on a trial is the first paid period after it). An invoice, the sale's first
+included, takes the percent while fewer than `Months` cycles were invoiced in
+`[CouponFrom, its period)` (`engine.Billed`: distinct plan-fee periods, voided
+ones aside), the row bills monthly (`engine.BillsMonthly`; the sale refuses a
+coupon on anything else), and the coupon names the row's plan and every seat type
+sold (`engine.couponOf`). A cycle is an invoice, so nothing counts down: a renewal
+re-run finds the invoice it wrote, a row not saved after its invoice spends no
+month, days a gift adds or a late payment that moves the period spend none, and a
+voided (unserved) period leaves its month for the next. A cycle billed on a plan
+the coupon does not name, or on a year, is billed at its price and spends one.
+Label "CODE — N% off first month" for one month, "CODE — N% off, month k of M"
+for more; invoice metadata `coupon`, `couponPercent`, `couponCents`,
+`couponMonth`, `couponMonths`. The quote (`GET /v1/billing/plans?coupon=`) and the
+receipt carry `couponMonths`. A coupon with a trial waits it out (reserved at the
+sale, granted from the trial's end). `ExtendCoupon(ctx, code, apply, by)` grants
+the coupon's current months to every live subscription already bought with it,
+from its first paid period (the sale's grant, else the first invoice the coupon
+discounted); it never takes a month or a plan away, writes by `Swap`, reports
+`billed` and `missed` (cycles among the granted months invoiced without the
+coupon, paid or owed), dry-runs with `apply` false, and records
+`subscription.coupon_extended` in the org's namespace.
+
 ## A coupon for the next renewal (`api/billing.SetNextCoupon`)
 
 Staff put a percent off ONE renewal invoice on a subject's live subscription
@@ -881,9 +909,14 @@ Staff put a percent off ONE renewal invoice on a subject's live subscription
 percent)` writes `Subscription.NextCouponCode`/`NextCouponPercent` (percent 0
 clears; 1..100 needs a `promo.CouponCode` code; an external row is refused,
 nothing renews it; no live row is `IsSubscriptionNotFound`). It is not a plan
-coupon: no window, limit or redemption. `engine.RenewSubscription` hands it to
-`buildPeriodInvoice` as `Coupon{Renewal: true}` (after the promo, plan fee only;
-label "CODE — N% off this renewal", invoice metadata `couponRenewal`), clears it
+coupon: no window, limit or redemption. It stays a separate fact because it is a
+separate promise: the NEXT renewal whichever period it bills, late or not, on a
+monthly or a yearly row, while a plan coupon is dated months; and one row holds
+both at once, so a win-back inside a sale's months stacks (the renewal coupon
+off what the plan coupon left) instead of erasing them. `engine.RenewSubscription`
+hands it to `buildPeriodInvoice` as `Coupon{Renewal: true}` (after the promo and
+the plan coupon, plan fee only; label "CODE — N% off this renewal", invoice
+metadata `renewalCoupon`, `renewalCouponPercent`, `renewalCouponCents`), clears it
 on the row the caller persists, and restores it when no invoice was built.
 `settle` clears it too when the owed period's invoice already carries it, so a
 renewal whose row was not saved after its invoice cannot hand it to a second

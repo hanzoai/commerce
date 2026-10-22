@@ -77,6 +77,9 @@ func endTrial(t *testing.T, db *datastore.Datastore, id string) *subscription.Su
 	shift := time.Until(s.TrialEnd) + time.Hour
 	s.TrialStart, s.TrialEnd = s.TrialStart.Add(-shift), s.TrialEnd.Add(-shift)
 	s.PeriodStart, s.PeriodEnd = s.TrialEnd, engine.Advance(s.TrialEnd, &s.Plan)
+	if s.CouponCode != "" {
+		engine.Grant(s, engine.Coupon{Code: s.CouponCode, Percent: s.CouponPercent, Months: s.CouponMonths}, s.CouponPlans, s.PeriodStart)
+	}
 	if err := s.Update(); err != nil {
 		t.Fatalf("end trial: %v", err)
 	}
@@ -472,10 +475,10 @@ func TestSubscribeTrial_NoTrialPlanUnchanged(t *testing.T) {
 	heldIsPaid(t, sub, invs[0], 0, 1)
 }
 
-// A coupon is a percent off a charge made today, and a trial makes none: a sale
-// that would open a trial refuses the coupon before it is reserved or anything is
-// charged, and leaves no card behind.
-func TestSubscribeTrial_CouponRefused(t *testing.T) {
+// A coupon waits out a trial: the sale charges nothing, spends the coupon's use
+// against the card as any sale does, and grants its months from the trial's end,
+// so the charge the trial's end makes is the first month it discounts.
+func TestSubscribeTrial_CouponWaitsForTheFirstPaidPeriod(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	trialPlan(t, ctx, "uni-pro", trialCents, 7)
@@ -483,35 +486,39 @@ func TestSubscribeTrial_CouponRefused(t *testing.T) {
 	now := time.Now().UTC()
 	start, end := now.Add(-time.Minute), now.Add(24*time.Hour)
 	planCoupon(t, ctx, "UNI50", promo.CouponSpec{
-		Percent: 50, Start: &start, End: &end, Limit: 5, Plans: []string{"uni-pro"}, Enabled: true,
+		Percent: 50, Months: 3, Start: &start, End: &end, Limit: 5, Plans: []string{"uni-pro"}, Enabled: true,
 	})
 	org := moneyOrg("trial-coupon")
 	m := trialSquare(t, "fp_coupon")
+	half := engine.Discounted(trialCents, 50)
 
 	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"uni-pro","coupon":"UNI50"}`, nil)
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("status=%d body=%s, want 400", resp.StatusCode, bodyOf(resp))
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("status=%d body=%s, want 201", resp.StatusCode, bodyOf(resp))
 	}
-	if m.chargeCalls != 0 || !m.removeCalled {
-		t.Fatalf("charge calls=%d, card removed=%v; want no charge and the fresh card removed", m.chargeCalls, m.removeCalled)
+	out := jsonBody(t, resp)
+	if out["amountCents"] != float64(0) || out["trialEndCents"] != float64(half) || out["coupon"] != "UNI50" || out["couponMonths"] != float64(3) {
+		t.Fatalf("receipt %+v, want nothing today and %d at the trial's end under UNI50 for 3 months", out, half)
+	}
+	if m.chargeCalls != 0 {
+		t.Fatalf("a trial sale charged %d time(s)", m.chargeCalls)
+	}
+	if n := couponUses(t, ctx, "UNI50"); n != 1 {
+		t.Fatalf("coupon used %d, want 1", n)
 	}
 	db := datastore.New(org.Namespaced(ctx))
-	if sub := parentSub(t, db, "trial-coupon", "uni-pro"); sub != nil {
-		t.Fatalf("a refused sale opened subscription %s", sub.Id())
-	}
-	if pms := pmsFor(t, db, "trial-coupon"); len(pms) != 0 {
-		t.Fatalf("payment methods=%d, want the fresh card removed", len(pms))
-	}
-	if n := couponUses(t, ctx, "UNI50"); n != 0 {
-		t.Fatalf("coupon used %d, want 0", n)
+	sub := parentSub(t, db, "trial-coupon", "uni-pro")
+	if sub == nil || sub.Status != subscription.Trialing || sub.CouponCode != "UNI50" || !sub.CouponFrom.Equal(sub.TrialEnd) {
+		t.Fatalf("subscription %+v, want trialing with UNI50 from the trial's end", sub)
 	}
 
-	// Without the coupon the same buyer starts the trial.
-	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"uni-pro"}`, nil); r.StatusCode != http.StatusCreated {
-		t.Fatalf("status=%d body=%s, want 201", r.StatusCode, bodyOf(r))
+	endTrial(t, db, sub.Id())
+	if out := renewDue(ctx, org, ""); len(out) != 1 || !out[0].Success || out[0].AmountCents != half {
+		t.Fatalf("sweep at trial end = %+v, want one success charging %d", out, half)
 	}
-	if sub := parentSub(t, db, "trial-coupon", "uni-pro"); sub == nil || sub.Status != subscription.Trialing {
-		t.Fatalf("subscription %+v, want trialing", sub)
+	invs := invoicesForSub(t, db, sub.Id())
+	if len(invs) != 1 || invs[0].AmountPaid != half || invs[0].DiscountName != "UNI50 — 50% off, month 1 of 3" {
+		t.Fatalf("invoices %+v, want the first paid period at %d, month 1 of 3", invs, half)
 	}
 }
 

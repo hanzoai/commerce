@@ -11,7 +11,7 @@
 // {percentOff, start, end, plans, active} shape (openapi admin Promo).
 //
 // Beside it live the plan COUPONS (coupon.go): a code a buyer types for a percent
-// off the first period of one plan purchase, stored in the same namespace and
+// off the first months of one plan purchase, stored in the same namespace and
 // edited on the same SuperAdmin surface.
 package promo
 
