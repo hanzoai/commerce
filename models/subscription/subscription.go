@@ -165,11 +165,23 @@ type Subscription struct {
 	DiscountPercent int    `json:"discountPercent,omitempty"`
 	DiscountName    string `json:"discountName,omitempty"`
 
+	// The plan coupon the subscription was bought with (api/promo): CouponPercent
+	// off the plan fee of each of its first CouponMonths billing cycles, counted
+	// from CouponFrom, the first paid period, while the row bills monthly on a
+	// plan CouponPlans names. A cycle is an invoice (billing/engine.Billed), so
+	// nothing here counts down and a renewal run twice spends no month. Empty
+	// when the row was bought without a coupon.
+	CouponCode    string    `json:"couponCode,omitempty"`
+	CouponPercent int       `json:"couponPercent,omitempty"`
+	CouponMonths  int       `json:"couponMonths,omitempty"`
+	CouponPlans   []string  `json:"couponPlans,omitempty"`
+	CouponFrom    time.Time `json:"couponFrom"`
+
 	// NextCouponCode and NextCouponPercent are a percent off the NEXT renewal
 	// invoice only, set by staff (api/billing.SetNextCoupon). The renewal that
 	// bills the next period takes NextCouponPercent off its plan fee, after the
-	// promo above, and clears both on the row it persists; every period after it
-	// bills as before. Empty and 0 when none waits.
+	// promo and the plan coupon above, and clears both on the row it persists;
+	// every period after it bills as before. Empty and 0 when none waits.
 	NextCouponCode    string `json:"nextCouponCode,omitempty"`
 	NextCouponPercent int    `json:"nextCouponPercent,omitempty"`
 

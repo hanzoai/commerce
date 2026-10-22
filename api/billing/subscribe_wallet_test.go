@@ -92,6 +92,9 @@ func TestWalletCoupon_FirstUseIsHalfPaidByTheWallet(t *testing.T) {
 	if invs[0].Metadata["coupon"] != "50OFF" {
 		t.Fatalf("first invoice metadata %v, want the coupon recorded", invs[0].Metadata)
 	}
+	if sub.CouponCode != "50OFF" || sub.CouponMonths != 1 || !sub.CouponFrom.Equal(sub.PeriodStart) {
+		t.Fatalf("the wallet sale granted %q for %d month(s) from %v, want 50OFF for the period sold", sub.CouponCode, sub.CouponMonths, sub.CouponFrom)
+	}
 
 	// Cash and credit stay where they were: the wallet paid the invoice, nothing
 	// was credited to the balance and nothing was drawn from it.
@@ -101,7 +104,7 @@ func TestWalletCoupon_FirstUseIsHalfPaidByTheWallet(t *testing.T) {
 
 	// The renewal is the balance's to pay; with none, the invoice stays open and
 	// no card is charged.
-	s := dueNow(t, db, sub.Id())
+	s := soldAgo(t, db, sub.Id(), 35)
 	inv, _, err := engine.RenewSubscription(ctx, db, s, prepaidFor(ctx, org), chargeProviderForOrg(org))
 	if err != nil || inv == nil {
 		t.Fatalf("renew: inv=%v err=%v", inv, err)

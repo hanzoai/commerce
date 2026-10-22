@@ -168,8 +168,8 @@ func TestFindCoupon(t *testing.T) {
 			t.Errorf("LIVE.AppliesTo(%q) = %v, want %v", slug, got, want)
 		}
 	}
-	if live.End == nil || live.Label() != "LIVE — 50% off first month" {
-		t.Errorf("LIVE end=%v label=%q", live.End, live.Label())
+	if live.End == nil || live.Months != 1 || live.Coupon().Label() != "LIVE — 50% off first month" {
+		t.Errorf("LIVE end=%v months=%d label=%q", live.End, live.Months, live.Coupon().Label())
 	}
 	open, _ := FindCoupon(ctx, "OPEN", now)
 	if !open.AppliesTo("max-20x") || open.AppliesTo("dev") || open.End != nil {

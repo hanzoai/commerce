@@ -205,10 +205,13 @@ type Sale struct {
 	Currency string `json:"currency"`
 	// Status is "ok" on a settled sale. A failure is an error, never a status.
 	Status string `json:"status"`
-	// Coupon and CouponPercent name the coupon the first period was bought with,
-	// absent when none was. Renewals bill without it.
+	// Coupon, CouponPercent and CouponMonths name the coupon the subscription was
+	// bought with, absent when none was: CouponPercent off each of its first
+	// CouponMonths monthly periods, this one the first. Renewals after them bill
+	// without it.
 	Coupon        string `json:"coupon,omitempty"`
 	CouponPercent int    `json:"couponPercent,omitempty"`
+	CouponMonths  int    `json:"couponMonths,omitempty"`
 }
 
 // The kinds of no a sale can end in. They are separate because each is a
@@ -500,9 +503,9 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		case sourceID == "credits" || sourceID == "balance":
 			// One use per card is half the rule, and prepaid money has no card.
 			return nil, saleRefusal{saleRefused, "a coupon is redeemed with a card: send sourceId or paymentMethodId"}
-		case p.Interval == types.Yearly:
+		case !engine.BillsMonthly(p):
 			return nil, saleRefusal{saleRefused,
-				fmt.Sprintf("coupon %s takes a percent off the first month, so it applies to monthly billing only", couponCode)}
+				fmt.Sprintf("coupon %s takes a percent off monthly periods, so it applies to monthly billing only", couponCode)}
 		}
 	}
 
@@ -612,9 +615,11 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// The coupon, resolved now that the guard is held: it must stand, cover this
 	// plan, and not have been redeemed by this org. Its percent comes off what
 	// the promo left, through the function the invoice prices with, so the charge
-	// equals the first invoice's AmountDue. It discounts this first charge only:
-	// the subscription never carries it, so every renewal bills the catalog price.
+	// equals the first invoice's AmountDue. The subscription is granted it for its
+	// first months (engine.Grant), so the renewals inside them bill it too and
+	// every renewal after them bills the catalog price.
 	cpn := engine.Coupon{}
+	var couponPlans []string
 	if couponCode != "" {
 		offer, reason := promo.FindCoupon(ctx, couponCode, time.Now())
 		if reason == "" && !everyLine(slug, lines, offer.AppliesTo) {
@@ -628,7 +633,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			abandon()
 			return nil, saleRefusal{saleHeld, fmt.Sprintf("%v (%s)", promo.ErrCouponRedeemedByOrg, couponCode)}
 		}
-		cpn = engine.Coupon{Code: offer.Code, Percent: offer.Percent}
+		cpn, couponPlans = offer.Coupon(), offer.Plans
 		chargeCents = engine.Discounted(chargeCents, cpn.Percent)
 		if chargeCents <= 0 {
 			abandon()
@@ -701,7 +706,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	if in.Wallet {
 		return walletSale(ctx, db, org, in, walletTerms{
 			plan: p, planID: planID, slug: slug, qty: qty, seats: seatMult, lines: lines,
-			charge: chargeCents, list: listCents, cur: cur, coupon: cpn,
+			charge: chargeCents, list: listCents, cur: cur, coupon: cpn, couponPlans: couponPlans,
 			promoPercent: promoPercent, promoName: promoName,
 			sourceID: sourceID, guard: guard, rec: rec, abandon: abandon,
 		})
@@ -780,16 +785,20 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			}
 		}
 		if release != nil {
+			// A coupon waits out the trial: it is granted from the first paid period,
+			// so the charge the trial's end makes is the one it discounts first. Its
+			// use is reserved now, against the card, as a sale charged today reserves
+			// it: an org and a card each redeem a code once, trial or not.
+			var hold *promo.Hold
 			if cpn.Code != "" {
-				// A coupon takes its percent off a charge made today, and a trial
-				// makes none. Refused rather than carried to the trial's end, so it
-				// never becomes a full-price charge the buyer was not shown.
-				release()
-				unvault()
-				abandon()
-				return nil, saleRefusal{saleRefused, fmt.Sprintf(
-					"coupon %s takes a percent off a charge made today, and plan %q starts with a %d-day free trial; buy without the coupon to start the trial",
-					cpn.Code, slug, p.TrialPeriodDays)}
+				h, herr := promo.Reserve(ctx, cpn.Code, org.Name, instrumentOf(pm), time.Now())
+				if herr != nil {
+					release()
+					unvault()
+					abandon()
+					return nil, holdRefusal(cpn.Code, herr)
+				}
+				hold = h
 			}
 			if !pm.IsDefault {
 				pm.IsDefault = true
@@ -797,27 +806,33 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 					log.Error("subscribe: failed to mark method %s default (subject=%s): %v", pm.Id(), in.Subject, err)
 				}
 			}
+			meta := map[string]interface{}{"source": "subscribe/card"}
+			if cpn.Code != "" {
+				meta["coupon"] = cpn.Code
+			}
 			sub, err := createSubscription(db, p, &createSubscriptionRequest{
 				UserId:               in.Subject,
 				PlanId:               planID,
 				StoreId:              in.StoreID,
 				DefaultPaymentMethod: pm.Id(),
 				Quantity:             qty,
-				Metadata:             map[string]interface{}{"source": "subscribe/card"},
+				Metadata:             meta,
 				Test:                 org.TestMode(),
 				priced:               lines,
 			})
 			if err != nil {
+				hold.Release()
 				release()
 				unvault()
 				abandon()
 				return nil, err
 			}
 			// Square-backed like a paid sale, so it is the subject's subscription
-			// (billingSubscription) while it trials, and priced under the promo it
-			// was bought with when the trial ends.
+			// (billingSubscription) while it trials, and priced under the promo and
+			// the coupon it was bought with when the trial ends.
 			sub.ProviderType = string(processor.Square)
 			sub.DiscountPercent, sub.DiscountName = promoPercent, promoName
+			engine.Grant(sub, cpn, couponPlans, sub.PeriodStart)
 			if err := sub.Update(); err != nil {
 				log.Error("subscribe: failed to update trial subscription %s (subject=%s): %v", sub.Id(), in.Subject, err)
 			}
@@ -832,6 +847,9 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 				Status:          "ok",
 				TrialEnd:        &end,
 				TrialEndCents:   chargeCents,
+				Coupon:          cpn.Code,
+				CouponPercent:   cpn.Percent,
+				CouponMonths:    cpn.Months,
 			}
 			if rec != nil {
 				if body, mErr := json.Marshal(sale); mErr == nil {
@@ -840,7 +858,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			}
 			noticeSale(ctx, saleNote{
 				Org: org.Name, Email: in.Email, Plan: p, Seats: seatMult + int64(lineSeats(lines)), Sale: sale,
-				ListCents: listCents, PromoName: promoName, Test: org.TestMode(),
+				ListCents: listCents, PromoName: promoName, Coupon: cpn, Test: org.TestMode(),
 			})
 			return &saleOutcome{Sale: sale, Sub: sub}, nil
 		}
@@ -917,12 +935,12 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// the subscription payment-backed (Square provider + a linked invoice), so its
 	// INCLUDED monthly allotment flows (subscriptionPaymentBacked).
 	sub.ProviderType = string(processor.Square)
-	// Stamp the promo BEFORE the invoice is built — buildPeriodInvoice prices the
-	// discount off the subscription, so setting it after would invoice the first
-	// period at full price against a discounted charge. The coupon is NOT stamped:
-	// it is handed to this one invoice, so renewals bill without it.
+	// Stamp the promo and grant the coupon BEFORE the invoice is built —
+	// buildPeriodInvoice prices both off the subscription, so setting them after
+	// would invoice the first period at full price against a discounted charge.
 	sub.DiscountPercent, sub.DiscountName = promoPercent, promoName
-	inv, err := engine.CreatePaidFirstInvoice(db, sub, "card", res.ProcessorRef, cpn)
+	engine.Grant(sub, cpn, couponPlans, sub.PeriodStart)
+	inv, err := engine.CreatePaidFirstInvoice(db, sub, "card", res.ProcessorRef)
 	if err != nil {
 		// The subscription exists and the money is collected; a first-invoice record
 		// failure is non-fatal to the entitlement. Log for reconciliation.
@@ -950,6 +968,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		Status:          "ok",
 		Coupon:          cpn.Code,
 		CouponPercent:   cpn.Percent,
+		CouponMonths:    cpn.Months,
 	}
 	// Seal the idempotency guard with the exact success body so a retry replays it
 	// verbatim (no second vault/charge/subscribe, identical response).
@@ -1034,11 +1053,11 @@ func heldBefore(db *datastore.Datastore, slug, subject string, test bool) (bool,
 // standard and one premium seat is planId "team", quantity 1, lines
 // [{"planId":"team-premium","quantity":1}], charged both seats' prices
 // — NO client amount: the price is the plan's catalog price, always. coupon is a
-// plan coupon code for a percent off the first month only.
+// plan coupon code for a percent off the first months it names, monthly only.
 // Header (optional): X-Idempotency-Key — a retry/double-submit with the same key
 // (or, absent a key, the same store/plan/level inside a window) never
 // double-charges: it replays the first result verbatim.
-// Returns: { subscriptionId, invoiceId, planId, level, interval, paymentMethodId, amountCents, currency, status, coupon?, couponPercent?, trialEnd?, trialEndCents? }
+// Returns: { subscriptionId, invoiceId, planId, level, interval, paymentMethodId, amountCents, currency, status, coupon?, couponPercent?, couponMonths?, trialEnd?, trialEndCents? }
 //
 // A plan with a free trial (trialPeriodDays) bought by a buyer and a card that
 // have not had it charges nothing today: amountCents is 0, invoiceId is empty,

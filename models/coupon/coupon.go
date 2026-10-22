@@ -26,7 +26,7 @@ const (
 var Types = []Type{Flat, Percent, FreeShipping}
 
 // PlanFilter marks a coupon that discounts a subscription PLAN purchase rather
-// than a cart: the first period of a plan bought with its code.
+// than a cart: the first Months monthly periods of a plan bought with its code.
 const PlanFilter = "plan"
 
 type Coupon struct {
@@ -73,6 +73,10 @@ type Coupon struct {
 	// Coupon amount. $5 should be 500 (prices in basic currency unit, like cents). 10% should be 10.
 	// TODO: This needs to be currency.Cents in Hanzo.
 	Amount int `json:"amount"`
+
+	// Months is how many monthly periods a plan coupon discounts, from the first
+	// paid one. 0, as every row stored before it was, reads as 1: the first month.
+	Months int `json:"months,omitempty"`
 
 	// Number of times coupon was redeemed.
 	Used int `json:"used"`

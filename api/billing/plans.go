@@ -182,12 +182,15 @@ type PlanView struct {
 	Limits *Capacity `json:"limits,omitempty"`
 	// The coupon quote, present only when the catalog was read with a coupon
 	// code (QuoteCoupon). A paid plan the coupon covers carries its code, its
-	// percent, what the first month charges under it (couponFirstCents: monthly,
-	// per seat on a per-seat plan like price, after any promo) and when it stops
-	// being redeemable; every other row carries couponError instead — unknown,
-	// expired, exhausted or not_applicable.
+	// percent, how many monthly periods it takes that percent off (couponMonths,
+	// from the first paid one: 1 for a first-month coupon), what each of those
+	// months charges under it (couponFirstCents: monthly, per seat on a per-seat
+	// plan like price, after any promo) and when it stops being redeemable; every
+	// other row carries couponError instead — unknown, expired, exhausted or
+	// not_applicable.
 	CouponCode       string `json:"couponCode,omitempty"`
 	CouponPercent    int    `json:"couponPercent,omitempty"`
+	CouponMonths     int    `json:"couponMonths,omitempty"`
 	CouponFirstCents int64  `json:"couponFirstCents,omitempty"`
 	CouponEnds       string `json:"couponEnds,omitempty"`
 	CouponError      string `json:"couponError,omitempty"`
@@ -476,8 +479,9 @@ func ReadPlans(ctx context.Context, host, category string, pr *promo.Promo) ([]P
 
 // QuoteCoupon is the plan catalog as one coupon code would price it — a pure
 // read: nothing is reserved and nothing is counted. Each paid plan the coupon
-// covers is annotated with the code, its percent, the first month's charge
-// under it and when it ends; every other row names why not in couponError. An
+// covers is annotated with the code, its percent, how many months it discounts,
+// the first month's charge under it and when it ends; every other row names why
+// not in couponError. An
 // empty code returns plans untouched, so a catalog read without one is the
 // catalog exactly as it was.
 //
@@ -511,6 +515,7 @@ func QuoteCoupon(ctx context.Context, plans []PlanView, code string) []PlanView 
 		}
 		r.CouponCode = offer.Code
 		r.CouponPercent = offer.Percent
+		r.CouponMonths = offer.Months
 		r.CouponFirstCents = first
 		r.CouponEnds = ends
 	}

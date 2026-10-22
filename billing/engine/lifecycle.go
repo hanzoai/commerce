@@ -59,8 +59,12 @@ func StartSubscription(sub *subscription.Subscription, p *plan.Plan) {
 // the row may not have been told: a paid one moves the row onto its period, and an
 // unpaid one leaves it past due.
 func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscription.Subscription, prepaid Prepaid, chargeProvider ProviderCharger) (*billinginvoice.BillingInvoice, *CollectionResult, error) {
-	now := time.Now()
+	return renewAt(ctx, db, sub, prepaid, chargeProvider, time.Now())
+}
 
+// renewAt is RenewSubscription as of now: what is due, owed and ended is judged
+// at that instant.
+func renewAt(ctx context.Context, db *datastore.Datastore, sub *subscription.Subscription, prepaid Prepaid, chargeProvider ProviderCharger, now time.Time) (*billinginvoice.BillingInvoice, *CollectionResult, error) {
 	// A row canceled at the end of its period ends when that period does, is never
 	// invoiced again, and owes nothing it will not be served.
 	if ended(sub, now) {
@@ -155,16 +159,17 @@ func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscr
 
 	// A coupon staff put on the row for its next renewal discounts this invoice
 	// and no other, so the row stops carrying it here; it gets it back only when
-	// no invoice was built.
-	coupon := Coupon{Code: sub.NextCouponCode, Percent: sub.NextCouponPercent, Renewal: true}
+	// no invoice was built. The plan coupon the row was bought with is not taken
+	// off: its window says which periods it discounts, this one or not.
+	renewal := Coupon{Code: sub.NextCouponCode, Percent: sub.NextCouponPercent, Renewal: true}
 	sub.NextCouponCode, sub.NextCouponPercent = "", 0
 
 	// Generate a fresh, sequentially-numbered invoice: the owed period's fee in
 	// advance, and the metered usage since the held period began, in arrears.
-	inv, err := buildPeriodInvoice(db, sub, next, period{sub.PeriodStart, next.start}, coupon)
+	inv, err := buildPeriodInvoice(db, sub, next, period{sub.PeriodStart, next.start}, renewal)
 	if err != nil {
 		sub.Quantity, sub.PendingQuantity, sub.Lines = quantity, pending, lines
-		sub.NextCouponCode, sub.NextCouponPercent = coupon.Code, coupon.Percent
+		sub.NextCouponCode, sub.NextCouponPercent = renewal.Code, renewal.Percent
 		if rec != nil {
 			_ = rec.Delete() // release the guard so a later attempt can rebuild
 		}
@@ -262,9 +267,9 @@ func servedTo(sub *subscription.Subscription) time.Time {
 // period: if an invoice for the held period already exists it is returned as-is (no
 // duplicate, no state change), so a retried subscribe never double-invoices.
 //
-// coupon discounts this invoice alone (the zero Coupon discounts nothing): the
-// charge already taken was priced with it, and the subscription never carries it.
-func CreatePaidFirstInvoice(db *datastore.Datastore, sub *subscription.Subscription, method, providerRef string, coupon Coupon) (*billinginvoice.BillingInvoice, error) {
+// The plan coupon the row was granted (Grant) discounts it as month 1 when the
+// held period starts its window; the charge already taken was priced with it.
+func CreatePaidFirstInvoice(db *datastore.Datastore, sub *subscription.Subscription, method, providerRef string) (*billinginvoice.BillingInvoice, error) {
 	held := period{sub.PeriodStart, sub.PeriodEnd}
 	if existing, err := findInvoiceForPeriod(db, sub, held); err != nil {
 		return nil, fmt.Errorf("failed to look up existing invoice for period: %w", err)
@@ -272,7 +277,7 @@ func CreatePaidFirstInvoice(db *datastore.Datastore, sub *subscription.Subscript
 		return existing, nil
 	}
 
-	inv, err := buildPeriodInvoice(db, sub, held, period{}, coupon)
+	inv, err := buildPeriodInvoice(db, sub, held, period{}, Coupon{})
 	if err != nil {
 		return inv, err
 	}
@@ -288,11 +293,11 @@ func CreatePaidFirstInvoice(db *datastore.Datastore, sub *subscription.Subscript
 
 // buildPeriodInvoice constructs, numbers, finalizes and persists a new invoice
 // for the plan fee of period fee and the metered usage of period use (none when
-// use is empty), less the subscription's promo and then coupon: the first
-// period's plan coupon, or the one renewal coupon staff put on the row. The
-// invoice number is a sequential per-org counter, mirroring the credit-note
-// numbering in refunds.go.
-func buildPeriodInvoice(db *datastore.Datastore, sub *subscription.Subscription, fee, use period, coupon Coupon) (*billinginvoice.BillingInvoice, error) {
+// use is empty), less the subscription's promo, then its plan coupon while fewer
+// than its months have been billed (Billed), then renewal: the coupon staff put
+// on the row for its next renewal, or the zero Coupon. The invoice number is a
+// sequential per-org counter, mirroring the credit-note numbering in refunds.go.
+func buildPeriodInvoice(db *datastore.Datastore, sub *subscription.Subscription, fee, use period, renewal Coupon) (*billinginvoice.BillingInvoice, error) {
 	inv := billinginvoice.New(db)
 	inv.UserId = sub.UserId
 	inv.SubscriptionId = sub.Id()
@@ -353,37 +358,55 @@ func buildPeriodInvoice(db *datastore.Datastore, sub *subscription.Subscription,
 	// Calculate totals
 	inv.RecalculateSubtotal()
 
-	// The promo the subscription was bought under, then the coupon this invoice
-	// alone carries, priced off the PLAN fee only — metered usage above is real
-	// consumption and is never discounted by a plan promo or coupon. Discounted is
-	// the function the card path priced the charge with, so the two agree to the
-	// cent. Finalize() folds Discount into AmountDue, so this must land before it.
-	if inv.Subtotal > 0 && (sub.DiscountPercent > 0 || coupon.Percent > 0) {
+	// The promo the subscription was bought under, then the plan coupon it was
+	// bought with, then the renewal coupon, each priced off what the one before it
+	// left and off the PLAN fee only — metered usage above is real consumption and
+	// is never discounted by a promo or a coupon. The promo and the plan coupon
+	// were sold for the seat types bought then, so a seat type added since (full)
+	// pays its price beside them; the renewal coupon staff set takes its percent
+	// off the whole plan fee left. Discounted is the function the card path priced
+	// the charge with, so the two agree to the cent. Finalize() folds Discount
+	// into AmountDue, so this must land before it.
+	bought := Coupon{}
+	if sub.CouponCode != "" {
+		n, err := Billed(db, sub, fee.start)
+		if err != nil {
+			return inv, fmt.Errorf("the cycles its coupon has discounted could not be counted: %w", err)
+		}
+		bought = couponOf(sub, fee.start, n)
+	}
+	if inv.Subtotal > 0 && (sub.DiscountPercent > 0 || bought.Percent > 0 || renewal.Percent > 0) {
 		planFee := int64(0)
 		for _, li := range inv.LineItems {
 			if li.Type == billinginvoice.LineSubscription {
 				planFee += li.Amount
 			}
 		}
-		afterPromo := Discounted(planFee-full, sub.DiscountPercent) + full
-		couponCents := afterPromo - Discounted(afterPromo, coupon.Percent)
-		names := make([]string, 0, 2)
-		if afterPromo < planFee {
+		sold := Discounted(planFee-full, sub.DiscountPercent)
+		kept := Discounted(sold, bought.Percent)
+		due := Discounted(kept+full, renewal.Percent)
+		names := make([]string, 0, 3)
+		if sold < planFee-full {
 			names = append(names, sub.DiscountName)
 		}
-		if couponCents > 0 {
-			names = append(names, coupon.Label())
+		note := func(kv ...interface{}) {
 			if inv.Metadata == nil {
 				inv.Metadata = map[string]interface{}{}
 			}
-			inv.Metadata["coupon"] = coupon.Code
-			inv.Metadata["couponPercent"] = coupon.Percent
-			inv.Metadata["couponCents"] = couponCents
-			if coupon.Renewal {
-				inv.Metadata["couponRenewal"] = true
+			for i := 0; i+1 < len(kv); i += 2 {
+				inv.Metadata[kv[i].(string)] = kv[i+1]
 			}
 		}
-		if d := planFee - afterPromo + couponCents; d > 0 {
+		if cents := sold - kept; cents > 0 {
+			names = append(names, bought.Label())
+			note("coupon", bought.Code, "couponPercent", bought.Percent, "couponCents", cents,
+				"couponMonth", bought.Month, "couponMonths", bought.Months)
+		}
+		if cents := kept + full - due; cents > 0 {
+			names = append(names, renewal.Label())
+			note("renewalCoupon", renewal.Code, "renewalCouponPercent", renewal.Percent, "renewalCouponCents", cents)
+		}
+		if d := planFee - due; d > 0 {
 			inv.Discount = d
 			inv.DiscountName = strings.Join(names, "; ")
 		}
@@ -403,6 +426,44 @@ func buildPeriodInvoice(db *datastore.Datastore, sub *subscription.Subscription,
 	}
 
 	return inv, nil
+}
+
+// Billed is how many billing cycles of sub have been invoiced in
+// [sub.CouponFrom, before): the distinct periods its invoices bill a plan fee
+// for, voided ones aside, since a voided period was never served. It reads under
+// no ancestor, for the reason findInvoiceForPeriod does. It is the count a plan
+// coupon's months are spent against, so it moves only when an invoice is
+// written: a renewal run twice finds the invoice it already wrote and counts
+// nothing new.
+func Billed(db *datastore.Datastore, sub *subscription.Subscription, before time.Time) (int, error) {
+	invs := make([]*billinginvoice.BillingInvoice, 0)
+	q := billinginvoice.Query(db).
+		Filter("SubscriptionId=", sub.Id()).
+		Filter("UserId=", sub.UserId)
+	if _, err := q.GetAll(&invs); err != nil {
+		return 0, err
+	}
+	from, until := sub.CouponFrom.Unix(), before.Unix()
+	seen := map[int64]bool{}
+	for _, inv := range invs {
+		at := inv.PeriodStart.Unix()
+		if inv.Status == billinginvoice.Void || at < from || at >= until || seen[at] || !BillsPlan(inv) {
+			continue
+		}
+		seen[at] = true
+	}
+	return len(seen), nil
+}
+
+// BillsPlan reports whether inv bills a plan fee: a period of a subscription
+// rather than an ad hoc charge raised against it.
+func BillsPlan(inv *billinginvoice.BillingInvoice) bool {
+	for _, li := range inv.LineItems {
+		if li.Type == billinginvoice.LineSubscription {
+			return true
+		}
+	}
+	return false
 }
 
 // findInvoiceForPeriod returns the existing invoice for this subscription and
@@ -537,7 +598,7 @@ func settle(sub *subscription.Subscription, inv *billinginvoice.BillingInvoice) 
 	// An invoice built with the row's renewal coupon has billed it. Found here, it
 	// is the invoice of a renewal whose row was not saved after it, and the coupon
 	// the row still carries is not handed to another period.
-	if renewal, _ := inv.Metadata["couponRenewal"].(bool); renewal && inv.Metadata["coupon"] == sub.NextCouponCode {
+	if code, _ := inv.Metadata["renewalCoupon"].(string); code != "" && code == sub.NextCouponCode {
 		sub.NextCouponCode, sub.NextCouponPercent = "", 0
 	}
 	if inv.Status != billinginvoice.Paid {
