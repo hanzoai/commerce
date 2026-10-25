@@ -20,7 +20,7 @@ const NAV = [
 
 const FOOTER = [
   { label: "GitHub", href: "https://github.com/hanzoai/commerce" },
-  { label: "Discord", href: "https://discord.gg/hanzoai" },
+  { label: "Discord", href: "https://discord.gg/XthHQQj" },
   { label: "hanzo.ai", href: "https://hanzo.ai" },
 ]
 

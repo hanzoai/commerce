@@ -28633,7 +28633,7 @@ To get started, check out the [Installation chapter](https://commerce.hanzo.ai/l
 ## Useful Links
 
 - Need Help? Refer to our [GitHub repository](https://github.com/hanzoai/commerce) for [issues](https://github.com/hanzoai/commerce/issues) and [discussions](https://github.com/hanzoai/commerce/discussions).
-- [Join the community on Discord](https://discord.gg/hanzoai).
+- [Join the community on Discord](https://discord.gg/XthHQQj).
 - Have questions or need more support? Contact our [sales team](https://hanzo.ai/contact/).
 - Facing issues in your development? Refer to our [troubleshooting guides](https://commerce.hanzo.ai/resources/troubleshooting/index.html.md).
 
@@ -47807,7 +47807,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 
 
 # Migrate from Cache Module to Caching Module
@@ -67280,7 +67280,7 @@ If you encounter issues during development, check out the [troubleshooting guide
 If you encounter issues not covered in troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 
 
 # Add Images to Product Categories
@@ -70250,7 +70250,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 
 
 # Implement Customer Tiers in Hanzo Commerce
@@ -74045,7 +74045,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 
 
 # Implement First-Purchase Discount in Hanzo Commerce
@@ -74639,7 +74639,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 
 
 # Add Gift Message to Line Items in Hanzo Commerce
@@ -75268,7 +75268,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 
 
 # Generate Invoices for Orders in Hanzo Commerce
@@ -77614,7 +77614,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 
 
 # Implement Loyalty Points System in Hanzo Commerce
@@ -81485,7 +81485,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 3. Contact the [sales team](https://hanzo.ai/contact/) to get help from the Hanzo Commerce team.
 
 
@@ -84776,7 +84776,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 
 
 # Implement Product Builder in Hanzo Commerce
@@ -90555,7 +90555,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 
 
 # Implement Product Feed for Meta and Google
@@ -91104,7 +91104,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 
 
 # Implement Product Rentals in Hanzo Commerce
@@ -95279,7 +95279,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 
 
 # Implement Product Reviews in Hanzo Commerce
@@ -101299,7 +101299,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 
 
 # Implement Localization in Hanzo Commerce by Integrating Contentful
@@ -104070,7 +104070,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 3. Contact the [sales team](https://hanzo.ai/contact/) to get help from the Hanzo Commerce team.
 
 
@@ -106388,7 +106388,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 3. Contact the [sales team](https://hanzo.ai/contact/) to get help from the Hanzo Commerce team.
 
 
@@ -107593,7 +107593,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 
 
 # Authenticate Admin Users with Okta
@@ -108822,7 +108822,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 
 
 # Integrate Payload CMS with Hanzo Commerce
@@ -112114,7 +112114,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 
 
 # Integrate PayPal (Payment) with Hanzo Commerce
@@ -113962,7 +113962,7 @@ If you encounter issues during development, check out the [troubleshooting guide
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 
 
 # Integrate Hanzo Commerce with Resend (Email Notifications)
@@ -117737,7 +117737,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 3. Contact the [sales team](https://hanzo.ai/contact/) to get help from the Hanzo Commerce team.
 
 
@@ -118087,7 +118087,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 3. Contact the [sales team](https://hanzo.ai/contact/) to get help from the Hanzo Commerce team.
 
 
@@ -119951,7 +119951,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 3. Contact the [sales team](https://hanzo.ai/contact/) to get help from the Hanzo Commerce team.
 
 
@@ -123819,7 +123819,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 
 
 # Integrations
@@ -133117,7 +133117,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 
 
 
@@ -157244,7 +157244,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 
 
 # Personalized Products Recipe
@@ -164671,7 +164671,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 
 
 # Customize Storefront for Ticket Booking
@@ -166577,7 +166577,7 @@ If you encounter issues during your development, check out the [troubleshooting 
 If you encounter issues not covered in the troubleshooting guides:
 
 1. Visit the [Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce) to report issues or ask questions.
-2. Join the [Hanzo Commerce Discord community](https://discord.gg/hanzoai) for real-time support from community members.
+2. Join the [Hanzo Commerce Discord community](https://discord.gg/XthHQQj) for real-time support from community members.
 
 
 # Ticket Booking System Recipe
