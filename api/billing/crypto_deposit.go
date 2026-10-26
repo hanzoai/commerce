@@ -65,15 +65,54 @@ type CryptoDeposit struct {
 	AddressTag string `json:"addressTag,omitempty"`
 
 	ExpiresAt string `json:"expiresAt,omitempty"`
+
+	// AmountCents is what the payer said they would send, in USD cents, when the
+	// address was asked for. It is a record of intent, not a quote: what is
+	// credited is what arrives. Absent when nothing was named.
+	AmountCents int64 `json:"amountCents,omitempty"`
+
+	// MinimumCents is the smallest deposit, in USD cents, that credits anything.
+	// Less credits nothing: under a cent is dust, and a transfer that does not
+	// exceed FeeCents does not cover moving it. Absent when nothing is watching
+	// this asset now, and then nothing sent to it is credited.
+	MinimumCents int64 `json:"minimumCents,omitempty"`
+
+	// FeeCents is deducted from every deposit before it is credited: what it costs
+	// to sweep the deposit out of the custody address. Absent deducts nothing.
+	FeeCents int64 `json:"feeCents,omitempty"`
+
+	// RequiredConfirmations is how deep the chain must bury a deposit before it is
+	// credited.
+	RequiredConfirmations int `json:"requiredConfirmations"`
+
+	// Confirmations is how deep the deposit being confirmed is now; zero until one
+	// is seen.
+	Confirmations int `json:"confirmations"`
+
+	// CreditedCents is what the transfer this intent confirmed credited, in USD
+	// cents, once it succeeded. A later transfer to the same address is credited
+	// by its own row and is not summed here.
+	CreditedCents int64 `json:"creditedCents,omitempty"`
 }
 
 // CryptoOptions is the menu of assets the rail accepts: the chains a payer may
-// send on and the tokens they may send, both already deduplicated and ordered.
-// Neither list is ever nil — a picker handed `null` where it expects an array is
-// a client-side crash rather than an empty menu.
+// send on and the tokens they may send, both already deduplicated and ordered,
+// and the pairs themselves. None is ever nil — a picker handed `null` where it
+// expects an array is a client-side crash rather than an empty menu.
 type CryptoOptions struct {
 	Chains []string `json:"chains"`
 	Tokens []string `json:"tokens"`
+
+	// Assets is every (chain, token) pair the rail accepts. Chains and Tokens are
+	// its two axes, and a chain and a token each on offer are not a pair on offer:
+	// base may be watched for USDC alone.
+	Assets []CryptoAsset `json:"assets"`
+}
+
+// CryptoAsset is one pair the rail accepts: a token on a chain.
+type CryptoAsset struct {
+	Chain string `json:"chain"`
+	Token string `json:"token"`
 }
 
 // depositValidationError marks a request that named an asset this rail cannot
@@ -178,8 +217,9 @@ func GetCryptoOptions(ctx context.Context) (CryptoOptions, error) {
 	if err != nil {
 		return CryptoOptions{}, err
 	}
-	chains, tokens := offeredFrom(watchedAssets(), cp.SupportedChains())
-	return CryptoOptions{Chains: chains, Tokens: tokens}, nil
+	assets := offeredAssets(watchedAssets(), cp.SupportedChains())
+	chains, tokens := axesOf(assets)
+	return CryptoOptions{Chains: chains, Tokens: tokens, Assets: assets}, nil
 }
 
 // GetBillingCryptoOptions is the picker's endpoint for that menu.
@@ -260,11 +300,19 @@ func pooledAddressFor(assets []depositwatch.Asset, chain, token string) string {
 // Both lists are deduplicated and sorted, so the picker's order is a property of
 // the inputs rather than of map iteration.
 func offeredFrom(assets []depositwatch.Asset, mintable []string) (chains, tokens []string) {
+	return axesOf(offeredAssets(assets, mintable))
+}
+
+// offeredAssets is the rule offeredFrom states, as the pairs it keeps: each
+// watched asset whose chain an address can be had on, lowercased, deduplicated
+// and ordered by chain then token. Never nil.
+func offeredAssets(assets []depositwatch.Asset, mintable []string) []CryptoAsset {
 	canMint := make(map[string]bool, len(mintable))
 	for _, ch := range mintable {
 		canMint[strings.ToLower(strings.TrimSpace(ch))] = true
 	}
-	cset, tset := map[string]bool{}, map[string]bool{}
+	seen := map[CryptoAsset]bool{}
+	out := make([]CryptoAsset, 0, len(assets))
 	for _, a := range assets {
 		chain := strings.ToLower(a.Chain)
 		// The custody signer is asked only about chains it would actually have
@@ -279,11 +327,30 @@ func offeredFrom(assets []depositwatch.Asset, mintable []string) (chains, tokens
 		if !a.Pooled() && !canMint[chain] {
 			continue
 		}
-		cset[chain] = true
 		// A token is named only because some OFFERED chain carries it. Listing
 		// it from an unofferable chain would put it in the picker with nowhere
 		// to send it.
-		tset[strings.ToLower(a.Token)] = true
+		p := CryptoAsset{Chain: chain, Token: strings.ToLower(a.Token)}
+		if !seen[p] {
+			seen[p] = true
+			out = append(out, p)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Chain != out[j].Chain {
+			return out[i].Chain < out[j].Chain
+		}
+		return out[i].Token < out[j].Token
+	})
+	return out
+}
+
+// axesOf projects pairs onto the picker's two lists.
+func axesOf(pairs []CryptoAsset) (chains, tokens []string) {
+	cset, tset := map[string]bool{}, map[string]bool{}
+	for _, p := range pairs {
+		cset[p.Chain] = true
+		tset[p.Token] = true
 	}
 	return sortedKeys(cset), sortedKeys(tset)
 }
@@ -664,7 +731,7 @@ func GetBillingCryptoDeposit(c *zip.Ctx) error {
 }
 
 func toCryptoDepositResponse(i *cryptopaymentintent.CryptoPaymentIntent) CryptoDeposit {
-	return CryptoDeposit{
+	out := CryptoDeposit{
 		ID:             i.Id(),
 		Status:         string(i.Status),
 		Chain:          string(i.Chain),
@@ -672,7 +739,42 @@ func toCryptoDepositResponse(i *cryptopaymentintent.CryptoPaymentIntent) CryptoD
 		DepositAddress: i.DepositAddress,
 		AddressTag:     i.AddressTag,
 		ExpiresAt:      i.ExpiresAt.UTC().Format(time.RFC3339),
+		AmountCents:    i.Amount,
+		// The depth the watcher judges by now, which is the chain's policy and not
+		// the number stamped on an intent minted under an older one.
+		RequiredConfirmations: cryptopaymentintent.RequiredConfirmationsForChain(i.Chain),
+		Confirmations:         i.Confirmations,
 	}
+	if i.Status == cryptopaymentintent.Succeeded {
+		out.CreditedCents = i.SettlementAmount
+	}
+	if terms, ok := termsFor(watchedAssets(), string(i.Chain), i.Token); ok {
+		out.FeeCents = terms.FeeCents
+		out.MinimumCents = minimumCents(terms)
+	}
+	return out
+}
+
+// termsFor answers what a deposit of (chain, token) has deducted before it is
+// credited, from the watched asset — where the deduction is configured
+// (CRYPTO_DEPOSIT_FEE_<CHAIN>). ok is false when nothing watches the asset.
+func termsFor(assets []depositwatch.Asset, chain, token string) (depositwatch.Terms, bool) {
+	for _, a := range assets {
+		if strings.EqualFold(a.Chain, chain) && strings.EqualFold(a.Token, token) {
+			return a.Terms, true
+		}
+	}
+	return depositwatch.Terms{}, false
+}
+
+// minimumCents is the smallest deposit, in USD cents of what was sent, that
+// depositwatch.AmountCents credits under t: the haircut leaves it at least one
+// cent more than the fee. Anything less is dust or under the fee and credits
+// nothing.
+func minimumCents(t depositwatch.Terms) int64 {
+	const bps = 10_000
+	keep := int64(bps - t.SlippageBps)
+	return ((t.FeeCents+1)*bps + keep - 1) / keep
 }
 
 func supportedChain(cp processor.CryptoProcessor, chain string) bool {
