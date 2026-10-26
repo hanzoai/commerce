@@ -134,3 +134,25 @@ func TestAnEarlierRowIsFundedWhenSeenAgain(t *testing.T) {
 		t.Fatalf("the earlier deposit was not funded: %+v", l.posted)
 	}
 }
+
+// A replay whose amount was recomputed differently replays the credit already
+// made, so the ledger never refuses the key and stalls the asset.
+func TestAReplayUsesTheAmountAlreadyRecorded(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	const org, subject = "acme", "acme/alice"
+	seedOrg(t, org)
+	l := inject(t)
+	if _, err := (intentStore{}).Credit(context.Background(), deposit(org, subject)); err != nil {
+		t.Fatal(err)
+	}
+	again := deposit(org, subject)
+	again.AmountCents = 2400 // a fee changed across a restart
+	l.seen = map[string]bool{}
+	if _, err := (intentStore{}).Credit(context.Background(), again); err != nil {
+		t.Fatal(err)
+	}
+	if got := l.posted[len(l.posted)-1].AmountCents; got != 2550 {
+		t.Fatalf("the replay asked the ledger for %d cents, want the recorded 2550", got)
+	}
+}

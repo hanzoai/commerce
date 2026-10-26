@@ -200,9 +200,12 @@ func unattributedID(dedup string) string { return "unattributed:" + dedup }
 // commerce's own rows, so that credit comes FIRST: a failure returns, the cursor
 // stays parked, and the next pass tries again. It is idempotent on the on-chain
 // event, so a pass that already funded it replays the same key and moves nothing.
-// It runs even when the local row already exists, because a row written before
-// the ledger credit existed is money received and never made spendable; the
-// replay is what heals it.
+// It runs even when the local row already exists, and then with the row's own
+// amount: a pass that recomputed the amount differently (a fee or a peg rate
+// changed across a restart) must replay the credit it already made, or the
+// ledger refuses the key and every later deposit on the asset waits behind it.
+// Only transfers still inside the rescanned window are seen again, so this heals
+// a row written moments before the ledger credit existed, not older ones.
 //
 // If the intent advanced before the ledger write and the write then failed, a
 // later pass could read a succeeded intent and conclude the work was done. In
@@ -215,6 +218,19 @@ func (intentStore) Credit(ctx context.Context, c depositwatch.Credit) (bool, err
 	if c.AmountCents <= 0 {
 		return false, fmt.Errorf("depositledger: credit %s is %d cents", c.DedupKey, c.AmountCents)
 	}
+	db := orgDB(c.Org)
+	key := creditKey(db, c.DedupKey)
+	existing := transaction.New(db)
+	amount := c.AmountCents
+	switch err := existing.Get(key); {
+	case err == nil:
+		amount = int64(existing.Amount)
+	case errors.Is(err, datastore.ErrNoSuchEntity):
+	default:
+		// Cannot tell a first credit from a repeat: refuse rather than risk
+		// either double-crediting or losing the deposit.
+		return false, fmt.Errorf("depositledger: check existing credit %s: %w", c.DedupKey, err)
+	}
 	if led := creditledger.Get(); led != nil {
 		if _, _, err := led.Credit(ctx, creditledger.CreditInput{
 			Org:            strings.ToLower(strings.TrimSpace(c.Org)),
@@ -223,18 +239,14 @@ func (intentStore) Credit(ctx context.Context, c depositwatch.Credit) (bool, err
 			Reason:         fmt.Sprintf("crypto deposit %s %s on %s (%s)", c.Units, strings.ToUpper(c.Token), c.Chain, c.TxHash),
 			Tag:            depositTag,
 			IdempotencyKey: depositTag + ":" + c.DedupKey,
-			AmountCents:    c.AmountCents,
+			AmountCents:    amount,
 			Test:           c.Test,
 			Cash:           true, // the customer's own confirmed on-chain transfer
 		}); err != nil {
 			return false, fmt.Errorf("depositledger: fund %s: %w", c.DedupKey, err)
 		}
 	}
-	db := orgDB(c.Org)
-	key := creditKey(db, c.DedupKey)
-
 	written := false
-	existing := transaction.New(db)
 	switch err := existing.Get(key); {
 	case err == nil:
 		// Already credited by an earlier pass or another replica.
