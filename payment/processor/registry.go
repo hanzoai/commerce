@@ -71,7 +71,6 @@ func DefaultConfig() *RegistryConfig {
 			// crypto
 			MPC,
 			SolanaPay,
-			Circle,
 			CoinbaseCommerce,
 			OpenNode,
 			MoonPay,
@@ -275,7 +274,7 @@ func (r *Registry) SelectProcessor(ctx context.Context, req PaymentRequest) (Pay
 			}
 		}
 		// Fallback to any available crypto processor
-		for _, t := range []ProcessorType{Circle, SolanaPay, MPC, Ethereum, Bitcoin} {
+		for _, t := range []ProcessorType{SolanaPay, MPC, Ethereum, Bitcoin} {
 			if p, ok := r.processors[t]; ok {
 				if !r.config.DisabledProcessors[t] && p.IsAvailable(ctx) {
 					if supportssCurrency(p, req.Currency) {

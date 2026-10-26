@@ -311,6 +311,13 @@ func Route(r *zip.Group, args ...zip.Handler) {
 	user.Raw(http.MethodGet, "/crypto/options", GetBillingCryptoOptions)
 	user.Raw(http.MethodPost, "/crypto/deposit", CreateBillingCryptoDeposit)
 	user.Raw(http.MethodGet, "/crypto/deposit/:id", GetBillingCryptoDeposit)
+	// USDC through Circle Gateway: terms, a signed payment, and its fate. No
+	// amount here is the caller's to choose into a balance: the credit is the
+	// value of a payment the caller signed and Gateway LOCKED, to the caller's
+	// own account (billing/gateway), never a mint from a request field.
+	user.Raw(http.MethodGet, "/crypto/gateway", GetBillingGatewayTerms)
+	user.Raw(http.MethodPost, "/crypto/gateway", SubmitBillingGateway)
+	user.Raw(http.MethodGet, "/crypto/gateway/:id", GetBillingGateway)
 
 	// Plans (public catalog — cacheable, no writes).
 	// CF caches for 1 hour; plans rarely change.

@@ -1,609 +1,176 @@
-// Package circle implements the Circle Payments API processor for Commerce.
-// Uses the Circle REST API v1 directly (no SDK dependency).
+// Copyright (c) 2014-present Hanzo AI, Inc.
+// Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
+
+// Package circle is commerce's client for Circle Gateway: a chain-abstracted
+// USDC balance keyed by depositor address, and batched settlement of EIP-3009
+// authorizations against it (Gateway Nanopayments, the x402 "exact" scheme).
+//
+// Every call here is PERMISSIONLESS. Gateway takes no API key for info,
+// balances, deposits, estimate, transfer reads, or x402 verify/settle/transfers;
+// the only keyed surface is webhook subscription management, which this
+// package does not use because no Gateway webhook reports the settlement of a
+// batched authorization (see LLM.md, "Circle Gateway").
+//
+// Specs: Circle's gateway.yaml and gateway-nanopayments.yaml OpenAPI documents,
+// and the @circle-fin/x402-batching SDK for the EIP-712 domain of a batched
+// authorization (eip712.go).
 package circle
 
 import (
 	"bytes"
 	"context"
-	"crypto/ecdsa"
-	"crypto/sha256"
-	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"os"
+	"net/url"
+	"strings"
 	"time"
-
-	"github.com/google/uuid"
-
-	"github.com/hanzoai/money"
-
-	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/payment/processor"
 )
+
+// Network is which Gateway a deployment talks to. Mainnet moves real USDC;
+// testnet moves faucet USDC that is worth nothing.
+type Network string
 
 const (
-	productionBaseURL = "https://api.circle.com/v1"
-	sandboxBaseURL    = "https://api-sandbox.circle.com/v1"
-	defaultTimeout    = 30 * time.Second
+	Mainnet Network = "mainnet"
+	Testnet Network = "testnet"
 )
 
-// Config holds Circle API credentials.
-type Config struct {
-	APIKey      string
-	Environment string // "sandbox" or "production"
+// Base is the Gateway API origin for the network.
+func (n Network) Base() string {
+	if n == Mainnet {
+		return "https://gateway-api.circle.com"
+	}
+	return "https://gateway-api-testnet.circle.com"
 }
 
-// Provider implements PaymentProcessor and CryptoProcessor for Circle.
-type Provider struct {
-	*processor.BaseProcessor
-	apiKey  string
-	baseURL string
-	client  *http.Client
+// timeout bounds every Gateway call. A settle that has not answered in this
+// long is treated as an UNKNOWN outcome by the caller, never as a refusal.
+const timeout = 20 * time.Second
+
+// limit bounds a response body. Gateway's largest answer (x402/supported) is
+// a few KiB; a body past this is not Gateway's and is refused unread.
+const limit = 1 << 20
+
+// Client calls one Gateway origin.
+type Client struct {
+	base string
+	http *http.Client
 }
 
-// NewProvider creates a configured Circle provider instance.
-func NewProvider(cfg Config) *Provider {
-	base := productionBaseURL
-	if cfg.Environment == "sandbox" {
-		base = sandboxBaseURL
-	}
-	p := &Provider{
-		BaseProcessor: processor.NewBaseProcessor(processor.Circle, supportedCurrencies()),
-		apiKey:        cfg.APIKey,
-		baseURL:       base,
-		client:        &http.Client{Timeout: defaultTimeout},
-	}
-	if cfg.APIKey != "" {
-		p.SetConfigured(true)
-	}
-	return p
-}
-
-func init() {
-	apiKey := os.Getenv("CIRCLE_API_KEY")
-	env := os.Getenv("CIRCLE_ENVIRONMENT")
-	if env == "" {
-		env = "production"
-	}
-
-	base := productionBaseURL
-	if env == "sandbox" {
-		base = sandboxBaseURL
-	}
-
-	p := &Provider{
-		BaseProcessor: processor.NewBaseProcessor(processor.Circle, supportedCurrencies()),
-		apiKey:        apiKey,
-		baseURL:       base,
-		client:        &http.Client{Timeout: defaultTimeout},
-	}
-	if apiKey != "" {
-		p.SetConfigured(true)
-	}
-	processor.Register(p)
-}
-
-func supportedCurrencies() []currency.Type {
-	return []currency.Type{"usdc", "eurc"}
-}
-
-// ---------------------------------------------------------------------------
-// PaymentProcessor
-// ---------------------------------------------------------------------------
-
-// Charge creates a Circle payment with blockchain settlement.
-func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*processor.PaymentResult, error) {
-	if err := processor.ValidateRequest(req); err != nil {
-		return nil, err
-	}
-
-	idempotencyKey := uuid.New().String()
-
-	body := map[string]interface{}{
-		"idempotencyKey": idempotencyKey,
-		"amount": map[string]interface{}{
-			"amount":   req.Currency.ToStringNoSymbol(req.Amount),
-			"currency": mapCurrency(req.Currency),
-		},
-		"settlementCurrency": mapCurrency(req.Currency),
-		"source": map[string]interface{}{
-			"type": "blockchain",
+// New returns a client for the Gateway at base (Network.Base in production,
+// an httptest server in tests). Redirects are refused: Gateway answers in
+// place, and following one would send a signed authorization to a host the
+// operator never named.
+func New(base string) *Client {
+	return &Client{
+		base: strings.TrimRight(base, "/"),
+		http: &http.Client{
+			Timeout: timeout,
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
 		},
 	}
-
-	if req.Description != "" {
-		body["description"] = req.Description
-	}
-	if req.Metadata != nil {
-		body["metadata"] = req.Metadata
-	}
-
-	var resp circlePayment
-	if err := p.post(ctx, "/payments", body, &resp); err != nil {
-		return &processor.PaymentResult{
-			Success:      false,
-			ErrorMessage: err.Error(),
-			Error:        err,
-		}, err
-	}
-
-	return &processor.PaymentResult{
-		Success:       true,
-		TransactionID: resp.ID,
-		ProcessorRef:  resp.ID,
-		Status:        mapStatus(resp.Status),
-		Metadata: map[string]interface{}{
-			"circle_payment_id": resp.ID,
-			"type":              resp.Type,
-		},
-	}, nil
 }
 
-// Authorize is not directly supported by Circle payments API.
-func (p *Provider) Authorize(ctx context.Context, req processor.PaymentRequest) (*processor.PaymentResult, error) {
-	return nil, processor.NewPaymentError(processor.Circle, "NOT_SUPPORTED", "authorize not supported for Circle payments", nil)
+// Error is a Gateway answer that was not a success: a non-2xx status, or a
+// 2xx whose body could not be read as the documented shape.
+//
+// Status is the HTTP status; Code and Message are Gateway's own error body
+// ({code, message}) when it sent one.
+type Error struct {
+	Status  int
+	Code    int
+	Message string
 }
 
-// Capture is not supported by Circle payments API.
-func (p *Provider) Capture(ctx context.Context, transactionID string, amount money.Amount) (*processor.PaymentResult, error) {
-	return nil, processor.NewPaymentError(processor.Circle, "NOT_SUPPORTED", "capture not supported for Circle payments", nil)
-}
-
-// Refund creates a Circle return/refund for a payment.
-func (p *Provider) Refund(ctx context.Context, req processor.RefundRequest) (*processor.RefundResult, error) {
-	idempotencyKey := uuid.New().String()
-
-	body := map[string]interface{}{
-		"idempotencyKey": idempotencyKey,
-		"paymentId":      req.TransactionID,
+func (e *Error) Error() string {
+	if e.Message == "" {
+		return fmt.Sprintf("circle gateway: HTTP %d", e.Status)
 	}
+	return fmt.Sprintf("circle gateway: HTTP %d: %s", e.Status, e.Message)
+}
 
-	if req.Amount.Sign() > 0 {
-		body["amount"] = map[string]interface{}{
-			"amount":   req.Amount.MajorString(),
-			"currency": req.Amount.Currency().Code,
+// Refused reports whether Gateway answered definitively that it did not
+// process the request: a 4xx other than a timeout (408) or a throttle (429).
+// Every other failure — a transport error, a timeout, a 5xx, an unreadable
+// 2xx — leaves the outcome UNKNOWN, and a caller that moves money on the
+// answer must treat it that way.
+func Refused(err error) bool {
+	var e *Error
+	if !errors.As(err, &e) {
+		return false
+	}
+	return e.Status >= 400 && e.Status < 500 && e.Status != http.StatusRequestTimeout && e.Status != http.StatusTooManyRequests
+}
+
+// do sends one request and decodes a 2xx body into out.
+func (c *Client) do(ctx context.Context, method, path string, query url.Values, in, out any) error {
+	var body io.Reader
+	if in != nil {
+		b, err := json.Marshal(in)
+		if err != nil {
+			return fmt.Errorf("circle gateway: encode %s %s: %w", method, path, err)
 		}
+		body = bytes.NewReader(b)
 	}
-
-	if req.Reason != "" {
-		body["reason"] = req.Reason
+	u := c.base + path
+	if len(query) > 0 {
+		// A CAIP-2 network ("eip155:8453") travels with its colon literal, as
+		// Circle's own SDK sends it; ':' is legal in a query (RFC 3986 pchar).
+		u += "?" + strings.ReplaceAll(query.Encode(), "%3A", ":")
 	}
-
-	var resp circleReturn
-	if err := p.post(ctx, "/returns", body, &resp); err != nil {
-		return &processor.RefundResult{
-			Success:      false,
-			ErrorMessage: err.Error(),
-			Error:        err,
-		}, err
-	}
-
-	return &processor.RefundResult{
-		Success:      true,
-		RefundID:     resp.ID,
-		ProcessorRef: resp.ID,
-	}, nil
-}
-
-// GetTransaction retrieves a Circle payment by ID.
-func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.Transaction, error) {
-	var resp circlePayment
-	if err := p.get(ctx, "/payments/"+txID, &resp); err != nil {
-		return nil, err
-	}
-
-	amount, err := parseAmount(resp.Amount.Amount)
+	req, err := http.NewRequestWithContext(ctx, method, u, body)
 	if err != nil {
-		return nil, fmt.Errorf("circle payment %s amount: %w", txID, err)
+		return fmt.Errorf("circle gateway: %s %s: %w", method, path, err)
 	}
-
-	return &processor.Transaction{
-		ID:           resp.ID,
-		ProcessorRef: resp.ID,
-		Type:         "payment",
-		Amount:       amount,
-		Currency:     currency.Type(resp.Amount.Currency),
-		Status:       mapStatus(resp.Status),
-		CreatedAt:    parseTime(resp.CreateDate),
-		UpdatedAt:    parseTime(resp.UpdateDate),
-		Metadata: map[string]interface{}{
-			"type":   resp.Type,
-			"source": resp.Source,
-		},
-	}, nil
-}
-
-// ValidateWebhook verifies a Circle notification signature (SNS-based).
-// Circle uses AWS SNS for webhooks. The signature verification uses the
-// SigningCertURL from the SNS message to validate the signature.
-func (p *Provider) ValidateWebhook(ctx context.Context, payload []byte, signature string) (*processor.WebhookEvent, error) {
-	var msg snsMessage
-	if err := json.Unmarshal(payload, &msg); err != nil {
-		return nil, processor.ErrWebhookValidationFailed
-	}
-
-	// Verify SNS signature
-	if err := p.verifySNSSignature(ctx, &msg); err != nil {
-		return nil, processor.ErrWebhookValidationFailed
-	}
-
-	// Parse the Circle notification from the SNS message
-	var notification circleNotification
-	if err := json.Unmarshal([]byte(msg.Message), &notification); err != nil {
-		return nil, fmt.Errorf("failed to parse circle notification: %w", err)
-	}
-
-	return &processor.WebhookEvent{
-		ID:        msg.MessageID,
-		Type:      mapNotificationType(notification.NotificationType),
-		Processor: processor.Circle,
-		Data:      notification.Payment,
-		Timestamp: parseTime(msg.Timestamp),
-	}, nil
-}
-
-// ---------------------------------------------------------------------------
-// CryptoProcessor
-// ---------------------------------------------------------------------------
-
-// GenerateAddress creates a new deposit address on a specified chain.
-func (p *Provider) GenerateAddress(ctx context.Context, customerID string, chain string) (processor.Wallet, error) {
-	if !isSupportedChain(chain) {
-		return processor.Wallet{}, processor.NewPaymentError(processor.Circle, "UNSUPPORTED_CHAIN", fmt.Sprintf("chain %s not supported", chain), nil)
-	}
-
-	idempotencyKey := uuid.New().String()
-
-	body := map[string]interface{}{
-		"idempotencyKey": idempotencyKey,
-		"currency":       "USD",
-		"chain":          mapChain(chain),
-	}
-
-	// Use the master wallet. In production, you would look up or create
-	// a wallet per customer.
-	var resp circleAddress
-	if err := p.post(ctx, "/wallets/1/addresses", body, &resp); err != nil {
-		return processor.Wallet{}, err
-	}
-
-	// The wallet is the master wallet named in the path above, so the id is
-	// known statically rather than returned per address.
-	return processor.Wallet{Address: resp.Address, ID: "1"}, nil
-}
-
-// GetBalance retrieves the balance for a Circle wallet.
-func (p *Provider) GetBalance(ctx context.Context, address string, chain string) (*processor.Balance, error) {
-	// Circle API uses wallet IDs not raw addresses for balance queries.
-	// The address parameter here is treated as a wallet ID.
-	var resp circleWallet
-	if err := p.get(ctx, "/wallets/"+address, &resp); err != nil {
-		return nil, err
-	}
-
-	var available currency.Cents
-	for _, bal := range resp.Balances {
-		if bal.Currency == "USD" {
-			amount, err := parseAmount(bal.Amount)
-			if err != nil {
-				return nil, fmt.Errorf("circle wallet %s balance: %w", address, err)
-			}
-			available += amount
-		}
-	}
-
-	return &processor.Balance{
-		Available: available,
-		Currency:  "usdc",
-	}, nil
-}
-
-// EstimateFee returns an estimated fee for a Circle payment.
-// Circle absorbs gas fees for USDC transfers in most cases.
-func (p *Provider) EstimateFee(ctx context.Context, req processor.PaymentRequest) (currency.Cents, error) {
-	// Circle typically absorbs network fees for USDC transfers.
-	return 0, nil
-}
-
-// SupportedChains returns the blockchain networks supported by Circle.
-func (p *Provider) SupportedChains() []string {
-	return []string{"ethereum", "polygon", "solana", "avalanche", "base", "arbitrum"}
-}
-
-// ---------------------------------------------------------------------------
-// HTTP helpers
-// ---------------------------------------------------------------------------
-
-func (p *Provider) post(ctx context.Context, path string, body interface{}, result interface{}) error {
-	data, err := json.Marshal(body)
-	if err != nil {
-		return fmt.Errorf("circle marshal request: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL+path, bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	return p.doRequest(req, result)
-}
-
-func (p *Provider) get(ctx context.Context, path string, result interface{}) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.baseURL+path, nil)
-	if err != nil {
-		return err
-	}
-	return p.doRequest(req, result)
-}
-
-func (p *Provider) doRequest(req *http.Request, result interface{}) error {
-	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+p.apiKey)
-
-	resp, err := p.client.Do(req)
+	if in != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	resp, err := c.http.Do(req)
 	if err != nil {
-		return fmt.Errorf("circle request failed: %w", err)
+		return fmt.Errorf("circle gateway: %s %s: %w", method, path, err)
 	}
 	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
 	if err != nil {
-		return fmt.Errorf("circle read body: %w", err)
+		return fmt.Errorf("circle gateway: read %s %s: %w", method, path, err)
 	}
-
-	if resp.StatusCode >= 400 {
-		var apiErr circleAPIError
-		if json.Unmarshal(body, &apiErr) == nil && apiErr.Message != "" {
-			return processor.NewPaymentError(
-				processor.Circle,
-				fmt.Sprintf("%d", apiErr.Code),
-				apiErr.Message,
-				nil,
-			)
+	if len(raw) > limit {
+		return &Error{Status: resp.StatusCode, Message: "response exceeds 1 MiB"}
+	}
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		e := &Error{Status: resp.StatusCode}
+		var body struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
 		}
-		return fmt.Errorf("circle API error (HTTP %d): %s", resp.StatusCode, string(body))
-	}
-
-	if result != nil {
-		// Circle wraps responses in a "data" envelope
-		var envelope struct {
-			Data json.RawMessage `json:"data"`
+		if json.Unmarshal(raw, &body) == nil && body.Message != "" {
+			e.Code, e.Message = body.Code, body.Message
+		} else {
+			e.Message = snippet(raw)
 		}
-		if err := json.Unmarshal(body, &envelope); err != nil {
-			return fmt.Errorf("circle decode envelope: %w", err)
-		}
-		if err := json.Unmarshal(envelope.Data, result); err != nil {
-			return fmt.Errorf("circle decode response: %w", err)
-		}
+		return e
 	}
-	return nil
-}
-
-// verifySNSSignature verifies an AWS SNS message signature by fetching
-// the signing certificate and validating the PKCS#7/SHA256 signature.
-func (p *Provider) verifySNSSignature(ctx context.Context, msg *snsMessage) error {
-	if msg.SigningCertURL == "" || msg.Signature == "" {
-		return fmt.Errorf("missing signing cert URL or signature")
-	}
-
-	// Fetch the signing certificate
-	certReq, err := http.NewRequestWithContext(ctx, http.MethodGet, msg.SigningCertURL, nil)
-	if err != nil {
-		return err
-	}
-	certResp, err := p.client.Do(certReq)
-	if err != nil {
-		return fmt.Errorf("fetch signing cert: %w", err)
-	}
-	defer certResp.Body.Close()
-
-	certBody, err := io.ReadAll(certResp.Body)
-	if err != nil {
-		return fmt.Errorf("read signing cert: %w", err)
-	}
-
-	block, _ := pem.Decode(certBody)
-	if block == nil {
-		return fmt.Errorf("failed to decode PEM certificate")
-	}
-
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return fmt.Errorf("parse certificate: %w", err)
-	}
-
-	// Build the string to sign per SNS spec
-	signStr := buildSNSSignString(msg)
-	sigBytes, err := base64.StdEncoding.DecodeString(msg.Signature)
-	if err != nil {
-		return fmt.Errorf("decode signature: %w", err)
-	}
-
-	hash := sha256.Sum256([]byte(signStr))
-	pubKey, ok := cert.PublicKey.(*ecdsa.PublicKey)
-	if !ok {
-		// Fall back to RSA verification via cert.CheckSignature
-		if err := cert.CheckSignature(x509.SHA256WithRSA, []byte(signStr), sigBytes); err != nil {
-			return fmt.Errorf("RSA signature verification failed: %w", err)
-		}
+	if out == nil {
 		return nil
 	}
-
-	if !ecdsa.VerifyASN1(pubKey, hash[:], sigBytes) {
-		return fmt.Errorf("ECDSA signature verification failed")
+	if err := json.Unmarshal(raw, out); err != nil {
+		return &Error{Status: resp.StatusCode, Message: "unreadable response: " + err.Error()}
 	}
 	return nil
 }
 
-// ---------------------------------------------------------------------------
-// Circle API types
-// ---------------------------------------------------------------------------
-
-type circlePayment struct {
-	ID         string       `json:"id"`
-	Type       string       `json:"type"`
-	Status     string       `json:"status"`
-	Amount     circleAmount `json:"amount"`
-	Source     interface{}  `json:"source"`
-	CreateDate string       `json:"createDate"`
-	UpdateDate string       `json:"updateDate"`
-}
-
-type circleAmount struct {
-	Amount   string `json:"amount"`
-	Currency string `json:"currency"`
-}
-
-type circleReturn struct {
-	ID     string `json:"id"`
-	Status string `json:"status"`
-}
-
-type circleAddress struct {
-	Address  string `json:"address"`
-	Currency string `json:"currency"`
-	Chain    string `json:"chain"`
-}
-
-type circleWallet struct {
-	WalletID string         `json:"walletId"`
-	Balances []circleAmount `json:"balances"`
-}
-
-type circleAPIError struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
-
-type circleNotification struct {
-	NotificationType string                 `json:"notificationType"`
-	Payment          map[string]interface{} `json:"payment"`
-}
-
-type snsMessage struct {
-	Type             string `json:"Type"`
-	MessageID        string `json:"MessageId"`
-	Message          string `json:"Message"`
-	Timestamp        string `json:"Timestamp"`
-	Signature        string `json:"Signature"`
-	SigningCertURL   string `json:"SigningCertURL"`
-	SignatureVersion string `json:"SignatureVersion"`
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-// parseAmount converts a Circle amount string (e.g. "10.50") to Cents.
-//
-// Circle settles in USD/USDC and reports amounts as decimal strings at two
-// decimals, so money.ParseCents is the exact inverse of what we send. Reading
-// the digits by hand is what it replaces: scanning "%d.%d" made "10.5" 1005
-// instead of 1050, because a scanned fraction carries no scale.
-//
-// The error is returned rather than absorbed. Zero is a legal amount, so a
-// caller that cannot tell "the payment was for nothing" from "we could not read
-// what the payment was for" reports a confident $0.
-func parseAmount(s string) (currency.Cents, error) {
-	cents, err := currency.USD.Parse(s)
-	if err != nil {
-		return 0, err
+// snippet is the start of a body Gateway sent without its error shape, for a
+// log line. Gateway's bodies carry nothing of ours, so this leaks nothing.
+func snippet(raw []byte) string {
+	s := strings.TrimSpace(string(raw))
+	if len(s) > 200 {
+		s = s[:200]
 	}
-	return cents, nil
-}
-
-// parseTime converts a Circle ISO 8601 timestamp to Unix epoch seconds.
-func parseTime(s string) int64 {
-	t, err := time.Parse(time.RFC3339, s)
-	if err != nil {
-		return 0
-	}
-	return t.Unix()
-}
-
-func mapCurrency(c currency.Type) string {
-	switch c {
-	case "usdc":
-		return "USD"
-	case "eurc":
-		return "EUR"
-	default:
-		return "USD"
-	}
-}
-
-func mapChain(chain string) string {
-	switch chain {
-	case "ethereum":
-		return "ETH"
-	case "polygon":
-		return "MATIC"
-	case "solana":
-		return "SOL"
-	case "avalanche":
-		return "AVAX"
-	case "base":
-		return "BASE"
-	case "arbitrum":
-		return "ARB"
-	default:
-		return chain
-	}
-}
-
-func isSupportedChain(chain string) bool {
-	switch chain {
-	case "ethereum", "polygon", "solana", "avalanche", "base", "arbitrum":
-		return true
-	}
-	return false
-}
-
-func mapStatus(status string) string {
-	switch status {
-	case "confirmed":
-		return "completed"
-	case "paid":
-		return "completed"
-	case "pending":
-		return "pending"
-	case "failed":
-		return "failed"
-	case "action_required":
-		return "action_required"
-	default:
-		return status
-	}
-}
-
-func mapNotificationType(nt string) string {
-	switch nt {
-	case "payments":
-		return "payment.completed"
-	case "returns":
-		return "refund.completed"
-	case "chargebacks":
-		return "dispute.created"
-	default:
-		return nt
-	}
-}
-
-func buildSNSSignString(msg *snsMessage) string {
-	// SNS Notification signing string format
-	s := "Message\n" + msg.Message + "\n"
-	s += "MessageId\n" + msg.MessageID + "\n"
-	s += "Timestamp\n" + msg.Timestamp + "\n"
-	s += "Type\n" + msg.Type + "\n"
 	return s
 }
-
-// Compile-time interface checks.
-var (
-	_ processor.PaymentProcessor = (*Provider)(nil)
-	_ processor.CryptoProcessor  = (*Provider)(nil)
-)

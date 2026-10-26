@@ -24,7 +24,6 @@ const (
 	MPC              ProcessorType = "mpc"
 	Wire             ProcessorType = "wire"
 	SolanaPay        ProcessorType = "solanapay"
-	Circle           ProcessorType = "circle"
 	MoonPay          ProcessorType = "moonpay"
 )
 

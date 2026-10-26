@@ -379,9 +379,8 @@ of a secret is a second place for it to go stale.
   `processor.WebhookReceiver` that `ReceivesWebhooks()` — it holds the secret its
   deliveries are signed with (Square: key and URL; MPC: `MPC_WEBHOOK_SECRET`).
   Every provider package registers itself configured or not, and some verifiers
-  need no secret (Solana Pay's chain lookup, Circle's certificate fetched from a
-  URL the payload names), so asking one of them would let a caller author an
-  event; an unknown name or a secretless processor is refused. The receiver set
+  need no secret (Solana Pay's chain lookup), so asking one of them would let a
+  caller author an event; an unknown name or a secretless processor is refused. The receiver set
   is pinned to {mpc, square} by `TestTheWebhookReceiversAreTheSecretHolders`.
   `payment/router`, a second dispatcher that tried every processor, is deleted.
 - **A clawback stays in the verifying account's org.** When the event names an
@@ -2444,3 +2443,108 @@ proven, disarming them is the only way to stop that hole growing.
 Nothing CALLS `custody.Sweep` yet: there is no treasury destination in config,
 no schedule, and no durable record of a sweep. That is deliberate — rollout is
 a human decision.
+
+## Circle Gateway — the USDC top-up rail for agents (2026-10)
+
+A caller (an agent with a wallet, or a person) pays USDC from its Circle Gateway
+balance to Hanzo's treasury and is credited at once. No subscription is ever
+bought with crypto: this is top-up only, and card checkout is untouched.
+
+**Shape.** `payment/providers/circle` is the Gateway client (permissionless: no
+key is sent) plus the EIP-712 encoding; `billing/gateway` is the rail (terms,
+checks, settle, credit, reconcile, treasury); `models/remittance` is the record;
+`api/billing/gateway.go` is the HTTP transport. The legacy Circle Payments API v1
+provider and its `processor.Circle` registration are deleted.
+
+```
+GET  /v1/billing/crypto/gateway       terms: payTo, networks, USDC contracts, the
+                                      EIP-712 domain + types, limits, and a nonce
+                                      + salt issued to THIS caller
+POST /v1/billing/crypto/gateway       {network, salt, authorization, signature}
+                                      200 accepted | 202 pending | 4xx/503 + reason
+GET  /v1/billing/crypto/gateway/:id   read it back (another caller's id = 404)
+GET  /v1/commerce/treasury            superadmin: balances per domain, arriving
+                                      deposits, credit outstanding on unsettled
+GET  /v1/billing/crypto/options       gains "gateway": [CAIP-2 networks]
+```
+
+In cloud, `/v1/billing/*` is cloud's own surface (apps/billing → plane →
+`billing/gateway`), so those three routes need cloud wiring; `/v1/commerce/*`
+reaches commerce through the mount as is.
+
+**The signature.** Gateway batches EIP-3009 `TransferWithAuthorization` signed
+under ITS domain, not the token's: name `GatewayWalletBatched`, version `1`
+(USDC), `chainId` = the EVM chain id (never Gateway's domain number),
+`verifyingContract` = the GatewayWallet. Live values per network come from
+`GET /v1/x402/supported` (it also states `minValiditySeconds`, 604800 today —
+the docs' "3 days" is stale). Proven three ways: standard typehashes, an
+eth-account vector, and Circle's own testnet verifier accepting our signature
+and refusing a tampered one (`CIRCLE_LIVE=1 go test -count=1 -run Live
+./payment/providers/circle`). Gateway requires `paymentPayload.resource` with
+url, description AND mimeType (the OpenAPI says optional; the API 400s).
+
+**Settle, not batch/submit.** `POST /v1/x402/settle` carries the same
+authorization to the same queue, but takes the payee's requirements, so Gateway
+itself refuses a wrong payee or amount; it answers refusals with a typed
+`errorReason`; and its transaction id is what `GET /v1/x402/transfers/{id}`
+reads. `GET /v1/transfer/{id}` is the burn-intent (outbound) transfer, not this.
+
+**The nonce binds the caller.** Terms issue `nonce = keccak256("hanzo/gateway/
+remittance" ‖ 0 ‖ org ‖ 0 ‖ payer ‖ 0 ‖ salt)`. The payer signs it, so a payment
+captured in flight cannot be presented by another org or member (otherwise a
+signed payment is a bearer instrument: first to present it is credited).
+
+**Checked before Gateway is asked** (`billing/gateway/verify.go`): network and
+USDC from the live table; `to` == treasury; whole cents, $1 ≤ value ≤ $1,000;
+`validAfter` ≤ now; `validBefore` − now within [minValidity, 30 days]; nonce
+bound to the caller; signature low-s and recovers to `from`. Each refusal is a
+400 with a reason and nothing is recorded.
+
+**Books follow the network.** Mainnet USDC funds LIVE books only, testnet USDC
+TEST books only, by `organization.TestMode()`; a mismatch is a 503
+`books_mismatch` before anything is signed.
+
+**Credit on ACCEPT, and why.** Settle succeeds only after Gateway verified the
+signature and LOCKED the payer's balance; the payer's only exit is a trustless
+onchain withdrawal behind a 7-day delay, which is exactly Gateway's minimum
+validity, so a batch lands first. Residual risk: Gateway fails a payment it
+accepted (`failed`). The reconciler then reverses the credit (host-ledger
+`Clawback`, cash first, may go below zero so the gate refuses), bounded by what
+was spent in between, at most $1,000 per payment.
+
+**Exactly once.** The record id is `sha256(network, from, nonce)` in the
+system namespace; Gateway refuses a second use of (from, nonce); every state
+change is a swap over the row read; the credit is keyed `remittance:<id>` in the
+host ledger and on a deterministic receipt key. A send whose answer was lost
+stays `pending` (202), never refused: a re-send's refusal is NOT believed when an
+earlier send went unanswered (it may be refused BECAUSE that send locked the
+money), the payment is looked up by nonce first, and it fails only once it has
+expired unseen (validBefore + 1h). 16 concurrent presentations across two
+replicas → one Gateway payment, one credit (race-clean).
+
+**Reconciler, not webhooks.** Gateway's webhooks are deposit.finalized,
+mint.finalized and mint.forwarded — none reports a batched payment settling or
+failing — so a signed subscription could not tell this rail anything. The
+reconciler polls `GET /v1/x402/transfers/{id}` every minute (started by Serve
+and Embed, stopped by Shutdown), needs no inbound endpoint and no Circle key.
+
+**Config** (plain values, no secret): `CIRCLE_GATEWAY_TREASURY` (unset = inert),
+`CIRCLE_ENVIRONMENT` = `production` (mainnet) | `sandbox` (testnet), required
+once the treasury is set; Bootstrap refuses an unreadable address or an
+unstated network. `CIRCLE_API_KEY` is not read: nothing in this rail calls a
+keyed endpoint. KMS `/commerce-secrets` holds the Circle keys for when webhooks
+or other keyed APIs are needed.
+
+**Outbound (designed, not built)** is in `billing/gateway/treasury.go`'s doc:
+burn intent under the `GatewayWallet` domain (not `…Batched`), signed by the
+treasury MPC wallet via cloud `/v1/wallet/{id}/sign` (network `evm`), `POST
+/v1/transfer`, mint via GatewayMinter or the Forwarding Service, follow `GET
+/v1/transfer/{id}`. `Client.Estimate`/`Client.Transfer` are its reads.
+
+**Not done.** Cloud plane + routes for the three `/v1/billing/crypto/gateway`
+routes and the options field; cloud apps/x402 does not advertise the Gateway
+scheme (its settlement is a ledger move to a resource owner's wallet; a Gateway
+payment lands in the treasury, so it needs a payee credit path, not a flag);
+EURC/cirBTC (need a price); payouts. The crypto deposit watcher still credits
+commerce's local ledger only, not the injected host ledger (pre-existing).
+

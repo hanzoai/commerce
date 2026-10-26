@@ -177,6 +177,30 @@ const payment = await commerce.crypto.createPayment({
 console.log(payment.address)
 ```
 
+### USDC Top-Up (Circle Gateway)
+
+An agent with a wallet tops up with no human: it signs one EIP-3009
+authorization against its Circle Gateway USDC balance, made out to Hanzo's
+treasury, and is credited as soon as Gateway locks the payment.
+
+```bash
+# 1. Terms: payTo, networks, EIP-712 domain + types, limits, a nonce issued to you
+curl -H "Authorization: Bearer $HANZO_API_KEY" https://api.hanzo.ai/v1/billing/crypto/gateway
+
+# 2. Sign TransferWithAuthorization {from, to: payTo, value, validAfter, validBefore, nonce}
+#    under accepts[i].domain (viem signTypedData), then submit it with the salt:
+curl -X POST -H "Authorization: Bearer $HANZO_API_KEY" \
+  -d '{"network":"eip155:8453","salt":"0x…","authorization":{…},"signature":"0x…"}' \
+  https://api.hanzo.ai/v1/billing/crypto/gateway
+
+# 3. Read it back: pending → accepted (credited) → settled
+curl -H "Authorization: Bearer $HANZO_API_KEY" https://api.hanzo.ai/v1/billing/crypto/gateway/rem_…
+```
+
+`value` is USDC base units (6 decimals) in whole cents, $1 to $1,000;
+`validBefore` must be at least `minValiditySeconds` (7 days) and at most 30 days
+out.
+
 ## Webhooks
 
 ### Configure Webhook
@@ -246,6 +270,10 @@ STRIPE_WEBHOOK_SECRET=whsec_xxx
 # Crypto
 CRYPTO_WALLET_ADDRESS=0x...
 CRYPTO_NETWORK=ethereum
+
+# Circle Gateway USDC top-up (plain values, no secret)
+CIRCLE_GATEWAY_TREASURY=0x...      # unset: rail off
+CIRCLE_ENVIRONMENT=production      # production (mainnet) | sandbox (testnet)
 
 # Tax
 TAX_PROVIDER=taxjar

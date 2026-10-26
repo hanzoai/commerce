@@ -14,7 +14,6 @@ import (
 	_ "github.com/hanzoai/commerce/payment/providers/adyen"
 	_ "github.com/hanzoai/commerce/payment/providers/bitpay"
 	_ "github.com/hanzoai/commerce/payment/providers/braintree"
-	_ "github.com/hanzoai/commerce/payment/providers/circle"
 	_ "github.com/hanzoai/commerce/payment/providers/coinbase_commerce"
 	_ "github.com/hanzoai/commerce/payment/providers/lemonsqueezy"
 	_ "github.com/hanzoai/commerce/payment/providers/moonpay"
