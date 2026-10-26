@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hanzoai/commerce/billing/creditledger"
 	"github.com/hanzoai/commerce/billing/depositwatch"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -191,20 +192,43 @@ func creditKey(db *datastore.Datastore, dedup string) datastore.Key {
 // "unattributed:xrpl:<hash>:0" tells them which payment it is without a lookup.
 func unattributedID(dedup string) string { return "unattributed:" + dedup }
 
-// Credit writes the idempotent ledger row and THEN advances the intent.
+// Credit funds the spendable balance, writes the idempotent local row, and THEN
+// advances the intent.
 //
-// The order is load-bearing. If the intent advanced first and the ledger write
-// then failed, a later pass could read a succeeded intent and conclude the work
-// was done — money received, never credited. In this order the worst case is a
-// pass that re-writes a row it already wrote, which the deterministic key makes
-// a no-op. An already-written row therefore still falls through to the intent
-// advance, so a partially-completed credit heals on the next pass.
-func (intentStore) Credit(_ context.Context, c depositwatch.Credit) (bool, error) {
+// The order is load-bearing, and it is the card webhook's order. Embedded in a
+// host, the balance a customer spends is the host's ledger (creditledger), not
+// commerce's own rows, so that credit comes FIRST: a failure returns, the cursor
+// stays parked, and the next pass tries again. It is idempotent on the on-chain
+// event, so a pass that already funded it replays the same key and moves nothing.
+// It runs even when the local row already exists, because a row written before
+// the ledger credit existed is money received and never made spendable; the
+// replay is what heals it.
+//
+// If the intent advanced before the ledger write and the write then failed, a
+// later pass could read a succeeded intent and conclude the work was done. In
+// this order the worst case is a pass that re-writes what it already wrote,
+// which the deterministic keys make a no-op.
+func (intentStore) Credit(ctx context.Context, c depositwatch.Credit) (bool, error) {
 	if c.Org == "" || c.Subject == "" {
 		return false, fmt.Errorf("depositledger: credit %s names no org/payer", c.DedupKey)
 	}
 	if c.AmountCents <= 0 {
 		return false, fmt.Errorf("depositledger: credit %s is %d cents", c.DedupKey, c.AmountCents)
+	}
+	if led := creditledger.Get(); led != nil {
+		if _, _, err := led.Credit(ctx, creditledger.CreditInput{
+			Org:            strings.ToLower(strings.TrimSpace(c.Org)),
+			Subject:        c.Subject,
+			Currency:       "usd",
+			Reason:         fmt.Sprintf("crypto deposit %s %s on %s (%s)", c.Units, strings.ToUpper(c.Token), c.Chain, c.TxHash),
+			Tag:            depositTag,
+			IdempotencyKey: depositTag + ":" + c.DedupKey,
+			AmountCents:    c.AmountCents,
+			Test:           c.Test,
+			Cash:           true, // the customer's own confirmed on-chain transfer
+		}); err != nil {
+			return false, fmt.Errorf("depositledger: fund %s: %w", c.DedupKey, err)
+		}
 	}
 	db := orgDB(c.Org)
 	key := creditKey(db, c.DedupKey)
