@@ -30,11 +30,13 @@
 // onchain withdrawal — waits out a 7-day delay that is exactly the shortest
 // validity Gateway accepts (minValiditySeconds), so a batch lands before the
 // lock can be escaped. Crediting at settlement instead would make every agent
-// wait for a batch it cannot see. The residual risk is Gateway failing a
+// wait for a batch it cannot see. Credit on a lock is capped: a payer holds
+// at most MaxCents of it in total (Hold), and past that a payment is credited
+// when Gateway confirms it onchain. The residual risk is Gateway failing a
 // payment it accepted: the reconciler then reverses the credit (the balance
 // may go below zero, and the spend gate refuses from there), so the loss is
 // bounded by what was spent between acceptance and failure, at most MaxCents
-// per payment.
+// per payer.
 package gateway
 
 import (
@@ -70,8 +72,11 @@ const (
 const fallbackValidity = 7 * 24 * time.Hour
 
 // termsAge is how long Gateway's network table is trusted before it is read
-// again.
-const termsAge = 10 * time.Minute
+// again; failAge how long a failed read is remembered before the next try.
+const (
+	termsAge = 10 * time.Minute
+	failAge  = 30 * time.Second
+)
 
 // Service is the rail. One per process (Default); unarmed, it refuses
 // everything with ReasonClosed.
@@ -81,9 +86,12 @@ type Service struct {
 	now    func() time.Time
 	every  time.Duration
 
-	mu   sync.Mutex
-	nets []network
-	read time.Time
+	mu     sync.Mutex
+	nets   []network
+	read   time.Time
+	ferr   error
+	failed time.Time
+	flight chan struct{}
 
 	run    sync.Mutex
 	cancel context.CancelFunc

@@ -211,7 +211,8 @@ var kinds = map[string]int{
 	// remittance — one signed USDC payment to the treasury through Circle
 	// Gateway (models/remittance). String-keyed by (network, payer, nonce) in the
 	// system namespace; registered so a hashid encode can never panic on it.
-	"remittance": 292,
+	"remittance":      292,
+	"remittance-hold": 293,
 }
 
 var kindsReversed = make(map[int]string)

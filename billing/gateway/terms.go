@@ -109,24 +109,61 @@ func has(list []string, v string) bool {
 	return false
 }
 
-// networks is Gateway's network table, read live and kept for termsAge. A
-// failed read is an error, never an empty table that looks like "no networks".
+// networks is Gateway's network table, read live and kept for termsAge.
+//
+// ONE read is in flight at a time, whoever asks: the rest wait for its answer
+// rather than each asking Gateway, and a failed read is remembered for
+// failAge, so a slow or failing Gateway costs one call per window rather than
+// one per request. A failure is an error, never an empty table that looks
+// like "no networks".
 func (s *Service) networks(ctx context.Context) ([]network, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.nets != nil && s.now().Sub(s.read) < termsAge {
-		return s.nets, nil
+	for {
+		s.mu.Lock()
+		now := s.now()
+		switch {
+		case s.nets != nil && now.Sub(s.read) < termsAge:
+			nets := s.nets
+			s.mu.Unlock()
+			return nets, nil
+		case s.ferr != nil && now.Sub(s.failed) < failAge:
+			err := s.ferr
+			s.mu.Unlock()
+			return nil, err
+		case s.flight != nil:
+			ch := s.flight
+			s.mu.Unlock()
+			select {
+			case <-ch:
+				continue // the read in flight answered: look again
+			case <-ctx.Done():
+				return nil, shut(ReasonUnavailable, "Circle Gateway is not answering; try again shortly or use a card, bank transfer or wire.", ctx.Err())
+			}
+		}
+		ch := make(chan struct{})
+		s.flight = ch
+		s.mu.Unlock()
+
+		// Read on a context of its own: the request that happened to start it
+		// may be cancelled, and every waiter depends on its answer. The
+		// client's own timeout bounds it.
+		kinds, err := s.client.Supported(context.WithoutCancel(ctx))
+		var nets []network
+		if err == nil {
+			if nets = readNetworks(kinds); len(nets) == 0 {
+				err = fmt.Errorf("x402/supported: %d kinds, none usable", len(kinds))
+			}
+		}
+
+		s.mu.Lock()
+		s.flight = nil
+		if err != nil {
+			s.ferr, s.failed = shut(ReasonUnavailable, "Circle Gateway is not answering, or lists no network this rail can accept USDC on; try again shortly or use a card, bank transfer or wire.", err), s.now()
+		} else {
+			s.nets, s.read, s.ferr = nets, s.now(), nil
+		}
+		close(ch)
+		s.mu.Unlock()
 	}
-	kinds, err := s.client.Supported(ctx)
-	if err != nil {
-		return nil, shut(ReasonUnavailable, "Circle Gateway is not answering; try again shortly or use a card, bank transfer or wire.", err)
-	}
-	nets := readNetworks(kinds)
-	if len(nets) == 0 {
-		return nil, shut(ReasonUnavailable, "Circle Gateway lists no network this rail can accept USDC on.", fmt.Errorf("x402/supported: %d kinds, none usable", len(kinds)))
-	}
-	s.nets, s.read = nets, s.now()
-	return nets, nil
 }
 
 func lookup(nets []network, id string) (network, bool) {
@@ -139,18 +176,21 @@ func lookup(nets []network, id string) (network, bool) {
 }
 
 // Networks lists the CAIP-2 networks the rail accepts USDC on, for the crypto
-// options menu. Nil when the rail is shut or Gateway cannot be read: a network
-// is offered only while a payment on it could be checked and credited.
-func (s *Service) Networks(ctx context.Context) []string {
+// options menu, from the table already in hand and never from Gateway: the
+// menu also serves the deposit-address rail, and a slow Gateway must not slow
+// that. The reconciler keeps the table warm. Nil when the rail is shut or no
+// table has been read in the last hour.
+func (s *Service) Networks() []string {
 	if !s.Armed() {
 		return nil
 	}
-	nets, err := s.networks(ctx)
-	if err != nil {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.nets == nil || s.now().Sub(s.read) > time.Hour {
 		return nil
 	}
-	out := make([]string, 0, len(nets))
-	for _, n := range nets {
+	out := make([]string, 0, len(s.nets))
+	for _, n := range s.nets {
 		out = append(out, n.id)
 	}
 	return out

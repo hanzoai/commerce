@@ -60,7 +60,8 @@ type fake struct {
 	// Knobs a test turns.
 	lost    int           // accept the payment, then answer with this HTTP status
 	down    int           // answer with this HTTP status and do nothing
-	delay   time.Duration // wait this long before answering (after acting)
+	locked  chan struct{} // closed once a payment is LOCKED, before the answer
+	release chan struct{} // the answer waits for this, when set
 	reason  string        // refuse every settle with this errorReason
 	hide    int           // hide accepted payments from Find for this many calls
 	refused []string      // errorReasons answered, in order
@@ -236,10 +237,13 @@ func (f *fake) settle(w http.ResponseWriter, r *http.Request, reply func(int, an
 		From: strings.ToLower(a.From), To: strings.ToLower(a.To), Amount: a.Value, Nonce: strings.ToLower(a.Nonce),
 	}
 	f.byNonce[key] = id
-	lost, delay := f.lost, f.delay
+	lost, locked, release := f.lost, f.locked, f.release
 	f.mu.Unlock()
-	if delay > 0 {
-		time.Sleep(delay)
+	if locked != nil {
+		close(locked)
+	}
+	if release != nil {
+		<-release
 	}
 	if lost != 0 {
 		reply(lost, map[string]any{"success": false, "errorReason": "unexpected_error", "transaction": "", "network": req.Network})
@@ -442,6 +446,12 @@ func (r *rig) signWith(key *ecdsa.PrivateKey, d circle.Domain, a circle.Authoriz
 		r.t.Fatal(err)
 	}
 	return circle.Hex(sig) // v as 0/1: the rail must canonicalise it for Gateway
+}
+
+// pass moves the clock past any wait the reconciler set and runs one pass.
+func (r *rig) pass() {
+	r.now = r.now.Add(31 * time.Minute)
+	r.s.Reconcile(context.Background())
 }
 
 func (r *rig) submit(sub Submission) (View, error) {

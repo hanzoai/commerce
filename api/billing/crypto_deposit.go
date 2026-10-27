@@ -224,7 +224,7 @@ func GetCryptoOptions(ctx context.Context) (CryptoOptions, error) {
 	if err == nil {
 		assets = offeredAssets(watchedAssets(), cp.SupportedChains())
 	}
-	return menu(assets, err, gateway.Default().Networks(ctx))
+	return menu(assets, err, gateway.Default().Networks())
 }
 
 // menu joins the two rails' offers. Either rail alone is a menu; only when

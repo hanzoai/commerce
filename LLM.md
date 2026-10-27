@@ -2468,9 +2468,10 @@ GET  /v1/commerce/treasury            superadmin: balances per domain, arriving
 GET  /v1/billing/crypto/options       gains "gateway": [CAIP-2 networks]
 ```
 
-In cloud, `/v1/billing/*` is cloud's own surface (apps/billing → plane →
-`billing/gateway`), so those three routes need cloud wiring; `/v1/commerce/*`
-reaches commerce through the mount as is.
+In cloud, `/v1/billing/*` is cloud's own surface: apps/billing/rails.go →
+the internal plane (apps/commerce/rails_rpc.go) → `billing/gateway`, so the
+three routes are declared there; `/v1/commerce/*` reaches commerce through the
+mount as is.
 
 **The signature.** Gateway batches EIP-3009 `TransferWithAuthorization` signed
 under ITS domain, not the token's: name `GatewayWalletBatched`, version `1`
@@ -2504,13 +2505,22 @@ bound to the caller; signature low-s and recovers to `from`. Each refusal is a
 TEST books only, by `organization.TestMode()`; a mismatch is a 503
 `books_mismatch` before anything is signed.
 
-**Credit on ACCEPT, and why.** Settle succeeds only after Gateway verified the
-signature and LOCKED the payer's balance; the payer's only exit is a trustless
-onchain withdrawal behind a 7-day delay, which is exactly Gateway's minimum
-validity, so a batch lands first. Residual risk: Gateway fails a payment it
-accepted (`failed`). The reconciler then reverses the credit (host-ledger
-`Clawback`, cash first, may go below zero so the gate refuses), bounded by what
-was spent in between, at most $1,000 per payment.
+**Credit on ACCEPT, capped per payer.** Settle succeeds only after Gateway
+verified the signature and LOCKED the payer's balance; the payer's only exit
+is a trustless onchain withdrawal behind a 7-day delay, which is exactly
+Gateway's minimum validity, so a batch lands first. A credit made on a lock
+sits in the payer's `remittance.Hold` (a set keyed by remittance, every change
+a swap) until Gateway reports the payment `confirmed`; a payer holds at most
+$1,000 of such credit in total, and a payment past that is `deferred` and
+credited on confirmation. Residual risk: Gateway fails a payment it accepted.
+The reconciler then reverses the credit (host-ledger `Clawback`, cash first,
+may go below zero so the gate refuses), bounded by $1,000 per payer.
+
+**The credit's three steps.** `Credited` (owed) is written BEFORE the ledger
+is asked, `Landed` after the ledger and the receipt hold it, `Reversed` after a
+clawback. A reversal re-lands first (a keyed replay when it landed, the credit
+when it did not), so a clawback always takes back a credit that exists, and a
+row is marked `failed` only once its books are right.
 
 **Exactly once.** The record id is `sha256(network, from, nonce)` in the
 system namespace; Gateway refuses a second use of (from, nonce); every state
@@ -2527,6 +2537,18 @@ mint.finalized and mint.forwarded — none reports a batched payment settling or
 failing — so a signed subscription could not tell this rail anything. The
 reconciler polls `GET /v1/x402/transfers/{id}` every minute (started by Serve
 and Embed, stopped by Shutdown), needs no inbound endpoint and no Circle key.
+Each pass takes accepted rows, then pending, then refused (looked up by nonce
+until they expire: a refused authorization can be settled at Gateway directly
+later), DUE FIRST from the row's `Due` (20-digit unix seconds, so text order
+is time order on every backend), at most 200 per status; a row that does not
+move waits a doubling backoff (1 min to 30 min), so stuck rows sink below new
+ones. `confirmed` releases the hold; only `completed` settles. A nonce Gateway
+holds for a DIFFERENT payment fails the row for good (`nonce_conflict`, 409).
+
+**Gateway's network table** (`/v1/x402/supported`) is read single-flight,
+kept 10 minutes, and a failed read is remembered 30 seconds. The options menu
+reads only the table in hand (the reconciler keeps it warm), so a slow Gateway
+never slows the deposit-address rail.
 
 **Config** (plain values, no secret): `CIRCLE_GATEWAY_TREASURY` (unset = inert),
 `CIRCLE_ENVIRONMENT` = `production` (mainnet) | `sandbox` (testnet), required
@@ -2541,10 +2563,8 @@ treasury MPC wallet via cloud `/v1/wallet/{id}/sign` (network `evm`), `POST
 /v1/transfer`, mint via GatewayMinter or the Forwarding Service, follow `GET
 /v1/transfer/{id}`. `Client.Estimate`/`Client.Transfer` are its reads.
 
-**Not done.** Cloud plane + routes for the three `/v1/billing/crypto/gateway`
-routes and the options field; cloud apps/x402 does not advertise the Gateway
+**Not done.** Cloud apps/x402 does not advertise the Gateway
 scheme (its settlement is a ledger move to a resource owner's wallet; a Gateway
 payment lands in the treasury, so it needs a payee credit path, not a flag);
-EURC/cirBTC (need a price); payouts. The crypto deposit watcher still credits
-commerce's local ledger only, not the injected host ledger (pre-existing).
+EURC/cirBTC (need a price); payouts.
 

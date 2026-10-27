@@ -21,6 +21,7 @@ import (
 
 func init() {
 	orm.Register[Remittance]("remittance", orm.WithStringKey[Remittance]())
+	orm.Register[Hold]("remittance-hold", orm.WithStringKey[Hold]())
 }
 
 // Where a remittance stands.
@@ -81,15 +82,36 @@ type Remittance struct {
 	// TxHash is the onchain settlement of the batch that carried it.
 	TxHash string `json:"txHash,omitempty"`
 
-	// Credited is set once the payer's account holds the money; Reversed once a
-	// payment that failed after acceptance has had that credit taken back.
+	// State is Gateway's own word for the payment, as last read: received,
+	// batched, confirmed, completed or failed. Only completed is final.
+	State string `json:"state,omitempty"`
+
+	// The credit, in three steps that each happen once. Credited is written
+	// BEFORE the ledger is asked: the account is owed this money from then on,
+	// so a payment Gateway fails later is always clawed back, even if the
+	// process stopped between the ledger's answer and the next write. Landed
+	// is written once the ledger and the receipt hold it. Reversed once a
+	// payment Gateway failed has had it taken back.
 	Credited bool `json:"credited"`
+	Landed   bool `json:"landed"`
 	Reversed bool `json:"reversed"`
+	// Deferred is set while the credit waits for Gateway to confirm the
+	// payment, because the payer already holds the most unconfirmed credit the
+	// rail extends (billing/gateway Hold).
+	Deferred bool `json:"deferred"`
+
 	// Sent is set before the first settle call goes out. A pending remittance
 	// that was sent may have been accepted with nobody hearing the answer, so
 	// it is looked up before it is sent again, and a refusal of the re-send is
 	// not believed (billing/gateway drive).
 	Sent bool `json:"sent"`
+
+	// Due is when the reconciler next looks, as 20-digit zero-padded unix
+	// seconds: a fixed width compares the same as text on every backend, so
+	// the reconciler can ask for the rows that are due, oldest first. Tries
+	// is how many looks in a row changed nothing; the wait doubles with it.
+	Due   string `json:"due"`
+	Tries int    `json:"tries"`
 
 	SettledAt time.Time `json:"settledAt,omitempty"`
 }
@@ -110,3 +132,37 @@ func Query(db *datastore.Datastore) datastore.Query { return db.Query("remittanc
 // Open reports whether the remittance can still change: Gateway has not said,
 // or it accepted and the batch has not landed.
 func (r *Remittance) Open() bool { return r.Status == Pending || r.Status == Accepted }
+
+// Hold is one payer's unconfirmed credit: the remittances credited on Gateway's
+// acceptance whose payments Gateway has not yet confirmed onchain, and what
+// each is worth. It is a SET keyed by remittance, so adding one twice holds it
+// once and taking one out twice takes it out once, and every change to it is a
+// swap over the row read, so two payments accepted at once for one payer
+// cannot both see room that only one of them fits in.
+type Hold struct {
+	mixin.Model[Hold]
+
+	Org   string           `json:"org"`
+	Payer string           `json:"payer"`
+	Test  bool             `json:"test"`
+	Items map[string]int64 `json:"items"` // remittance id → cents
+}
+
+func (h *Hold) Load(ps []datastore.Property) error  { return datastore.LoadStruct(h, ps) }
+func (h *Hold) Save() ([]datastore.Property, error) { return datastore.SaveStruct(h) }
+
+// Total is the cents held.
+func (h *Hold) Total() int64 {
+	var n int64
+	for _, c := range h.Items {
+		n += c
+	}
+	return n
+}
+
+// NewHold returns a Hold bound to db.
+func NewHold(db *datastore.Datastore) *Hold {
+	h := new(Hold)
+	h.Init(db)
+	return h
+}

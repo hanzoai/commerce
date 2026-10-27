@@ -118,7 +118,7 @@ func (s *Service) Treasury(ctx context.Context) (Treasury, error) {
 		return Treasury{}, fmt.Errorf("gateway: list accepted remittances: %w", err)
 	}
 	for _, r := range open {
-		if r.Credited && !r.Reversed {
+		if r.Landed && !r.Reversed {
 			t.Credited += r.AmountCents
 		}
 	}

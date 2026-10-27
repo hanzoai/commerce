@@ -262,7 +262,7 @@ func TestTheRailIsShutUnlessArmedAndBooksMatch(t *testing.T) {
 	if _, err := shutRail.Submit(context.Background(), r.org, r.payer, sub); ReasonOf(err) != ReasonClosed || StatusOf(err) != 503 {
 		t.Fatalf("unarmed submit: %v", err)
 	}
-	if shutRail.Networks(context.Background()) != nil {
+	if shutRail.Networks() != nil {
 		t.Fatal("an unarmed rail offers networks")
 	}
 
@@ -314,7 +314,7 @@ func TestGatewaysRefusalIsRecordedAndNothingIsCredited(t *testing.T) {
 		t.Fatal("credited a refused payment")
 	}
 	// The reconciler leaves a refused payment alone.
-	r.s.Reconcile(context.Background())
+	r.pass()
 	if settles, _ := r.gw.count(); settles != 1 {
 		t.Fatalf("the reconciler re-sent a refused payment (%d settles)", settles)
 	}
@@ -358,9 +358,6 @@ func TestAnUnknownOutcomeIsNeverRefusedAndResolvesOnce(t *testing.T) {
 		{"500 having done nothing", func(f *fake) { f.down = 500 }, nil, false},
 		{"429 having done nothing", func(f *fake) { f.down = 429 }, nil, false},
 		{"408 having done nothing", func(f *fake) { f.down = 408 }, nil, false},
-		{"accepted then too slow", func(f *fake) { f.delay = 300 * time.Millisecond }, func() (context.Context, context.CancelFunc) {
-			return context.WithTimeout(context.Background(), 50*time.Millisecond)
-		}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := newRig(t, circle.Mainnet, true)
@@ -388,11 +385,11 @@ func TestAnUnknownOutcomeIsNeverRefusedAndResolvesOnce(t *testing.T) {
 			}
 
 			// Gateway recovers; the reconciler finds (or sends) it.
-			r.gw.set(func(f *fake) { f.lost, f.down, f.delay = 0, 0, 0 })
-			r.s.Reconcile(context.Background())
-			r.s.Reconcile(context.Background())
+			r.gw.set(func(f *fake) { f.lost, f.down = 0, 0 })
+			r.pass()
+			r.pass()
 			rec := r.stored(sub)
-			if rec.Status != remittance.Accepted || !rec.Credited {
+			if rec.Status != remittance.Accepted || !rec.Landed {
 				t.Fatalf("after reconcile: %+v", rec)
 			}
 			if c := r.book.posted(); len(c) != 1 || c[0].AmountCents != 1500 {
@@ -485,7 +482,7 @@ func TestConcurrentPresentationsOfOnePaymentCreditOnce(t *testing.T) {
 	for err := range errs {
 		t.Errorf("a concurrent presentation failed: %v", err)
 	}
-	r.s.Reconcile(context.Background())
+	r.pass()
 
 	if _, payments := r.gw.count(); payments != 1 {
 		t.Fatalf("Gateway accepted %d payments, want 1", payments)
@@ -496,7 +493,7 @@ func TestConcurrentPresentationsOfOnePaymentCreditOnce(t *testing.T) {
 	if got := int64(r.receipts().Balance); got != 3300 {
 		t.Fatalf("receipts = %d cents, want 3300", got)
 	}
-	if rec := r.stored(sub); rec.Status != remittance.Accepted || !rec.Credited {
+	if rec := r.stored(sub); rec.Status != remittance.Accepted || !rec.Landed {
 		t.Fatalf("record = %+v", rec)
 	}
 }
@@ -537,8 +534,8 @@ func TestARefusalOfAReSendIsNotBelieved(t *testing.T) {
 			}
 			// Search lags, and Gateway now refuses every send with reason.
 			r.gw.set(func(f *fake) { f.lost, f.hide = 0, 4; f.reason = reason })
-			r.s.Reconcile(context.Background())
-			if rec := r.stored(sub); rec.Status != remittance.Pending || rec.Credited {
+			r.pass()
+			if rec := r.stored(sub); rec.Status != remittance.Pending || rec.Landed {
 				t.Fatalf("after a refused re-send: %+v, want still pending", rec)
 			}
 			// Presenting it again says the same.
@@ -547,8 +544,8 @@ func TestARefusalOfAReSendIsNotBelieved(t *testing.T) {
 			}
 			// Search catches up.
 			r.gw.set(func(f *fake) { f.hide, f.reason = 0, "" })
-			r.s.Reconcile(context.Background())
-			if rec := r.stored(sub); rec.Status != remittance.Accepted || !rec.Credited {
+			r.pass()
+			if rec := r.stored(sub); rec.Status != remittance.Accepted || !rec.Landed {
 				t.Fatalf("after search caught up: %+v", rec)
 			}
 			if len(r.book.posted()) != 1 {
@@ -567,18 +564,25 @@ func TestTheReconcilerFollowsAPaymentToSettlement(t *testing.T) {
 		t.Fatal(err)
 	}
 	r.gw.mark(v.Payment, circle.Batched)
-	r.s.Reconcile(context.Background())
+	r.pass()
 	if got, _ := r.s.Get(context.Background(), r.org, r.payer, v.ID); got.Status != remittance.Accepted {
 		t.Fatalf("batched: %+v", got)
 	}
+	// Confirmed is onchain but not final: still followed.
 	r.gw.mark(v.Payment, circle.Confirmed)
-	r.s.Reconcile(context.Background())
+	r.pass()
 	got, _ := r.s.Get(context.Background(), r.org, r.payer, v.ID)
-	if got.Status != remittance.Settled || got.TxHash == "" || !got.Credited {
+	if got.Status != remittance.Accepted || got.TxHash == "" || !got.Credited || r.byID(v.ID).State != circle.Confirmed {
 		t.Fatalf("confirmed: %+v", got)
 	}
+	r.gw.mark(v.Payment, circle.Completed)
+	r.pass()
+	got, _ = r.s.Get(context.Background(), r.org, r.payer, v.ID)
+	if got.Status != remittance.Settled || !got.Credited {
+		t.Fatalf("completed: %+v", got)
+	}
 	// Settled is final, and nothing re-credits.
-	r.s.Reconcile(context.Background())
+	r.pass()
 	if len(r.book.posted()) != 1 {
 		t.Fatal("credited twice")
 	}
@@ -592,7 +596,7 @@ func TestAPaymentGatewayFailsAfterAcceptingIsReversedOnce(t *testing.T) {
 	}
 	r.gw.mark(v.Payment, circle.Failed)
 	for i := 0; i < 3; i++ {
-		r.s.Reconcile(context.Background())
+		r.pass()
 	}
 	got, _ := r.s.Get(context.Background(), r.org, r.payer, v.ID)
 	if got.Status != remittance.Failed || got.Credited {
@@ -633,15 +637,15 @@ func TestACreditTheLedgerMissedIsRetried(t *testing.T) {
 	if err != nil || v.Status != remittance.Accepted || v.Credited {
 		t.Fatalf("with the ledger down: %+v %v — want accepted and NOT credited", v, err)
 	}
-	r.s.Reconcile(context.Background())
-	if r.byID(v.ID).Credited {
+	r.pass()
+	if r.byID(v.ID).Landed {
 		t.Fatal("credited while the ledger was down")
 	}
 	r.book.mu.Lock()
 	r.book.broken = false
 	r.book.mu.Unlock()
-	r.s.Reconcile(context.Background())
-	r.s.Reconcile(context.Background())
+	r.pass()
+	r.pass()
 	if c := r.book.posted(); len(c) != 1 || c[0].AmountCents != 600 {
 		t.Fatalf("credits = %+v", c)
 	}
@@ -667,7 +671,7 @@ func TestAPaymentNeverSeenExpiresAsFailed(t *testing.T) {
 	if v, err := r.submit(sub); err != nil || v.Status != remittance.Pending {
 		t.Fatalf("submit: %+v %v", v, err)
 	}
-	r.s.Reconcile(context.Background()) // still down: stays pending
+	r.pass() // still down: stays pending
 	before, _ := strconv.ParseInt(sub.Authorization.ValidBefore, 10, 64)
 	sent, _ := r.gw.count()
 	r.now = time.Unix(before, 0).Add(30 * time.Minute) // past, inside the grace
@@ -680,7 +684,7 @@ func TestAPaymentNeverSeenExpiresAsFailed(t *testing.T) {
 	}
 	r.now = time.Unix(before, 0).Add(2 * time.Hour)
 	r.s.Reconcile(context.Background())
-	if rec := r.stored(sub); rec.Status != remittance.Failed || rec.Reason != "expired" || rec.Credited {
+	if rec := r.stored(sub); rec.Status != remittance.Failed || rec.Reason != "expired" || rec.Landed {
 		t.Fatalf("after the grace: %+v", rec)
 	}
 	if len(r.book.posted()) != 0 {
@@ -803,7 +807,7 @@ func TestANetworkTableGatewayCannotServeShutsTheRail(t *testing.T) {
 	if _, err := r.s.Terms(context.Background(), r.org, r.payer); ReasonOf(err) != ReasonUnavailable || StatusOf(err) != 503 {
 		t.Fatalf("terms: %v", err)
 	}
-	if r.s.Networks(context.Background()) != nil {
+	if r.s.Networks() != nil {
 		t.Fatal("offered networks Gateway does not list")
 	}
 }
