@@ -158,7 +158,7 @@ func (s *Service) credit(ctx context.Context, r *remittance.Remittance) *remitta
 			}
 			if !held {
 				out, err := update(r.Id(), func(x *remittance.Remittance) bool {
-					if x.Deferred || x.Credited {
+					if x.Deferred || x.Credited || x.Status == remittance.Failed {
 						return false
 					}
 					x.Deferred = true
@@ -172,8 +172,15 @@ func (s *Service) credit(ctx context.Context, r *remittance.Remittance) *remitta
 		}
 		// OWED from here: written before the ledger is asked, so a payment
 		// Gateway fails later is clawed back whatever happens next.
+		//
+		// Owed only if the row is still one Gateway may settle: another writer
+		// (the reconciler, on this replica or another) may have failed it while
+		// this pass was taking its hold, and fail() reversed or never made a
+		// credit. Landing one now would be money nothing takes back, because a
+		// failed row is never looked at again. The check is inside the swap
+		// because the row read at the top of credit is exactly that stale one.
 		out, err := update(r.Id(), func(x *remittance.Remittance) bool {
-			if x.Credited {
+			if x.Credited || x.Status == remittance.Failed {
 				return false
 			}
 			x.Credited, x.Deferred = true, false
@@ -184,7 +191,10 @@ func (s *Service) credit(ctx context.Context, r *remittance.Remittance) *remitta
 			return r
 		}
 		r = out
-		if r.Landed || r.Reversed {
+		if !r.Credited || r.Reversed {
+			// Not owed: a failure got there first. Hand back any room this
+			// pass took and write nothing.
+			_ = s.release(r)
 			return r
 		}
 	}

@@ -150,6 +150,66 @@ func TestACreditWhoseFlagWasLostIsStillClawedBack(t *testing.T) {
 	}
 }
 
+// R3 continued: the request reads an accepted row and takes its hold, the
+// reconciler fails the payment and finishes the row, and only then does the
+// request mark the credit. The row it holds is stale; the store says Failed.
+// Nothing may be landed, and the room the request took must go back.
+func TestACreditNeverLandsOnAFailedRow(t *testing.T) {
+	r := newRig(t, circle.Mainnet, true)
+	sub := r.pay(700, nil)
+	nets, _ := r.s.networks(context.Background())
+	c, err := verify(sub, nets, treasury, r.org.Name, r.payer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec, err := r.s.claim(r.org, r.payer, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := update(rec.Id(), func(x *remittance.Remittance) bool {
+		x.Status, x.Payment, x.State, x.Sent = remittance.Accepted, "pay_race", circle.Received, true
+		return true
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// The request's read of the row, and the room it takes before the ledger.
+	stale, err := load(rec.Id())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if held, err := r.s.reserve(stale); err != nil || !held {
+		t.Fatalf("reserve: held %v err %v", held, err)
+	}
+
+	// The reconciler reads Circle's payment as failed and finishes the row.
+	if _, err := r.s.fail(context.Background(), stale, "failed"); err != nil {
+		t.Fatal(err)
+	}
+
+	// The request carries on with the row it read.
+	if out := r.s.credit(context.Background(), stale); out.Credited && !out.Reversed {
+		t.Fatalf("a failed row was credited: %+v", out)
+	}
+	if n := r.credited(); n != 0 {
+		t.Fatalf("ledger credited %d cents for a payment Gateway failed", n)
+	}
+	if posted := r.book.posted(); len(posted) != 0 {
+		t.Fatalf("ledger posted %d credits for a payment Gateway failed", len(posted))
+	}
+	got := r.byID(rec.Id())
+	if got.Status != remittance.Failed || got.Credited || got.Landed || got.Deferred {
+		t.Fatalf("row = %+v — must stay failed and uncredited, with no deferred flag", got)
+	}
+	h, err := hold(got, func(*remittance.Hold) bool { return false })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(h.Items) != 0 {
+		t.Fatalf("hold still holds %v after the failure", h.Items)
+	}
+}
+
 // A payment the ledger never took is not "clawed back" from the customer: the
 // row stays open until the books can be put right, then nets to zero.
 func TestAFailureWithTheLedgerDownStaysOpenUntilReversed(t *testing.T) {
