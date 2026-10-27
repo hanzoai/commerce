@@ -99,6 +99,10 @@ func hold(r *remittance.Remittance, fn func(*remittance.Hold) bool) (*remittance
 func (s *Service) reserve(r *remittance.Remittance) (bool, error) {
 	held := false
 	_, err := hold(r, func(h *remittance.Hold) bool {
+		// Decided afresh on every read: a swap that lost is retried against
+		// the row as it now stands, and an answer left over from the losing
+		// read would reserve room that is no longer there.
+		held = false
 		if _, ok := h.Items[r.Id()]; ok {
 			held = true
 			return false
@@ -212,6 +216,7 @@ func (s *Service) land(ctx context.Context, r *remittance.Remittance) *remittanc
 	}
 	flipped := false
 	out, err := update(r.Id(), func(x *remittance.Remittance) bool {
+		flipped = false
 		if x.Landed {
 			return false
 		}
@@ -264,6 +269,7 @@ func (s *Service) reverse(ctx context.Context, r *remittance.Remittance) *remitt
 	}
 	flipped := false
 	out, err := update(r.Id(), func(x *remittance.Remittance) bool {
+		flipped = false
 		if x.Reversed {
 			return false
 		}

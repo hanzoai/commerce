@@ -35,11 +35,15 @@ func TestOfferedAssetsAreThePairs(t *testing.T) {
 		t.Fatalf("axes = %v / %v", chains, tokens)
 	}
 
-	b, err := json.Marshal(CryptoOptions{Chains: []string{}, Tokens: []string{}, Assets: offeredAssets(nil, nil)})
+	empty, err := menu(offeredAssets(nil, nil), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(b) != `{"chains":[],"tokens":[],"assets":[]}` {
+	b, err := json.Marshal(empty)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) != `{"chains":[],"tokens":[],"assets":[],"gateway":[]}` {
 		t.Fatalf("an empty menu marshalled to %s", b)
 	}
 }

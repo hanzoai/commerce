@@ -2461,7 +2461,7 @@ GET  /v1/billing/crypto/gateway       terms: payTo, networks, USDC contracts, th
                                       EIP-712 domain + types, limits, and a nonce
                                       + salt issued to THIS caller
 POST /v1/billing/crypto/gateway       {network, salt, authorization, signature}
-                                      200 accepted | 202 pending | 4xx/503 + reason
+                                      200 + status (accepted, pending, …) or 4xx/503 + reason
 GET  /v1/billing/crypto/gateway/:id   read it back (another caller's id = 404)
 GET  /v1/commerce/treasury            superadmin: balances per domain, arriving
                                       deposits, credit outstanding on unsettled
@@ -2526,7 +2526,7 @@ row is marked `failed` only once its books are right.
 system namespace; Gateway refuses a second use of (from, nonce); every state
 change is a swap over the row read; the credit is keyed `remittance:<id>` in the
 host ledger and on a deterministic receipt key. A send whose answer was lost
-stays `pending` (202), never refused: a re-send's refusal is NOT believed when an
+stays `pending`, never refused: a re-send's refusal is NOT believed when an
 earlier send went unanswered (it may be refused BECAUSE that send locked the
 money), the payment is looked up by nonce first, and it fails only once it has
 expired unseen (validBefore + 1h). 16 concurrent presentations across two

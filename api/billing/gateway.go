@@ -16,7 +16,6 @@ import (
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/models/organization"
-	"github.com/hanzoai/commerce/models/remittance"
 )
 
 // The Circle Gateway top-up rail over HTTP. The rail itself — terms, checks,
@@ -65,8 +64,10 @@ func GetBillingGatewayTerms(c *zip.Ctx) error {
 }
 
 // SubmitBillingGateway takes a signed USDC payment and answers what became of
-// it: 200 accepted (credited), 202 pending (outcome not yet known — read it
-// back), or a refusal with its reason.
+// it: 200 with its status — accepted (credited, or deferred until Gateway
+// confirms it), or pending (the outcome is not yet known; read it back) — or a
+// refusal with its reason. Cloud's typed route answers the same 200, so the
+// two transports answer one payment one way.
 //
 //	POST /v1/billing/crypto/gateway   { network, salt, authorization, signature }
 func SubmitBillingGateway(c *zip.Ctx) error {
@@ -80,9 +81,6 @@ func SubmitBillingGateway(c *zip.Ctx) error {
 	v, err := gateway.Default().Submit(c.Context(), org, payer, sub)
 	if err != nil {
 		return gatewayFail(c, err)
-	}
-	if v.Status == remittance.Pending {
-		return c.JSON(http.StatusAccepted, v)
 	}
 	return c.JSON(http.StatusOK, v)
 }
