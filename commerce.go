@@ -1214,8 +1214,13 @@ func (app *App) setupRoutes() {
 		// stays a CRYPTO_DEPOSIT_* act and never a button.
 		api.Raw(http.MethodGet, "/deposits", billingPkg.DepositWatcherStatus)
 		// The Circle Gateway treasury's position. Read-only and superadmin
-		// only, for the same reason.
-		api.Raw(http.MethodGet, "/treasury", billingPkg.GatewayTreasury)
+		// only, for the same reason — and STANDALONE only: a co-resident host
+		// counts every untyped route the module binds on its app against a
+		// ratchet that may only shrink, so in cloud the treasury is read
+		// through gateway.Default().Treasury from a typed op of its own.
+		if !embedded {
+			api.Raw(http.MethodGet, "/treasury", billingPkg.GatewayTreasury)
+		}
 	}
 
 	// Standalone-only routes: the full /v1 API bundle and the SPA catch-all.

@@ -2463,15 +2463,16 @@ GET  /v1/billing/crypto/gateway       terms: payTo, networks, USDC contracts, th
 POST /v1/billing/crypto/gateway       {network, salt, authorization, signature}
                                       200 + status (accepted, pending, …) or 4xx/503 + reason
 GET  /v1/billing/crypto/gateway/:id   read it back (another caller's id = 404)
-GET  /v1/commerce/treasury            superadmin: balances per domain, arriving
-                                      deposits, credit outstanding on unsettled
+GET  /v1/commerce/treasury            superadmin, standalone: balances per domain,
+                                      arriving deposits, credit outstanding on
+                                      unsettled (in cloud: a typed admin op over
+                                      gateway.Default().Treasury, not yet built)
 GET  /v1/billing/crypto/options       gains "gateway": [CAIP-2 networks]
 ```
 
 In cloud, `/v1/billing/*` is cloud's own surface: apps/billing/rails.go →
 the internal plane (apps/commerce/rails_rpc.go) → `billing/gateway`, so the
-three routes are declared there; `/v1/commerce/*` reaches commerce through the
-mount as is.
+three routes are declared there.
 
 **The signature.** Gateway batches EIP-3009 `TransferWithAuthorization` signed
 under ITS domain, not the token's: name `GatewayWalletBatched`, version `1`
