@@ -8,8 +8,10 @@ import (
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/payment/processor"
+	"github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
@@ -63,10 +65,10 @@ func liveSubs(t *testing.T, db *datastore.Datastore, subject string) []*subscrip
 	return live
 }
 
-// TestSubscribeWithCard_SecondPaidTierRefusedBeforeCharge is the money regression:
-// a subject who already pays cannot buy a concurrent second tier, and the refusal
+// TestSubscribeWithCard_SamePaidTierRefusedBeforeCharge is the money regression:
+// a subject who already pays cannot buy a duplicate of the same tier, and the refusal
 // lands BEFORE the card is touched.
-func TestSubscribeWithCard_SecondPaidTierRefusedBeforeCharge(t *testing.T) {
+func TestSubscribeWithCard_SamePaidTierRefusedBeforeCharge(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	org := moneyOrg("subsecond")
@@ -74,17 +76,16 @@ func TestSubscribeWithCard_SecondPaidTierRefusedBeforeCharge(t *testing.T) {
 	withFakeSquare(t, m)
 
 	// A real first purchase, through the real endpoint.
-	if resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev"}`, nil); resp.StatusCode != http.StatusCreated {
+	if resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev"}`, map[string]string{"X-Idempotency-Key": "attempt-1"}); resp.StatusCode != http.StatusCreated {
 		t.Fatalf("first subscribe status=%d, want 201", resp.StatusCode)
 	}
 	chargesAfterFirst := m.chargeCalls
 
-	// Now the upgrade click that used to double-bill. A DIFFERENT plan, so the
-	// idempotency guard's (subject, store, plan) key does not replay.
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok2","planId":"max-5x"}`, nil)
+	// Attempt to buy the SAME plan again with a new idempotency key so it tests the held check rather than replaying.
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok2","planId":"dev"}`, map[string]string{"X-Idempotency-Key": "attempt-2"})
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusConflict {
-		t.Fatalf("second subscribe status=%d body=%s, want 409 — a second concurrent paid tier must not be sold",
+		t.Fatalf("second subscribe status=%d body=%s, want 409 — buying the same paid tier again must be refused",
 			resp.StatusCode, string(body))
 	}
 	// The refusal has to name what the customer already has, or they cannot act on it.
@@ -101,8 +102,40 @@ func TestSubscribeWithCard_SecondPaidTierRefusedBeforeCharge(t *testing.T) {
 	if got := liveSubs(t, db, "subsecond"); len(got) != 1 {
 		t.Errorf("live subscriptions=%d, want 1 — the subject now holds two renewing tiers", len(got))
 	}
-	if parentSub(t, db, "subsecond", "max-5x") != nil {
-		t.Error("a 'max' subscription was created by a refused sale")
+}
+
+// TestSubscribeWithCard_UpgradePaidTierCancelsOldAndChargesNew tests upgrading
+// an existing paid subscription: customer holding 'dev' upgrades to 'max-5x',
+// charges the new tier, cancels the old 'dev' subscription, and leaves 1 active subscription.
+func TestSubscribeWithCard_UpgradePaidTierCancelsOldAndChargesNew(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("subupgrade")
+	m := squareMock("cust_up", "ccof_up", "sqpay_up")
+	withFakeSquare(t, m)
+
+	if resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev"}`, nil); resp.StatusCode != http.StatusCreated {
+		t.Fatalf("first subscribe status=%d, want 201", resp.StatusCode)
+	}
+	chargesAfterFirst := m.chargeCalls
+
+	// Upgrade to 'max-5x'
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok2","planId":"max-5x"}`, nil)
+	if resp.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("upgrade status=%d body=%s, want 201", resp.StatusCode, string(body))
+	}
+	if m.chargeCalls != chargesAfterFirst+1 {
+		t.Errorf("charge calls=%d, want %d", m.chargeCalls, chargesAfterFirst+1)
+	}
+
+	db := datastore.New(org.Namespaced(ctx))
+	live := liveSubs(t, db, "subupgrade")
+	if len(live) != 1 {
+		t.Fatalf("live subscriptions=%d, want 1 after upgrade", len(live))
+	}
+	if live[0].PlanId != "max-5x" && live[0].Plan.Slug != "max-5x" {
+		t.Errorf("active subscription plan=%q, want 'max-5x'", live[0].PlanId)
 	}
 }
 
@@ -155,5 +188,73 @@ func TestSubscribeWithCard_UnpaidInternalRowDoesNotBlockPaying(t *testing.T) {
 		body, _ := io.ReadAll(resp.Body)
 		t.Fatalf("status=%d body=%s, want 201 — an unpaid internal row must not block paying",
 			resp.StatusCode, string(body))
+	}
+}
+
+// TestSubscribeWithCard_Max50xAnnual tests purchasing Max 50x yearly,
+// charging $5,000 (500000 cents).
+func TestSubscribeWithCard_Max50xAnnual(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("sub50x")
+	m := squareMock("cust_50x", "ccof_50x", "sqpay_50x")
+	withFakeSquare(t, m)
+
+	pdb := plan.AuthorityDB(ctx)
+	p := plan.New(pdb)
+	p.Slug = "max-50x"
+	p.Name = "Max 50x"
+	p.Price = 50000
+	p.AnnualTotal = 500000
+	if err := p.Create(); err != nil {
+		t.Fatalf("create plan max-50x: %v", err)
+	}
+
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"max-50x","interval":"year"}`, nil)
+	if resp.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("status=%d body=%s, want 201", resp.StatusCode, string(body))
+	}
+	body := jsonBody(t, resp)
+	if got := int64(body["amountCents"].(float64)); got != 500000 {
+		t.Fatalf("amountCents=%d, want 500000 ($5000)", got)
+	}
+	if got := body["interval"]; got != "year" {
+		t.Errorf("interval=%v, want 'year'", got)
+	}
+}
+
+// TestSubscribeWithCard_SwitchIntervalMonthlyToYearly tests that an existing monthly subscriber
+// can switch to annual billing, canceling the old monthly sub and starting annual.
+func TestSubscribeWithCard_SwitchIntervalMonthlyToYearly(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("subswitch")
+	m := squareMock("cust_sw", "ccof_sw", "sqpay_sw")
+	withFakeSquare(t, m)
+
+	// Buy dev monthly first
+	if resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev"}`, map[string]string{"X-Idempotency-Key": "m-1"}); resp.StatusCode != http.StatusCreated {
+		t.Fatalf("monthly subscribe status=%d, want 201", resp.StatusCode)
+	}
+
+	// Switch to dev annual
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok2","planId":"dev","interval":"year"}`, map[string]string{"X-Idempotency-Key": "y-1"})
+	if resp.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("annual switch status=%d body=%s, want 201", resp.StatusCode, string(body))
+	}
+	body := jsonBody(t, resp)
+	if got := int64(body["amountCents"].(float64)); got != 20000 {
+		t.Fatalf("amountCents=%d, want 20000 ($200)", got)
+	}
+
+	db := datastore.New(org.Namespaced(ctx))
+	live := liveSubs(t, db, "subswitch")
+	if len(live) != 1 {
+		t.Fatalf("live subscriptions=%d, want 1 after annual switch", len(live))
+	}
+	if live[0].Plan.Interval != types.Yearly {
+		t.Errorf("active subscription interval=%v, want 'year'", live[0].Plan.Interval)
 	}
 }

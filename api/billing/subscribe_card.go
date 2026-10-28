@@ -596,15 +596,23 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// is a lost-response retry of the attempt that created the subscription, and it
 	// must replay that receipt — asking first would answer a conflict to the customer
 	// whose payment actually went through.
-	if held := billingSubscription(db, in.Subject, org.TestMode()); held != nil {
-		abandon()
+	held := billingSubscription(db, in.Subject, org.TestMode())
+	if held != nil {
 		heldSlug := held.Plan.Slug
 		if heldSlug == "" {
 			heldSlug = held.PlanId
 		}
-		return nil, saleRefusal{saleHeld, fmt.Sprintf(
-			"this account already pays for the %q plan (subscription %s); change that subscription instead of buying a second one",
-			heldSlug, held.Id())}
+		isYear := in.Interval == types.Yearly
+		heldYear := held.Plan.Interval == types.Yearly || string(held.Plan.Interval) == "year"
+		samePlan := (heldSlug == planID || held.PlanId == planID) && held.Plan.Price == p.Price
+		sameInterval := (isYear == heldYear)
+		sameQty := in.Quantity <= 1 || held.Quantity == in.Quantity
+		if samePlan && sameInterval && sameQty {
+			abandon()
+			return nil, saleRefusal{saleHeld, fmt.Sprintf(
+				"this account already pays for the %q plan (subscription %s); change that subscription instead of buying a second one",
+				heldSlug, held.Id())}
+		}
 	}
 
 	slug := p.Slug
@@ -700,6 +708,13 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			Org: org.Name, Email: in.Email, Plan: p, Seats: seatMult + int64(lineSeats(lines)), Sale: sale,
 			ListCents: listCents, PromoName: promoName, Test: org.TestMode(),
 		})
+		if held != nil && held.Id() != sub.Id() {
+			toCancel := subscription.New(db)
+			if err := toCancel.GetById(held.Id()); err == nil {
+				_ = engine.CancelSubscription(toCancel, false)
+				_ = toCancel.Update()
+			}
+		}
 		return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil
 	}
 
@@ -981,6 +996,13 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		Org: org.Name, Email: in.Email, Plan: p, Seats: seatMult + int64(lineSeats(lines)), Sale: sale,
 		ListCents: listCents, PromoName: promoName, Coupon: cpn, Test: org.TestMode(),
 	})
+	if held != nil && held.Id() != sub.Id() {
+		toCancel := subscription.New(db)
+		if err := toCancel.GetById(held.Id()); err == nil {
+			_ = engine.CancelSubscription(toCancel, false)
+			_ = toCancel.Update()
+		}
+	}
 	return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil
 }
 

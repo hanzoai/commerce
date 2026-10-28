@@ -328,10 +328,14 @@ func planAtInterval(p *plan.Plan, interval types.Interval) (*plan.Plan, error) {
 		// sends nothing and keeps buying what it bought before.
 		return &at, nil
 	case types.Yearly:
-		if p.AnnualTotal <= 0 {
+		ann := p.AnnualTotal
+		if ann <= 0 {
+			ann = p.YearlyTotal()
+		}
+		if ann <= 0 {
 			return nil, fmt.Errorf("plan %q is not sold annually", p.Slug)
 		}
-		at.Price = p.AnnualTotal
+		at.Price = ann
 		at.Interval = types.Yearly
 		at.IntervalCount = 1
 		return &at, nil

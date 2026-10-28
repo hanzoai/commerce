@@ -281,6 +281,40 @@ func (p *Plan) LevelPrice(level int) (currency.Cents, error) {
 	return p.Prices[level], nil
 }
 
+// YearlyTotal returns the authoritative yearly price charged upfront in cents,
+// falling back to AnnualTotal field or standard tier multipliers.
+func (p *Plan) YearlyTotal() currency.Cents {
+	if p.AnnualTotal > 0 {
+		return p.AnnualTotal
+	}
+	switch p.Slug {
+	case "dev", "pro":
+		return 20000
+	case "max-5x":
+		return 100000
+	case "max-20x":
+		return 200000
+	case "max-50x":
+		return 500000
+	case "team":
+		return 24000
+	case "team-premium":
+		return 96000
+	case "dns-pro":
+		return 4800
+	case "dns-enterprise":
+		return 24000
+	default:
+		if p.PriceAnnual > 0 {
+			return currency.Cents(int64(p.PriceAnnual) * 12)
+		}
+		if p.Price > 0 {
+			return currency.Cents(int64(p.Price) * 10)
+		}
+		return 0
+	}
+}
+
 // Licensing is what a tier LICENSES: the proprietary products, app builds and
 // engine capabilities a subscription on it may run. The catalog publishes it under
 // the licensing.* entitlement keys.
