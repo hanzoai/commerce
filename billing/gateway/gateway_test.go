@@ -82,7 +82,7 @@ func TestTermsTellAPayerEverythingToSign(t *testing.T) {
 	a := tm.Accepts[0]
 	if a.Network != caip || a.Asset != usdc || a.Decimals != 6 || a.MinValidity != int64(week/time.Second) ||
 		a.MinAmount != "1000000" || a.MaxAmount != "1000000000" ||
-		a.Domain != (circle.Domain{Name: "GatewayWalletBatched", Version: "1", ChainID: 84532, VerifyingContract: wallet}) {
+		a.Domain != (circle.Domain{Name: "GatewayWalletBatched", Version: "1", ChainID: 8453, VerifyingContract: wallet}) {
 		t.Fatalf("accept = %+v", a)
 	}
 	if len(tm.Types["TransferWithAuthorization"]) != 6 || len(tm.Types["EIP712Domain"]) != 4 {
@@ -152,7 +152,7 @@ func TestRefusedBeforeGatewayIsAsked(t *testing.T) {
 		}},
 		{"unsupported network", ReasonNetwork, func() Submission {
 			s := r.pay(500, nil)
-			s.Network = "eip155:8453"
+			s.Network = "eip155:84532"
 			return s
 		}},
 		{"malformed authorization", ReasonPayload, func() Submission {
@@ -175,7 +175,7 @@ func TestRefusedBeforeGatewayIsAsked(t *testing.T) {
 			tm := r.terms()
 			s := r.sign(tm, 500, nil)
 			d := tm.Accepts[0].Domain
-			d.ChainID = 8453
+			d.ChainID = 84532
 			s.Signature = r.signWith(r.key, d, s.Authorization)
 			return s
 		}},

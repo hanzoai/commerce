@@ -41,8 +41,8 @@ import (
 
 const (
 	treasury = "0x7e57000000000000000000000000000000000001"
-	caip     = "eip155:84532"
-	usdc     = "0x036cbd53842c5426634e7929541ec2318f3dcf7e"
+	caip     = "eip155:8453"
+	usdc     = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
 	wallet   = "0x0077777d7eba4688bdef3e311b846f25870a19b9"
 	week     = 7 * 24 * time.Hour
 )

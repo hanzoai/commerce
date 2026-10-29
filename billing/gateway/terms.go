@@ -149,7 +149,17 @@ func (s *Service) networks(ctx context.Context) ([]network, error) {
 		kinds, err := s.client.Supported(context.WithoutCancel(ctx))
 		var nets []network
 		if err == nil {
-			if nets = readNetworks(kinds); len(nets) == 0 {
+			nets = readNetworks(kinds)
+			if s.cfg.Network == circle.Mainnet {
+				allowed := nets[:0]
+				for _, n := range nets {
+					if mainnetUSDC[n.id] == n.asset {
+						allowed = append(allowed, n)
+					}
+				}
+				nets = allowed
+			}
+			if len(nets) == 0 {
 				err = fmt.Errorf("x402/supported: %d kinds, none usable", len(kinds))
 			}
 		}
@@ -294,4 +304,22 @@ func bind(org, payer string, salt [32]byte) [32]byte {
 		[]byte(payer), []byte{0}, salt[:],
 	))
 	return out
+}
+
+// Circle-issued native USDC only, never a testnet token or a same-symbol
+// substitute. Unknown networks fail closed until reviewed against Circle's
+// canonical contract list: https://developers.circle.com/stablecoins/usdc-contract-addresses
+var mainnetUSDC = map[string]string{
+	"eip155:1":     "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+	"eip155:8453":  "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+	"eip155:43114": "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+	"eip155:42161": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+	"eip155:10":    "0x0b2c639c533813f4aa9d7837caf62653d097ff85",
+	"eip155:137":   "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359",
+	"eip155:130":   "0x078d782b760474a361dda0af3839290b0ef57ad6",
+	"eip155:146":   "0x29219dd400f2bf60e5a23d13be72b486d4038894",
+	"eip155:480":   "0x79a02482a880bce3f13e09da970dc34db4cd24d1",
+	"eip155:1329":  "0xe15fc38f6d8c56af07bbcbe3baf5708a2bf42392",
+	"eip155:999":   "0xb88339cb7199b77e23db6e890353e22632ba630f",
+	"eip155:5042":  "0x3600000000000000000000000000000000000000",
 }

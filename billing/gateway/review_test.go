@@ -421,3 +421,54 @@ func TestACallerThatGivesUpAfterTheLockIsCreditedByTheReconciler(t *testing.T) {
 		t.Fatalf("record = %+v, ledger %d", rec, r.credited())
 	}
 }
+
+// A completed payment must survive an outage of the ledger across restarts.
+func TestCompletedPaymentRetriesCreditAfterLedgerOutage(t *testing.T) {
+	r := newRig(t, circle.Mainnet, true)
+	r.book.broken = true
+	v, err := r.submit(r.pay(600, nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.gw.mark(v.Payment, circle.Completed)
+	r.pass()
+	if rec := r.byID(v.ID); rec.Status != remittance.Settled || rec.Landed {
+		t.Fatalf("completed while ledger down: %+v", rec)
+	}
+	r.book.mu.Lock()
+	r.book.broken = false
+	r.book.mu.Unlock()
+	r.pass()
+	r.pass()
+	if rec := r.byID(v.ID); !rec.Landed || r.credited() != 600 || len(r.book.posted()) != 1 {
+		t.Fatalf("completed payment not credited exactly once: %+v, balance %d", rec, r.credited())
+	}
+}
+
+func TestAmountsCompareAsUnsignedBaseUnits(t *testing.T) {
+	for _, tc := range []struct {
+		a, b string
+		same bool
+	}{
+		{"00010000", "10000", true}, {"10001", "10000", false},
+		{"+10000", "10000", false}, {"1e4", "10000", false}, {"1.0000", "10000", false}, {"", "0", false},
+	} {
+		if sameAmount(tc.a, tc.b) != tc.same {
+			t.Errorf("sameAmount(%q,%q)", tc.a, tc.b)
+		}
+	}
+}
+
+func TestProductionRefusesTestnetAndSubstituteUSDC(t *testing.T) {
+	for _, mutate := range []func(*fake){
+		func(f *fake) { f.kinds[0].Network = "eip155:84532" },
+		func(f *fake) { f.kinds[0].Extra.Assets[0].Address = "0x036cbd53842c5426634e7929541ec2318f3dcf7e" },
+		func(f *fake) { f.kinds[0].Network = "eip155:999999" },
+	} {
+		r := newRig(t, circle.Mainnet, true)
+		r.gw.set(mutate)
+		if _, err := r.s.Terms(context.Background(), r.org, r.payer); ReasonOf(err) != ReasonUnavailable {
+			t.Fatalf("production offered unreviewed USDC: %v", err)
+		}
+	}
+}

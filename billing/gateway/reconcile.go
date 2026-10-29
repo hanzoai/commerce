@@ -108,9 +108,14 @@ func (s *Service) loop(ctx context.Context, done chan struct{}) {
 func (s *Service) Reconcile(ctx context.Context) {
 	_, _ = s.networks(ctx)
 	due := stamp(s.now())
-	for _, status := range []string{remittance.Accepted, remittance.Pending, remittance.Refused} {
-		keys, err := remittance.Query(systemDB()).Filter("Status=", status).Filter("Due<=", due).
-			Order("Due").Limit(batch).GetKeys()
+	for _, status := range []string{remittance.Accepted, remittance.Pending, remittance.Refused, remittance.Settled} {
+		q := remittance.Query(systemDB()).Filter("Status=", status).Filter("Due<=", due)
+		// Final at Circle does not imply posted to our ledger. Keep retrying
+		// only unfinished credits, so old settled rows cannot starve them.
+		if status == remittance.Settled {
+			q = q.Filter("Landed=", false)
+		}
+		keys, err := q.Order("Due").Limit(batch).GetKeys()
 		if err != nil {
 			slog.Error("gateway: reconcile: list remittances", "status", status, "err", err)
 			continue
@@ -127,7 +132,7 @@ func (s *Service) Reconcile(ctx context.Context) {
 // later pushes a row the pass could not move to the back of the queue.
 func (s *Service) later(id string) {
 	if _, err := update(id, func(x *remittance.Remittance) bool {
-		if (!x.Open() && x.Status != remittance.Refused) || x.Due == never {
+		if (!x.Open() && x.Status != remittance.Refused && !(x.Status == remittance.Settled && !x.Landed)) || x.Due == never {
 			return false
 		}
 		x.Tries++
@@ -148,6 +153,8 @@ func (s *Service) advance(ctx context.Context, id string) {
 	}
 	before := r.Status + "|" + r.State + "|" + strconv.FormatBool(r.Landed)
 	switch r.Status {
+	case remittance.Settled:
+		s.credit(ctx, r) // Circle is final; only our idempotent ledger write remains.
 	case remittance.Pending:
 		// A remittance recorded and never sent (the process stopped between
 		// the two) is sent; one sent before is looked up first. drive knows

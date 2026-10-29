@@ -674,7 +674,8 @@ func (app *App) Bootstrap() error {
 	// by the serving entry points, never here.
 	gatewayCfg, gatewayErr := circle.FromEnv(os.Environ())
 	if gatewayErr != nil {
-		return fmt.Errorf("commerce: circle gateway: %w", gatewayErr)
+		slog.Error("commerce: circle gateway disabled; other billing rails remain available", "err", gatewayErr)
+		gatewayCfg = circle.Config{}
 	}
 	gateway.SetDefault(gateway.New(gatewayCfg, circle.New(gatewayCfg.Network.Base())))
 

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/big"
 	"strconv"
 	"strings"
 	"time"
@@ -399,7 +400,7 @@ func (s *Service) find(ctx context.Context, r *remittance.Remittance) (mine *cir
 // payer, payee, amount and nonce, on the same network when Gateway says.
 func matches(r *remittance.Remittance, p circle.Payment) bool {
 	return strings.EqualFold(p.From, r.From) && strings.EqualFold(p.To, r.To) &&
-		p.Amount == r.Value && strings.EqualFold(p.Nonce, r.Nonce) &&
+		sameAmount(p.Amount, r.Value) && strings.EqualFold(p.Nonce, r.Nonce) &&
 		(p.SendingNetwork == "" || p.SendingNetwork == r.Network)
 }
 
@@ -540,4 +541,26 @@ func (s *Service) fail(ctx context.Context, r *remittance.Remittance, reason str
 		}
 		return true
 	})
+}
+
+// Circle may render the same base-unit amount with leading zeroes. Reject
+// signs, decimals and exponents; compare the two unsigned integers by value.
+func sameAmount(a, b string) bool {
+	parse := func(s string) (*big.Int, bool) {
+		if s == "" {
+			return nil, false
+		}
+		for _, c := range s {
+			if c < '0' || c > '9' {
+				return nil, false
+			}
+		}
+		return new(big.Int).SetString(s, 10)
+	}
+	x, ok := parse(a)
+	if !ok {
+		return false
+	}
+	y, ok := parse(b)
+	return ok && x.Cmp(y) == 0
 }
