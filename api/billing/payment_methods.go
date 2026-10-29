@@ -102,7 +102,7 @@ func parseCardDeclineReason(result *processor.PaymentResult, err error) string {
 		return "Card declined — incorrect security code (CVV)."
 	case strings.Contains(lower, "expired"):
 		return "Card declined — card is expired."
-	case strings.Contains(lower, "invalid_card") || strings.Contains(lower, "invalid_account"):
+	case strings.Contains(lower, "pan_failure") || strings.Contains(lower, "pan") || strings.Contains(lower, "invalid_card") || strings.Contains(lower, "invalid_account"):
 		return "Card declined — invalid card number."
 	case strings.Contains(lower, "stolen") || strings.Contains(lower, "lost"):
 		return "Card declined — please contact your bank."

@@ -228,18 +228,14 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 	}
 
 	result, err := proc.Charge(ctx, chargeReq)
-	if err != nil {
+	if err != nil || (result != nil && !result.Success) {
 		abandon()
 		log.Error("Charge failed for token topup (org=%s): %v", in.Subject, err)
-		return nil, fault(402, "charge failed", err)
-	}
-	if !result.Success {
-		abandon()
-		msg := result.ErrorMessage
-		if msg == "" {
-			msg = "charge declined"
+		declineMsg := parseCardDeclineReason(result, err)
+		if declineMsg == "" {
+			declineMsg = "charge declined"
 		}
-		return nil, fault(402, msg, nil)
+		return nil, fault(402, declineMsg, err)
 	}
 
 	// Credit the canonical balance for the subject the caller's endpoint bounded.
