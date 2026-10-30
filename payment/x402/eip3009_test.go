@@ -1,7 +1,7 @@
 // Copyright (c) 2014-present Hanzo AI, Inc.
 // Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
 
-package circle
+package x402
 
 import (
 	"encoding/hex"
@@ -14,8 +14,8 @@ import (
 
 // The reference vector was produced by eth-account 0.13.7 (encode_typed_data +
 // sign_message), not by this package, for the well-known eth-account docs key
-// 0x4c0883a6…2318. Its domain is Gateway's batched domain on Base Sepolia, its
-// payee is a test address.
+// 0x4c0883a6…2318. Its domain is another contract's on Base Sepolia, its payee
+// a test address: the encoding is the same whatever domain names it.
 var (
 	refKey       = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
 	refAddress   = "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23"
@@ -23,7 +23,7 @@ var (
 	refDigest    = "73ef2f5d70f93a6941e2aa133074293af7cd0a6bdd0e356b2512b1184ec57d46"
 	refSignature = "0xf57147202312319938cc69f1171dafa3502e8db9ca64de50897218309e94574e1254c32f30d973bf2c9f132822cd12f1200a3eea1c7164ad50f839d948856f601b"
 
-	refDomain = Domain{Name: Name, Version: Release, ChainID: 84532, VerifyingContract: "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"}
+	refDomain = Domain{Name: "GatewayWalletBatched", Version: "1", ChainID: 84532, VerifyingContract: "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"}
 	refAuth   = Authorization{
 		From:        refAddress,
 		To:          "0x7e57000000000000000000000000000000000001",
@@ -136,7 +136,7 @@ func TestRecoverAcceptsBothRecoveryIDSpellings(t *testing.T) {
 	}
 }
 
-// (r, n−s, v^1) is a second valid signature over the same digest. Gateway's
+// (r, n−s, v^1) is a second valid signature over the same digest. USDC's
 // verifier refuses it, so this does too.
 func TestRecoverRefusesHighS(t *testing.T) {
 	sig, _ := hexBytes(refSignature)
@@ -225,12 +225,47 @@ func TestParseIsStrict(t *testing.T) {
 func TestDigestRefusesABadDomain(t *testing.T) {
 	p, _ := refAuth.Parse()
 	for _, d := range []Domain{
-		{Name: Name, Version: Release, ChainID: 84532, VerifyingContract: "0x1234"},
-		{Name: Name, Version: Release, ChainID: 0, VerifyingContract: refDomain.VerifyingContract},
-		{Name: Name, Version: Release, ChainID: -1, VerifyingContract: refDomain.VerifyingContract},
+		{Name: refDomain.Name, Version: refDomain.Version, ChainID: 84532, VerifyingContract: "0x1234"},
+		{Name: refDomain.Name, Version: refDomain.Version, ChainID: 0, VerifyingContract: refDomain.VerifyingContract},
+		{Name: refDomain.Name, Version: refDomain.Version, ChainID: -1, VerifyingContract: refDomain.VerifyingContract},
 	} {
 		if _, err := d.Digest(p); err == nil {
 			t.Errorf("%+v: digested", d)
 		}
+	}
+}
+
+// USDC's own domain on Base Sepolia, as the token states it on chain
+// (name() "USDC", version() "2", DOMAIN_SEPARATOR() read 2026-10-30), and a
+// payment viem 2 signed under it (signTypedData), with the same docs key.
+var (
+	usdcDomain    = Domain{Name: "USDC", Version: "2", ChainID: 84532, VerifyingContract: "0x036CbD53842c5426634e7929541eC2318f3dCF7e"}
+	usdcSeparator = "71f17a3b2ff373b803d70a5a07c046c1a2bc8e89c09ef722fcb047abe94c9818"
+	usdcDigest    = "3a48a1f79ab61d368da6bc9d08822a07f23bb8c12932254515f6bbe3b0472117"
+	usdcSignature = "0x19d01c6251f0800b21c996d399d3463e7d1fc71b3b5468c7ecf75fd79dd7306829e95f2da581e86e35f96af008f404ee894e0a7ea51625c19ff17e0ae2c6f04b1b"
+)
+
+func TestUSDCDomainMatchesTheToken(t *testing.T) {
+	sep, err := usdcDomain.Separator()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := hex.EncodeToString(sep[:]); got != usdcSeparator {
+		t.Fatalf("separator = %s, the token says %s", got, usdcSeparator)
+	}
+	p, _ := refAuth.Parse()
+	d, err := usdcDomain.Digest(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := hex.EncodeToString(d[:]); got != usdcDigest {
+		t.Fatalf("digest = %s, viem computed %s", got, usdcDigest)
+	}
+	signer, err := Recover(d, usdcSignature)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := Hex(signer[:]); got != refAddress {
+		t.Fatalf("recovered %s, viem signed as %s", got, refAddress)
 	}
 }

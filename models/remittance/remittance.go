@@ -2,13 +2,14 @@
 // Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
 
 // Package remittance is the durable record of ONE signed USDC payment a payer
-// sent to Hanzo's treasury through Circle Gateway, and of what became of it.
+// made out to Hanzo's treasury — an EIP-3009 transferWithAuthorization the rail
+// relays (billing/gateway) — and of what became of it.
 //
 // A record's storage id is a pure function of the payment's identity on the
 // chain — (network, payer address, EIP-3009 nonce) — and it lives in the
 // SYSTEM namespace, so the same authorization presented twice, by one org or by
-// two, by one replica or by two, lands on one row. Gateway itself refuses a
-// second use of a (payer address, nonce), so one row is one payment.
+// two, by one replica or by two, lands on one row. The USDC contract itself
+// refuses a second use of a (payer address, nonce), so one row is one payment.
 package remittance
 
 import (
@@ -21,27 +22,28 @@ import (
 
 func init() {
 	orm.Register[Remittance]("remittance", orm.WithStringKey[Remittance]())
-	orm.Register[Hold]("remittance-hold", orm.WithStringKey[Hold]())
 }
 
 // Where a remittance stands.
 //
-//	pending   recorded; Gateway's answer is not known yet (in flight, or a
-//	          timeout). Nothing is credited. The reconciler finds out.
-//	accepted  Gateway verified the signature and LOCKED the payer's balance.
-//	          Credited to the payer's account here.
-//	settled   the batch carrying it landed onchain. Final.
-//	failed    Gateway failed it after accepting it, or it expired unaccepted.
-//	          Never charged; any credit is reversed. Final.
-//	refused   Gateway refused it outright (no balance, bad signature, …).
-//	          Never charged, never credited. Presenting the same signed payment
-//	          again tries again.
+//	pending     recorded; the chain shows no use of the authorization yet. The
+//	            relayer has sent it, or will. Nothing is credited.
+//	confirming  the chain shows it used, in a transaction that paid the
+//	            treasury, not yet Confirmations deep. Nothing is credited.
+//	succeeded   that transaction is deep enough, and the payer is credited.
+//	            Final.
+//	refused     the token would refuse it now (no balance, a blocked address,
+//	            …), so nothing was sent. Presenting the same signed payment
+//	            again tries again, and the chain is still watched for its use
+//	            until it expires.
+//	failed      it can never pay the treasury: it expired unused, or its nonce
+//	            was spent on another authorization. Never credited. Final.
 const (
-	Pending  = "pending"
-	Accepted = "accepted"
-	Settled  = "settled"
-	Failed   = "failed"
-	Refused  = "refused"
+	Pending    = "pending"
+	Confirming = "confirming"
+	Succeeded  = "succeeded"
+	Refused    = "refused"
+	Failed     = "failed"
 )
 
 // Remittance is one payment and its fate. There is deliberately no field named
@@ -60,7 +62,6 @@ type Remittance struct {
 	// addresses and nonce in lowercase 0x hex.
 	Network     string `json:"network"`
 	Asset       string `json:"asset"`
-	Contract    string `json:"contract"` // the GatewayWallet the domain names
 	From        string `json:"from"`
 	To          string `json:"to"`
 	Value       string `json:"value"` // base units
@@ -75,36 +76,32 @@ type Remittance struct {
 	AmountCents int64 `json:"amountCents"`
 
 	Status string `json:"status" orm:"default:pending"`
-	// Reason is Gateway's errorReason for a refusal or failure, or ours.
+	// Reason is why it was refused or failed.
 	Reason string `json:"reason,omitempty"`
-	// Payment is Gateway's id for it (GET /v1/x402/transfers/{id}).
-	Payment string `json:"payment,omitempty"`
-	// TxHash is the onchain settlement of the batch that carried it.
-	TxHash string `json:"txHash,omitempty"`
 
-	// State is Gateway's own word for the payment, as last read: received,
-	// batched, confirmed, completed or failed. Only completed is final.
-	State string `json:"state,omitempty"`
+	// The relayer's part. Sends is every transferWithAuthorization the relayer
+	// signed for this payment, by hash, in order, each written BEFORE it was
+	// broadcast: the record of what Hanzo's key did. SentAt is the last one.
+	Relayer string    `json:"relayer,omitempty"`
+	Sends   []string  `json:"sends,omitempty" datastore:",noindex"`
+	SentAt  time.Time `json:"sentAt,omitempty"`
+	// FromBlock is where a search of the chain for a use of this authorization
+	// starts: the block the chain stood at when the payment was presented,
+	// less the blocks since it became valid.
+	FromBlock int64 `json:"fromBlock"`
 
-	// The credit, in three steps that each happen once. Credited is written
-	// BEFORE the ledger is asked: the account is owed this money from then on,
-	// so a payment Gateway fails later is always clawed back, even if the
-	// process stopped between the ledger's answer and the next write. Landed
-	// is written once the ledger and the receipt hold it. Reversed once a
-	// payment Gateway failed has had it taken back.
+	// The use on chain, once seen: the transaction that spent the
+	// authorization, its block, and how deep it was when last read.
+	TxHash        string `json:"txHash,omitempty"`
+	Block         int64  `json:"block,omitempty"`
+	Confirmations int64  `json:"confirmations,omitempty"`
+
+	// The credit, in two steps that each happen once. Credited is written
+	// BEFORE the ledger is asked: from then the account is owed this money,
+	// and a landing that did not finish is finished by the reconciler. Landed
+	// is written once the ledger and the receipt hold it.
 	Credited bool `json:"credited"`
 	Landed   bool `json:"landed"`
-	Reversed bool `json:"reversed"`
-	// Deferred is set while the credit waits for Gateway to confirm the
-	// payment, because the payer already holds the most unconfirmed credit the
-	// rail extends (billing/gateway Hold).
-	Deferred bool `json:"deferred"`
-
-	// Sent is set before the first settle call goes out. A pending remittance
-	// that was sent may have been accepted with nobody hearing the answer, so
-	// it is looked up before it is sent again, and a refusal of the re-send is
-	// not believed (billing/gateway drive).
-	Sent bool `json:"sent"`
 
 	// Due is when the reconciler next looks, as 20-digit zero-padded unix
 	// seconds: a fixed width compares the same as text on every backend, so
@@ -129,40 +126,8 @@ func New(db *datastore.Datastore) *Remittance {
 // Query is a query over remittances in db's namespace.
 func Query(db *datastore.Datastore) datastore.Query { return db.Query("remittance") }
 
-// Open reports whether the remittance can still change: Gateway has not said,
-// or it accepted and the batch has not landed.
-func (r *Remittance) Open() bool { return r.Status == Pending || r.Status == Accepted }
-
-// Hold is one payer's unconfirmed credit: the remittances credited on Gateway's
-// acceptance whose payments Gateway has not yet confirmed onchain, and what
-// each is worth. It is a SET keyed by remittance, so adding one twice holds it
-// once and taking one out twice takes it out once, and every change to it is a
-// swap over the row read, so two payments accepted at once for one payer
-// cannot both see room that only one of them fits in.
-type Hold struct {
-	mixin.Model[Hold]
-
-	Org   string           `json:"org"`
-	Payer string           `json:"payer"`
-	Test  bool             `json:"test"`
-	Items map[string]int64 `json:"items"` // remittance id → cents
-}
-
-func (h *Hold) Load(ps []datastore.Property) error  { return datastore.LoadStruct(h, ps) }
-func (h *Hold) Save() ([]datastore.Property, error) { return datastore.SaveStruct(h) }
-
-// Total is the cents held.
-func (h *Hold) Total() int64 {
-	var n int64
-	for _, c := range h.Items {
-		n += c
-	}
-	return n
-}
-
-// NewHold returns a Hold bound to db.
-func NewHold(db *datastore.Datastore) *Hold {
-	h := new(Hold)
-	h.Init(db)
-	return h
+// Open reports whether the remittance can still change on its own: the chain
+// may yet show it used, or it is used and not yet credited.
+func (r *Remittance) Open() bool {
+	return r.Status == Pending || r.Status == Confirming || r.Status == Refused
 }

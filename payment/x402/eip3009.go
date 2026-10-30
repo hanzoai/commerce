@@ -1,7 +1,7 @@
 // Copyright (c) 2014-present Hanzo AI, Inc.
 // Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
 
-package circle
+package x402
 
 import (
 	"encoding/hex"
@@ -13,25 +13,20 @@ import (
 	"github.com/luxfi/crypto"
 )
 
-// A batched Gateway payment is an EIP-3009 TransferWithAuthorization signed as
-// EIP-712 typed data under Gateway's OWN domain — not the token's:
+// EIP-3009 TransferWithAuthorization, signed as EIP-712 typed data under the
+// TOKEN's own domain — USDC's FiatTokenV2:
 //
-//	name              "GatewayWalletBatched"
-//	version           "1"   (USDC; "2" adds the token as salt and is not used here)
-//	chainId           the network's EVM chain id (never Gateway's domain number)
-//	verifyingContract the GatewayWallet contract on that network
+//	name              the token's name()    ("USD Coin" on Base, "USDC" on Base Sepolia)
+//	version           the token's version() ("2")
+//	chainId           the network's EVM chain id
+//	verifyingContract the token contract
 //
-// Source: @circle-fin/x402-batching 4.0.0, BatchEvmScheme.signAuthorization
-// (constants CIRCLE_BATCHING_NAME / CIRCLE_BATCHING_VERSION) and Circle's
-// "Sign EIP-3009 payment authorizations" guide; the live values are served per
-// network by GET /v1/x402/supported. The encoding is pinned in tests against a
-// digest and signature eth-account produced independently.
-
-// Name and Release are the domain name and version of a USDC authorization.
-const (
-	Name    = "GatewayWalletBatched"
-	Release = "1"
-)
+// The token checks exactly this digest in transferWithAuthorization, so a
+// signature that recovers here under the token's domain is one the token
+// accepts. This is the ONE EIP-3009 implementation in commerce: the x402
+// facilitator and the USDC top-up rail (billing/gateway) both verify through
+// it. The encoding is pinned in tests against digests and signatures that
+// eth-account and viem produced independently.
 
 // Domain is an EIP-712 domain, in the shape viem and ethers sign with.
 type Domain struct {
@@ -82,7 +77,7 @@ func Types() map[string][]Field {
 const Primary = "TransferWithAuthorization"
 
 // Authorization is an EIP-3009 TransferWithAuthorization as it travels: every
-// field a string, exactly as the payer signed it and as Gateway reads it.
+// field a string, exactly as the payer signed it.
 type Authorization struct {
 	From        string `json:"from"`
 	To          string `json:"to"`
@@ -133,14 +128,17 @@ func (a Authorization) Parse() (Parsed, error) {
 	return p, nil
 }
 
-// Digest is the EIP-712 hash a payer signs for p under d.
-func (d Domain) Digest(p Parsed) ([32]byte, error) {
+// Separator is the domain's EIP-712 separator: what a token's
+// DOMAIN_SEPARATOR() answers when d is its domain. A malformed contract or a
+// non-positive chain id is an error, never a separator over zeroes.
+func (d Domain) Separator() ([32]byte, error) {
+	var out [32]byte
 	contract, err := Address(d.VerifyingContract)
 	if err != nil {
-		return [32]byte{}, fmt.Errorf("verifyingContract: %w", err)
+		return out, fmt.Errorf("verifyingContract: %w", err)
 	}
 	if d.ChainID <= 0 {
-		return [32]byte{}, fmt.Errorf("chainId %d", d.ChainID)
+		return out, fmt.Errorf("chainId %d", d.ChainID)
 	}
 	var dom []byte
 	dom = append(dom, typeHash("EIP712Domain")...)
@@ -148,6 +146,16 @@ func (d Domain) Digest(p Parsed) ([32]byte, error) {
 	dom = append(dom, crypto.Keccak256([]byte(d.Version))...)
 	dom = append(dom, word(new(big.Int).SetInt64(d.ChainID))...)
 	dom = append(dom, pad(contract[:])...)
+	copy(out[:], crypto.Keccak256(dom))
+	return out, nil
+}
+
+// Digest is the EIP-712 hash a payer signs for p under d.
+func (d Domain) Digest(p Parsed) ([32]byte, error) {
+	sep, err := d.Separator()
+	if err != nil {
+		return [32]byte{}, err
+	}
 
 	var msg []byte
 	msg = append(msg, typeHash(Primary)...)
@@ -159,7 +167,7 @@ func (d Domain) Digest(p Parsed) ([32]byte, error) {
 	msg = append(msg, p.Nonce[:]...)
 
 	var out [32]byte
-	copy(out[:], crypto.Keccak256([]byte{0x19, 0x01}, crypto.Keccak256(dom), crypto.Keccak256(msg)))
+	copy(out[:], crypto.Keccak256([]byte{0x19, 0x01}, sep[:], crypto.Keccak256(msg)))
 	return out, nil
 }
 
@@ -179,8 +187,8 @@ func typeHash(name string) []byte { return crypto.Keccak256([]byte(encoding(name
 //
 // sig is 65 bytes r‖s‖v in hex, v in {0, 1, 27, 28}. A high-s signature is
 // refused: (r, n−s) is the same signature in the other half of the curve, and
-// the OpenZeppelin ECDSA library Gateway's contracts use refuses it, so
-// accepting it here would accept a payment Gateway cannot settle.
+// USDC's signature check (EIP-2) refuses it, so accepting it here would accept
+// a payment the token cannot settle.
 func Recover(digest [32]byte, sig string) ([20]byte, error) {
 	var out [20]byte
 	b, err := hexBytes(sig)
@@ -209,8 +217,8 @@ func Recover(digest [32]byte, sig string) ([20]byte, error) {
 	return out, nil
 }
 
-// Canonical is sig's one spelling: lowercase 0x hex, v as 27 or 28 — the
-// form OpenZeppelin's ECDSA.recover, which Gateway's contracts use, accepts.
+// Canonical is sig's one spelling: lowercase 0x hex, v as 27 or 28 — the form
+// transferWithAuthorization's v argument takes.
 // It assumes Recover has already accepted sig.
 func Canonical(sig string) (string, error) {
 	b, err := hexBytes(sig)

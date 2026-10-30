@@ -74,18 +74,33 @@ func New(ctx context.Context, network custody.Network, rpcURL string) (*Chain, e
 	if c, ok := network.Curve(); !ok || c != custody.Secp256k1 {
 		return nil, fmt.Errorf("evm: %q is not an EVM network on this rail", network)
 	}
+	c, err := Dial(ctx, rpcURL)
+	if err != nil {
+		return nil, fmt.Errorf("evm: %s: %w", network, err)
+	}
+	c.network = network
+	return c, nil
+}
+
+// Dial builds a chain no custody signer signs on: drafts a key this process
+// holds will sign (billing/gateway's relayer), so it names no custody network.
+// The chain id is read from the node, for the reason New gives.
+func Dial(ctx context.Context, rpcURL string) (*Chain, error) {
 	// tokenAddr is empty: this client is used for chain-level calls, and each
 	// token's balance is read through a client bound to that token.
 	rpc := husdindex.NewClient(rpcURL, "")
 	id, err := rpc.ChainID(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("evm: %s: reading chain id: %w", network, err)
+		return nil, fmt.Errorf("evm: reading chain id: %w", err)
 	}
 	if id.Sign() <= 0 {
-		return nil, fmt.Errorf("evm: %s reported chain id %s", network, id)
+		return nil, fmt.Errorf("evm: node reported chain id %s", id)
 	}
-	return &Chain{network: network, rpc: rpc, chainID: id}, nil
+	return &Chain{rpc: rpc, chainID: id}, nil
 }
+
+// RPC is the node this chain reads and broadcasts through.
+func (c *Chain) RPC() *husdindex.Client { return c.rpc }
 
 // Network is the code the signer resolves a curve from.
 func (c *Chain) Network() custody.Network { return c.network }
@@ -135,9 +150,31 @@ func (c *Chain) Draft(ctx context.Context, t custody.Transfer) (*custody.Draft, 
 		value = t.Amount // may be nil; settled below, once the fee is known
 	}
 
-	nonce, err := c.rpc.Nonce(ctx, t.From)
+	return c.build(ctx, from, target, value, data, t.Token != "")
+}
+
+// DraftCall is an unsigned call of data on contract to, from from, carrying no
+// value, with the one digest to sign. from pays the gas in the chain's coin.
+func (c *Chain) DraftCall(ctx context.Context, from, to string, data []byte) (*custody.Draft, error) {
+	sender, err := parseAddr(from)
 	if err != nil {
-		return nil, fmt.Errorf("evm: reading nonce of %s: %w", t.From, err)
+		return nil, fmt.Errorf("evm: from: %w", err)
+	}
+	target, err := parseAddr(to)
+	if err != nil {
+		return nil, fmt.Errorf("evm: to: %w", err)
+	}
+	return c.build(ctx, sender, target, new(big.Int), data, true)
+}
+
+// build reads the chain for nonce, fees and gas and returns the unsigned
+// transaction's Draft. A call (or a token transfer) pays its gas out of a coin
+// it does not carry; a native transfer pays for itself, and a nil value there
+// means everything less the fee.
+func (c *Chain) build(ctx context.Context, from, target common.Address, value *big.Int, data []byte, call bool) (*custody.Draft, error) {
+	nonce, err := c.rpc.Nonce(ctx, from.Hex())
+	if err != nil {
+		return nil, fmt.Errorf("evm: reading nonce of %s: %w", from.Hex(), err)
 	}
 	tip, err := c.rpc.Tip(ctx)
 	if err != nil {
@@ -149,7 +186,7 @@ func (c *Chain) Draft(ctx context.Context, t custody.Transfer) (*custody.Draft, 
 	}
 	feeCap := new(big.Int).Add(new(big.Int).Mul(base, big.NewInt(feeMultiplier)), tip)
 
-	gas, err := c.rpc.EstimateGas(ctx, t.From, target.Hex(), value, data)
+	gas, err := c.rpc.EstimateGas(ctx, from.Hex(), target.Hex(), value, data)
 	if err != nil {
 		return nil, fmt.Errorf("evm: estimating gas: %w", err)
 	}
@@ -159,18 +196,18 @@ func (c *Chain) Draft(ctx context.Context, t custody.Transfer) (*custody.Draft, 
 	// the native coin, and it is the number a native sweep has to leave behind.
 	maxCost := new(big.Int).Mul(new(big.Int).SetUint64(gas), feeCap)
 
-	held, err := c.rpc.NativeBalance(ctx, t.From)
+	held, err := c.rpc.NativeBalance(ctx, from.Hex())
 	if err != nil {
-		return nil, fmt.Errorf("evm: reading native balance of %s: %w", t.From, err)
+		return nil, fmt.Errorf("evm: reading native balance of %s: %w", from.Hex(), err)
 	}
 
-	if t.Token != "" {
+	if call {
 		// A token transfer pays gas out of a coin it does not carry. This is the
 		// ordinary state of a deposit address the first time it is swept — a
 		// payer who sends USDC sends no ETH with it — so it gets a typed error
 		// naming exactly what to send, rather than a revert.
 		if held.Cmp(maxCost) < 0 {
-			return nil, &custody.ErrNoFee{Network: c.network, Addr: t.From, Have: held, Need: maxCost}
+			return nil, &custody.ErrNoFee{Network: c.network, Addr: from.Hex(), Have: held, Need: maxCost}
 		}
 	} else {
 		// A native sweep pays for itself, so "everything" means everything minus
@@ -180,10 +217,10 @@ func (c *Chain) Draft(ctx context.Context, t custody.Transfer) (*custody.Draft, 
 		if value == nil {
 			value = new(big.Int).Sub(held, maxCost)
 			if value.Sign() <= 0 {
-				return nil, &custody.ErrNoFee{Network: c.network, Addr: t.From, Have: held, Need: maxCost}
+				return nil, &custody.ErrNoFee{Network: c.network, Addr: from.Hex(), Have: held, Need: maxCost}
 			}
 		} else if total := new(big.Int).Add(value, maxCost); held.Cmp(total) < 0 {
-			return nil, &custody.ErrNoFee{Network: c.network, Addr: t.From, Have: held, Need: total}
+			return nil, &custody.ErrNoFee{Network: c.network, Addr: from.Hex(), Have: held, Need: total}
 		}
 	}
 

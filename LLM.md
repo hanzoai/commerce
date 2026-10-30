@@ -2444,128 +2444,102 @@ Nothing CALLS `custody.Sweep` yet: there is no treasury destination in config,
 no schedule, and no durable record of a sweep. That is deliberate — rollout is
 a human decision.
 
-## Circle Gateway — the USDC top-up rail for agents (2026-10)
+## USDC by signed authorization — the top-up rail for agents (2026-10)
 
-A caller (an agent with a wallet, or a person) pays USDC from its Circle Gateway
-balance to Hanzo's treasury and is credited at once. No subscription is ever
-bought with crypto: this is top-up only, and card checkout is untouched.
+A caller (an agent with a wallet, or a person) signs one EIP-3009
+`transferWithAuthorization` in its own wallet, from that wallet to Hanzo's
+treasury. The rail checks it, submits it to the USDC contract with Hanzo's
+relayer paying the gas, and credits the caller once the transfer is confirmed.
+No pre-funded balance anywhere (this replaced the Circle Gateway rail, whose
+payer had to deposit into a Gateway balance first), no gas for the payer, no
+subscription: top-up only.
 
-**Shape.** `payment/providers/circle` is the Gateway client (permissionless: no
-key is sent) plus the EIP-712 encoding; `billing/gateway` is the rail (terms,
-checks, settle, credit, reconcile, treasury); `models/remittance` is the record;
-`api/billing/gateway.go` is the HTTP transport. The legacy Circle Payments API v1
-provider and its `processor.Circle` registration are deleted.
+**Shape.** `payment/x402/eip3009.go` is the ONE EIP-3009 implementation in
+commerce (strict parsing, the token's EIP-712 domain, low-s recovery); the x402
+facilitator, the x402 client and this rail all verify through it, pinned
+against eth-account and viem vectors and against Base Sepolia's own
+`DOMAIN_SEPARATOR()`. `billing/gateway` is the rail (config, terms, verify,
+relay, confirm, credit, reconcile, treasury view); `models/remittance` is the
+record; `api/billing/gateway.go` is the HTTP transport; `billing/custody/evm`
+`Dial` + `DraftCall` draft the relayer's transaction and `billing/husdindex`
+reads calls, receipts and logs.
 
 ```
-GET  /v1/billing/crypto/gateway       terms: payTo, networks, USDC contracts, the
-                                      EIP-712 domain + types, limits, and a nonce
-                                      + salt issued to THIS caller
+GET  /v1/billing/crypto/gateway       terms: payTo, networks, the TOKEN's EIP-712
+                                      domain + types, limits, and a nonce + salt
+                                      issued to THIS caller
 POST /v1/billing/crypto/gateway       {network, salt, authorization, signature}
-                                      200 + status (accepted, pending, …) or 4xx/503 + reason
+                                      200 pending (relayed) | confirming | succeeded,
+                                      or 4xx/503 + reason
 GET  /v1/billing/crypto/gateway/:id   read it back (another caller's id = 404)
-GET  /v1/commerce/treasury            superadmin, standalone: balances per domain,
-                                      arriving deposits, credit outstanding on
-                                      unsettled (in cloud: a typed admin op over
-                                      gateway.Default().Treasury, not yet built)
-GET  /v1/billing/crypto/options       gains "gateway": [CAIP-2 networks]
+GET  /v1/commerce/treasury            superadmin, standalone: treasury USDC and
+                                      relayer gas per network, open payments
+GET  /v1/billing/crypto/options       "gateway": the CAIP-2 networks offered
 ```
 
-In cloud, `/v1/billing/*` is cloud's own surface: apps/billing/rails.go →
-the internal plane (apps/commerce/rails_rpc.go) → `billing/gateway`, so the
-three routes are declared there.
-
-**The signature.** Gateway batches EIP-3009 `TransferWithAuthorization` signed
-under ITS domain, not the token's: name `GatewayWalletBatched`, version `1`
-(USDC), `chainId` = the EVM chain id (never Gateway's domain number),
-`verifyingContract` = the GatewayWallet. Live values per network come from
-`GET /v1/x402/supported` (it also states `minValiditySeconds`, 604800 today —
-the docs' "3 days" is stale). Proven three ways: standard typehashes, an
-eth-account vector, and Circle's own testnet verifier accepting our signature
-and refusing a tampered one (`CIRCLE_LIVE=1 go test -count=1 -run Live
-./payment/providers/circle`). Gateway requires `paymentPayload.resource` with
-url, description AND mimeType (the OpenAPI says optional; the API 400s).
-
-**Settle, not batch/submit.** `POST /v1/x402/settle` carries the same
-authorization to the same queue, but takes the payee's requirements, so Gateway
-itself refuses a wrong payee or amount; it answers refusals with a typed
-`errorReason`; and its transaction id is what `GET /v1/x402/transfers/{id}`
-reads. `GET /v1/transfer/{id}` is the burn-intent (outbound) transfer, not this.
+**Networks are a reviewed table** (`config.go`): Base mainnet USDC ("USD Coin",
+"2", 20 confirmations) and Base Sepolia USDC ("USDC", "2", 5). Base only: a
+relayed call costs a fraction of a cent there and can exceed a $1 payment on
+Ethereum. A network is offered only after `ready` checks the node's chain id,
+`decimals()` 6, and that the token's `DOMAIN_SEPARATOR()` equals the domain the
+terms hand payers (rechecked every 10 minutes).
 
 **The nonce binds the caller.** Terms issue `nonce = keccak256("hanzo/gateway/
-remittance" ‖ 0 ‖ org ‖ 0 ‖ payer ‖ 0 ‖ salt)`. The payer signs it, so a payment
-captured in flight cannot be presented by another org or member (otherwise a
-signed payment is a bearer instrument: first to present it is credited).
+remittance" ‖ 0 ‖ org ‖ 0 ‖ payer ‖ 0 ‖ salt)`; EIP-3009 nonces are arbitrary
+bytes32, so the payer signs it and a payment captured in flight cannot be
+presented by another org or member.
 
-**Checked before Gateway is asked** (`billing/gateway/verify.go`): network and
-USDC from the live table; `to` == treasury; whole cents, $1 ≤ value ≤ $1,000;
-`validAfter` ≤ now; `validBefore` − now within [minValidity, 30 days]; nonce
-bound to the caller; signature low-s and recovers to `from`. Each refusal is a
-400 with a reason and nothing is recorded.
+**Checked before anything is sent** (`verify.go`, `window`): network in the
+table; `to` == treasury; whole cents, $1 ≤ value ≤ $1,000; validAfter ≤ now
+and at most 24 h ago; validBefore 5 min to 24 h ahead; nonce bound to the
+caller; signature low-s and recovers to `from` under the token's domain. Then
+the token itself is asked by `eth_call` (from the relayer): a refusal is named
+(`insufficient_balance`, `blocked`, …) and nothing is sent.
 
-**Books follow the network.** Mainnet USDC funds LIVE books only, testnet USDC
-TEST books only, by `organization.TestMode()`; a mismatch is a 503
-`books_mismatch` before anything is signed.
+**Credit on confirmation, never before.** The rail credits when the chain shows
+`AuthorizationUsed(from, nonce)` in a SUCCESSFUL transaction from the USDC
+contract that also carries `Transfer(from → treasury, value)`, that transaction
+`Confirmations` deep; the receipt is read again at that depth, so a reorg sends
+the row back to pending instead of to the ledger. Who submitted the
+authorization does not matter (the relayer, the payer, anyone): the signature
+fixes payee and amount. So no credit is ever reversed. A nonce spent on a
+different authorization fails the row (`nonce_conflict`, RECONCILE log).
 
-**Credit on ACCEPT, capped per payer.** Settle succeeds only after Gateway
-verified the signature and LOCKED the payer's balance; the payer's only exit
-is a trustless onchain withdrawal behind a 7-day delay, which is exactly
-Gateway's minimum validity, so a batch lands first. A credit made on a lock
-sits in the payer's `remittance.Hold` (a set keyed by remittance, every change
-a swap) until Gateway reports the payment `confirmed`; a payer holds at most
-$1,000 of such credit in total, and a payment past that is `deferred` and
-credited on confirmation. Residual risk: Gateway fails a payment it accepted.
-The reconciler then reverses the credit (host-ledger `Clawback`, cash first,
-may go below zero so the gate refuses), bounded by $1,000 per payer.
+**The relayer** is `USDC_RELAYER_KEY` (KMS `/commerce-secrets/USDC_RELAYER_KEY`),
+a hot key that pays gas and holds nothing else; it may not be the treasury. Each
+transaction it signs is recorded on the row (`Sends`, `SentAt`, `Relayer`)
+BEFORE it is broadcast, and logged as `audit: gateway relayed a USDC
+authorization`; every credit as `audit: gateway credited …`. Sends in one
+process are serialised; a row is re-sent only when its last transaction is
+neither mined nor held by the node after 2 minutes. An unfunded relayer is a 503
+`relayer_unfunded` and the row waits (RECONCILE log).
 
-**The credit's three steps.** `Credited` (owed) is written BEFORE the ledger
-is asked, `Landed` after the ledger and the receipt hold it, `Reversed` after a
-clawback. A reversal re-lands first (a keyed replay when it landed, the credit
-when it did not), so a clawback always takes back a credit that exists, and a
-row is marked `failed` only once its books are right.
+**Exactly once.** Record id `sha256(network, from, nonce)` in the system
+namespace; the token refuses a second use of (from, nonce); every state change
+is a swap over the row read; the credit is keyed `remittance:<id>` in the host
+ledger and on a deterministic receipt key (a lost flag lands again as a keyed
+replay). States: `pending → confirming → succeeded`, or `refused` (nothing
+sent; re-present to retry; watched for an outside use until expiry) /
+`failed` (expired unused, or nonce conflict).
 
-**Exactly once.** The record id is `sha256(network, from, nonce)` in the
-system namespace; Gateway refuses a second use of (from, nonce); every state
-change is a swap over the row read; the credit is keyed `remittance:<id>` in the
-host ledger and on a deterministic receipt key. A send whose answer was lost
-stays `pending`, never refused: a re-send's refusal is NOT believed when an
-earlier send went unanswered (it may be refused BECAUSE that send locked the
-money), the payment is looked up by nonce first, and it fails only once it has
-expired unseen (validBefore + 1h). 16 concurrent presentations across two
-replicas → one Gateway payment, one credit (race-clean).
+**Books follow the network.** Mainnet funds LIVE books only, testnet TEST books
+only (`organization.TestMode()`); a mismatch is a 503 `books_mismatch`.
 
-**Reconciler, not webhooks.** Gateway's webhooks are deposit.finalized,
-mint.finalized and mint.forwarded — none reports a batched payment settling or
-failing — so a signed subscription could not tell this rail anything. The
-reconciler polls `GET /v1/x402/transfers/{id}` every minute (started by Serve
-and Embed, stopped by Shutdown), needs no inbound endpoint and no Circle key.
-Each pass takes accepted rows, then pending, then refused (looked up by nonce
-until they expire: a refused authorization can be settled at Gateway directly
-later), DUE FIRST from the row's `Due` (20-digit unix seconds, so text order
-is time order on every backend), at most 200 per status; a row that does not
-move waits a doubling backoff (1 min to 30 min), so stuck rows sink below new
-ones. `confirmed` releases the hold; only `completed` settles. A nonce Gateway
-holds for a DIFFERENT payment fails the row for good (`nonce_conflict`, 409).
+**Config.** `USDC_TREASURY` (unset = inert), `USDC_NETWORK` = `mainnet` |
+`testnet`, `USDC_RELAYER_KEY`, and the chain's RPC under the deposit watcher's
+name (`CRYPTO_DEPOSIT_RPC_BASE`, `CRYPTO_DEPOSIT_RPC_BASE_SEPOLIA`). Bootstrap
+refuses an unreadable treasury, an unstated network, a missing relayer, a
+relayer equal to the treasury, or no RPC — and never prints the key.
 
-**Gateway's network table** (`/v1/x402/supported`) is read single-flight,
-kept 10 minutes, and a failed read is remembered 30 seconds. The options menu
-reads only the table in hand (the reconciler keeps it warm), so a slow Gateway
-never slows the deposit-address rail.
-
-**Config** (plain values, no secret): `CIRCLE_GATEWAY_TREASURY` (unset = inert),
-`CIRCLE_ENVIRONMENT` = `production` (mainnet) | `sandbox` (testnet), required
-once the treasury is set; Bootstrap refuses an unreadable address or an
-unstated network. `CIRCLE_API_KEY` is not read: nothing in this rail calls a
-keyed endpoint. KMS `/commerce-secrets` holds the Circle keys for when webhooks
-or other keyed APIs are needed.
-
-**Outbound (designed, not built)** is in `billing/gateway/treasury.go`'s doc:
-burn intent under the `GatewayWallet` domain (not `…Batched`), signed by the
-treasury MPC wallet via cloud `/v1/wallet/{id}/sign` (network `evm`), `POST
-/v1/transfer`, mint via GatewayMinter or the Forwarding Service, follow `GET
-/v1/transfer/{id}`. `Client.Estimate`/`Client.Transfer` are its reads.
-
-**Not done.** Cloud apps/x402 does not advertise the Gateway
-scheme (its settlement is a ledger move to a resource owner's wallet; a Gateway
-payment lands in the treasury, so it needs a payee credit path, not a flag);
-EURC/cirBTC (need a price); payouts.
+**Tests.** `billing/gateway` runs the rail against a fake chain that keeps
+FiatTokenV2's rules (signature, window, nonce, balance) and the chain's (an
+EIP-1559 transaction signed for the chain id, gas, nonce), with drops, pools and
+reorgs. Mutation-checked: crediting early, ignoring the paid transfer, skipping
+the reorg re-read, the recipient, nonce binding, signer, simulation, resend wait,
+pool check, ledger and receipt keys each fail a test. Live, against Base
+Sepolia: `USDC_LIVE=1 USDC_LIVE_PAYER_KEY=<hex> go test -run Live -v
+./billing/gateway` — `TestLiveTheTokenTakesTheSignedCall` (no gas: the real
+token executes the relayer's exact call and refuses it tampered or over
+balance) and `TestLiveBaseSepolia` (the whole path; its relayer, derived from
+the payer key, needs Base Sepolia ETH).
 

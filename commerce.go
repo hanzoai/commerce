@@ -61,7 +61,6 @@ import (
 	planModel "github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/sbomrecord"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/payment/providers/circle"
 	commercestore "github.com/hanzoai/commerce/store"
 	"github.com/hanzoai/commerce/treasury"
 	"github.com/hanzoai/commerce/types"
@@ -665,19 +664,20 @@ func (app *App) Bootstrap() error {
 	}
 	depositledger.SetDefault(depositSvc)
 
-	// Circle Gateway top-up rail. Armed by CIRCLE_GATEWAY_TREASURY (plain, not
-	// secret) with CIRCLE_ENVIRONMENT naming the network; unset is the inert
-	// state. Fail closed on an incoherent config — a treasury that does not
-	// read as an address, or no stated network — because the failure mode is
-	// payments made out to an address this process misread, or credited from a
-	// network it guessed. Like the deposit watcher, its reconciler is started
-	// by the serving entry points, never here.
-	gatewayCfg, gatewayErr := circle.FromEnv(os.Environ())
+	// The USDC authorization top-up rail. Armed by USDC_TREASURY (plain, not
+	// secret) with USDC_NETWORK naming the network and USDC_RELAYER_KEY (KMS
+	// /commerce-secrets) the relayer; unset is the inert state. Fail closed on an
+	// incoherent config — a treasury that does not read as an address, no stated
+	// network, no relayer, no RPC — because the failure mode is payments made out
+	// to an address this process misread, or credited from a network it guessed.
+	// Like the deposit watcher, its reconciler is started by the serving entry
+	// points, never here.
+	gatewayCfg, gatewayErr := gateway.FromEnv(os.Environ())
 	if gatewayErr != nil {
-		slog.Error("commerce: circle gateway disabled; other billing rails remain available", "err", gatewayErr)
-		gatewayCfg = circle.Config{}
+		slog.Error("commerce: usdc authorization rail disabled; other billing rails remain available", "err", gatewayErr)
+		gatewayCfg = gateway.Config{}
 	}
-	gateway.SetDefault(gateway.New(gatewayCfg, circle.New(gatewayCfg.Network.Base())))
+	gateway.SetDefault(gateway.New(gatewayCfg))
 
 	// Hanzo/base-backed commerce store: the commerce_kv cache collection that
 	// replaced the former Redis/Valkey KV. The org registry that once lived
@@ -1214,7 +1214,7 @@ func (app *App) setupRoutes() {
 		// only — see api/billing.DepositWatcherStatus for why arming an asset
 		// stays a CRYPTO_DEPOSIT_* act and never a button.
 		api.Raw(http.MethodGet, "/deposits", billingPkg.DepositWatcherStatus)
-		// The Circle Gateway treasury's position. Read-only and superadmin
+		// The USDC rail's treasury position. Read-only and superadmin
 		// only, for the same reason — and STANDALONE only: a co-resident host
 		// counts every untyped route the module binds on its app against a
 		// ratchet that may only shrink, so in cloud the treasury is read

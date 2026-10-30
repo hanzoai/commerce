@@ -18,8 +18,8 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 )
 
-// The Circle Gateway top-up rail over HTTP. The rail itself — terms, checks,
-// settlement, credit — is billing/gateway, and these handlers only resolve the
+// The USDC authorization top-up rail over HTTP. The rail itself — terms,
+// checks, relay, confirmation, credit — is billing/gateway, and these handlers only resolve the
 // caller and translate; cloud reaches the same functions over its internal
 // plane, so the two transports answer one payment one way.
 //
@@ -64,9 +64,9 @@ func GetBillingGatewayTerms(c *zip.Ctx) error {
 }
 
 // SubmitBillingGateway takes a signed USDC payment and answers what became of
-// it: 200 with its status — accepted (credited, or deferred until Gateway
-// confirms it), or pending (the outcome is not yet known; read it back) — or a
-// refusal with its reason. Cloud's typed route answers the same 200, so the
+// it: 200 with its status — pending (relayed; read it back), confirming (on
+// chain, not yet deep enough) or succeeded (credited) — or a refusal with its
+// reason. Cloud's typed route answers the same 200, so the
 // two transports answer one payment one way.
 //
 //	POST /v1/billing/crypto/gateway   { network, salt, authorization, signature }
@@ -97,8 +97,8 @@ func GetBillingGateway(c *zip.Ctx) error {
 	return c.JSON(http.StatusOK, v)
 }
 
-// GatewayTreasury reports Hanzo's Gateway position — balances per domain,
-// arriving deposits, and credit outstanding on payments not yet settled.
+// GatewayTreasury reports the rail's position — the treasury's USDC and the
+// relayer's gas per network, and the payments still open.
 //
 //	GET /v1/commerce/treasury
 //

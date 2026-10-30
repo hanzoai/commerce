@@ -311,10 +311,11 @@ func Route(r *zip.Group, args ...zip.Handler) {
 	user.Raw(http.MethodGet, "/crypto/options", GetBillingCryptoOptions)
 	user.Raw(http.MethodPost, "/crypto/deposit", CreateBillingCryptoDeposit)
 	user.Raw(http.MethodGet, "/crypto/deposit/:id", GetBillingCryptoDeposit)
-	// USDC through Circle Gateway: terms, a signed payment, and its fate. No
+	// USDC by signed authorization: terms, a signed payment, and its fate. No
 	// amount here is the caller's to choose into a balance: the credit is the
-	// value of a payment the caller signed and Gateway LOCKED, to the caller's
-	// own account (billing/gateway), never a mint from a request field.
+	// value of a payment the caller signed and the chain CONFIRMED into the
+	// treasury, to the caller's own account (billing/gateway), never a mint from
+	// a request field.
 	user.Raw(http.MethodGet, "/crypto/gateway", GetBillingGatewayTerms)
 	user.Raw(http.MethodPost, "/crypto/gateway", SubmitBillingGateway)
 	user.Raw(http.MethodGet, "/crypto/gateway/:id", GetBillingGateway)
