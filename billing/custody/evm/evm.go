@@ -150,31 +150,60 @@ func (c *Chain) Draft(ctx context.Context, t custody.Transfer) (*custody.Draft, 
 		value = t.Amount // may be nil; settled below, once the fee is known
 	}
 
-	return c.build(ctx, from, target, value, data, t.Token != "")
+	return c.build(ctx, from, target, value, data, t.Token != "", nil, nil)
+}
+
+// Fees is what a drafted transaction will pay: its nonce, priority fee and fee
+// cap, in wei.
+type Fees struct {
+	Nonce uint64
+	Tip   *big.Int
+	Cap   *big.Int
 }
 
 // DraftCall is an unsigned call of data on contract to, from from, carrying no
-// value, with the one digest to sign. from pays the gas in the chain's coin.
-func (c *Chain) DraftCall(ctx context.Context, from, to string, data []byte) (*custody.Draft, error) {
+// value, with the one digest to sign, and the nonce and fees it was drafted at.
+// from pays the gas in the chain's coin.
+//
+// With replace set, the call is drafted at replace.Nonce with each fee at least
+// a quarter above replace's: the replacement of a transaction stuck in the pool,
+// which a node takes only at the same nonce and higher fees (geth asks for
+// 10% more). Without it the nonce is the node's pending count.
+func (c *Chain) DraftCall(ctx context.Context, from, to string, data []byte, replace *Fees) (*custody.Draft, Fees, error) {
 	sender, err := parseAddr(from)
 	if err != nil {
-		return nil, fmt.Errorf("evm: from: %w", err)
+		return nil, Fees{}, fmt.Errorf("evm: from: %w", err)
 	}
 	target, err := parseAddr(to)
 	if err != nil {
-		return nil, fmt.Errorf("evm: to: %w", err)
+		return nil, Fees{}, fmt.Errorf("evm: to: %w", err)
 	}
-	return c.build(ctx, sender, target, new(big.Int), data, true)
+	var fees Fees
+	d, err := c.build(ctx, sender, target, new(big.Int), data, true, replace, &fees)
+	return d, fees, err
+}
+
+// bump is v plus a quarter, rounded up.
+func bump(v *big.Int) *big.Int {
+	q := new(big.Int).Add(v, big.NewInt(3))
+	q.Div(q, big.NewInt(4))
+	return new(big.Int).Add(v, q)
 }
 
 // build reads the chain for nonce, fees and gas and returns the unsigned
 // transaction's Draft. A call (or a token transfer) pays its gas out of a coin
 // it does not carry; a native transfer pays for itself, and a nil value there
 // means everything less the fee.
-func (c *Chain) build(ctx context.Context, from, target common.Address, value *big.Int, data []byte, call bool) (*custody.Draft, error) {
-	nonce, err := c.rpc.Nonce(ctx, from.Hex())
-	if err != nil {
-		return nil, fmt.Errorf("evm: reading nonce of %s: %w", from.Hex(), err)
+func (c *Chain) build(ctx context.Context, from, target common.Address, value *big.Int, data []byte, call bool, replace, out *Fees) (*custody.Draft, error) {
+	var nonce uint64
+	if replace != nil {
+		nonce = replace.Nonce
+	} else {
+		n, err := c.rpc.Nonce(ctx, from.Hex())
+		if err != nil {
+			return nil, fmt.Errorf("evm: reading nonce of %s: %w", from.Hex(), err)
+		}
+		nonce = n
 	}
 	tip, err := c.rpc.Tip(ctx)
 	if err != nil {
@@ -185,6 +214,20 @@ func (c *Chain) build(ctx context.Context, from, target common.Address, value *b
 		return nil, fmt.Errorf("evm: reading base fee: %w", err)
 	}
 	feeCap := new(big.Int).Add(new(big.Int).Mul(base, big.NewInt(feeMultiplier)), tip)
+	if replace != nil {
+		if floor := bump(replace.Tip); tip.Cmp(floor) < 0 {
+			tip = floor
+		}
+		if floor := bump(replace.Cap); feeCap.Cmp(floor) < 0 {
+			feeCap = floor
+		}
+		if feeCap.Cmp(tip) < 0 {
+			feeCap = new(big.Int).Set(tip)
+		}
+	}
+	if out != nil {
+		*out = Fees{Nonce: nonce, Tip: new(big.Int).Set(tip), Cap: new(big.Int).Set(feeCap)}
+	}
 
 	gas, err := c.rpc.EstimateGas(ctx, from.Hex(), target.Hex(), value, data)
 	if err != nil {

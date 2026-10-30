@@ -140,6 +140,20 @@ func (s *Service) advance(ctx context.Context, id string) {
 		slog.Warn("gateway: reconcile: read remittance", "remittance", id, "err", err)
 		return
 	}
+	if r.Rail != remittance.Rail {
+		// A row the Circle Gateway rail left: its signature is over Gateway's
+		// domain, not the token's, so nothing here can settle it. Named once
+		// for an operator (Treasury counts them), then never looked at again.
+		slog.Error("RECONCILE: gateway: a Circle Gateway payment is open; it is an operator's to settle", "remittance", id, "status", r.Status, "org", r.Org, "payer", r.Payer, "cents", r.AmountCents, "credited", r.Credited)
+		_, _ = update(id, func(x *remittance.Remittance) bool {
+			if x.Due == never {
+				return false
+			}
+			x.Due = never
+			return true
+		})
+		return
+	}
 	l, err := s.ready(ctx, r.Network)
 	if err != nil {
 		s.later(id)
@@ -149,7 +163,7 @@ func (s *Service) advance(ctx context.Context, id string) {
 		return x.Status + "|" + x.TxHash + "|" + strconv.FormatInt(x.Confirmations, 10) + "|" +
 			strconv.FormatBool(x.Credited) + "|" + strconv.FormatBool(x.Landed) + "|" + strconv.Itoa(len(x.Sends))
 	}
-	was := mark(r)
+	was := mark(r) + "|" + strconv.FormatInt(r.Scanned, 10)
 	switch r.Status {
 	case remittance.Confirming:
 		s.confirm(ctx, l, r)
@@ -160,7 +174,7 @@ func (s *Service) advance(ctx context.Context, id string) {
 	case remittance.Refused:
 		s.watch(ctx, l, r)
 	}
-	if now, err := load(id); err == nil && mark(now) == was {
+	if now, err := load(id); err == nil && mark(now)+"|"+strconv.FormatInt(now.Scanned, 10) == was {
 		s.later(id)
 	}
 }

@@ -21,9 +21,13 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
+	"net"
 	"net/http"
+	"net/url"
+	"os"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -80,6 +84,33 @@ type rpcResp struct {
 	} `json:"error"`
 }
 
+// transport is a transport error that says what failed and never where. An
+// endpoint can carry its key in the path, the query or the host (a provider's
+// per-key subdomain), and a url.Error, a dial error, a name lookup and a TLS
+// error each name some of those; none reaches a log or an operator's view.
+func transport(err error) error {
+	var dns *net.DNSError
+	var op *net.OpError
+	var sc *os.SyscallError
+	switch {
+	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
+		return err
+	case errors.As(err, &dns):
+		return errors.New("name lookup failed")
+	case errors.As(err, &op) && op.Timeout():
+		return errors.New(op.Op + ": timeout")
+	case errors.As(err, &op) && errors.As(op.Err, &sc):
+		return fmt.Errorf("%s: %s: %w", op.Op, sc.Syscall, sc.Err)
+	case errors.As(err, &op):
+		return errors.New(op.Op + " failed")
+	}
+	var ue *url.Error
+	if errors.As(err, &ue) && ue.Timeout() {
+		return errors.New("timeout")
+	}
+	return errors.New("transport failed")
+}
+
 func (c *Client) call(ctx context.Context, method string, params []any) (json.RawMessage, error) {
 	body, err := json.Marshal(rpcReq{JSONRPC: "2.0", ID: c.id.Add(1), Method: method, Params: params})
 	if err != nil {
@@ -87,12 +118,12 @@ func (c *Client) call(ctx context.Context, method string, params []any) (json.Ra
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.rpcURL, bytes.NewReader(body))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("husdindex: rpc %s: the endpoint does not parse", method)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("husdindex: rpc %s: %w", method, err)
+		return nil, fmt.Errorf("husdindex: rpc %s: %w", method, transport(err))
 	}
 	defer resp.Body.Close()
 	var out rpcResp
@@ -660,4 +691,21 @@ func (c *Client) Known(ctx context.Context, txHash string) (bool, error) {
 		return false, err
 	}
 	return len(raw) > 0 && string(raw) != "null", nil
+}
+
+// Head is the number of the block the node names by tag: "latest", "safe"
+// (past the point a reorg is expected) or "finalized" (past the point one is
+// possible).
+func (c *Client) Head(ctx context.Context, tag string) (uint64, error) {
+	raw, err := c.call(ctx, "eth_getBlockByNumber", []any{tag, false})
+	if err != nil {
+		return 0, err
+	}
+	var b struct {
+		Number string `json:"number"`
+	}
+	if err := json.Unmarshal(raw, &b); err != nil || b.Number == "" {
+		return 0, fmt.Errorf("husdindex: the node names no %s block", tag)
+	}
+	return hexToUint64(b.Number)
 }

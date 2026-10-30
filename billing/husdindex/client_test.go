@@ -256,3 +256,16 @@ func TestDecodeABIString(t *testing.T) {
 		})
 	}
 }
+
+// An endpoint can carry its key in the URL; a transport error says what failed
+// and never where, so the key cannot reach a log or an operator's view.
+func TestATransportErrorDoesNotNameTheEndpoint(t *testing.T) {
+	c := NewClient("http://127.0.0.1:1/v2/SECRETKEY123", "")
+	_, err := c.BlockNumber(context.Background())
+	if err == nil {
+		t.Fatal("a closed port answered")
+	}
+	if strings.Contains(err.Error(), "SECRETKEY123") || strings.Contains(err.Error(), "127.0.0.1") {
+		t.Fatalf("the error names the endpoint: %v", err)
+	}
+}

@@ -18,7 +18,7 @@ import (
 	"github.com/hanzoai/commerce/billing/creditledger"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/remittance"
-	"github.com/hanzoai/commerce/payment/x402"
+	"github.com/hanzoai/commerce/payment/eip3009"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
@@ -27,8 +27,9 @@ import (
 // runs only when asked:
 //
 //	USDC_LIVE=1 USDC_LIVE_PAYER_KEY=<hex key holding test USDC> \
-//	  [USDC_LIVE_RPC=https://sepolia.base.org] [USDC_LIVE_CENTS=500] \
-//	  go test -count=1 -run Live -v ./billing/gateway
+//	  [USDC_LIVE_RPC=https://sepolia.base.org] \
+//	  [USDC_LIVE_WITNESS=https://base-sepolia-rpc.publicnode.com] [USDC_LIVE_CENTS=500] \
+//	  go test -count=1 -timeout 40m -run Live -v ./billing/gateway
 //
 // The relayer and the treasury are derived from the payer's key, so a run
 // needs no other secret and its USDC stays recoverable: the relayer must hold
@@ -46,11 +47,11 @@ func TestLiveBaseSepolia(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		return k, x402.Hex(crypto.PubkeyToAddress(k.PublicKey).Bytes())
+		return k, eip3009.Hex(crypto.PubkeyToAddress(k.PublicKey).Bytes())
 	}
 	relayer, relayerAddr := derive("relayer")
 	_, treasuryAddr := derive("treasury")
-	from := x402.Hex(crypto.PubkeyToAddress(payer.PublicKey).Bytes())
+	from := eip3009.Hex(crypto.PubkeyToAddress(payer.PublicKey).Bytes())
 	rpc := os.Getenv("USDC_LIVE_RPC")
 	if rpc == "" {
 		rpc = "https://sepolia.base.org"
@@ -71,7 +72,7 @@ func TestLiveBaseSepolia(t *testing.T) {
 	t.Cleanup(func() { creditledger.Set(nil) })
 
 	chain := testnet[0]
-	chain.RPC = rpc
+	chain.RPC, chain.Witness = rpc, liveWitness()
 	s := New(Config{Testnet: true, Treasury: treasuryAddr, Relayer: relayer, Chains: []Chain{chain}})
 	org := &organization.Organization{}
 	org.Name = "usdclive"
@@ -98,7 +99,7 @@ func TestLiveBaseSepolia(t *testing.T) {
 		t.Fatalf("terms: %v", err)
 	}
 	now := time.Now()
-	a := x402.Authorization{
+	a := eip3009.Authorization{
 		From: from, To: terms.PayTo,
 		Value:       new(big.Int).Mul(big.NewInt(cents), big.NewInt(10_000)).String(),
 		ValidAfter:  big.NewInt(now.Add(-time.Minute).Unix()).String(),
@@ -112,7 +113,8 @@ func TestLiveBaseSepolia(t *testing.T) {
 		t.Fatalf("submit: %v", err)
 	}
 	t.Logf("submitted: %s %s tx %s", v.ID, v.Status, v.TxHash)
-	deadline := time.Now().Add(5 * time.Minute)
+	// Base Sepolia's safe head trails its tip by about 12 minutes.
+	deadline := time.Now().Add(30 * time.Minute)
 	for v.Status != remittance.Succeeded && time.Now().Before(deadline) {
 		time.Sleep(4 * time.Second)
 		s.advance(ctx, v.ID)
@@ -147,11 +149,11 @@ func TestLiveTheTokenTakesTheSignedCall(t *testing.T) {
 	if err != nil {
 		t.Fatal("USDC_LIVE_PAYER_KEY must be a hex secp256k1 key")
 	}
-	from := x402.Hex(crypto.PubkeyToAddress(payer.PublicKey).Bytes())
+	from := eip3009.Hex(crypto.PubkeyToAddress(payer.PublicKey).Bytes())
 	relayer, _ := crypto.ToECDSA(crypto.Keccak256([]byte("hanzo/usdc-live/relayer"), crypto.FromECDSA(payer)))
-	relayerAddr := x402.Hex(crypto.PubkeyToAddress(relayer.PublicKey).Bytes())
+	relayerAddr := eip3009.Hex(crypto.PubkeyToAddress(relayer.PublicKey).Bytes())
 	chain := testnet[0]
-	chain.RPC = "https://sepolia.base.org"
+	chain.RPC, chain.Witness = "https://sepolia.base.org", liveWitness()
 	if v := os.Getenv("USDC_LIVE_RPC"); v != "" {
 		chain.RPC = v
 	}
@@ -164,13 +166,13 @@ func TestLiveTheTokenTakesTheSignedCall(t *testing.T) {
 	salt := [32]byte{1}
 	nonce := bind("usdclive", "usdclive", salt)
 	now := time.Now()
-	a := x402.Authorization{
+	a := eip3009.Authorization{
 		From: from, To: treasury, Value: "1000000",
 		ValidAfter:  big.NewInt(now.Add(-time.Minute).Unix()).String(),
 		ValidBefore: big.NewInt(now.Add(time.Hour).Unix()).String(),
-		Nonce:       x402.Hex(nonce[:]),
+		Nonce:       eip3009.Hex(nonce[:]),
 	}
-	sub := Submission{Network: chain.ID, Salt: x402.Hex(salt[:]), Authorization: a, Signature: signWith(t, payer, chain.Domain(), a)}
+	sub := Submission{Network: chain.ID, Salt: eip3009.Hex(salt[:]), Authorization: a, Signature: signWith(t, payer, chain.Domain(), a)}
 	c, err := verify(sub, []Chain{chain}, treasury, "usdclive", "usdclive")
 	if err != nil {
 		t.Fatalf("verify: %v", err)
@@ -210,6 +212,14 @@ func TestLiveTheTokenTakesTheSignedCall(t *testing.T) {
 		t.Fatalf("more than the wallet holds: %v, want the token's balance refusal", err)
 	}
 	t.Logf("more than the wallet holds: %v", err)
+}
+
+// liveWitness is the second Base Sepolia provider a live run checks against.
+func liveWitness() string {
+	if v := os.Getenv("USDC_LIVE_WITNESS"); v != "" {
+		return v
+	}
+	return "https://base-sepolia-rpc.publicnode.com"
 }
 
 func errOr(err error) error {

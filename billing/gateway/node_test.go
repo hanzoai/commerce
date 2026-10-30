@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -17,7 +18,7 @@ import (
 	"github.com/luxfi/geth/core/types"
 
 	"github.com/hanzoai/commerce/billing/husdindex"
-	"github.com/hanzoai/commerce/payment/x402"
+	"github.com/hanzoai/commerce/payment/eip3009"
 )
 
 // node is an EVM chain carrying one FiatTokenV2 (USDC), over JSON-RPC, as far
@@ -32,7 +33,7 @@ type node struct {
 	mu      sync.Mutex
 	chainID int64
 	usdc    string
-	domain  x402.Domain
+	domain  eip3009.Domain
 	now     func() time.Time
 
 	head    uint64
@@ -42,13 +43,25 @@ type node struct {
 	used    map[string]bool // from|nonce
 	mined   map[string]*mined
 	pool    map[string]*authorization
+	pooled  map[string]*pooled // from|nonce → the transaction holding that nonce in the pool
 
 	// Knobs a test turns.
+	safeLag   uint64 // how far the safe head trails the latest
+	finalLag  uint64 // how far the finalized head trails the latest
+	span      uint64 // the widest eth_getLogs range answered (Base Sepolia's 200)
+	logCalls  int    // eth_getLogs calls answered
 	separator string // a DOMAIN_SEPARATOR other than the domain's, when set
 	drop      bool   // accept a relayer transaction and forget it
 	hold      bool   // keep a relayer transaction in the pool, unmined
 	down      bool   // answer every call with an error
 	sends     int    // relayer transactions accepted
+}
+
+// pooled is a relayer transaction waiting in the pool, by its sender's nonce:
+// what a replacement has to outbid.
+type pooled struct {
+	hash     string
+	tip, cap *big.Int
 }
 
 // mined is a transaction in a block: its success and the logs it emitted.
@@ -59,11 +72,11 @@ type mined struct {
 	undo    func()
 }
 
-func newNode(chainID int64, usdc string, domain x402.Domain, now func() time.Time) *node {
+func newNode(chainID int64, usdc string, domain eip3009.Domain, now func() time.Time) *node {
 	return &node{
-		chainID: chainID, usdc: usdc, domain: domain, now: now, head: 1000,
+		chainID: chainID, usdc: usdc, domain: domain, now: now, head: 1000, safeLag: 2, finalLag: 6, span: 200,
 		usdcOf: map[string]*big.Int{}, ethOf: map[string]*big.Int{}, nonceOf: map[string]uint64{},
-		used: map[string]bool{}, mined: map[string]*mined{}, pool: map[string]*authorization{},
+		used: map[string]bool{}, mined: map[string]*mined{}, pool: map[string]*authorization{}, pooled: map[string]*pooled{},
 	}
 }
 
@@ -157,7 +170,7 @@ func decodeCall(data []byte) (authorization, error) {
 // lock held. "" means it would succeed.
 func (n *node) check(a authorization) string {
 	t := big.NewInt(n.now().Unix())
-	key := x402.Hex(a.from[:]) + "|" + x402.Hex(a.nonce[:])
+	key := eip3009.Hex(a.from[:]) + "|" + eip3009.Hex(a.nonce[:])
 	switch {
 	case t.Cmp(a.validAfter) <= 0:
 		return "FiatTokenV2: authorization is not yet valid"
@@ -166,9 +179,9 @@ func (n *node) check(a authorization) string {
 	case n.used[key]:
 		return "FiatTokenV2: authorization is used or canceled"
 	}
-	p, err := x402.Authorization{
-		From: x402.Hex(a.from[:]), To: x402.Hex(a.to[:]), Value: a.value.String(),
-		ValidAfter: a.validAfter.String(), ValidBefore: a.validBefore.String(), Nonce: x402.Hex(a.nonce[:]),
+	p, err := eip3009.Authorization{
+		From: eip3009.Hex(a.from[:]), To: eip3009.Hex(a.to[:]), Value: a.value.String(),
+		ValidAfter: a.validAfter.String(), ValidBefore: a.validBefore.String(), Nonce: eip3009.Hex(a.nonce[:]),
 	}.Parse()
 	if err != nil {
 		return "FiatTokenV2: invalid signature"
@@ -178,11 +191,11 @@ func (n *node) check(a authorization) string {
 		return "FiatTokenV2: invalid signature"
 	}
 	sig := append(append(append([]byte{}, a.r[:]...), a.s[:]...), a.v)
-	signer, err := x402.Recover(digest, x402.Hex(sig))
+	signer, err := eip3009.Recover(digest, eip3009.Hex(sig))
 	if err != nil || signer != a.from {
 		return "FiatTokenV2: invalid signature"
 	}
-	held := n.usdcOf[x402.Hex(a.from[:])]
+	held := n.usdcOf[eip3009.Hex(a.from[:])]
 	if held == nil || held.Cmp(a.value) < 0 {
 		return "ERC20: transfer amount exceeds balance"
 	}
@@ -199,8 +212,8 @@ func (n *node) execute(hash string, a authorization) *mined {
 		n.mined[hash] = m
 		return m
 	}
-	from, to := x402.Hex(a.from[:]), x402.Hex(a.to[:])
-	key := from + "|" + x402.Hex(a.nonce[:])
+	from, to := eip3009.Hex(a.from[:]), eip3009.Hex(a.to[:])
+	key := from + "|" + eip3009.Hex(a.nonce[:])
 	n.used[key] = true
 	n.usdcOf[from].Sub(n.usdcOf[from], a.value)
 	if n.usdcOf[to] == nil {
@@ -214,10 +227,10 @@ func (n *node) execute(hash string, a authorization) *mined {
 		n.usdcOf[from].Add(n.usdcOf[from], value)
 		n.usdcOf[to].Sub(n.usdcOf[to], value)
 	}
-	word := func(b []byte) string { return x402.Hex(pad(b)) }
+	word := func(b []byte) string { return eip3009.Hex(pad(b)) }
 	m.logs = []map[string]any{
-		{"address": n.usdc, "topics": []string{usedTopic, word(a.from[:]), x402.Hex(a.nonce[:])}, "data": "0x"},
-		{"address": n.usdc, "topics": []string{husdindex.TransferTopic0, word(a.from[:]), word(a.to[:])}, "data": x402.Hex(pad(a.value.Bytes()))},
+		{"address": n.usdc, "topics": []string{usedTopic, word(a.from[:]), eip3009.Hex(a.nonce[:])}, "data": "0x"},
+		{"address": n.usdc, "topics": []string{husdindex.TransferTopic0, word(a.from[:]), word(a.to[:])}, "data": eip3009.Hex(pad(a.value.Bytes()))},
 	}
 	n.mined[hash] = m
 	return m
@@ -238,8 +251,23 @@ func (n *node) use(sub Submission) string {
 	if a.v < 27 {
 		a.v += 27
 	}
-	hash := x402.Hex(crypto.Keccak256([]byte(fmt.Sprintf("outside-%d", len(n.mined)))))
+	hash := eip3009.Hex(crypto.Keccak256([]byte(fmt.Sprintf("outside-%d", len(n.mined)))))
 	n.execute(hash, a)
+	return hash
+}
+
+// cancel is the payer calling cancelAuthorization: the nonce is spent, and the
+// chain records AuthorizationCanceled rather than a use.
+func (n *node) cancel(sub Submission) string {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	p, _ := sub.Authorization.Parse()
+	n.head++
+	n.used[eip3009.Hex(p.From[:])+"|"+eip3009.Hex(p.Nonce[:])] = true
+	hash := eip3009.Hex(crypto.Keccak256([]byte(fmt.Sprintf("cancel-%d", len(n.mined)))))
+	n.mined[hash] = &mined{block: n.head, success: true, undo: func() {}, logs: []map[string]any{
+		{"address": n.usdc, "topics": []string{canceledTopic, eip3009.Hex(pad(p.From[:])), eip3009.Hex(p.Nonce[:])}, "data": "0x"},
+	}}
 	return hash
 }
 
@@ -284,7 +312,14 @@ func (n *node) answer(method string, params []json.RawMessage) (any, string) {
 	case "eth_maxPriorityFeePerGas":
 		return hexOf(1_000_000), ""
 	case "eth_getBlockByNumber":
-		return map[string]string{"baseFeePerGas": hexOf(10_000_000)}, ""
+		at := n.head
+		switch str(0) {
+		case "safe":
+			at -= min(at, n.safeLag)
+		case "finalized":
+			at -= min(at, n.finalLag)
+		}
+		return map[string]string{"number": hexOf(at), "baseFeePerGas": hexOf(10_000_000)}, ""
 	case "eth_getBalance":
 		b := n.ethOf[str(0)]
 		if b == nil {
@@ -332,14 +367,33 @@ func (n *node) answer(method string, params []json.RawMessage) (any, string) {
 			Address   string
 			FromBlock string
 			ToBlock   string
-			Topics    []*string
+			Topics    []json.RawMessage
 		}
 		_ = json.Unmarshal(params[0], &f)
 		from, _ := new(big.Int).SetString(strings.TrimPrefix(f.FromBlock, "0x"), 16)
 		to, _ := new(big.Int).SetString(strings.TrimPrefix(f.ToBlock, "0x"), 16)
+		if to.Uint64()-from.Uint64()+1 > n.span {
+			return nil, fmt.Sprintf("block range is too wide (maximum %d)", n.span)
+		}
+		n.logCalls++
+		// Each topic position is null (any), one word, or a list of words (any of).
+		want := make([][]string, len(f.Topics))
+		for j, raw := range f.Topics {
+			var one string
+			var many []string
+			switch {
+			case string(raw) == "null":
+			case json.Unmarshal(raw, &one) == nil:
+				want[j] = []string{strings.ToLower(one)}
+			case json.Unmarshal(raw, &many) == nil:
+				for _, w := range many {
+					want[j] = append(want[j], strings.ToLower(w))
+				}
+			}
+		}
 		out := []map[string]any{}
 		for hash, m := range n.mined {
-			if m.block < from.Uint64() || m.block > to.Uint64() {
+			if m.block < from.Uint64() || m.block > to.Uint64() || !m.success {
 				continue
 			}
 		next:
@@ -348,8 +402,11 @@ func (n *node) answer(method string, params []json.RawMessage) (any, string) {
 					continue
 				}
 				topics := l["topics"].([]string)
-				for j, t := range f.Topics {
-					if t != nil && (j >= len(topics) || topics[j] != strings.ToLower(*t)) {
+				for j, any := range want {
+					if any == nil {
+						continue
+					}
+					if j >= len(topics) || !slices.Contains(any, topics[j]) {
 						continue next
 					}
 				}
@@ -371,7 +428,7 @@ func (n *node) view(data []byte) (any, string) {
 	if len(data) < 4 {
 		return "0x", ""
 	}
-	word := func(v *big.Int) string { return x402.Hex(pad(v.Bytes())) }
+	word := func(v *big.Int) string { return eip3009.Hex(pad(v.Bytes())) }
 	switch hex.EncodeToString(data[:4]) {
 	case decimalsSelector:
 		return word(big.NewInt(6)), ""
@@ -380,15 +437,15 @@ func (n *node) view(data []byte) (any, string) {
 			return n.separator, ""
 		}
 		sep, _ := n.domain.Separator()
-		return x402.Hex(sep[:]), ""
+		return eip3009.Hex(sep[:]), ""
 	case balanceSelector:
-		b := n.usdcOf[x402.Hex(data[4+12:4+32])]
+		b := n.usdcOf[eip3009.Hex(data[4+12:4+32])]
 		if b == nil {
 			b = new(big.Int)
 		}
 		return word(b), ""
 	case stateSelector:
-		key := x402.Hex(data[4+12:4+32]) + "|" + x402.Hex(data[4+32:4+64])
+		key := eip3009.Hex(data[4+12:4+32]) + "|" + eip3009.Hex(data[4+32:4+64])
 		if n.used[key] {
 			return word(big.NewInt(1)), ""
 		}
@@ -426,7 +483,18 @@ func (n *node) send(raw string) (any, string) {
 		return nil, "invalid sender"
 	}
 	from := strings.ToLower(sender.Hex())
-	if tx.Nonce() != n.nonceOf[from] {
+	slot := fmt.Sprintf("%s|%d", from, tx.Nonce())
+	old := n.pooled[slot]
+	switch {
+	case old != nil:
+		// A replacement: geth takes it only at 10% more on both fees.
+		ten := func(v *big.Int) *big.Int {
+			return new(big.Int).Div(new(big.Int).Mul(v, big.NewInt(110)), big.NewInt(100))
+		}
+		if tx.GasTipCap().Cmp(ten(old.tip)) < 0 || tx.GasFeeCap().Cmp(ten(old.cap)) < 0 {
+			return nil, "replacement transaction underpriced"
+		}
+	case tx.Nonce() != n.nonceOf[from]:
 		return nil, "nonce too low"
 	}
 	cost := new(big.Int).Mul(new(big.Int).SetUint64(tx.Gas()), tx.GasFeeCap())
@@ -441,16 +509,22 @@ func (n *node) send(raw string) (any, string) {
 		return nil, err.Error()
 	}
 	hash := strings.ToLower(tx.Hash().Hex())
-	if x402.Hex(crypto.Keccak256(b)) != hash {
+	if eip3009.Hex(crypto.Keccak256(b)) != hash {
 		return nil, "hash mismatch"
 	}
-	n.nonceOf[from]++
+	if old != nil {
+		delete(n.pool, old.hash)
+		delete(n.pooled, slot)
+	} else {
+		n.nonceOf[from]++
+	}
 	n.sends++
 	switch {
 	case n.drop:
 		return hash, ""
 	case n.hold:
 		n.pool[hash] = &a
+		n.pooled[slot] = &pooled{hash: hash, tip: tx.GasTipCap(), cap: tx.GasFeeCap()}
 		return hash, ""
 	}
 	n.execute(hash, a)
@@ -466,4 +540,5 @@ func (n *node) release() {
 		n.execute(h, *a)
 		delete(n.pool, h)
 	}
+	n.pooled = map[string]*pooled{}
 }

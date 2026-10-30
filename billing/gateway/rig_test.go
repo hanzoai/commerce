@@ -24,7 +24,7 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/remittance"
 	txutil "github.com/hanzoai/commerce/models/transaction/util"
-	"github.com/hanzoai/commerce/payment/x402"
+	"github.com/hanzoai/commerce/payment/eip3009"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
@@ -129,9 +129,9 @@ func newRig(t *testing.T, live bool) *rig {
 
 	r := &rig{t: t, book: b, org: org, payer: name, now: time.Unix(time.Now().Unix(), 0)}
 	r.key = mustKey(t)
-	r.from = x402.Hex(crypto.PubkeyToAddress(r.key.PublicKey).Bytes())
+	r.from = eip3009.Hex(crypto.PubkeyToAddress(r.key.PublicKey).Bytes())
 	relayer := mustKey(t)
-	r.relayer = x402.Hex(crypto.PubkeyToAddress(relayer.PublicKey).Bytes())
+	r.relayer = eip3009.Hex(crypto.PubkeyToAddress(relayer.PublicKey).Bytes())
 
 	r.chain = testnet[0]
 	if live {
@@ -141,6 +141,11 @@ func newRig(t *testing.T, live bool) *rig {
 	srv := httptest.NewServer(r.node)
 	t.Cleanup(srv.Close)
 	r.chain.RPC = srv.URL
+	// The witness is a second endpoint onto the same chain: it agrees unless a
+	// test points it somewhere else.
+	witness := httptest.NewServer(r.node)
+	t.Cleanup(witness.Close)
+	r.chain.Witness = witness.URL
 
 	r.s = New(Config{Testnet: !live, Treasury: treasury, Relayer: relayer, Chains: []Chain{r.chain}})
 	r.s.now = func() time.Time { return r.now }
@@ -170,15 +175,15 @@ func (r *rig) terms() Terms {
 
 // pay signs a payment of cents against fresh terms, letting a test change the
 // authorization before it is signed.
-func (r *rig) pay(cents int64, edit func(*x402.Authorization)) Submission {
+func (r *rig) pay(cents int64, edit func(*eip3009.Authorization)) Submission {
 	r.t.Helper()
 	return r.sign(r.terms(), cents, edit)
 }
 
-func (r *rig) sign(t Terms, cents int64, edit func(*x402.Authorization)) Submission {
+func (r *rig) sign(t Terms, cents int64, edit func(*eip3009.Authorization)) Submission {
 	r.t.Helper()
 	acc := t.Accepts[0]
-	a := x402.Authorization{
+	a := eip3009.Authorization{
 		From:        r.from,
 		To:          t.PayTo,
 		Value:       new(big.Int).Mul(big.NewInt(cents), big.NewInt(10_000)).String(),
@@ -192,7 +197,7 @@ func (r *rig) sign(t Terms, cents int64, edit func(*x402.Authorization)) Submiss
 	return Submission{Network: acc.Network, Salt: t.Salt, Authorization: a, Signature: signWith(r.t, r.key, acc.Domain, a)}
 }
 
-func signWith(t *testing.T, key *ecdsa.PrivateKey, d x402.Domain, a x402.Authorization) string {
+func signWith(t *testing.T, key *ecdsa.PrivateKey, d eip3009.Domain, a eip3009.Authorization) string {
 	t.Helper()
 	p, err := a.Parse()
 	if err != nil {
@@ -206,11 +211,17 @@ func signWith(t *testing.T, key *ecdsa.PrivateKey, d x402.Domain, a x402.Authori
 	if err != nil {
 		t.Fatal(err)
 	}
-	return x402.Hex(sig) // v as 0/1: the rail must canonicalise it for the token
+	return eip3009.Hex(sig) // v as 0/1: the rail must canonicalise it for the token
 }
 
 func (r *rig) submit(sub Submission) (View, error) {
 	return r.s.Submit(context.Background(), r.org, r.payer, sub)
+}
+
+// settled mines past the point a payment of any size is credited: its depth,
+// and the finalized head.
+func (r *rig) settled() {
+	r.node.mine(uint64(r.chain.Confirmations) + r.node.finalLag + 1)
 }
 
 // pass moves the clock past any wait the reconciler set and runs one pass.
@@ -261,5 +272,5 @@ func (r *rig) receipts() bucket.Split {
 func random32() string {
 	var b [32]byte
 	_, _ = rand.Read(b[:])
-	return x402.Hex(b[:])
+	return eip3009.Hex(b[:])
 }

@@ -13,7 +13,7 @@ import (
 	"github.com/luxfi/crypto"
 
 	"github.com/hanzoai/commerce/models/organization"
-	"github.com/hanzoai/commerce/payment/x402"
+	"github.com/hanzoai/commerce/payment/eip3009"
 )
 
 // Terms is everything a payer needs to sign a top-up, x402-style: where to
@@ -26,7 +26,7 @@ import (
 //	types       Types (EIP712Domain + TransferWithAuthorization)
 //	primaryType TransferWithAuthorization
 //	message     {from: <payer>, to: PayTo, value: <base units>,
-//	             validAfter: <unix s, not after now, at most MaxValidity ago>,
+//	             validAfter: <unix s, not after now, at most MaxAge ago>,
 //	             validBefore: <unix s, between now+MinValiditySeconds and
 //	             now+MaxValiditySeconds>, nonce: Nonce}
 //
@@ -34,29 +34,29 @@ import (
 // payer holds the USDC in its own wallet and needs no gas: the relayer submits
 // the authorization.
 type Terms struct {
-	Version     int                     `json:"x402Version"`
-	Scheme      string                  `json:"scheme"`
-	PayTo       string                  `json:"payTo"`
-	Nonce       string                  `json:"nonce"`
-	Salt        string                  `json:"salt"`
-	MinCents    int64                   `json:"minCents"`
-	MaxCents    int64                   `json:"maxCents"`
-	MaxValidity int64                   `json:"maxValiditySeconds"`
-	Primary     string                  `json:"primaryType"`
-	Types       map[string][]x402.Field `json:"types"`
-	Accepts     []Accept                `json:"accepts"`
+	Version     int                        `json:"x402Version"`
+	Scheme      string                     `json:"scheme"`
+	PayTo       string                     `json:"payTo"`
+	Nonce       string                     `json:"nonce"`
+	Salt        string                     `json:"salt"`
+	MinCents    int64                      `json:"minCents"`
+	MaxCents    int64                      `json:"maxCents"`
+	MaxValidity int64                      `json:"maxValiditySeconds"`
+	Primary     string                     `json:"primaryType"`
+	Types       map[string][]eip3009.Field `json:"types"`
+	Accepts     []Accept                   `json:"accepts"`
 }
 
 // Accept is one network the payment may be signed on.
 type Accept struct {
-	Network     string      `json:"network"`
-	Asset       string      `json:"asset"`
-	Symbol      string      `json:"symbol"`
-	Decimals    int         `json:"decimals"`
-	MinAmount   string      `json:"minAmount"` // base units
-	MaxAmount   string      `json:"maxAmount"` // base units
-	MinValidity int64       `json:"minValiditySeconds"`
-	Domain      x402.Domain `json:"domain"`
+	Network     string         `json:"network"`
+	Asset       string         `json:"asset"`
+	Symbol      string         `json:"symbol"`
+	Decimals    int            `json:"decimals"`
+	MinAmount   string         `json:"minAmount"` // base units
+	MaxAmount   string         `json:"maxAmount"` // base units
+	MinValidity int64          `json:"minValiditySeconds"`
+	Domain      eip3009.Domain `json:"domain"`
 }
 
 // usdcDecimals is USDC's scale on every network in the table (ready checks the
@@ -70,6 +70,9 @@ func (s *Service) Terms(ctx context.Context, org *organization.Organization, pay
 	if err := s.caller(org, payer); err != nil {
 		return Terms{}, err
 	}
+	if err := s.budget("terms", org.Name); err != nil {
+		return Terms{}, err
+	}
 	var salt [32]byte
 	if _, err := rand.Read(salt[:]); err != nil {
 		return Terms{}, fmt.Errorf("gateway: salt: %w", err)
@@ -77,9 +80,9 @@ func (s *Service) Terms(ctx context.Context, org *organization.Organization, pay
 	nonce := bind(org.Name, payer, salt)
 	t := Terms{
 		Version: 1, Scheme: "exact", PayTo: s.cfg.Treasury,
-		Nonce: x402.Hex(nonce[:]), Salt: x402.Hex(salt[:]),
+		Nonce: eip3009.Hex(nonce[:]), Salt: eip3009.Hex(salt[:]),
 		MinCents: MinCents, MaxCents: MaxCents, MaxValidity: int64(MaxValidity / time.Second),
-		Primary: x402.Primary, Types: x402.Types(), Accepts: []Accept{},
+		Primary: eip3009.Primary, Types: eip3009.Types(), Accepts: []Accept{},
 	}
 	unit := centUnit(usdcDecimals)
 	var last error

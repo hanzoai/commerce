@@ -64,11 +64,25 @@ const (
 	// MinValidity is the shortest an authorization may have left when it is
 	// presented: the relayer's transaction has to land before validBefore.
 	MinValidity = 5 * time.Minute
-	// MaxValidity bounds both ends of the window: validBefore at most this far
-	// ahead, validAfter at most this far behind. The first bounds how long a
-	// signed payment is followed; the second bounds how far back the chain is
-	// searched for a use of it the rail did not submit.
+	// MaxValidity is the furthest validBefore may be: how long a signed payment
+	// is followed.
 	MaxValidity = 24 * time.Hour
+	// MaxAge is the furthest back validAfter may be: how far before it was
+	// presented the chain is searched for a use of it the rail did not submit.
+	MaxAge = time.Hour
+
+	// FinalCents is the payment from which a credit waits for the chain's
+	// FINALIZED head; below it, the SAFE head.
+	FinalCents = 10_000 // $100.00
+
+	// MaxOpen is how many payments one org may have pending at once: each can
+	// cost the relayer gas, and an account costs nothing to make.
+	MaxOpen = 5
+	// DayCents is the most one org may present in a UTC day.
+	DayCents = 500_000 // $5,000.00
+	// PerMinute is how many terms and how many submissions one org may ask for
+	// a minute, each.
+	PerMinute = 30
 )
 
 // readyAge is how long a network's self-check is trusted before it is run
@@ -86,9 +100,13 @@ type Service struct {
 	now   func() time.Time
 	every time.Duration
 
-	// relay serialises this process's relayer sends, so two payments relayed
-	// at once do not draft the same relayer nonce.
+	// relay serialises this process's relayer sends; the relayer lease (lease)
+	// serialises them across replicas.
 	relay sync.Mutex
+	// self names this process as a lease holder.
+	self string
+	// rate is the per-org request budget (PerMinute).
+	rate limiter
 
 	run    sync.Mutex
 	cancel context.CancelFunc
@@ -98,7 +116,7 @@ type Service struct {
 // New builds the rail from its configuration. Nothing is dialled here: each
 // network is checked against its chain the first time it is used (ready).
 func New(cfg Config) *Service {
-	s := &Service{cfg: cfg, links: map[string]*link{}, now: time.Now, every: time.Minute}
+	s := &Service{cfg: cfg, links: map[string]*link{}, now: time.Now, every: time.Minute, self: newSelf()}
 	for _, c := range cfg.Chains {
 		s.links[c.ID] = &link{chain: c}
 	}
@@ -188,6 +206,11 @@ const (
 	ReasonSignature   = "invalid_signature"
 	ReasonBalance     = "insufficient_balance"
 	ReasonBlocked     = "blocked"
+	ReasonCanceled    = "canceled"
+	ReasonUnaccounted = "unaccounted"
+	ReasonOpen        = "too_many_open_payments"
+	ReasonDaily       = "daily_limit"
+	ReasonRate        = "rate_limited"
 	ReasonConflict    = "nonce_conflict"
 	ReasonMissing     = "not_found"
 	ReasonCaller      = "unauthenticated"

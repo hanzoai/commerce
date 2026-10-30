@@ -1,7 +1,21 @@
 // Copyright (c) 2014-present Hanzo AI, Inc.
 // Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
 
-package x402
+// Package eip3009 is EIP-3009 TransferWithAuthorization, signed as EIP-712
+// typed data under the TOKEN's own domain — USDC's FiatTokenV2:
+//
+//	name              the token's name()    ("USD Coin" on Base, "USDC" on Base Sepolia)
+//	version           the token's version() ("2")
+//	chainId           the network's EVM chain id
+//	verifyingContract the token contract
+//
+// The token checks exactly this digest in transferWithAuthorization, so a
+// signature that recovers here under the token's domain is one the token
+// accepts. This is the ONE EIP-3009 implementation in commerce; the USDC
+// top-up rail (billing/gateway) verifies through it. The encoding is pinned in
+// tests against digests and signatures that eth-account and viem produced
+// independently.
+package eip3009
 
 import (
 	"encoding/hex"
@@ -12,21 +26,6 @@ import (
 
 	"github.com/luxfi/crypto"
 )
-
-// EIP-3009 TransferWithAuthorization, signed as EIP-712 typed data under the
-// TOKEN's own domain — USDC's FiatTokenV2:
-//
-//	name              the token's name()    ("USD Coin" on Base, "USDC" on Base Sepolia)
-//	version           the token's version() ("2")
-//	chainId           the network's EVM chain id
-//	verifyingContract the token contract
-//
-// The token checks exactly this digest in transferWithAuthorization, so a
-// signature that recovers here under the token's domain is one the token
-// accepts. This is the ONE EIP-3009 implementation in commerce: the x402
-// facilitator and the USDC top-up rail (billing/gateway) both verify through
-// it. The encoding is pinned in tests against digests and signatures that
-// eth-account and viem produced independently.
 
 // Domain is an EIP-712 domain, in the shape viem and ethers sign with.
 type Domain struct {

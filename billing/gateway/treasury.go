@@ -18,6 +18,9 @@ type Treasury struct {
 	Relayer  string    `json:"relayer"`
 	Chains   []Holding `json:"chains"`
 	Open     Open      `json:"open"`
+	// Legacy counts, by status, the rows the Circle Gateway rail left that
+	// were never final: an operator settles them; the relay never touches them.
+	Legacy map[string]int `json:"legacy"`
 }
 
 // Holding is one network's balances, in base units. Error names a network that
@@ -68,18 +71,35 @@ func (s *Service) Treasury(ctx context.Context) (Treasury, error) {
 		if _, err := remittance.Query(systemDB()).Filter("Status=", status).Limit(10_000).GetAll(&rows); err != nil {
 			return Treasury{}, err
 		}
+		n := 0
 		for _, r := range rows {
+			if r.Rail != remittance.Rail {
+				continue
+			}
+			n++
 			if status != remittance.Refused {
 				t.Open.Cents += r.AmountCents
 			}
 		}
 		switch status {
 		case remittance.Pending:
-			t.Open.Pending = len(rows)
+			t.Open.Pending = n
 		case remittance.Confirming:
-			t.Open.Confirming = len(rows)
+			t.Open.Confirming = n
 		case remittance.Refused:
-			t.Open.Refused = len(rows)
+			t.Open.Refused = n
+		}
+	}
+	t.Legacy = map[string]int{}
+	for _, status := range []string{"accepted", remittance.Pending, remittance.Refused} {
+		var rows []*remittance.Remittance
+		if _, err := remittance.Query(systemDB()).Filter("Status=", status).Limit(10_000).GetAll(&rows); err != nil {
+			return Treasury{}, err
+		}
+		for _, r := range rows {
+			if r.Rail != remittance.Rail {
+				t.Legacy[status]++
+			}
 		}
 	}
 	return t, nil

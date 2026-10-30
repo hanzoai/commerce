@@ -22,7 +22,13 @@ import (
 
 func init() {
 	orm.Register[Remittance]("remittance", orm.WithStringKey[Remittance]())
+	orm.Register[Lock]("remittance-lock", orm.WithStringKey[Lock]())
+	orm.Register[Tally]("remittance-tally", orm.WithStringKey[Tally]())
 }
+
+// Rail names the rail that wrote a record. Rows the Circle Gateway rail left
+// behind carry none, and the relay never acts on them.
+const Rail = "relay"
 
 // Where a remittance stands.
 //
@@ -58,6 +64,9 @@ type Remittance struct {
 	Payer string `json:"payer"`
 	Test  bool   `json:"test"`
 
+	// Rail is Rail on every record this rail writes.
+	Rail string `json:"rail"`
+
 	// The payment as signed: CAIP-2 network, token, and the EIP-3009 fields,
 	// addresses and nonce in lowercase 0x hex.
 	Network     string `json:"network"`
@@ -85,10 +94,20 @@ type Remittance struct {
 	Relayer string    `json:"relayer,omitempty"`
 	Sends   []string  `json:"sends,omitempty" datastore:",noindex"`
 	SentAt  time.Time `json:"sentAt,omitempty"`
-	// FromBlock is where a search of the chain for a use of this authorization
-	// starts: the block the chain stood at when the payment was presented,
-	// less the blocks since it became valid.
+	// RelayNonce, RelayTip and RelayCap are the last send's relayer nonce and
+	// fees (wei, decimal): a send stuck in the pool is replaced at the same
+	// nonce with higher fees, never doubled at a new one.
+	RelayNonce int64  `json:"relayNonce,omitempty"`
+	RelayTip   string `json:"relayTip,omitempty"`
+	RelayCap   string `json:"relayCap,omitempty"`
+
+	// The window of blocks a use of this authorization can be in, at no fewer
+	// than one block a second: FromBlock from when it became valid, ToBlock to
+	// when it stops being valid. Scanned is how far the chain has been searched
+	// for its use, so no block range is read twice.
 	FromBlock int64 `json:"fromBlock"`
+	ToBlock   int64 `json:"toBlock"`
+	Scanned   int64 `json:"scanned"`
 
 	// The use on chain, once seen: the transaction that spent the
 	// authorization, its block, and how deep it was when last read.
@@ -130,4 +149,44 @@ func Query(db *datastore.Datastore) datastore.Query { return db.Query("remittanc
 // may yet show it used, or it is used and not yet credited.
 func (r *Remittance) Open() bool {
 	return r.Status == Pending || r.Status == Confirming || r.Status == Refused
+}
+
+// Lock is a lease one writer holds over a shared resource, written only over
+// the row read: the one payment a paying wallet has in flight, or the relayer
+// key while a transaction is drafted and broadcast. Holder names who holds it
+// and Until when the lease lapses (zero: until the holder lets go).
+type Lock struct {
+	mixin.Model[Lock]
+
+	Holder string    `json:"holder"`
+	Until  time.Time `json:"until"`
+}
+
+func (l *Lock) Load(ps []datastore.Property) error  { return datastore.LoadStruct(l, ps) }
+func (l *Lock) Save() ([]datastore.Property, error) { return datastore.SaveStruct(l) }
+
+// NewLock returns a Lock bound to db.
+func NewLock(db *datastore.Datastore) *Lock {
+	l := new(Lock)
+	l.Init(db)
+	return l
+}
+
+// Tally is a running total one key has spent of a bound — an org's cents
+// presented in a UTC day — written only over the row read, so two replicas
+// cannot both see room that only one of them fits in.
+type Tally struct {
+	mixin.Model[Tally]
+
+	Cents int64 `json:"cents"`
+}
+
+func (t *Tally) Load(ps []datastore.Property) error  { return datastore.LoadStruct(t, ps) }
+func (t *Tally) Save() ([]datastore.Property, error) { return datastore.SaveStruct(t) }
+
+// NewTally returns a Tally bound to db.
+func NewTally(db *datastore.Datastore) *Tally {
+	t := new(Tally)
+	t.Init(db)
+	return t
 }

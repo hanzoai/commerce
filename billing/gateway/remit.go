@@ -10,11 +10,13 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/hanzoai/commerce/billing/custody/evm"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/organization"
@@ -124,6 +126,10 @@ func backoff(tries int) time.Duration {
 // the rail asks whether the node still holds it, and sends again if not.
 const resend = 2 * time.Minute
 
+// bumpAfter is how long a relayer transaction may sit in the pool before it is
+// replaced at the same nonce with higher fees.
+const bumpAfter = 5 * time.Minute
+
 // grace is how long past validBefore an unused authorization is still looked
 // for, so a transaction mined just in time is not missed for a lagging node.
 const grace = 10 * time.Minute
@@ -138,6 +144,9 @@ const grace = 10 * time.Minute
 // same payment twice, at once or an hour apart, is one payment.
 func (s *Service) Submit(ctx context.Context, org *organization.Organization, payer string, sub Submission) (View, error) {
 	if err := s.caller(org, payer); err != nil {
+		return View{}, err
+	}
+	if err := s.budget("submit", org.Name); err != nil {
 		return View{}, err
 	}
 	c, err := verify(sub, s.cfg.Chains, s.cfg.Treasury, org.Name, payer)
@@ -187,23 +196,28 @@ func (s *Service) claim(ctx context.Context, l *link, org *organization.Organiza
 		if err := window(c, now); err != nil {
 			return nil, err
 		}
-		// Where to look for a use of this authorization the rail did not
-		// submit: back from the head by as many blocks as seconds have passed
-		// since it became valid (every network here makes at most one block a
-		// second), and a margin for a lagging node.
+		if err := s.room(org.Name, c.cents, now); err != nil {
+			return nil, err
+		}
+		// The blocks a use of this authorization can be in, at no fewer than one
+		// block a second (every network here makes at most one), with a margin
+		// for a lagging node: from when it became valid to when it stops.
 		head, err := l.rpc().BlockNumber(ctx)
 		if err != nil {
 			return nil, shut(ReasonUnavailable, "The "+l.chain.Name+" network is not answering; present the same payment again shortly.", err)
 		}
 		back := uint64(now.Unix()) - c.after + 64
+		ahead := c.before - uint64(now.Unix()) + 64
 		r = remittance.New(systemDB())
 		r.SetId(id)
-		r.Org, r.Payer, r.Test = org.Name, payer, org.TestMode()
+		r.Org, r.Payer, r.Test, r.Rail = org.Name, payer, org.TestMode(), remittance.Rail
 		r.Network, r.Asset = c.chain.ID, c.chain.USDC
 		r.From, r.To, r.Value = c.auth.From, c.auth.To, c.auth.Value
 		r.ValidAfter, r.ValidBefore, r.Nonce = c.auth.ValidAfter, c.auth.ValidBefore, c.auth.Nonce
 		r.Salt, r.Signature, r.AmountCents = c.salt, c.sig, c.cents
 		r.FromBlock = int64(head - min(back, head))
+		r.ToBlock = int64(head + ahead)
+		r.Scanned = r.FromBlock - 1
 		r.Status = remittance.Pending
 		// The request drives it now; the reconciler takes over only if the
 		// request does not finish.
@@ -226,6 +240,71 @@ func same(r *remittance.Remittance, c checked) bool {
 	return r.Network == c.chain.ID && r.From == c.auth.From && r.To == c.auth.To &&
 		r.Value == c.auth.Value && r.ValidAfter == c.auth.ValidAfter &&
 		r.ValidBefore == c.auth.ValidBefore && r.Nonce == c.auth.Nonce && r.Salt == c.salt
+}
+
+// room checks a new payment fits what one org may have going: at most MaxOpen
+// pending at once, and at most DayCents presented in a UTC day. The day's
+// total is a tally taken as it is checked, so it counts every payment
+// presented, whatever became of it, and two presented at once cannot both fit
+// in room for one.
+func (s *Service) room(org string, cents int64, now time.Time) error {
+	var open []*remittance.Remittance
+	if _, err := remittance.Query(systemDB()).Filter("Org=", org).Filter("Status=", remittance.Pending).
+		Limit(MaxOpen).GetAll(&open); err != nil {
+		return fmt.Errorf("gateway: count open payments: %w", err)
+	}
+	if len(open) >= MaxOpen {
+		return refuse(http.StatusTooManyRequests, ReasonOpen, "this account has %d payments in progress; present another once one of them is confirmed", len(open))
+	}
+	id := "day\x00" + org + "\x00" + now.UTC().Format(time.DateOnly)
+	db := systemDB()
+	for range mixin.Swaps {
+		t := remittance.NewTally(db)
+		switch err := t.Get(db.NewKey(t.Kind(), id, 0, nil)); {
+		case errors.Is(err, datastore.ErrNoSuchEntity):
+			t = remittance.NewTally(db)
+			t.SetId(id)
+		case err != nil:
+			return fmt.Errorf("gateway: read the day's tally: %w", err)
+		}
+		if t.Cents+cents > DayCents {
+			return refuse(http.StatusTooManyRequests, ReasonDaily, "this account may present at most %d cents of USDC a UTC day; it has presented %d", DayCents, t.Cents)
+		}
+		t.Cents += cents
+		ok, err := t.Swap()
+		if err != nil {
+			return fmt.Errorf("gateway: write the day's tally: %w", err)
+		}
+		if ok {
+			return nil
+		}
+	}
+	return fmt.Errorf("gateway: the day's tally changed under %d reads in a row", mixin.Swaps)
+}
+
+// owed is what a wallet's pending payments on a network come to, in base
+// units: every payment the relayer could send from it, sent or waiting.
+func owed(r *remittance.Remittance) (*big.Int, error) {
+	var rows []*remittance.Remittance
+	if _, err := remittance.Query(systemDB()).Filter("Network=", r.Network).Filter("From=", r.From).
+		Filter("Status=", remittance.Pending).Limit(1000).GetAll(&rows); err != nil {
+		return nil, err
+	}
+	total, self := new(big.Int), false
+	for _, x := range rows {
+		v, _ := new(big.Int).SetString(x.Value, 10)
+		if v != nil {
+			total.Add(total, v)
+		}
+		self = self || x.Id() == r.Id()
+	}
+	if !self {
+		v, _ := new(big.Int).SetString(r.Value, 10)
+		if v != nil {
+			total.Add(total, v)
+		}
+	}
+	return total, nil
 }
 
 // Get reads one of the caller's remittances. Another caller's id answers
@@ -261,11 +340,15 @@ func before(r *remittance.Remittance) time.Time {
 
 // drive takes a pending or refused remittance as far as the chain lets it:
 // to confirming when the chain shows it used, to failed when it can no longer
-// be, to the relayer when the token would take it now, and to refused when the
-// token would not. A step that cannot be decided yet — a node that does not
-// answer, a transaction still in the pool — leaves the row as it is for the
-// reconciler.
+// be, to the relayer when the token would take it now and its wallet has no
+// other payment in flight, and to refused when the token would not or the
+// wallet cannot fund every payment pending from it. A step that cannot be
+// decided yet — a node that does not answer, a transaction still in the pool,
+// a wallet whose other payment is in flight — leaves the row as it is.
 func (s *Service) drive(ctx context.Context, l *link, r *remittance.Remittance) (*remittance.Remittance, error) {
+	if r.Rail != remittance.Rail {
+		return r, nil // the Circle Gateway rail's row: never acted on here
+	}
 	used, err := l.used(ctx, r.From, r.Nonce)
 	if err != nil {
 		slog.Warn("gateway: authorizationState unread; the reconciler asks again", "remittance", r.Id(), "err", err)
@@ -281,10 +364,10 @@ func (s *Service) drive(ctx context.Context, l *link, r *remittance.Remittance) 
 	case !now.Before(before(r)):
 		return r, nil // too late to send; looked at until grace has passed
 	}
-	if len(r.Sends) > 0 && now.Sub(r.SentAt) < resend {
-		return r, nil // the relayer's transaction has not had time to land
-	}
-	if len(r.Sends) > 0 {
+	if inFlight(r) {
+		if now.Sub(r.SentAt) < resend {
+			return r, nil // the relayer's transaction has not had time to land
+		}
 		last := r.Sends[len(r.Sends)-1]
 		rc, err := l.rpc().Receipt(ctx, last)
 		if err != nil {
@@ -292,11 +375,34 @@ func (s *Service) drive(ctx context.Context, l *link, r *remittance.Remittance) 
 		}
 		if rc == nil {
 			known, err := l.rpc().Known(ctx, last)
-			if err != nil || known {
-				return r, nil // still in the pool: it lands, or it is dropped
+			switch {
+			case err != nil:
+				return r, nil
+			case known && now.Sub(r.SentAt) >= bumpAfter:
+				return s.send(ctx, l, r, true) // stuck: the same nonce, higher fees
+			case known:
+				return r, nil // in the pool: it lands, or it is replaced
 			}
 		}
-		// Mined and failed, or dropped: ask the token what it would say now.
+		// Mined and failed, or dropped: ask again what the token would say now.
+	}
+
+	// The wallet must fund every payment pending from it, this one included,
+	// or the relayer pays gas for transfers that revert.
+	total, err := owed(r)
+	if err != nil {
+		return r, nil
+	}
+	held, err := l.balance(ctx, r.From)
+	if err != nil {
+		return r, nil
+	}
+	if held.Cmp(total) < 0 {
+		return s.refused(r, ReasonBalance)
+	}
+	// One payment in flight per wallet: the rest wait their turn.
+	if mine, err := s.lane(r); err != nil || !mine {
+		return r, nil
 	}
 
 	data, err := transferCall(r)
@@ -325,13 +431,17 @@ func (s *Service) drive(ctx context.Context, l *link, r *remittance.Remittance) 
 		}
 		return s.refused(r, reason)
 	}
-	return s.send(ctx, l, r)
+	return s.send(ctx, l, r, false)
 }
 
 // send has the relayer sign transferWithAuthorization for r, records the
 // transaction on the row, and only then broadcasts it: every transaction Hanzo's
-// key signs is named in the record before it can exist anywhere else.
-func (s *Service) send(ctx context.Context, l *link, r *remittance.Remittance) (*remittance.Remittance, error) {
+// key signs is named in the record before it can exist anywhere else. With
+// replace it is the replacement of r's last send, stuck in the pool: the same
+// relayer nonce, higher fees, so at most one of the two can be mined. The
+// relayer key is leased across replicas for the draft and the broadcast, so two
+// replicas never draft the same nonce.
+func (s *Service) send(ctx context.Context, l *link, r *remittance.Remittance, replace bool) (*remittance.Remittance, error) {
 	s.relay.Lock()
 	defer s.relay.Unlock()
 
@@ -344,8 +454,21 @@ func (s *Service) send(ctx context.Context, l *link, r *remittance.Remittance) (
 		return fresh, nil
 	}
 	r = fresh
+	if took, err := s.lease(r.Network); err != nil || !took {
+		return r, nil // another replica is drafting; the reconciler sends it
+	}
+	defer s.release(r.Network)
 
-	raw, hash, err := s.sign(ctx, l, r)
+	var prev *evm.Fees
+	if replace {
+		tip, ok1 := new(big.Int).SetString(r.RelayTip, 10)
+		cap, ok2 := new(big.Int).SetString(r.RelayCap, 10)
+		if !ok1 || !ok2 {
+			return r, nil
+		}
+		prev = &evm.Fees{Nonce: uint64(r.RelayNonce), Tip: tip, Cap: cap}
+	}
+	raw, hash, fees, err := s.sign(ctx, l, r, prev)
 	switch {
 	case errors.Is(err, errNoFee):
 		slog.Error("RECONCILE: gateway: the relayer cannot pay the gas; nothing is relayed until it is funded", "network", r.Network, "relayer", s.cfg.RelayerAddress(), "err", err)
@@ -362,6 +485,7 @@ func (s *Service) send(ctx context.Context, l *link, r *remittance.Remittance) (
 		}
 		x.Sends = append(x.Sends, hash)
 		x.SentAt, x.Relayer = at, s.cfg.RelayerAddress()
+		x.RelayNonce, x.RelayTip, x.RelayCap = int64(fees.Nonce), fees.Tip.String(), fees.Cap.String()
 		x.Status, x.Reason, x.Tries = remittance.Pending, "", 0
 		x.Due = stamp(at.Add(time.Minute))
 		return true
@@ -370,8 +494,8 @@ func (s *Service) send(ctx context.Context, l *link, r *remittance.Remittance) (
 		return r, nil // not recorded, or another writer moved it: nothing is broadcast
 	}
 	slog.Info("audit: gateway relayed a USDC authorization",
-		"remittance", r.Id(), "network", r.Network, "tx", hash, "relayer", r.Relayer,
-		"from", r.From, "value", r.Value, "cents", r.AmountCents, "org", r.Org, "payer", r.Payer, "send", len(r.Sends))
+		"remittance", r.Id(), "network", r.Network, "tx", hash, "relayer", r.Relayer, "nonce", fees.Nonce,
+		"replaces", replace, "from", r.From, "value", r.Value, "cents", r.AmountCents, "org", r.Org, "payer", r.Payer, "send", len(r.Sends))
 
 	got, err := l.evm.Broadcast(ctx, raw)
 	switch {
@@ -384,9 +508,11 @@ func (s *Service) send(ctx context.Context, l *link, r *remittance.Remittance) (
 }
 
 // settle follows a remittance whose authorization the chain shows used: it
-// finds the transaction, and either it paid the treasury exactly this payment
-// — confirming from here — or the nonce went to another authorization and this
-// one can never pay. Who submitted it does not matter.
+// finds what used it. The transaction paid the treasury exactly this payment —
+// confirming from here — or the nonce went to another authorization, or the
+// payer canceled it, and this one can never pay. A use not found once its
+// whole window is searched fails too: nothing is credited that cannot be
+// shown. Who submitted it does not matter.
 func (s *Service) settle(ctx context.Context, l *link, r *remittance.Remittance) *remittance.Remittance {
 	u, err := s.locate(ctx, l, r)
 	switch {
@@ -394,7 +520,13 @@ func (s *Service) settle(ctx context.Context, l *link, r *remittance.Remittance)
 		slog.Warn("gateway: the use of an authorization was not read; the reconciler asks again", "remittance", r.Id(), "err", err)
 		return r
 	case u == nil:
-		return r // used, and the node does not show where yet
+		if head, err := l.rpc().BlockNumber(ctx); err == nil && s.searched(r, head) {
+			slog.Error("RECONCILE: gateway: the token says the authorization is spent and its window shows no use or cancel; failed, uncredited", "remittance", r.Id(), "from", r.From, "nonce", r.Nonce, "org", r.Org)
+			return s.fail(r, ReasonUnaccounted)
+		}
+		return r // used, and the blocks searched do not show where yet
+	case u.canceled:
+		return s.fail(r, ReasonCanceled)
 	case !u.paid:
 		slog.Error("RECONCILE: gateway: the nonce was spent on a different authorization; this payment can never land", "remittance", r.Id(), "tx", u.tx, "from", r.From, "nonce", r.Nonce, "org", r.Org)
 		return s.fail(r, ReasonConflict)
@@ -417,20 +549,32 @@ func (s *Service) settle(ctx context.Context, l *link, r *remittance.Remittance)
 	return s.confirm(ctx, l, out)
 }
 
-// confirm credits a confirming remittance once its transaction is
-// Confirmations deep, and not before. At that depth the receipt is read
-// AGAIN: a reorganisation that took the transaction out, or moved it, sends the
-// row back to pending rather than to the ledger.
+// confirm credits a confirming remittance once its transaction is past the
+// point the chain may take it back, and not before: at least Confirmations
+// deep, and in a block at or below the node's SAFE head — its FINALIZED head
+// from FinalCents up. At that point the receipt is read again, and a SECOND
+// provider (the witness) must show the same use in the same block, past the
+// same head. A reorganisation that took the transaction out or moved it sends
+// the row back to pending; a witness that disagrees holds the credit and says
+// so, for an operator.
 func (s *Service) confirm(ctx context.Context, l *link, r *remittance.Remittance) *remittance.Remittance {
 	if r.Credited {
 		return s.land(ctx, r)
+	}
+	tag := "safe"
+	if r.AmountCents >= FinalCents {
+		tag = "finalized"
 	}
 	head, err := l.rpc().BlockNumber(ctx)
 	if err != nil {
 		return r
 	}
+	mark, err := l.rpc().Head(ctx, tag)
+	if err != nil {
+		return r
+	}
 	depth := int64(head) - r.Block + 1
-	if depth < l.chain.Confirmations {
+	if depth < l.chain.Confirmations || uint64(r.Block) > mark {
 		out, err := update(r.Id(), func(x *remittance.Remittance) bool {
 			if x.Status != remittance.Confirming || x.Confirmations == max(depth, 0) {
 				return false
@@ -461,6 +605,17 @@ func (s *Service) confirm(ctx context.Context, l *link, r *remittance.Remittance
 			return r
 		}
 		return out
+	}
+	wrc, err := l.witness.Receipt(ctx, r.TxHash)
+	if err != nil {
+		return r
+	}
+	if w := s.spent(l, r, r.TxHash, wrc); w == nil || !w.paid || int64(w.block) != r.Block {
+		slog.Error("RECONCILE: gateway: the witness does not show this use where the node does; not credited", "remittance", r.Id(), "tx", r.TxHash, "block", r.Block, "network", r.Network)
+		return r
+	}
+	if wmark, err := l.witness.Head(ctx, tag); err != nil || uint64(r.Block) > wmark {
+		return r
 	}
 	// OWED from here: written before the ledger is asked, so a landing that
 	// does not finish is finished by the reconciler.

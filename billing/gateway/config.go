@@ -10,7 +10,7 @@ import (
 
 	"github.com/luxfi/crypto"
 
-	"github.com/hanzoai/commerce/payment/x402"
+	"github.com/hanzoai/commerce/payment/eip3009"
 )
 
 // The deployment arms the rail with three values:
@@ -25,9 +25,12 @@ import (
 //	                  the payer to the treasury. A secret, so it comes from KMS
 //	                  (/commerce-secrets/USDC_RELAYER_KEY) and nowhere else.
 //
-// Each network is offered only where its RPC is configured, under the name the
-// deposit watcher reads it by (CRYPTO_DEPOSIT_RPC_BASE, …): one endpoint per
-// chain for both crypto rails.
+// Each network is offered only where two independent endpoints are configured:
+// its RPC, under the name the deposit watcher reads it by
+// (CRYPTO_DEPOSIT_RPC_BASE, …; one endpoint per chain for both crypto rails),
+// and a WITNESS (USDC_WITNESS_RPC_BASE, …) from another provider, which must
+// agree with it before anything is credited. One endpoint is one party's word
+// about whether money arrived.
 const (
 	EnvTreasury = "USDC_TREASURY"
 	EnvNetwork  = "USDC_NETWORK"
@@ -49,11 +52,12 @@ type Chain struct {
 	Version       string // the token's version() in its EIP-712 domain
 	Confirmations int64
 	RPC           string
+	Witness       string
 }
 
 // Domain is the EIP-712 domain a payment on c is signed under: the token's own.
-func (c Chain) Domain() x402.Domain {
-	return x402.Domain{Name: c.Token, Version: c.Version, ChainID: c.ChainID, VerifyingContract: c.USDC}
+func (c Chain) Domain() eip3009.Domain {
+	return eip3009.Domain{Name: c.Token, Version: c.Version, ChainID: c.ChainID, VerifyingContract: c.USDC}
 }
 
 // Circle-issued native USDC only, never a same-symbol substitute: each address
@@ -93,7 +97,7 @@ func (c Config) RelayerAddress() string {
 	if c.Relayer == nil {
 		return ""
 	}
-	return x402.Hex(crypto.PubkeyToAddress(c.Relayer.PublicKey).Bytes())
+	return eip3009.Hex(crypto.PubkeyToAddress(c.Relayer.PublicKey).Bytes())
 }
 
 // FromEnv reads the rail's configuration from environ (as os.Environ returns
@@ -113,7 +117,7 @@ func FromEnv(environ []string) (Config, error) {
 	if raw == "" {
 		return Config{}, nil
 	}
-	addr, err := x402.Address(raw)
+	addr, err := eip3009.Address(raw)
 	if err != nil {
 		return Config{}, fmt.Errorf("%s: %w", EnvTreasury, err)
 	}
@@ -121,7 +125,7 @@ func FromEnv(environ []string) (Config, error) {
 		return Config{}, fmt.Errorf("%s is the zero address", EnvTreasury)
 	}
 	var table []Chain
-	cfg := Config{Treasury: x402.Hex(addr[:])}
+	cfg := Config{Treasury: eip3009.Hex(addr[:])}
 	switch env[EnvNetwork] {
 	case "mainnet":
 		table = mainnet
@@ -140,13 +144,20 @@ func FromEnv(environ []string) (Config, error) {
 		return Config{}, fmt.Errorf("%s must not be the treasury's key: the relayer is a hot key that pays gas, the treasury holds the money", EnvRelayer)
 	}
 	for _, c := range table {
-		c.RPC = env["CRYPTO_DEPOSIT_RPC_"+strings.ToUpper(strings.ReplaceAll(c.Name, "-", "_"))]
-		if c.RPC != "" {
-			cfg.Chains = append(cfg.Chains, c)
+		name := strings.ToUpper(strings.ReplaceAll(c.Name, "-", "_"))
+		c.RPC, c.Witness = env["CRYPTO_DEPOSIT_RPC_"+name], env["USDC_WITNESS_RPC_"+name]
+		switch {
+		case c.RPC == "" && c.Witness == "":
+			continue
+		case c.RPC == "" || c.Witness == "":
+			return Config{}, fmt.Errorf("%s needs both CRYPTO_DEPOSIT_RPC_%s and USDC_WITNESS_RPC_%s: a credit is checked against two providers", c.ID, name, name)
+		case c.RPC == c.Witness:
+			return Config{}, fmt.Errorf("USDC_WITNESS_RPC_%s is the same endpoint as CRYPTO_DEPOSIT_RPC_%s; a witness is a second provider", name, name)
 		}
+		cfg.Chains = append(cfg.Chains, c)
 	}
 	if len(cfg.Chains) == 0 {
-		return Config{}, fmt.Errorf("%s is set, so at least one of its networks needs an RPC (CRYPTO_DEPOSIT_RPC_<CHAIN>)", EnvTreasury)
+		return Config{}, fmt.Errorf("%s is set, so at least one of its networks needs an RPC and a witness (CRYPTO_DEPOSIT_RPC_<CHAIN>, USDC_WITNESS_RPC_<CHAIN>)", EnvTreasury)
 	}
 	return cfg, nil
 }

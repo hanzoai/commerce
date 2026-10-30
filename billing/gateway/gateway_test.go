@@ -17,7 +17,7 @@ import (
 
 	"github.com/hanzoai/commerce/billing/husdindex"
 	"github.com/hanzoai/commerce/models/remittance"
-	"github.com/hanzoai/commerce/payment/x402"
+	"github.com/hanzoai/commerce/payment/eip3009"
 )
 
 // The four bytes that pick a function, and the topic that names an event, are
@@ -34,10 +34,10 @@ func TestSelectorsAreTheTokensOwn(t *testing.T) {
 			t.Errorf("%s = %s, want %s", sig, got, want)
 		}
 	}
-	if got := x402.Hex(crypto.Keccak256([]byte("AuthorizationUsed(address,bytes32)"))); got != usedTopic {
+	if got := eip3009.Hex(crypto.Keccak256([]byte("AuthorizationUsed(address,bytes32)"))); got != usedTopic {
 		t.Errorf("AuthorizationUsed topic = %s, want %s", got, usedTopic)
 	}
-	if got := x402.Hex(crypto.Keccak256([]byte("Transfer(address,address,uint256)"))); got != husdindex.TransferTopic0 {
+	if got := eip3009.Hex(crypto.Keccak256([]byte("Transfer(address,address,uint256)"))); got != husdindex.TransferTopic0 {
 		t.Errorf("Transfer topic = %s", got)
 	}
 }
@@ -185,7 +185,7 @@ func TestAPaymentTheRailCannotTakeIsRefusedUpFront(t *testing.T) {
 			hi := new(big.Int).Sub(n, new(big.Int).SetBytes(b[32:64]))
 			hi.FillBytes(b[32:64])
 			b[64] ^= 1
-			return x402.Hex(b)
+			return eip3009.Hex(b)
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -221,7 +221,7 @@ func TestAnUnfundedWalletIsRefusedThenPaysWhenFunded(t *testing.T) {
 	if _, err := r.submit(sub); err != nil {
 		t.Fatalf("presented again, funded: %v", err)
 	}
-	r.node.mine(uint64(r.chain.Confirmations))
+	r.settled()
 	r.step()
 	if r.credited() != 200_00 || r.node.relayed() != 1 {
 		t.Fatalf("ledger %d, relayed %d", r.credited(), r.node.relayed())
@@ -334,7 +334,7 @@ func TestAReorganisedUseIsNotCredited(t *testing.T) {
 func TestAnUnusedAuthorizationFailsOnceExpired(t *testing.T) {
 	r := newRig(t, false)
 	r.node.set(func(n *node) { n.drop = true })
-	sub := r.pay(400, func(a *x402.Authorization) {
+	sub := r.pay(400, func(a *eip3009.Authorization) {
 		a.ValidBefore = strconv.FormatInt(r.now.Add(10*time.Minute).Unix(), 10)
 	})
 	if _, err := r.submit(sub); err != nil {
@@ -442,7 +442,7 @@ func TestANonceNamesOnePaymentForOneCaller(t *testing.T) {
 	if _, err := r.submit(first); err != nil {
 		t.Fatal(err)
 	}
-	again := r.sign(terms, 500, func(a *x402.Authorization) {
+	again := r.sign(terms, 500, func(a *eip3009.Authorization) {
 		a.ValidBefore = strconv.FormatInt(r.now.Add(2*time.Hour).Unix(), 10)
 	})
 	if _, err := r.submit(again); ReasonOf(err) != ReasonConflict {
@@ -479,7 +479,7 @@ func TestBooksFollowTheNetwork(t *testing.T) {
 // the one the rail hands payers, is never offered.
 func TestANetworkIsOfferedOnlyWhenTheChainAgrees(t *testing.T) {
 	r := newRig(t, false)
-	r.node.set(func(n *node) { n.separator = x402.Hex(make([]byte, 32)) })
+	r.node.set(func(n *node) { n.separator = eip3009.Hex(make([]byte, 32)) })
 	if _, err := r.s.Terms(context.Background(), r.org, r.payer); ReasonOf(err) != ReasonUnavailable {
 		t.Fatalf("a token with another domain: %v", err)
 	}
@@ -504,29 +504,31 @@ func TestANetworkIsOfferedOnlyWhenTheChainAgrees(t *testing.T) {
 
 func TestFromEnv(t *testing.T) {
 	key := strings.Repeat("11", 32)
-	base := []string{EnvTreasury + "=" + treasury, EnvNetwork + "=mainnet", EnvRelayer + "=" + key, "CRYPTO_DEPOSIT_RPC_BASE=https://mainnet.base.org"}
+	base := []string{EnvTreasury + "=" + treasury, EnvNetwork + "=mainnet", EnvRelayer + "=" + key, "CRYPTO_DEPOSIT_RPC_BASE=https://mainnet.base.org", "USDC_WITNESS_RPC_BASE=https://base-rpc.publicnode.com"}
 	cfg, err := FromEnv(base)
-	if err != nil || !cfg.Armed() || cfg.Testnet || len(cfg.Chains) != 1 || cfg.Chains[0].RPC != "https://mainnet.base.org" {
+	if err != nil || !cfg.Armed() || cfg.Testnet || len(cfg.Chains) != 1 || cfg.Chains[0].RPC != "https://mainnet.base.org" || cfg.Chains[0].Witness != "https://base-rpc.publicnode.com" {
 		t.Fatalf("armed: %+v %v", cfg, err)
 	}
 	if cfg, err := FromEnv(nil); err != nil || cfg.Armed() {
 		t.Fatalf("unset is inert: %+v %v", cfg, err)
 	}
-	test, err := FromEnv([]string{EnvTreasury + "=" + treasury, EnvNetwork + "=testnet", EnvRelayer + "=0x" + key, "CRYPTO_DEPOSIT_RPC_BASE_SEPOLIA=https://sepolia.base.org"})
+	test, err := FromEnv([]string{EnvTreasury + "=" + treasury, EnvNetwork + "=testnet", EnvRelayer + "=0x" + key, "CRYPTO_DEPOSIT_RPC_BASE_SEPOLIA=https://sepolia.base.org", "USDC_WITNESS_RPC_BASE_SEPOLIA=https://base-sepolia-rpc.publicnode.com"})
 	if err != nil || !test.Testnet || test.Chains[0].ChainID != 84532 {
 		t.Fatalf("testnet: %+v %v", test, err)
 	}
 	relayer, _ := crypto.HexToECDSA(key)
-	same := x402.Hex(crypto.PubkeyToAddress(relayer.PublicKey).Bytes())
+	same := eip3009.Hex(crypto.PubkeyToAddress(relayer.PublicKey).Bytes())
 	for name, env := range map[string][]string{
-		"no network":       {EnvTreasury + "=" + treasury, EnvRelayer + "=" + key, "CRYPTO_DEPOSIT_RPC_BASE=x"},
-		"no relayer":       {EnvTreasury + "=" + treasury, EnvNetwork + "=mainnet", "CRYPTO_DEPOSIT_RPC_BASE=x"},
-		"bad relayer":      {EnvTreasury + "=" + treasury, EnvNetwork + "=mainnet", EnvRelayer + "=zz" + key[2:], "CRYPTO_DEPOSIT_RPC_BASE=x"},
+		"no network":       {EnvTreasury + "=" + treasury, EnvRelayer + "=" + key, "CRYPTO_DEPOSIT_RPC_BASE=x", "USDC_WITNESS_RPC_BASE=y"},
+		"no relayer":       {EnvTreasury + "=" + treasury, EnvNetwork + "=mainnet", "CRYPTO_DEPOSIT_RPC_BASE=x", "USDC_WITNESS_RPC_BASE=y"},
+		"bad relayer":      {EnvTreasury + "=" + treasury, EnvNetwork + "=mainnet", EnvRelayer + "=zz" + key[2:], "CRYPTO_DEPOSIT_RPC_BASE=x", "USDC_WITNESS_RPC_BASE=y"},
 		"no rpc":           {EnvTreasury + "=" + treasury, EnvNetwork + "=mainnet", EnvRelayer + "=" + key},
 		"testnet, no rpc":  {EnvTreasury + "=" + treasury, EnvNetwork + "=testnet", EnvRelayer + "=" + key, "CRYPTO_DEPOSIT_RPC_BASE=x"},
-		"bad treasury":     {EnvTreasury + "=0x1234", EnvNetwork + "=mainnet", EnvRelayer + "=" + key, "CRYPTO_DEPOSIT_RPC_BASE=x"},
-		"zero treasury":    {EnvTreasury + "=0x" + strings.Repeat("0", 40), EnvNetwork + "=mainnet", EnvRelayer + "=" + key, "CRYPTO_DEPOSIT_RPC_BASE=x"},
-		"relayer treasury": {EnvTreasury + "=" + same, EnvNetwork + "=mainnet", EnvRelayer + "=" + key, "CRYPTO_DEPOSIT_RPC_BASE=x"},
+		"no witness":       {EnvTreasury + "=" + treasury, EnvNetwork + "=mainnet", EnvRelayer + "=" + key, "CRYPTO_DEPOSIT_RPC_BASE=x"},
+		"witness is rpc":   {EnvTreasury + "=" + treasury, EnvNetwork + "=mainnet", EnvRelayer + "=" + key, "CRYPTO_DEPOSIT_RPC_BASE=x", "USDC_WITNESS_RPC_BASE=x"},
+		"bad treasury":     {EnvTreasury + "=0x1234", EnvNetwork + "=mainnet", EnvRelayer + "=" + key, "CRYPTO_DEPOSIT_RPC_BASE=x", "USDC_WITNESS_RPC_BASE=y"},
+		"zero treasury":    {EnvTreasury + "=0x" + strings.Repeat("0", 40), EnvNetwork + "=mainnet", EnvRelayer + "=" + key, "CRYPTO_DEPOSIT_RPC_BASE=x", "USDC_WITNESS_RPC_BASE=y"},
+		"relayer treasury": {EnvTreasury + "=" + same, EnvNetwork + "=mainnet", EnvRelayer + "=" + key, "CRYPTO_DEPOSIT_RPC_BASE=x", "USDC_WITNESS_RPC_BASE=y"},
 	} {
 		_, err := FromEnv(env)
 		if err == nil {

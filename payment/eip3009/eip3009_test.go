@@ -1,7 +1,7 @@
 // Copyright (c) 2014-present Hanzo AI, Inc.
 // Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
 
-package x402
+package eip3009
 
 import (
 	"encoding/hex"
