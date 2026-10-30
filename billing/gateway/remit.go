@@ -531,8 +531,17 @@ func (s *Service) fail(ctx context.Context, r *remittance.Remittance, reason str
 			return r, nil
 		}
 	}
-	return update(r.Id(), func(x *remittance.Remittance) bool {
-		if x.Status == remittance.Failed || x.Status == remittance.Settled {
+	return markFailed(r.Id(), reason)
+}
+
+// markFailed is the last write of fail. A credit can be marked owed between
+// fail's check and this write (another replica's credit() got there), and a
+// failed row is never looked at again, so the row ends failed only while it
+// holds no credit still owed back; otherwise it stays open for the reconciler
+// to reverse on its next pass.
+func markFailed(id, reason string) (*remittance.Remittance, error) {
+	return update(id, func(x *remittance.Remittance) bool {
+		if x.Status == remittance.Failed || x.Status == remittance.Settled || (x.Credited && !x.Reversed) {
 			return false
 		}
 		x.Status, x.Reason, x.Due = remittance.Failed, reason, never
