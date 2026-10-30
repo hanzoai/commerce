@@ -191,6 +191,12 @@ func (s *Service) credit(ctx context.Context, r *remittance.Remittance) *remitta
 			return r
 		}
 		r = out
+		if r.State == circle.Confirmed || r.State == circle.Completed || r.Status == remittance.Settled {
+			// The row went onchain while this pass was taking its hold: the
+			// reconciler already released it, so the room reserved above would
+			// be held for good (a settled, landed row is never swept again).
+			_ = s.release(r)
+		}
 		if !r.Credited || r.Reversed {
 			// Not owed: a failure got there first. Hand back any room this
 			// pass took and write nothing.

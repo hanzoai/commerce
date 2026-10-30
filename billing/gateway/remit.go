@@ -556,7 +556,9 @@ func markFailed(id, reason string) (*remittance.Remittance, error) {
 // signs, decimals and exponents; compare the two unsigned integers by value.
 func sameAmount(a, b string) bool {
 	parse := func(s string) (*big.Int, bool) {
-		if s == "" {
+		// 78 digits hold 2^256; a longer string is not an amount, and parsing one
+		// costs time that grows with its square.
+		if s == "" || len(s) > 78 {
 			return nil, false
 		}
 		for _, c := range s {
