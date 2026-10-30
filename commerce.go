@@ -43,7 +43,6 @@ import (
 	"github.com/hanzoai/commerce/auth"
 	billingUI "github.com/hanzoai/commerce/billing"
 	"github.com/hanzoai/commerce/billing/depositledger"
-	"github.com/hanzoai/commerce/billing/gateway"
 	"github.com/hanzoai/commerce/billing/husdledger"
 	"github.com/hanzoai/commerce/checkout"
 	commerceDatastore "github.com/hanzoai/commerce/datastore"
@@ -61,7 +60,6 @@ import (
 	planModel "github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/sbomrecord"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/payment/providers/circle"
 	commercestore "github.com/hanzoai/commerce/store"
 	"github.com/hanzoai/commerce/treasury"
 	"github.com/hanzoai/commerce/types"
@@ -665,20 +663,6 @@ func (app *App) Bootstrap() error {
 	}
 	depositledger.SetDefault(depositSvc)
 
-	// Circle Gateway top-up rail. Armed by CIRCLE_GATEWAY_TREASURY (plain, not
-	// secret) with CIRCLE_ENVIRONMENT naming the network; unset is the inert
-	// state. Fail closed on an incoherent config — a treasury that does not
-	// read as an address, or no stated network — because the failure mode is
-	// payments made out to an address this process misread, or credited from a
-	// network it guessed. Like the deposit watcher, its reconciler is started
-	// by the serving entry points, never here.
-	gatewayCfg, gatewayErr := circle.FromEnv(os.Environ())
-	if gatewayErr != nil {
-		slog.Error("commerce: circle gateway disabled; other billing rails remain available", "err", gatewayErr)
-		gatewayCfg = circle.Config{}
-	}
-	gateway.SetDefault(gateway.New(gatewayCfg, circle.New(gatewayCfg.Network.Base())))
-
 	// Hanzo/base-backed commerce store: the commerce_kv cache collection that
 	// replaced the former Redis/Valkey KV. The org registry that once lived
 	// here is gone — the IAM org is the org, resolved host→brand→org with no
@@ -1214,14 +1198,6 @@ func (app *App) setupRoutes() {
 		// only — see api/billing.DepositWatcherStatus for why arming an asset
 		// stays a CRYPTO_DEPOSIT_* act and never a button.
 		api.Raw(http.MethodGet, "/deposits", billingPkg.DepositWatcherStatus)
-		// The Circle Gateway treasury's position. Read-only and superadmin
-		// only, for the same reason — and STANDALONE only: a co-resident host
-		// counts every untyped route the module binds on its app against a
-		// ratchet that may only shrink, so in cloud the treasury is read
-		// through gateway.Default().Treasury from a typed op of its own.
-		if !embedded {
-			api.Raw(http.MethodGet, "/treasury", billingPkg.GatewayTreasury)
-		}
 	}
 
 	// Standalone-only routes: the full /v1 API bundle and the SPA catch-all.
@@ -1252,7 +1228,6 @@ func (app *App) Serve() error {
 	// which the one-shot cmd/ tools also call. Idempotent, and a no-op when no
 	// asset is configured. Shutdown stops it.
 	depositledger.Default().Start()
-	gateway.Default().Start()
 
 	// Trigger OnServe hooks
 	if err := app.Hooks.TriggerServe(app); err != nil {
@@ -1314,9 +1289,6 @@ func (app *App) Shutdown() error {
 		// flight is holding the ledger open, and a half-written credit is the one
 		// thing this rail must never produce.
 		depositledger.Default().Stop()
-		// And the Gateway reconciler, for the same reason: a pass in flight may
-		// be between Gateway's answer and the credit it carries.
-		gateway.Default().Stop()
 
 		// Stop ZAP node
 		if app.ZAP != nil {

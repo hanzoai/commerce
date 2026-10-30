@@ -13,7 +13,6 @@ import (
 
 	"github.com/hanzoai/commerce/billing/depositledger"
 	"github.com/hanzoai/commerce/billing/depositwatch"
-	"github.com/hanzoai/commerce/billing/gateway"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/cryptopaymentintent"
@@ -96,13 +95,10 @@ type CryptoDeposit struct {
 	CreditedCents int64 `json:"creditedCents,omitempty"`
 }
 
-// CryptoOptions is the menu of what the crypto rails accept. Chains, Tokens
-// and Assets are the deposit-address rail's: the chains a payer may send on,
-// the tokens they may send, and the pairs themselves. Gateway is the Circle
-// Gateway rail's: the CAIP-2 networks a signed USDC payment may be made on
-// (GET /v1/billing/crypto/gateway for the terms). None is ever nil — a picker
-// handed `null` where it expects an array is a client-side crash rather than
-// an empty menu.
+// CryptoOptions is the menu of what the crypto deposit rail accepts: the
+// chains a payer may send on, the tokens they may send, and the pairs
+// themselves. None is ever nil — a picker handed `null` where it expects an
+// array is a client-side crash rather than an empty menu.
 type CryptoOptions struct {
 	Chains []string `json:"chains"`
 	Tokens []string `json:"tokens"`
@@ -111,8 +107,6 @@ type CryptoOptions struct {
 	// its two axes, and a chain and a token each on offer are not a pair on offer:
 	// base may be watched for USDC alone.
 	Assets []CryptoAsset `json:"assets"`
-
-	Gateway []string `json:"gateway"`
 }
 
 // CryptoAsset is one pair the rail accepts: a token on a chain.
@@ -224,27 +218,20 @@ func GetCryptoOptions(ctx context.Context) (CryptoOptions, error) {
 	if err == nil {
 		assets = offeredAssets(watchedAssets(), cp.SupportedChains())
 	}
-	return menu(assets, err, gateway.Default().Networks())
+	return menu(assets, err)
 }
 
-// menu joins the two rails' offers. Either rail alone is a menu; only when
-// NEITHER can take money is the answer an error (the endpoint's 503), because
-// "no crypto rail" and "this rail is down" are different facts and only the
-// first means try again later. The deposit-address rail's error is returned
-// as it was when the Gateway rail offers nothing, so that rail's behaviour is
-// unchanged by the other's existence.
-func menu(assets []CryptoAsset, custody error, gw []string) (CryptoOptions, error) {
-	if custody != nil && len(gw) == 0 {
+// menu is the rail's offer: the error when the custody signer cannot be
+// reached (the endpoint's 503), else the pairs and their two axes.
+func menu(assets []CryptoAsset, custody error) (CryptoOptions, error) {
+	if custody != nil {
 		return CryptoOptions{}, custody
 	}
 	if assets == nil {
 		assets = []CryptoAsset{}
 	}
-	if gw == nil {
-		gw = []string{}
-	}
 	chains, tokens := axesOf(assets)
-	return CryptoOptions{Chains: chains, Tokens: tokens, Assets: assets, Gateway: gw}, nil
+	return CryptoOptions{Chains: chains, Tokens: tokens, Assets: assets}, nil
 }
 
 // GetBillingCryptoOptions is the picker's endpoint for that menu.

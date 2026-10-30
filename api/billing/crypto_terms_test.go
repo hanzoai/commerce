@@ -35,7 +35,7 @@ func TestOfferedAssetsAreThePairs(t *testing.T) {
 		t.Fatalf("axes = %v / %v", chains, tokens)
 	}
 
-	empty, err := menu(offeredAssets(nil, nil), nil, nil)
+	empty, err := menu(offeredAssets(nil, nil), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func TestOfferedAssetsAreThePairs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(b) != `{"chains":[],"tokens":[],"assets":[],"gateway":[]}` {
+	if string(b) != `{"chains":[],"tokens":[],"assets":[]}` {
 		t.Fatalf("an empty menu marshalled to %s", b)
 	}
 }

@@ -26,7 +26,6 @@ import (
 
 	"github.com/hanzoai/commerce/billing/creditledger"
 	"github.com/hanzoai/commerce/billing/depositledger"
-	"github.com/hanzoai/commerce/billing/gateway"
 	"github.com/hanzoai/commerce/mail"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/webhook/census"
@@ -234,10 +233,6 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 	// tests that Embed a bare commerce spin up nothing.
 	depositWatcher := depositledger.Default()
 	depositWatcher.Start()
-	// The Circle Gateway reconciler: follows every accepted payment to
-	// settlement and every unanswered one to an answer. A no-op unless
-	// CIRCLE_GATEWAY_TREASURY armed the rail.
-	gateway.Default().Start()
 
 	// Who commerce's legacy webhook rows deliver to, logged once per boot so the
 	// move to /v1/webhook names every subscriber before the rows are deleted.
@@ -256,8 +251,6 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 		// GET /v1/commerce/deposits, so the answer does not depend on catching it.
 		"deposit_watcher", depositWatcher.Running(),
 		"deposit_assets", len(depositWatcher.Assets()),
-		"gateway_rail", gateway.Default().Armed(),
-		"gateway_network", string(gateway.Default().Config().Network),
 	)
 
 	return &Embedded{cfg: cfg, app: app}, nil

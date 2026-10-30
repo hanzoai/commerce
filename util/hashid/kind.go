@@ -208,9 +208,8 @@ var kinds = map[string]int{
 	// first row in.
 	"auto-recharge": 290,
 
-	// remittance — one signed USDC payment to the treasury through Circle
-	// Gateway (models/remittance). String-keyed by (network, payer, nonce) in the
-	// system namespace; registered so a hashid encode can never panic on it.
+	// remittance — the retired Circle Gateway top-up rail's record (deleted
+	// 2026-10-30). The numbers stay taken: a kind number is never reused.
 	"remittance":      292,
 	"remittance-hold": 293,
 }
