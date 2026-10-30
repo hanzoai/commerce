@@ -21,13 +21,9 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
-	"net"
 	"net/http"
-	"net/url"
-	"os"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -84,33 +80,6 @@ type rpcResp struct {
 	} `json:"error"`
 }
 
-// transport is a transport error that says what failed and never where. An
-// endpoint can carry its key in the path, the query or the host (a provider's
-// per-key subdomain), and a url.Error, a dial error, a name lookup and a TLS
-// error each name some of those; none reaches a log or an operator's view.
-func transport(err error) error {
-	var dns *net.DNSError
-	var op *net.OpError
-	var sc *os.SyscallError
-	switch {
-	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
-		return err
-	case errors.As(err, &dns):
-		return errors.New("name lookup failed")
-	case errors.As(err, &op) && op.Timeout():
-		return errors.New(op.Op + ": timeout")
-	case errors.As(err, &op) && errors.As(op.Err, &sc):
-		return fmt.Errorf("%s: %s: %w", op.Op, sc.Syscall, sc.Err)
-	case errors.As(err, &op):
-		return errors.New(op.Op + " failed")
-	}
-	var ue *url.Error
-	if errors.As(err, &ue) && ue.Timeout() {
-		return errors.New("timeout")
-	}
-	return errors.New("transport failed")
-}
-
 func (c *Client) call(ctx context.Context, method string, params []any) (json.RawMessage, error) {
 	body, err := json.Marshal(rpcReq{JSONRPC: "2.0", ID: c.id.Add(1), Method: method, Params: params})
 	if err != nil {
@@ -118,12 +87,12 @@ func (c *Client) call(ctx context.Context, method string, params []any) (json.Ra
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.rpcURL, bytes.NewReader(body))
 	if err != nil {
-		return nil, fmt.Errorf("husdindex: rpc %s: the endpoint does not parse", method)
+		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("husdindex: rpc %s: %w", method, transport(err))
+		return nil, fmt.Errorf("husdindex: rpc %s: %w", method, err)
 	}
 	defer resp.Body.Close()
 	var out rpcResp
@@ -551,161 +520,4 @@ func (c *Client) Send(ctx context.Context, raw []byte) (string, error) {
 		return "", err
 	}
 	return rawString(res), nil
-}
-
-// --- Calls, receipts and logs -------------------------------------------
-//
-// What a relayer needs on top of a sweep (billing/gateway): any read-only call
-// against any contract, the receipt of a mined transaction with every log in
-// it, the logs a filter matches, and whether a sent transaction is still known
-// to the node.
-
-// Call runs data against to at the latest block, from from when it is set,
-// and returns the bytes the contract answered. A revert is an error carrying
-// the node's message, which names the contract's reason.
-func (c *Client) Call(ctx context.Context, from, to string, data []byte) ([]byte, error) {
-	arg := map[string]string{"to": strings.ToLower(to), "data": "0x" + hex.EncodeToString(data)}
-	if from != "" {
-		arg["from"] = strings.ToLower(from)
-	}
-	raw, err := c.call(ctx, "eth_call", []any{arg, "latest"})
-	if err != nil {
-		return nil, err
-	}
-	return hex.DecodeString(strings.TrimPrefix(strings.TrimPrefix(rawString(raw), "0x"), "0X"))
-}
-
-// Log is one event a contract emitted, as a receipt or a filter states it:
-// addresses, topics and data lowercase 0x hex.
-type Log struct {
-	Address string
-	Topics  []string
-	Data    string
-	Block   uint64
-	TxHash  string
-	Index   uint64
-}
-
-func decodeLog(l rawLog) (Log, error) {
-	block, err := hexToUint64(l.BlockNumber)
-	if err != nil {
-		return Log{}, err
-	}
-	idx, err := hexToUint64(l.LogIndex)
-	if err != nil {
-		return Log{}, err
-	}
-	topics := make([]string, len(l.Topics))
-	for i, t := range l.Topics {
-		topics[i] = strings.ToLower(t)
-	}
-	return Log{
-		Address: strings.ToLower(l.Address), Topics: topics, Data: strings.ToLower(l.Data),
-		Block: block, TxHash: strings.ToLower(l.TxHash), Index: idx,
-	}, nil
-}
-
-// Receipt is a mined transaction's outcome: whether it succeeded, the block it
-// is in, and the logs it emitted (reorged-out logs are dropped).
-type Receipt struct {
-	Success bool
-	Block   uint64
-	Logs    []Log
-}
-
-// Receipt reads a transaction's receipt. Nil with no error means the node has
-// not seen it mined.
-func (c *Client) Receipt(ctx context.Context, txHash string) (*Receipt, error) {
-	raw, err := c.call(ctx, "eth_getTransactionReceipt", []any{strings.ToLower(txHash)})
-	if err != nil {
-		return nil, err
-	}
-	if len(raw) == 0 || string(raw) == "null" {
-		return nil, nil
-	}
-	var r struct {
-		Status      string   `json:"status"`
-		BlockNumber string   `json:"blockNumber"`
-		Logs        []rawLog `json:"logs"`
-	}
-	if err := json.Unmarshal(raw, &r); err != nil {
-		return nil, fmt.Errorf("husdindex: decode receipt: %w", err)
-	}
-	status, err := hexToUint64(r.Status)
-	if err != nil {
-		return nil, err
-	}
-	block, err := hexToUint64(r.BlockNumber)
-	if err != nil {
-		return nil, err
-	}
-	out := &Receipt{Success: status == 1, Block: block}
-	for _, l := range r.Logs {
-		if l.Removed {
-			continue
-		}
-		lg, err := decodeLog(l)
-		if err != nil {
-			return nil, err
-		}
-		out.Logs = append(out.Logs, lg)
-	}
-	return out, nil
-}
-
-// Logs returns the logs address emitted between from and to (inclusive) whose
-// topics match: each position is a 0x word, or nil for any.
-func (c *Client) Logs(ctx context.Context, address string, topics []any, from, to uint64) ([]Log, error) {
-	if to < from {
-		return nil, nil
-	}
-	raw, err := c.call(ctx, "eth_getLogs", []any{map[string]any{
-		"address": strings.ToLower(address), "fromBlock": uintToHex(from), "toBlock": uintToHex(to), "topics": topics,
-	}})
-	if err != nil {
-		return nil, err
-	}
-	var logs []rawLog
-	if err := json.Unmarshal(raw, &logs); err != nil {
-		return nil, fmt.Errorf("husdindex: decode logs: %w", err)
-	}
-	out := make([]Log, 0, len(logs))
-	for _, l := range logs {
-		if l.Removed {
-			continue
-		}
-		lg, err := decodeLog(l)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, lg)
-	}
-	return out, nil
-}
-
-// Known reports whether the node holds a transaction by this hash, mined or
-// waiting in its pool. A dropped transaction is not known.
-func (c *Client) Known(ctx context.Context, txHash string) (bool, error) {
-	raw, err := c.call(ctx, "eth_getTransactionByHash", []any{strings.ToLower(txHash)})
-	if err != nil {
-		return false, err
-	}
-	return len(raw) > 0 && string(raw) != "null", nil
-}
-
-// Head is the number of the block the node names by tag: "latest", "safe"
-// (past the point a reorg is expected) or "finalized" (past the point one is
-// possible).
-func (c *Client) Head(ctx context.Context, tag string) (uint64, error) {
-	raw, err := c.call(ctx, "eth_getBlockByNumber", []any{tag, false})
-	if err != nil {
-		return 0, err
-	}
-	var b struct {
-		Number string `json:"number"`
-	}
-	if err := json.Unmarshal(raw, &b); err != nil || b.Number == "" {
-		return 0, fmt.Errorf("husdindex: the node names no %s block", tag)
-	}
-	return hexToUint64(b.Number)
 }

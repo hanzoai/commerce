@@ -15,6 +15,7 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/gateway"
+	"github.com/hanzoai/commerce/payment/providers/circle"
 )
 
 // The rail's logic is proven in billing/gateway; these pin the TRANSPORT: who
@@ -70,7 +71,7 @@ func TestGatewayFailCarriesStatusAndReasonAndHidesInternals(t *testing.T) {
 		resp := driveSeeded(nil, "/x", httptest.NewRequest(http.MethodGet, "/x", nil), func(c *zip.Ctx) error { return gatewayFail(c, err) })
 		return resp.StatusCode, gatewayReply(t, resp)
 	}
-	shut := gateway.New(gateway.Config{})
+	shut := gateway.New(circle.Config{}, nil)
 	org := moneyOrg("acme")
 	_, err := shut.Terms(t.Context(), org, "acme")
 	if status, body := refusal(err); status != 503 || body["reason"] != gateway.ReasonClosed || body["error"] == "" {
@@ -89,7 +90,7 @@ func TestGatewayTreasuryIsSuperAdminOnly(t *testing.T) {
 }
 
 // Either rail alone is a menu; neither is the 503. And the deposit rail's own
-// answer is untouched when the USDC authorization rail offers nothing.
+// answer is untouched when the Gateway rail offers nothing.
 func TestMenuJoinsTheTwoRails(t *testing.T) {
 	down := errors.New("custody unreachable")
 	if _, err := menu(nil, down, nil); err != down {

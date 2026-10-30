@@ -234,8 +234,9 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 	// tests that Embed a bare commerce spin up nothing.
 	depositWatcher := depositledger.Default()
 	depositWatcher.Start()
-	// The USDC authorization reconciler: follows every relayed payment to its
-	// confirmation and credit. A no-op unless USDC_TREASURY armed the rail.
+	// The Circle Gateway reconciler: follows every accepted payment to
+	// settlement and every unanswered one to an answer. A no-op unless
+	// CIRCLE_GATEWAY_TREASURY armed the rail.
 	gateway.Default().Start()
 
 	// Who commerce's legacy webhook rows deliver to, logged once per boot so the
@@ -256,7 +257,7 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 		"deposit_watcher", depositWatcher.Running(),
 		"deposit_assets", len(depositWatcher.Assets()),
 		"gateway_rail", gateway.Default().Armed(),
-		"gateway_network", gateway.Default().Network(),
+		"gateway_network", string(gateway.Default().Config().Network),
 	)
 
 	return &Embedded{cfg: cfg, app: app}, nil

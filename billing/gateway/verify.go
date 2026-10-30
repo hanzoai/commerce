@@ -8,25 +8,25 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/hanzoai/commerce/payment/eip3009"
+	"github.com/hanzoai/commerce/payment/providers/circle"
 )
 
 // Submission is a signed payment as the caller presents it: which network it
 // was signed for, the salt Terms issued with its nonce, the authorization and
 // its signature.
 type Submission struct {
-	Network       string                `json:"network"`
-	Salt          string                `json:"salt"`
-	Authorization eip3009.Authorization `json:"authorization"`
-	Signature     string                `json:"signature"`
+	Network       string               `json:"network"`
+	Salt          string               `json:"salt"`
+	Authorization circle.Authorization `json:"authorization"`
+	Signature     string               `json:"signature"`
 }
 
 // checked is a submission that passed verify, in its ONE canonical spelling:
 // addresses, nonce, salt and signature lowercase, v as 27/28. Two submissions
 // of the same payment canonicalise to the same value.
 type checked struct {
-	chain Chain
-	auth  eip3009.Authorization
+	net   network
+	auth  circle.Authorization
 	salt  string
 	sig   string
 	cents int64
@@ -35,17 +35,15 @@ type checked struct {
 }
 
 // window is the check that changes with the clock: the payment is valid now,
-// stays valid long enough for the relayer's transaction to land (MinValidity)
-// and no longer than MaxValidity, and was not made valid more than MaxAge ago,
-// which bounds how far back the chain is searched for its use.
+// and stays valid long enough for Gateway's batch (its minValiditySeconds) but
+// no longer than MaxValidity, so an unanswered payment is followed for a
+// bounded time.
 func window(c checked, now time.Time) error {
 	t := uint64(now.Unix())
-	min, max := uint64(MinValidity/time.Second), uint64(MaxValidity/time.Second)
+	min, max := uint64(c.net.min/time.Second), uint64(MaxValidity/time.Second)
 	switch {
 	case c.after > t:
 		return invalid(ReasonEarly, "validAfter %d is after now (%d)", c.after, t)
-	case t-c.after > uint64(MaxAge/time.Second):
-		return invalid(ReasonStale, "validAfter must be at most %d seconds ago; it is %d", uint64(MaxAge/time.Second), t-c.after)
 	case c.before <= t:
 		return invalid(ReasonExpired, "validBefore %d has passed (now %d)", c.before, t)
 	case c.before-t < min:
@@ -57,18 +55,18 @@ func window(c checked, now time.Time) error {
 }
 
 // verify is everything a payment must satisfy that does not change with the
-// clock, checked against the network table, the treasury and the caller —
-// cheapest first, so a signature is recovered only for a payment that could be
-// accepted. The validity window is window's, and it gates only a payment
-// presented for the FIRST time: one already recorded is answered with its
-// record however much later it is presented again.
+// clock, checked against Gateway's live network table, the treasury and the
+// caller — cheapest first, so a signature is recovered only for a payment that
+// could be accepted. The validity window is window's, and it gates only a
+// payment presented for the FIRST time: one already recorded is answered with
+// its record however much later it is presented again.
 //
-// The USDC contract checks the signature, the window and the nonce again when
-// the authorization is used. Checking here as well is what lets a refusal name
-// its reason before any gas is spent, and it is the only place the recipient,
-// the nonce binding and the limits are checked at all.
-func verify(sub Submission, chains []Chain, treasury, org, payer string) (checked, error) {
-	c, ok := lookup(chains, sub.Network)
+// Gateway checks the signature, the window and the recipient again at settle.
+// Checking here as well is not redundancy for its own sake: it is what lets a
+// refusal name its reason before any money is locked, and it is the only
+// place the nonce binding and the limits are checked at all.
+func verify(sub Submission, nets []network, treasury, org, payer string) (checked, error) {
+	n, ok := lookup(nets, sub.Network)
 	if !ok {
 		return checked{}, invalid(ReasonNetwork, "network %q is not accepted; GET the terms for the networks that are", sub.Network)
 	}
@@ -77,11 +75,11 @@ func verify(sub Submission, chains []Chain, treasury, org, payer string) (checke
 		return checked{}, invalid(ReasonPayload, "authorization: %v", err)
 	}
 
-	if eip3009.Hex(p.To[:]) != treasury {
-		return checked{}, invalid(ReasonRecipient, "the payment is made out to %s; it must be made out to %s", eip3009.Hex(p.To[:]), treasury)
+	if circle.Hex(p.To[:]) != treasury {
+		return checked{}, invalid(ReasonRecipient, "the payment is made out to %s; it must be made out to %s", circle.Hex(p.To[:]), treasury)
 	}
 
-	unit := centUnit(usdcDecimals)
+	unit := centUnit(n.decimals)
 	cents, rem := new(big.Int).QuoRem(p.Value, unit, new(big.Int))
 	if rem.Sign() != 0 {
 		return checked{}, invalid(ReasonCents, "value %s is not a whole number of cents (a multiple of %s base units)", p.Value, unit)
@@ -93,7 +91,7 @@ func verify(sub Submission, chains []Chain, treasury, org, payer string) (checke
 		return checked{}, invalid(ReasonHigh, "value is %s cents; the maximum is %d", cents, MaxCents)
 	}
 
-	salt, err := eip3009.Nonce(sub.Salt)
+	salt, err := circle.Nonce(sub.Salt)
 	if err != nil {
 		return checked{}, invalid(ReasonUnbound, "salt: %v", err)
 	}
@@ -101,46 +99,37 @@ func verify(sub Submission, chains []Chain, treasury, org, payer string) (checke
 		return checked{}, invalid(ReasonUnbound, "the nonce was not issued to this account; sign the nonce GET /v1/billing/crypto/gateway returns, and send its salt")
 	}
 
-	digest, err := c.Domain().Digest(p)
+	digest, err := n.domain.Digest(p)
 	if err != nil {
 		return checked{}, invalid(ReasonPayload, "domain: %v", err)
 	}
-	signer, err := eip3009.Recover(digest, sub.Signature)
+	signer, err := circle.Recover(digest, sub.Signature)
 	if err != nil {
 		return checked{}, invalid(ReasonSignature, "signature: %v", err)
 	}
 	if signer != p.From {
-		return checked{}, invalid(ReasonSignature, "the signature is not %s's over this payment on %s", eip3009.Hex(p.From[:]), c.ID)
+		return checked{}, invalid(ReasonSignature, "the signature is not %s's over this payment on %s", circle.Hex(p.From[:]), n.id)
 	}
 
-	sig, err := eip3009.Canonical(sub.Signature)
+	sig, err := circle.Canonical(sub.Signature)
 	if err != nil {
 		return checked{}, invalid(ReasonSignature, "signature: %v", err)
 	}
 
 	return checked{
-		chain:  c,
+		net:    n,
 		after:  p.ValidAfter,
 		before: p.ValidBefore,
-		auth: eip3009.Authorization{
-			From:        eip3009.Hex(p.From[:]),
-			To:          eip3009.Hex(p.To[:]),
+		auth: circle.Authorization{
+			From:        circle.Hex(p.From[:]),
+			To:          circle.Hex(p.To[:]),
 			Value:       p.Value.String(),
 			ValidAfter:  strconv.FormatUint(p.ValidAfter, 10),
 			ValidBefore: strconv.FormatUint(p.ValidBefore, 10),
-			Nonce:       eip3009.Hex(p.Nonce[:]),
+			Nonce:       circle.Hex(p.Nonce[:]),
 		},
-		salt:  eip3009.Hex(salt[:]),
+		salt:  circle.Hex(salt[:]),
 		sig:   sig,
 		cents: cents.Int64(),
 	}, nil
-}
-
-func lookup(chains []Chain, id string) (Chain, bool) {
-	for _, c := range chains {
-		if c.ID == id {
-			return c, true
-		}
-	}
-	return Chain{}, false
 }

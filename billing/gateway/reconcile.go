@@ -10,11 +10,18 @@ import (
 	"time"
 
 	"github.com/hanzoai/commerce/models/remittance"
+	"github.com/hanzoai/commerce/payment/providers/circle"
 )
 
-// The reconciler follows every open remittance to the end the chain gives it:
-// a relayed transaction looked up and sent again if it was dropped, a use
-// followed until it is deep enough to credit, a credit that did not land landed.
+// The reconciler follows every open remittance to the end Gateway gives it.
+//
+// It POLLS, and that is not a stand-in for a webhook. Gateway's notifications
+// are gateway.deposit.finalized, gateway.mint.finalized and
+// gateway.mint.forwarded — deposits into a Gateway Wallet and mints on a
+// destination chain. None reports a batched payment being batched, confirmed
+// or failed, so no subscription, signed or not, could tell this rail what it
+// needs to know; GET /v1/x402/transfers/{id} can. Polling also needs no
+// inbound endpoint and no Circle API key, which is two fewer things to defend.
 //
 // A pass is idempotent — every transition is a swap over the row it read, and
 // every credit is keyed on the remittance — so it runs on every replica with
@@ -85,26 +92,30 @@ func (s *Service) loop(ctx context.Context, done chan struct{}) {
 
 // Reconcile is one pass, in the order that matters most to money:
 //
-//	confirming  used on chain: credited once deep enough, or landed if the
-//	            credit did not finish — first, because this is money already
-//	            in the treasury
-//	pending     looked up on chain, and relayed again if the node dropped it
-//	refused     watched for a use until it expires, because the payer can hand
-//	            the same authorization to the token directly
+//	accepted  credited (or deferred) and read back from Gateway until it
+//	          completes or fails — first, because a failure here is credit
+//	          to take back
+//	pending   looked up, and sent again only if Gateway holds nothing
+//	refused   looked up by nonce until it expires, because a payment Gateway
+//	          refused can be handed to Gateway directly later, and the money
+//	          would then be the treasury's
 //
 // Within each, rows are taken DUE FIRST, at most batch of them: every row the
 // pass touches without progress is pushed back by a doubling wait (backoff),
-// so rows that cannot move yet sink below the ones that can and never starve
-// them. The pass also keeps each network's check fresh, which is what the
-// options menu reads.
+// so a few hundred rows that cannot move yet sink below the ones that can and
+// never starve them. The pass also keeps Gateway's network table warm, which
+// is what the options menu reads.
 func (s *Service) Reconcile(ctx context.Context) {
-	for _, c := range s.cfg.Chains {
-		_, _ = s.ready(ctx, c.ID)
-	}
+	_, _ = s.networks(ctx)
 	due := stamp(s.now())
-	for _, status := range []string{remittance.Confirming, remittance.Pending, remittance.Refused} {
-		keys, err := remittance.Query(systemDB()).Filter("Status=", status).Filter("Due<=", due).
-			Order("Due").Limit(batch).GetKeys()
+	for _, status := range []string{remittance.Accepted, remittance.Pending, remittance.Refused, remittance.Settled} {
+		q := remittance.Query(systemDB()).Filter("Status=", status).Filter("Due<=", due)
+		// Final at Circle does not imply posted to our ledger. Keep retrying
+		// only unfinished credits, so old settled rows cannot starve them.
+		if status == remittance.Settled {
+			q = q.Filter("Landed=", false)
+		}
+		keys, err := q.Order("Due").Limit(batch).GetKeys()
 		if err != nil {
 			slog.Error("gateway: reconcile: list remittances", "status", status, "err", err)
 			continue
@@ -121,7 +132,7 @@ func (s *Service) Reconcile(ctx context.Context) {
 // later pushes a row the pass could not move to the back of the queue.
 func (s *Service) later(id string) {
 	if _, err := update(id, func(x *remittance.Remittance) bool {
-		if !x.Open() || x.Due == never {
+		if (!x.Open() && x.Status != remittance.Refused && !(x.Status == remittance.Settled && !x.Landed)) || x.Due == never {
 			return false
 		}
 		x.Tries++
@@ -132,7 +143,7 @@ func (s *Service) later(id string) {
 	}
 }
 
-// advance moves one remittance as far as the chain says it has gone, and
+// advance moves one remittance as far as Gateway says it has gone, and
 // reschedules it if that was nowhere.
 func (s *Service) advance(ctx context.Context, id string) {
 	r, err := load(id)
@@ -140,56 +151,68 @@ func (s *Service) advance(ctx context.Context, id string) {
 		slog.Warn("gateway: reconcile: read remittance", "remittance", id, "err", err)
 		return
 	}
-	if r.Rail != remittance.Rail {
-		// A row the Circle Gateway rail left: its signature is over Gateway's
-		// domain, not the token's, so nothing here can settle it. Named once
-		// for an operator (Treasury counts them), then never looked at again.
-		slog.Error("RECONCILE: gateway: a Circle Gateway payment is open; it is an operator's to settle", "remittance", id, "status", r.Status, "org", r.Org, "payer", r.Payer, "cents", r.AmountCents, "credited", r.Credited)
-		_, _ = update(id, func(x *remittance.Remittance) bool {
-			if x.Due == never {
+	before := r.Status + "|" + r.State + "|" + strconv.FormatBool(r.Landed)
+	switch r.Status {
+	case remittance.Settled:
+		s.credit(ctx, r) // Circle is final; only our idempotent ledger write remains.
+	case remittance.Pending:
+		// A remittance recorded and never sent (the process stopped between
+		// the two) is sent; one sent before is looked up first. drive knows
+		// which.
+		if _, err := s.drive(ctx, r); err != nil && StatusOf(err) >= 500 {
+			slog.Warn("gateway: reconcile: drive", "remittance", id, "err", err)
+		}
+	case remittance.Refused:
+		s.sweep(ctx, r)
+	case remittance.Accepted:
+		r = s.credit(ctx, r)
+		p, err := s.client.Payment(ctx, r.Payment)
+		if err != nil {
+			slog.Warn("gateway: reconcile: read payment", "payment", r.Payment, "remittance", id, "err", err)
+			break
+		}
+		if !matches(r, p) {
+			slog.Error("RECONCILE: gateway: Circle's payment does not match the remittance; left as it stands", "payment", p.ID, "remittance", id, "from", p.From, "to", p.To, "amount", p.Amount, "nonce", p.Nonce)
+			break
+		}
+		if p.Status == circle.Failed {
+			slog.Error("RECONCILE: gateway: Circle FAILED a payment after accepting it; reversing any credit", "payment", p.ID, "remittance", id, "cents", r.AmountCents, "org", r.Org, "payer", r.Payer)
+			if _, err := s.fail(ctx, r, "failed"); err != nil {
+				slog.Warn("gateway: reconcile: fail", "remittance", id, "err", err)
+			}
+			break
+		}
+		if _, err := s.accept(ctx, r, p); err != nil {
+			slog.Warn("gateway: reconcile: accept", "remittance", id, "err", err)
+		}
+	}
+	if now, err := load(id); err == nil && now.Status+"|"+now.State+"|"+strconv.FormatBool(now.Landed) == before {
+		s.later(id)
+	}
+}
+
+// sweep looks a refused payment up by nonce: if Gateway now holds it — the
+// payer handed it to Gateway directly — it is adopted and credited; if Gateway
+// holds another payment under the nonce it can never settle; once it has
+// expired unseen it is not looked at again.
+func (s *Service) sweep(ctx context.Context, r *remittance.Remittance) {
+	mine, other, err := s.find(ctx, r)
+	switch {
+	case err != nil:
+		return
+	case mine != nil:
+		if _, err := s.adopt(ctx, r, *mine); err != nil {
+			slog.Warn("gateway: reconcile: adopt refused", "remittance", r.Id(), "err", err)
+		}
+	case other:
+		_, _ = s.fail(ctx, r, ReasonConflict)
+	case s.expired(r):
+		_, _ = update(r.Id(), func(x *remittance.Remittance) bool {
+			if x.Status != remittance.Refused || x.Due == never {
 				return false
 			}
 			x.Due = never
 			return true
 		})
-		return
-	}
-	l, err := s.ready(ctx, r.Network)
-	if err != nil {
-		s.later(id)
-		return
-	}
-	mark := func(x *remittance.Remittance) string {
-		return x.Status + "|" + x.TxHash + "|" + strconv.FormatInt(x.Confirmations, 10) + "|" +
-			strconv.FormatBool(x.Credited) + "|" + strconv.FormatBool(x.Landed) + "|" + strconv.Itoa(len(x.Sends))
-	}
-	was := mark(r) + "|" + strconv.FormatInt(r.Scanned, 10)
-	switch r.Status {
-	case remittance.Confirming:
-		s.confirm(ctx, l, r)
-	case remittance.Pending:
-		if _, err := s.drive(ctx, l, r); err != nil && StatusOf(err) >= 500 {
-			slog.Warn("gateway: reconcile: drive", "remittance", id, "err", err)
-		}
-	case remittance.Refused:
-		s.watch(ctx, l, r)
-	}
-	if now, err := load(id); err == nil && mark(now)+"|"+strconv.FormatInt(now.Scanned, 10) == was {
-		s.later(id)
-	}
-}
-
-// watch looks a refused payment up on chain: used, it is followed like any
-// other; expired unused, it fails and is not looked at again. It is never
-// sent again from here: presenting it again is the payer's call.
-func (s *Service) watch(ctx context.Context, l *link, r *remittance.Remittance) {
-	used, err := l.used(ctx, r.From, r.Nonce)
-	switch {
-	case err != nil:
-		return
-	case used:
-		s.settle(ctx, l, r)
-	case !s.now().Before(before(r).Add(grace)):
-		s.fail(r, ReasonExpired)
 	}
 }

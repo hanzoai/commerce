@@ -6,6 +6,5 @@ import "github.com/hanzoai/commerce/models/mixin"
 // interface; these assertions make that a compile error.
 var (
 	_ mixin.Entity = (*Remittance)(nil)
-	_ mixin.Entity = (*Lock)(nil)
-	_ mixin.Entity = (*Tally)(nil)
+	_ mixin.Entity = (*Hold)(nil)
 )
