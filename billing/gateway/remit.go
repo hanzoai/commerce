@@ -458,6 +458,12 @@ func (s *Service) accept(ctx context.Context, r *remittance.Remittance, p circle
 	if err != nil {
 		return nil, err
 	}
+	if onchain {
+		// A pass holding an older read of this row can have reserved room after the
+		// release above and before this write, its own swap having seen the row
+		// still locked. The row is onchain now, so whatever it reserved is released.
+		_ = s.release(r)
+	}
 	if r.Status == remittance.Accepted || r.Status == remittance.Settled {
 		r = s.credit(ctx, r)
 	}
