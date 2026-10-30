@@ -393,6 +393,18 @@ func TestAnOrgIsBounded(t *testing.T) {
 		t.Fatalf("past DayCents: %v", err)
 	}
 
+	w := newRig(t, false)
+	w.node.set(func(n *node) { n.usdcOf[w.from] = new(big.Int) })
+	for i := range MaxRefused {
+		if _, err := w.submit(w.pay(100, nil)); ReasonOf(err) != ReasonBalance {
+			t.Fatalf("refusal %d: %v", i, err)
+		}
+		w.now = w.now.Add(time.Minute) // a fresh minute's budget each time
+	}
+	if _, err := w.submit(w.pay(100, nil)); ReasonOf(err) != ReasonOpen {
+		t.Fatalf("one past MaxRefused: %v", err)
+	}
+
 	q := newRig(t, false)
 	for range PerMinute {
 		q.terms()

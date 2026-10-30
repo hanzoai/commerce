@@ -243,7 +243,8 @@ func same(r *remittance.Remittance, c checked) bool {
 }
 
 // room checks a new payment fits what one org may have going: at most MaxOpen
-// pending at once, and at most DayCents presented in a UTC day. The day's
+// pending and MaxRefused refused-and-watched at once, and at most DayCents
+// presented in a UTC day. The day's
 // total is a tally taken as it is checked, so it counts every payment
 // presented, whatever became of it, and two presented at once cannot both fit
 // in room for one.
@@ -255,6 +256,14 @@ func (s *Service) room(org string, cents int64, now time.Time) error {
 	}
 	if len(open) >= MaxOpen {
 		return refuse(http.StatusTooManyRequests, ReasonOpen, "this account has %d payments in progress; present another once one of them is confirmed", len(open))
+	}
+	var watched []*remittance.Remittance
+	if _, err := remittance.Query(systemDB()).Filter("Org=", org).Filter("Status=", remittance.Refused).
+		Limit(MaxRefused).GetAll(&watched); err != nil {
+		return fmt.Errorf("gateway: count refused payments: %w", err)
+	}
+	if len(watched) >= MaxRefused {
+		return refuse(http.StatusTooManyRequests, ReasonOpen, "this account has %d refused payments still valid; fund the wallet and present one of them again, or let them expire", len(watched))
 	}
 	id := "day\x00" + org + "\x00" + now.UTC().Format(time.DateOnly)
 	db := systemDB()

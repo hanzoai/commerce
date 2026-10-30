@@ -78,6 +78,10 @@ const (
 	// MaxOpen is how many payments one org may have pending at once: each can
 	// cost the relayer gas, and an account costs nothing to make.
 	MaxOpen = 5
+	// MaxRefused is how many refused payments one org may have watched at
+	// once: each is polled on chain until it expires, so an org cannot turn
+	// free refusals into unbounded reads.
+	MaxRefused = 20
 	// DayCents is the most one org may present in a UTC day.
 	DayCents = 500_000 // $5,000.00
 	// PerMinute is how many terms and how many submissions one org may ask for
