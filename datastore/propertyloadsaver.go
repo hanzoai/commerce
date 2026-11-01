@@ -2,64 +2,118 @@ package datastore
 
 import (
 	"encoding/json"
+	"reflect"
+	"strings"
 )
 
-// Property represents a datastore property
-type Property struct {
-	Name    string
-	Value   interface{}
-	NoIndex bool
-	Multi   bool
+type structFieldMeta struct {
+	skip    bool
+	noIndex bool
 }
 
-// PropertyList is a list of properties
-type PropertyList []Property
+func collectStructFieldMeta(t reflect.Type, out map[string]structFieldMeta) {
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return
+	}
 
-// PropertyLoadSaver is the interface for custom property loading/saving
-type PropertyLoadSaver interface {
-	Load([]Property) error
-	Save() ([]Property, error)
+	for i := 0; i < t.NumField(); i++ {
+		sf := t.Field(i)
+		if sf.PkgPath != "" && !sf.Anonymous {
+			continue
+		}
+
+		dsTag := sf.Tag.Get("datastore")
+		jsonTag := sf.Tag.Get("json")
+
+		// Handle anonymous embedded structs that are not explicitly flattened/named via json tag
+		if sf.Anonymous {
+			ft := sf.Type
+			for ft.Kind() == reflect.Ptr {
+				ft = ft.Elem()
+			}
+			jsonName := strings.Split(jsonTag, ",")[0]
+			if ft.Kind() == reflect.Struct && jsonName == "" && dsTag != "-" {
+				collectStructFieldMeta(ft, out)
+				continue
+			}
+		}
+
+		if jsonTag == "-" {
+			continue
+		}
+
+		propName := sf.Name
+		if jsonTag != "" {
+			if parts := strings.Split(jsonTag, ","); parts[0] != "" {
+				propName = parts[0]
+			}
+		}
+
+		var meta structFieldMeta
+		if dsTag == "-" {
+			meta.skip = true
+		} else if dsTag != "" {
+			parts := strings.Split(dsTag, ",")
+			if parts[0] == "-" {
+				meta.skip = true
+			}
+			for _, opt := range parts[1:] {
+				if strings.TrimSpace(opt) == "noindex" {
+					meta.noIndex = true
+				}
+			}
+		}
+
+		out[propName] = meta
+	}
 }
 
-// LoadStruct loads properties into a struct (dst should be a pointer)
-func LoadStruct(dst interface{}, ps []Property) error {
-	// Convert properties to map
+// Convert using JSON strictly to ensure working scaling accurately
+func LoadStruct(dst interface{}, props []Property) error {
 	m := make(map[string]interface{})
-	for _, p := range ps {
+	for _, p := range props {
 		m[p.Name] = p.Value
 	}
 
-	// Marshal to JSON and unmarshal to struct
-	data, err := json.Marshal(m)
+	b, err := json.Marshal(m)
 	if err != nil {
 		return err
 	}
 
-	return json.Unmarshal(data, dst)
+	return json.Unmarshal(b, dst)
 }
 
-// SaveStruct saves a struct to properties (src should be a pointer)
 func SaveStruct(src interface{}) ([]Property, error) {
-	// Marshal struct to JSON
-	data, err := json.Marshal(src)
+	b, err := json.Marshal(src)
 	if err != nil {
 		return nil, err
 	}
 
-	// Unmarshal to map
 	var m map[string]interface{}
-	if err := json.Unmarshal(data, &m); err != nil {
+	if err := json.Unmarshal(b, &m); err != nil {
 		return nil, err
 	}
 
-	// Convert map to properties
-	ps := make([]Property, 0, len(m))
-	for k, v := range m {
-		ps = append(ps, Property{
-			Name:  k,
-			Value: v,
-		})
+	fieldMeta := make(map[string]structFieldMeta)
+	if src != nil {
+		collectStructFieldMeta(reflect.TypeOf(src), fieldMeta)
 	}
 
-	return ps, nil
+	var props []Property
+	for k, v := range m {
+		meta := fieldMeta[k]
+		if meta.skip {
+			continue
+		}
+		props = append(props, Property{
+			Name:     k,
+			Value:    v,
+			NoIndex:  meta.noIndex,
+			Multiple: false,
+		})
+	}
+	return props, nil
 }
