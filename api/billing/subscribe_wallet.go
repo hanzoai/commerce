@@ -363,6 +363,8 @@ func walletSale(ctx context.Context, db *datastore.Datastore, org *organization.
 		Interval:        t.plan.Interval,
 		PaymentMethodID: "credits",
 		AmountCents:     t.charge,
+		Seats:           t.seats + int64(lineSeats(t.lines)),
+		Category:        t.plan.Category,
 		Currency:        string(t.cur),
 		Status:          "ok",
 		Coupon:          t.coupon.Code,
@@ -373,7 +375,7 @@ func walletSale(ctx context.Context, db *datastore.Datastore, org *organization.
 		_ = idempotencykey.Complete(t.rec, string(body))
 	}
 	noticeSale(work, saleNote{
-		Org: org.Name, Email: in.Email, Plan: t.plan, Seats: t.seats + int64(lineSeats(t.lines)), Sale: sale,
+		Org: org.Name, Email: in.Email, Plan: t.plan, Seats: sale.Seats, Sale: sale,
 		ListCents: t.list, PromoName: t.promoName, Coupon: t.coupon, Test: org.TestMode(),
 	})
 	return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil

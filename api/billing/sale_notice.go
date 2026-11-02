@@ -121,6 +121,9 @@ func (n saleNote) render(at time.Time) (subject, body string) {
 		line("Seats", fmt.Sprintf("%d", n.Seats))
 	}
 	line("Charged", cents(n.Sale.AmountCents, cur))
+	if n.Sale.BalanceCents > 0 {
+		line("Starting balance", cents(n.Sale.BalanceCents, cur))
+	}
 	if trial {
 		line("Trial ends", n.Sale.TrialEnd.UTC().Format(time.RFC3339))
 		line("Then charged", cents(n.Sale.TrialEndCents, cur))
