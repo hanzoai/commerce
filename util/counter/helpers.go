@@ -98,10 +98,6 @@ func IncrUser(ctx context.Context, t time.Time) error {
 	return IncrementByAll(ctx, "user.count", "", "", 1, t)
 }
 
-func IncrSubscriber(ctx context.Context, t time.Time) error {
-	return IncrementByAll(ctx, "subscriber.count", "", "", 1, t)
-}
-
 func IncrOrder(ctx context.Context, ord *order.Order) error {
 	if ord.Test {
 		return nil

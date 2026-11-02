@@ -58,8 +58,6 @@ tags:
     description: Affiliate management
   - name: Marketing
     description: Ads and campaign management
-  - name: Forms
-    description: Form submissions and mailing lists
   - name: Counters
     description: Analytics counters and metrics
   - name: Access Tokens
@@ -2362,122 +2360,6 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  # ============ FORMS ============
-  /form:
-    get:
-      tags:
-        - Forms
-      summary: List forms
-      operationId: listForms
-      responses:
-        '200':
-          description: List of forms
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PaginatedForms'
-    post:
-      tags:
-        - Forms
-      summary: Create form
-      operationId: createForm
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Form'
-      responses:
-        '201':
-          description: Form created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Form'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /form/{formid}:
-    get:
-      tags:
-        - Forms
-      summary: Get form
-      operationId: getForm
-      parameters:
-        - name: formid
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Form details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Form'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /form/{formid}/submit:
-    post:
-      tags:
-        - Forms
-      summary: Submit form
-      operationId: submitForm
-      security: []
-      parameters:
-        - name: formid
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              additionalProperties: true
-      responses:
-        '200':
-          description: Form submitted
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /form/{formid}/subscribe:
-    post:
-      tags:
-        - Forms
-      summary: Subscribe via form
-      operationId: subscribeForm
-      security: []
-      parameters:
-        - name: formid
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                  format: email
-      responses:
-        '200':
-          description: Subscribed
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
   # ============ COUNTERS ============
   /counter:
     post:
@@ -3460,31 +3342,6 @@ components:
         earnings:
           type: integer
 
-    Form:
-      type: object
-      properties:
-        id:
-          type: string
-          readOnly: true
-        name:
-          type: string
-        enabled:
-          type: boolean
-        fields:
-          type: array
-          items:
-            type: object
-        redirectUrl:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-          readOnly: true
-        updatedAt:
-          type: string
-          format: date-time
-          readOnly: true
-
     Note:
       type: object
       properties:
@@ -3657,13 +3514,3 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/Affiliate'
-
-    PaginatedForms:
-      allOf:
-        - $ref: '#/components/schemas/Pagination'
-        - type: object
-          properties:
-            models:
-              type: array
-              items:
-                $ref: '#/components/schemas/Form'

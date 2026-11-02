@@ -298,56 +298,6 @@ func IncrStoreOrders(ctx context.Context, org *organization.Organization, storeI
 	return Increment(ctx, key, key, storeId, "", Total, t)
 }
 
-func IncrSubscribers(ctx context.Context, org *organization.Organization, mailinglistId string, t time.Time) error {
-	ctx = org.Namespaced(ctx)
-
-	key := subKey(org, mailinglistId, hourly(t))
-	log.Debug("%v incremented by %v", key, 1, org.Datastore().Context)
-	if err := Increment(ctx, key, key, "", "", Hourly, t); err != nil {
-		return err
-	}
-
-	key = subKey(org, mailinglistId, daily(t))
-	log.Debug("%v incremented by %v", key, 1, org.Datastore().Context)
-	if err := Increment(ctx, key, key, "", "", Daily, t); err != nil {
-		return err
-	}
-
-	key = subKey(org, mailinglistId, monthly(t))
-	log.Debug("%v incremented by %v", key, 1, org.Datastore().Context)
-	if err := Increment(ctx, key, key, "", "", Monthly, t); err != nil {
-		return err
-	}
-
-	key = subKey(org, mailinglistId, allTime)
-	log.Debug("%v incremented by %v", key, 1, org.Datastore().Context)
-	if err := Increment(ctx, key, key, "", "", Total, t); err != nil {
-		return err
-	}
-
-	key = subKey(org, mailinglistAllKey, hourly(t))
-	log.Debug("%v incremented by %v", key, 1, org.Datastore().Context)
-	if err := Increment(ctx, key, key, "", "", Hourly, t); err != nil {
-		return err
-	}
-
-	key = subKey(org, mailinglistAllKey, daily(t))
-	log.Debug("%v incremented by %v", key, 1, org.Datastore().Context)
-	if err := Increment(ctx, key, key, "", "", Daily, t); err != nil {
-		return err
-	}
-
-	key = subKey(org, mailinglistAllKey, monthly(t))
-	log.Debug("%v incremented by %v", key, 1, org.Datastore().Context)
-	if err := Increment(ctx, key, key, "", "", Monthly, t); err != nil {
-		return err
-	}
-
-	key = subKey(org, mailinglistAllKey, allTime)
-	log.Debug("%v incremented by %v", key, 1, org.Datastore().Context)
-	return Increment(ctx, key, key, "", "", Total, t)
-}
-
 func IncrUsers(ctx context.Context, org *organization.Organization, t time.Time) error {
 	ctx = org.Namespaced(ctx)
 

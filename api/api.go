@@ -41,7 +41,6 @@ import (
 	deployApi "github.com/hanzoai/commerce/api/deploy"
 	draftorderApi "github.com/hanzoai/commerce/api/draftorder"
 	exchangeApi "github.com/hanzoai/commerce/api/exchange"
-	formApi "github.com/hanzoai/commerce/api/form"
 	fulfillmentApi "github.com/hanzoai/commerce/api/fulfillment"
 	giftcardApi "github.com/hanzoai/commerce/api/giftcard"
 	inventoryApi "github.com/hanzoai/commerce/api/inventory"
@@ -148,7 +147,6 @@ func Route(api *zip.Group) {
 	// requireAccess — redeeming a code is how an org acquires access.
 	inviteApi.Route(api, tokenRequired)
 	deployApi.Route(api, tokenRequired)
-	formApi.Route(api, tokenRequired)
 	inventoryApi.Route(api, tokenRequired, requireAccess)
 	orderApi.Route(api, tokenRequired, requireAccess)
 	referralApi.Route(api, tokenRequired)
