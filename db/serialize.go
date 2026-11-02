@@ -18,8 +18,10 @@ package db
 //   - Types implementing json.Marshaler preserve their serialization (time.Time, etc.) ✓
 
 import (
+	"bytes"
 	"encoding/json"
 	"reflect"
+	"strings"
 	"unicode"
 )
 
@@ -158,6 +160,15 @@ func dbMapToStruct(m map[string]json.RawMessage, v reflect.Value) error {
 		}
 
 		if field.Tag.Get("datastore") == "-" {
+			// A runtime field is never stored by this codec. A row stored by its json
+			// tags (encodeRow's legacy keys, or a Postgres row written before it) holds
+			// it there, and it is read from there; the field's own Load still runs
+			// after, from the raw storage field, where there is one.
+			if tag := jsonName(field); tag != "" {
+				if raw, ok := m[tag]; ok && len(raw) > 0 && string(raw) != "null" {
+					dbFromRaw(raw, field.Type, fv)
+				}
+			}
 			continue
 		}
 
@@ -178,6 +189,13 @@ func dbMapToStruct(m map[string]json.RawMessage, v reflect.Value) error {
 
 		name := dbLcFirst(field.Name)
 		raw, ok := m[name]
+		if !ok {
+			// A row stored by json tags (a Postgres row written before this codec)
+			// holds the field under its tag.
+			if tag := jsonName(field); tag != "" && tag != name {
+				raw, ok = m[tag]
+			}
+		}
 		if !ok || len(raw) == 0 || string(raw) == "null" {
 			continue
 		}
@@ -186,6 +204,120 @@ func dbMapToStruct(m map[string]json.RawMessage, v reflect.Value) error {
 	}
 
 	return nil
+}
+
+// jsonName is the key encoding/json names a field by: its json tag's name, the
+// field's own name when the tag names none, "" for a field json leaves out.
+func jsonName(f reflect.StructField) string {
+	tag := f.Tag.Get("json")
+	if tag == "-" {
+		return ""
+	}
+	if name, _, _ := strings.Cut(tag, ","); name != "" {
+		return name
+	}
+	return f.Name
+}
+
+// encodeRow is a row as Postgres stores it: this codec's keys — the camelCase Go
+// field names every filter names and this codec reads — and, beside them, every
+// key encoding/json gives the same value that those do not already hold. The
+// second set is what an image before this codec read a Postgres row by (its json
+// tags), so a row written now still reads there: a field whose tag is not its
+// name (`Code_` tagged "code") is stored under both, a runtime field
+// (datastore:"-") under its tag. Where the two name one key, this codec's value
+// stands.
+func encodeRow(src any) ([]byte, error) {
+	m := dbStructToMap(reflect.ValueOf(src))
+	if m == nil {
+		return json.Marshal(src)
+	}
+	if legacy, err := json.Marshal(src); err == nil {
+		var old map[string]any
+		if exact(legacy, &old) == nil {
+			union(m, old)
+		}
+	}
+	return json.Marshal(m)
+}
+
+// exact decodes JSON keeping every number as written (json.Number), so a value
+// re-read here is written back digit for digit, never through a float.
+func exact(b []byte, v any) error {
+	d := json.NewDecoder(bytes.NewReader(b))
+	d.UseNumber()
+	return d.Decode(v)
+}
+
+// union adds to m every key of old it does not hold, and does the same inside the
+// objects and the lists of objects both hold under one key, reporting whether it
+// added any. m's values are dbToVal's (a struct is a map[string]any, a list of
+// them []any) and old's are decoded JSON; a value of m is re-read through JSON
+// only when something is added inside it, so the rest is written as it was.
+func union(m map[string]any, old map[string]any) bool {
+	added := false
+	for k, ov := range old {
+		mv, held := m[k]
+		if !held {
+			m[k], added = ov, true
+			continue
+		}
+		switch o := ov.(type) {
+		case map[string]any:
+			if mm, ok := asObject(mv); ok && union(mm, o) {
+				m[k], added = mm, true
+			}
+		case []any:
+			ml, ok := asList(mv)
+			if !ok || len(ml) != len(o) {
+				continue
+			}
+			grew := false
+			for i := range ml {
+				om, ook := o[i].(map[string]any)
+				mm, mok := asObject(ml[i])
+				if ook && mok && union(mm, om) {
+					ml[i], grew = mm, true
+				}
+			}
+			if grew {
+				m[k], added = ml, true
+			}
+		}
+	}
+	return added
+}
+
+// asObject is v as a JSON object, when it is one.
+func asObject(v any) (map[string]any, bool) {
+	if m, ok := v.(map[string]any); ok {
+		return m, true
+	}
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil, false
+	}
+	var m map[string]any
+	if exact(b, &m) != nil || m == nil {
+		return nil, false
+	}
+	return m, true
+}
+
+// asList is v as a JSON list, when it is one.
+func asList(v any) ([]any, bool) {
+	if l, ok := v.([]any); ok {
+		return l, true
+	}
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil, false
+	}
+	var l []any
+	if exact(b, &l) != nil || l == nil {
+		return nil, false
+	}
+	return l, true
 }
 
 // dbFromRaw unmarshals a json.RawMessage into a struct field.

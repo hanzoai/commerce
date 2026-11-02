@@ -473,6 +473,20 @@ field names in `Filter()`/`Order()` calls (legacy from Cloud Datastore migration
 
 **Data directory**: `{COMMERCE_DIR}/orgs/{orgName}/data.db` per org. System data in `orgs/system/data.db`.
 
+**Postgres stores, reads and finds a row as SQLite does** (`db/serialize.go`
+`encodeRow`, `unmarshalForDB`). A row's keys are each field's Go name, first
+letter lowered (`Code_` → `code_`), every field present — what every `Filter`
+names on both stores. Postgres writes, beside those, every key encoding/json gives
+the row that they do not hold (`code` for `Code_`, a `datastore:"-"` field's tag),
+so an image from before this, which read a Postgres row with encoding/json, reads a
+row written now; one reader reads by Go name, then by json tag, so a row written
+before reads now. A false or 0 filter matches a row that leaves the field out on
+both. `TestNoModelNamesOneKeyForTwoFields` keeps any model from naming one key for
+two fields (the analytics integration's `Disabled`/`Disabled_` is one fact).
+`Query.ById` of a row's own string id (`gcr_<hash>`) is found by a key of the
+query's kind, which Postgres requires. Production commerce runs SQLite (cloud's
+embedded commerce is given no `SQL_URL`), so no production row is on Postgres.
+
 **Tenant store lifecycle lives in `orm/db.Registry`, not here.** `db.Manager`
 used to hold a `userDBs` and an `orgDBs` map, opening a store per tenant ever
 touched and closing them only at shutdown — descriptors and memory grew with the

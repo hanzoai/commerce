@@ -344,6 +344,19 @@ func (q *Query) ById(id string, dst interface{}) (iface.Key, bool, error) {
 		}
 	}
 
+	// An id that is not an encoded key may be the row's own string id: a
+	// deterministic one (an idempotent write's "gcr_<hash>") is stored under this
+	// kind as given. A store that matches a key's kind exactly (Postgres) finds it
+	// only by a key of this kind, never by the kind-less key a failed decode
+	// yields.
+	if k == nil || k.Kind() != q.kind {
+		if result, ok, err := q.ByKey(key.NewKey(q.ctx, q.kind, id, 0, nil), dst); err != nil {
+			return nil, false, err
+		} else if ok {
+			return result, true, nil
+		}
+	}
+
 	// Try to find by filter
 	filterField := ""
 
