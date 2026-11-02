@@ -371,6 +371,9 @@ func walletSale(ctx context.Context, db *datastore.Datastore, org *organization.
 		CouponPercent:   t.coupon.Percent,
 		CouponMonths:    t.coupon.Months,
 	}
+	// The wallet paid this period; the reload a plan states charges the buyer's
+	// card on file, so it switches on only when there is one (armForPlan).
+	sale.Reload = armSale(work, org, in, t.planID, t.cur)
 	if body, mErr := json.Marshal(sale); mErr == nil {
 		_ = idempotencykey.Complete(t.rec, string(body))
 	}

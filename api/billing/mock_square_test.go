@@ -59,6 +59,9 @@ type MockSquareProcessor struct {
 	lastChargeCustomer string
 	lastChargeAmount   int64
 	chargedKeys        map[string]*processor.PaymentResult
+	// keyAsked is what each key was first asked for — amount and card — so a key
+	// asked again for anything else is refused as Square refuses it.
+	keyAsked map[string]string
 
 	// A wallet's payment: authorized (naming walletCard, or walletBrand for a
 	// wallet that names none), then captured or voided.
@@ -100,10 +103,21 @@ func (m *MockSquareProcessor) Charge(ctx context.Context, req processor.PaymentR
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	asked := fmt.Sprintf("%d|%s", req.Amount, req.Token)
 	if req.IdempotencyKey != "" {
+		if was, ok := m.keyAsked[req.IdempotencyKey]; ok && was != asked {
+			// Square answers a key already used for a different payment with a 400
+			// IDEMPOTENCY_KEY_REUSED, which its adapter reports as unknown.
+			err := errors.New(`400: {"errors":[{"category":"INVALID_REQUEST_ERROR","code":"IDEMPOTENCY_KEY_REUSED"}]}`)
+			return &processor.PaymentResult{Success: false, Error: err, ErrorMessage: err.Error()}, err
+		}
 		if prev, ok := m.chargedKeys[req.IdempotencyKey]; ok {
 			return prev, prev.Error
 		}
+		if m.keyAsked == nil {
+			m.keyAsked = map[string]string{}
+		}
+		m.keyAsked[req.IdempotencyKey] = asked
 	}
 
 	m.chargeCalls++

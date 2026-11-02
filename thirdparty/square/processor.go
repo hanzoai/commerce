@@ -137,6 +137,7 @@ func (sp *SquareProcessor) Charge(ctx context.Context, req processor.PaymentRequ
 
 	resp, err := sp.paymentsClient.Create(ctx, paymentReq)
 	if err != nil {
+		err = said(err)
 		return &processor.PaymentResult{
 			Success:      false,
 			Error:        err,
@@ -263,10 +264,13 @@ func (sp *SquareProcessor) Authorize(ctx context.Context, req processor.PaymentR
 
 // said marks an error that is Square's own answer, a 4xx other than a timeout,
 // as a processor.Answer: Square was reached and did nothing. Anything else may be
-// a call that never got an answer.
+// a call that never got an answer. IDEMPOTENCY_KEY_REUSED is not one: it names a
+// key an earlier request already holds, whose payment may have been made, so it
+// is answered as unknown and the caller reconciles it under the same key.
 func said(err error) error {
 	var api *core.APIError
-	if errors.As(err, &api) && api.StatusCode >= 400 && api.StatusCode < 500 && api.StatusCode != 408 {
+	if errors.As(err, &api) && api.StatusCode >= 400 && api.StatusCode < 500 && api.StatusCode != 408 &&
+		!strings.Contains(err.Error(), "IDEMPOTENCY_KEY_REUSED") {
 		return &processor.Answer{Err: err}
 	}
 	return err

@@ -93,9 +93,14 @@ func IsTopupUncredited(err error) bool { return errors.Is(err, errChargedButCred
 
 // receipt is what a completed charge seals into its idempotency guard, so a
 // replay returns the SAME answer instead of moving money a second time.
+//
+// ProcessorRef is the processor's reference for the charge and AmountCents what it
+// charged: the key and the amount a ledger credits the payment under.
 type receipt struct {
 	TransactionId string `json:"transactionId"`
 	BalanceCents  int64  `json:"balanceCents"`
+	ProcessorRef  string `json:"processorRef,omitempty"`
+	AmountCents   int64  `json:"amountCents,omitempty"`
 }
 
 type topupRequest struct {
@@ -109,8 +114,8 @@ type topupRequest struct {
 
 // chargeAndCredit charges a saved payment method through the org's processor
 // registry (processorsForOrg) and, on success, credits the user's prepaid balance
-// with a Deposit transaction. Returns the deposit transaction id and the new
-// balance.
+// with a Deposit transaction. Returns the charge's receipt: the deposit
+// transaction id, the new balance, the processor's reference and the amount.
 //
 // This is the single charge primitive reused by both the on-session top-up
 // (TopupCard) and the off-session auto-recharge cron. For a Square card-on-file
@@ -121,7 +126,7 @@ type topupRequest struct {
 // It takes a context and the collector rather than a request: the cron reaching
 // it has neither, and a primitive that needed one could only ever move money for
 // somebody holding a browser.
-func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, pm *paymentmethod.PaymentMethod, amountCents int64, cur currency.Type, userId, idemKey, description string) (string, currency.Cents, error) {
+func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, pm *paymentmethod.PaymentMethod, amountCents int64, cur currency.Type, userId, idemKey, description string) (receipt, error) {
 	// Server-authoritative amount bounds, enforced HERE so both callers inherit
 	// them: the HTTP top-up (where a scripted request bypasses the browser cap)
 	// and the auto-recharge cron (where a mis-set config would otherwise charge a
@@ -129,7 +134,7 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 	// [min,max] as the token top-up — one bound, one definition.
 	minCents, maxCents := topupBounds()
 	if amountCents < minCents || amountCents > maxCents {
-		return "", 0, fmt.Errorf("%w: %d not in [%d,%d]", errAmountOutOfBounds, amountCents, minCents, maxCents)
+		return receipt{}, fmt.Errorf("%w: %d not in [%d,%d]", errAmountOutOfBounds, amountCents, minCents, maxCents)
 	}
 
 	// Idempotency guard (money-critical). This path charges a SAVED card, which —
@@ -141,19 +146,19 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 	// customer a duplicate charge on their statement.
 	rec, replay, gerr := idemBegin(db, "billing-charge:"+userId, idemKey)
 	if gerr != nil {
-		return "", 0, fmt.Errorf("%w: %v", errGuardUnavailable, gerr)
+		return receipt{}, fmt.Errorf("%w: %v", errGuardUnavailable, gerr)
 	}
 	if replay {
 		// Already ran to completion: replay the stored answer, do not re-charge.
 		if rec.Status == idempotencykey.StatusCompleted && rec.Response != "" {
 			var prev receipt
 			if json.Unmarshal([]byte(rec.Response), &prev) == nil {
-				return prev.TransactionId, currency.Cents(prev.BalanceCents), nil
+				return prev, nil
 			}
 		}
 		// A genuine concurrent attempt for this key is still in flight — do not
 		// run a second money move alongside it.
-		return "", 0, errChargeInFlight
+		return receipt{}, errChargeInFlight
 	}
 	// abandon releases the guard so a later attempt is not wedged. Called ONLY on
 	// failures where no money moved.
@@ -194,13 +199,13 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 	proc, err := reg.SelectProcessor(ctx, chargeReq)
 	if err != nil {
 		abandon()
-		return "", 0, fmt.Errorf("%w: %v", errNoProcessor, err)
+		return receipt{}, fmt.Errorf("%w: %v", errNoProcessor, err)
 	}
 
 	result, err := proc.Charge(ctx, chargeReq)
 	if err != nil {
 		abandon()
-		return "", 0, fmt.Errorf("charge failed: %w", err)
+		return receipt{}, fmt.Errorf("charge failed: %w", err)
 	}
 	if !result.Success {
 		abandon()
@@ -208,15 +213,16 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 		if msg == "" {
 			msg = "charge declined"
 		}
-		return "", 0, errors.New(msg)
+		return receipt{}, errors.New(msg)
 	}
 
 	id, balanceCents, err := fund(ctx, ev, org, db, userId, amountCents, cur, proc.Type(), result.ProcessorRef)
 	if err != nil {
-		return "", 0, err
+		return receipt{}, err
 	}
-	seal(rec, id, balanceCents)
-	return id, balanceCents, nil
+	r := receipt{TransactionId: id, BalanceCents: int64(balanceCents), ProcessorRef: result.ProcessorRef, AmountCents: amountCents}
+	seal(rec, r)
+	return r, nil
 }
 
 // fund puts money a card has just paid into subject's prepaid balance: the one
@@ -289,11 +295,11 @@ func fund(ctx context.Context, ev *events.Client, org *organization.Organization
 // in-flight rather than re-charging a card whose money already moved. That
 // wedges the key until it ages out, which is the correct trade — the failure
 // needs reconciliation, not another charge.
-func seal(rec *idempotencykey.IdempotencyKey, txID string, balanceCents currency.Cents) {
+func seal(rec *idempotencykey.IdempotencyKey, r receipt) {
 	if rec == nil {
 		return
 	}
-	if body, err := json.Marshal(receipt{TransactionId: txID, BalanceCents: int64(balanceCents)}); err == nil {
+	if body, err := json.Marshal(r); err == nil {
 		_ = idempotencykey.Complete(rec, string(body))
 	}
 }
@@ -404,11 +410,11 @@ func TopupCard(ctx context.Context, org *organization.Organization, in TopupCard
 		desc = fmt.Sprintf("Top-up %d %s for %s", in.AmountCents, cur, in.Subject)
 	}
 
-	txID, balanceCents, err := chargeAndCredit(ctx, in.Events, org, db, pm, in.AmountCents, cur, in.Subject, idemKey, desc)
+	r, err := chargeAndCredit(ctx, in.Events, org, db, pm, in.AmountCents, cur, in.Subject, idemKey, desc)
 	if err != nil {
 		return nil, err
 	}
-	return &TopupCardOut{TransactionID: txID, BalanceCents: int64(balanceCents), Status: "ok"}, nil
+	return &TopupCardOut{TransactionID: r.TransactionId, BalanceCents: r.BalanceCents, Status: "ok"}, nil
 }
 
 // Topup charges a saved payment method and credits the user's balance.

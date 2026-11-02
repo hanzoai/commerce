@@ -181,6 +181,10 @@ type staticPlan struct {
 type PlanView struct {
 	staticPlan
 	Limits *Capacity `json:"limits,omitempty"`
+	// Reload is the automatic reload buying the plan switches on, present only for
+	// a plan whose row states one (plan.Limits.Reload): the terms a checkout shows
+	// the buyer before they pay.
+	Reload *Recharge `json:"reload,omitempty"`
 	// The coupon quote, present only when the catalog was read with a coupon
 	// code (QuoteCoupon). A paid plan the coupon covers carries its code, its
 	// percent, how many monthly periods it takes that percent off (couponMonths,
@@ -223,6 +227,29 @@ type Capacity struct {
 	BalanceCeiling *int  `json:"balanceCeiling,omitempty"`
 }
 
+// Recharge is a plan's automatic reload as the catalog serves it: buying the plan
+// switches on a rule that charges the buyer's card AmountCents whenever its
+// available balance falls below ThresholdCents, at most PerDay times a UTC day
+// (0 = no daily limit).
+type Recharge struct {
+	ThresholdCents int64 `json:"thresholdCents"`
+	AmountCents    int64 `json:"amountCents"`
+	PerDay         int   `json:"perDay"`
+}
+
+// rechargeOf reads a plan's reload terms off its limits, nil when it states none.
+// PerDay is the row's ReloadsPerDay, ReloadsPerDay when the row states no bound.
+func rechargeOf(l *planLimits) *Recharge {
+	if l == nil || l.Reload == nil {
+		return nil
+	}
+	r := Recharge{ThresholdCents: l.Reload.ThresholdCents, AmountCents: l.Reload.AmountCents, PerDay: ReloadsPerDay}
+	if l.ReloadsPerDay != nil && *l.ReloadsPerDay >= 0 {
+		r.PerDay = *l.ReloadsPerDay
+	}
+	return &r
+}
+
 // capacityOf reads a plan's capacities off its limits, nil when it states none.
 // It only reads: the row is never written.
 func capacityOf(l *planLimits) *Capacity {
@@ -250,9 +277,13 @@ func capacityOf(l *planLimits) *Capacity {
 	return &c
 }
 
-// view is the plan as it is served.
+// view is the plan as it is served. A personal plan is sold by the month only
+// (monthlyOnly), so it advertises no annual price whatever its row carries.
 func (p staticPlan) view() PlanView {
-	return PlanView{staticPlan: p, Limits: capacityOf(p.Limits)}
+	if p.Category == categoryPersonal {
+		p.PriceAnnual, p.AnnualTotal = nil, 0
+	}
+	return PlanView{staticPlan: p, Limits: capacityOf(p.Limits), Reload: rechargeOf(p.Limits)}
 }
 
 // views serves a list of plans, in order.

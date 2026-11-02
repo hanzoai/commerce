@@ -254,8 +254,9 @@ func heldIsPaid(t *testing.T, sub *subscription.Subscription, inv *billinginvoic
 	}
 }
 
-// TestSubscribeWithCard_AnnualHoldsThePaidYear: a year bought by card is charged
-// the annual total once, and the row holds that year from the purchase.
+// TestSubscribeWithCard_AnnualHoldsThePaidYear: a year of a business plan bought
+// by card is charged the annual total once, and the row holds that year from the
+// purchase.
 func TestSubscribeWithCard_AnnualHoldsThePaidYear(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -263,11 +264,11 @@ func TestSubscribeWithCard_AnnualHoldsThePaidYear(t *testing.T) {
 	m := squareMock("cust_y", "ccof_y", "sqpay_y")
 	withFakeSquare(t, m)
 
-	year := lookupPlan("dev").AnnualTotal
+	year := lookupPlan("team").AnnualTotal * 2
 	if year <= 0 {
-		t.Fatal("the dev plan publishes no annual total")
+		t.Fatal("the team plan publishes no annual total")
 	}
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev","interval":"year"}`, nil)
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"team","interval":"year","quantity":2}`, nil)
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("status=%d body=%s, want 201", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
@@ -276,7 +277,7 @@ func TestSubscribeWithCard_AnnualHoldsThePaidYear(t *testing.T) {
 	}
 
 	db := datastore.New(org.Namespaced(ctx))
-	sub := parentSub(t, db, "subyear", "dev")
+	sub := parentSub(t, db, "subyear", "team")
 	if sub == nil {
 		t.Fatal("no subscription created for the annual purchase")
 	}

@@ -88,11 +88,26 @@ func TestOnlyAnOrgAdminSetsAutoReload(t *testing.T) {
 		t.Fatal("a refused member wrote a rule")
 	}
 
-	// A member of the shared signup org, billed from their own wallet, still
-	// cannot: the rule is the org's and charges the org's card.
+	// A member of the shared signup org is billed from a wallet of their own, so
+	// the rule they set is that wallet's, charging their own card: refused with no
+	// card on file, stored under their account with one, and the org's own
+	// account has no rule either way.
 	signup := moneyOrg("hanzo")
-	if resp := setRecharge(t, ctx, signup, rule, map[string]string{"X-User-Id": "alice", "X-User-IsOrgAdmin": "false"}, false); resp.StatusCode != http.StatusForbidden {
-		t.Fatalf("a signup-org member set the platform org's auto-reload: %d %s", resp.StatusCode, bodyOf(resp))
+	alice := map[string]string{"X-User-Id": "alice", "X-User-IsOrgAdmin": "false"}
+	if resp := setRecharge(t, ctx, signup, rule, alice, false); resp.StatusCode != http.StatusBadRequest ||
+		!strings.Contains(bodyOf(resp), ErrNoDefaultPaymentMethod.Error()) {
+		t.Fatalf("a signup-org member with no card set auto-reload: %d, want 400 naming the card", resp.StatusCode)
+	}
+	sdb := datastore.New(signup.Namespaced(ctx))
+	seedSavedCard(t, sdb, "hanzo/alice", "ccof_alice", "cust_alice")
+	if resp := setRecharge(t, ctx, signup, rule, alice, false); resp.StatusCode != http.StatusOK {
+		t.Fatalf("a signup-org member set their own wallet's auto-reload: %d %s, want 200", resp.StatusCode, bodyOf(resp))
+	}
+	if got := loadAutoRecharge(sdb, "hanzo/alice"); got == nil || !got.Enabled || got.AmountCents != 2500 {
+		t.Fatalf("the member's own rule was not stored under their account: %+v", got)
+	}
+	if got := loadAutoRecharge(sdb, "hanzo"); got != nil {
+		t.Fatalf("a member's rule was stored on the org's own account: %+v", got)
 	}
 
 	for name, who := range map[string]struct {
@@ -174,9 +189,9 @@ func rechargeRun(t *testing.T, ctx ae.Context) RechargeRun {
 	return run
 }
 
-// The sweep charges one org's card at most ReloadsPerDay times in a UTC day.
-// Each reload here is a different amount, so each is a new charge rather than a
-// replay of the last; the fourth waits for tomorrow and says so in its row.
+// The sweep charges one payer's card at most ReloadsPerDay times in a UTC day
+// when its plan states no bound. Money is spent between sweeps, so each is a new
+// trigger; the fourth waits for tomorrow and says so in its row.
 func TestAutoReloadStopsAtItsDailyLimit(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -184,8 +199,10 @@ func TestAutoReloadStopsAtItsDailyLimit(t *testing.T) {
 	org := seedRechargeOrg(t, ctx, "reload-daily", 500, 1000000)
 	m := squareMock("", "", "sqpay_daily")
 	withFakeSquare(t, m)
+	db := datastore.New(org.Namespaced(ctx))
 
 	for i := 1; i <= ReloadsPerDay+1; i++ {
+		spend(db, org.Name, 1, "usage")
 		cfg := storedRule(t, ctx, org)
 		cfg.AmountCents = int64(500 + 100*i)
 		if err := cfg.Update(); err != nil {
@@ -429,7 +446,7 @@ func TestADeclineCountsAndAnUnaskedChargeDoesNot(t *testing.T) {
 	defer ctx.Close()
 	org := seedRechargeOrg(t, ctx, "reload-decline", 2500, 1000000)
 	m := squareMock("", "", "sqpay_decline")
-	m.chargeErr = errors.New("card declined")
+	m.chargeErr = &processor.Answer{Err: errors.New("card declined")}
 	withFakeSquare(t, m)
 	db := datastore.New(org.Namespaced(ctx))
 	for i := 0; i < ReloadsPerDay+2; i++ {
@@ -579,10 +596,10 @@ func (u *unanswered) Charge(ctx context.Context, req processor.PaymentRequest) (
 	return nil, context.DeadlineExceeded
 }
 
-// A reload whose answer was lost may have moved money, so it keeps its place
-// against the daily limit: the processor never settles more than ReloadsPerDay
-// reloads in a day however many answers go missing. Each sweep here moves the
-// amount a cent, as a new idempotency window would, so each is a new charge.
+// A reload whose answer was lost may have moved money, so its trigger stays open
+// and every later sweep asks it again exactly — the same key, the amount and card
+// it was reserved with — even when the rule's amount is edited between sweeps: the
+// processor settles the trigger once, and the day counts it once.
 func TestALostAnswerCountsAgainstTheDay(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -604,7 +621,10 @@ func TestALostAnswerCountsAgainstTheDay(t *testing.T) {
 		}
 		rechargeRun(t, ctx)
 	}
-	if m.chargeCalls != ReloadsPerDay {
-		t.Fatalf("the processor settled %d reloads in a day, want %d", m.chargeCalls, ReloadsPerDay)
+	if m.chargeCalls != 1 {
+		t.Fatalf("the processor settled %d reloads for one trigger, want 1", m.chargeCalls)
+	}
+	if got := storedRule(t, ctx, org); got.Reloads != 1 || got.Seq != 0 || got.Amount != 2500 {
+		t.Fatalf("the rule counts %d reloads at trigger %d open for %d, want 1 at 0 open for 2500", got.Reloads, got.Seq, got.Amount)
 	}
 }

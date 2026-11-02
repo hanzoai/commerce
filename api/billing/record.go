@@ -190,6 +190,12 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 	if err != nil || !p.Assignable() {
 		return nil, saleRefusal{saleMissing, fmt.Sprintf("plan %q not found", planID)}
 	}
+	if processor == processorBalance {
+		// A plan paid from the balance always opens a new subscription.
+		if err := monthlyOnly(p, in.Interval); err != nil {
+			return nil, saleRefusal{saleRefused, err.Error()}
+		}
+	}
 	if p, err = planAtInterval(p, in.Interval); err != nil {
 		return nil, saleRefusal{saleRefused, err.Error()}
 	}
@@ -200,7 +206,12 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 	held := billingSubscription(db, subject, org.TestMode())
 	sameKind := held != nil && (held.ProviderType == processorComp) == comp
 	if held != nil && (in.Replaces == "" || (sameRung(held, planID, p.Interval) && sameKind)) {
+		// The next period of a plan the subject already holds: a renewal, which
+		// keeps the period the subscription was bought over.
 		return extendRecorded(ctx, org, held, in, planID, p.Interval, reference, start, end)
+	}
+	if err := monthlyOnly(p, in.Interval); err != nil {
+		return nil, saleRefusal{saleRefused, err.Error()}
 	}
 	if err := takesOver(held, in.Replaces); err != nil {
 		return nil, err
