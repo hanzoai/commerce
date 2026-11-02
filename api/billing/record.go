@@ -186,6 +186,14 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 	}
 
 	db := datastore.New(org.Namespaced(ctx))
+	// One sale, completion or record for a subject at a time (holdSale): a record
+	// reads the plan the subject holds and opens or moves one, as a sale does, so
+	// it never runs beside a sale of the same subject.
+	lease, err := holdSale(db, subject)
+	if err != nil {
+		return nil, err
+	}
+	defer lease.Release()
 	p, err := resolveSubscriptionPlan(db, planID)
 	if err != nil || !p.Assignable() {
 		return nil, saleRefusal{saleMissing, fmt.Sprintf("plan %q not found", planID)}

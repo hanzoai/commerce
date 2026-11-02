@@ -39,11 +39,14 @@ type PaymentOrg struct {
 	Balance int64  `json:"balance,omitempty"`
 	Test    bool   `json:"test"`
 
-	// An organization's order keeps its starting balance's state here. Credited
-	// says the credit is decided, Credit is its amount — Balance less what refunds
-	// and disputes had taken by then — and Deposit the credit's receipt once it
-	// landed. Takes are what each refund and dispute took of the balance, credited
-	// or not, so a credit decided later nets against them.
+	// An organization's order keeps its starting balance's state here, written
+	// the moment the charge settles (Open), before anything else the sale writes.
+	// Order is the storage id of the sale's retry guard, which holds its receipt.
+	// Credited says the credit is decided, Credit is its amount — Balance less what
+	// refunds and disputes had taken by then — and Deposit the credit's receipt
+	// once it landed. Takes are what each refund and dispute took of the balance,
+	// credited or not, so a credit decided later nets against them.
+	Order    string `json:"order,omitempty"`
 	Credited bool   `json:"credited,omitempty"`
 	Credit   int64  `json:"credit,omitempty"`
 	Deposit  string `json:"deposit,omitempty"`
@@ -117,6 +120,67 @@ func (p *PaymentOrg) Taken() int64 {
 // Left is the starting balance no refund or dispute holds.
 func (p *PaymentOrg) Left() int64 {
 	return max(p.Balance-p.Taken(), 0)
+}
+
+// Open records a card sale's payment before the sale writes anything else: its
+// org, its wallet, the guard holding its receipt ("" when it had none) and the
+// starting balance it bought, if any. It writes only when nothing recorded the
+// payment, so a sale run again after a crash never resets what was taken or
+// credited since.
+func Open(payment, org, subject, order string, balance int64, test bool) error {
+	payment = strings.TrimSpace(payment)
+	if payment == "" || org == "" {
+		return fmt.Errorf("paymentorg: a payment record names no payment or org")
+	}
+	for range mixin.Swaps {
+		if _, found, err := Get(payment); err != nil || found {
+			return err
+		}
+		d := db()
+		p := new(PaymentOrg)
+		p.Init(d)
+		p.SetId(payment)
+		p.Org, p.Subject, p.Order, p.Balance, p.Test = org, subject, order, balance, test
+		if ok, err := p.Swap(); err != nil || ok {
+			return err
+		}
+	}
+	return fmt.Errorf("payment %s changed under %d reads in a row", payment, mixin.Swaps)
+}
+
+// Orders lists the payments of subject's orders in org — the payments that bought
+// a starting balance under a sale's guard — by the processor's payment id.
+func Orders(org, subject string) ([]string, error) {
+	rows := make([]*PaymentOrg, 0)
+	keys, err := db().Query("payment-org").Filter("Org=", org).Filter("Subject=", subject).GetAll(&rows)
+	if err != nil {
+		return nil, err
+	}
+	var out []string
+	for i, r := range rows {
+		if i < len(keys) && r.Order != "" && r.Balance > 0 {
+			out = append(out, keys[i].StringID())
+		}
+	}
+	return out, nil
+}
+
+// Owing lists the payments of every order whose starting balance has not reached
+// its wallet: a credit not decided yet, or decided and not landed.
+func Owing() ([]*PaymentOrg, []string, error) {
+	rows := make([]*PaymentOrg, 0)
+	keys, err := db().Query("payment-org").Filter("Balance>", 0).GetAll(&rows)
+	if err != nil {
+		return nil, nil, err
+	}
+	var owed []*PaymentOrg
+	var ids []string
+	for i, r := range rows {
+		if i < len(keys) && r.Order != "" && r.Deposit == "" && (!r.Credited || r.Credit > 0) {
+			owed, ids = append(owed, r), append(ids, keys[i].StringID())
+		}
+	}
+	return owed, ids, nil
 }
 
 // Change applies change to payment's record and swaps it in, reading it again
