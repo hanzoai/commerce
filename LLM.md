@@ -871,34 +871,71 @@ served under `limits` (`Capacity`) and edited with the row.
 
 - `OrderInvoice` prices the order as a card sale does (`price`, the same
   refusals: seats inside the row's figures, a whole-dollar balance under its
-  ceiling, org-only) and raises an OPEN invoice. Its lines are each seat type's
-  seats at the row's price for the period ("Enterprise: 20 seats × $240.00/seat/year")
-  and "Initial usage balance" (`LineOneOff`). It is due `invoiceDays` from
-  now (`engine.Issue` numbers and opens it), `PaymentMethod` is "wire", and
-  the order is kept on its metadata (`order`). It ACTIVATES NOTHING; under net
-  terms (`Net`, the host's per-org switch) the plan opens now. Same guard,
+  ceiling, org-only — a row stating `invoiceDays` is `Ordered`) and raises an
+  OPEN invoice. Its lines are each seat type's seats at the row's price for the
+  period ("Enterprise: 20 seats × $240.00/seat/year") and "Initial usage
+  balance" (`LineOneOff`). It is due `invoiceDays` from now (`engine.Issue`
+  numbers and opens it), `PaymentMethod` is "wire", and the order is kept on its
+  metadata (`order`). It ACTIVATES NOTHING; under net terms (`Net`, the host's
+  per-org switch) the plan opens now — unless the org let a net order expire
+  unpaid (`defaulted`): then every later order opens only when paid. Same guard,
   facts and sale lease as a card sale. A plan already held, or with an invoice
   still open, is 409. A host with no bank (`WireFor`) is unavailable.
-- The reference is `INV-<ORG>-<NNNN>`; the wire details are read live from the
-  brand's KMS (`WireFor`, acting for the brand, which needs an authenticated
-  caller) with that reference, and are never stored.
+- The guard keeps the order WITHOUT its link, bank or steps. A retry under the
+  same key answers `replayed` with the invoice as it stands, a NEW link and the
+  bank read live (`reread`), so the bank and the steps come from one read.
+- The reference is `INV-<ORG>-<NNNN>-<CHECK>`; CHECK is 40 bits of SHA-256 over
+  the exact org name and number, so two references a bank reads alike once it
+  drops separators ("acme-io"/"acmeio") differ. The wire details are read live
+  from the brand's KMS (`WireFor`, acting for the brand, which needs an
+  authenticated caller) with that reference, and are never stored. The answer
+  carries them as `wire` and the same one field to a line as `howToPay`.
 - The invoice is shown by a link (`models/invoicelink`, 32 random bytes, kept
-  only as its SHA-256 in the system namespace): `HostedInvoice` and
-  `HostedInvoicePDF` (the invoice renderer with a HOW TO PAY block, reference
-  set larger). Payment steps are one field to a line: amount, due date, the
-  reference ("include this reference exactly"), the bank, `InvoiceNotice`
-  ("Your plan starts when we confirm your payment.") and when it is voided.
+  only as its SHA-256 in the system namespace): `HostedInvoice(ctx, link,
+  brand)` answers `{order:{…, wire, howToPay}, issuer, issuerAddress, billTo}`
+  (the order NESTED, as cloud's `client.HostedInvoice` and the pay page read
+  it) and `HostedInvoicePDF(ctx, link, brand)` (the invoice renderer with a HOW
+  TO PAY block, reference set larger). A link read on another brand than the one
+  that issued its invoice is a miss. Neither carries the buyer's address.
+  Payment steps are one field to a line: amount, due date, the reference
+  ("include this reference exactly"), the bank, `InvoiceNotice` ("Your plan
+  starts when we confirm your payment.") and when it is voided.
 - `SettleInvoice` (staff) marks it paid against the bank's receipt, under the
-  invoice's lease, once: the payment is `wire:<receipt>` on its own payment
-  record (`paymentorg`, `Via` "wire"), the plan opens (`openPlan`, keyed
-  "invoice:<id>"), the invoice pays its first period, and the starting balance
-  is credited by `endow` exactly as a card sale's is. An amount that is not the
-  invoice's needs `difference` "short"/"over"; short is short of the balance
-  first. A receipt that settled another payment is refused.
+  invoice's lease, once. The receipt is keyed by `WireKey` ("wire:" + its ASCII
+  letters and digits, upper-cased; cloud's admin `KeyOf` is the same rule and a
+  cloud test holds them equal), recorded on its own payment record
+  (`paymentorg`, `Via` "wire") and held for this invoice in one swap, so one
+  wire settles one invoice whatever its spelling. The plan opens (`openPlan`,
+  keyed "invoice:<id>", `Type` External so no renewal ever collects it from the
+  balance or a card), a paid plan the org held is ended and its reload switched
+  off as a card sale's replacement is (named in `replaced`), the invoice pays its
+  first period, and the starting balance is credited by `endow` exactly as a card
+  sale's is. An amount that is not the invoice's needs `difference`
+  "short"/"over"; short is short of the balance only, never the seats. The
+  bank's received date may be at most `receivedSkew` (a day) ahead and never
+  before the invoice's issue day. A void invoice is re-opened and paid only by a
+  wire received before its void (`reopened`, the void kept on the record as
+  `voided` with its reason); a net-terms plan the void ended stands again. A
+  settlement already made in full answers `replayed`.
 - `VoidOrder` voids an open one (ending a net-terms plan); `ExpireInvoices(now)`
-  voids those past due + grace. Void and payment take the same lease, so one
-  stands. `RefundOrder` refunds a paid wire through `takeOrder`: the balance
-  first, then the seats.
+  voids those past due + grace (reason `expiry`). Void and payment take the same
+  lease, so one stands. `RefundOrder` refunds a paid wire through `takeOrder`:
+  the balance first, then the seats, bounded under the payment's lease by what
+  was paid less both parts refunded (`refunded`); `periodPaid` counts both, so a
+  wire refunded in full holds no paid period, as a card refunded in full does.
+- Refusals a page acts on are `*Refusal` (wrapping `saleRefusal`, so every
+  `IsSale*` reads it) with a `Code`: `seats_out_of_range`,
+  `balance_out_of_range`, `org_required` (card sale too, via `price`),
+  `not_sold_by_invoice`, `plan_held`, `invoice_open`, `order_placing`,
+  `key_reused`, `wire_not_configured`. `invoice_open` carries `Open`, the open
+  invoice with a NEW link (`standing`): a link is kept only as its digest, so the
+  first cannot be shown again, and every link minted for an invoice stays valid.
+- Staff reads: `Order(ctx, org, id)` (one order invoice whole: how to pay it
+  while open, read live; the plan; `payment` once paid; no link) and
+  `Orders(ctx, org, status)` (newest first; no bank read). The hosted read
+  carries neither the buyer's address nor `payment`.
+- Renewal of a wire plan is by recording its next payment (it is External);
+  a renewal invoice for it is not raised yet.
 
 ### A plan states no AI usage
 
