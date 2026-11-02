@@ -575,7 +575,7 @@ brand's mark (vector paths from @hanzo/logo, @hanzo/brand and @zooai/logo) and n
 top left, the number and a status pill top right (PAID is the one solid pill), billed
 to / issued / due or paid / period, the amount in words, a ruled line-item table,
 totals right-aligned, and the brand's legal name and address at the foot (Hanzo
-Industries Inc., 995 Market St, San Francisco, CA 94103; Lux and Zoo state none and
+Industries Inc., 1 Ferry Building, San Francisco, CA 94105; Lux and Zoo state none and
 close with their name and site). Long invoices continue onto numbered pages. Text is
 Windows-1252 (accents kept, other scripts read "?") and uncompressed, so the number
 and amounts stay greppable; the output is a pure function of the row. Tests:
@@ -3034,7 +3034,7 @@ brand's mark (vector paths from @hanzo/logo, @hanzo/brand and @zooai/logo) and n
 top left, the number and a status pill top right (PAID is the one solid pill), billed
 to / issued / due or paid / period, the amount in words, a ruled line-item table,
 totals right-aligned, and the brand's legal name and address at the foot (Hanzo
-Industries Inc., 995 Market St, San Francisco, CA 94103; Lux and Zoo state none and
+Industries Inc., 1 Ferry Building, San Francisco, CA 94105; Lux and Zoo state none and
 close with their name and site). Long invoices continue onto numbered pages. Text is
 Windows-1252 (accents kept, other scripts read "?") and uncompressed, so the number
 and amounts stay greppable; the output is a pure function of the row. Tests:
