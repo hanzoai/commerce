@@ -420,7 +420,11 @@ func (db *PostgresDB) Get(ctx context.Context, key Key, dst interface{}) error {
 		return err
 	}
 
-	return json.Unmarshal(data, dst)
+	if err := unmarshalForDB(data, dst); err != nil {
+		return err
+	}
+	callPostLoad(reflect.ValueOf(dst))
+	return nil
 }
 
 // Put stores an entity
@@ -429,7 +433,7 @@ func (db *PostgresDB) Put(ctx context.Context, key Key, src interface{}) (Key, e
 		return nil, ErrInvalidKey
 	}
 
-	data, err := json.Marshal(src)
+	data, err := encodeRow(src)
 	if err != nil {
 		return nil, fmt.Errorf("db: failed to marshal entity: %w", err)
 	}
@@ -459,7 +463,7 @@ func (db *PostgresDB) Swap(ctx context.Context, key Key, prev string, src interf
 	if key == nil {
 		return false, ErrInvalidKey
 	}
-	data, err := json.Marshal(src)
+	data, err := encodeRow(src)
 	if err != nil {
 		return false, fmt.Errorf("db: failed to marshal entity: %w", err)
 	}
@@ -552,9 +556,10 @@ func (db *PostgresDB) GetMulti(ctx context.Context, keys []Key, dst interface{})
 		}
 
 		elem := reflect.New(elemType.Elem())
-		if err := json.Unmarshal(data, elem.Interface()); err != nil {
+		if err := unmarshalForDB(data, elem.Interface()); err != nil {
 			return err
 		}
+		callPostLoad(elem)
 		sliceVal = reflect.Append(sliceVal, elem)
 	}
 
@@ -599,7 +604,7 @@ func (db *PostgresDB) PutMulti(ctx context.Context, keys []Key, src interface{})
 	tenantID := db.tenantFor(ctx)
 
 	for i, key := range keys {
-		data, err := json.Marshal(srcVal.Index(i).Interface())
+		data, err := encodeRow(srcVal.Index(i).Interface())
 		if err != nil {
 			return nil, err
 		}
@@ -886,11 +891,15 @@ func (t *postgresTransaction) Get(key Key, dst interface{}) error {
 		return err
 	}
 
-	return json.Unmarshal(data, dst)
+	if err := unmarshalForDB(data, dst); err != nil {
+		return err
+	}
+	callPostLoad(reflect.ValueOf(dst))
+	return nil
 }
 
 func (t *postgresTransaction) Put(key Key, src interface{}) (Key, error) {
-	data, err := json.Marshal(src)
+	data, err := encodeRow(src)
 	if err != nil {
 		return nil, err
 	}
@@ -1058,9 +1067,10 @@ func (q *postgresQuery) GetAll(ctx context.Context, dst interface{}) ([]Key, err
 		}
 
 		elem := reflect.New(elemType)
-		if err := json.Unmarshal(data, elem.Interface()); err != nil {
+		if err := unmarshalForDB(data, elem.Interface()); err != nil {
 			return nil, err
 		}
+		callPostLoad(elem)
 
 		if isPointer {
 			sliceVal = reflect.Append(sliceVal, elem)
@@ -1096,9 +1106,10 @@ func (q *postgresQuery) First(ctx context.Context, dst interface{}) (Key, error)
 		return nil, err
 	}
 
-	if err := json.Unmarshal(data, dst); err != nil {
+	if err := unmarshalForDB(data, dst); err != nil {
 		return nil, err
 	}
+	callPostLoad(reflect.ValueOf(dst))
 
 	return rowKey(q.kind, id, q.tenantID), nil
 }
@@ -1229,6 +1240,23 @@ func (q *postgresQuery) buildWhere(tenant string) (string, []interface{}) {
 			jsonField = strings.ToLower(jsonField[:1]) + jsonField[1:]
 		}
 		jsonPath := fmt.Sprintf("data->>'%s'", jsonField)
+		// A false or a 0 matches a row that does not state the field, as SQLite's
+		// does (sqliteQuery.buildWhere): a row written before this codec left a zero
+		// out (omitempty).
+		if f.op == "=" {
+			switch v := f.value.(type) {
+			case bool:
+				if !v {
+					conditions = append(conditions, fmt.Sprintf("COALESCE(%s, 'false') = 'false'", jsonPath))
+					continue
+				}
+			case int:
+				if v == 0 {
+					conditions = append(conditions, fmt.Sprintf("COALESCE(%s, '0') = '0'", jsonPath))
+					continue
+				}
+			}
+		}
 		conditions = append(conditions, fmt.Sprintf("%s %s $%d", jsonPath, f.op, argNum))
 		args = append(args, f.value)
 		argNum++
@@ -1321,9 +1349,10 @@ func (it *postgresIterator) Next(dst interface{}) (Key, error) {
 		return nil, err
 	}
 
-	if err := json.Unmarshal(data, dst); err != nil {
+	if err := unmarshalForDB(data, dst); err != nil {
 		return nil, err
 	}
+	callPostLoad(reflect.ValueOf(dst))
 
 	it.offset++
 
