@@ -874,7 +874,7 @@ func applyClawbackEvent(ctx context.Context, booked *datastore.Datastore, org *o
 		}
 	}
 	if where.Balance > 0 {
-		return takeOrder(ctx, db, where, event, ref, id, paymentID, amount, cur, state, version, at)
+		return takeOrder(ctx, db, where, event.Type, ref, id, paymentID, amount, cur, state, version, at)
 	}
 	if where.Sale && where.Invoice == "" {
 		log.Error("RECONCILE: %s %s concerns payment %s, whose sale has not recorded its invoice yet; the delivery stays open until it does", event.Type, id, paymentID)
@@ -888,7 +888,7 @@ func applyClawbackEvent(ctx context.Context, booked *datastore.Datastore, org *o
 		} else {
 			err = engine.RecordRefund(db, where.Invoice, id, int64(amount))
 		}
-		if err := invoiced(err, event, id, paymentID, where); err != nil {
+		if err := invoiced(err, event.Type, id, paymentID, where); err != nil {
 			return err
 		}
 		// A sale's payment that is refunded, or that a dispute withholds, stops the
@@ -936,19 +936,19 @@ func applyClawbackEvent(ctx context.Context, booked *datastore.Datastore, org *o
 // landing the credit it takes from if that had not landed yet, so a take is never
 // posted against money the ledger does not hold. A dispute won gives back what its
 // loss took, the same way. The caller holds the payment's lease.
-func takeOrder(ctx context.Context, db *datastore.Datastore, where *paymentorg.PaymentOrg, event *processor.WebhookEvent, ref, id, paymentID string, amount currency.Cents, cur currency.Type, state string, version int64, at time.Time) error {
+func takeOrder(ctx context.Context, db *datastore.Datastore, where *paymentorg.PaymentOrg, what, ref, id, paymentID string, amount currency.Cents, cur currency.Type, state string, version int64, at time.Time) error {
 	isDispute := state != ""
 	won := state == dispute.StateWon
 	withholds := amount > 0 && (!isDispute || dispute.Withholds(state))
 	if isDispute {
 		if where.Invoice != "" {
-			if err := invoiced(engine.RecordDispute(db, where.Invoice, state, version, at), event, id, paymentID, where); err != nil {
+			if err := invoiced(engine.RecordDispute(db, where.Invoice, state, version, at), what, id, paymentID, where); err != nil {
 				return err
 			}
 		}
 		latest, err := engine.RecordPaymentDispute(paymentID, state, version, at)
 		if err != nil {
-			return fmt.Errorf("%s %s on payment %s: the dispute's state was not recorded: %w", event.Type, id, paymentID, err)
+			return fmt.Errorf("%s %s on payment %s: the dispute's state was not recorded: %w", what, id, paymentID, err)
 		}
 		if !latest {
 			return nil // an earlier report than the one recorded moves nothing
@@ -974,23 +974,23 @@ func takeOrder(ctx context.Context, db *datastore.Datastore, where *paymentorg.P
 		return true
 	})
 	if err != nil {
-		return fmt.Errorf("%s %s on payment %s: what it takes of the starting balance was not recorded: %w", event.Type, id, paymentID, err)
+		return fmt.Errorf("%s %s on payment %s: what it takes of the starting balance was not recorded: %w", what, id, paymentID, err)
 	}
 	if !isDispute && int64(amount) > t.Cents {
 		rest := int64(amount) - t.Cents
 		if where.Invoice == "" {
 			// The take is recorded; the rest waits for the sale to write its invoice,
 			// and the processor delivers this again.
-			return fmt.Errorf("%s %s returns %d of payment %s beyond its starting balance, and the sale has not recorded its invoice yet", event.Type, id, rest, paymentID)
+			return fmt.Errorf("%s %s returns %d of payment %s beyond its starting balance, and the sale has not recorded its invoice yet", what, id, rest, paymentID)
 		}
-		if err := invoiced(engine.RecordRefund(db, where.Invoice, id, rest), event, id, paymentID, where); err != nil {
+		if err := invoiced(engine.RecordRefund(db, where.Invoice, id, rest), what, id, paymentID, where); err != nil {
 			return err
 		}
 	}
 	// A sale's payment that is refunded, or that a dispute withholds, stops the
 	// automatic reload the sale switched on, as a reload's own payment does.
 	if withholds && !won {
-		stopReload(ctx, where.Org, where.Subject, event.Type+" "+id)
+		stopReload(ctx, where.Org, where.Subject, what+" "+id)
 	}
 	if t.Cents <= 0 || !t.Moved {
 		// Nothing taken, or taken while the credit was undecided: a refund is netted
@@ -1002,7 +1002,7 @@ func takeOrder(ctx context.Context, db *datastore.Datastore, where *paymentorg.P
 		// What the loss took from the wallet is given back, once.
 		return clawback(ctx, db, creditledger.ClawbackInput{
 			Org: where.Org, Subject: where.Subject, Payment: paymentID,
-			Ref: ref, AmountCents: t.Cents, Reason: event.Type + " " + id, Test: where.Test,
+			Ref: ref, AmountCents: t.Cents, Reason: what + " " + id, Test: where.Test,
 		}, cur, true)
 	}
 	// Taken after the credit was decided: the credit lands first if it had not,
@@ -1011,11 +1011,11 @@ func takeOrder(ctx context.Context, db *datastore.Datastore, where *paymentorg.P
 	var payer *organization.Organization
 	if po.Credit > 0 && po.Deposit == "" {
 		if payer, err = orgNamed(ctx, where.Org); err != nil {
-			return fmt.Errorf("%s %s on payment %s: %w", event.Type, id, paymentID, err)
+			return fmt.Errorf("%s %s on payment %s: %w", what, id, paymentID, err)
 		}
 	}
 	if _, err := land(ctx, nil, payer, db, cur, po, paymentID); err != nil {
-		return fmt.Errorf("%s %s on payment %s: what it takes was not taken from the wallet: %w", event.Type, id, paymentID, err)
+		return fmt.Errorf("%s %s on payment %s: what it takes was not taken from the wallet: %w", what, id, paymentID, err)
 	}
 	return nil
 }
@@ -1043,12 +1043,12 @@ func paidInvoice(db *datastore.Datastore, paymentID string) (string, error) {
 // invoiced is what recording a refund or a dispute on the invoice a payment paid
 // answered: nothing to do on success; a RECONCILE for an invoice these books do not
 // hold, which redelivering cannot make appear; an error for anything else.
-func invoiced(err error, event *processor.WebhookEvent, id, paymentID string, where *paymentorg.PaymentOrg) error {
+func invoiced(err error, what, id, paymentID string, where *paymentorg.PaymentOrg) error {
 	switch {
 	case errors.Is(err, datastore.ErrNoSuchEntity):
-		log.Error("RECONCILE: %s %s on payment %s names invoice %s in %s, which does not exist — record it by hand", event.Type, id, paymentID, where.Invoice, where.Org)
+		log.Error("RECONCILE: %s %s on payment %s names invoice %s in %s, which does not exist — record it by hand", what, id, paymentID, where.Invoice, where.Org)
 	case err != nil:
-		return fmt.Errorf("%s %s on payment %s did not reach invoice %s in %s: %w", event.Type, id, paymentID, where.Invoice, where.Org, err)
+		return fmt.Errorf("%s %s on payment %s did not reach invoice %s in %s: %w", what, id, paymentID, where.Invoice, where.Org, err)
 	}
 	return nil
 }
@@ -1163,7 +1163,7 @@ func traced(db *datastore.Datastore, org *organization.Organization, paymentID s
 	}
 	switch {
 	case paid && held && dep.DestinationId == inv.UserId:
-		if err := paymentorg.Open(paymentID, org.Name, inv.UserId, "", int64(dep.Amount), org.TestMode()); err != nil {
+		if err := paymentorg.Open(paymentID, org.Name, inv.UserId, "", strings.TrimSuffix(dep.SourceKind, "-payment"), int64(dep.Amount), org.TestMode()); err != nil {
 			return nil, false, err
 		}
 		if _, _, err := paymentorg.Change(paymentID, func(r *paymentorg.PaymentOrg) bool {

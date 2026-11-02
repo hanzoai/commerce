@@ -226,6 +226,8 @@ type Capacity struct {
 	SpendLimit     *int  `json:"spendLimit,omitempty"`
 	BalanceMonths  *int  `json:"balanceMonths,omitempty"`
 	BalanceCeiling *int  `json:"balanceCeiling,omitempty"`
+	InvoiceDays    *int  `json:"invoiceDays,omitempty"`
+	GraceDays      *int  `json:"graceDays,omitempty"`
 }
 
 // Recharge is a plan's automatic reload as the catalog serves it: buying the plan
@@ -270,9 +272,12 @@ func capacityOf(l *planLimits) *Capacity {
 		SpendLimit:     l.SpendLimit,
 		BalanceMonths:  l.BalanceMonths,
 		BalanceCeiling: l.BalanceCeiling,
+		InvoiceDays:    l.InvoiceDays,
+		GraceDays:      l.GraceDays,
 	}
 	if c.Agents == nil && c.Bots == nil && c.TeamGuests == nil && c.MaxMembers == nil && c.MinSeats == nil &&
-		c.Zones == nil && c.RecordsPerZone == nil && c.QueriesPerDay == nil && !l.Ordered() {
+		c.Zones == nil && c.RecordsPerZone == nil && c.QueriesPerDay == nil && !l.Ordered() &&
+		c.InvoiceDays == nil && c.GraceDays == nil {
 		return nil
 	}
 	return &c
