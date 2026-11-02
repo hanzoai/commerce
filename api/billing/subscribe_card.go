@@ -415,6 +415,13 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		// Refused BEFORE the card is charged — a retired tier must never take money.
 		return nil, saleRefusal{saleMissing, "plan not found"}
 	}
+	if p.ContactSales {
+		// A plan sold by our sales team is never bought by card, whatever price its
+		// row states. Its row may carry the seat price its card shows while the
+		// catalog does not sell it by the seat (perSeat reads the embed), and a card
+		// sale of it would then charge one seat for the whole plan.
+		return nil, saleRefusal{saleRefused, fmt.Sprintf("plan %q is sold by our sales team, not by card", planID)}
+	}
 	// The price this card is charged, chosen from what the catalog publishes. A
 	// level or a period the plan does not publish is refused here — before the card
 	// is touched, before the idempotency guard is taken, and without ever
