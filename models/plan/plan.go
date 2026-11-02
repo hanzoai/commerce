@@ -402,6 +402,26 @@ type Limits struct {
 	// when this plan is bought with a card, unless the org already has a rule
 	// switched on. Neither field is served in the public catalog.
 	Reload *Reload `json:"reload,omitempty"`
+
+	// How an organization orders this plan at checkout, in whole US dollars as
+	// IncludedCloudCredits is. SpendLimits are the monthly usage limits per member
+	// the order offers, ascending, and SpendLimit the one it starts on.
+	// BalanceMonths is the starting usage balance an order starts with unless the
+	// buyer says otherwise, in months of its seats' price. BalanceCeiling is the
+	// most a starting balance may be: a card sale above it is refused before the
+	// card is touched, and a plan that states none sells no starting balance. A
+	// plan that states any of the four is an organization's (Ordered).
+	SpendLimits    []int `json:"spendLimits,omitempty"`
+	SpendLimit     *int  `json:"spendLimit,omitempty"`
+	BalanceMonths  *int  `json:"balanceMonths,omitempty"`
+	BalanceCeiling *int  `json:"balanceCeiling,omitempty"`
+}
+
+// Ordered reports whether the limits state how an organization orders the plan:
+// any of the spend limits, the starting-balance months or the ceiling. Such a plan
+// is sold to an organization's own account, never to a member's wallet.
+func (l *Limits) Ordered() bool {
+	return l != nil && (len(l.SpendLimits) > 0 || l.SpendLimit != nil || l.BalanceMonths != nil || l.BalanceCeiling != nil)
 }
 
 // Reload is the auto-recharge rule buying a plan switches on: reload AmountCents
@@ -695,7 +715,11 @@ func limitsEqual(a, b *Limits) bool {
 		eqInt(a.RecordsPerZone, b.RecordsPerZone) &&
 		eqInt(a.QueriesPerDay, b.QueriesPerDay) &&
 		eqInt(a.ReloadsPerDay, b.ReloadsPerDay) &&
-		(a.Reload == nil) == (b.Reload == nil) && (a.Reload == nil || *a.Reload == *b.Reload)
+		(a.Reload == nil) == (b.Reload == nil) && (a.Reload == nil || *a.Reload == *b.Reload) &&
+		slices.Equal(a.SpendLimits, b.SpendLimits) &&
+		eqInt(a.SpendLimit, b.SpendLimit) &&
+		eqInt(a.BalanceMonths, b.BalanceMonths) &&
+		eqInt(a.BalanceCeiling, b.BalanceCeiling)
 }
 
 // eqInt compares two optional ints by value; both-absent counts as equal.

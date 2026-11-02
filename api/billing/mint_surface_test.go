@@ -859,6 +859,7 @@ func isPayoutExecutorCall(call *ast.CallExpr, imports map[string]string) bool {
 var userSafeMintHandlers = map[string]string{
 	"api/billing.Topup":                 "credits ONLY the amount the caller's own saved card was charged (money-in == credit); own subject",
 	"api/billing.TopupWithToken":        "credits ONLY the amount the caller's own card nonce was charged (money-in == credit); own subject",
+	"api/billing.SubscribeWithCard":     "credits ONLY the starting balance the caller's card was charged for in the same payment (money-in == credit), at most the plan row's balanceCeiling, to the org's own account (TestSubscribeWithCard_AnOrderIsOnePayment)",
 	"api/billing.GrantAllotment":        "amount is clamped to the caller's REAL subscription via planForGrant unless MayMintMoney (TestAllotment_OrgAdminCannotInflatePlan)",
 	"api/billing.RunAllotments":         "per-user amount is subscription-derived in grantOrgAllotments; NO client-supplied amount or plan",
 	"api/billing.HandleProviderWebhook": "unauthenticated by design — trust anchor is the per-provider signature, not a commerce token; not an org-admin surface",

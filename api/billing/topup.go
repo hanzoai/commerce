@@ -211,67 +211,74 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 		return "", 0, errors.New(msg)
 	}
 
-	// Step 4: the card was charged (money in), so mint the credit ON CHAIN as
-	// prepaid HUSD to the org's derived address instead of a DB deposit row —
-	// idempotent by the processor reference so a retried charge credits once.
-	if chainCreditEnabled() {
-		rc, mErr := chainMintCredit(ctx, org, userId, amountCents, treasury.BucketPrepaid,
-			fmt.Sprintf("topup via %s (ref: %s)", proc.Type(), result.ProcessorRef),
-			"topup:"+result.ProcessorRef)
-		if mErr != nil {
-			uncredited(ctx, ev, org.Name, userId, result.ProcessorRef,
-				"the charge settled and the chain mint failed: "+mErr.Error(),
-				int64(amountCents), false)
-			return "", 0, fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, result.ProcessorRef, mErr)
-		}
-		var balanceCents currency.Cents
-		if datas, bErr := util.GetTransactionsByCurrency(org.Namespaced(ctx), userId, "iam-user", cur, org.TestMode()); bErr == nil {
-			if data, ok := datas.Data[cur]; ok {
-				balanceCents = data.Balance
-			}
-		}
-		seal(rec, rc.TxHash, balanceCents)
-		return rc.TxHash, balanceCents, nil
+	id, balanceCents, err := fund(ctx, ev, org, db, userId, amountCents, cur, proc.Type(), result.ProcessorRef)
+	if err != nil {
+		return "", 0, err
 	}
+	seal(rec, id, balanceCents)
+	return id, balanceCents, nil
+}
 
-	trans := transaction.New(db)
-	trans.Type = transaction.Deposit
-	trans.DestinationId = userId
-	trans.DestinationKind = "iam-user"
-	trans.Currency = cur
-	trans.Amount = currency.Cents(amountCents)
-	trans.Notes = fmt.Sprintf("Top-up via %s (ref: %s)", proc.Type(), result.ProcessorRef)
-	trans.Tags = "topup"
-	// The processor's own reference for this charge, so the provider's later callback
-	// recognises a payment this endpoint already took — the same stamp the token endpoint
-	// writes, for the same reason (payment_core.go).
-	trans.SourceKind = chargeSourceKind(proc.Type())
-	trans.SourceId = result.ProcessorRef
+// fund puts money a card has just paid into subject's prepaid balance: the one
+// write behind a saved-card top-up, an automatic reload and a sale's starting
+// balance. via is the processor that took the payment and ref its reference for
+// it, which keys the credit so a retried charge credits once.
+//
+// It answers the receipt — the deposit row, or the chain mint where credit is
+// minted on chain — and the balance read back from the key just credited. A
+// credit that fails is money taken and not credited: it raises the money alarm
+// and answers errChargedButCreditFailed, and the caller leaves its retry guard
+// STARTED so a retry is refused rather than charged again.
+func fund(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, subject string, cents int64, cur currency.Type, via processor.ProcessorType, ref string) (string, currency.Cents, error) {
 	// Ledger test-ness MUST follow the charge environment (org.TestMode), not
 	// org.Live alone — otherwise a Square sandbox charge could credit the live
 	// (spendable) balance. test==credit-bucket==read-bucket==charge-env.
 	test := org.TestMode()
-	trans.Test = test
-	// The card was charged (result.Success): a settled payment IS the mint
-	// authority, so authorize THIS write at the ledger sink (money-in == credit).
-	trans.SetContext(mintauth.WithAuthorized(trans.Context()))
-	if err := trans.Create(); err != nil {
-		// Charge succeeded but credit failed — log with full context for manual reconciliation.
-		uncredited(ctx, ev, org.Name, userId, result.ProcessorRef,
-			"the charge settled and the deposit failed: "+err.Error(),
-			int64(amountCents), false)
-		return "", 0, fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, result.ProcessorRef, err)
+	id := ""
+	if chainCreditEnabled() {
+		// The card was charged (money in), so mint the credit ON CHAIN as prepaid
+		// HUSD to the org's derived address instead of a DB deposit row —
+		// idempotent by the processor reference so a retried charge credits once.
+		rc, err := chainMintCredit(ctx, org, subject, cents, treasury.BucketPrepaid,
+			fmt.Sprintf("topup via %s (ref: %s)", via, ref), "topup:"+ref)
+		if err != nil {
+			uncredited(ctx, ev, org.Name, subject, ref, "the charge settled and the chain mint failed: "+err.Error(), cents, false)
+			return "", 0, fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, ref, err)
+		}
+		id = rc.TxHash
+	} else {
+		trans := transaction.New(db)
+		trans.Type = transaction.Deposit
+		trans.DestinationId = subject
+		trans.DestinationKind = "iam-user"
+		trans.Currency = cur
+		trans.Amount = currency.Cents(cents)
+		trans.Notes = fmt.Sprintf("Top-up via %s (ref: %s)", via, ref)
+		trans.Tags = "topup"
+		// The processor's own reference for this charge, so the provider's later
+		// callback recognises a payment this endpoint already took — the same stamp
+		// the token endpoint writes, for the same reason (payment_core.go).
+		trans.SourceKind = chargeSourceKind(via)
+		trans.SourceId = ref
+		trans.Test = test
+		// The card was charged: a settled payment IS the mint authority, so
+		// authorize THIS write at the ledger sink (money-in == credit).
+		trans.SetContext(mintauth.WithAuthorized(trans.Context()))
+		if err := trans.Create(); err != nil {
+			uncredited(ctx, ev, org.Name, subject, ref, "the charge settled and the deposit failed: "+err.Error(), cents, false)
+			return "", 0, fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, ref, err)
+		}
+		id = trans.Id()
 	}
 
 	// Read back the new balance so the caller doesn't need a separate request.
 	var balanceCents currency.Cents
-	if datas, err := util.GetTransactionsByCurrency(org.Namespaced(ctx), userId, "iam-user", cur, test); err == nil {
+	if datas, err := util.GetTransactionsByCurrency(org.Namespaced(ctx), subject, "iam-user", cur, test); err == nil {
 		if data, ok := datas.Data[cur]; ok {
 			balanceCents = data.Balance
 		}
 	}
-	seal(rec, trans.Id(), balanceCents)
-	return trans.Id(), balanceCents, nil
+	return id, balanceCents, nil
 }
 
 // seal records the successful charge's answer on its idempotency guard so a
