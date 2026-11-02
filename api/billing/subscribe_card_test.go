@@ -467,6 +467,46 @@ func TestSubscribeWithCard_FreePlanRejected(t *testing.T) {
 	}
 }
 
+// TestSubscribeWithCard_ContactSalesRefused: a contact-sales row is never sold by
+// card, even one that states a seat price and an annual total, by the month, by the
+// year, or from prepaid money. Each is 400 with no charge and no subscription.
+func TestSubscribeWithCard_ContactSalesRefused(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("sc-sales")
+	m := squareMock("cust_s", "ccof_s", "sqpay_s")
+	withFakeSquare(t, m)
+
+	db := plan.AuthorityDB(ctx)
+	row := plan.New(db)
+	row.Slug, row.Name, row.Category, row.Managed = "sc-sales-tier", "Enterprise", "enterprise", true
+	row.Price, row.AnnualTotal, row.ContactSales = 2000, 24000, true
+	if err := row.Create(); err != nil {
+		t.Fatalf("create contact-sales plan: %v", err)
+	}
+
+	for _, body := range []string{
+		`{"sourceId":"cnon:ok","planId":"sc-sales-tier","quantity":20}`,
+		`{"sourceId":"cnon:ok","planId":"sc-sales-tier","quantity":20,"interval":"year"}`,
+		`{"sourceId":"balance","planId":"sc-sales-tier","quantity":20,"interval":"year"}`,
+	} {
+		resp := invokeSubscribeCard(org, ctx, body, nil)
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Fatalf("%s: status=%d body=%s, want 400 (sold by sales)", body, resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
+		}
+	}
+	if m.chargeCalls != 0 {
+		t.Fatalf("charge calls=%d for a contact-sales plan, want 0", m.chargeCalls)
+	}
+	subs := make([]*subscription.Subscription, 0)
+	if _, err := subscription.Query(datastore.New(org.Namespaced(ctx))).GetAll(&subs); err != nil {
+		t.Fatalf("query subscriptions: %v", err)
+	}
+	if len(subs) != 0 {
+		t.Fatalf("a contact-sales plan opened %d subscriptions", len(subs))
+	}
+}
+
 // seedCardBackedSub creates a vaulted card + an active subscription (its plan from
 // the real catalog) pointing at it — the setup a renewal collects against. It uses
 // the SAME plan.New + StartSubscription path production does, so sub.Plan is a fully
