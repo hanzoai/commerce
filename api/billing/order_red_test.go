@@ -13,8 +13,6 @@ import (
 	"testing"
 
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/models/idempotencykey"
-	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
@@ -70,11 +68,13 @@ func TestRed_ARefundOfAnOrderClawsBackInTheHostLedger(t *testing.T) {
 	}
 }
 
-// R2: the 500 path. The credit failed after the seats were charged and opened: the
-// subscription and its paid invoice exist, the receipt is sealed owing the balance
-// (no balanceId, the state the sale seals before it credits), and no deposit was
-// written. A retry under the same key must complete the credit exactly once.
+// R2: the credit fails for real. The host ledger refuses the order's starting
+// balance once, after the seats were charged and opened: the sale answers that the
+// balance is owed, and a retry under the same key — four at once, then one more —
+// credits it exactly once in both books, charging once.
 func TestRed_ARetryAfterAFailedBalanceCreditCompletesIt(t *testing.T) {
+	fake := &flakyLedger{fakeLedger: newFakeLedger(), failures: 1}
+	injectLedger(t, fake)
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	org := moneyOrg("red-ent-500")
@@ -84,53 +84,34 @@ func TestRed_ARetryAfterAFailedBalanceCreditCompletesIt(t *testing.T) {
 
 	body := `{"sourceId":"cnon:ok","planId":"red-ent-500-plan","quantity":20,"interval":"year","balanceCents":40000}`
 	key := map[string]string{"X-Idempotency-Key": "red-500"}
-	if r := invokeSubscribeCard(org, ctx, body, key); r.StatusCode != http.StatusCreated {
-		t.Fatalf("order: %d %s", r.StatusCode, bodyText(r))
+	if r := invokeSubscribeCard(org, ctx, body, key); r.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("the failed credit answered %d %s, want 503", r.StatusCode, bodyText(r))
 	}
-	// Put the books in the state a failed credit leaves: the receipt owes the
-	// balance, and no deposit holds it.
-	db := datastore.New(org.Namespaced(ctx))
-	g := idempotencykey.New(db)
-	if err := g.Get(db.NewKey(g.Kind(), idempotencykey.DeterministicID("billing-subscribe:red-ent-500:", "red-500"), 0, nil)); err != nil {
-		t.Fatalf("guard: %v", err)
+	held := func() int64 {
+		b, _ := fake.Balance(ctx, ledgerOrg(org), "red-ent-500", "usd", org.TestMode())
+		return b
 	}
-	var owed Sale
-	if err := json.Unmarshal([]byte(g.Response), &owed); err != nil {
-		t.Fatalf("receipt: %v", err)
+	if held() != 0 {
+		t.Fatalf("the refused credit holds %d in the host ledger", held())
 	}
-	owed.BalanceID = ""
-	sealed, _ := json.Marshal(owed)
-	g.Status, g.Response = idempotencykey.StatusCompleted, string(sealed)
-	if err := g.Update(); err != nil {
-		t.Fatalf("reset guard: %v", err)
+	var wg sync.WaitGroup
+	for range 4 {
+		wg.Add(1)
+		go func() { defer wg.Done(); invokeSubscribeCard(org, ctx, body, key) }()
 	}
-	deps := make([]*transaction.Transaction, 0)
-	if _, err := transaction.Query(db).Filter("DestinationId=", "red-ent-500").GetAll(&deps); err != nil {
-		t.Fatalf("deposits: %v", err)
-	}
-	for _, d := range deps {
-		row := transaction.New(db)
-		if err := row.GetById(d.Id()); err != nil {
-			t.Fatalf("read deposit: %v", err)
-		}
-		if err := row.Delete(); err != nil {
-			t.Fatalf("delete deposit: %v", err)
-		}
-	}
-	if got := balanceOf(t, ctx, org, "red-ent-500"); got != 0 {
-		t.Fatalf("setup: balance %d", got)
-	}
+	wg.Wait()
 	again := invokeSubscribeCard(org, ctx, body, key)
 	t.Logf("retry under the same key: %d %s", again.StatusCode, bodyText(again))
-	if got := balanceOf(t, ctx, org, "red-ent-500"); got != 40000 || m.chargeCalls != 1 {
-		t.Fatalf("FINDING: the retry did not complete the credit: balance %d (want 40000), charges %d", got, m.chargeCalls)
+	db := datastore.New(org.Namespaced(ctx))
+	if held() != 40000 || len(fake.credits()) != 1 || depositsOf(t, db, "red-ent-500", "sqpay_red_500") != 1 ||
+		balanceOf(t, ctx, org, "red-ent-500") != 40000 || m.chargeCalls != 1 {
+		t.Fatalf("FINDING: host %d (credits %d), commerce %d (deposits %d), charges %d",
+			held(), len(fake.credits()), balanceOf(t, ctx, org, "red-ent-500"), depositsOf(t, db, "red-ent-500", "sqpay_red_500"), m.chargeCalls)
 	}
-	// And only once: the next retry replays the completed receipt.
-	if r := invokeSubscribeCard(org, ctx, body, key); r.StatusCode != http.StatusOK {
+	var sale Sale
+	if r := invokeSubscribeCard(org, ctx, body, key); r.StatusCode != http.StatusOK || json.Unmarshal([]byte(bodyText(r)), &sale) != nil ||
+		sale.BalanceCents != 40000 || sale.BalanceID == "" {
 		t.Fatalf("replay after completion: %d %s", r.StatusCode, bodyText(r))
-	}
-	if got := balanceOf(t, ctx, org, "red-ent-500"); got != 40000 || m.chargeCalls != 1 {
-		t.Fatalf("a second retry moved the balance to %d with %d charges", got, m.chargeCalls)
 	}
 }
 

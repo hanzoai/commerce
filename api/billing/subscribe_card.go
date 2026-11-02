@@ -638,10 +638,10 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		// with the first order's receipt.
 		var prev Sale
 		if json.Unmarshal([]byte(rec.Response), &prev) == nil {
-			if !prev.same(planID, p.Interval, in.Level, seats, bal, couponCode) {
+			if !prev.same(planID, p.Interval, in.Level, seats, bal, chargeCents, couponCode) {
 				return nil, saleRefusal{saleHeld, "this X-Idempotency-Key was used for another order: send a new key for a new order"}
 			}
-			if prev.BalanceCents > 0 && prev.BalanceID == "" {
+			if prev.owing() {
 				return complete(ctx, db, org, in, rec, &prev)
 			}
 		}
@@ -1080,20 +1080,21 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	sub.DiscountPercent, sub.DiscountName = promoPercent, promoName
 	engine.Grant(sub, cpn, couponPlans, sub.PeriodStart)
 	inv, err := engine.CreatePaidFirstInvoice(db, sub, "card", res.ProcessorRef)
+	invoiceID := ""
 	if err != nil {
 		// The subscription exists and the money is collected; a first-invoice record
 		// failure is non-fatal to the entitlement. Log for reconciliation.
 		log.Error("subscribe: failed to record paid first invoice (subject=%s, ref=%s): %v", in.Subject, res.ProcessorRef, err)
-	} else if err := paymentorg.Put(res.ProcessorRef, org.Name, in.Subject, inv.Id(), bal, org.TestMode()); err != nil {
+	} else {
+		invoiceID = inv.Id()
+	}
+	// The payment's record: where its refund or dispute finds its books, and, for an
+	// order, the state of its starting balance, which the credit below reads.
+	if err := paymentorg.Put(res.ProcessorRef, org.Name, in.Subject, invoiceID, bal, org.TestMode()); err != nil {
 		log.Warn("subscribe: payment %s: the index to its invoice was not written, so its refund or dispute will not find the period it paid: %v", res.ProcessorRef, err)
 	}
 	if err := sub.Update(); err != nil {
 		log.Error("subscribe: failed to update subscription after first invoice (subject=%s): %v", in.Subject, err)
-	}
-
-	invoiceID := ""
-	if inv != nil {
-		invoiceID = inv.Id()
 	}
 	sale := &Sale{
 		SubscriptionID:  sub.Id(),
@@ -1113,9 +1114,13 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		CouponPercent:   cpn.Percent,
 		CouponMonths:    cpn.Months,
 	}
-	// A plan whose row states a reload switches the buyer's auto-recharge on, now
-	// the first period is paid, before the receipt is sealed so a retry replays it.
-	sale.Reload = armSale(ctx, org, in, planID, cur)
+	if bal == 0 {
+		// Nothing is owed: a plan whose row states a reload switches the buyer's
+		// auto-recharge on, now the first period is paid, before the receipt is
+		// sealed so a retry replays it. An order switches it on only once its
+		// starting balance is credited (conclude).
+		sale.Reload = armSale(ctx, org, in, planID, cur)
+	}
 	// Seal the idempotency guard with the exact success body so a retry replays it
 	// verbatim (no second vault/charge/subscribe, identical response). An order's
 	// starting balance is credited LAST, after this seal names it owed (no
@@ -1136,15 +1141,10 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			disarm(ctx, org, in.Subject, was)
 		}
 	}
-	if bal > 0 {
-		id, err := endow(ctx, in.Events, org, db, in.Subject, bal, cur, res.ProcessorRef)
-		if err != nil {
-			return nil, err
-		}
-		sale.BalanceID = id
-		sealSale(rec, sale)
+	if bal == 0 {
+		return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil
 	}
-	return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil
+	return conclude(ctx, db, org, in, rec, sale, res.ProcessorRef, sub, inv)
 }
 
 // saleScope and saleKey name the one lock a subject's sale holds while it is in
@@ -1167,33 +1167,27 @@ func sealSale(rec *idempotencykey.IdempotencyKey, sale *Sale) {
 
 // same reports whether a sealed sale is the order now asked for under its key:
 // the plan, the term, the level, the seats, the starting balance and the coupon. A
-// receipt sealed before it stated its seats matches any seats.
-func (s *Sale) same(plan string, interval types.Interval, level int, seats, balance int64, coupon string) bool {
+// receipt sealed before it stated its seats matches any seats. A receipt states the
+// balance credited, so one a refund or dispute took part of before the credit
+// (conclude) states less than was ordered, and is that order when what it charged
+// is: the first period (charge, before the coupon the receipt names) and balance.
+func (s *Sale) same(plan string, interval types.Interval, level int, seats, balance, charge int64, coupon string) bool {
 	return s.PlanID == plan && s.Interval == interval && s.Level == level &&
-		(s.Seats == 0 || s.Seats == seats) && s.BalanceCents == balance && s.Coupon == coupon
+		(s.Seats == 0 || s.Seats == seats) && s.Coupon == coupon &&
+		(s.BalanceCents == balance || (s.BalanceCents < balance && !s.owing() &&
+			s.AmountCents == engine.Discounted(charge, s.CouponPercent)+balance))
 }
 
-// endow credits an order's starting balance, which the payment ref paid for, to
-// subject: the deposit in commerce's books (fund) and, embedded, the ledger the
-// spend gate reads (bank), both keyed on the payment, so a retry credits once and
-// a refund or a dispute of the payment finds the credit to take back.
-func endow(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, subject string, cents int64, cur currency.Type, ref string) (string, error) {
-	id, _, err := fund(ctx, ev, org, db, subject, cents, cur, processor.Square, ref)
-	if err != nil {
-		return "", err
-	}
-	if err := bank(ctx, org, subject, cur, receipt{ProcessorRef: ref, AmountCents: cents}); err != nil {
-		uncredited(ctx, ev, org.Name, subject, ref, "the charge settled and the spendable balance was not credited: "+err.Error(), cents, false)
-		return "", fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, ref, err)
-	}
-	return id, nil
+// owing reports whether a sealed receipt still owes its starting balance.
+func (s *Sale) owing() bool {
+	return s.BalanceCents > 0 && s.BalanceID == ""
 }
 
 // complete finishes a sale whose starting balance was owed when its receipt was
-// sealed: the retry under the sale's key credits it under the payment the receipt's
-// invoice records, seals the receipt with the credit, and answers it as the sale —
-// the first answer was the failure. It holds the subject's sale lock, so it never
-// runs beside the sale it completes.
+// sealed: the retry under the sale's key credits what the payment's record says is
+// owed now (conclude), under the payment the receipt's invoice records, and
+// answers the receipt as the sale — the first answer was the failure. It holds the
+// subject's sale lock, so it never runs beside the sale it completes.
 func complete(ctx context.Context, db *datastore.Datastore, org *organization.Organization, in SubscribeIn, rec *idempotencykey.IdempotencyKey, sale *Sale) (*saleOutcome, error) {
 	lock, busy, err := idempotencykey.Begin(db, saleScope+in.Subject, saleKey)
 	switch {
@@ -1205,19 +1199,120 @@ func complete(ctx context.Context, db *datastore.Datastore, org *organization.Or
 	defer func() { _ = lock.Delete() }()
 	inv := billinginvoice.New(db)
 	if sale.InvoiceID == "" || inv.GetById(sale.InvoiceID) != nil || inv.PaymentRef == "" {
-		return nil, saleRefusal{saleUnsettled, "the payment's invoice could not be read, so its starting balance was not credited; contact support"}
+		return nil, saleRefusal{saleUnavailable, "the payment's invoice could not be read, so its starting balance is not credited yet; send the same order again — nothing is charged again"}
 	}
 	sub := subscription.New(db)
 	if err := sub.GetById(sale.SubscriptionID); err != nil {
-		return nil, saleRefusal{saleUnsettled, "the sale's subscription could not be read, so its starting balance was not credited; contact support"}
+		return nil, saleRefusal{saleUnavailable, "the sale's subscription could not be read, so its starting balance is not credited yet; send the same order again — nothing is charged again"}
 	}
-	id, err := endow(ctx, in.Events, org, db, in.Subject, sale.BalanceCents, currency.Type(sale.Currency), inv.PaymentRef)
+	return conclude(ctx, db, org, in, rec, sale, inv.PaymentRef, sub, inv)
+}
+
+// conclude credits an order's starting balance as its payment's record now stands
+// (endow), then switches the plan's reload on — only once the balance is credited,
+// and only for a payment no refund or dispute took back — and seals the receipt
+// with the credit: the amount that reached the wallet and its receipt. A balance
+// refunds and disputes took in full is credited nothing, and the receipt then
+// owes nothing.
+func conclude(ctx context.Context, db *datastore.Datastore, org *organization.Organization, in SubscribeIn, rec *idempotencykey.IdempotencyKey, sale *Sale, payment string, sub *subscription.Subscription, inv *billinginvoice.BillingInvoice) (*saleOutcome, error) {
+	cur := currency.Type(sale.Currency)
+	po, err := endow(ctx, in.Events, org, db, cur, payment)
 	if err != nil {
 		return nil, err
 	}
-	sale.BalanceID = id
+	sale.BalanceCents, sale.BalanceID = po.Credit, po.Deposit
+	if po.Taken() == 0 {
+		sale.Reload = armSale(ctx, org, in, sale.PlanID, cur)
+	}
 	sealSale(rec, sale)
 	return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil
+}
+
+// owedBalance is an order whose starting balance its payment still owes the
+// wallet: the same order sent again credits it, charging nothing again.
+var owedBalance = saleRefusal{saleUnavailable, "the payment settled and its starting balance is not credited yet; send the same order again to credit it — nothing is charged again"}
+
+// paymentScope names the lease a payment is changed under: the credit of an
+// order's starting balance, and every refund and dispute of the payment, one at a
+// time.
+const paymentScope = "billing-payment:"
+
+// paymentWait is how long a refund or a dispute of a payment waits for another
+// change of it to finish: each holds the lease for one read and a few writes, so
+// deliveries that arrive together are applied one after the other, not refused. A
+// sale crediting the payment does not wait: its buyer is answered at once, and
+// sends the order again.
+const paymentWait = 3 * time.Second
+
+// holdPayment takes payment's lease, waiting up to paymentWait for its holder;
+// held=false means it was still held then.
+func holdPayment(db *datastore.Datastore, payment string) (*idempotencykey.Lease, bool, error) {
+	for wait := time.Duration(0); ; wait += 25 * time.Millisecond {
+		lease, held, err := idempotencykey.Hold(db, paymentScope, payment)
+		if err != nil || held || wait >= paymentWait {
+			return lease, held, err
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+}
+
+// endow credits an order's starting balance to its wallet as the payment's record
+// stands, under the payment's lease so no refund or dispute of it is applied
+// beside: the balance less what they took of it by then, decided once (Credited,
+// Credit), so a refund is either netted in the credit or taken after it
+// (takeOrder), never neither. The decided credit then lands (land). A credit
+// already decided is landed again, which credits nothing twice, and one refunds
+// took in full credits nothing.
+func endow(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, cur currency.Type, payment string) (*paymentorg.PaymentOrg, error) {
+	lease, held, err := idempotencykey.Hold(db, paymentScope, payment)
+	switch {
+	case err != nil:
+		return nil, owedBalance
+	case !held:
+		return nil, saleRefusal{saleHeld, "a refund or a dispute of this payment is being recorded; send the order again in a moment"}
+	}
+	defer lease.Release()
+	po, found, err := paymentorg.Change(payment, func(r *paymentorg.PaymentOrg) bool {
+		if r.Credited {
+			return false
+		}
+		r.Credited, r.Credit = true, r.Left()
+		return true
+	})
+	switch {
+	case err != nil:
+		return nil, owedBalance
+	case !found:
+		uncredited(ctx, ev, org.Name, "", payment, "the order's payment is not on record, so its starting balance was not credited", 0, true)
+		return nil, saleRefusal{saleUnsettled, "the order's payment is not on record, so its starting balance was not credited"}
+	}
+	return land(ctx, ev, org, db, cur, po, payment)
+}
+
+// land puts an order's decided credit into both books, once: the deposit in
+// commerce's own (fund) and the ledger the spend gate reads (bank), both keyed on
+// the payment, then records the credit's receipt on the payment's record. The
+// caller holds the payment's lease.
+func land(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, cur currency.Type, po *paymentorg.PaymentOrg, payment string) (*paymentorg.PaymentOrg, error) {
+	if po.Credit <= 0 || po.Deposit != "" {
+		return po, nil
+	}
+	id, _, err := fund(ctx, ev, org, db, po.Subject, po.Credit, cur, processor.Square, payment)
+	if err != nil {
+		return nil, owedBalance
+	}
+	if err := bank(ctx, org, po.Subject, cur, receipt{ProcessorRef: payment, AmountCents: po.Credit}); err != nil {
+		uncredited(ctx, ev, org.Name, po.Subject, payment, "the order's starting balance was not credited to the spendable balance: "+err.Error(), po.Credit, false)
+		return nil, owedBalance
+	}
+	po, _, err = paymentorg.Change(payment, func(r *paymentorg.PaymentOrg) bool {
+		r.Deposit = id
+		return true
+	})
+	if err != nil {
+		return nil, owedBalance
+	}
+	return po, nil
 }
 
 // couponRefusal is the sentence a buyer reads when the coupon they sent cannot

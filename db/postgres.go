@@ -1308,7 +1308,7 @@ func (it *postgresIterator) Next(dst interface{}) (Key, error) {
 				return nil, err
 			}
 		}
-		return nil, errors.New("db: no more results")
+		return nil, ErrDone
 	}
 
 	var id string

@@ -238,14 +238,19 @@ func (q *Query) First(dst interface{}) (iface.Key, bool, error) {
 	}
 	k, err := iter.Next(dst)
 
-	// Nothing found
-	if k == nil {
+	// Nothing found. Only the end of the results is that: a query that failed is
+	// an error, never an absence, so a reader that falls back on "not there" (a
+	// catalog default, a first credit) never does so because the store failed.
+	if errors.Is(err, Done) {
 		return nil, false, nil
 	}
 
 	// Error trying run query
 	if IgnoreFieldMismatch(err) != nil {
 		return nil, false, err
+	}
+	if k == nil {
+		return nil, false, nil
 	}
 
 	// Found it
@@ -443,7 +448,7 @@ type iteratorWrapper struct {
 func (w *iteratorWrapper) Next(dst interface{}) (iface.Key, error) {
 	dbKey, err := w.iter.Next(dst)
 	if err != nil {
-		if errors.Is(err, db.ErrNoSuchEntity) {
+		if errors.Is(err, db.ErrNoSuchEntity) || errors.Is(err, db.ErrDone) {
 			return nil, Done
 		}
 		return nil, err
