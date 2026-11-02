@@ -22,6 +22,7 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
 	"github.com/hanzoai/commerce/models/paymentorg"
+	"github.com/hanzoai/commerce/models/plan"
 	storemodel "github.com/hanzoai/commerce/models/store"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -109,6 +110,9 @@ type subscribeCardRequest struct {
 	// Cash App Pay): it pays the first period itself and is kept nowhere, so the
 	// subscription renews from the prepaid balance.
 	Wallet bool `json:"wallet,omitempty"`
+	// BalanceCents is the starting usage balance an organization's order adds to
+	// its prepaid balance in the same payment (see SubscribeIn.BalanceCents).
+	BalanceCents int64 `json:"balanceCents,omitempty"`
 }
 
 // SubscribeIn is the whole input of a card subscription. Every field is a VALUE
@@ -174,6 +178,13 @@ type SubscribeIn struct {
 	// is not the payer whose card a reload would charge, so a delegated sale
 	// switches no reload on (armSale).
 	Delegated bool
+	// BalanceCents is the starting usage balance an organization's order adds to
+	// its prepaid balance, charged to the card in the same payment as the plan's
+	// first period and credited as a top-up is. It is the one amount a sale
+	// carries, and the plan's row bounds it: whole dollars, no more than the row's
+	// limits.balanceCeiling, and none on a plan whose row states no ceiling.
+	// Zero buys the plan alone.
+	BalanceCents int64
 }
 
 // armSale is what a paid sale of slug does to the buying payer's auto-recharge
@@ -205,9 +216,24 @@ type Sale struct {
 	Interval types.Interval `json:"interval"`
 	// PaymentMethodID is the vaulted card that paid, and that renewals charge.
 	PaymentMethodID string `json:"paymentMethodId"`
-	// AmountCents is what the card was actually charged for the first period —
-	// price x seats, less any promotion and coupon. Zero for a trial.
+	// AmountCents is what the card was actually charged: the first period — price
+	// x seats, less any promotion and coupon — and the starting balance
+	// (BalanceCents) when the order bought one. Zero for a trial.
 	AmountCents int64 `json:"amountCents"`
+	// BalanceCents is the part of AmountCents credited to the buyer's prepaid
+	// balance, and BalanceID the receipt of that credit — the deposit row, or the
+	// chain mint. Both are absent when the sale bought no starting balance.
+	BalanceCents int64  `json:"balanceCents,omitempty"`
+	BalanceID    string `json:"balanceId,omitempty"`
+	// Seats is how many seats the sale bought, every seat type counted; 1 on a
+	// flat plan.
+	Seats int64 `json:"seats,omitempty"`
+	// Category is the ladder the plan sits on — personal, team, enterprise — as
+	// its row states it.
+	Category string `json:"category,omitempty"`
+	// Replaced is the paid subscription the account held that this sale replaced
+	// and canceled once its own payment settled; absent when it held none.
+	Replaced string `json:"replaced,omitempty"`
 	// TrialEnd is when the free trial this sale opened ends and the first paid
 	// period is charged. Absent when the sale charged today.
 	TrialEnd *time.Time `json:"trialEnd,omitempty"`
@@ -435,9 +461,9 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	}
 	if p.ContactSales {
 		// A plan sold by our sales team is never bought by card, whatever price its
-		// row states. Its row may carry the seat price its card shows while the
-		// catalog does not sell it by the seat (perSeat reads the embed), and a card
-		// sale of it would then charge one seat for the whole plan.
+		// row states: its row may carry the seat price its card shows while it states
+		// no seat terms, and a card sale of it would then charge one seat for the
+		// whole plan.
 		return nil, saleRefusal{saleRefused, fmt.Sprintf("plan %q is sold by our sales team, not by card", planID)}
 	}
 	// The price this card is charged, chosen from what the catalog publishes. A
@@ -488,6 +514,10 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	if why := teamSeats(planID, qty, lines); why != "" {
 		return nil, saleRefusal{saleRefused, why}
 	}
+	if why := orderRefusal(org, p, planID, in, sourceID); why != "" {
+		return nil, saleRefusal{saleRefused, why}
+	}
+	bal := in.BalanceCents
 	seatMult := int64(1)
 	if perSeat(planID) {
 		seatMult = int64(qty)
@@ -568,6 +598,10 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		// A team's other seat types are facts too: another mix is another purchase.
 		for _, l := range lines {
 			facts += ":line:" + l.Plan + ":" + strconv.Itoa(l.Quantity)
+		}
+		// So is a starting balance: another balance is another payment.
+		if bal > 0 {
+			facts += ":balance:" + strconv.FormatInt(bal, 10)
 		}
 		guard = windowKey(facts)
 	}
@@ -675,6 +709,13 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		}
 	}
 	listCents := int64(p.Price)*seatMult + lineCents(lines)
+	// What the receipt says of the sale beside its money: the seats bought, the
+	// ladder the plan sits on, and the paid plan it replaces, if any.
+	seats := seatMult + int64(lineSeats(lines))
+	replaced := ""
+	if held != nil {
+		replaced = held.Id()
+	}
 
 	if sourceID == "credits" || sourceID == "balance" {
 		// The first period is paid from prepaid money, all or nothing, before the
@@ -721,6 +762,9 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			Interval:        p.Interval,
 			PaymentMethodID: "credits",
 			AmountCents:     chargeCents,
+			Seats:           seats,
+			Category:        p.Category,
+			Replaced:        replaced,
 			Currency:        string(cur),
 			Status:          "ok",
 		}
@@ -733,7 +777,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			}
 		}
 		noticeSale(ctx, saleNote{
-			Org: org.Name, Email: in.Email, Plan: p, Seats: seatMult + int64(lineSeats(lines)), Sale: sale,
+			Org: org.Name, Email: in.Email, Plan: p, Seats: seats, Sale: sale,
 			ListCents: listCents, PromoName: promoName, Test: org.TestMode(),
 		})
 		if held != nil && held.Id() != sub.Id() {
@@ -889,6 +933,8 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 				Level:           in.Level,
 				Interval:        p.Interval,
 				PaymentMethodID: pm.Id(),
+				Seats:           seats,
+				Category:        p.Category,
 				Currency:        string(cur),
 				Status:          "ok",
 				TrialEnd:        &end,
@@ -903,7 +949,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 				}
 			}
 			noticeSale(ctx, saleNote{
-				Org: org.Name, Email: in.Email, Plan: p, Seats: seatMult + int64(lineSeats(lines)), Sale: sale,
+				Org: org.Name, Email: in.Email, Plan: p, Seats: seats, Sale: sale,
 				ListCents: listCents, PromoName: promoName, Coupon: cpn, Test: org.TestMode(),
 			})
 			return &saleOutcome{Sale: sale, Sub: sub}, nil
@@ -928,10 +974,15 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	}
 
 	// Charge the SAVED card (card-on-file id + Square customer id) for the first
-	// period at the server-authoritative price × seats, with the stable Square
-	// idempotency key. All-or-nothing: on a decline no subscription is created.
-	res, err := chargeSavedCard(ctx, reg, pm.ProviderRef, squareCustomerIDOf(pm), chargeCents, cur, squareKey,
-		fmt.Sprintf("Subscription %s — first period", p.Name))
+	// period at the server-authoritative price × seats, and the order's starting
+	// balance with it — one payment — with the stable Square idempotency key.
+	// All-or-nothing: on a decline no subscription is created and nothing is
+	// credited.
+	desc := fmt.Sprintf("Subscription %s — first period", p.Name)
+	if bal > 0 {
+		desc = fmt.Sprintf("Subscription %s — first period and starting usage balance", p.Name)
+	}
+	res, err := chargeSavedCard(ctx, reg, pm.ProviderRef, squareCustomerIDOf(pm), chargeCents+bal, cur, squareKey, desc)
 	if err != nil || res == nil || !res.Success {
 		hold.Release()
 		unvault()
@@ -972,7 +1023,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		// retry replays rather than re-charging.
 		uncredited(ctx, in.Events, org.Name, in.Subject, res.ProcessorRef,
 			"the first-period charge settled and no subscription was created: "+err.Error(),
-			chargeCents, false)
+			chargeCents+bal, false)
 		return nil, err
 	}
 
@@ -998,6 +1049,18 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		log.Error("subscribe: failed to update subscription after first invoice (subject=%s): %v", in.Subject, err)
 	}
 
+	// The starting balance the same payment bought, credited to the buyer's
+	// prepaid balance as a top-up is, keyed on the payment. A credit that fails
+	// leaves the guard STARTED, so a retry is refused rather than charged again.
+	balanceID := ""
+	if bal > 0 {
+		id, _, cerr := fund(ctx, in.Events, org, db, in.Subject, bal, cur, processor.Square, res.ProcessorRef)
+		if cerr != nil {
+			return nil, cerr
+		}
+		balanceID = id
+	}
+
 	invoiceID := ""
 	if inv != nil {
 		invoiceID = inv.Id()
@@ -1009,7 +1072,12 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		Level:           in.Level,
 		Interval:        p.Interval,
 		PaymentMethodID: pm.Id(),
-		AmountCents:     chargeCents,
+		AmountCents:     chargeCents + bal,
+		BalanceCents:    bal,
+		BalanceID:       balanceID,
+		Seats:           seats,
+		Category:        p.Category,
+		Replaced:        replaced,
 		Currency:        string(cur),
 		Status:          "ok",
 		Coupon:          cpn.Code,
@@ -1027,7 +1095,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		}
 	}
 	noticeSale(ctx, saleNote{
-		Org: org.Name, Email: in.Email, Plan: p, Seats: seatMult + int64(lineSeats(lines)), Sale: sale,
+		Org: org.Name, Email: in.Email, Plan: p, Seats: seats, Sale: sale,
 		ListCents: listCents, PromoName: promoName, Coupon: cpn, Test: org.TestMode(),
 	})
 	if held != nil && held.Id() != sub.Id() {
@@ -1055,6 +1123,46 @@ func couponRefusal(code, slug, reason string) string {
 		return fmt.Sprintf("coupon %s does not apply to plan %q", code, slug)
 	}
 	return fmt.Sprintf("coupon %s is not valid", code)
+}
+
+// orderRefusal is why a sale breaks the order terms the plan's row states, or ""
+// when it keeps them.
+//
+// A row whose limits state how an organization orders it (plan.Limits Ordered) is
+// an organization's plan, so it is bought for the organization's own account and
+// never for a member's wallet. The endpoint resolved Subject from the caller's own
+// credential, and only an admin of the organization (or the platform) resolves to
+// its account, so this is where an order from anyone else is refused, before
+// anything is held or charged.
+//
+// A starting balance is whole dollars, no more than the row's balanceCeiling, and
+// bought with a card in the payment that charges today: not from prepaid money,
+// not by a wallet token (kept nowhere, so there is no card to stand behind the
+// credit), and not on a sale that opens in a free trial and charges nothing. A row
+// that states no ceiling takes none.
+func orderRefusal(org *organization.Organization, p *plan.Plan, slug string, in SubscribeIn, source string) string {
+	l := p.Limits
+	if l.Ordered() && !strings.EqualFold(in.Subject, org.Name) {
+		return fmt.Sprintf("plan %q is ordered by an organization: an admin of %s buys it for the organization", slug, org.Name)
+	}
+	bal := in.BalanceCents
+	switch {
+	case bal == 0:
+		return ""
+	case bal < 0 || bal%100 != 0:
+		return "balanceCents is a whole number of dollars, 0 or more"
+	case l == nil || l.BalanceCeiling == nil || *l.BalanceCeiling <= 0:
+		return fmt.Sprintf("plan %q takes no starting balance", slug)
+	case bal > int64(*l.BalanceCeiling)*100:
+		return fmt.Sprintf("plan %q takes a starting balance of at most $%d (got $%d)", slug, *l.BalanceCeiling, bal/100)
+	case source == "credits" || source == "balance":
+		return "a starting balance is bought with a card, not paid from prepaid money"
+	case in.Wallet:
+		return "a starting balance is bought with a card: send sourceId or paymentMethodId"
+	case p.TrialPeriodDays > 0:
+		return fmt.Sprintf("plan %q opens in a free trial that charges nothing today, so it takes no starting balance", slug)
+	}
+	return ""
 }
 
 // holdRefusal is a coupon reservation's refusal as a sale refusal: the coupon
@@ -1107,16 +1215,19 @@ func heldBefore(db *datastore.Datastore, slug, subject string, test bool) (bool,
 //
 //	POST /v1/billing/subscribe/card
 //
-// Body: { sourceId | paymentMethodId, planId, userId?, quantity?, lines?, level?, interval?, currency?, coupon? }
+// Body: { sourceId | paymentMethodId, planId, userId?, quantity?, lines?, level?, interval?, currency?, coupon?, balanceCents? }
 // — lines are a team's other seat types, [{planId, quantity}]: a team of one
 // standard and one premium seat is planId "team", quantity 1, lines
 // [{"planId":"team-premium","quantity":1}], charged both seats' prices
-// — NO client amount: the price is the plan's catalog price, always. coupon is a
+// — NO client price: the price is the plan's catalog price, always. coupon is a
 // plan coupon code for a percent off the first months it names, monthly only.
+// balanceCents is an organization's starting usage balance, charged in the same
+// payment and credited to its prepaid balance: whole dollars, at most the row's
+// limits.balanceCeiling (orderRefusal).
 // Header (optional): X-Idempotency-Key — a retry/double-submit with the same key
 // (or, absent a key, the same store/plan/level inside a window) never
 // double-charges: it replays the first result verbatim.
-// Returns: { subscriptionId, invoiceId, planId, level, interval, paymentMethodId, amountCents, currency, status, coupon?, couponPercent?, couponMonths?, trialEnd?, trialEndCents? }
+// Returns: { subscriptionId, invoiceId, planId, level, interval, paymentMethodId, amountCents, balanceCents?, balanceId?, seats, category, replaced?, currency, status, coupon?, couponPercent?, couponMonths?, trialEnd?, trialEndCents? }
 //
 // A plan with a free trial (trialPeriodDays) bought by a buyer and a card that
 // have not had it charges nothing today: amountCents is 0, invoiceId is empty,
@@ -1191,6 +1302,7 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		Promo:          promo.Active(c),
 		Events:         eventsOf(c),
 		Delegated:      subject != userBillingKey(c),
+		BalanceCents:   req.BalanceCents,
 	})
 	if err != nil {
 		switch {
@@ -1212,6 +1324,8 @@ func SubscribeWithCard(c *zip.Ctx) error {
 			return http.Fail(c, 404, "payment method not found", err)
 		case IsMethodUnchargeable(err):
 			return http.Fail(c, 422, "saved payment method has no chargeable card — add the card again", nil)
+		case IsTopupUncredited(err):
+			return http.Fail(c, 500, "the payment settled and its starting balance was not credited; contact support", err)
 		}
 		// What is left is the subscription create itself failing after the money
 		// settled: a seat refusal is the caller's 400, anything else a 500.

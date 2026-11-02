@@ -872,7 +872,7 @@ func askReload(ctx context.Context, ev *events.Client, org *organization.Organiz
 }
 
 // creditReload credits the settled charge cfg awaits (Ref, Amount) to the ledger
-// the spend gate reads (fund) and closes its trigger: Seq moves on, Tries starts
+// the spend gate reads (bank) and closes its trigger: Seq moves on, Tries starts
 // again, and After is the balance the trigger was read at plus the amount reloaded.
 // A credit that fails leaves the charge awaiting it, and every sweep credits it
 // again under the processor's reference — which the ledger takes once — whatever
@@ -880,7 +880,7 @@ func askReload(ctx context.Context, ev *events.Client, org *organization.Organiz
 func creditReload(ctx context.Context, org *organization.Organization, db *datastore.Datastore, payer string, cfg *autorecharge.AutoRecharge) (RechargeResult, bool) {
 	cur := ruleCurrency(cfg)
 	ref, amount, base, txn := cfg.Ref, cfg.Amount, cfg.Base, cfg.Txn
-	if err := fund(ctx, org, payer, cur, receipt{ProcessorRef: ref, AmountCents: amount}); err != nil {
+	if err := bank(ctx, org, payer, cur, receipt{ProcessorRef: ref, AmountCents: amount}); err != nil {
 		log.Error("RECONCILE: auto-reload %s for %q (%d %s) charged and the spendable balance was NOT credited: %v — credited again on the next sweep",
 			ref, payer, amount, cur, err)
 		return RechargeResult{OrgName: org.Name, UserId: payer, Error: "the reload was charged and not yet credited: " + err.Error()}, true
@@ -937,12 +937,12 @@ func ruleCurrency(c *autorecharge.AutoRecharge) currency.Type {
 	return currency.Type(ruleCurrencyOf(c.Currency))
 }
 
-// fund credits a reload's charge to the ledger the spend gate reads, when the host
+// bank credits a reload's charge to the ledger the spend gate reads, when the host
 // injected one, at the payer's own address and under the processor's reference
 // for the charge: the key every path that can credit one payment uses, so the
 // payment is credited once. Without a host ledger the charge's deposit is already
 // in commerce's own ledger, which is the one read, and there is nothing to do.
-func fund(ctx context.Context, org *organization.Organization, payer string, cur currency.Type, r receipt) error {
+func bank(ctx context.Context, org *organization.Organization, payer string, cur currency.Type, r receipt) error {
 	led := creditledger.Get()
 	if led == nil {
 		return nil

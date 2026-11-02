@@ -575,7 +575,7 @@ brand's mark (vector paths from @hanzo/logo, @hanzo/brand and @zooai/logo) and n
 top left, the number and a status pill top right (PAID is the one solid pill), billed
 to / issued / due or paid / period, the amount in words, a ruled line-item table,
 totals right-aligned, and the brand's legal name and address at the foot (Hanzo
-Industries Inc., 995 Market St, San Francisco, CA 94103; Lux and Zoo state none and
+Industries Inc., 1 Ferry Building, San Francisco, CA 94105; Lux and Zoo state none and
 close with their name and site). Long invoices continue onto numbered pages. Text is
 Windows-1252 (accents kept, other scripts read "?") and uncompressed, so the number
 and amounts stay greppable; the output is a pure function of the row. Tests:
@@ -770,6 +770,36 @@ half-fail, and a minimum that a single cancel breaks.
   usage: cloud's limiter pools a team's seats. The older `members` →
   bundle-child rows (`provisionMembers`) is standalone-only and never removes a
   row; it is not the assignment.
+
+### Seat terms are the row's; an organization orders with a starting balance
+
+`perSeat`, `minSeats` and `maxSeats` read `seatTerms`: the plan AUTHORITY row
+for the slug (the row a sale is priced from and a SuperAdmin restates), the
+embed only where no row exists or the read fails (logged). So a restated seat
+plan moves the sale, a seat change and an assignment without a release, and a
+row the embed sells by quote (`enterprise`) is sold per seat once its row says
+`perSeat`. This closes the OPEN note above for seat terms only.
+
+`plan.Limits` carries how an organization orders a seat plan, in whole
+dollars: `spendLimits` (per-member monthly limits the order offers),
+`spendLimit` (the one it starts on), `balanceMonths` (default starting balance,
+in months of the seats' price) and `balanceCeiling` (the most a starting balance
+may be). All four are served under `limits` on `GET /v1/billing/plans`
+(`Capacity`) and compared by `limitsEqual`. A row stating any of them is
+`Ordered`: it is sold to the organization's own account only (`orderRefusal`).
+
+- Buy: `POST /v1/billing/subscribe/card` with `balanceCents` beside the seats.
+  ONE charge of seats x price + balance; the first-period invoice holds the
+  seats, and `fund` (the one prepaid credit write a saved-card top-up and an
+  automatic reload use) credits the balance under the payment's reference. The
+  receipt states `amountCents` (the whole payment), `balanceCents`, `balanceId`
+  (the credit's receipt), `seats`, `category` and `replaced`.
+- Refused before the card: a balance not in whole dollars, negative, over
+  `balanceCeiling`, on a row with no ceiling, paid from prepaid money, by a
+  wallet token, or on a sale that opens a free trial. A credit that fails after
+  the charge leaves the retry guard STARTED and answers 500.
+- Per-member spend limits are offered, not enforced: spend caps are org-level
+  (spend alerts, per project/service). Nothing here enforces `spendLimits`.
 
 ### A plan states no AI usage
 
@@ -3034,7 +3064,7 @@ brand's mark (vector paths from @hanzo/logo, @hanzo/brand and @zooai/logo) and n
 top left, the number and a status pill top right (PAID is the one solid pill), billed
 to / issued / due or paid / period, the amount in words, a ruled line-item table,
 totals right-aligned, and the brand's legal name and address at the foot (Hanzo
-Industries Inc., 995 Market St, San Francisco, CA 94103; Lux and Zoo state none and
+Industries Inc., 1 Ferry Building, San Francisco, CA 94105; Lux and Zoo state none and
 close with their name and site). Long invoices continue onto numbered pages. Text is
 Windows-1252 (accents kept, other scripts read "?") and uncompressed, so the number
 and amounts stay greppable; the output is a pure function of the row. Tests:

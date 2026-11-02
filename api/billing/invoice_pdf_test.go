@@ -105,7 +105,7 @@ func TestRenderInvoicePDF_Issuer(t *testing.T) {
 	inv.Subtotal, inv.AmountDue, inv.AmountPaid = 2000, 2000, 2000
 
 	hanzo := renderInvoicePDF(inv, "Acme Inc", "hanzo")
-	for _, want := range []string{"(Hanzo)", "Hanzo Industries Inc.", "995 Market St, San Francisco, CA 94103", "(PAID)", "/FontFile2", "Zen-Regular", "Zen-SemiBold"} {
+	for _, want := range []string{"(Hanzo)", "Hanzo Industries Inc.", "1 Ferry Building, San Francisco, CA 94105", "(PAID)", "/FontFile2", "Zen-Regular", "Zen-SemiBold"} {
 		if !bytes.Contains(hanzo, []byte(want)) {
 			t.Errorf("hanzo invoice lacks %q", want)
 		}
@@ -115,7 +115,7 @@ func TestRenderInvoicePDF_Issuer(t *testing.T) {
 		if !bytes.Contains(pdf, []byte(name)) {
 			t.Errorf("%s invoice lacks its name %s", brand, name)
 		}
-		if bytes.Contains(pdf, []byte("Hanzo")) || bytes.Contains(pdf, []byte("995 Market")) {
+		if bytes.Contains(pdf, []byte("Hanzo")) || bytes.Contains(pdf, []byte("Ferry Building")) {
 			t.Errorf("%s invoice names Hanzo", brand)
 		}
 	}

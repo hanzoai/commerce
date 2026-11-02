@@ -266,6 +266,9 @@ func resolveSubscriptionPlan(db *datastore.Datastore, planId string) (*plan.Plan
 		p.ContactSales = staticP.ContactSales
 		p.Popular = staticP.Popular
 		p.PerSeat = staticP.PerSeat
+		// The seat floor and ceiling live in the limits, and seatTerms reads them off
+		// this row once it exists.
+		p.Limits = staticP.Limits
 		p.Currency = currency.Type(staticP.Currency)
 		p.Interval = types.Interval(staticP.Interval)
 		p.IntervalCount = staticP.IntervalCount
@@ -409,8 +412,8 @@ func monthlyOnly(p *plan.Plan, interval types.Interval) error {
 // the wire fields, and p.Price and p.Interval are the answer — this core reads
 // them and never re-derives either.
 func createSubscription(db *datastore.Datastore, p *plan.Plan, req *createSubscriptionRequest) (*subscription.Subscription, error) {
-	// Seat gate: the catalog is the sole authority for per-seat-ness and the
-	// seat floor. A per-seat plan bills Price × quantity, never below
+	// Seat gate: the plan's row is the sole authority for per-seat-ness and the
+	// seat floor (seatTerms). A per-seat plan bills Price × quantity, never below
 	// limits.minSeats, and member rows (each minting a per-user allotment) can
 	// never exceed the seats paid for.
 	quantity, err := seats(req.PlanId, req.Quantity, req.priced, len(req.Members))

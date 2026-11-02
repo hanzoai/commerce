@@ -14,6 +14,7 @@ import (
 	"github.com/hanzoai/commerce/api/promo"
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/checkout"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
 	types "github.com/hanzoai/commerce/types"
@@ -206,15 +207,24 @@ type PlanView struct {
 // what a plan allows of AI is cloud's usage policy (apps/ai/limits), read at
 // /v1/ai/limits, and a figure here would be a second statement of it that
 // customers read and nothing enforces. Credit grants stay off it too.
+//
+// It does carry how an organization orders a seat plan (plan.Limits Ordered), in
+// whole dollars: the per-member monthly spend limits the order offers and the one
+// it starts on, the starting balance in months of the seats' price, and the most a
+// starting balance may be, which a card sale enforces.
 type Capacity struct {
-	Agents         *int `json:"agents,omitempty"`
-	Bots           *int `json:"bots,omitempty"`
-	TeamGuests     *int `json:"teamGuests,omitempty"`
-	MaxMembers     *int `json:"maxMembers,omitempty"`
-	MinSeats       *int `json:"minSeats,omitempty"`
-	Zones          *int `json:"zones,omitempty"`
-	RecordsPerZone *int `json:"recordsPerZone,omitempty"`
-	QueriesPerDay  *int `json:"queriesPerDay,omitempty"`
+	Agents         *int  `json:"agents,omitempty"`
+	Bots           *int  `json:"bots,omitempty"`
+	TeamGuests     *int  `json:"teamGuests,omitempty"`
+	MaxMembers     *int  `json:"maxMembers,omitempty"`
+	MinSeats       *int  `json:"minSeats,omitempty"`
+	Zones          *int  `json:"zones,omitempty"`
+	RecordsPerZone *int  `json:"recordsPerZone,omitempty"`
+	QueriesPerDay  *int  `json:"queriesPerDay,omitempty"`
+	SpendLimits    []int `json:"spendLimits,omitempty"`
+	SpendLimit     *int  `json:"spendLimit,omitempty"`
+	BalanceMonths  *int  `json:"balanceMonths,omitempty"`
+	BalanceCeiling *int  `json:"balanceCeiling,omitempty"`
 }
 
 // Recharge is a plan's automatic reload as the catalog serves it: buying the plan
@@ -255,8 +265,13 @@ func capacityOf(l *planLimits) *Capacity {
 		Zones:          l.Zones,
 		RecordsPerZone: l.RecordsPerZone,
 		QueriesPerDay:  l.QueriesPerDay,
+		SpendLimits:    l.SpendLimits,
+		SpendLimit:     l.SpendLimit,
+		BalanceMonths:  l.BalanceMonths,
+		BalanceCeiling: l.BalanceCeiling,
 	}
-	if c == (Capacity{}) {
+	if c.Agents == nil && c.Bots == nil && c.TeamGuests == nil && c.MaxMembers == nil && c.MinSeats == nil &&
+		c.Zones == nil && c.RecordsPerZone == nil && c.QueriesPerDay == nil && !l.Ordered() {
 		return nil
 	}
 	return &c
@@ -746,22 +761,46 @@ func group(slug string) string {
 	return ""
 }
 
-// perSeat reports whether the catalog bills the plan per seat
-// (price_ref.recurring.per_seat). Unknown slugs are flat.
-func perSeat(slug string) bool {
-	p := lookupPlan(slug)
-	return p != nil && p.PerSeat
+// seatTerms is what a plan says of its seats — whether it is billed per seat, and
+// the limits that hold its floor and ceiling — read from the plan authority's row
+// for the slug: the row a sale is priced from, GET /v1/billing/plans serves and a
+// SuperAdmin restates, so a seat plan's terms move with its price and never need a
+// release. The embed answers only for a slug the authority holds no row for, and
+// when the authority cannot be read, loudly, as planAuthorityRows does. A retired
+// slug answers as its successor, as lookupPlan does.
+func seatTerms(slug string) (bool, *planLimits) {
+	if next, ok := successor[slug]; ok {
+		slug = next
+	}
+	row := plan.New(plan.AuthorityDB(context.Background()))
+	switch ok, err := row.Query().Filter("Slug=", slug).Get(); {
+	case err != nil:
+		log.Error("billing plans: authority read of %q FAILED, reading its seats from the embed: %v", slug, err, nil)
+	case ok:
+		return row.PerSeat, row.Limits
+	}
+	if p := lookupPlan(slug); p != nil {
+		return p.PerSeat, p.Limits
+	}
+	return false, nil
 }
 
-// minSeats returns the catalog's minimum billable seats for a plan
-// (limits.minSeats, the ONE canonical home for seat minimums). 1 when the
-// plan is unknown or declares no minimum.
+// perSeat reports whether the plan is billed per seat (seatTerms). Unknown slugs
+// are flat.
+func perSeat(slug string) bool {
+	each, _ := seatTerms(slug)
+	return each
+}
+
+// minSeats returns a plan's minimum billable seats (limits.minSeats, the ONE
+// canonical home for seat minimums, read by seatTerms). 1 when the plan is
+// unknown or declares no minimum.
 func minSeats(slug string) int {
-	p := lookupPlan(slug)
-	if p == nil || p.Limits == nil || p.Limits.MinSeats == nil || *p.Limits.MinSeats < 1 {
+	_, l := seatTerms(slug)
+	if l == nil || l.MinSeats == nil || *l.MinSeats < 1 {
 		return 1
 	}
-	return *p.Limits.MinSeats
+	return *l.MinSeats
 }
 
 // seatCeiling is the most seats any subscription holds. Every path that charges
@@ -770,13 +809,12 @@ func minSeats(slug string) int {
 const seatCeiling = 10000
 
 // maxSeats is the most seats a subscription to slug may hold: a per-seat plan's
-// limits.maxMembers where the catalog states one, since a seat past it could
-// seat no one, else seatCeiling.
+// limits.maxMembers where its row states one (seatTerms), since a seat past it
+// could seat no one, else seatCeiling.
 func maxSeats(slug string) int {
-	p := lookupPlan(slug)
-	if p != nil && p.PerSeat && p.Limits != nil && p.Limits.MaxMembers != nil &&
-		*p.Limits.MaxMembers > 0 && *p.Limits.MaxMembers < seatCeiling {
-		return *p.Limits.MaxMembers
+	each, l := seatTerms(slug)
+	if each && l != nil && l.MaxMembers != nil && *l.MaxMembers > 0 && *l.MaxMembers < seatCeiling {
+		return *l.MaxMembers
 	}
 	return seatCeiling
 }
