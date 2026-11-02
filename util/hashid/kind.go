@@ -212,6 +212,9 @@ var kinds = map[string]int{
 	// 2026-10-30). The numbers stay taken: a kind number is never reused.
 	"remittance":      292,
 	"remittance-hold": 293,
+
+	// limit — a bound a person set on one org or one plan (models/limit).
+	"limit": 294,
 }
 
 var kindsReversed = make(map[int]string)
