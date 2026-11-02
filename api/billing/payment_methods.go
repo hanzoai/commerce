@@ -219,7 +219,7 @@ func CreateMethod(ctx context.Context, org *organization.Organization, email str
 	// EXISTING row instead of stacking a duplicate when the same card is saved
 	// again. Use the per-org registry so Square carries the org's credentials.
 	if in.ProviderRef != "" {
-		reg := payment.ProcessorsForOrg(org)
+		reg := processorsForOrg(org)
 		if cp, ok := squareCustomerProcessorFrom(reg); ok {
 			pm, created, err := saveCard(ctx, db, cp, in.CustomerId, strings.TrimSpace(email), in.ProviderRef)
 			if err != nil {
@@ -238,6 +238,9 @@ func CreateMethod(ctx context.Context, org *organization.Organization, email str
 			if err := pm.Update(); err != nil {
 				log.Error("Failed to update payment method extras: %v", err)
 			}
+			// A card on file is what auto-recharge charges: a payer whose plan states
+			// a reload and who has no rule on file gets it switched on now.
+			armOnCard(ctx, org, in.CustomerId)
 			m := methodOf(pm)
 			return &m, created, nil
 		} else if err := verifyCardWithPreAuth(ctx, reg, in.ProviderRef, in.CustomerId); err != nil {

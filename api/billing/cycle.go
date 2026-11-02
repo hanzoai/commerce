@@ -169,14 +169,17 @@ func renewDue(ctx context.Context, org *organization.Organization, user string) 
 		if sub.Test != org.TestMode() || !engine.IsDue(sub, now) {
 			continue
 		}
-		out = append(out, renewOne(ctx, db, org.Name, sub, pre, charge))
+		out = append(out, renewOne(ctx, db, org, sub, pre, charge))
 	}
 	return out
 }
 
 // renewOne invoices and collects one subscription's due period, then persists
-// the row as the collection left it.
-func renewOne(ctx context.Context, db *datastore.Datastore, orgName string, sub *subscription.Subscription, pre engine.Prepaid, charge engine.ProviderCharger) Renewal {
+// the row as the collection left it. A trial whose first paid period this
+// collects switches the payer's auto-recharge on when its plan states a reload
+// (armForPlan), as a sale that charged today does.
+func renewOne(ctx context.Context, db *datastore.Datastore, org *organization.Organization, sub *subscription.Subscription, pre engine.Prepaid, charge engine.ProviderCharger) Renewal {
+	orgName := org.Name
 	// A row read by query is not bound to the store, so the write goes through a
 	// fresh read of the same id.
 	row := subscription.New(db)
@@ -184,6 +187,7 @@ func renewOne(ctx context.Context, db *datastore.Datastore, orgName string, sub 
 		return Renewal{OrgName: orgName, UserId: sub.UserId, SubscriptionId: sub.Id(), Error: err.Error()}
 	}
 	r := Renewal{OrgName: orgName, UserId: row.UserId, SubscriptionId: row.Id(), Test: row.Test}
+	trial := row.Status == subscription.Trialing
 	inv, result, err := engine.RenewSubscription(ctx, db, row, pre, charge)
 	if inv != nil {
 		r.InvoiceId, r.Currency = inv.Id(), string(inv.Currency)
@@ -202,5 +206,8 @@ func renewOne(ctx context.Context, db *datastore.Datastore, orgName string, sub 
 		return r
 	}
 	r.Success, r.Error = result.Success, result.Error
+	if trial && r.Success && row.Status == subscription.Active {
+		armForPlan(ctx, org, row.UserId, subscriptionSlug(row), row.Plan.Currency)
+	}
 	return r
 }

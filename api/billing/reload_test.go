@@ -40,16 +40,13 @@ func onPlan(t *testing.T, ctx ae.Context, name, slug string) *organization.Organ
 	return org
 }
 
-// reloads drives n sweeps, each reload a different amount so each is a new charge
-// rather than a replay, and answers the card's charges.
+// reloads drives n sweeps of org's own account, spending a cent before each so
+// each is a new trigger, and answers the card's charges.
 func reloads(t *testing.T, ctx ae.Context, org *organization.Organization, m *mockSquareProcessor, n int) int {
 	t.Helper()
+	db := datastore.New(org.Namespaced(ctx))
 	for i := 1; i <= n; i++ {
-		cfg := storedRule(t, ctx, org)
-		cfg.AmountCents = int64(500 + 100*i)
-		if err := cfg.Update(); err != nil {
-			t.Fatal(err)
-		}
+		spend(db, org.Name, 1, "usage")
 		rechargeRun(t, ctx)
 	}
 	return m.chargeCalls
@@ -69,7 +66,7 @@ func TestAnUnboundedPlanReloadsPastTheDailyBound(t *testing.T) {
 	if got, want := reloads(t, ctx, org, m, ReloadsPerDay+2), ReloadsPerDay+2; got != want {
 		t.Fatalf("an unbounded plan was charged %d times in %d due sweeps, want %d", got, want, want)
 	}
-	v, err := ReadAutoRecharge(ctx, org)
+	v, err := ReadAutoRecharge(ctx, org, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,11 +88,7 @@ func TestAPlansBoundIsTheSweepsBound(t *testing.T) {
 	if got := reloads(t, ctx, org, m, 1); got != 1 {
 		t.Fatalf("first reload charged %d times, want 1", got)
 	}
-	cfg := storedRule(t, ctx, org)
-	cfg.AmountCents = 900
-	if err := cfg.Update(); err != nil {
-		t.Fatal(err)
-	}
+	spend(datastore.New(org.Namespaced(ctx)), org.Name, 1, "usage")
 	run := rechargeRun(t, ctx)
 	if m.chargeCalls != 1 || run.Charged != 0 {
 		t.Fatalf("a plan bounded at one reload a day was charged %d times", m.chargeCalls)
@@ -114,7 +107,7 @@ func TestAPlanStatingNoBoundKeepsTheDefault(t *testing.T) {
 		onPlan(t, ctx, "reload-quiet", "quiet"),
 		seedRechargeOrg(t, ctx, "reload-noplan", 500, 1000000),
 	} {
-		v, err := ReadAutoRecharge(ctx, org)
+		v, err := ReadAutoRecharge(ctx, org, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -124,9 +117,10 @@ func TestAPlanStatingNoBoundKeepsTheDefault(t *testing.T) {
 	}
 }
 
-// The reload figures are billing's, read where the sweep and the sale run; the
-// public catalog serves a plan's capacities and neither of them.
-func TestThePublicCatalogServesNoReloadFigures(t *testing.T) {
+// The public catalog serves a plan's reload as the terms a checkout shows the
+// buyer — threshold, amount and the daily bound, 0 for none — and never the
+// row's raw limits.
+func TestThePublicCatalogServesTheReloadTerms(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	if _, _, err := SeedPlans(ctx); err != nil {
@@ -145,10 +139,14 @@ func TestThePublicCatalogServesNoReloadFigures(t *testing.T) {
 	if !strings.Contains(string(raw), `"slug":"ultra"`) {
 		t.Fatalf("the catalog does not list the row under test: %s", raw)
 	}
-	for _, key := range []string{`"reloadsPerDay"`, `"reload"`, `"thresholdCents"`} {
-		if strings.Contains(string(raw), key) {
-			t.Errorf("the public catalog serves %s", key)
-		}
+	if !strings.Contains(string(raw), `"reload":{"thresholdCents":1000,"amountCents":5000,"perDay":0}`) {
+		t.Errorf("the public catalog does not serve ultra's reload terms: %s", raw)
+	}
+	if strings.Contains(string(raw), `"reloadsPerDay"`) {
+		t.Error("the public catalog serves the row's raw reloadsPerDay")
+	}
+	if n := strings.Count(string(raw), `"reload":`); n != 1 {
+		t.Errorf("%d plans carry reload terms, want only ultra", n)
 	}
 }
 
@@ -178,7 +176,7 @@ func TestBuyingAPlanWithAReloadSwitchesItOn(t *testing.T) {
 	if cfg == nil || !cfg.Enabled || cfg.ThresholdCents != 1000 || cfg.AmountCents != 5000 || cfg.Currency != "usd" {
 		t.Fatalf("the rule after buying ultra is %+v, want on at $50 below $10 in usd", cfg)
 	}
-	v, err := ReadAutoRecharge(ctx, org)
+	v, err := ReadAutoRecharge(ctx, org, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +218,10 @@ func TestBuyingAPlanKeepsARuleTheOrgSwitchedOn(t *testing.T) {
 		}
 		withFakeSquare(t, squareMock("cust_"+name, "ccof_"+name, "sqpay_"+name))
 
-		subscribeTo(t, ctx, org, "ultra")
+		out := subscribeAs(t, ctx, org, `{"sourceId":"cnon:ok","planId":"ultra"}`, nil)
+		if want := map[bool]string{true: kept, false: armed}[on]; reloadState(out) != want {
+			t.Errorf("rule on %v: receipt reload state %q, want %q", on, reloadState(out), want)
+		}
 
 		got := storedRule(t, ctx, org)
 		switch {

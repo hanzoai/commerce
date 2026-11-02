@@ -137,6 +137,7 @@ func (sp *SquareProcessor) Charge(ctx context.Context, req processor.PaymentRequ
 
 	resp, err := sp.paymentsClient.Create(ctx, paymentReq)
 	if err != nil {
+		err = said(err)
 		return &processor.PaymentResult{
 			Success:      false,
 			Error:        err,

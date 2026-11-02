@@ -212,6 +212,10 @@ type Sale struct {
 	Coupon        string `json:"coupon,omitempty"`
 	CouponPercent int    `json:"couponPercent,omitempty"`
 	CouponMonths  int    `json:"couponMonths,omitempty"`
+	// Reload is what the sale did to the buyer's auto-recharge, present only for a
+	// plan whose row states a reload (Arming). Absent on a trial, which switches
+	// it on when its first paid period is charged.
+	Reload *Arming `json:"reload,omitempty"`
 }
 
 // The kinds of no a sale can end in. They are separate because each is a
@@ -706,6 +710,9 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			Currency:        string(cur),
 			Status:          "ok",
 		}
+		// Paid from the balance, the reload a plan states still charges the buyer's
+		// card on file, so it switches on when there is one (armForPlan).
+		sale.Reload = armForPlan(ctx, org, in.Subject, planID, cur)
 		if rec != nil {
 			if body, mErr := json.Marshal(sale); mErr == nil {
 				_ = idempotencykey.Complete(rec, string(body))
@@ -992,6 +999,9 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		CouponPercent:   cpn.Percent,
 		CouponMonths:    cpn.Months,
 	}
+	// A plan whose row states a reload switches the buyer's auto-recharge on, now
+	// the first period is paid, before the receipt is sealed so a retry replays it.
+	sale.Reload = armForPlan(ctx, org, in.Subject, planID, cur)
 	// Seal the idempotency guard with the exact success body so a retry replays it
 	// verbatim (no second vault/charge/subscribe, identical response).
 	if rec != nil {
@@ -1009,12 +1019,6 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			_ = engine.CancelSubscription(toCancel, false)
 			_ = toCancel.Update()
 		}
-	}
-	// A plan whose row states a reload switches the org's auto-recharge on, once
-	// its card has paid the first period. The rule is the org's and charges the
-	// org's card, so only a sale to the org's own account arms it.
-	if in.Subject == org.Name {
-		armForPlan(ctx, org, planID, cur)
 	}
 	return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil
 }
