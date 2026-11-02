@@ -281,8 +281,10 @@ func (p *Plan) LevelPrice(level int) (currency.Cents, error) {
 	return p.Prices[level], nil
 }
 
-// YearlyTotal returns the authoritative yearly price charged upfront in cents,
-// falling back to AnnualTotal field or standard tier multipliers.
+// YearlyTotal returns the authoritative yearly price charged upfront in cents:
+// AnnualTotal, else the legacy rung's stated year. A plan stating neither answers
+// 0, which is not sold annually; PriceAnnual is a per-month price tag and is
+// never billed.
 func (p *Plan) YearlyTotal() currency.Cents {
 	if p.AnnualTotal > 0 {
 		return p.AnnualTotal
@@ -305,12 +307,6 @@ func (p *Plan) YearlyTotal() currency.Cents {
 	case "dns-enterprise":
 		return 24000
 	default:
-		if p.PriceAnnual > 0 {
-			return currency.Cents(int64(p.PriceAnnual) * 12)
-		}
-		if p.Price > 0 {
-			return currency.Cents(int64(p.Price) * 10)
-		}
 		return 0
 	}
 }
