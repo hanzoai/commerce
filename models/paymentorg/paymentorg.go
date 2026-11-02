@@ -39,13 +39,17 @@ type PaymentOrg struct {
 	Balance int64  `json:"balance,omitempty"`
 	Test    bool   `json:"test"`
 
-	// An organization's order keeps its starting balance's state here, written
-	// the moment the charge settles (Open), before anything else the sale writes.
-	// Order is the storage id of the sale's retry guard, which holds its receipt.
+	// A card sale's payment is recorded the moment the charge settles (Open),
+	// before anything else the sale writes: Sale says so, and that it is never a
+	// wallet's top-up. Order is the storage id of the sale's retry guard, which
+	// holds its receipt. An order keeps its starting balance's state here too.
 	// Credited says the credit is decided, Credit is its amount — Balance less what
-	// refunds and disputes had taken by then — and Deposit the credit's receipt
-	// once it landed. Takes are what each refund and dispute took of the balance,
-	// credited or not, so a credit decided later nets against them.
+	// refunds had taken by then — and Deposit the credit's receipt once it landed.
+	// Takes are what each refund and dispute took of the balance, credited or not:
+	// a refund taken before the credit is decided is netted from it; a dispute's
+	// take is credited and then taken from the wallet (Moved), so a dispute won
+	// gives back exactly what its loss took, through the ledger that took it.
+	Sale     bool   `json:"sale,omitempty"`
 	Order    string `json:"order,omitempty"`
 	Credited bool   `json:"credited,omitempty"`
 	Credit   int64  `json:"credit,omitempty"`
@@ -117,6 +121,35 @@ func (p *PaymentOrg) Taken() int64 {
 	return n
 }
 
+// Refunded is what refunds took of the starting balance: refunds are final, so a
+// credit decided after them nets them.
+func (p *PaymentOrg) Refunded() int64 {
+	n := int64(0)
+	for _, t := range p.Takes {
+		if strings.HasPrefix(t.Ref, "refund:") {
+			n += t.Cents
+		}
+	}
+	return n
+}
+
+// Decide decides the credit of an order's starting balance, once: the balance
+// less what refunds took, every dispute's standing take moved to the wallet (the
+// credit includes it and the wallet gives it up), and answers whether it decided
+// now.
+func (p *PaymentOrg) Decide() bool {
+	if p.Credited {
+		return false
+	}
+	p.Credited, p.Credit = true, max(p.Balance-p.Refunded(), 0)
+	for i := range p.Takes {
+		if !p.Takes[i].Restored && !strings.HasPrefix(p.Takes[i].Ref, "refund:") {
+			p.Takes[i].Moved = true
+		}
+	}
+	return true
+}
+
 // Left is the starting balance no refund or dispute holds.
 func (p *PaymentOrg) Left() int64 {
 	return max(p.Balance-p.Taken(), 0)
@@ -140,7 +173,7 @@ func Open(payment, org, subject, order string, balance int64, test bool) error {
 		p := new(PaymentOrg)
 		p.Init(d)
 		p.SetId(payment)
-		p.Org, p.Subject, p.Order, p.Balance, p.Test = org, subject, order, balance, test
+		p.Org, p.Subject, p.Order, p.Balance, p.Test, p.Sale = org, subject, order, balance, test, true
 		if ok, err := p.Swap(); err != nil || ok {
 			return err
 		}

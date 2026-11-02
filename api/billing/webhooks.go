@@ -866,8 +866,19 @@ func applyClawbackEvent(ctx context.Context, booked *datastore.Datastore, org *o
 	if where, found, err = paymentorg.Get(paymentID); err != nil || !found {
 		return fmt.Errorf("%s %s: payment %s could not be read again: %v", event.Type, id, paymentID, err)
 	}
+	if where.Sale && where.Invoice == "" {
+		// A sale's payment paid an invoice, never a wallet: the record names it once
+		// the sale wrote it, and until then it is read from the sale's books.
+		if where.Invoice, err = paidInvoice(db, paymentID); err != nil {
+			return fmt.Errorf("%s %s on payment %s: %w", event.Type, id, paymentID, err)
+		}
+	}
 	if where.Balance > 0 {
 		return takeOrder(ctx, db, where, event, ref, id, paymentID, amount, cur, state, version, at)
+	}
+	if where.Sale && where.Invoice == "" {
+		log.Error("RECONCILE: %s %s concerns payment %s, whose sale has not recorded its invoice yet; the delivery stays open until it does", event.Type, id, paymentID)
+		return fmt.Errorf("%s %s on payment %s: the sale has not recorded its invoice yet", event.Type, id, paymentID)
 	}
 	if where.Invoice != "" {
 		// A payment that paid an invoice credited no wallet: the invoice records
@@ -968,8 +979,11 @@ func takeOrder(ctx context.Context, db *datastore.Datastore, where *paymentorg.P
 	if !isDispute && int64(amount) > t.Cents {
 		rest := int64(amount) - t.Cents
 		if where.Invoice == "" {
-			log.Error("RECONCILE: %s %s returns %d of payment %s beyond its starting balance, and the order's invoice is not recorded — record it by hand", event.Type, id, rest, paymentID)
-		} else if err := invoiced(engine.RecordRefund(db, where.Invoice, id, rest), event, id, paymentID, where); err != nil {
+			// The take is recorded; the rest waits for the sale to write its invoice,
+			// and the processor delivers this again.
+			return fmt.Errorf("%s %s returns %d of payment %s beyond its starting balance, and the sale has not recorded its invoice yet", event.Type, id, rest, paymentID)
+		}
+		if err := invoiced(engine.RecordRefund(db, where.Invoice, id, rest), event, id, paymentID, where); err != nil {
 			return err
 		}
 	}
@@ -978,32 +992,52 @@ func takeOrder(ctx context.Context, db *datastore.Datastore, where *paymentorg.P
 	if withholds && !won {
 		stopReload(ctx, where.Org, where.Subject, event.Type+" "+id)
 	}
-	if t.Cents <= 0 || (!t.Moved && !(won && po.Credited)) {
-		// Nothing taken, or taken while the credit was undecided: the credit nets
-		// against it (or, given back, no longer does) and the wallet holds none of it.
+	if t.Cents <= 0 || !t.Moved {
+		// Nothing taken, or taken while the credit was undecided: a refund is netted
+		// from the credit and a dispute's take is moved when the credit is decided
+		// (Decide), so the wallet holds none of it yet.
 		return nil
 	}
-	in := creditledger.ClawbackInput{
-		Org: where.Org, Subject: where.Subject, Payment: paymentID,
-		Ref: ref, AmountCents: t.Cents, Reason: event.Type + " " + id, Test: where.Test,
+	if won {
+		// What the loss took from the wallet is given back, once.
+		return clawback(ctx, db, creditledger.ClawbackInput{
+			Org: where.Org, Subject: where.Subject, Payment: paymentID,
+			Ref: ref, AmountCents: t.Cents, Reason: event.Type + " " + id, Test: where.Test,
+		}, cur, true)
 	}
-	if won && !t.Moved {
-		// Taken while the credit was undecided, so the credit left it out; won
-		// since, it is credited now.
-		return giveBack(ctx, db, in, cur)
-	}
-	if !won && po.Credit > 0 && po.Deposit == "" {
-		// The credit is decided and has not landed: it lands first, so the take has
-		// the money it takes back in both books.
-		payer, err := orgNamed(ctx, where.Org)
-		if err != nil {
+	// Taken after the credit was decided: the credit lands first if it had not,
+	// so the take has the money it takes back in both books, then every take
+	// moved to the wallet is taken from it, this one included, once each.
+	var payer *organization.Organization
+	if po.Credit > 0 && po.Deposit == "" {
+		if payer, err = orgNamed(ctx, where.Org); err != nil {
 			return fmt.Errorf("%s %s on payment %s: %w", event.Type, id, paymentID, err)
 		}
-		if _, err := land(ctx, nil, payer, db, cur, po, paymentID); err != nil {
-			return fmt.Errorf("%s %s on payment %s: the order's starting balance did not land before its take: %w", event.Type, id, paymentID, err)
-		}
 	}
-	return clawback(ctx, db, in, cur, won)
+	if _, err := land(ctx, nil, payer, db, cur, po, paymentID); err != nil {
+		return fmt.Errorf("%s %s on payment %s: what it takes was not taken from the wallet: %w", event.Type, id, paymentID, err)
+	}
+	return nil
+}
+
+// paidInvoice is the invoice a sale's payment paid, read from the sale's books and
+// written onto the payment's record; "" while the sale has not recorded it.
+func paidInvoice(db *datastore.Datastore, paymentID string) (string, error) {
+	inv := billinginvoice.New(db)
+	found, err := inv.Query().Filter("PaymentRef=", paymentID).Get()
+	if err != nil || !found {
+		return "", err
+	}
+	if _, _, err := paymentorg.Change(paymentID, func(r *paymentorg.PaymentOrg) bool {
+		if r.Invoice != "" {
+			return false
+		}
+		r.Invoice = inv.Id()
+		return true
+	}); err != nil {
+		return "", err
+	}
+	return inv.Id(), nil
 }
 
 // invoiced is what recording a refund or a dispute on the invoice a payment paid
@@ -1035,36 +1069,6 @@ func clawback(ctx context.Context, db *datastore.Datastore, in creditledger.Claw
 			_, err = led.Clawback(ctx, in)
 		}
 		if err != nil {
-			return fmt.Errorf("%s on payment %s for %s/%s did not post: %w", in.Reason, in.Payment, in.Org, in.Subject, err)
-		}
-	}
-	return nil
-}
-
-// giveBack credits the wallet what a dispute won returns of an order's starting
-// balance that the credit had left out, it having been taken when the credit was
-// decided: once per ref in each book.
-func giveBack(ctx context.Context, db *datastore.Datastore, in creditledger.ClawbackInput, cur currency.Type) error {
-	_, _, restored, err := claimed(db, in.Subject, in.Payment, in.Ref)
-	if err != nil {
-		return err
-	}
-	if !restored {
-		t := transaction.New(db)
-		t.Currency, t.Tags, t.Test = cur, "clawback:"+in.Payment, in.Test
-		t.Type, t.DestinationId, t.DestinationKind = transaction.Deposit, in.Subject, transaction.IAMUserKind
-		t.Amount, t.Notes = currency.Cents(in.AmountCents), "restore "+in.Ref
-		// The money a dispute returned to us, owed to the wallet it was bought for.
-		t.SetContext(mintauth.WithAuthorized(t.Context()))
-		if err := t.Create(); err != nil {
-			return fmt.Errorf("%s on payment %s for %s/%s was not recorded: %w", in.Reason, in.Payment, in.Org, in.Subject, err)
-		}
-	}
-	if led := creditledger.Get(); led != nil {
-		if _, _, err := led.Credit(ctx, creditledger.CreditInput{
-			Org: in.Org, Subject: in.Subject, Currency: string(cur), Reason: in.Reason,
-			Tag: "topup", IdempotencyKey: "restore:" + in.Ref, AmountCents: in.AmountCents, Test: in.Test, Cash: true,
-		}); err != nil {
 			return fmt.Errorf("%s on payment %s for %s/%s did not post: %w", in.Reason, in.Payment, in.Org, in.Subject, err)
 		}
 	}
