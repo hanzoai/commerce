@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -810,6 +811,20 @@ func (db *PostgresDB) RunInTransaction(ctx context.Context, fn func(tx Transacti
 	return sqlTx.Commit()
 }
 
+// rowKey is the key of a row a query read, as the key it was written under: an
+// id that is a positive integer was written by an integer key (Encode renders one
+// in decimal), so it reads back as that integer key, and the model above encodes
+// it to the same hashid its Create answered. The SQLite store reads ids the same
+// way (sqliteIterator.Next). Read as a string key instead, a row loaded by query
+// reported its decimal id where a row created or got by key reported its hashid,
+// and a GetById of the decimal id missed the row.
+func rowKey(kind, id, namespace string) *postgresKey {
+	if n, err := strconv.ParseInt(id, 10, 64); err == nil && n > 0 {
+		return &postgresKey{kind: kind, intID: n, namespace: namespace}
+	}
+	return &postgresKey{kind: kind, stringID: id, namespace: namespace}
+}
+
 // postgresKey implements the Key interface
 type postgresKey struct {
 	kind       string
@@ -1053,11 +1068,7 @@ func (q *postgresQuery) GetAll(ctx context.Context, dst interface{}) ([]Key, err
 			sliceVal = reflect.Append(sliceVal, elem.Elem())
 		}
 
-		keys = append(keys, &postgresKey{
-			kind:      q.kind,
-			stringID:  id,
-			namespace: q.tenantID,
-		})
+		keys = append(keys, rowKey(q.kind, id, q.tenantID))
 	}
 
 	dstVal.Elem().Set(sliceVal)
@@ -1089,11 +1100,7 @@ func (q *postgresQuery) First(ctx context.Context, dst interface{}) (Key, error)
 		return nil, err
 	}
 
-	return &postgresKey{
-		kind:      q.kind,
-		stringID:  id,
-		namespace: q.tenantID,
-	}, nil
+	return rowKey(q.kind, id, q.tenantID), nil
 }
 
 func (q *postgresQuery) Count(ctx context.Context) (int, error) {
@@ -1143,11 +1150,7 @@ func (q *postgresQuery) Keys(ctx context.Context) ([]Key, error) {
 		if err := rows.Scan(&id); err != nil {
 			return nil, err
 		}
-		keys = append(keys, &postgresKey{
-			kind:      q.kind,
-			stringID:  id,
-			namespace: q.tenantID,
-		})
+		keys = append(keys, rowKey(q.kind, id, q.tenantID))
 	}
 
 	return keys, rows.Err()
@@ -1324,11 +1327,7 @@ func (it *postgresIterator) Next(dst interface{}) (Key, error) {
 
 	it.offset++
 
-	return &postgresKey{
-		kind:      it.kind,
-		stringID:  id,
-		namespace: it.namespace,
-	}, nil
+	return rowKey(it.kind, id, it.namespace), nil
 }
 
 func (it *postgresIterator) Cursor() (Cursor, error) {
