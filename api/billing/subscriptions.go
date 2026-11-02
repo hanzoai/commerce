@@ -164,10 +164,12 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 	if cur == "" {
 		cur = currency.USD
 	}
-	lines, err := linesAt(db, p.Slug, req.Lines, p.Interval, cur)
+	lines, err := linesAt(db, p, req.Lines, p.Interval, cur)
 	switch {
 	case errors.Is(err, errLinePlan):
 		return http.Fail(c, 404, "plan not found", nil)
+	case errors.Is(err, errPlanUnread):
+		return http.Fail(c, 503, err.Error(), nil)
 	case err != nil:
 		return http.Fail(c, 400, err.Error(), nil)
 	}
@@ -176,7 +178,7 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 	if qty < 1 {
 		qty = 1
 	}
-	if why := teamSeats(p.Slug, qty, lines); why != "" {
+	if why := seatOf(p).refusal(p.Slug, qty, lines); why != "" {
 		return http.Fail(c, 400, why, nil)
 	}
 
@@ -229,6 +231,10 @@ func subscriptionCreateError(c *zip.Ctx, err error) error {
 	return http.Fail(c, 500, "failed to create subscription", err)
 }
 
+// errPlanUnread is a plan the authority could not be read for. Nothing is priced,
+// opened or charged without its row.
+var errPlanUnread = errors.New("the plan could not be read; nothing was charged")
+
 // resolveSubscriptionPlan resolves a plan by slug — the DB row when present, else
 // the static catalog (seeded into the DB best-effort). The returned plan carries
 // the SERVER-AUTHORITATIVE price; a client-supplied amount is never consulted. It
@@ -245,6 +251,13 @@ func resolveSubscriptionPlan(db *datastore.Datastore, planId string) (*plan.Plan
 	pdb := plan.AuthorityDB(db.Context)
 	p := plan.New(pdb)
 	if err := p.GetById(planId); err != nil {
+		// Only a row that is not there is the embed's to answer. A read that failed
+		// is not an absence: the embed sells some plans by quote that their rows
+		// sell per seat, so answering from it would price a different plan.
+		if !errors.Is(err, datastore.ErrNoSuchEntity) {
+			log.Error("billing plans: authority read of %q FAILED: %v", planId, err, nil)
+			return nil, errPlanUnread
+		}
 		var staticP *staticPlan
 		for i := range catalog {
 			if catalog[i].Slug == planId {
@@ -412,16 +425,13 @@ func monthlyOnly(p *plan.Plan, interval types.Interval) error {
 // the wire fields, and p.Price and p.Interval are the answer — this core reads
 // them and never re-derives either.
 func createSubscription(db *datastore.Datastore, p *plan.Plan, req *createSubscriptionRequest) (*subscription.Subscription, error) {
-	// Seat gate: the plan's row is the sole authority for per-seat-ness and the
-	// seat floor (seatTerms). A per-seat plan bills Price × quantity, never below
+	// Seat gate: p, the plan's row, is the sole authority for per-seat-ness and
+	// the seat floor (seatOf). A per-seat plan bills Price × quantity, never below
 	// limits.minSeats, and member rows (each minting a per-user allotment) can
 	// never exceed the seats paid for.
-	quantity, err := seats(req.PlanId, req.Quantity, req.priced, len(req.Members))
+	quantity, err := seats(p, req.Quantity, req.priced, len(req.Members))
 	if err != nil {
 		return nil, err
-	}
-	if perSeat(req.PlanId) {
-		p.PerSeat = true
 	}
 
 	// Create subscription
@@ -498,7 +508,7 @@ func createSubscription(db *datastore.Datastore, p *plan.Plan, req *createSubscr
 	// Seat → credits: one zero-price bundle-child row per member, so the
 	// monthly allotment run grants each member their own per-user included
 	// credit (never a multiplied org wallet).
-	if perSeat(req.PlanId) {
+	if p.PerSeat {
 		provisionMembers(db, sub, req.PlanId, p, req.Members)
 	}
 
@@ -961,13 +971,19 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 	switch {
 	case errors.Is(err, errLinePlan):
 		return http.Fail(c, 404, "plan not found", nil)
+	case errors.Is(err, errPlanUnread):
+		return http.Fail(c, 503, err.Error(), nil)
 	case err != nil:
 		return http.Fail(c, 400, err.Error(), nil)
 	}
-	if why := teamSeats(slug, quantity, next); why != "" {
+	terms, err := seatFor(slug)
+	if err != nil {
+		return http.Fail(c, 503, err.Error(), nil)
+	}
+	if why := terms.refusal(slug, quantity, next); why != "" {
 		return http.Fail(c, 400, why, nil)
 	}
-	if perSeat(slug) {
+	if terms.each {
 		if paidSeats := min(quantity, max(sub.Quantity, 1)) + paid; len(req.Members) > paidSeats {
 			return http.Fail(c, 400,
 				fmt.Sprintf("members (%d) exceed seats paid for (%d)", len(req.Members), paidSeats), nil)
@@ -1027,10 +1043,6 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 				"moving a subscription to a pricier plan requires platform-administrator or internal-service credentials", nil)
 		}
 
-		if perSeat(slug) {
-			newPlan.PerSeat = true
-		}
-
 		if _, err := engine.ChangePlan(sub, newPlan, req.Prorate); err != nil {
 			return http.Fail(c, 400, err.Error(), nil)
 		}
@@ -1052,7 +1064,7 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 	}
 
 	// Seat → credits on seat changes: same per-member machinery as create.
-	if perSeat(slug) && len(req.Members) > 0 {
+	if terms.each && len(req.Members) > 0 {
 		provisionMembers(db, sub, slug, &sub.Plan, req.Members)
 	}
 
@@ -1525,22 +1537,23 @@ func subscriptionResponse(sub *subscription.Subscription) map[string]any {
 	return resp
 }
 
-// seats is the seat count a subscription to planID opens with, or why it cannot open:
+// seats is the seat count a subscription to p opens with, or why it cannot open:
 // at least one; for a per-seat plan at least the catalog's floor (limits.minSeats),
 // and never fewer seats than members. It is the ONE seat rule, asked by every path
 // that opens a subscription — and by a path that takes money for one, BEFORE it takes
 // the money.
 //
 // A team holds its other seat types as lines, and the floor, the ceiling and the
-// members count the whole team: quantity seats of planID and every line's.
-func seats(planID string, quantity int, lines []subscription.Line, members int) (int, error) {
+// members count the whole team: quantity seats of p and every line's.
+func seats(p *plan.Plan, quantity int, lines []subscription.Line, members int) (int, error) {
 	if quantity < 1 {
 		quantity = 1
 	}
-	if why := teamSeats(planID, quantity, lines); why != "" {
+	s := seatOf(p)
+	if why := s.refusal(p.Slug, quantity, lines); why != "" {
 		return 0, subValidationError{why}
 	}
-	if !perSeat(planID) {
+	if !s.each {
 		return quantity, nil
 	}
 	if team := quantity + lineSeats(lines); members > team {

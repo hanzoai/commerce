@@ -403,7 +403,11 @@ func TestSale_SeatsAreBounded(t *testing.T) {
 	m := walletMock("fp_seats")
 	withFakeSquare(t, m)
 	org := moneyOrg("wl-seats")
-	for _, q := range []int{7378697629483821, maxSeats("team") + 1} {
+	team, err := seatFor("team")
+	if err != nil {
+		t.Fatalf("team's seats: %v", err)
+	}
+	for _, q := range []int{7378697629483821, team.most + 1} {
 		body := fmt.Sprintf(`{"sourceId":"wnon:s","wallet":true,"planId":"team","quantity":%d}`, q)
 		if r := invokeSubscribeCard(org, ctx, body, nil); r.StatusCode != http.StatusBadRequest || !strings.Contains(bodyOf(r), "at most") {
 			t.Fatalf("%d seats: status=%d, want 400", q, r.StatusCode)
@@ -412,8 +416,8 @@ func TestSale_SeatsAreBounded(t *testing.T) {
 	if m.authorizeCalls != 0 {
 		t.Fatalf("an unbounded seat count reached the wallet %d time(s)", m.authorizeCalls)
 	}
-	if maxSeats("team") != 100 || maxSeats("dev") != seatCeiling {
-		t.Fatalf("maxSeats team=%d dev=%d, want the catalog's 100 and the ceiling", maxSeats("team"), maxSeats("dev"))
+	if dev, err := seatFor("dev"); err != nil || team.most != 100 || dev.most != seatCeiling {
+		t.Fatalf("seats team=%d dev=%d (%v), want the catalog's 100 and the ceiling", team.most, dev.most, err)
 	}
 }
 

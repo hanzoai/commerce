@@ -252,6 +252,10 @@ func fund(ctx context.Context, ev *events.Client, org *organization.Organization
 			return "", 0, fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, ref, err)
 		}
 		id = rc.TxHash
+	} else if held, ok := deposited(db, subject, via, ref); ok {
+		// The payment is already credited: a retry that completes a sale's credit
+		// finds the deposit the first attempt wrote, and credits nothing twice.
+		id = held
 	} else {
 		trans := transaction.New(db)
 		trans.Type = transaction.Deposit
@@ -285,6 +289,21 @@ func fund(ctx context.Context, ev *events.Client, org *organization.Organization
 		}
 	}
 	return id, balanceCents, nil
+}
+
+// deposited is the deposit a payment already credited subject with, by the
+// processor's reference fund stamps on it: one payment is one deposit.
+func deposited(db *datastore.Datastore, subject string, via processor.ProcessorType, ref string) (string, bool) {
+	if ref == "" {
+		return "", false
+	}
+	held := transaction.New(db)
+	ok, err := held.Query().Filter("SourceKind=", chargeSourceKind(via)).Filter("SourceId=", ref).
+		Filter("DestinationId=", subject).Filter("Type=", transaction.Deposit).Get()
+	if err != nil || !ok {
+		return "", false
+	}
+	return held.Id(), true
 }
 
 // seal records the successful charge's answer on its idempotency guard so a

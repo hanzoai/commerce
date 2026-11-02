@@ -872,7 +872,7 @@ func TestRecordFromBalance_TooFewSeatsTakesNothing(t *testing.T) {
 	defer ctx.Close()
 	org, db := balanceSetup(t, ctx, "rec-seats", 1_000_000)
 	p := lookupPlan("team")
-	if p == nil || !perSeat("team") || minSeats("team") < 2 {
+	if s, err := seatFor("team"); p == nil || err != nil || !s.each || s.least < 2 {
 		t.Fatalf("the catalog's team plan is not a per-seat plan with a floor of two")
 	}
 	start := time.Now().UTC().Truncate(24 * time.Hour)

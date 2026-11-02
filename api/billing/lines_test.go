@@ -299,7 +299,7 @@ func TestAnOfferCoversATeamOnlyWhenItCoversEverySeatType(t *testing.T) {
 func TestTheCatalogNamesTheTeamsSeatTypes(t *testing.T) {
 	for _, slug := range []string{"team", "team-premium"} {
 		p := lookupPlan(slug)
-		if p == nil || p.Group != "team" || !p.PerSeat || minSeats(slug) != 2 || maxSeats(slug) != 100 {
+		if s, err := seatFor(slug); p == nil || p.Group != "team" || !p.PerSeat || err != nil || s.least != 2 || s.most != 100 {
 			t.Errorf("%s: %+v, want a per-seat seat type of team, 2 to 100", slug, p)
 		}
 		if v := staticPlanFromModel(planFromStatic(p)); v.Group != "team" {

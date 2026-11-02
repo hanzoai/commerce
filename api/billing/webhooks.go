@@ -353,7 +353,7 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 	if err := trans.Create(); err != nil {
 		log.Warn("settlement %s: failed to write the local receipt: %v", paymentID, err)
 	}
-	if err := paymentorg.Put(paymentID, org.Name, who.subject, "", who.test); err != nil {
+	if err := paymentorg.Put(paymentID, org.Name, who.subject, "", 0, who.test); err != nil {
 		log.Warn("settlement %s: the org index was not written: %v", paymentID, err)
 	}
 	return nil
@@ -812,7 +812,7 @@ func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organi
 		return nil
 	}
 	id := stringField(obj, "id")
-	amount, _ := settlementAmount(obj)
+	amount, cur := settlementAmount(obj)
 	// What moves wallet money: a refund, funds a dispute withholds, a dispute won.
 	won := state == dispute.StateWon
 	moves := won || (amount > 0 && (!isDispute || dispute.Withholds(state)))
@@ -836,12 +836,35 @@ func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organi
 		log.Error("RECONCILE: %s %s from %s's account names payment %s, whose receipt is %s's — refused", event.Type, id, event.Org, paymentID, where.Org)
 		return nil
 	}
+	db := datastore.New(nscontext.WithNamespace(ctx, where.Org))
+	kind := "refund"
+	if isDispute {
+		kind = "dispute"
+	}
+	ref := kind + ":" + id
 	if where.Invoice != "" {
-		db := datastore.New(nscontext.WithNamespace(ctx, where.Org))
-		if isDispute {
+		// A payment that paid an invoice and also credited the wallet (an
+		// organization's order: its seats and its starting balance) is taken back
+		// from the wallet FIRST, up to what it credited there less what earlier
+		// refunds took, because that part is spendable; what a refund returns beyond
+		// it is the invoice's. A dispute is the whole payment's, so the invoice
+		// records every state it reports.
+		wallet := int64(0)
+		if where.Balance > 0 {
+			total, own, _, err := claimed(db, where.Subject, paymentID, ref)
+			if err != nil {
+				return fmt.Errorf("%s %s on payment %s: the wallet's earlier refunds could not be read: %w", event.Type, id, paymentID, err)
+			}
+			wallet = own
+			if own == 0 && !won {
+				wallet = max(min(int64(amount), where.Balance-total), 0)
+			}
+		}
+		switch {
+		case isDispute:
 			err = engine.RecordDispute(db, where.Invoice, state, version, at)
-		} else {
-			err = engine.RecordRefund(db, where.Invoice, id, int64(amount))
+		case int64(amount) > wallet:
+			err = engine.RecordRefund(db, where.Invoice, id, int64(amount)-wallet)
 		}
 		switch {
 		case errors.Is(err, datastore.ErrNoSuchEntity):
@@ -851,7 +874,11 @@ func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organi
 		case err != nil:
 			return fmt.Errorf("%s %s on payment %s did not reach invoice %s in %s: %w", event.Type, id, paymentID, where.Invoice, where.Org, err)
 		}
-		return nil
+		if where.Balance <= 0 {
+			return nil
+		}
+		amount = currency.Cents(wallet)
+		moves = won || (amount > 0 && (!isDispute || dispute.Withholds(state)))
 	}
 	if isDispute {
 		latest, err := engine.RecordPaymentDispute(paymentID, state, version, at)
@@ -868,26 +895,97 @@ func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organi
 	if moves && !won {
 		stopReload(ctx, where.Org, where.Subject, event.Type+" "+id)
 	}
-	led := creditledger.Get()
-	if led == nil || !moves {
+	if !moves {
 		return nil
-	}
-	kind := "refund"
-	if isDispute {
-		kind = "dispute"
 	}
 	in := creditledger.ClawbackInput{
 		Org: where.Org, Subject: where.Subject, Payment: paymentID,
-		Ref: kind + ":" + id, AmountCents: int64(amount), Reason: event.Type + " " + id, Test: where.Test,
+		Ref: ref, AmountCents: int64(amount), Reason: event.Type + " " + id, Test: where.Test,
 	}
-	if won {
-		_, err = led.Restore(ctx, in)
-	} else {
-		_, err = led.Clawback(ctx, in)
+	// Commerce's own books first: without a host ledger they are the balance, and
+	// with one they are commerce's record of the same money, as the settlement's
+	// local receipt is.
+	if err := clawLocal(db, in, cur, won); err != nil {
+		return fmt.Errorf("%s %s on payment %s for %s/%s was not recorded: %w", event.Type, id, paymentID, where.Org, where.Subject, err)
 	}
-	if err != nil {
-		return fmt.Errorf("%s %s on payment %s for %s/%s did not post: %w", event.Type, id, paymentID, where.Org, where.Subject, err)
+	if led := creditledger.Get(); led != nil {
+		if won {
+			_, err = led.Restore(ctx, in)
+		} else {
+			_, err = led.Clawback(ctx, in)
+		}
+		if err != nil {
+			return fmt.Errorf("%s %s on payment %s for %s/%s did not post: %w", event.Type, id, paymentID, where.Org, where.Subject, err)
+		}
 	}
 	_ = org
 	return nil
+}
+
+// claimed is what refunds and disputes of payment have taken back from subject in
+// commerce's own books: in all, and by ref alone, and whether ref's take was given
+// back (a dispute won).
+func claimed(db *datastore.Datastore, subject, payment, ref string) (total, own int64, restored bool, err error) {
+	rows := make([]*transaction.Transaction, 0)
+	if _, err := transaction.Query(db).Filter("Tags=", "clawback:"+payment).GetAll(&rows); err != nil {
+		return 0, 0, false, err
+	}
+	for _, r := range rows {
+		switch {
+		case r.Type == transaction.Withdraw && r.SourceId == subject:
+			total += int64(r.Amount)
+			if r.Notes == ref {
+				own = int64(r.Amount)
+			}
+		case r.Type == transaction.Deposit && r.DestinationId == subject:
+			total -= int64(r.Amount)
+			restored = restored || r.Notes == "restore "+ref
+		}
+	}
+	return total, own, restored, nil
+}
+
+// clawLocal records in commerce's own books what a refund or a dispute (in.Ref)
+// takes back from the wallet a payment credited: a withdrawal of in.AmountCents,
+// never more than the payment's deposits there less what earlier ones took, once
+// per ref; or, for a dispute won, the deposit of what its loss took, once. Without
+// a host ledger these books are the balance, so a refunded payment no longer stays
+// spendable in them.
+func clawLocal(db *datastore.Datastore, in creditledger.ClawbackInput, cur currency.Type, won bool) error {
+	total, own, restored, err := claimed(db, in.Subject, in.Payment, in.Ref)
+	if err != nil {
+		return err
+	}
+	t := transaction.New(db)
+	t.Currency, t.Tags, t.Test = cur, "clawback:"+in.Payment, in.Test
+	if won {
+		if own == 0 || restored {
+			return nil
+		}
+		t.Type, t.DestinationId, t.DestinationKind = transaction.Deposit, in.Subject, transaction.IAMUserKind
+		t.Amount, t.Notes = currency.Cents(own), "restore "+in.Ref
+		// Giving back what these books took is not new money.
+		t.SetContext(mintauth.WithAuthorized(t.Context()))
+		return t.Create()
+	}
+	if own > 0 {
+		return nil // this refund or dispute already took its part
+	}
+	deps := make([]*transaction.Transaction, 0)
+	if _, err := transaction.Query(db).Filter("SourceId=", in.Payment).Filter("DestinationId=", in.Subject).GetAll(&deps); err != nil {
+		return err
+	}
+	paid := int64(0)
+	for _, d := range deps {
+		if d.Type == transaction.Deposit {
+			paid += int64(d.Amount)
+		}
+	}
+	amount := min(in.AmountCents, paid-total)
+	if amount <= 0 {
+		return nil
+	}
+	t.Type, t.SourceId, t.SourceKind = transaction.Withdraw, in.Subject, transaction.IAMUserKind
+	t.Amount, t.Notes = currency.Cents(amount), in.Ref
+	return t.Create()
 }

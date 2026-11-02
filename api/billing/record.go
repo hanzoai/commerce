@@ -218,7 +218,7 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 	}
 
 	// Every rule that can refuse the plan is asked before anything moves.
-	lines, qty, seatMult, err := recordSeats(db, p, planID, in)
+	lines, qty, seatMult, err := recordSeats(db, p, in)
 	if err != nil {
 		return nil, err
 	}
@@ -405,23 +405,25 @@ func extendRecorded(ctx context.Context, org *organization.Organization, held *s
 // recordSeats is what a record opens a plan with, refused before anything moves:
 // a team's other seat types priced at the period paid (linesAt), the seats of the
 // plan's own, and the seats its price is multiplied by — one for a flat plan.
-func recordSeats(db *datastore.Datastore, p *plan.Plan, planID string, in RecordIn) ([]subscription.Line, int, int64, error) {
+func recordSeats(db *datastore.Datastore, p *plan.Plan, in RecordIn) ([]subscription.Line, int, int64, error) {
 	cur := p.Currency
 	if cur == "" {
 		cur = currency.USD
 	}
-	lines, err := linesAt(db, planID, in.Lines, p.Interval, cur)
+	lines, err := linesAt(db, p, in.Lines, p.Interval, cur)
 	switch {
 	case errors.Is(err, errLinePlan):
 		return nil, 0, 0, saleRefusal{saleMissing, "plan not found"}
+	case errors.Is(err, errPlanUnread):
+		return nil, 0, 0, saleRefusal{saleUnavailable, err.Error()}
 	case err != nil:
 		return nil, 0, 0, saleRefusal{saleRefused, err.Error()}
 	}
-	qty, err := seats(planID, in.Quantity, lines, 0)
+	qty, err := seats(p, in.Quantity, lines, 0)
 	if err != nil {
 		return nil, 0, 0, saleRefusal{saleRefused, err.Error()}
 	}
-	if perSeat(planID) {
+	if p.PerSeat {
 		return lines, qty, int64(qty), nil
 	}
 	return lines, qty, 1, nil
@@ -576,7 +578,7 @@ func recordFromBalance(ctx context.Context, org *organization.Organization, db *
 		return nil, saleRefusal{saleRefused, "a period paid from the balance is the one running now: it must have started and not yet ended"}
 	}
 	// Every rule that can refuse the plan is asked before anything moves.
-	lines, qty, seatMult, err := recordSeats(db, p, planID, in)
+	lines, qty, seatMult, err := recordSeats(db, p, in)
 	if err != nil {
 		return nil, err
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -761,46 +762,14 @@ func group(slug string) string {
 	return ""
 }
 
-// seatTerms is what a plan says of its seats — whether it is billed per seat, and
-// the limits that hold its floor and ceiling — read from the plan authority's row
-// for the slug: the row a sale is priced from, GET /v1/billing/plans serves and a
-// SuperAdmin restates, so a seat plan's terms move with its price and never need a
-// release. The embed answers only for a slug the authority holds no row for, and
-// when the authority cannot be read, loudly, as planAuthorityRows does. A retired
-// slug answers as its successor, as lookupPlan does.
-func seatTerms(slug string) (bool, *planLimits) {
-	if next, ok := successor[slug]; ok {
-		slug = next
-	}
-	row := plan.New(plan.AuthorityDB(context.Background()))
-	switch ok, err := row.Query().Filter("Slug=", slug).Get(); {
-	case err != nil:
-		log.Error("billing plans: authority read of %q FAILED, reading its seats from the embed: %v", slug, err, nil)
-	case ok:
-		return row.PerSeat, row.Limits
-	}
-	if p := lookupPlan(slug); p != nil {
-		return p.PerSeat, p.Limits
-	}
-	return false, nil
-}
-
-// perSeat reports whether the plan is billed per seat (seatTerms). Unknown slugs
-// are flat.
-func perSeat(slug string) bool {
-	each, _ := seatTerms(slug)
-	return each
-}
-
-// minSeats returns a plan's minimum billable seats (limits.minSeats, the ONE
-// canonical home for seat minimums, read by seatTerms). 1 when the plan is
-// unknown or declares no minimum.
-func minSeats(slug string) int {
-	_, l := seatTerms(slug)
-	if l == nil || l.MinSeats == nil || *l.MinSeats < 1 {
-		return 1
-	}
-	return *l.MinSeats
+// seat is what a plan row says of its seats: whether each one is billed (per
+// seat), and the fewest and the most a subscription to it holds, counted over
+// every seat type a team holds. The row is the authority — the row a sale is
+// priced from, GET /v1/billing/plans serves and a SuperAdmin restates — so a seat
+// plan's terms move with its price and never need a release.
+type seat struct {
+	each        bool
+	least, most int
 }
 
 // seatCeiling is the most seats any subscription holds. Every path that charges
@@ -808,22 +777,63 @@ func minSeats(slug string) int {
 // keeps that product far inside int64 for any price the catalog can state.
 const seatCeiling = 10000
 
-// maxSeats is the most seats a subscription to slug may hold: a per-seat plan's
-// limits.maxMembers where its row states one (seatTerms), since a seat past it
-// could seat no one, else seatCeiling.
-func maxSeats(slug string) int {
-	each, l := seatTerms(slug)
-	if each && l != nil && l.MaxMembers != nil && *l.MaxMembers > 0 && *l.MaxMembers < seatCeiling {
-		return *l.MaxMembers
+// seatOf is the seat terms of a plan row in hand: limits.minSeats (the ONE
+// canonical home for seat minimums) and limits.maxMembers, since a seat past it
+// could seat no one, bound a per-seat plan; a flat plan is one seat.
+func seatOf(p *plan.Plan) seat { return termsOf(p.PerSeat, p.Limits) }
+
+func termsOf(each bool, l *planLimits) seat {
+	s := seat{each: each, least: 1, most: seatCeiling}
+	if !each || l == nil {
+		return s
 	}
-	return seatCeiling
+	if l.MinSeats != nil && *l.MinSeats > 1 {
+		s.least = *l.MinSeats
+	}
+	if l.MaxMembers != nil && *l.MaxMembers > 0 && *l.MaxMembers < seatCeiling {
+		s.most = *l.MaxMembers
+	}
+	return s
 }
 
-// overSeats is why quantity is more seats than a subscription to slug may hold,
-// or "" when it is not.
-func overSeats(slug string, quantity int) string {
-	if most := maxSeats(slug); quantity > most {
-		return fmt.Sprintf("plan %q holds at most %d seats (got %d)", slug, most, quantity)
+// errSeatsUnread is a plan whose seat terms could not be read. Nothing that moves
+// seats or money goes on without them: the embed is not the row, and a row sold
+// per seat that the embed sells by quote would read as one seat.
+var errSeatsUnread = errors.New("the plan's seat terms could not be read; nothing was changed")
+
+// seatFor reads the seat terms of the plan slug names off the plan authority's
+// row, for a path that holds the slug and not the row. The embed answers only for
+// a slug no row holds; a read that fails is errSeatsUnread, never the embed's
+// answer. A retired slug answers as its successor, as lookupPlan does.
+func seatFor(slug string) (seat, error) {
+	if next, ok := successor[slug]; ok {
+		slug = next
+	}
+	row := plan.New(plan.AuthorityDB(context.Background()))
+	ok, err := row.Query().Filter("Slug=", slug).Get()
+	switch {
+	case err != nil:
+		log.Error("billing plans: authority read of %q FAILED: %v", slug, err, nil)
+		return seat{}, errSeatsUnread
+	case ok:
+		return seatOf(row), nil
+	}
+	if p := lookupPlan(slug); p != nil {
+		return termsOf(p.PerSeat, p.Limits), nil
+	}
+	return termsOf(false, nil), nil
+}
+
+// refusal is why quantity seats of slug and the lines' seats cannot be held, or
+// "" when they can: a per-seat plan holds at least its floor and at most its
+// ceiling, counted over every seat type.
+func (s seat) refusal(slug string, quantity int, lines []subscription.Line) string {
+	team := quantity + lineSeats(lines)
+	if team > s.most {
+		return fmt.Sprintf("plan %q holds at most %d seats (got %d)", slug, s.most, team)
+	}
+	if s.each && team < s.least {
+		return fmt.Sprintf("plan %q requires at least %d seats (got %d)", slug, s.least, team)
 	}
 	return ""
 }
