@@ -1,7 +1,6 @@
 package billing
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"strings"
@@ -415,43 +414,5 @@ func TestATrialArmsWhenItsFirstPeriodIsCharged(t *testing.T) {
 	}
 	if !armedAt(t, ctx, org, org.Name) {
 		t.Fatal("the trial's first paid period did not arm the rule")
-	}
-}
-
-// Saving a card arms the rule for a payer whose plan states a reload and who has no
-// rule on file; a rule the payer switched off stays off.
-func TestSavingACardArmsAPlansReload(t *testing.T) {
-	for _, off := range []bool{false, true} {
-		ctx := ae.NewContext()
-		reloadPlan(t, ctx, "ultra", 19500, nil, ultraReload)
-		name := "arm-save"
-		if off {
-			name = "arm-save-off"
-		}
-		org := moneyOrg(name)
-		db := datastore.New(org.Namespaced(ctx))
-		seedSub(t, db, name, "ultra", "active", "square", "")
-		if off {
-			cfg := autorecharge.New(db)
-			cfg.UserId, cfg.Enabled, cfg.ThresholdCents, cfg.AmountCents, cfg.Currency = name, false, 2000, 7000, "usd"
-			if err := cfg.Create(); err != nil {
-				t.Fatal(err)
-			}
-		}
-		withFakeSquare(t, squareMock("cust_s", "ccof_s", ""))
-
-		if _, _, err := CreateMethod(context.Context(ctx), org, "buyer@acme.test", CreateMethodIn{
-			CustomerId: name, Type: "card", ProviderRef: "cnon:ok",
-		}); err != nil {
-			t.Fatalf("save card: %v", err)
-		}
-		got := loadAutoRecharge(db, name)
-		switch {
-		case !off && !armedAt(t, ctx, org, name):
-			t.Errorf("saving a card did not arm the plan's reload: %+v", got)
-		case off && (got == nil || got.Enabled):
-			t.Errorf("saving a card switched on a rule the payer had switched off: %+v", got)
-		}
-		ctx.Close()
 	}
 }

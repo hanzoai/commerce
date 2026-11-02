@@ -596,10 +596,10 @@ func (u *unanswered) Charge(ctx context.Context, req processor.PaymentRequest) (
 	return nil, context.DeadlineExceeded
 }
 
-// A reload whose answer was lost may have moved money, so the next sweep asks
-// under the same key and keeps its place against the daily limit: the processor
-// settles the trigger once however many answers go missing, even when the amount
-// is edited between sweeps.
+// A reload whose answer was lost may have moved money, so its trigger stays open
+// and every later sweep asks it again exactly — the same key, the amount and card
+// it was reserved with — even when the rule's amount is edited between sweeps: the
+// processor settles the trigger once, and the day counts it once.
 func TestALostAnswerCountsAgainstTheDay(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -624,7 +624,7 @@ func TestALostAnswerCountsAgainstTheDay(t *testing.T) {
 	if m.chargeCalls != 1 {
 		t.Fatalf("the processor settled %d reloads for one trigger, want 1", m.chargeCalls)
 	}
-	if got := storedRule(t, ctx, org); got.Reloads != ReloadsPerDay || got.Seq != 0 {
-		t.Fatalf("the rule counts %d reloads at trigger %d, want %d at 0", got.Reloads, got.Seq, ReloadsPerDay)
+	if got := storedRule(t, ctx, org); got.Reloads != 1 || got.Seq != 0 || got.Amount != 2500 {
+		t.Fatalf("the rule counts %d reloads at trigger %d open for %d, want 1 at 0 open for 2500", got.Reloads, got.Seq, got.Amount)
 	}
 }

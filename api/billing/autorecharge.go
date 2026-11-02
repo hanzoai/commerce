@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"cmp"
 	"context"
 	stdjson "encoding/json"
 	"errors"
@@ -21,9 +22,12 @@ import (
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
+	"github.com/hanzoai/commerce/models/paymentorg"
 	"github.com/hanzoai/commerce/models/plan"
+	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/types/currency"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/util/nscontext"
 )
 
 // loadAutoRecharge returns the payer's auto-recharge rule (keyed by the payer's
@@ -253,15 +257,32 @@ func IsAutoRechargeRefused(err error) bool {
 }
 
 // checkRule refuses an armed rule whose amount the charge would refuse, or whose
-// threshold is outside the same range. The bound is the top-up's (topupBounds),
-// which chargeAndCredit enforces on every reload: one bound, one definition, so a
-// rule cannot be stored that its own sweep would refuse to charge.
+// threshold is outside the same range (CheckReload).
 func checkRule(in AutoRechargeEdit) error {
+	return reloadBounds(in.ThresholdCents, in.AmountCents)
+}
+
+// CheckReload is the one validator of a plan row's reload figures
+// (plan.Limits.Reload), for any write of a plan: an amount of 0 states no reload
+// and is valid; any other amount is the top-up's own range,  to ,000, and the
+// threshold /usr/bin/zsh to ,000 (topupBounds) — the bound chargeAndCredit enforces on
+// every reload, so a plan cannot state a reload its own sweep would refuse to
+// charge. A refusal is the customer's sentence and answers IsAutoRechargeRefused.
+func CheckReload(thresholdCents, amountCents int64) error {
+	if amountCents == 0 {
+		return nil
+	}
+	return reloadBounds(thresholdCents, amountCents)
+}
+
+// reloadBounds refuses an amount outside topupBounds, or a threshold outside /usr/bin/zsh
+// to its top.
+func reloadBounds(thresholdCents, amountCents int64) error {
 	lo, hi := topupBounds()
-	if in.AmountCents < lo || in.AmountCents > hi {
+	if amountCents < lo || amountCents > hi {
 		return ruleRefusal{fmt.Sprintf("The reload amount must be between %s and %s.", usd(lo), usd(hi))}
 	}
-	if in.ThresholdCents < 0 || in.ThresholdCents > hi {
+	if thresholdCents < 0 || thresholdCents > hi {
 		return ruleRefusal{fmt.Sprintf("The balance to reload below must be between %s and %s.", usd(0), usd(hi))}
 	}
 	return nil
@@ -366,46 +387,29 @@ func WriteAutoRecharge(ctx context.Context, org *organization.Organization, subj
 	if err != nil {
 		return AutoRecharge{}, err
 	}
-	v, _, err := writeRule(ctx, org, payer, in, false)
+	if in.Enabled {
+		if err := checkRule(in); err != nil {
+			return AutoRecharge{}, err
+		}
+		if defaultPaymentMethod(datastore.New(org.Namespaced(ctx)), payer) == nil {
+			return AutoRecharge{}, ErrNoDefaultPaymentMethod
+		}
+	}
+	// The payer's own word: the rule is theirs from here on, whatever plan set it.
+	v, _, err := writeRule(ctx, org, payer, func(c *autorecharge.AutoRecharge) bool {
+		c.Enabled, c.ThresholdCents, c.AmountCents, c.Currency = in.Enabled, in.ThresholdCents, in.AmountCents, ruleCurrencyOf(in.Currency)
+		c.Plan, c.Waiting = "", false
+		return true
+	})
 	return v, err
 }
 
-// writeRule is WriteAutoRecharge's one write, for payer. The card it requires is
-// payer's own default card, the one the sweep charges. With keep set, a rule the
-// payer has switched on is left exactly as it stands and nothing is written: the
-// answer's second value says whether the rule was written.
-func writeRule(ctx context.Context, org *organization.Organization, payer string, in AutoRechargeEdit, keep bool) (AutoRecharge, bool, error) {
+// writeRule applies set to payer's rule under compare-and-swap, creating the rule
+// when payer has none, and answers it and whether set wrote. set changes the rule's
+// own fields and nothing the sweep keeps beside them (the day's count, the open
+// trigger): a save that wrote a stale count back would reopen the limit.
+func writeRule(ctx context.Context, org *organization.Organization, payer string, set func(*autorecharge.AutoRecharge) bool) (AutoRecharge, bool, error) {
 	db := datastore.New(org.Namespaced(ctx))
-
-	if keep {
-		if cfg := loadAutoRecharge(db, payer); cfg != nil && cfg.Enabled {
-			return autoRechargeView(cfg, payer, reloadsFor(ctx, db, org, payer)), false, nil
-		}
-	}
-	if in.Enabled {
-		if err := checkRule(in); err != nil {
-			return AutoRecharge{}, false, err
-		}
-		if defaultPaymentMethod(db, payer) == nil {
-			return AutoRecharge{}, false, ErrNoDefaultPaymentMethod
-		}
-	}
-
-	cur := strings.ToLower(strings.TrimSpace(in.Currency))
-	if cur == "" {
-		cur = "usd"
-	}
-
-	// The rule's own fields, and nothing the sweep keeps beside them (the day's
-	// reload count, the trigger it last reloaded): a save that wrote a stale count
-	// back would reopen the limit.
-	set := func(c *autorecharge.AutoRecharge) bool {
-		if keep && c.Enabled {
-			return false
-		}
-		c.Enabled, c.ThresholdCents, c.AmountCents, c.Currency = in.Enabled, in.ThresholdCents, in.AmountCents, cur
-		return true
-	}
 	cfg, wrote, err := changeRule(db, payer, set)
 	if err != nil {
 		return AutoRecharge{}, false, err
@@ -413,14 +417,22 @@ func writeRule(ctx context.Context, org *organization.Organization, payer string
 	if cfg == nil {
 		cfg = autorecharge.New(db)
 		cfg.UserId = payer
-		set(cfg)
+		if wrote = set(cfg); !wrote {
+			return autoRechargeView(nil, payer, reloadsFor(ctx, db, org, payer)), false, nil
+		}
 		if err := cfg.Create(); err != nil {
 			return AutoRecharge{}, false, err
 		}
-		wrote = true
 	}
-
 	return autoRechargeView(cfg, payer, reloadsFor(ctx, db, org, payer)), wrote, nil
+}
+
+// ruleCurrencyOf is a rule's currency as stored: lower case, usd when unnamed.
+func ruleCurrencyOf(cur string) string {
+	if c := strings.ToLower(strings.TrimSpace(cur)); c != "" {
+		return c
+	}
+	return "usd"
 }
 
 // Arming is what a purchase did to the buying payer's auto-recharge, answered for a
@@ -428,7 +440,8 @@ func writeRule(ctx context.Context, org *organization.Organization, payer string
 //
 //	"armed"      the rule is on at the plan's figures
 //	"kept"       the payer had switched its own rule on, and it is left as it stands
-//	"needs_card" the payer has no card on file to charge, so nothing was switched on
+//	"needs_card" the payer has no card on file to charge: nothing was switched on,
+//	             and saving a card switches it on (armOnCard)
 type Arming struct {
 	State string `json:"state"`
 }
@@ -442,56 +455,99 @@ const (
 
 // armForPlan switches payer's auto-recharge on at the figures the plan row for slug
 // states (plan.Limits.Reload) once a purchase of the plan is paid, and answers what
-// it did. A rule the payer switched on is left as it stands (kept); a missing or
-// switched-off rule takes the plan's figures (armed), which needs a card on file
-// (needs_card when there is none). nil when the row states no reload, or when the
-// rule could not be written for a reason the buyer cannot fix, which is logged. It
-// never fails the purchase.
+// it did. A rule the payer switched on themselves is left as it stands (kept). A
+// missing or switched-off rule, or one another plan switched on, takes the plan's
+// figures and names the plan (armed) — which needs a card on file; with none the
+// rule is marked waiting for one (needs_card). nil when the row states no reload,
+// or when the rule could not be written for a reason the buyer cannot fix, which
+// is logged. It never fails the purchase.
 func armForPlan(ctx context.Context, org *organization.Organization, payer, slug string, cur currency.Type) *Arming {
 	l := authorityLimits(ctx, slug)
 	if l == nil || l.Reload == nil {
 		return nil
 	}
-	if cur == "" {
-		cur = currency.USD
+	in := AutoRechargeEdit{Enabled: true, ThresholdCents: l.Reload.ThresholdCents, AmountCents: l.Reload.AmountCents, Currency: string(cur)}
+	if err := checkRule(in); err != nil {
+		log.Error("auto-recharge: plan %q states a reload its sweep would refuse, so the rule for %q was not switched on: %v", slug, payer, err)
+		return nil
 	}
-	v, wrote, err := writeRule(ctx, org, payer, AutoRechargeEdit{
-		Enabled: true, ThresholdCents: l.Reload.ThresholdCents, AmountCents: l.Reload.AmountCents, Currency: string(cur),
-	}, true)
-	switch {
-	case errors.Is(err, ErrNoDefaultPaymentMethod):
-		log.Info("auto-recharge: plan %q left the rule for %q off: no card on file", slug, payer)
-		return &Arming{State: needsCard}
-	case err != nil:
+	card := defaultPaymentMethod(datastore.New(org.Namespaced(ctx)), payer) != nil
+	state := armed
+	v, _, err := writeRule(ctx, org, payer, func(c *autorecharge.AutoRecharge) bool {
+		switch {
+		case c.Enabled && c.Plan == "":
+			state = kept
+			return false
+		case !card:
+			state = needsCard
+			c.Enabled, c.Plan, c.Waiting = false, slug, true
+			return true
+		}
+		state = armed
+		c.Enabled, c.ThresholdCents, c.AmountCents, c.Currency = true, in.ThresholdCents, in.AmountCents, ruleCurrencyOf(in.Currency)
+		c.Plan, c.Waiting = slug, false
+		return true
+	})
+	if err != nil {
 		log.Error("auto-recharge: plan %q did not switch on the rule for %q: %v", slug, payer, err)
 		return nil
-	case !wrote:
-		return &Arming{State: kept}
 	}
-	log.Info("auto-recharge: plan %q switched on the rule for %q: reload %d %s below %d, at most %d a day (0 = unbounded)",
-		slug, payer, v.AmountCents, v.Currency, v.ThresholdCents, v.PerDay)
-	return &Arming{State: armed}
+	switch state {
+	case armed:
+		log.Info("auto-recharge: plan %q switched on the rule for %q: reload %d %s below %d, at most %d a day (0 = unbounded)",
+			slug, payer, v.AmountCents, v.Currency, v.ThresholdCents, v.PerDay)
+	case needsCard:
+		log.Info("auto-recharge: plan %q waits for a card on file to switch on the rule for %q", slug, payer)
+	}
+	return &Arming{State: state}
 }
 
-// armOnCard switches the auto-recharge of the payer subject names (payerOf; a
-// subject outside the org arms nothing) on once a card is saved for it, when the
-// plan the payer is served from states a reload and the payer has no rule on
-// file. A rule on file, on or off, is the payer's own decision and is left as it
-// stands. It never fails the save.
+// armOnCard switches on, once a card is saved for the payer subject names
+// (payerOf; a subject outside the org arms nothing), the reload a purchase left
+// waiting for one: the payer's rule is waiting (its sale answered needs_card) for
+// the plan the payer is served from now, on a period paid rather than a trial. No
+// other rule is touched — not one the payer set, and not a plan the buyer bought
+// before its row stated a reload. It never fails the save.
 func armOnCard(ctx context.Context, org *organization.Organization, subject string) {
 	payer, err := payerOf(org, subject)
 	if err != nil {
 		return
 	}
 	db := datastore.New(org.Namespaced(ctx))
-	if loadAutoRecharge(db, payer) != nil {
+	cfg := loadAutoRecharge(db, payer)
+	if cfg == nil || !cfg.Waiting || cfg.Plan == "" {
 		return
 	}
 	s := servedSubscription(db, payer, org.TestMode())
-	if s == nil {
+	if s == nil || s.Status != subscription.Active || servedAs(subscriptionSlug(s)) != cfg.Plan {
 		return
 	}
-	armForPlan(ctx, org, payer, servedAs(subscriptionSlug(s)), s.Plan.Currency)
+	armForPlan(ctx, org, payer, cfg.Plan, s.Plan.Currency)
+}
+
+// disarm switches off the rule the plan slug switched on for payer — or left
+// waiting for a card — once payer no longer holds that plan: it was cancelled, now
+// or at its period's end, or left for a plan with no reload. The rule stays on
+// file switched off, at the figures the plan set; a rule the payer set themselves
+// names no plan and is never touched. It never fails the act that called it.
+func disarm(ctx context.Context, org *organization.Organization, payer, slug string) {
+	if slug == "" {
+		return
+	}
+	db := datastore.New(org.Namespaced(ctx))
+	_, off, err := changeRule(db, payer, func(c *autorecharge.AutoRecharge) bool {
+		if c.Plan != slug {
+			return false
+		}
+		c.Enabled, c.Plan, c.Waiting = false, "", false
+		return true
+	})
+	switch {
+	case err != nil:
+		log.Error("auto-recharge: the rule plan %q switched on for %q was not switched off: %v", slug, payer, err)
+	case off:
+		log.Info("auto-recharge: %q no longer holds plan %q; the rule it switched on is off", payer, slug)
+	}
 }
 
 // GetAutoRecharge returns the caller's payer's auto-recharge rule (or the disabled
@@ -602,7 +658,7 @@ func RunAutoRecharge(ctx context.Context, ev *events.Client) (*RechargeRun, erro
 	run := &RechargeRun{Orgs: len(orgs), Results: make([]RechargeResult, 0)}
 	for _, org := range orgs {
 		db := datastore.New(org.Namespaced(ctx))
-		for _, payer := range payers(db) {
+		for _, payer := range payers(db, org) {
 			r, ok := reloadPayer(ctx, ev, org, db, payer)
 			if !ok {
 				continue
@@ -616,38 +672,50 @@ func RunAutoRecharge(ctx context.Context, ev *events.Client) (*RechargeRun, erro
 	return run, nil
 }
 
-// payers are the subjects in db with a rule on file, each once, in order.
-func payers(db *datastore.Datastore) []string {
+// payers are the payers in db with a rule on file, each once, in order: the org's
+// own account and the accounts within it (payerOf). A rule keyed by any other
+// subject is never swept, and how many there are is logged so they can be found.
+func payers(db *datastore.Datastore, org *organization.Organization) []string {
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	rows := make([]*autorecharge.AutoRecharge, 0)
 	if _, err := autorecharge.Query(db).Ancestor(rootKey).GetAll(&rows); err != nil {
-		log.Error("auto-recharge: could not list the rules: %v", err)
+		log.Error("auto-recharge: could not list the rules of %s: %v", org.Name, err)
 		return nil
 	}
 	out := make([]string, 0, len(rows))
+	foreign := 0
 	for _, r := range rows {
-		if r.UserId != "" && !slices.Contains(out, r.UserId) {
-			out = append(out, r.UserId)
+		payer, err := payerOf(org, r.UserId)
+		if err != nil || r.UserId == "" || payer != r.UserId {
+			foreign++
+			continue
 		}
+		if !slices.Contains(out, payer) {
+			out = append(out, payer)
+		}
+	}
+	if foreign > 0 {
+		log.Warn("auto-recharge: %d rule rows in %s are keyed outside its accounts and are not swept", foreign, org.Name)
 	}
 	slices.Sort(out)
 	return out
 }
 
-// reloadKey is the idempotency key of the reload answering cfg's current trigger:
-// the payer, the rule, the trigger (Seq, the reloads the rule has completed) and
-// the processor's declines of that trigger (Tries).
+// reloadKey is the idempotency key of the reload answering cfg's open trigger: the
+// payer, the rule, the trigger (Seq, the reloads the rule has completed) and the
+// processor's refusals of it (Tries).
 //
-// It is the duplicate guard, and nothing else. Every sweep that sees one trigger —
-// two that overlap, or one retried after its answer was lost — derives the same key,
-// so the charge guard and the processor replay the first charge instead of making a
-// second. A trigger is reloaded once whatever its amount: an edit of the amount
-// between a charge and its record cannot buy a second charge. Once a reload is
-// recorded Seq moves on, and a balance drained below the threshold again is the next
-// trigger, with a key of its own however soon after the last reload it falls. A
-// charge the processor refused (processor.Answer) moves Tries on, so the card is
-// asked again under a new key rather than answered from the refusal; a charge with
-// no answer keeps its key, because it may have moved money.
+// It is the duplicate guard, and nothing else. Every sweep that asks one trigger —
+// two that overlap, or one retried after its answer was lost — sends the same key
+// with the same amount on the same card (Amount and Card, fixed when the trigger is
+// reserved), so the charge guard and the processor replay the first charge instead
+// of making a second, whatever the rule or the default card has become since. Once
+// a reload is credited Seq moves on, and a balance drained below the threshold again
+// is the next trigger, with a key of its own however soon after the last reload it
+// falls. A charge the processor refused (processor.Answer) moves Tries on, so the
+// card is asked again under a new key rather than answered from the refusal; a
+// charge with no answer — a lost one, or a key the processor says an earlier request
+// holds — keeps its key, amount and card, because it may have moved money.
 func reloadKey(cfg *autorecharge.AutoRecharge, payer string) string {
 	return "reload:" + payer + ":rule:" + cfg.Id() + ":n:" + strconv.FormatInt(cfg.Seq, 10) + ":try:" + strconv.Itoa(cfg.Tries)
 }
@@ -660,22 +728,34 @@ func owed(c *autorecharge.AutoRecharge, available int64) bool {
 	return c.Enabled && c.AmountCents > 0 && available < c.ThresholdCents && (c.Seq == 0 || available < c.After)
 }
 
-// reloadPayer runs one payer's rule. ok is false when there is nothing to report:
-// the rule is off, or the payer's balance is not on a new trigger below its
-// threshold.
+// reloadPayer runs one payer's rule, in the order that settles money first: a
+// charge that settled and is not yet credited is credited (creditReload); an open
+// trigger whose charge has no answer is asked again exactly (askReload); and only
+// then is a new trigger looked for. ok is false when there is nothing to report.
 //
 // The balance is the payer's prepaid money in the ledger the spend gate reads
 // (prepaid.balance): the host's when one is injected, commerce's own otherwise.
-// A charge is credited to that same ledger before the reload is recorded (fund),
-// so the next sweep reads the money the reload bought.
+// A read that fails changes nothing, and the next sweep reads again.
 func reloadPayer(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, payer string) (RechargeResult, bool) {
 	cfg := loadAutoRecharge(db, payer)
-	if cfg == nil || !cfg.Enabled || cfg.AmountCents <= 0 {
+	switch {
+	case cfg == nil:
+		return RechargeResult{}, false
+	case cfg.Ref != "":
+		return creditReload(ctx, org, db, payer, cfg)
+	case cfg.Amount > 0 && !cfg.Enabled:
+		// Switched off with a charge unanswered: it is never asked again, because a
+		// charge that never reached the processor would be made now, after the payer
+		// said stop. It is the operator's to reconcile under its key.
+		log.Error("RECONCILE: auto-reload for %q was switched off with %d unanswered under %s", payer, cfg.Amount, reloadKey(cfg, payer))
+		return RechargeResult{OrgName: org.Name, UserId: payer, Error: "switched off with a reload unanswered"}, true
+	case cfg.Amount > 0:
+		return askReload(ctx, ev, org, db, payer, cfg, false)
+	case !cfg.Enabled || cfg.AmountCents <= 0:
 		return RechargeResult{}, false
 	}
-	cur := ruleCurrency(cfg)
-	pre := prepaidFor(ctx, org)
-	available, err := pre.balance(ctx, payer, cur)
+
+	available, err := prepaidFor(ctx, org).balance(ctx, payer, ruleCurrency(cfg))
 	if err != nil {
 		return RechargeResult{OrgName: org.Name, UserId: payer, Error: "the balance could not be read: " + err.Error()}, true
 	}
@@ -683,25 +763,31 @@ func reloadPayer(ctx context.Context, ev *events.Client, org *organization.Organ
 	if !owed(cfg, available) {
 		return RechargeResult{}, false
 	}
+	pm := defaultPaymentMethod(db, payer)
+	if pm == nil {
+		return RechargeResult{OrgName: org.Name, UserId: payer, Error: "no default payment method"}, true
+	}
 
-	// The reload is RESERVED before any card is touched: the day's count is taken
-	// under compare-and-swap against the rule as it stands now, so a rule switched
-	// off or changed since it was read above is not charged, a sweep that read the
-	// balance before another sweep's reload was recorded (Seq moved) charges
-	// nothing, and the limit holds however many sweeps overlap. A rule that has
-	// reloaded as many times today as the payer's plan allows (reloadsFor) waits
-	// for tomorrow, and says so in its row; a plan that bounds nothing is reloaded
-	// whenever it is due, the day's count kept all the same. A card that declines is
-	// asked at most ReloadsPerDay times a day, on every plan.
+	// The trigger is RESERVED before any card is touched, under compare-and-swap
+	// against the rule as it stands now: a rule switched off or changed since it
+	// was read is not charged; a trigger another sweep has opened (Amount) or
+	// closed since this one read the balance (Seq moved) is not opened again; and
+	// the day's count holds however many sweeps overlap. The reservation fixes the
+	// trigger's charge — the rule's amount, the payer's default card, the balance it
+	// was read at. A payer that has reloaded as many times today as its plan allows
+	// (reloadsFor) waits for tomorrow, and says so in its row; a plan that bounds
+	// nothing is reloaded whenever it is due, the day's count kept all the same. A
+	// card the processor refuses is asked at most ReloadsPerDay times a day, on
+	// every plan.
 	today := time.Now().UTC().Format(time.DateOnly)
 	bound := reloadsFor(ctx, db, org, payer)
 	full := ""
 	cfg, reserved, rerr := changeRule(db, payer, func(c *autorecharge.AutoRecharge) bool {
-		if c.Seq != seen || !owed(c, available) {
+		if c.Seq != seen || c.Amount > 0 || c.Ref != "" || !owed(c, available) {
 			return false
 		}
 		if c.Day != today {
-			c.Day, c.Reloads, c.Declines, c.Txn = today, 0, 0, ""
+			c.Day, c.Reloads, c.Declines = today, 0, 0
 		}
 		switch {
 		case c.Declines >= ReloadsPerDay:
@@ -712,6 +798,7 @@ func reloadPayer(ctx context.Context, ev *events.Client, org *organization.Organ
 			return false
 		}
 		c.Reloads++
+		c.Amount, c.Card, c.Base = c.AmountCents, pm.Id(), available
 		return true
 	})
 	switch {
@@ -722,81 +809,132 @@ func reloadPayer(ctx context.Context, ev *events.Client, org *organization.Organ
 	case !reserved:
 		return RechargeResult{}, false
 	}
-	cur = ruleCurrency(cfg)
+	return askReload(ctx, ev, org, db, payer, cfg, true)
+}
 
-	pm := defaultPaymentMethod(db, payer)
+// askReload asks the processor for cfg's open trigger: Amount on Card under the
+// trigger's key. fresh says this sweep reserved the trigger, and alone may give the
+// reservation back. A settled charge is indexed to the payer (models/paymentorg),
+// so a refund or dispute of it finds the wallet it credited, recorded on the rule
+// as awaiting its credit (Ref), and credited (creditReload).
+func askReload(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, payer string, cfg *autorecharge.AutoRecharge, fresh bool) (RechargeResult, bool) {
+	seq, tries := cfg.Seq, cfg.Tries
+	today := time.Now().UTC().Format(time.DateOnly)
+	cur := ruleCurrency(cfg)
+	pm := cardOf(db, payer, cfg.Card)
 	if pm == nil {
-		release(db, payer, today)
-		return RechargeResult{OrgName: org.Name, UserId: payer, Error: "no default payment method"}, true
+		if fresh {
+			release(db, payer, today, seq, tries)
+		}
+		log.Error("RECONCILE: auto-reload for %q is open on card %s, which is no longer on file", payer, cfg.Card)
+		return RechargeResult{OrgName: org.Name, UserId: payer, Error: "the card the reload was asked on is no longer on file"}, true
 	}
 
-	desc := fmt.Sprintf("Auto-recharge %d %s for %s", cfg.AmountCents, cur, payer)
-	r, err := chargeAndCredit(ctx, ev, org, db, pm, cfg.AmountCents, cur, payer, reloadKey(cfg, payer), desc)
+	desc := fmt.Sprintf("Auto-recharge %d %s for %s", cfg.Amount, cur, payer)
+	r, err := chargeAndCredit(ctx, ev, org, db, pm, cfg.Amount, cur, payer, reloadKey(cfg, payer), desc)
 	if err != nil {
-		// A charge refused before the processor was asked gives its reservation
-		// back. The processor's own refusal (processor.Answer: it was reached and
-		// moved nothing) keeps it and moves the trigger's try on, so the card is
-		// asked again under a new key. Every other failure keeps the key: an answer
-		// lost or a credit failed may hide money that moved, so the next sweep asks
-		// under the same key and the charge guard and the processor answer for it.
+		// Refused before the processor was asked: the reservation is given back by
+		// the sweep that made it. Refused by the processor (processor.Answer): it
+		// moved nothing, and the trigger's try moves on. Anything else may have moved
+		// money: the trigger stays open, and the next sweep asks it again exactly.
 		switch {
 		case unasked(err):
-			release(db, payer, today)
+			if fresh {
+				release(db, payer, today, seq, tries)
+			}
 		case answered(err):
-			declined(db, payer, today, seen)
+			refused(db, payer, today, seq, tries)
 		}
 		log.Error("Auto-recharge charge failed for %q: %v", payer, err)
 		return RechargeResult{OrgName: org.Name, UserId: payer, Error: err.Error()}, true
 	}
-	if err := fund(ctx, org, payer, cur, r); err != nil {
-		// The card was charged and the balance the gate reads was not credited.
-		// The trigger stays open (Seq unmoved), so the next sweep replays this
-		// receipt under the same key — charging nothing — and credits it again
-		// under the processor's reference, which the ledger takes once.
-		log.Error("RECONCILE: auto-reload %s for %q (%d %s) charged and the spendable balance was NOT credited: %v — retried on the next sweep under the same key",
-			r.ProcessorRef, payer, r.AmountCents, cur, err)
+
+	ref := cmp.Or(r.ProcessorRef, r.TransactionId)
+	if err := paymentorg.Put(ref, org.Name, payer, "", org.TestMode()); err != nil {
+		log.Warn("auto-recharge: payment %s: the index to %q was not written, so its refund or dispute will not find the wallet it credited: %v", ref, payer, err)
+	}
+	cfg, _, err = changeRule(db, payer, func(c *autorecharge.AutoRecharge) bool {
+		if c.Seq != seq || c.Tries != tries || c.Ref != "" {
+			return false
+		}
+		c.Ref, c.Amount, c.Txn = ref, r.AmountCents, r.TransactionId
+		return true
+	})
+	if err != nil || cfg == nil || cfg.Ref != ref {
+		// Not recorded here: another sweep recorded or closed the same charge, or the
+		// store failed and the next sweep asks the trigger again, replaying this one.
+		if err != nil {
+			log.Error("auto-recharge: the reload %s for %q was charged and not recorded: %v", ref, payer, err)
+		}
+		return RechargeResult{}, false
+	}
+	return creditReload(ctx, org, db, payer, cfg)
+}
+
+// creditReload credits the settled charge cfg awaits (Ref, Amount) to the ledger
+// the spend gate reads (fund) and closes its trigger: Seq moves on, Tries starts
+// again, and After is the balance the trigger was read at plus the amount reloaded.
+// A credit that fails leaves the charge awaiting it, and every sweep credits it
+// again under the processor's reference — which the ledger takes once — whatever
+// the balance has done meanwhile.
+func creditReload(ctx context.Context, org *organization.Organization, db *datastore.Datastore, payer string, cfg *autorecharge.AutoRecharge) (RechargeResult, bool) {
+	cur := ruleCurrency(cfg)
+	ref, amount, base, txn := cfg.Ref, cfg.Amount, cfg.Base, cfg.Txn
+	if err := fund(ctx, org, payer, cur, receipt{ProcessorRef: ref, AmountCents: amount}); err != nil {
+		log.Error("RECONCILE: auto-reload %s for %q (%d %s) charged and the spendable balance was NOT credited: %v — credited again on the next sweep",
+			ref, payer, amount, cur, err)
 		return RechargeResult{OrgName: org.Name, UserId: payer, Error: "the reload was charged and not yet credited: " + err.Error()}, true
 	}
-	after, _ := pre.balance(ctx, payer, cur)
-
-	// The reload is recorded on the rule as it stands now: the trigger is closed
-	// (Seq moves on, Tries starts again) and the balance it left is kept as After.
-	// A charge the processor answered by replaying one already recorded gives its
-	// reservation back.
 	now := time.Now().UTC().Format(time.RFC3339)
-	if _, _, serr := changeRule(db, payer, func(c *autorecharge.AutoRecharge) bool {
-		if r.TransactionId != "" && r.TransactionId == c.Txn {
-			if c.Day == today && c.Reloads > 0 {
-				c.Reloads--
-			}
-		} else {
-			c.Txn = r.TransactionId
-			c.Seq, c.Tries, c.After = max(c.Seq, seen+1), 0, after
+	_, closed, err := changeRule(db, payer, func(c *autorecharge.AutoRecharge) bool {
+		if c.Ref != ref {
+			return false
 		}
+		c.Seq, c.Tries, c.After = c.Seq+1, 0, base+amount
+		c.Amount, c.Card, c.Base, c.Ref = 0, "", 0, ""
 		c.LastRechargedAt = now
 		return true
-	}); serr != nil {
-		log.Error("auto-recharge: could not record the reload for %q: %v", payer, serr)
+	})
+	if err != nil {
+		log.Error("auto-recharge: the reload %s for %q was credited and its trigger not closed: %v", ref, payer, err)
+		return RechargeResult{OrgName: org.Name, UserId: payer, Error: err.Error()}, true
 	}
-
+	if !closed {
+		return RechargeResult{}, false
+	}
+	// The balance the result reports is read now; the rule keeps none of it, so a
+	// read that fails reports the balance the reload left and changes nothing.
+	balance, err := prepaidFor(ctx, org).balance(ctx, payer, cur)
+	if err != nil {
+		balance = base + amount
+	}
 	return RechargeResult{
 		OrgName:       org.Name,
 		UserId:        payer,
 		Charged:       true,
-		AmountCents:   r.AmountCents,
+		AmountCents:   amount,
 		Currency:      string(cur),
 		Test:          org.TestMode(),
-		BalanceCents:  after,
-		TransactionId: r.TransactionId,
+		BalanceCents:  balance,
+		TransactionId: txn,
 	}, true
+}
+
+// cardOf is the payment method id names when it is payer's own, nil otherwise.
+func cardOf(db *datastore.Datastore, payer, id string) *paymentmethod.PaymentMethod {
+	if id == "" {
+		return nil
+	}
+	pm := paymentmethod.New(db)
+	if err := pm.GetById(id); err != nil || pm.CustomerId != payer {
+		return nil
+	}
+	return pm
 }
 
 // ruleCurrency is the currency a rule reloads in, usd when it names none.
 func ruleCurrency(c *autorecharge.AutoRecharge) currency.Type {
-	if cur := currency.Type(strings.ToLower(strings.TrimSpace(c.Currency))); cur != "" {
-		return cur
-	}
-	return currency.USD
+	return currency.Type(ruleCurrencyOf(c.Currency))
 }
 
 // fund credits a reload's charge to the ledger the spend gate reads, when the host
@@ -826,33 +964,59 @@ func fund(ctx context.Context, org *organization.Organization, payer string, cur
 	return err
 }
 
-// release gives back a reload reserved today that charged nothing.
-func release(db *datastore.Datastore, payer, today string) {
+// release gives back a reservation that asked no processor: today's count and the
+// open trigger, when the trigger is still the one reserved (seq, tries).
+func release(db *datastore.Datastore, payer, today string, seq int64, tries int) {
 	if _, _, err := changeRule(db, payer, func(c *autorecharge.AutoRecharge) bool {
-		if c.Day != today || c.Reloads == 0 {
+		if c.Seq != seq || c.Tries != tries || c.Amount == 0 || c.Ref != "" {
 			return false
 		}
-		c.Reloads--
+		if c.Day == today && c.Reloads > 0 {
+			c.Reloads--
+		}
+		c.Amount, c.Card, c.Base = 0, "", 0
 		return true
 	}); err != nil {
 		log.Error("auto-recharge: could not release a reload for %q: %v", payer, err)
 	}
 }
 
-// declined counts a decline of the trigger seen: the next try is a key of its own,
-// and the day's declines move toward ReloadsPerDay.
-func declined(db *datastore.Datastore, payer, today string, seen int64) {
+// refused records the processor's refusal of the open trigger (seq, tries): the
+// trigger closes its charge, its next try is a key of its own, and today's
+// refusals move toward ReloadsPerDay.
+func refused(db *datastore.Datastore, payer, today string, seq int64, tries int) {
 	if _, _, err := changeRule(db, payer, func(c *autorecharge.AutoRecharge) bool {
-		if c.Seq != seen {
+		if c.Seq != seq || c.Tries != tries || c.Amount == 0 || c.Ref != "" {
 			return false
 		}
 		c.Tries++
 		if c.Day == today {
 			c.Declines++
 		}
+		c.Amount, c.Card, c.Base = 0, "", 0
 		return true
 	}); err != nil {
-		log.Error("auto-recharge: could not count a decline for %q: %v", payer, err)
+		log.Error("auto-recharge: could not count a refusal for %q: %v", payer, err)
+	}
+}
+
+// stopReload switches payer's rule in org off when a payment it was credited from
+// is refunded or disputed: the card is not charged off-session again until the
+// payer switches the rule back on. It never fails the act that called it.
+func stopReload(ctx context.Context, org, payer, why string) {
+	db := datastore.New(nscontext.WithNamespace(ctx, org))
+	_, off, err := changeRule(db, payer, func(c *autorecharge.AutoRecharge) bool {
+		if !c.Enabled {
+			return false
+		}
+		c.Enabled, c.Plan, c.Waiting = false, "", false
+		return true
+	})
+	switch {
+	case err != nil:
+		log.Error("auto-recharge: the rule for %s/%q was not switched off after %s: %v", org, payer, why, err)
+	case off:
+		log.Info("auto-recharge: %s switched off the rule for %s/%q", why, org, payer)
 	}
 }
 

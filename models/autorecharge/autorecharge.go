@@ -33,21 +33,37 @@ type AutoRecharge struct {
 	// reloads charged the card on that day. The sweep stops at its daily limit.
 	Day     string `json:"day,omitempty"`
 	Reloads int    `json:"reloads,omitempty"`
-	// Txn is the transaction of the last reload counted, so a replayed charge
-	// (the same reload answered twice) is counted once.
+	// Txn is the deposit transaction of the last reload the rule recorded.
 	Txn string `json:"txn,omitempty"`
 	// Seq is how many reloads this rule has completed, and After the payer's
-	// available balance read once the last of them was credited. A balance below
-	// the threshold is a new trigger only when it is also below After — money was
-	// spent since that reload — and the trigger's reload carries Seq in its
-	// idempotency key, so one trigger is charged once however many sweeps see it.
+	// available balance once the last of them was credited: the balance the
+	// trigger was read at plus the amount reloaded. A balance below the threshold
+	// is a new trigger only when it is also below After — money was spent since
+	// that reload — and the trigger's reload carries Seq in its idempotency key, so
+	// one trigger is charged once however many sweeps see it.
 	Seq   int64 `json:"seq,omitempty"`
 	After int64 `json:"after,omitempty"`
-	// Tries is how many times the processor declined the reload for the trigger
-	// Seq names; each try is a key of its own, so a declined card is asked again
-	// rather than answered from the decline. Declines counts the declines on Day.
+	// Tries is how many times the processor refused the reload for the trigger Seq
+	// names; each try is a key of its own, so a refused card is asked again rather
+	// than answered from the refusal. Declines counts the refusals on Day.
 	Tries    int `json:"tries,omitempty"`
 	Declines int `json:"declines,omitempty"`
+	// Amount and Card are the open trigger's charge, fixed when it is reserved:
+	// every ask of the trigger sends exactly that amount on exactly that card under
+	// the same key until the processor answers, whatever the rule or the default
+	// card has become since. Base is the available balance the trigger was read at.
+	// Amount is 0 when no trigger is open.
+	Amount int64  `json:"amount,omitempty"`
+	Card   string `json:"card,omitempty"`
+	Base   int64  `json:"base,omitempty"`
+	// Ref is the processor's reference of the open trigger's charge once it has
+	// settled, until its credit lands; the sweep credits it before anything else.
+	Ref string `json:"ref,omitempty"`
+	// Plan is the plan whose reload switched this rule on, or awaits a card to
+	// (Waiting): a rule the payer set themselves names none. Cancelling the plan, or
+	// moving to one with no reload, switches a rule a plan switched on off.
+	Plan    string `json:"plan,omitempty"`
+	Waiting bool   `json:"waiting,omitempty"`
 }
 
 func (a *AutoRecharge) Validator() *val.Validator {
