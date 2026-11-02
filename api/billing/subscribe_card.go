@@ -1003,6 +1003,12 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			_ = toCancel.Update()
 		}
 	}
+	// A plan whose row states a reload switches the org's auto-recharge on, once
+	// its card has paid the first period. The rule is the org's and charges the
+	// org's card, so only a sale to the org's own account arms it.
+	if in.Subject == org.Name {
+		armForPlan(ctx, org, planID, cur)
+	}
 	return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil
 }
 

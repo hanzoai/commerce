@@ -396,6 +396,23 @@ type Limits struct {
 	Zones          *int `json:"zones,omitempty"`
 	RecordsPerZone *int `json:"recordsPerZone,omitempty"`
 	QueriesPerDay  *int `json:"queriesPerDay,omitempty"`
+
+	// ReloadsPerDay is the most automatic reloads the auto-recharge sweep makes in
+	// one UTC day for an org this plan serves. nil is the sweep's own bound
+	// (api/billing ReloadsPerDay); 0 is unbounded; n is n.
+	ReloadsPerDay *int `json:"reloadsPerDay,omitempty"`
+
+	// Reload, when present, switches the buyer's auto-recharge on at its figures
+	// when this plan is bought with a card, unless the org already has a rule
+	// switched on. Neither field is served in the public catalog.
+	Reload *Reload `json:"reload,omitempty"`
+}
+
+// Reload is the auto-recharge rule buying a plan switches on: reload AmountCents
+// whenever the org's available balance falls below ThresholdCents.
+type Reload struct {
+	ThresholdCents int64 `json:"thresholdCents"`
+	AmountCents    int64 `json:"amountCents"`
 }
 
 // EnvelopeKey is the ONE Metadata key the display envelope is packed under. One
@@ -680,7 +697,9 @@ func limitsEqual(a, b *Limits) bool {
 		eqInt(a.IncludedCloudCreditsPerUser, b.IncludedCloudCreditsPerUser) &&
 		eqInt(a.Zones, b.Zones) &&
 		eqInt(a.RecordsPerZone, b.RecordsPerZone) &&
-		eqInt(a.QueriesPerDay, b.QueriesPerDay)
+		eqInt(a.QueriesPerDay, b.QueriesPerDay) &&
+		eqInt(a.ReloadsPerDay, b.ReloadsPerDay) &&
+		(a.Reload == nil) == (b.Reload == nil) && (a.Reload == nil || *a.Reload == *b.Reload)
 }
 
 // eqInt compares two optional ints by value; both-absent counts as equal.
