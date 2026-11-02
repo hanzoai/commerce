@@ -260,19 +260,6 @@ export const RESOURCES: Resource[] = [
     ],
   },
   {
-    slug: 'subscribers',
-    kind: 'subscriber',
-    label: 'Subscribers',
-    subtitle: 'Storefront subscribers and mailing contacts',
-    empty: 'No subscribers yet.',
-    columns: [
-      { key: 'email', header: 'Email', as: 'name' },
-      { key: 'firstName', header: 'First name', as: 'text' },
-      { key: 'lastName', header: 'Last name', as: 'text' },
-      { key: 'createdAt', header: 'Joined', as: 'date' },
-    ],
-  },
-  {
     slug: 'transfers',
     kind: 'transfer',
     label: 'Transfers',

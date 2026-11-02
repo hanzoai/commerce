@@ -1,6 +1,6 @@
 // Package resources is the merchant CRUD table — the surfaces a shop owner
 // edits: products and their variants, collections, discounts, sales channels,
-// stock locations, subscribers.
+// stock locations.
 //
 // It is its OWN package, and that is the whole point. The table used to live
 // inside api.Route, so reaching it meant importing api — which drags checkout,
@@ -39,8 +39,6 @@ import (
 	"github.com/hanzoai/commerce/models/product"
 	"github.com/hanzoai/commerce/models/saleschannel"
 	"github.com/hanzoai/commerce/models/stocklocation"
-	"github.com/hanzoai/commerce/models/submission"
-	"github.com/hanzoai/commerce/models/subscriber"
 	"github.com/hanzoai/commerce/models/transfer"
 	"github.com/hanzoai/commerce/models/variant"
 	"github.com/hanzoai/commerce/models/wallet"
@@ -66,8 +64,6 @@ func Route(api *zip.Group, tokenRequired, adminRequired, requireAccess, productE
 	rest.New(note.Note{}).Route(api, tokenRequired)
 	rest.New(product.Product{}).Route(api, productMW...)
 	rest.New(return_.Return{}).Route(api, tokenRequired)
-	rest.New(submission.Submission{}).Route(api, tokenRequired)
-	rest.New(subscriber.Subscriber{}).Route(api, tokenRequired)
 	// Transfer is the PAYMENT ANNOTATION on a payable, so writing one settles
 	// money we owe. Admin-gated, not any token holder.
 	rest.New(transfer.Transfer{}).Route(api, adminRequired)

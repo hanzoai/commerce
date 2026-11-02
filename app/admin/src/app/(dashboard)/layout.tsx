@@ -32,7 +32,6 @@ import {
   ShoppingBag,
   ShoppingCart,
   Store,
-  Users,
   Wallet,
 } from '@hanzogui/lucide-icons-2'
 
@@ -60,7 +59,6 @@ const ICONS: Record<string, typeof Package> = {
   usage: Activity,
   'sales-channels': Store,
   'stock-locations': MapPin,
-  subscribers: Users,
   transfers: ArrowLeftRight,
   claims: Receipt,
 }
