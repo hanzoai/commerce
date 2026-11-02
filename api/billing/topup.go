@@ -18,6 +18,7 @@ import (
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
+	"github.com/hanzoai/commerce/models/paymentorg"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -432,6 +433,13 @@ func TopupCard(ctx context.Context, org *organization.Organization, in TopupCard
 	r, err := chargeAndCredit(ctx, in.Events, org, db, pm, in.AmountCents, cur, in.Subject, idemKey, desc)
 	if err != nil {
 		return nil, err
+	}
+	// The payment's wallet, as the token top-up records it (payment_core.go), so a
+	// refund or dispute of the payment takes the money back from the wallet it funded.
+	if r.ProcessorRef != "" {
+		if err := paymentorg.Put(r.ProcessorRef, org.Name, in.Subject, "", 0, org.TestMode()); err != nil {
+			log.Warn("topup: payment %s: the index to its wallet was not written: %v", r.ProcessorRef, err)
+		}
 	}
 	return &TopupCardOut{TransactionID: r.TransactionId, BalanceCents: r.BalanceCents, Status: "ok"}, nil
 }
