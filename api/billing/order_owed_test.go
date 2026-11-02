@@ -227,9 +227,10 @@ func TestOneRefundDeliveredTogetherTakesOnce(t *testing.T) {
 }
 
 // A dispute lost while the balance is owed, in the production shape: the delivery
-// lands (no clawback against a payment the host never credited, so no 503 loop),
-// and the retry credits nothing of the withheld balance. Won after the credit, the
-// balance the credit left out is given back, once.
+// lands (no clawback against a payment the host never credited, so no 503 loop).
+// The retry decides the credit, lands it and takes the withheld part back from the
+// wallet in the same step — one clawback, posted against money the host holds — so
+// nothing of it is spendable. Won after the credit, that clawback is restored, once.
 func TestRed13_DisputeWhileOwedHostLedger(t *testing.T) {
 	const secret = "whsec_r13m"
 	registerSquare(t, secret)
@@ -241,7 +242,7 @@ func TestRed13_DisputeWhileOwedHostLedger(t *testing.T) {
 	}
 	r := invokeSubscribeCard(org, ctx, body, key)
 	held, _ := fake.Balance(ctx, ledgerOrg(org), "r13m", "usd", org.TestMode())
-	if r.StatusCode != http.StatusCreated || held != 0 || len(fake.clawbacks) != 0 {
+	if r.StatusCode != http.StatusCreated || held != 0 || len(fake.clawbacks) != 1 || balanceOf(t, ctx, org, "r13m") != 0 {
 		t.Fatalf("FINDING: after a lost dispute the retry answered %d and the host holds %d (clawbacks %d)", r.StatusCode, held, len(fake.clawbacks))
 	}
 	deliver(t, ctx, secret, disputeEvent("evt_r13m_won", "dispute.state.updated", "dp_r13m", "sqpay_r13m", "WON", 4480000))

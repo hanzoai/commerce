@@ -262,7 +262,38 @@ func fund(ctx context.Context, ev *events.Client, org *organization.Organization
 		// The payment is already credited: a retry that completes a sale's credit
 		// finds the deposit the first attempt wrote, and credits nothing twice.
 		id = held
-	} else {
+	} else if id, err = lodge(db, subject, cents, cur, via, ref, test); err != nil {
+		uncredited(ctx, ev, org.Name, subject, ref, "the charge settled and the deposit failed: "+err.Error(), cents, false)
+		return "", 0, fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, ref, err)
+	}
+
+	// Read back the new balance so the caller doesn't need a separate request.
+	var balanceCents currency.Cents
+	if datas, err := util.GetTransactionsByCurrency(org.Namespaced(ctx), subject, "iam-user", cur, test); err == nil {
+		if data, ok := datas.Data[cur]; ok {
+			balanceCents = data.Balance
+		}
+	}
+	return id, balanceCents, nil
+}
+
+// lodge writes the one deposit payment ref makes to subject, atomically: a guard
+// keyed on the payment is taken first, an insert only one writer wins, so two
+// writers that both found no deposit — a retry crossing its original, two holders
+// of a lease that lapsed — write one between them, and the other answers it. A
+// deposit written before its guard was sealed is found (deposited) and sealed.
+func lodge(db *datastore.Datastore, subject string, cents int64, cur currency.Type, via processor.ProcessorType, ref string, test bool) (string, error) {
+	g, replay, err := idempotencykey.Begin(db, "billing-deposit:"+subject, string(via)+":"+ref)
+	switch {
+	case err != nil:
+		return "", err
+	case replay && g.Status == idempotencykey.StatusCompleted && g.Response != "":
+		return g.Response, nil
+	case replay:
+		return "", fmt.Errorf("the deposit of payment %s is being written", ref)
+	}
+	id, ok, err := deposited(db, subject, via, ref)
+	if err == nil && !ok {
 		trans := transaction.New(db)
 		trans.Type = transaction.Deposit
 		trans.DestinationId = subject
@@ -280,21 +311,17 @@ func fund(ctx context.Context, ev *events.Client, org *organization.Organization
 		// The card was charged: a settled payment IS the mint authority, so
 		// authorize THIS write at the ledger sink (money-in == credit).
 		trans.SetContext(mintauth.WithAuthorized(trans.Context()))
-		if err := trans.Create(); err != nil {
-			uncredited(ctx, ev, org.Name, subject, ref, "the charge settled and the deposit failed: "+err.Error(), cents, false)
-			return "", 0, fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, ref, err)
-		}
-		id = trans.Id()
+		err, id = trans.Create(), trans.Id()
 	}
-
-	// Read back the new balance so the caller doesn't need a separate request.
-	var balanceCents currency.Cents
-	if datas, err := util.GetTransactionsByCurrency(org.Namespaced(ctx), subject, "iam-user", cur, test); err == nil {
-		if data, ok := datas.Data[cur]; ok {
-			balanceCents = data.Balance
-		}
+	if err != nil {
+		// Nothing was written: the guard is released for the retry.
+		_ = g.Delete()
+		return "", err
 	}
-	return id, balanceCents, nil
+	// Sealed with the deposit; a seal that fails leaves the guard to be re-claimed,
+	// and the re-claim finds the deposit.
+	_ = idempotencykey.Complete(g, id)
+	return id, nil
 }
 
 // deposited is the deposit a payment already credited subject with, by the

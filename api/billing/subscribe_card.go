@@ -14,6 +14,7 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/api/promo"
+	"github.com/hanzoai/commerce/billing/creditledger"
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/events"
@@ -1422,11 +1423,13 @@ func holdPayment(db *datastore.Datastore, payment string) (*idempotencykey.Lease
 
 // endow credits an order's starting balance to its wallet as the payment's record
 // stands, under the payment's lease so no refund or dispute of it is applied
-// beside: the balance less what they took of it by then, decided once (Credited,
-// Credit), so a refund is either netted in the credit or taken after it
-// (takeOrder), never neither. The decided credit then lands (land). A credit
-// already decided is landed again, which credits nothing twice, and one refunds
-// took in full credits nothing.
+// beside. The credit is decided once (paymentorg.PaymentOrg.Decide): the balance
+// less what refunds took — final, so netted — with every dispute's standing take
+// moved to the wallet, to be taken from it once the credit lands, so a dispute won
+// later is given back through the ledger that took it, once. A refund is either
+// netted in the credit or taken after it (takeOrder), never neither. The decided
+// credit then lands (land). A credit already decided is landed again, which
+// credits nothing twice, and one refunds took in full credits nothing.
 func endow(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, cur currency.Type, payment string) (*paymentorg.PaymentOrg, error) {
 	lease, held, err := idempotencykey.Hold(db, paymentScope, payment)
 	switch {
@@ -1437,11 +1440,7 @@ func endow(ctx context.Context, ev *events.Client, org *organization.Organizatio
 	}
 	defer lease.Release()
 	po, found, err := paymentorg.Change(payment, func(r *paymentorg.PaymentOrg) bool {
-		if r.Credited {
-			return false
-		}
-		r.Credited, r.Credit = true, r.Left()
-		return true
+		return r.Decide()
 	})
 	switch {
 	case err != nil:
@@ -1455,26 +1454,39 @@ func endow(ctx context.Context, ev *events.Client, org *organization.Organizatio
 
 // land puts an order's decided credit into both books, once: the deposit in
 // commerce's own (fund) and the ledger the spend gate reads (bank), both keyed on
-// the payment, then records the credit's receipt on the payment's record. The
-// caller holds the payment's lease.
+// the payment, then records the credit's receipt on the payment's record. Then
+// every take moved to the wallet and not given back is taken from it, once each
+// (clawback). org is the payer's, and only read to credit. The caller holds the
+// payment's lease.
 func land(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, cur currency.Type, po *paymentorg.PaymentOrg, payment string) (*paymentorg.PaymentOrg, error) {
-	if po.Credit <= 0 || po.Deposit != "" {
-		return po, nil
+	if po.Credit > 0 && po.Deposit == "" {
+		id, _, err := fund(ctx, ev, org, db, po.Subject, po.Credit, cur, processor.Square, payment)
+		if err != nil {
+			return nil, owedBalance
+		}
+		if err := bank(ctx, org, po.Subject, cur, receipt{ProcessorRef: payment, AmountCents: po.Credit}, "starting balance"); err != nil {
+			uncredited(ctx, ev, org.Name, po.Subject, payment, "the order's starting balance was not credited to the spendable balance: "+err.Error(), po.Credit, false)
+			return nil, owedBalance
+		}
+		if po, _, err = paymentorg.Change(payment, func(r *paymentorg.PaymentOrg) bool {
+			r.Deposit = id
+			return true
+		}); err != nil {
+			return nil, owedBalance
+		}
 	}
-	id, _, err := fund(ctx, ev, org, db, po.Subject, po.Credit, cur, processor.Square, payment)
-	if err != nil {
-		return nil, owedBalance
-	}
-	if err := bank(ctx, org, po.Subject, cur, receipt{ProcessorRef: payment, AmountCents: po.Credit}, "starting balance"); err != nil {
-		uncredited(ctx, ev, org.Name, po.Subject, payment, "the order's starting balance was not credited to the spendable balance: "+err.Error(), po.Credit, false)
-		return nil, owedBalance
-	}
-	po, _, err = paymentorg.Change(payment, func(r *paymentorg.PaymentOrg) bool {
-		r.Deposit = id
-		return true
-	})
-	if err != nil {
-		return nil, owedBalance
+	for _, t := range po.Takes {
+		if !t.Moved || t.Restored || t.Cents <= 0 {
+			continue
+		}
+		in := creditledger.ClawbackInput{
+			Org: po.Org, Subject: po.Subject, Payment: payment,
+			Ref: t.Ref, AmountCents: t.Cents, Reason: t.Ref, Test: po.Test,
+		}
+		if err := clawback(ctx, db, in, cur, false); err != nil {
+			log.Error("RECONCILE: payment %s: %v", payment, err)
+			return nil, owedBalance
+		}
 	}
 	return po, nil
 }

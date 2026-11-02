@@ -794,19 +794,25 @@ may be). All four are served under `limits` on `GET /v1/billing/plans`
   seats, and the balance is credited LAST (`conclude`). The receipt states
   `amountCents` (the whole payment), `balanceCents` (what was credited),
   `balanceId`, `seats`, `category` and `replaced`.
-- The balance's state is the payment's record (`paymentorg`): `Balance`
-  bought, `Takes` (each refund or dispute's part of it, by ref), `Credited` +
-  `Credit` (the credit, decided once as `Balance` less `Taken()`) and
-  `Deposit` (the credit landed). Every change of it runs under the payment's
-  lease (`paymentScope`, `idempotencykey.Hold`, renewed while held, released
-  only by its holder): `endow` decides and `land`s the credit (`fund`, one
-  deposit per payment, and embedded `bank`, both keyed on the payment);
-  `takeOrder` records a take in the same swap that reads `Credited`. Taken
-  before the credit is decided, the credit nets it and no wallet is touched (no
-  clawback against money the host never credited); taken after, it lands the
-  credit if it had not landed, then takes it from the wallet (`clawLocal`, the
-  host's `Clawback`). A dispute won gives back its take: `Restore`, or, if the
-  credit had left it out, `giveBack`. The rest of a refund is the invoice's.
+- The balance's state is the payment's record (`paymentorg`, `Sale` set for
+  every card sale): `Balance` bought, `Takes` (each refund or dispute's part
+  of it, by ref), `Credited` + `Credit` and `Deposit` (the credit landed).
+  Every change of it runs under the payment's lease (`paymentScope`,
+  `idempotencykey.Hold`: renewed while held for at most `MaxHold`, released
+  only by its holder). `endow` decides the credit once (`Decide`): `Balance`
+  less what REFUNDS took (final, so netted), with every standing DISPUTE take
+  moved to the wallet; `land` deposits it (`fund` → `lodge`, one deposit per
+  payment behind an insert-once guard, and embedded `bank`, both keyed on the
+  payment), then takes every moved take from the wallet (`clawback`). So a
+  dispute's money always leaves through the ledger that holds it, and a dispute
+  won is given back once by `Restore` of that clawback; won before the
+  decision, the credit simply includes it. `takeOrder` records a take in the
+  same swap that reads `Credited`: before, a refund is netted and a dispute
+  waits for the decision; after, it lands the credit if it had not landed and
+  takes from the wallet. The rest of a refund is the invoice's.
+- A sale's payment never takes the wallet path: a refund of one whose record
+  names no invoice reads it from the sale's books (`paidInvoice`), and while
+  the sale has not written it, the delivery stays open (error, redelivered).
 - One sale, completion or staff record per subject at a time, whatever its key
   (`holdSale`, a renewed lease on `saleScope`; `RecordSubscription` holds it
   too). A key names one order: `factsOf` digests the whole body (plan, level,

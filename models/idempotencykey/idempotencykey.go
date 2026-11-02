@@ -215,9 +215,16 @@ type Lease struct {
 	db    *datastore.Datastore
 	id    string
 	token string
+	since time.Time
 	stop  chan struct{}
 	wg    sync.WaitGroup
 }
+
+// MaxHold is the longest a lease is renewed: a holder still working after it
+// (hung, or looping) stops renewing, and its lease lapses StartedTTL later, so
+// another holder takes over. What a lease guards is idempotent per key, so a
+// holder that outlived its lease writes nothing twice.
+const MaxHold = 3 * StartedTTL
 
 // Hold takes the lease for (scope, key). It answers taken=false, with nothing
 // held, when a live holder has it; a lease whose holder stopped renewing for
@@ -232,7 +239,7 @@ func Hold(db *datastore.Datastore, scope, key string) (*Lease, bool, error) {
 		_ = rec.Delete()
 		return nil, false, err
 	}
-	l := &Lease{db: db, id: DeterministicID(scope, key), token: hex.EncodeToString(b[:]), stop: make(chan struct{})}
+	l := &Lease{db: db, id: DeterministicID(scope, key), token: hex.EncodeToString(b[:]), since: nowFn(), stop: make(chan struct{})}
 	rec.Holder = l.token
 	if ok, err := rec.Swap(); err != nil || !ok {
 		return nil, false, err
@@ -243,7 +250,7 @@ func Hold(db *datastore.Datastore, scope, key string) (*Lease, bool, error) {
 }
 
 // renew keeps the lease fresh while it is held: every third of StartedTTL it is
-// written again, while it is still this holder's.
+// written again, while it is still this holder's, for at most MaxHold.
 func (l *Lease) renew() {
 	defer l.wg.Done()
 	t := time.NewTicker(StartedTTL / 3)
@@ -253,11 +260,23 @@ func (l *Lease) renew() {
 		case <-l.stop:
 			return
 		case <-t.C:
-			if rec, ok := l.mine(); ok {
-				_, _ = rec.Swap()
+			if !l.refresh() {
+				return
 			}
 		}
 	}
+}
+
+// refresh writes the lease again while it is this holder's, and answers false,
+// writing nothing, once it has been held for MaxHold.
+func (l *Lease) refresh() bool {
+	if nowFn().Sub(l.since) >= MaxHold {
+		return false
+	}
+	if rec, ok := l.mine(); ok {
+		_, _ = rec.Swap()
+	}
+	return true
 }
 
 // mine reads the lease and reports whether this holder still holds it.
