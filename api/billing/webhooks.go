@@ -789,7 +789,7 @@ func isClawbackEvent(eventType string) bool {
 // dispute report is ordered by the dispute's version, else its updated_at, and one
 // older than the report already recorded changes nothing. The ledger posts each once
 // per refund or dispute id, and never takes back more than the payment brought in.
-func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organization.Organization, event *processor.WebhookEvent) error {
+func applyClawbackEvent(ctx context.Context, booked *datastore.Datastore, org *organization.Organization, event *processor.WebhookEvent) error {
 	if event.Data == nil {
 		return nil
 	}
@@ -822,6 +822,12 @@ func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organi
 		return nil
 	}
 	where, found, err := paymentorg.Get(paymentID)
+	if err == nil && !found {
+		// The index is the way back to the payment's books. Without it, the books
+		// of the org whose account delivered this are searched for what the payment
+		// wrote, and the index is written again from them (traced).
+		where, found, err = traced(booked, org, paymentID)
+	}
 	if err != nil {
 		return fmt.Errorf("%s %s: the payment index could not be read: %w", event.Type, id, err)
 	}
@@ -899,7 +905,6 @@ func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organi
 	if !moves {
 		return nil
 	}
-	_ = org
 	return clawback(ctx, db, creditledger.ClawbackInput{
 		Org: where.Org, Subject: where.Subject, Payment: paymentID,
 		Ref: ref, AmountCents: int64(amount), Reason: event.Type + " " + id, Test: where.Test,
@@ -1132,4 +1137,47 @@ func clawLocal(db *datastore.Datastore, in creditledger.ClawbackInput, cur curre
 	t.Type, t.SourceId, t.SourceKind = transaction.Withdraw, in.Subject, transaction.IAMUserKind
 	t.Amount, t.Notes = currency.Cents(amount), in.Ref
 	return t.Create()
+}
+
+// traced finds a payment the index does not name in the books of the org whose
+// account delivered its event — the invoice it paid, the deposit it made — and
+// indexes it again from what they say: an order's payment did both, and the
+// deposit is its credited starting balance. Nothing found answers found=false.
+func traced(db *datastore.Datastore, org *organization.Organization, paymentID string) (*paymentorg.PaymentOrg, bool, error) {
+	if db == nil || org == nil {
+		return nil, false, nil
+	}
+	inv := billinginvoice.New(db)
+	paid, err := inv.Query().Filter("PaymentRef=", paymentID).Get()
+	if err != nil {
+		return nil, false, err
+	}
+	dep := transaction.New(db)
+	held, err := dep.Query().Filter("SourceId=", paymentID).Filter("Type=", transaction.Deposit).Get()
+	if err != nil {
+		return nil, false, err
+	}
+	switch {
+	case paid && held && dep.DestinationId == inv.UserId:
+		if err := paymentorg.Open(paymentID, org.Name, inv.UserId, "", int64(dep.Amount), org.TestMode()); err != nil {
+			return nil, false, err
+		}
+		if _, _, err := paymentorg.Change(paymentID, func(r *paymentorg.PaymentOrg) bool {
+			r.Invoice, r.Credited, r.Credit, r.Deposit = inv.Id(), true, int64(dep.Amount), dep.Id()
+			return true
+		}); err != nil {
+			return nil, false, err
+		}
+	case paid:
+		err = paymentorg.Put(paymentID, org.Name, inv.UserId, inv.Id(), 0, org.TestMode())
+	case held:
+		err = paymentorg.Put(paymentID, org.Name, dep.DestinationId, "", 0, org.TestMode())
+	default:
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	log.Warn("payment %s: the index was missing and was written again from %s's books", paymentID, org.Name)
+	return paymentorg.Get(paymentID)
 }

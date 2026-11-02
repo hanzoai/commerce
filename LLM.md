@@ -807,12 +807,33 @@ may be). All four are served under `limits` on `GET /v1/billing/plans`
   credit if it had not landed, then takes it from the wallet (`clawLocal`, the
   host's `Clawback`). A dispute won gives back its take: `Restore`, or, if the
   credit had left it out, `giveBack`. The rest of a refund is the invoice's.
-- One sale per subject in flight, whatever its key (`saleScope` lock, atomic);
-  a key reused for another order is 409. The receipt is sealed owing the balance
-  before it is credited, so a failed credit (503, "send the same order again")
-  is completed by the retry under the same key (`complete`), once, crediting
-  what the record says is owed then. The plan's reload switches on only after
-  the credit, and never for a payment a refund or dispute took part of.
+- One sale, completion or staff record per subject at a time, whatever its key
+  (`holdSale`, a renewed lease on `saleScope`; `RecordSubscription` holds it
+  too). A key names one order: `factsOf` digests the whole body (plan, level,
+  term, seats of every type, balance, coupon, wallet) onto the guard
+  (`IdempotencyKey.Facts`), and the key sent with other facts is 409.
+- The moment the charge settles the sale records it before writing anything
+  else (`enter`): `paymentorg.Open` (the record, with `Order` = the guard's
+  storage id) and the draft receipt on the guard (`idempotencykey.Mark`,
+  `draft`). If either fails, nothing is opened and the sale is 503. Every later
+  step (`sell`) is keyed on the payment: the subscription it opened (metadata
+  `payment`, `opened`), its invoice (`paidBy`), the record's `Invoice`. A
+  sale that stops part-way leaves the guard started with its draft. The same
+  order sent again after `StartedTTL` resumes from the draft, and is never
+  charged again or told it already pays.
+- The receipt is sealed owing the balance before it is credited. A failed
+  credit (503, "send the same order again") is completed by the same order sent
+  under ANY key, before the catalog is read (`owedSale` finds it by
+  `paymentorg.Orders` and `Facts`), so a new key or a plan switched to
+  sales-only strands nothing. The credit is what the record says is owed then.
+  The plan's reload switches on only after the credit, and never for a payment
+  a refund or dispute took part of. `RenewDue` alarms (`uncredited`) on every
+  order still owing past `StartedTTL` (`stranded`).
+- A refund whose payment has no index is traced through the books of the org
+  whose account delivered it (`traced`: the invoice it paid, its deposit), and
+  the index is written again. `deposited` fails closed: a read that fails is
+  an error, never "no deposit". The host ledger's line for the credit reads
+  "starting balance <payment>" (`bank` takes the reason).
 - A query that FAILS is an error, never an absence: an iterator answers
   `db.ErrDone` only past its last row, and `query.First` reports anything
   else. Before, a failed slug lookup read as "no row" and fell back to the embed.

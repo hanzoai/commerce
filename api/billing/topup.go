@@ -253,7 +253,12 @@ func fund(ctx context.Context, ev *events.Client, org *organization.Organization
 			return "", 0, fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, ref, err)
 		}
 		id = rc.TxHash
-	} else if held, ok := deposited(db, subject, via, ref); ok {
+	} else if held, ok, err := deposited(db, subject, via, ref); err != nil {
+		// Whether the payment is credited cannot be told, so it is not credited
+		// again: the money is owed, and a retry asks again.
+		uncredited(ctx, ev, org.Name, subject, ref, "the charge settled and its deposits could not be read: "+err.Error(), cents, false)
+		return "", 0, fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, ref, err)
+	} else if ok {
 		// The payment is already credited: a retry that completes a sale's credit
 		// finds the deposit the first attempt wrote, and credits nothing twice.
 		id = held
@@ -293,18 +298,19 @@ func fund(ctx context.Context, ev *events.Client, org *organization.Organization
 }
 
 // deposited is the deposit a payment already credited subject with, by the
-// processor's reference fund stamps on it: one payment is one deposit.
-func deposited(db *datastore.Datastore, subject string, via processor.ProcessorType, ref string) (string, bool) {
+// processor's reference fund stamps on it: one payment is one deposit. A read that
+// fails is an error, never "none": answering none would credit the payment again.
+func deposited(db *datastore.Datastore, subject string, via processor.ProcessorType, ref string) (string, bool, error) {
 	if ref == "" {
-		return "", false
+		return "", false, nil
 	}
 	held := transaction.New(db)
 	ok, err := held.Query().Filter("SourceKind=", chargeSourceKind(via)).Filter("SourceId=", ref).
 		Filter("DestinationId=", subject).Filter("Type=", transaction.Deposit).Get()
 	if err != nil || !ok {
-		return "", false
+		return "", false, err
 	}
-	return held.Id(), true
+	return held.Id(), true, nil
 }
 
 // seal records the successful charge's answer on its idempotency guard so a

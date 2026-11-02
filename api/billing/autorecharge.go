@@ -880,7 +880,7 @@ func askReload(ctx context.Context, ev *events.Client, org *organization.Organiz
 func creditReload(ctx context.Context, org *organization.Organization, db *datastore.Datastore, payer string, cfg *autorecharge.AutoRecharge) (RechargeResult, bool) {
 	cur := ruleCurrency(cfg)
 	ref, amount, base, txn := cfg.Ref, cfg.Amount, cfg.Base, cfg.Txn
-	if err := bank(ctx, org, payer, cur, receipt{ProcessorRef: ref, AmountCents: amount}); err != nil {
+	if err := bank(ctx, org, payer, cur, receipt{ProcessorRef: ref, AmountCents: amount}, "auto-reload"); err != nil {
 		log.Error("RECONCILE: auto-reload %s for %q (%d %s) charged and the spendable balance was NOT credited: %v — credited again on the next sweep",
 			ref, payer, amount, cur, err)
 		return RechargeResult{OrgName: org.Name, UserId: payer, Error: "the reload was charged and not yet credited: " + err.Error()}, true
@@ -937,12 +937,14 @@ func ruleCurrency(c *autorecharge.AutoRecharge) currency.Type {
 	return currency.Type(ruleCurrencyOf(c.Currency))
 }
 
-// bank credits a reload's charge to the ledger the spend gate reads, when the host
-// injected one, at the payer's own address and under the processor's reference
-// for the charge: the key every path that can credit one payment uses, so the
-// payment is credited once. Without a host ledger the charge's deposit is already
-// in commerce's own ledger, which is the one read, and there is nothing to do.
-func bank(ctx context.Context, org *organization.Organization, payer string, cur currency.Type, r receipt) error {
+// bank credits a card charge that bought balance — a reload, or an order's
+// starting balance — to the ledger the spend gate reads, when the host injected
+// one, at the payer's own address and under the processor's reference for the
+// charge: the key every path that can credit one payment uses, so the payment is
+// credited once. why says what the money is, on the ledger's line. Without a host
+// ledger the charge's deposit is already in commerce's own ledger, which is the
+// one read, and there is nothing to do.
+func bank(ctx context.Context, org *organization.Organization, payer string, cur currency.Type, r receipt, why string) error {
 	led := creditledger.Get()
 	if led == nil {
 		return nil
@@ -954,7 +956,7 @@ func bank(ctx context.Context, org *organization.Organization, payer string, cur
 		Org:            ledgerOrg(org),
 		Subject:        payer,
 		Currency:       string(cur),
-		Reason:         "auto-reload " + r.ProcessorRef,
+		Reason:         why + " " + r.ProcessorRef,
 		Tag:            "topup",
 		IdempotencyKey: r.ProcessorRef,
 		AmountCents:    r.AmountCents,

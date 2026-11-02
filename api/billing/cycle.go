@@ -10,7 +10,9 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/paymentorg"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/util/json/http"
 )
@@ -142,7 +144,28 @@ func RenewDue(ctx context.Context) (*RenewalRun, error) {
 			run.Results = append(run.Results, r)
 		}
 	}
+	stranded(ctx)
 	return run, nil
+}
+
+// stranded raises the alarm (uncredited) for every order whose starting balance has
+// not reached its wallet since its sale stopped: charged, and not credited after
+// the sale's guard would have let a retry finish it. Sending the same order again
+// finishes it; until then each sweep says so.
+func stranded(ctx context.Context) {
+	rows, ids, err := paymentorg.Owing()
+	if err != nil {
+		log.Error("RECONCILE: the orders owing a starting balance could not be read: %v", err)
+		return
+	}
+	for i, r := range rows {
+		if time.Since(r.CreatedAt) < idempotencykey.StartedTTL {
+			continue // a sale in flight
+		}
+		uncredited(ctx, nil, r.Org, r.Subject, ids[i],
+			"an order's starting balance is not credited: its sale stopped after the charge, and the same order sent again finishes it",
+			r.Left(), false)
+	}
 }
 
 // renewDue renews org's due subscriptions — one subject's when user is set. A row

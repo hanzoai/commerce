@@ -76,6 +76,10 @@ type IdempotencyKey struct {
 	// so a retry can resume rather than restart. Optional.
 	RecoveryPoint string `json:"recoveryPoint,omitempty"`
 
+	// Facts is a digest of the request the key was first used for, so the same
+	// key sent with another request is told apart from a retry. Optional.
+	Facts string `json:"facts,omitempty"`
+
 	// Holder names whoever holds the guard as a lease (Hold), so only its holder
 	// renews or releases it.
 	Holder string `json:"holder,omitempty"`
@@ -172,6 +176,15 @@ func Complete(rec *IdempotencyKey, response string) error {
 	rec.SetId(DeterministicID(rec.Scope, rec.IdemKey))
 	rec.Status = StatusCompleted
 	rec.Response = response
+	return rec.Put()
+}
+
+// Mark records how far a guarded operation got (RecoveryPoint) on its
+// still-started guard, with the facts it is for, so a retry that re-claims the
+// guard after a crash resumes from there rather than starting over.
+func Mark(rec *IdempotencyKey, point string) error {
+	rec.SetId(DeterministicID(rec.Scope, rec.IdemKey))
+	rec.RecoveryPoint = point
 	return rec.Put()
 }
 

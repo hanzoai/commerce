@@ -316,11 +316,11 @@ func TestFundCreditsOnePaymentOnce(t *testing.T) {
 // fails, as a lost connection does, and every other kind reads as it did.
 type plansDown struct{ dbpkg.DB }
 
-var errPlansDown = errors.New("the plan rows could not be read")
+var errReadLost = errors.New("the read was lost")
 
 func (d plansDown) Get(ctx context.Context, k dbpkg.Key, dst interface{}) error {
 	if k != nil && k.Kind() == "plan" {
-		return errPlansDown
+		return errReadLost
 	}
 	return d.DB.Get(ctx, k, dst)
 }
@@ -349,17 +349,17 @@ func (q downQuery) Ancestor(k dbpkg.Key) dbpkg.Query {
 	return downQuery{q.Query.Ancestor(k)}
 }
 func (q downQuery) GetAll(context.Context, interface{}) ([]dbpkg.Key, error) {
-	return nil, errPlansDown
+	return nil, errReadLost
 }
-func (q downQuery) First(context.Context, interface{}) (dbpkg.Key, error) { return nil, errPlansDown }
-func (q downQuery) Count(context.Context) (int, error)                    { return 0, errPlansDown }
-func (q downQuery) Keys(context.Context) ([]dbpkg.Key, error)             { return nil, errPlansDown }
+func (q downQuery) First(context.Context, interface{}) (dbpkg.Key, error) { return nil, errReadLost }
+func (q downQuery) Count(context.Context) (int, error)                    { return 0, errReadLost }
+func (q downQuery) Keys(context.Context) ([]dbpkg.Key, error)             { return nil, errReadLost }
 func (q downQuery) Run(ctx context.Context) dbpkg.Iterator                { return downIter{q.Query.Run(ctx)} }
 
 // downIter is the iterator of a query that failed: its first result is the error.
 type downIter struct{ dbpkg.Iterator }
 
-func (downIter) Next(interface{}) (dbpkg.Key, error) { return nil, errPlansDown }
+func (downIter) Next(interface{}) (dbpkg.Key, error) { return nil, errReadLost }
 
 // A plan row that cannot be read is not a plan that is not there: the sale answers
 // 503 and charges nothing, rather than selling the embedded catalog's plan of the

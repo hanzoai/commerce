@@ -2,6 +2,8 @@ package billing
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -442,6 +444,13 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			return nil, saleRefusal{saleMissing, "store not found"}
 		}
 	}
+	// The order this request sends, whole: one key sent with another order is
+	// refused, and an order whose starting balance is still owed is finished by
+	// sending it again, under any key and whatever the catalog says now.
+	facts := factsOf(in)
+	if out, ok, err := owedSale(ctx, db, org, in, facts); ok {
+		return out, err
+	}
 
 	// Server-authoritative plan + price. A client amount is NEVER consulted — the
 	// charge is the plan's catalog price × billable seats, so a scripted request
@@ -622,6 +631,12 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	squareKey := gatewayKey("subscribe", in.Subject, guard)
 
 	rec, replay, gerr := idempotencykey.Begin(db, "billing-subscribe:"+in.Subject+":"+in.StoreID, guard)
+	if gerr == nil && rec.Facts != "" && rec.Facts != facts {
+		// A key names one order. The same key sent with another order — more
+		// seats, another mix of them, another balance, plan, term or coupon — is
+		// refused rather than answered with the first order's receipt.
+		return nil, saleRefusal{saleHeld, "this X-Idempotency-Key was used for another order: send a new key for a new order"}
+	}
 	if gerr != nil {
 		// Guard store unavailable. Proceed WITHOUT the local guard: the stable Square
 		// idempotency key above still makes the CHARGE exactly-once at the processor,
@@ -633,24 +648,20 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		if rec.Status != idempotencykey.StatusCompleted || rec.Response == "" {
 			return nil, saleRefusal{saleHeld, "subscription already in progress"}
 		}
-		// A key names one order. The same key sent with another order — more seats,
-		// another balance, another plan or term — is refused rather than answered
-		// with the first order's receipt.
-		var prev Sale
-		if json.Unmarshal([]byte(rec.Response), &prev) == nil {
-			if !prev.same(planID, p.Interval, in.Level, seats, bal, chargeCents, couponCode) {
-				return nil, saleRefusal{saleHeld, "this X-Idempotency-Key was used for another order: send a new key for a new order"}
-			}
-			if prev.owing() {
-				return complete(ctx, db, org, in, rec, &prev)
-			}
-		}
 		return &saleOutcome{Replayed: json.RawMessage(rec.Response)}, nil
+	} else {
+		rec.Facts = facts
+	}
+	if rec == nil && bal > 0 {
+		// An order's starting balance is owed between its charge and its credit,
+		// and the guard is what finishes it: without one, nothing is charged.
+		return nil, saleRefusal{saleUnavailable, "billing could not be reached; nothing was charged, try again"}
 	}
 	// abandon releases the guard on pre-charge failures where no money moved, so a
-	// later attempt is not wedged.
+	// later attempt is not wedged. A guard a stopped sale marked after its charge
+	// (draftOf) holds that payment's sale, and is never released.
 	abandon := func() {
-		if rec != nil {
+		if rec != nil && rec.RecoveryPoint == "" {
 			_ = rec.Delete()
 		}
 	}
@@ -663,17 +674,23 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// returns, so the second finds the first in flight, and once the first has
 	// written its subscription the check below refuses the second by name. A store
 	// that cannot be asked refuses the sale, with nothing charged.
-	lock, busy, lerr := idempotencykey.Begin(db, saleScope+in.Subject, saleKey)
-	switch {
-	case lerr != nil:
+	lease, lerr := holdSale(db, in.Subject)
+	if lerr != nil {
 		abandon()
-		log.Error("subscribe: the sale lock could not be taken (subject=%s): %v", in.Subject, lerr)
-		return nil, saleRefusal{saleUnavailable, "billing could not be reached; nothing was charged, try again"}
-	case busy:
-		abandon()
-		return nil, saleRefusal{saleHeld, "a sale for this account is already in progress"}
+		return nil, lerr
 	}
-	defer func() { _ = lock.Delete() }()
+	defer lease.Release()
+
+	// A sale under this key stopped after its charge settled: it is finished from
+	// what it recorded then, never charged or refused again.
+	if d := draftOf(rec); d != nil {
+		sub, err := opened(db, in.Subject, org.TestMode(), d.Payment)
+		if err != nil {
+			return nil, unfinished
+		}
+		p.TrialPeriodDays = 0
+		return sell(ctx, db, org, in, rec, p, sub, qty, lines, d)
+	}
 
 	// ONE PAID SUBSCRIPTION PER SUBJECT — refused BEFORE the card is touched.
 	//
@@ -1041,110 +1058,229 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		}
 	}
 
-	// Create the subscription, authorized because the payment settled (mint
-	// authority = the settled charge — the CreateBillingSubscription C1-a gate is
-	// deliberately not on this path). No trial: the customer is paying now, so the
-	// first period is Active immediately.
-	p.TrialPeriodDays = 0
-	meta := map[string]interface{}{"source": "subscribe/card"}
-	if cpn.Code != "" {
-		meta["coupon"] = cpn.Code
+	// The payment is recorded before anything else is written: its order, with the
+	// starting balance it owes, beside the receipt the sale will answer. From here
+	// every step is keyed on the payment, so a sale that stops part-way is
+	// finished by the same order sent again (draftOf), and a refund or a dispute
+	// that arrives meanwhile is netted against the credit rather than lost.
+	d := &draft{
+		Payment: res.ProcessorRef,
+		Sale: Sale{
+			PlanID:          planID,
+			Level:           in.Level,
+			Interval:        p.Interval,
+			PaymentMethodID: pm.Id(),
+			AmountCents:     chargeCents + bal,
+			BalanceCents:    bal,
+			Seats:           seats,
+			Category:        p.Category,
+			Replaced:        replaced,
+			Currency:        string(cur),
+			Status:          "ok",
+			Coupon:          cpn.Code,
+			CouponPercent:   cpn.Percent,
+			CouponMonths:    cpn.Months,
+		},
+		List:        listCents,
+		Promo:       promoPercent,
+		PromoName:   promoName,
+		CouponPlans: couponPlans,
 	}
-	sub, err := createSubscription(db, p, &createSubscriptionRequest{
-		UserId:               in.Subject,
-		PlanId:               planID,
-		StoreId:              in.StoreID,
-		DefaultPaymentMethod: pm.Id(),
-		Quantity:             qty,
-		Metadata:             meta,
-		Test:                 org.TestMode(),
-		priced:               lines,
-	})
+	if err := enter(org, in, rec, d); err != nil {
+		uncredited(ctx, in.Events, org.Name, in.Subject, d.Payment, "the charge settled and the sale could not record it: "+err.Error(), chargeCents+bal, false)
+		return nil, unfinished
+	}
+	// No trial: the customer is paying now, so the first period is Active
+	// immediately.
+	p.TrialPeriodDays = 0
+	return sell(ctx, db, org, in, rec, p, nil, qty, lines, d)
+}
+
+// draft is what a card sale has decided by the time its charge settles: the
+// payment, and the receipt it answers with less the rows not written yet. It is
+// marked on the sale's guard then (enter), so a retry that re-claims the guard of a
+// sale that stopped part-way finishes that sale from here rather than charging
+// again or refusing the plan just paid for.
+type draft struct {
+	Payment     string   `json:"payment"`
+	Sale        Sale     `json:"sale"`
+	List        int64    `json:"list"`
+	Promo       int      `json:"promo,omitempty"`
+	PromoName   string   `json:"promoName,omitempty"`
+	CouponPlans []string `json:"couponPlans,omitempty"`
+}
+
+// draftOf is the draft a stopped sale marked on its guard, or nil.
+func draftOf(rec *idempotencykey.IdempotencyKey) *draft {
+	if rec == nil || rec.RecoveryPoint == "" {
+		return nil
+	}
+	d := new(draft)
+	if json.Unmarshal([]byte(rec.RecoveryPoint), d) != nil || d.Payment == "" {
+		return nil
+	}
+	return d
+}
+
+// enter records a settled charge before the sale writes anything else: the
+// payment's record (models/paymentorg) with the order's starting balance, owed,
+// and the draft on the sale's guard.
+func enter(org *organization.Organization, in SubscribeIn, rec *idempotencykey.IdempotencyKey, d *draft) error {
+	order := ""
+	if rec != nil {
+		order = idempotencykey.DeterministicID(rec.Scope, rec.IdemKey)
+	}
+	if err := paymentorg.Open(d.Payment, org.Name, in.Subject, order, d.Sale.BalanceCents, org.TestMode()); err != nil {
+		return err
+	}
+	if rec == nil {
+		return nil
+	}
+	body, err := json.Marshal(d)
 	if err != nil {
-		// Money moved + card saved; surface the failure. Leave the guard STARTED so a
-		// retry replays rather than re-charging.
-		uncredited(ctx, in.Events, org.Name, in.Subject, res.ProcessorRef,
-			"the first-period charge settled and no subscription was created: "+err.Error(),
-			chargeCents+bal, false)
+		return err
+	}
+	return idempotencykey.Mark(rec, string(body))
+}
+
+// unfinished is a card sale whose charge settled and whose rows were not all
+// written: the same order sent again finishes it, charging nothing again.
+var unfinished = saleRefusal{saleUnavailable, "the payment settled and the order is not finished yet; send the same order again in a few minutes to finish it — nothing is charged again"}
+
+// owedBalance is an order whose starting balance its payment still owes the
+// wallet: the same order sent again credits it, charging nothing again.
+var owedBalance = saleRefusal{saleUnavailable, "the payment settled and its starting balance is not credited yet; send the same order again to credit it — nothing is charged again"}
+
+// opened is the subscription the payment opened, or nil when it opened none. A
+// read that fails is an error, never "none": answering none would open a second.
+func opened(db *datastore.Datastore, subject string, test bool, payment string) (*subscription.Subscription, error) {
+	subs, err := userSubscriptions(db, subject, test)
+	if err != nil {
 		return nil, err
+	}
+	for _, s := range subs {
+		if s.Metadata["payment"] == payment && s.Metadata["bundleParent"] == nil &&
+			!strings.EqualFold(strings.TrimSpace(s.ProviderType), "bundle") {
+			// A row read by query is not bound to the store, so the sale's writes go
+			// through a fresh read of the same id.
+			row := subscription.New(db)
+			if err := row.GetById(s.Id()); err != nil {
+				return nil, err
+			}
+			return row, nil
+		}
+	}
+	return nil, nil
+}
+
+// sell writes what a settled card charge bought, each step keyed on the payment so
+// a sale run again after it stopped finishes rather than repeats: the subscription
+// (sub, or a new one), the period it paid, the payment's record of both, the
+// receipt, and then the starting balance (conclude). Every write that fails leaves
+// the guard started, holding the draft, for the retry to finish.
+func sell(ctx context.Context, db *datastore.Datastore, org *organization.Organization, in SubscribeIn, rec *idempotencykey.IdempotencyKey, p *plan.Plan, sub *subscription.Subscription, qty int, lines []subscription.Line, d *draft) (*saleOutcome, error) {
+	sale := d.Sale
+	cpn := engine.Coupon{Code: sale.Coupon, Percent: sale.CouponPercent, Months: sale.CouponMonths}
+	if sub == nil {
+		// Created because the payment settled (mint authority = the settled
+		// charge — the CreateBillingSubscription C1-a gate is deliberately not on
+		// this path).
+		meta := map[string]interface{}{"source": "subscribe/card", "payment": d.Payment}
+		if cpn.Code != "" {
+			meta["coupon"] = cpn.Code
+		}
+		var err error
+		sub, err = createSubscription(db, p, &createSubscriptionRequest{
+			UserId:               in.Subject,
+			PlanId:               sale.PlanID,
+			StoreId:              in.StoreID,
+			DefaultPaymentMethod: sale.PaymentMethodID,
+			Quantity:             qty,
+			Metadata:             meta,
+			Test:                 org.TestMode(),
+			priced:               lines,
+		})
+		if err != nil {
+			uncredited(ctx, in.Events, org.Name, in.Subject, d.Payment,
+				"the first-period charge settled and no subscription was created: "+err.Error(), sale.AmountCents, false)
+			return nil, err
+		}
 	}
 
 	// Mark the FIRST period PAID by the card charge — a paid BillingInvoice
-	// referencing the processor ref — and keep the row on that period. This also makes
+	// referencing the payment — and keep the row on that period. This also makes
 	// the subscription payment-backed (Square provider + a linked invoice), so its
-	// INCLUDED monthly allotment flows (subscriptionPaymentBacked).
+	// INCLUDED monthly allotment flows (subscriptionPaymentBacked). The promo and
+	// the coupon are stamped BEFORE the invoice is built — buildPeriodInvoice
+	// prices both off the subscription, so setting them after would invoice the
+	// first period at full price against a discounted charge.
 	sub.ProviderType = string(processor.Square)
-	// Stamp the promo and grant the coupon BEFORE the invoice is built —
-	// buildPeriodInvoice prices both off the subscription, so setting them after
-	// would invoice the first period at full price against a discounted charge.
-	sub.DiscountPercent, sub.DiscountName = promoPercent, promoName
-	engine.Grant(sub, cpn, couponPlans, sub.PeriodStart)
-	inv, err := engine.CreatePaidFirstInvoice(db, sub, "card", res.ProcessorRef)
-	invoiceID := ""
-	if err != nil {
-		// The subscription exists and the money is collected; a first-invoice record
-		// failure is non-fatal to the entitlement. Log for reconciliation.
-		log.Error("subscribe: failed to record paid first invoice (subject=%s, ref=%s): %v", in.Subject, res.ProcessorRef, err)
-	} else {
-		invoiceID = inv.Id()
+	sub.DiscountPercent, sub.DiscountName = d.Promo, d.PromoName
+	engine.Grant(sub, cpn, d.CouponPlans, sub.PeriodStart)
+	inv, err := paidBy(db, sub, d.Payment)
+	if err == nil {
+		_, _, err = paymentorg.Change(d.Payment, func(r *paymentorg.PaymentOrg) bool {
+			if r.Invoice == inv.Id() {
+				return false
+			}
+			r.Invoice = inv.Id()
+			return true
+		})
 	}
-	// The payment's record: where its refund or dispute finds its books, and, for an
-	// order, the state of its starting balance, which the credit below reads.
-	if err := paymentorg.Put(res.ProcessorRef, org.Name, in.Subject, invoiceID, bal, org.TestMode()); err != nil {
-		log.Warn("subscribe: payment %s: the index to its invoice was not written, so its refund or dispute will not find the period it paid: %v", res.ProcessorRef, err)
+	if err != nil {
+		uncredited(ctx, in.Events, org.Name, in.Subject, d.Payment,
+			"the first-period charge settled and its paid invoice was not recorded: "+err.Error(), sale.AmountCents, false)
+		return nil, unfinished
 	}
 	if err := sub.Update(); err != nil {
 		log.Error("subscribe: failed to update subscription after first invoice (subject=%s): %v", in.Subject, err)
 	}
-	sale := &Sale{
-		SubscriptionID:  sub.Id(),
-		InvoiceID:       invoiceID,
-		PlanID:          planID,
-		Level:           in.Level,
-		Interval:        p.Interval,
-		PaymentMethodID: pm.Id(),
-		AmountCents:     chargeCents + bal,
-		BalanceCents:    bal,
-		Seats:           seats,
-		Category:        p.Category,
-		Replaced:        replaced,
-		Currency:        string(cur),
-		Status:          "ok",
-		Coupon:          cpn.Code,
-		CouponPercent:   cpn.Percent,
-		CouponMonths:    cpn.Months,
-	}
-	if bal == 0 {
+
+	sale.SubscriptionID, sale.InvoiceID = sub.Id(), inv.Id()
+	if sale.BalanceCents == 0 {
 		// Nothing is owed: a plan whose row states a reload switches the buyer's
-		// auto-recharge on, now the first period is paid, before the receipt is
-		// sealed so a retry replays it. An order switches it on only once its
-		// starting balance is credited (conclude).
-		sale.Reload = armSale(ctx, org, in, planID, cur)
+		// auto-recharge on now the first period is paid, before the receipt is
+		// sealed so a retry replays it.
+		sale.Reload = armSale(ctx, org, in, sale.PlanID, currency.Type(sale.Currency))
 	}
-	// Seal the idempotency guard with the exact success body so a retry replays it
-	// verbatim (no second vault/charge/subscribe, identical response). An order's
-	// starting balance is credited LAST, after this seal names it owed (no
-	// balanceId): a credit that fails leaves the receipt owing it, and the retry
-	// under the same key completes it (complete), once.
-	sealSale(rec, sale)
+	// Seal the guard with the exact success body so a retry replays it verbatim (no
+	// second vault/charge/subscribe, identical response). An order's starting
+	// balance is credited LAST, after this seal names it owed (no balanceId): a
+	// credit that fails leaves the receipt owing it, and the same order sent again
+	// completes it (complete), once.
+	sealSale(rec, &sale)
 	noticeSale(ctx, saleNote{
-		Org: org.Name, Email: in.Email, Plan: p, Seats: seats, Sale: sale,
-		ListCents: listCents, PromoName: promoName, Coupon: cpn, Test: org.TestMode(),
+		Org: org.Name, Email: in.Email, Plan: p, Seats: sale.Seats, Sale: &sale,
+		ListCents: d.List, PromoName: d.PromoName, Coupon: cpn, Test: org.TestMode(),
 	})
-	if held != nil && held.Id() != sub.Id() {
-		toCancel := subscription.New(db)
-		if err := toCancel.GetById(held.Id()); err == nil {
-			_ = engine.CancelSubscription(toCancel, false)
-			_ = toCancel.Update()
-		}
-		if was := subscriptionSlug(held); was != planID {
-			disarm(ctx, org, in.Subject, was)
+	if sale.Replaced != "" && sale.Replaced != sub.Id() {
+		was := subscription.New(db)
+		if err := was.GetById(sale.Replaced); err == nil {
+			_ = engine.CancelSubscription(was, false)
+			_ = was.Update()
+			if slug := subscriptionSlug(was); slug != sale.PlanID {
+				disarm(ctx, org, in.Subject, slug)
+			}
 		}
 	}
-	if bal == 0 {
-		return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil
+	if sale.BalanceCents == 0 {
+		return &saleOutcome{Sale: &sale, Sub: sub, Inv: inv}, nil
 	}
-	return conclude(ctx, db, org, in, rec, sale, res.ProcessorRef, sub, inv)
+	return conclude(ctx, db, org, in, rec, &sale, d.Payment, sub, inv)
+}
+
+// paidBy is the paid first-period invoice payment paid for sub: the one already
+// recorded, or a new one.
+func paidBy(db *datastore.Datastore, sub *subscription.Subscription, payment string) (*billinginvoice.BillingInvoice, error) {
+	inv := billinginvoice.New(db)
+	found, err := inv.Query().Filter("PaymentRef=", payment).Filter("SubscriptionId=", sub.Id()).Get()
+	switch {
+	case err != nil:
+		return nil, err
+	case found:
+		return inv, nil
+	}
+	return engine.CreatePaidFirstInvoice(db, sub, "card", payment)
 }
 
 // saleScope and saleKey name the one lock a subject's sale holds while it is in
@@ -1165,47 +1301,79 @@ func sealSale(rec *idempotencykey.IdempotencyKey, sale *Sale) {
 	}
 }
 
-// same reports whether a sealed sale is the order now asked for under its key:
-// the plan, the term, the level, the seats, the starting balance and the coupon. A
-// receipt sealed before it stated its seats matches any seats. A receipt states the
-// balance credited, so one a refund or dispute took part of before the credit
-// (conclude) states less than was ordered, and is that order when what it charged
-// is: the first period (charge, before the coupon the receipt names) and balance.
-func (s *Sale) same(plan string, interval types.Interval, level int, seats, balance, charge int64, coupon string) bool {
-	return s.PlanID == plan && s.Interval == interval && s.Level == level &&
-		(s.Seats == 0 || s.Seats == seats) && s.Coupon == coupon &&
-		(s.BalanceCents == balance || (s.BalanceCents < balance && !s.owing() &&
-			s.AmountCents == engine.Discounted(charge, s.CouponPercent)+balance))
-}
-
 // owing reports whether a sealed receipt still owes its starting balance.
 func (s *Sale) owing() bool {
 	return s.BalanceCents > 0 && s.BalanceID == ""
 }
 
+// factsOf is the digest of the order a request sends — every field that says what
+// is bought, as sent: the store, the plan, its level and term, the seats of every
+// seat type, the starting balance, the coupon and how it is paid. Never the card
+// token, which a retry mints afresh.
+func factsOf(in SubscribeIn) string {
+	h := sha256.New()
+	fmt.Fprintf(h, "store=%s\nplan=%s\nlevel=%d\ninterval=%s\nquantity=%d\nbalance=%d\ncoupon=%s\nwallet=%t\n",
+		strings.TrimSpace(in.StoreID), strings.TrimSpace(in.PlanID), in.Level, in.Interval, max(in.Quantity, 1),
+		in.BalanceCents, promo.CouponCode(strings.TrimSpace(in.Coupon)), in.Wallet)
+	for _, l := range in.Lines {
+		fmt.Fprintf(h, "line=%s:%d\n", strings.TrimSpace(l.PlanID), l.Quantity)
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// owedSale finishes an order whose starting balance is still owed when this
+// request is that order: the same facts, under any key. It is asked before the
+// catalog is read, so neither a new key nor an edit of the plan since strands the
+// money the order paid. Only an order buys a balance, so a request that buys none
+// asks nothing.
+func owedSale(ctx context.Context, db *datastore.Datastore, org *organization.Organization, in SubscribeIn, facts string) (*saleOutcome, bool, error) {
+	if in.BalanceCents <= 0 {
+		return nil, false, nil
+	}
+	orders, err := paymentorg.Orders(org.Name, in.Subject)
+	if err != nil {
+		return nil, true, saleRefusal{saleUnavailable, "billing could not be reached; nothing was charged, try again"}
+	}
+	for _, payment := range orders {
+		po, found, err := paymentorg.Get(payment)
+		if err != nil || !found {
+			continue
+		}
+		rec := idempotencykey.New(db)
+		if rec.Get(db.NewKey(rec.Kind(), po.Order, 0, nil)) != nil || rec.Facts != facts ||
+			rec.Status != idempotencykey.StatusCompleted {
+			continue
+		}
+		var sale Sale
+		if json.Unmarshal([]byte(rec.Response), &sale) != nil || !sale.owing() {
+			continue
+		}
+		out, err := complete(ctx, db, org, in, rec, &sale, payment)
+		return out, true, err
+	}
+	return nil, false, nil
+}
+
 // complete finishes a sale whose starting balance was owed when its receipt was
-// sealed: the retry under the sale's key credits what the payment's record says is
-// owed now (conclude), under the payment the receipt's invoice records, and
-// answers the receipt as the sale — the first answer was the failure. It holds the
-// subject's sale lock, so it never runs beside the sale it completes.
-func complete(ctx context.Context, db *datastore.Datastore, org *organization.Organization, in SubscribeIn, rec *idempotencykey.IdempotencyKey, sale *Sale) (*saleOutcome, error) {
-	lock, busy, err := idempotencykey.Begin(db, saleScope+in.Subject, saleKey)
-	switch {
-	case err != nil:
-		return nil, saleRefusal{saleUnavailable, "billing could not be reached; try again"}
-	case busy:
-		return nil, saleRefusal{saleHeld, "a sale for this account is already in progress"}
+// sealed: it credits what the payment's record says is owed now (endow), switches
+// the plan's reload on, seals the receipt with the credit, and answers it as the
+// sale — the first answer was the failure. It holds the subject's sale lease, so it
+// never runs beside the sale it completes.
+func complete(ctx context.Context, db *datastore.Datastore, org *organization.Organization, in SubscribeIn, rec *idempotencykey.IdempotencyKey, sale *Sale, payment string) (*saleOutcome, error) {
+	lease, err := holdSale(db, in.Subject)
+	if err != nil {
+		return nil, err
 	}
-	defer func() { _ = lock.Delete() }()
-	inv := billinginvoice.New(db)
-	if sale.InvoiceID == "" || inv.GetById(sale.InvoiceID) != nil || inv.PaymentRef == "" {
-		return nil, saleRefusal{saleUnavailable, "the payment's invoice could not be read, so its starting balance is not credited yet; send the same order again — nothing is charged again"}
+	defer lease.Release()
+	var sub *subscription.Subscription
+	if s := subscription.New(db); s.GetById(sale.SubscriptionID) == nil {
+		sub = s
 	}
-	sub := subscription.New(db)
-	if err := sub.GetById(sale.SubscriptionID); err != nil {
-		return nil, saleRefusal{saleUnavailable, "the sale's subscription could not be read, so its starting balance is not credited yet; send the same order again — nothing is charged again"}
+	var inv *billinginvoice.BillingInvoice
+	if i := billinginvoice.New(db); i.GetById(sale.InvoiceID) == nil {
+		inv = i
 	}
-	return conclude(ctx, db, org, in, rec, sale, inv.PaymentRef, sub, inv)
+	return conclude(ctx, db, org, in, rec, sale, payment, sub, inv)
 }
 
 // conclude credits an order's starting balance as its payment's record now stands
@@ -1227,10 +1395,6 @@ func conclude(ctx context.Context, db *datastore.Datastore, org *organization.Or
 	sealSale(rec, sale)
 	return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil
 }
-
-// owedBalance is an order whose starting balance its payment still owes the
-// wallet: the same order sent again credits it, charging nothing again.
-var owedBalance = saleRefusal{saleUnavailable, "the payment settled and its starting balance is not credited yet; send the same order again to credit it — nothing is charged again"}
 
 // paymentScope names the lease a payment is changed under: the credit of an
 // order's starting balance, and every refund and dispute of the payment, one at a
@@ -1301,7 +1465,7 @@ func land(ctx context.Context, ev *events.Client, org *organization.Organization
 	if err != nil {
 		return nil, owedBalance
 	}
-	if err := bank(ctx, org, po.Subject, cur, receipt{ProcessorRef: payment, AmountCents: po.Credit}); err != nil {
+	if err := bank(ctx, org, po.Subject, cur, receipt{ProcessorRef: payment, AmountCents: po.Credit}, "starting balance"); err != nil {
 		uncredited(ctx, ev, org.Name, po.Subject, payment, "the order's starting balance was not credited to the spendable balance: "+err.Error(), po.Credit, false)
 		return nil, owedBalance
 	}
@@ -1638,4 +1802,18 @@ func squareCustomerIDOf(pm *paymentmethod.PaymentMethod) string {
 		}
 	}
 	return ""
+}
+
+// holdSale takes subject's sale lease: one sale, completion or staff record for a
+// subject at a time, whatever key it came under (saleScope).
+func holdSale(db *datastore.Datastore, subject string) (*idempotencykey.Lease, error) {
+	lease, held, err := idempotencykey.Hold(db, saleScope+subject, saleKey)
+	switch {
+	case err != nil:
+		log.Error("subscribe: the sale lease could not be taken (subject=%s): %v", subject, err)
+		return nil, saleRefusal{saleUnavailable, "billing could not be reached; nothing was charged, try again"}
+	case !held:
+		return nil, saleRefusal{saleHeld, "a sale for this account is already in progress"}
+	}
+	return lease, nil
 }
