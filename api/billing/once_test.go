@@ -105,10 +105,10 @@ func TestAReloadLandsOnceInBothLedgers(t *testing.T) {
 	}
 }
 
-// An organization's starting balance: one deposit row (BalanceID). Commerce never
-// credits the host ledger for it — the host's screen credits it under BalanceID —
-// and the sale's payment webhook, for the seats and the balance together,
-// credits nothing.
+// An organization's starting balance: one deposit row (BalanceID) and one host-ledger
+// credit, both keyed on the sale's payment and both written by commerce (endow), as a
+// reload's are; the sale's payment webhook, for the seats and the balance together,
+// credits nothing. The host credits nothing of its own for it.
 func TestAStartingBalanceLandsOnceInBothLedgers(t *testing.T) {
 	const secret = "whsec_once_order"
 	registerSquare(t, secret)
@@ -125,12 +125,8 @@ func TestAStartingBalanceLandsOnceInBothLedgers(t *testing.T) {
 	if balanceID == "" || out["amountCents"] != float64(520000) {
 		t.Fatalf("receipt %v, want a balance id on one payment of 520000", out)
 	}
-	if led.calls != 0 {
-		t.Fatalf("commerce posted %d host-ledger credits for the order, want none", led.calls)
-	}
-	// The host's screen credits the starting balance once, under its receipt.
-	if _, _, err := led.Credit(ctx, creditledger.CreditInput{Org: org.Name, Subject: org.Name, Currency: "usd", IdempotencyKey: balanceID, AmountCents: 40000, Cash: true}); err != nil {
-		t.Fatal(err)
+	if led.calls != 1 || creditsUnder(led, "sqpay_once_order") != 1 {
+		t.Fatalf("commerce posted %d host-ledger credits for the order (%d under the payment), want one under the payment", led.calls, creditsUnder(led, "sqpay_once_order"))
 	}
 	redeliver(t, ctx, secret, org.Name, "sqpay_once_order", org.Name, 520000)
 
@@ -140,8 +136,8 @@ func TestAStartingBalanceLandsOnceInBothLedgers(t *testing.T) {
 	if n := depositsUnder(t, ctx, "hanzo", "sqpay_once_order"); n != 0 {
 		t.Errorf("the webhook wrote %d deposit rows in the deployment's books", n)
 	}
-	if led.calls != 1 || creditsUnder(led, "sqpay_once_order") != 0 {
-		t.Errorf("the host ledger took %d calls (%d under the payment), want only the screen's credit", led.calls, creditsUnder(led, "sqpay_once_order"))
+	if led.calls != 1 || creditsUnder(led, "sqpay_once_order") != 1 {
+		t.Errorf("the host ledger took %d calls (%d under the payment), want only commerce's one credit", led.calls, creditsUnder(led, "sqpay_once_order"))
 	}
 	if got := gate(t, ctx, org, org.Name); got != 40000 {
 		t.Errorf("the gate reads %d, want the starting balance's 40000", got)

@@ -874,6 +874,11 @@ func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organi
 		case err != nil:
 			return fmt.Errorf("%s %s on payment %s did not reach invoice %s in %s: %w", event.Type, id, paymentID, where.Invoice, where.Org, err)
 		}
+		// A sale's payment that is refunded, or that a dispute withholds, stops the
+		// automatic reload the sale switched on, as a reload's own payment does.
+		if moves && !won {
+			stopReload(ctx, where.Org, where.Subject, event.Type+" "+id)
+		}
 		if where.Balance <= 0 {
 			return nil
 		}
