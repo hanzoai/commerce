@@ -224,37 +224,36 @@ func TestSubscribeWithCard_Max50xAnnual(t *testing.T) {
 	}
 }
 
-// TestSubscribeWithCard_SwitchIntervalMonthlyToYearly tests that an existing monthly subscriber
-// can switch to annual billing, canceling the old monthly sub and starting annual.
-func TestSubscribeWithCard_SwitchIntervalMonthlyToYearly(t *testing.T) {
+// TestSubscribeWithCard_APersonalPlanIsNotSwitchedToYearly: a monthly subscriber
+// of a personal plan who asks for the same plan by the year is refused before any
+// card is touched, and keeps the monthly subscription it holds.
+func TestSubscribeWithCard_APersonalPlanIsNotSwitchedToYearly(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	org := moneyOrg("subswitch")
 	m := squareMock("cust_sw", "ccof_sw", "sqpay_sw")
 	withFakeSquare(t, m)
 
-	// Buy dev monthly first
 	if resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev"}`, map[string]string{"X-Idempotency-Key": "m-1"}); resp.StatusCode != http.StatusCreated {
 		t.Fatalf("monthly subscribe status=%d, want 201", resp.StatusCode)
 	}
+	calls := m.chargeCalls
 
-	// Switch to dev annual
 	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok2","planId":"dev","interval":"year"}`, map[string]string{"X-Idempotency-Key": "y-1"})
-	if resp.StatusCode != http.StatusCreated {
+	if resp.StatusCode != http.StatusBadRequest {
 		body, _ := io.ReadAll(resp.Body)
-		t.Fatalf("annual switch status=%d body=%s, want 201", resp.StatusCode, string(body))
+		t.Fatalf("annual switch status=%d body=%s, want 400", resp.StatusCode, string(body))
 	}
-	body := jsonBody(t, resp)
-	if got := int64(body["amountCents"].(float64)); got != 20000 {
-		t.Fatalf("amountCents=%d, want 20000 ($200)", got)
+	if body, _ := io.ReadAll(resp.Body); !strings.Contains(string(body), errPersonalMonthly.Error()) {
+		t.Fatalf("annual switch body=%s, want %q", body, errPersonalMonthly)
+	}
+	if m.chargeCalls != calls {
+		t.Fatalf("the refused switch charged the card (%d calls, was %d)", m.chargeCalls, calls)
 	}
 
 	db := datastore.New(org.Namespaced(ctx))
 	live := liveSubs(t, db, "subswitch")
-	if len(live) != 1 {
-		t.Fatalf("live subscriptions=%d, want 1 after annual switch", len(live))
-	}
-	if live[0].Plan.Interval != types.Yearly {
-		t.Errorf("active subscription interval=%v, want 'year'", live[0].Plan.Interval)
+	if len(live) != 1 || live[0].Plan.Interval == types.Yearly {
+		t.Fatalf("live subscriptions=%d, want the one monthly subscription kept", len(live))
 	}
 }

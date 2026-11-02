@@ -62,11 +62,15 @@ func TestPlans_TeamCommercialModel(t *testing.T) {
 	if dev.Limits == nil || dev.Limits.TeamGuests == nil || *dev.Limits.TeamGuests != 3 {
 		t.Error("dev must serve limits.teamGuests=3 (team.guests back-compat source)")
 	}
-	// The wire carries a real annual discount, not a copy of the monthly price —
-	// stated as a relationship so it survives a reprice and still fails the thing
-	// that actually went wrong once: annual silently equal to monthly.
-	if dev.annual() <= 0 || dev.annual() >= dev.Price {
-		t.Errorf("dev priceAnnual = %d cents, monthly = %d; annual must be a discount", dev.annual(), dev.Price)
+	// The wire carries a real annual discount on a business plan, not a copy of the
+	// monthly price — stated as a relationship so it survives a reprice and still
+	// fails annual silently equal to monthly. A personal plan is sold by the month
+	// and serves no annual price.
+	if team.annual() <= 0 || team.annual() >= team.Price {
+		t.Errorf("team priceAnnual = %d cents, monthly = %d; annual must be a discount", team.annual(), team.Price)
+	}
+	if dev.PriceAnnual != nil || dev.AnnualTotal != 0 {
+		t.Errorf("dev serves an annual price (%v, %d); a personal plan is sold by the month", dev.PriceAnnual, dev.AnnualTotal)
 	}
 }
 

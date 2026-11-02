@@ -358,6 +358,9 @@ func planAtInterval(p *plan.Plan, interval types.Interval) (*plan.Plan, error) {
 // year of it up front. Refusing is the rule levels already follow — sell only what
 // is published — and it is answered before any card is touched.
 func planAt(p *plan.Plan, level int, interval types.Interval) (*plan.Plan, error) {
+	if err := monthlyOnly(p, interval); err != nil {
+		return nil, err
+	}
 	at, err := planAtLevel(p, level)
 	if err != nil {
 		return nil, err
@@ -366,6 +369,27 @@ func planAt(p *plan.Plan, level int, interval types.Interval) (*plan.Plan, error
 		return nil, fmt.Errorf("plan %q is sold annually at its base price only, not at level %d", p.Slug, level)
 	}
 	return planAtInterval(at, interval)
+}
+
+// categoryPersonal is the category of the plans a person buys for themself.
+const categoryPersonal = "personal"
+
+// errPersonalMonthly refuses a personal plan sold by the year.
+var errPersonalMonthly = errors.New("personal plans are sold monthly")
+
+// monthlyOnly refuses a personal plan bought over a year: the personal ladder is
+// sold by the month, whatever annual price its row carries, and a business plan
+// (team, agency, enterprise) keeps its year. The period is the one asked for, or
+// the row's own where none is asked, so a personal row stated by the year is
+// refused as a yearly purchase is. It is asked before any other rule about the
+// period, so the buyer reads this reason rather than a missing annual price. Only a
+// purchase or a move onto a plan asks it; a renewal bills the subscription's own
+// period and never does.
+func monthlyOnly(p *plan.Plan, interval types.Interval) error {
+	if p.Category == categoryPersonal && (interval == types.Yearly || p.Interval == types.Yearly) {
+		return errPersonalMonthly
+	}
+	return nil
 }
 
 // createSubscription is the reusable CORE of subscription creation: seat gate →
@@ -968,6 +992,11 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 			// You may keep a retired tier you are already on; you may not MOVE onto
 			// one. Without this, archiving a plan leaves it purchasable by PATCH.
 			return http.Fail(c, 404, "new plan not found", nil)
+		}
+		// A move takes the plan as its row states it, period included, so a move onto
+		// a personal plan stated by the year is a yearly purchase of it.
+		if err := monthlyOnly(newPlan, ""); err != nil {
+			return http.Fail(c, 400, err.Error(), nil)
 		}
 
 		// C1-a mint gate, PATCH parity (Red F1): CreateBillingSubscription gates a

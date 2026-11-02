@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"testing"
@@ -196,9 +197,19 @@ func TestAnnualPeriodIsAYear(t *testing.T) {
 // charge a year of it up front.
 func TestAnnualAtALevelIsRefused(t *testing.T) {
 	maxLevels(t)
-	row := planFromStatic(lookupPlan("max-5x"))
+	personal := planFromStatic(lookupPlan("max-5x"))
 
-	// The base rung is sold annually — a ladder must not cost a plan its annual price.
+	// Max is a personal plan, sold by the month at every rung.
+	for level := range personal.Prices {
+		if _, err := planAt(personal, level, types.Yearly); !errors.Is(err, errPersonalMonthly) {
+			t.Errorf("max at level %d, annually: %v, want %q", level, err, errPersonalMonthly)
+		}
+	}
+
+	// The same ladder on a business plan: its base rung is sold annually — a ladder
+	// must not cost a plan its annual price — and no other rung is.
+	row := planFromStatic(lookupPlan("max-5x"))
+	row.Category = "team"
 	base, err := planAt(row, 0, types.Yearly)
 	if err != nil {
 		t.Fatalf("max at level 0, annually: %v", err)
@@ -230,8 +241,9 @@ func TestAnnualAtALevelIsRefused(t *testing.T) {
 // charged the year the catalog states, once, and the subscription carries that
 // amount for every renewal after it.
 func TestSubscribeWithCardChargesTheWholeYear(t *testing.T) {
-	monthly, perMonth, stated := annual(t, "dev")
-	want := int64(stated)
+	monthly, perMonth, stated := annual(t, "team")
+	const seats = 2
+	want := int64(stated) * seats
 
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -239,7 +251,7 @@ func TestSubscribeWithCardChargesTheWholeYear(t *testing.T) {
 	m := squareMock("cust_y", "ccof_y", "sqpay_y")
 	withFakeSquare(t, m)
 
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev","interval":"year"}`, nil)
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"team","interval":"year","quantity":2}`, nil)
 	if resp.StatusCode != http.StatusCreated {
 		raw, _ := io.ReadAll(resp.Body)
 		t.Fatalf("status=%d body=%s, want 201", resp.StatusCode, string(raw))
@@ -256,17 +268,17 @@ func TestSubscribeWithCardChargesTheWholeYear(t *testing.T) {
 	if int64(m.lastChargeAmount) != want {
 		t.Fatalf("charged %d, want %d", m.lastChargeAmount, want)
 	}
-	if int64(m.lastChargeAmount) == int64(monthly) {
+	if int64(m.lastChargeAmount) == int64(monthly)*seats {
 		t.Fatalf("charged the monthly price %d for a year", monthly)
 	}
 
 	db := datastore.New(org.Namespaced(ctx))
-	sub := parentSub(t, db, "yr-buy", "dev")
+	sub := parentSub(t, db, "yr-buy", "team")
 	if sub == nil {
-		t.Fatal("no dev subscription created")
+		t.Fatal("no team subscription created")
 	}
-	if int64(sub.Plan.Price) != want {
-		t.Fatalf("subscription carries %d, want %d", sub.Plan.Price, want)
+	if int64(sub.Plan.Price) != int64(stated) {
+		t.Fatalf("subscription carries %d a seat, want %d", sub.Plan.Price, stated)
 	}
 	if sub.Plan.Interval != types.Yearly {
 		t.Fatalf("subscription interval=%q, want %q", sub.Plan.Interval, types.Yearly)
@@ -276,21 +288,21 @@ func TestSubscribeWithCardChargesTheWholeYear(t *testing.T) {
 	}
 
 	// A year of revenue reports as the advertised month, not as twelve of them.
-	if got := SubscriptionMRRCents(sub); got != int64(perMonth) {
-		t.Fatalf("MRR=%d, want the advertised %d", got, perMonth)
+	if got := SubscriptionMRRCents(sub); got != int64(perMonth)*seats {
+		t.Fatalf("MRR=%d, want the advertised %d a seat for %d seats", got, perMonth, seats)
 	}
 
 	// The authority row still sells by the month to everyone else.
-	base, err := resolveSubscriptionPlan(db, "dev")
+	base, err := resolveSubscriptionPlan(db, "team")
 	if err != nil {
-		t.Fatalf("resolve dev: %v", err)
+		t.Fatalf("resolve team: %v", err)
 	}
 	if base.Interval != types.Monthly || base.Price != monthly {
 		t.Fatalf("the authority row became %d/%q after an annual purchase; it must still be %d/%q",
 			base.Price, base.Interval, monthly, types.Monthly)
 	}
 	if sub.PlanId != base.Id() || sub.PlanId == "" {
-		t.Fatalf("subscription PlanId=%q, want the dev plan id %q", sub.PlanId, base.Id())
+		t.Fatalf("subscription PlanId=%q, want the team plan id %q", sub.PlanId, base.Id())
 	}
 }
 
@@ -384,6 +396,11 @@ func TestAbsentIntervalBuysTheMonthlyPrice(t *testing.T) {
 // by nobody. It renews through the HTTP endpoint, which re-reads the subscription
 // by id, so the price under test is the one that survived storage rather than one
 // held in memory from the purchase.
+//
+// The subscription is a personal plan held by the year, as the store may already
+// hold one: personal plans are sold by the month (monthlyOnly asks a purchase or a
+// move onto a plan), and a subscription the store holds by the year still renews
+// by the year.
 func TestAnnualRenewalChargesTheYearAgain(t *testing.T) {
 	monthly, _, stated := annual(t, "dev")
 	want := int64(stated)
@@ -394,13 +411,13 @@ func TestAnnualRenewalChargesTheYearAgain(t *testing.T) {
 	m := squareMock("cust_ry", "ccof_ry", "sqpay_ry")
 	withFakeSquare(t, m)
 
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev","interval":"year"}`, nil)
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev"}`, nil)
 	if resp.StatusCode != http.StatusCreated {
 		raw, _ := io.ReadAll(resp.Body)
 		t.Fatalf("subscribe status=%d body=%s, want 201", resp.StatusCode, string(raw))
 	}
-	if int64(m.lastChargeAmount) != want {
-		t.Fatalf("first charge=%d, want %d", m.lastChargeAmount, want)
+	if int64(m.lastChargeAmount) != int64(monthly) {
+		t.Fatalf("first charge=%d, want %d", m.lastChargeAmount, monthly)
 	}
 
 	db := datastore.New(org.Namespaced(ctx))
@@ -415,6 +432,11 @@ func TestAnnualRenewalChargesTheYearAgain(t *testing.T) {
 	if err := fresh.GetById(sub.Id()); err != nil {
 		t.Fatalf("re-read subscription: %v", err)
 	}
+	yearly, err := planAtInterval(&fresh.Plan, types.Yearly)
+	if err != nil {
+		t.Fatalf("dev by the year: %v", err)
+	}
+	fresh.Plan = *yearly
 	fresh.PeriodStart = time.Now().AddDate(-1, 0, -1)
 	fresh.PeriodEnd = time.Now().AddDate(0, 0, -1)
 	if err := fresh.Update(); err != nil {

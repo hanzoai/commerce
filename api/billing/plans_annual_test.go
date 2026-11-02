@@ -25,12 +25,14 @@ func centsText(p *int64) string {
 	return fmt.Sprint(*p)
 }
 
-// TestAnnualPriceIsTheCatalogs: GET /v1/billing/plans serves each plan's
+// TestAnnualPriceIsTheCatalogs: GET /v1/billing/plans serves each business plan's
 // priceAnnual as the catalog states it — cents where it names a price, null
-// where it names none. Advisory and dedicated are sold by the month only and
-// enterprise is a sales call; all three were served as a $0 annual price, which
-// on a plan that charges advertises a free year of it. Asked of the embed and of
-// the seeded authority read back the way the endpoint reads it, as JSON.
+// where it names none — and every personal plan's as null, since the personal
+// ladder is sold by the month whatever its row carries. Advisory and dedicated
+// are sold by the month only and enterprise is a sales call; all three were
+// served as a $0 annual price, which on a plan that charges advertises a free
+// year of it. Asked of the embed and of the seeded authority read back the way
+// the endpoint reads it, as JSON.
 func TestAnnualPriceIsTheCatalogs(t *testing.T) {
 	want := map[string]string{}
 	for _, f := range []struct {
@@ -50,10 +52,13 @@ func TestAnnualPriceIsTheCatalogs(t *testing.T) {
 				continue // a draft is on sale nowhere, so nothing serves its annual price
 			}
 			want[r.ID] = "null"
-			if r.PriceAnnual != nil {
+			if r.PriceAnnual != nil && r.Category != categoryPersonal {
 				want[r.ID] = fmt.Sprint(int64(math.Round(*r.PriceAnnual * 100)))
 			}
 		}
+	}
+	if want["team"] == "null" {
+		t.Fatal("the catalog states no annual price for team, so nothing shows a business plan keeps its year")
 	}
 	for _, slug := range []string{"advisory", "dedicated", "enterprise"} {
 		if want[slug] != "null" {
@@ -78,7 +83,12 @@ func TestAnnualPriceIsTheCatalogs(t *testing.T) {
 			var slug string
 			_ = json.Unmarshal(row["slug"], &slug)
 			if got := string(row["priceAnnual"]); got != want[slug] {
-				t.Errorf("%s: %s priceAnnual = %s, the catalog states %s", name, slug, got, want[slug])
+				t.Errorf("%s: %s priceAnnual = %s, want %s", name, slug, got, want[slug])
+			}
+			var category string
+			_ = json.Unmarshal(row["category"], &category)
+			if _, yearly := row["annualTotal"]; yearly && category == categoryPersonal {
+				t.Errorf("%s: personal plan %s serves an annual total %s", name, slug, row["annualTotal"])
 			}
 		}
 	}

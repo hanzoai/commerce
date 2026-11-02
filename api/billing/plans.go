@@ -235,8 +235,12 @@ func capacityOf(l *planLimits) *Capacity {
 	return &c
 }
 
-// view is the plan as it is served.
+// view is the plan as it is served. A personal plan is sold by the month only
+// (monthlyOnly), so it advertises no annual price whatever its row carries.
 func (p staticPlan) view() PlanView {
+	if p.Category == categoryPersonal {
+		p.PriceAnnual, p.AnnualTotal = nil, 0
+	}
 	return PlanView{staticPlan: p, Limits: capacityOf(p.Limits)}
 }
 
