@@ -447,7 +447,10 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// charge is the plan's catalog price × billable seats, so a scripted request
 	// cannot underpay.
 	p, err := resolveSubscriptionPlan(db, planID)
-	if err != nil {
+	switch {
+	case errors.Is(err, errPlanUnread):
+		return nil, saleRefusal{saleUnavailable, err.Error()}
+	case err != nil:
 		return nil, saleRefusal{saleMissing, "plan not found"}
 	}
 	// Every rule below reads the catalog by slug. A plan named by its row id is
@@ -495,10 +498,12 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	}
 	// A team's other seat types, priced at the period bought, as the plan is. A
 	// line naming a plan not on sale is the same miss as the plan itself.
-	lines, err := linesAt(db, planID, in.Lines, p.Interval, cur)
+	lines, err := linesAt(db, p, in.Lines, p.Interval, cur)
 	switch {
 	case errors.Is(err, errLinePlan):
 		return nil, saleRefusal{saleMissing, "plan not found"}
+	case errors.Is(err, errPlanUnread):
+		return nil, saleRefusal{saleUnavailable, err.Error()}
 	case err != nil:
 		return nil, saleRefusal{saleRefused, err.Error()}
 	}
@@ -511,21 +516,23 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	if qty < 1 {
 		qty = 1
 	}
-	if why := teamSeats(planID, qty, lines); why != "" {
+	// The seat terms are the row's in hand, read once: the row that prices the
+	// sale is the row that seats it, and createSubscription stamps the same row on
+	// the subscription every invoice bills from.
+	terms := seatOf(p)
+	if why := terms.refusal(planID, qty, lines); why != "" {
 		return nil, saleRefusal{saleRefused, why}
 	}
 	if why := orderRefusal(org, p, planID, in, sourceID); why != "" {
 		return nil, saleRefusal{saleRefused, why}
 	}
 	bal := in.BalanceCents
-	// Per seat when the row in hand says so, or seatTerms does: the predicate
-	// createSubscription stamps on the subscription's plan, which is what every
-	// invoice bills from. A seatTerms read that failed and fell back to the embed
-	// can then never charge one seat for a row that bills twenty.
 	seatMult := int64(1)
-	if p.PerSeat || perSeat(planID) {
+	if terms.each {
 		seatMult = int64(qty)
 	}
+	// The seats the receipt states, every seat type counted.
+	seats := seatMult + int64(lineSeats(lines))
 	chargeCents := int64(p.Price)*seatMult + lineCents(lines)
 	// The advertised promo, actually applied. GET /v1/billing/plans annotates each
 	// plan with promoPercent off the SAME gate (active + inside its window +
@@ -623,10 +630,22 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		log.Error("subscribe idempotency Begin failed (subject=%s): %v", in.Subject, gerr)
 		rec = nil
 	} else if replay {
-		if rec.Status == idempotencykey.StatusCompleted && rec.Response != "" {
-			return &saleOutcome{Replayed: json.RawMessage(rec.Response)}, nil
+		if rec.Status != idempotencykey.StatusCompleted || rec.Response == "" {
+			return nil, saleRefusal{saleHeld, "subscription already in progress"}
 		}
-		return nil, saleRefusal{saleHeld, "subscription already in progress"}
+		// A key names one order. The same key sent with another order — more seats,
+		// another balance, another plan or term — is refused rather than answered
+		// with the first order's receipt.
+		var prev Sale
+		if json.Unmarshal([]byte(rec.Response), &prev) == nil {
+			if !prev.same(planID, p.Interval, in.Level, seats, bal, couponCode) {
+				return nil, saleRefusal{saleHeld, "this X-Idempotency-Key was used for another order: send a new key for a new order"}
+			}
+			if prev.BalanceCents > 0 && prev.BalanceID == "" {
+				return complete(ctx, db, org, in, rec, &prev)
+			}
+		}
+		return &saleOutcome{Replayed: json.RawMessage(rec.Response)}, nil
 	}
 	// abandon releases the guard on pre-charge failures where no money moved, so a
 	// later attempt is not wedged.
@@ -635,6 +654,26 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			_ = rec.Delete()
 		}
 	}
+
+	// ONE SALE PER SUBJECT IN FLIGHT, whatever key it came under. The guard above
+	// is one key's; an order sent twice under two keys (two tabs, a key minted per
+	// click) is two keys, and the one-paid-subscription check below reads the
+	// subscriptions before either has written its own, so both would pass it and
+	// both be charged. This lock is taken atomically and held until the sale
+	// returns, so the second finds the first in flight, and once the first has
+	// written its subscription the check below refuses the second by name. A store
+	// that cannot be asked refuses the sale, with nothing charged.
+	lock, busy, lerr := idempotencykey.Begin(db, saleScope+in.Subject, saleKey)
+	switch {
+	case lerr != nil:
+		abandon()
+		log.Error("subscribe: the sale lock could not be taken (subject=%s): %v", in.Subject, lerr)
+		return nil, saleRefusal{saleUnavailable, "billing could not be reached; nothing was charged, try again"}
+	case busy:
+		abandon()
+		return nil, saleRefusal{saleHeld, "a sale for this account is already in progress"}
+	}
+	defer func() { _ = lock.Delete() }()
 
 	// ONE PAID SUBSCRIPTION PER SUBJECT — refused BEFORE the card is touched.
 	//
@@ -713,9 +752,8 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		}
 	}
 	listCents := int64(p.Price)*seatMult + lineCents(lines)
-	// What the receipt says of the sale beside its money: the seats bought, the
-	// ladder the plan sits on, and the paid plan it replaces, if any.
-	seats := seatMult + int64(lineSeats(lines))
+	// What the receipt says of the sale beside its money: the paid plan it
+	// replaces, if any.
 	replaced := ""
 	if held != nil {
 		replaced = held.Id()
@@ -1046,23 +1084,11 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		// The subscription exists and the money is collected; a first-invoice record
 		// failure is non-fatal to the entitlement. Log for reconciliation.
 		log.Error("subscribe: failed to record paid first invoice (subject=%s, ref=%s): %v", in.Subject, res.ProcessorRef, err)
-	} else if err := paymentorg.Put(res.ProcessorRef, org.Name, in.Subject, inv.Id(), org.TestMode()); err != nil {
+	} else if err := paymentorg.Put(res.ProcessorRef, org.Name, in.Subject, inv.Id(), bal, org.TestMode()); err != nil {
 		log.Warn("subscribe: payment %s: the index to its invoice was not written, so its refund or dispute will not find the period it paid: %v", res.ProcessorRef, err)
 	}
 	if err := sub.Update(); err != nil {
 		log.Error("subscribe: failed to update subscription after first invoice (subject=%s): %v", in.Subject, err)
-	}
-
-	// The starting balance the same payment bought, credited to the buyer's
-	// prepaid balance as a top-up is, keyed on the payment. A credit that fails
-	// leaves the guard STARTED, so a retry is refused rather than charged again.
-	balanceID := ""
-	if bal > 0 {
-		id, _, cerr := fund(ctx, in.Events, org, db, in.Subject, bal, cur, processor.Square, res.ProcessorRef)
-		if cerr != nil {
-			return nil, cerr
-		}
-		balanceID = id
 	}
 
 	invoiceID := ""
@@ -1078,7 +1104,6 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		PaymentMethodID: pm.Id(),
 		AmountCents:     chargeCents + bal,
 		BalanceCents:    bal,
-		BalanceID:       balanceID,
 		Seats:           seats,
 		Category:        p.Category,
 		Replaced:        replaced,
@@ -1092,12 +1117,11 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// the first period is paid, before the receipt is sealed so a retry replays it.
 	sale.Reload = armSale(ctx, org, in, planID, cur)
 	// Seal the idempotency guard with the exact success body so a retry replays it
-	// verbatim (no second vault/charge/subscribe, identical response).
-	if rec != nil {
-		if body, mErr := json.Marshal(sale); mErr == nil {
-			_ = idempotencykey.Complete(rec, string(body))
-		}
-	}
+	// verbatim (no second vault/charge/subscribe, identical response). An order's
+	// starting balance is credited LAST, after this seal names it owed (no
+	// balanceId): a credit that fails leaves the receipt owing it, and the retry
+	// under the same key completes it (complete), once.
+	sealSale(rec, sale)
 	noticeSale(ctx, saleNote{
 		Org: org.Name, Email: in.Email, Plan: p, Seats: seats, Sale: sale,
 		ListCents: listCents, PromoName: promoName, Coupon: cpn, Test: org.TestMode(),
@@ -1112,6 +1136,87 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			disarm(ctx, org, in.Subject, was)
 		}
 	}
+	if bal > 0 {
+		id, err := endow(ctx, in.Events, org, db, in.Subject, bal, cur, res.ProcessorRef)
+		if err != nil {
+			return nil, err
+		}
+		sale.BalanceID = id
+		sealSale(rec, sale)
+	}
+	return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil
+}
+
+// saleScope and saleKey name the one lock a subject's sale holds while it is in
+// flight (subscribe): one key per subject, whatever plan or retry key it is for.
+const (
+	saleScope = "billing-sale:"
+	saleKey   = "sale"
+)
+
+// sealSale seals the guard with a sale's receipt, so a retry under its key
+// replays it.
+func sealSale(rec *idempotencykey.IdempotencyKey, sale *Sale) {
+	if rec == nil {
+		return
+	}
+	if body, err := json.Marshal(sale); err == nil {
+		_ = idempotencykey.Complete(rec, string(body))
+	}
+}
+
+// same reports whether a sealed sale is the order now asked for under its key:
+// the plan, the term, the level, the seats, the starting balance and the coupon. A
+// receipt sealed before it stated its seats matches any seats.
+func (s *Sale) same(plan string, interval types.Interval, level int, seats, balance int64, coupon string) bool {
+	return s.PlanID == plan && s.Interval == interval && s.Level == level &&
+		(s.Seats == 0 || s.Seats == seats) && s.BalanceCents == balance && s.Coupon == coupon
+}
+
+// endow credits an order's starting balance, which the payment ref paid for, to
+// subject: the deposit in commerce's books (fund) and, embedded, the ledger the
+// spend gate reads (bank), both keyed on the payment, so a retry credits once and
+// a refund or a dispute of the payment finds the credit to take back.
+func endow(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, subject string, cents int64, cur currency.Type, ref string) (string, error) {
+	id, _, err := fund(ctx, ev, org, db, subject, cents, cur, processor.Square, ref)
+	if err != nil {
+		return "", err
+	}
+	if err := bank(ctx, org, subject, cur, receipt{ProcessorRef: ref, AmountCents: cents}); err != nil {
+		uncredited(ctx, ev, org.Name, subject, ref, "the charge settled and the spendable balance was not credited: "+err.Error(), cents, false)
+		return "", fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, ref, err)
+	}
+	return id, nil
+}
+
+// complete finishes a sale whose starting balance was owed when its receipt was
+// sealed: the retry under the sale's key credits it under the payment the receipt's
+// invoice records, seals the receipt with the credit, and answers it as the sale —
+// the first answer was the failure. It holds the subject's sale lock, so it never
+// runs beside the sale it completes.
+func complete(ctx context.Context, db *datastore.Datastore, org *organization.Organization, in SubscribeIn, rec *idempotencykey.IdempotencyKey, sale *Sale) (*saleOutcome, error) {
+	lock, busy, err := idempotencykey.Begin(db, saleScope+in.Subject, saleKey)
+	switch {
+	case err != nil:
+		return nil, saleRefusal{saleUnavailable, "billing could not be reached; try again"}
+	case busy:
+		return nil, saleRefusal{saleHeld, "a sale for this account is already in progress"}
+	}
+	defer func() { _ = lock.Delete() }()
+	inv := billinginvoice.New(db)
+	if sale.InvoiceID == "" || inv.GetById(sale.InvoiceID) != nil || inv.PaymentRef == "" {
+		return nil, saleRefusal{saleUnsettled, "the payment's invoice could not be read, so its starting balance was not credited; contact support"}
+	}
+	sub := subscription.New(db)
+	if err := sub.GetById(sale.SubscriptionID); err != nil {
+		return nil, saleRefusal{saleUnsettled, "the sale's subscription could not be read, so its starting balance was not credited; contact support"}
+	}
+	id, err := endow(ctx, in.Events, org, db, in.Subject, sale.BalanceCents, currency.Type(sale.Currency), inv.PaymentRef)
+	if err != nil {
+		return nil, err
+	}
+	sale.BalanceID = id
+	sealSale(rec, sale)
 	return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil
 }
 
@@ -1420,7 +1525,7 @@ func chargeProviderForOrg(org *organization.Organization) engine.ProviderCharger
 		if err != nil || res == nil || !res.Success {
 			return "", fmt.Errorf("%s", parseCardDeclineReason(res, err))
 		}
-		if err := paymentorg.Put(res.ProcessorRef, org.Name, inv.UserId, inv.Id(), org.TestMode()); err != nil {
+		if err := paymentorg.Put(res.ProcessorRef, org.Name, inv.UserId, inv.Id(), 0, org.TestMode()); err != nil {
 			log.Warn("renewal: payment %s: the index to invoice %s was not written, so its refund or dispute will not find the period it paid: %v", res.ProcessorRef, inv.Id(), err)
 		}
 		return res.ProcessorRef, nil

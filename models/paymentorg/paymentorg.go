@@ -26,14 +26,17 @@ func init() {
 
 // PaymentOrg is where one payment's receipt lives: the org, the wallet it credited,
 // and whether the charge was a sandbox one. A payment that paid an invoice names it
-// in Invoice and credited no wallet. Report is a dispute of a payment that credited
-// a wallet, as the processor last reported it.
+// in Invoice; Balance is the part of it, if any, that it credited to the wallet as
+// well (an organization's starting balance, bought with its seats), and the part a
+// refund or a dispute takes back from the wallet first. Report is a dispute of a
+// payment that credited a wallet, as the processor last reported it.
 type PaymentOrg struct {
 	mixin.Model[PaymentOrg]
 
 	Org     string `json:"org"`
 	Subject string `json:"subject"`
 	Invoice string `json:"invoice,omitempty"`
+	Balance int64  `json:"balance,omitempty"`
 	Test    bool   `json:"test"`
 
 	dispute.Report
@@ -46,10 +49,10 @@ func db() *datastore.Datastore {
 	return datastore.New(nscontext.WithNamespace(context.Background(), "system"))
 }
 
-// Put records that payment's receipt lives in org, for subject, and the invoice it
-// paid ("" for a payment that credited subject's wallet). Idempotent: the payment id
-// is the key.
-func Put(payment, org, subject, invoice string, test bool) error {
+// Put records that payment's receipt lives in org, for subject, the invoice it
+// paid ("" for a payment that credited subject's wallet) and the cents of it that
+// credited the wallet beside an invoice. Idempotent: the payment id is the key.
+func Put(payment, org, subject, invoice string, balance int64, test bool) error {
 	payment = strings.TrimSpace(payment)
 	if payment == "" || org == "" {
 		return nil
@@ -58,7 +61,7 @@ func Put(payment, org, subject, invoice string, test bool) error {
 	p := new(PaymentOrg)
 	p.Init(d)
 	p.SetId(payment)
-	p.Org, p.Subject, p.Invoice, p.Test = org, subject, invoice, test
+	p.Org, p.Subject, p.Invoice, p.Balance, p.Test = org, subject, invoice, balance, test
 	return p.Put()
 }
 

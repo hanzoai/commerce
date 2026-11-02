@@ -181,7 +181,7 @@ func TestWebhookMissingInvoiceIsNotRetried(t *testing.T) {
 	registerSquare(t, secret)
 	ctx := ae.NewContext()
 	defer ctx.Close()
-	if err := paymentorg.Put("sqpay_noinv", checkout.DefaultBrandSlug(), checkout.DefaultBrandSlug()+"/bob", "inv_absent", false); err != nil {
+	if err := paymentorg.Put("sqpay_noinv", checkout.DefaultBrandSlug(), checkout.DefaultBrandSlug()+"/bob", "inv_absent", 0, false); err != nil {
 		t.Fatal(err)
 	}
 	body := refundEvent("evt_noinv", "refund.updated", "sqrf_noinv", "sqpay_noinv", "COMPLETED", 500)
@@ -199,7 +199,7 @@ func TestWebhookClawbackStaysInTheAccountsOrg(t *testing.T) {
 	injectLedger(t, fake)
 	ctx := ae.NewContext()
 	defer ctx.Close()
-	if err := paymentorg.Put("sqpay_victim", "victim", "victim/bob", "", false); err != nil {
+	if err := paymentorg.Put("sqpay_victim", "victim", "victim/bob", "", 0, false); err != nil {
 		t.Fatal(err)
 	}
 	body := refundEvent("evt_claworg", "refund.updated", "sqrf_claworg", "sqpay_victim", "COMPLETED", 500)

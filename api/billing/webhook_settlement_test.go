@@ -289,7 +289,7 @@ func TestWebhookSettlement_IndexedReceiptIsAccountedFor(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	org := webhookOrg(t, ctx, "wh-processor-org", true)
-	if err := paymentorg.Put("pay_payer_org", "payer-org", "payer-org/bob", "", false); err != nil {
+	if err := paymentorg.Put("pay_payer_org", "payer-org", "payer-org/bob", "", 0, false); err != nil {
 		t.Fatalf("index: %v", err)
 	}
 	event := &processor.WebhookEvent{ID: "evt_idx", Type: "payment.updated", Processor: processor.Square}

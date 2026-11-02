@@ -68,7 +68,11 @@ func assignSeats(ctx context.Context, org *organization.Organization, holder, id
 // is given more members than the seats of it paid for now.
 func assigned(org string, sub *subscription.Subscription, seats []subscription.Seat) ([]subscription.Seat, error) {
 	slug := subscriptionSlug(sub)
-	if !perSeat(slug) {
+	s, err := seatFor(slug)
+	if err != nil {
+		return nil, err
+	}
+	if !s.each {
 		return nil, subValidationError{fmt.Sprintf("plan %q has no seats to assign", slug)}
 	}
 	room := map[string]int{slug: paidNow(sub.Quantity, sub.PendingQuantity)}

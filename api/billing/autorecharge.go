@@ -850,7 +850,7 @@ func askReload(ctx context.Context, ev *events.Client, org *organization.Organiz
 	}
 
 	ref := cmp.Or(r.ProcessorRef, r.TransactionId)
-	if err := paymentorg.Put(ref, org.Name, payer, "", org.TestMode()); err != nil {
+	if err := paymentorg.Put(ref, org.Name, payer, "", 0, org.TestMode()); err != nil {
 		log.Warn("auto-recharge: payment %s: the index to %q was not written, so its refund or dispute will not find the wallet it credited: %v", ref, payer, err)
 	}
 	cfg, _, err = changeRule(db, payer, func(c *autorecharge.AutoRecharge) bool {

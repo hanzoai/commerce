@@ -13,6 +13,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/types/currency"
 	types "github.com/hanzoai/commerce/types"
@@ -38,18 +39,20 @@ type LineIn struct {
 var errLinePlan = errors.New("plan not found")
 
 // linesAt prices a team's other seat types at the period the purchase chose, or
-// says why they cannot be sold beside slug: each is a listed per-seat plan of
-// slug's group, named once and never slug itself, with at least one seat, priced
-// in cur. The line's price is the catalog's for that period, as the plan's own is
-// (planAt).
-// A line naming no such plan is errLinePlan; every other refusal is a
-// subValidationError. No lines is no lines.
-func linesAt(db *datastore.Datastore, slug string, in []LineIn, interval types.Interval, cur currency.Type) ([]subscription.Line, error) {
+// says why they cannot be sold beside p: each is a listed per-seat plan of p's
+// group by its own row, named once and never p itself, with at least one seat,
+// priced in cur. The line's price is the catalog's for that period, as the plan's
+// own is (planAt).
+// A line naming no such plan is errLinePlan, a row that could not be read is
+// errPlanUnread, and every other refusal is a subValidationError. No lines is no
+// lines.
+func linesAt(db *datastore.Datastore, p *plan.Plan, in []LineIn, interval types.Interval, cur currency.Type) ([]subscription.Line, error) {
 	if len(in) == 0 {
 		return nil, nil
 	}
+	slug := p.Slug
 	team := group(slug)
-	if team == "" || !perSeat(slug) {
+	if team == "" || !p.PerSeat {
 		return nil, subValidationError{fmt.Sprintf("plan %q is sold alone: it has no other seat types", slug)}
 	}
 	seen := map[string]bool{slug: true}
@@ -57,13 +60,16 @@ func linesAt(db *datastore.Datastore, slug string, in []LineIn, interval types.I
 	for _, l := range in {
 		id := strings.TrimSpace(l.PlanID)
 		lp, err := resolveSubscriptionPlan(db, id)
+		if errors.Is(err, errPlanUnread) {
+			return nil, err
+		}
 		if err != nil || !lp.Listed() {
 			return nil, errLinePlan
 		}
 		if lp.Slug != "" {
 			id = lp.Slug
 		}
-		if group(id) != team || !perSeat(id) {
+		if group(id) != team || !lp.PerSeat {
 			return nil, subValidationError{fmt.Sprintf("plan %q is not a seat type of %q", id, team)}
 		}
 		if seen[id] {
@@ -102,22 +108,6 @@ func lineCents(lines []subscription.Line) int64 {
 		n += int64(l.Price) * int64(l.Quantity)
 	}
 	return n
-}
-
-// teamSeats is why a team of quantity seats of slug and the lines' seats cannot
-// be sold, or "" when it can: a per-seat plan holds at least its group's minimum
-// and at most its maximum, counted over every seat type.
-func teamSeats(slug string, quantity int, lines []subscription.Line) string {
-	team := quantity + lineSeats(lines)
-	if why := overSeats(slug, team); why != "" {
-		return why
-	}
-	if perSeat(slug) {
-		if min := minSeats(slug); team < min {
-			return fmt.Sprintf("plan %q requires at least %d seats (got %d)", slug, min, team)
-		}
-	}
-	return ""
 }
 
 // everyLine reports whether covers holds for the plan and every line's plan: an
@@ -169,7 +159,11 @@ func nextLines(db *datastore.Datastore, sub *subscription.Subscription, slug str
 			return nil, 0, subValidationError{fmt.Sprintf("seat type %q needs at least 1 seat (got %d)", id, l.Quantity)}
 		}
 		if i < 0 {
-			added, err := linesAt(db, slug, []LineIn{{PlanID: id, Quantity: l.Quantity}}, sub.Plan.Interval, cur)
+			row, err := resolveSubscriptionPlan(db, slug)
+			if err != nil {
+				return nil, 0, err
+			}
+			added, err := linesAt(db, row, []LineIn{{PlanID: id, Quantity: l.Quantity}}, sub.Plan.Interval, cur)
 			if err != nil {
 				return nil, 0, err
 			}
@@ -242,7 +236,11 @@ func ChangeSeats(ctx context.Context, org *organization.Organization, holder, id
 			return nil, err
 		}
 		slug := subscriptionSlug(sub)
-		if !perSeat(slug) {
+		s, err := seatFor(slug)
+		if err != nil {
+			return nil, err
+		}
+		if !s.each {
 			return nil, subValidationError{fmt.Sprintf("plan %q has no seats to change", slug)}
 		}
 		if sub.ProviderType == processorComp {
@@ -259,7 +257,7 @@ func ChangeSeats(ctx context.Context, org *organization.Organization, holder, id
 			}
 		}
 		own = max(own, 1)
-		if why := teamSeats(slug, own, next); why != "" {
+		if why := s.refusal(slug, own, next); why != "" {
 			return nil, subValidationError{why}
 		}
 		pendQuantity(sub, quantity)

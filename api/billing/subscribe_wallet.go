@@ -344,7 +344,7 @@ func walletSale(ctx context.Context, db *datastore.Datastore, org *organization.
 		uncredited(work, in.Events, org.Name, in.Subject, ref, fmt.Sprintf(
 			"subscription %s was paid by a wallet and its first invoice was not recorded, so it confers nothing: %v", sub.Id(), err),
 			t.charge, false)
-	} else if err := paymentorg.Put(ref, org.Name, in.Subject, inv.Id(), org.TestMode()); err != nil {
+	} else if err := paymentorg.Put(ref, org.Name, in.Subject, inv.Id(), 0, org.TestMode()); err != nil {
 		log.Warn("subscribe: payment %s: the index to its invoice was not written, so its refund or dispute will not find the period it paid: %v", ref, err)
 	}
 	if err := sub.Update(); err != nil {

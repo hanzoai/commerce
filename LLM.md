@@ -773,12 +773,13 @@ half-fail, and a minimum that a single cancel breaks.
 
 ### Seat terms are the row's; an organization orders with a starting balance
 
-`perSeat`, `minSeats` and `maxSeats` read `seatTerms`: the plan AUTHORITY row
-for the slug (the row a sale is priced from and a SuperAdmin restates), the
-embed only where no row exists or the read fails (logged). So a restated seat
-plan moves the sale, a seat change and an assignment without a release, and a
-row the embed sells by quote (`enterprise`) is sold per seat once its row says
-`perSeat`. This closes the OPEN note above for seat terms only.
+Seat terms (`seat`: per seat, floor, ceiling) are the plan AUTHORITY row's. A
+sale, a create and a record read them off the row in hand (`seatOf(p)`), the row
+that prices them; a path holding only a slug reads the row (`seatFor`). The embed
+answers only where NO row exists: a read that fails is `errSeatsUnread` /
+`errPlanUnread` (503), never the embed, because the embed sells `enterprise` by
+quote. So a restated seat plan moves the sale, a seat change and an assignment
+without a release. This closes the OPEN note above for seat terms only.
 
 `plan.Limits` carries how an organization orders a seat plan, in whole
 dollars: `spendLimits` (per-member monthly limits the order offers),
@@ -790,14 +791,23 @@ may be). All four are served under `limits` on `GET /v1/billing/plans`
 
 - Buy: `POST /v1/billing/subscribe/card` with `balanceCents` beside the seats.
   ONE charge of seats x price + balance; the first-period invoice holds the
-  seats, and `fund` (the one prepaid credit write a saved-card top-up and an
-  automatic reload use) credits the balance under the payment's reference. The
-  receipt states `amountCents` (the whole payment), `balanceCents`, `balanceId`
-  (the credit's receipt), `seats`, `category` and `replaced`.
+  seats, and `endow` credits the balance LAST, keyed on the payment: `fund`
+  (commerce's deposit, one per payment) and, embedded, `bank` (the host ledger,
+  as a reload is). The receipt states `amountCents` (the whole payment),
+  `balanceCents`, `balanceId`, `seats`, `category` and `replaced`, and
+  `paymentorg` records `Balance` beside the invoice.
+- One sale per subject in flight, whatever its key (`saleScope` lock, atomic);
+  a key reused for another order is 409. The receipt is sealed owing the balance
+  before it is credited, so a failed credit (500) is completed by the retry under
+  the same key (`complete`), once.
+- Refunds and disputes of an order take the balance back first, up to what the
+  payment credited less what earlier refunds took (`claimed`); the rest is the
+  invoice's (`RecordRefund`), and a dispute records every state on the invoice.
+  `clawLocal` writes the take in commerce's books (the balance standalone),
+  then the host ledger's `Clawback`/`Restore`; a refund stops the reload.
 - Refused before the card: a balance not in whole dollars, negative, over
   `balanceCeiling`, on a row with no ceiling, paid from prepaid money, by a
-  wallet token, or on a sale that opens a free trial. A credit that fails after
-  the charge leaves the retry guard STARTED and answers 500.
+  wallet token, or on a sale that opens a free trial.
 - Per-member spend limits are offered, not enforced: spend caps are org-level
   (spend alerts, per project/service). Nothing here enforces `spendLimits`.
 
