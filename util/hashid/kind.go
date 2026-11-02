@@ -213,6 +213,9 @@ var kinds = map[string]int{
 	// system namespace; registered so a hashid encode can never panic on it.
 	"remittance":      292,
 	"remittance-hold": 293,
+
+	// limit — a bound a person set on one org or one plan (models/limit).
+	"limit": 294,
 }
 
 var kindsReversed = make(map[int]string)
