@@ -401,10 +401,10 @@ func strconvPercent(p float64) string {
 	return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.3f", p), "0"), ".") + "%"
 }
 
-// fmtAmount renders a cents figure in the invoice's own currency ("$33.34",
-// "-$5.00").
+// fmtAmount renders a cents figure in the invoice's own currency, thousands
+// grouped ("$33.34", "$44,800.00", "-$5.00").
 //
-// The rendering is currency.Type's — the hand-rolled spelling this replaces
+// The decimal is currency.Type's — the hand-rolled spelling this replaces
 // printed cents/100, a dot, then cents%100, which needs a manual sign fix
 // because Go's % keeps the sign of the dividend.
 //
@@ -415,7 +415,24 @@ func fmtAmount(cur currency.Type, cents int64) string {
 	if cur == "" {
 		cur = currency.USD
 	}
-	return cur.ToString(currency.Cents(cents))
+	s := cur.ToStringNoSymbol(currency.Cents(cents))
+	sign := ""
+	if strings.HasPrefix(s, "-") {
+		sign, s = "-", s[1:]
+	}
+	whole, frac, dotted := strings.Cut(s, ".")
+	// Thousands grouped, as a payer reads an amount: $44,800.00.
+	var b strings.Builder
+	for i, r := range whole {
+		if i > 0 && (len(whole)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteRune(r)
+	}
+	if dotted {
+		b.WriteString("." + frac)
+	}
+	return sign + cur.Symbol() + b.String()
 }
 
 // fmtDate renders a UTC calendar date, "Jan 2, 2026", or "-" for none.

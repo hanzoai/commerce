@@ -149,7 +149,7 @@ func TestTheInvoiceLinkShowsHowToPay(t *testing.T) {
 		t.Fatal(err)
 	}
 	steps := strings.Join(h.HowToPay, "\n")
-	for _, want := range []string{"Amount due: $44800.00", "Reference: " + out.Reference, "Include this reference exactly",
+	for _, want := range []string{"Amount due: $44,800.00", "Reference: " + out.Reference, "Include this reference exactly",
 		"Bank: Hanzo Bank", "Account number: 000488108457", "Routing number: 026009593", "Account name: Hanzo AI Inc", InvoiceNotice, "voided"} {
 		if !strings.Contains(steps, want) {
 			t.Fatalf("how to pay lacks %q:\n%s", want, steps)

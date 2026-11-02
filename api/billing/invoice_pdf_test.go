@@ -221,3 +221,14 @@ func TestDownloadInvoicePDF_TenantIsolation(t *testing.T) {
 		}
 	}
 }
+
+// Amounts read as a payer reads them: thousands grouped, the sign before the
+// symbol, a zero-decimal currency with no point.
+func TestInvoiceAmountsGroupThousands(t *testing.T) {
+	for cents, want := range map[int64]string{0: "$0.00", 3334: "$33.34", 99999: "$999.99", 100000: "$1,000.00",
+		4480000: "$44,800.00", 123456789: "$1,234,567.89", -500: "-$5.00", -100000000: "-$1,000,000.00"} {
+		if got := fmtAmount("usd", cents); got != want {
+			t.Errorf("fmtAmount(%d) = %q, want %q", cents, got, want)
+		}
+	}
+}
