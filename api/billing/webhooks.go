@@ -862,6 +862,12 @@ func applyClawbackEvent(ctx context.Context, _ *datastore.Datastore, org *organi
 			return nil // an earlier report than the one recorded moves nothing
 		}
 	}
+	// A payment to a wallet that is refunded, or that a dispute withholds, stops
+	// that wallet's automatic reload: its card is not charged off-session again
+	// until the payer switches the rule back on.
+	if moves && !won {
+		stopReload(ctx, where.Org, where.Subject, event.Type+" "+id)
+	}
 	led := creditledger.Get()
 	if led == nil || !moves {
 		return nil

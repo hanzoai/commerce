@@ -169,6 +169,20 @@ type SubscribeIn struct {
 	// Events is the analytics collector the money alarm fires on when a settled
 	// charge leaves no subscription behind. Nil is a no-op.
 	Events *events.Client
+	// Delegated says the caller buys for a Subject that is not its own payer — an
+	// org's admin buying for a member. The buyer who sees the plan's reload terms
+	// is not the payer whose card a reload would charge, so a delegated sale
+	// switches no reload on (armSale).
+	Delegated bool
+}
+
+// armSale is what a paid sale of slug does to the buying payer's auto-recharge
+// (armForPlan): nothing for a delegated sale.
+func armSale(ctx context.Context, org *organization.Organization, in SubscribeIn, slug string, cur currency.Type) *Arming {
+	if in.Delegated {
+		return nil
+	}
+	return armForPlan(ctx, org, in.Subject, slug, cur)
 }
 
 // Sale is the receipt for a card subscription: what was opened, what was
@@ -212,6 +226,10 @@ type Sale struct {
 	Coupon        string `json:"coupon,omitempty"`
 	CouponPercent int    `json:"couponPercent,omitempty"`
 	CouponMonths  int    `json:"couponMonths,omitempty"`
+	// Reload is what the sale did to the buyer's auto-recharge, present only for a
+	// plan whose row states a reload (Arming). Absent on a trial, which switches
+	// it on when its first paid period is charged.
+	Reload *Arming `json:"reload,omitempty"`
 }
 
 // The kinds of no a sale can end in. They are separate because each is a
@@ -706,6 +724,9 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			Currency:        string(cur),
 			Status:          "ok",
 		}
+		// Paid from the balance, the reload a plan states still charges the buyer's
+		// card on file, so it switches on when there is one (armForPlan).
+		sale.Reload = armSale(ctx, org, in, planID, cur)
 		if rec != nil {
 			if body, mErr := json.Marshal(sale); mErr == nil {
 				_ = idempotencykey.Complete(rec, string(body))
@@ -720,6 +741,9 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			if err := toCancel.GetById(held.Id()); err == nil {
 				_ = engine.CancelSubscription(toCancel, false)
 				_ = toCancel.Update()
+			}
+			if was := subscriptionSlug(held); was != planID {
+				disarm(ctx, org, in.Subject, was)
 			}
 		}
 		return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil
@@ -992,6 +1016,9 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		CouponPercent:   cpn.Percent,
 		CouponMonths:    cpn.Months,
 	}
+	// A plan whose row states a reload switches the buyer's auto-recharge on, now
+	// the first period is paid, before the receipt is sealed so a retry replays it.
+	sale.Reload = armSale(ctx, org, in, planID, cur)
 	// Seal the idempotency guard with the exact success body so a retry replays it
 	// verbatim (no second vault/charge/subscribe, identical response).
 	if rec != nil {
@@ -1009,12 +1036,9 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			_ = engine.CancelSubscription(toCancel, false)
 			_ = toCancel.Update()
 		}
-	}
-	// A plan whose row states a reload switches the org's auto-recharge on, once
-	// its card has paid the first period. The rule is the org's and charges the
-	// org's card, so only a sale to the org's own account arms it.
-	if in.Subject == org.Name {
-		armForPlan(ctx, org, planID, cur)
+		if was := subscriptionSlug(held); was != planID {
+			disarm(ctx, org, in.Subject, was)
+		}
 	}
 	return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil
 }
@@ -1166,6 +1190,7 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		IdempotencyKey: strings.TrimSpace(c.Header("X-Idempotency-Key")),
 		Promo:          promo.Active(c),
 		Events:         eventsOf(c),
+		Delegated:      subject != userBillingKey(c),
 	})
 	if err != nil {
 		switch {

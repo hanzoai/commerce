@@ -971,6 +971,7 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 		}
 	}
 
+	left := "" // the plan a move leaves, when it leaves its reload behind
 	if planChanged {
 		// Resolve the target plan FIRST so the gate scores its canonical SLUG. A
 		// client may pass a plan's DB HASHID (resolveSubscriptionPlan→GetById accepts
@@ -1030,6 +1031,11 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 		if _, err := engine.ChangePlan(sub, newPlan, req.Prorate); err != nil {
 			return http.Fail(c, 400, err.Error(), nil)
 		}
+		// A move onto a plan whose row states no reload stops the reload the plan
+		// it leaves switched on, once the move is saved (disarm).
+		if newPlan.Limits == nil || newPlan.Limits.Reload == nil {
+			left = curSlug
+		}
 	}
 
 	// The period in hand keeps the seats it was paid for; the next period opens
@@ -1050,6 +1056,7 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 	if planChanged {
 		emitSubscriptionPlanChanged(c, org.Name, sub)
 	}
+	disarm(c.Context(), org, sub.UserId, left)
 
 	return c.JSON(200, subscriptionResponse(sub))
 }
@@ -1319,6 +1326,9 @@ func cancelSubscription(ctx context.Context, org *organization.Organization, hol
 			return nil, err
 		}
 	}
+	// Cancelled now or at its period's end, the plan's reload stops with the
+	// cancel: a reload is a charge the payer agreed to while keeping the plan.
+	disarm(ctx, org, sub.UserId, subscriptionSlug(sub))
 	return sub, nil
 }
 
