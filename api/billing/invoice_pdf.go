@@ -138,7 +138,7 @@ type issuer struct {
 // Only Hanzo's legal name and address are stated, so only Hanzo's footer
 // carries them; the others close with their name and site.
 var issuers = map[string]issuer{
-	"hanzo": {name: "Hanzo", legal: "Hanzo Industries Inc.", address: "995 Market St, San Francisco, CA 94103", site: "hanzo.ai", mark: hanzoMark},
+	"hanzo": {name: "Hanzo", legal: "Hanzo Industries Inc.", address: "1 Ferry Building, San Francisco, CA 94105", site: "hanzo.ai", mark: hanzoMark},
 	"lux":   {name: "Lux", legal: "Lux", site: "lux.network", mark: luxMark},
 	"zoo":   {name: "Zoo", legal: "Zoo", site: "zoo.ngo", mark: zooMark},
 	"pars":  {name: "Pars", legal: "Pars", site: "pars.network"},
