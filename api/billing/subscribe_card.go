@@ -518,8 +518,12 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		return nil, saleRefusal{saleRefused, why}
 	}
 	bal := in.BalanceCents
+	// Per seat when the row in hand says so, or seatTerms does: the predicate
+	// createSubscription stamps on the subscription's plan, which is what every
+	// invoice bills from. A seatTerms read that failed and fell back to the embed
+	// can then never charge one seat for a row that bills twenty.
 	seatMult := int64(1)
-	if perSeat(planID) {
+	if p.PerSeat || perSeat(planID) {
 		seatMult = int64(qty)
 	}
 	chargeCents := int64(p.Price)*seatMult + lineCents(lines)
