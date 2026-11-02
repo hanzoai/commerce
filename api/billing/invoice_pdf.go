@@ -64,7 +64,7 @@ func InvoicePDF(ctx context.Context, org *organization.Organization, id, brand s
 	if name == "" {
 		name = "invoice-" + inv.Id()
 	}
-	return &Document{Filename: name, Body: renderInvoicePDF(inv, orgName, brand)}, nil
+	return &Document{Filename: name, Body: renderInvoicePDF(inv, orgName, brand, nil)}, nil
 }
 
 // DownloadInvoicePDF renders and serves an invoice as a PDF.
@@ -170,7 +170,10 @@ func caps(c *canvas, x, y float64, s string) { c.text(regular, 7.5, x, y, label,
 func capsRight(c *canvas, x, y float64, s string) { c.textRight(regular, 7.5, x, y, label, 0.9, s) }
 
 // renderInvoicePDF draws the invoice billed by brand to orgName.
-func renderInvoicePDF(inv *billinginvoice.BillingInvoice, orgName, brand string) []byte {
+//
+// pay, for an invoice paid by wire, is how to pay it: while it is open, the page
+// carries the bank details, the reference, and what happens if it is not paid.
+func renderInvoicePDF(inv *billinginvoice.BillingInvoice, orgName, brand string, pay *wirePay) []byte {
 	is := issuerFor(brand)
 	number := inv.NumberStr
 	if number == "" {
@@ -347,6 +350,28 @@ func renderInvoicePDF(inv *billinginvoice.BillingInvoice, orgName, brand string)
 		y -= 18
 		c.text(regular, 10, labelX, y, quiet, 0, "Paid")
 		c.textRight(regular, 10, edge, y, ink, 0, money(-inv.AmountPaid))
+	}
+
+	// ── How to pay, for an open invoice paid by wire ──────────────────────
+	if pay != nil && inv.Status == billinginvoice.Open {
+		rows := pay.steps(money(inv.AmountDue), fmtDate(inv.DueDate))
+		if y-float64(len(rows))*14-40 < floorY {
+			newPage()
+		}
+		y -= 36
+		caps(c, margin, y, "HOW TO PAY")
+		y -= 18
+		for _, r := range rows {
+			// The reference is the one field a payer must copy exactly: it is set
+			// larger and heavier than the rest.
+			w, size := regular, 9.5
+			if strings.HasPrefix(r, "Reference: ") {
+				w, size = semibold, 12
+				y -= 2
+			}
+			c.text(w, size, margin, y, ink, 0, fit(w, size, r, edge-margin))
+			y -= 14
+		}
 	}
 
 	// ── The foot of every page ────────────────────────────────────────────

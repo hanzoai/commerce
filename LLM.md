@@ -849,6 +849,43 @@ may be). All four are served under `limits` on `GET /v1/billing/plans`
 - Per-member spend limits are offered, not enforced: spend caps are org-level
   (spend alerts, per project/service). Nothing here enforces `spendLimits`.
 
+### An organization orders by invoice and pays by wire (`invoice_sale.go`)
+
+A plan whose row states `limits.invoiceDays` is sold by invoice too;
+`limits.graceDays` is how long past due an unpaid invoice stands. Both are
+served under `limits` (`Capacity`) and edited with the row.
+
+- `OrderInvoice` prices the order as a card sale does (`price`, the same
+  refusals: seats inside the row's figures, a whole-dollar balance under its
+  ceiling, org-only) and raises an OPEN invoice. Its lines are each seat type's
+  seats at the row's price for the period ("Enterprise: 20 seats × $240.00/seat/year")
+  and "Initial usage balance" (`LineOneOff`). It is due `invoiceDays` from
+  now (`engine.Issue` numbers and opens it), `PaymentMethod` is "wire", and
+  the order is kept on its metadata (`order`). It ACTIVATES NOTHING; under net
+  terms (`Net`, the host's per-org switch) the plan opens now. Same guard,
+  facts and sale lease as a card sale. A plan already held, or with an invoice
+  still open, is 409. A host with no bank (`WireFor`) is unavailable.
+- The reference is `INV-<ORG>-<NNNN>`; the wire details are read live from the
+  brand's KMS (`WireFor`, acting for the brand, which needs an authenticated
+  caller) with that reference, and are never stored.
+- The invoice is shown by a link (`models/invoicelink`, 32 random bytes, kept
+  only as its SHA-256 in the system namespace): `HostedInvoice` and
+  `HostedInvoicePDF` (the invoice renderer with a HOW TO PAY block, reference
+  set larger). Payment steps are one field to a line: amount, due date, the
+  reference ("include this reference exactly"), the bank, `InvoiceNotice`
+  ("Your plan starts when we confirm your payment.") and when it is voided.
+- `SettleInvoice` (staff) marks it paid against the bank's receipt, under the
+  invoice's lease, once: the payment is `wire:<receipt>` on its own payment
+  record (`paymentorg`, `Via` "wire"), the plan opens (`openPlan`, keyed
+  "invoice:<id>"), the invoice pays its first period, and the starting balance
+  is credited by `endow` exactly as a card sale's is. An amount that is not the
+  invoice's needs `difference` "short"/"over"; short is short of the balance
+  first. A receipt that settled another payment is refused.
+- `VoidOrder` voids an open one (ending a net-terms plan); `ExpireInvoices(now)`
+  voids those past due + grace. Void and payment take the same lease, so one
+  stands. `RefundOrder` refunds a paid wire through `takeOrder`: the balance
+  first, then the seats.
+
 ### A plan states no AI usage
 
 What a plan allows of AI — per model class, per session and day, per model — is

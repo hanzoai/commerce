@@ -415,6 +415,13 @@ type Limits struct {
 	SpendLimit     *int  `json:"spendLimit,omitempty"`
 	BalanceMonths  *int  `json:"balanceMonths,omitempty"`
 	BalanceCeiling *int  `json:"balanceCeiling,omitempty"`
+
+	// How an organization orders this plan by invoice, paying by wire: the
+	// invoice is due InvoiceDays after it is issued, and voided, activating
+	// nothing, GraceDays after that while unpaid. A plan that states no
+	// InvoiceDays is not sold by invoice.
+	InvoiceDays *int `json:"invoiceDays,omitempty"`
+	GraceDays   *int `json:"graceDays,omitempty"`
 }
 
 // Ordered reports whether the limits state how an organization orders the plan:
@@ -719,7 +726,8 @@ func limitsEqual(a, b *Limits) bool {
 		slices.Equal(a.SpendLimits, b.SpendLimits) &&
 		eqInt(a.SpendLimit, b.SpendLimit) &&
 		eqInt(a.BalanceMonths, b.BalanceMonths) &&
-		eqInt(a.BalanceCeiling, b.BalanceCeiling)
+		eqInt(a.BalanceCeiling, b.BalanceCeiling) &&
+		eqInt(a.InvoiceDays, b.InvoiceDays) && eqInt(a.GraceDays, b.GraceDays)
 }
 
 // eqInt compares two optional ints by value; both-absent counts as equal.

@@ -492,6 +492,14 @@ func findInvoiceForPeriod(db *datastore.Datastore, sub *subscription.Subscriptio
 	return nil, nil
 }
 
+// Issue numbers inv in the org's sequence and opens it (draft -> open), ready to
+// be written: an invoice raised for a payment still to come, as an order paid by
+// wire is.
+func Issue(db *datastore.Datastore, inv *billinginvoice.BillingInvoice) error {
+	assignInvoiceNumber(db, inv)
+	return inv.Finalize()
+}
+
 // assignInvoiceNumber sets a sequential per-org invoice number: one past the
 // highest the org has issued, read from that one invoice rather than by loading
 // them all. It reads under no ancestor, for the reason findInvoiceForPeriod does.

@@ -49,7 +49,10 @@ type PaymentOrg struct {
 	// a refund taken before the credit is decided is netted from it; a dispute's
 	// take is credited and then taken from the wallet (Moved), so a dispute won
 	// gives back exactly what its loss took, through the ledger that took it.
-	Sale     bool   `json:"sale,omitempty"`
+	Sale bool `json:"sale,omitempty"`
+	// Via is the processor that took the payment ("square", "wire"), what its
+	// credit's deposit names as its source.
+	Via      string `json:"via,omitempty"`
 	Order    string `json:"order,omitempty"`
 	Credited bool   `json:"credited,omitempty"`
 	Credit   int64  `json:"credit,omitempty"`
@@ -160,7 +163,7 @@ func (p *PaymentOrg) Left() int64 {
 // starting balance it bought, if any. It writes only when nothing recorded the
 // payment, so a sale run again after a crash never resets what was taken or
 // credited since.
-func Open(payment, org, subject, order string, balance int64, test bool) error {
+func Open(payment, org, subject, order, via string, balance int64, test bool) error {
 	payment = strings.TrimSpace(payment)
 	if payment == "" || org == "" {
 		return fmt.Errorf("paymentorg: a payment record names no payment or org")
@@ -173,7 +176,7 @@ func Open(payment, org, subject, order string, balance int64, test bool) error {
 		p := new(PaymentOrg)
 		p.Init(d)
 		p.SetId(payment)
-		p.Org, p.Subject, p.Order, p.Balance, p.Test, p.Sale = org, subject, order, balance, test, true
+		p.Org, p.Subject, p.Order, p.Via, p.Balance, p.Test, p.Sale = org, subject, order, via, balance, test, true
 		if ok, err := p.Swap(); err != nil || ok {
 			return err
 		}

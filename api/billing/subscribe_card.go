@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -453,117 +454,14 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		return out, err
 	}
 
-	// Server-authoritative plan + price. A client amount is NEVER consulted — the
-	// charge is the plan's catalog price × billable seats, so a scripted request
-	// cannot underpay.
-	p, err := resolveSubscriptionPlan(db, planID)
-	switch {
-	case errors.Is(err, errPlanUnread):
-		return nil, saleRefusal{saleUnavailable, err.Error()}
-	case err != nil:
-		return nil, saleRefusal{saleMissing, "plan not found"}
-	}
-	// Every rule below reads the catalog by slug. A plan named by its row id is
-	// the same plan, so it is priced, seated and promoted as its slug is.
-	if p.Slug != "" {
-		planID = p.Slug
-	}
-	if !p.Listed() {
-		// Refused BEFORE the card is charged — a retired tier must never take money.
-		return nil, saleRefusal{saleMissing, "plan not found"}
-	}
-	if p.ContactSales {
-		// A plan sold by our sales team is never bought by card, whatever price its
-		// row states: its row may carry the seat price its card shows while it states
-		// no seat terms, and a card sale of it would then charge one seat for the
-		// whole plan.
-		return nil, saleRefusal{saleRefused, fmt.Sprintf("plan %q is sold by our sales team, not by card", planID)}
-	}
-	// The price this card is charged, chosen from what the catalog publishes. A
-	// level or a period the plan does not publish is refused here — before the card
-	// is touched, before the idempotency guard is taken, and without ever
-	// consulting an amount the client sent, because the client sends none.
-	p, err = planAt(p, in.Level, in.Interval)
+	q, err := price(db, org, in, planID, sourceID)
 	if err != nil {
-		return nil, saleRefusal{saleRefused, err.Error()}
+		return nil, err
 	}
-	if int64(p.Price) <= 0 {
-		// A $0 plan needs no card — the free tier is self-serve via POST
-		// /v1/billing/subscriptions. This endpoint's contract is a PAID card sub.
-		return nil, saleRefusal{saleRefused,
-			fmt.Sprintf("plan %q is free — no card charge required; use POST /v1/billing/subscriptions", planID)}
-	}
-	// Currency is SERVER-AUTHORITATIVE: the plan's own currency (default USD). A
-	// client currency is honored ONLY when it matches the plan's; a mismatched
-	// currency (e.g. "jpy" for a USD-priced plan) is rejected — otherwise the
-	// price's minor units would be charged in a weaker unit (2000 JPY ~ $13 for a
-	// $20 plan), an underpayment.
-	cur := p.Currency
-	if cur == "" {
-		cur = currency.USD
-	}
-	if reqCur := currency.Type(strings.ToLower(strings.TrimSpace(in.Currency))); reqCur != "" && reqCur != cur {
-		return nil, saleRefusal{saleRefused,
-			fmt.Sprintf("plan priced in %s; currency %s not accepted", cur, reqCur)}
-	}
-	// A team's other seat types, priced at the period bought, as the plan is. A
-	// line naming a plan not on sale is the same miss as the plan itself.
-	lines, err := linesAt(db, p, in.Lines, p.Interval, cur)
-	switch {
-	case errors.Is(err, errLinePlan):
-		return nil, saleRefusal{saleMissing, "plan not found"}
-	case errors.Is(err, errPlanUnread):
-		return nil, saleRefusal{saleUnavailable, err.Error()}
-	case err != nil:
-		return nil, saleRefusal{saleRefused, err.Error()}
-	}
-	// Billable seats: a per-seat plan charges Price × quantity, and a team each of
-	// its other seat types' price × its seats, the team floored at the catalog's
-	// minSeats over every seat; a flat plan is always ×1. This MUST match
-	// buildPeriodInvoice's seat math so the first charge equals the invoice's
-	// AmountDue — never under-collect a per-seat plan yet record it paid in full.
-	qty := in.Quantity
-	if qty < 1 {
-		qty = 1
-	}
-	// The seat terms are the row's in hand, read once: the row that prices the
-	// sale is the row that seats it, and createSubscription stamps the same row on
-	// the subscription every invoice bills from.
-	terms := seatOf(p)
-	if why := terms.refusal(planID, qty, lines); why != "" {
-		return nil, saleRefusal{saleRefused, why}
-	}
-	if why := orderRefusal(org, p, planID, in, sourceID); why != "" {
-		return nil, saleRefusal{saleRefused, why}
-	}
-	bal := in.BalanceCents
-	seatMult := int64(1)
-	if terms.each {
-		seatMult = int64(qty)
-	}
-	// The seats the receipt states, every seat type counted.
-	seats := seatMult + int64(lineSeats(lines))
-	chargeCents := int64(p.Price)*seatMult + lineCents(lines)
-	// The advertised promo, actually applied. GET /v1/billing/plans annotates each
-	// plan with promoPercent off the SAME gate (active + inside its window +
-	// AppliesTo), and until now nothing subtracted it here: the page could say
-	// "50% off" while this line charged full price and the receipt agreed with the
-	// charge, not the offer. Resolved once, carried on the subscription, so every
-	// renewal prices identically — and computed through engine.Discounted, the
-	// same function that discounts the invoice, so charge == AmountDue by
-	// construction rather than by two implementations agreeing.
-	promoPercent, promoName := 0, ""
-	if pr := in.Promo; pr != nil && everyLine(planID, lines, pr.AppliesTo) {
-		promoPercent, promoName = pr.PercentOff, pr.Name()
-		chargeCents = engine.Discounted(chargeCents, promoPercent)
-	}
-	if chargeCents <= 0 {
-		// A 100%-off promo leaves nothing to charge, and a card sale of $0 is not a
-		// sale — Square rejects a zero charge, so this would surface as a decline.
-		// Refuse BEFORE the card is touched and name the real reason.
-		return nil, saleRefusal{saleRefused,
-			fmt.Sprintf("plan %q costs nothing after the current promotion — no card charge required; use POST /v1/billing/subscriptions", planID)}
-	}
+	p, planID, cur, lines, qty := q.plan, q.slug, q.cur, q.lines, q.qty
+	bal, seatMult, seats, chargeCents := q.balance, q.seatMult, q.seats, q.charge
+	promoPercent, promoName := q.promoPercent, q.promoName
+
 	// A coupon's request shape is checked here, before anything is held. Whether
 	// the coupon stands, covers this plan and is still this org's to redeem is
 	// state, and is asked after the idempotency guard, for the reason the
@@ -1097,6 +995,143 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	return sell(ctx, db, org, in, rec, p, nil, qty, lines, d)
 }
 
+// priced is an order priced from the catalog: the plan at the level and period
+// asked for, its currency, the team's other seat types, the seats, the starting
+// balance and the first period's charge under the current promotion. The card
+// sale and the invoice sale price an order through it, so both charge the same.
+type priced struct {
+	plan                     *plan.Plan
+	slug                     string
+	cur                      currency.Type
+	lines                    []subscription.Line
+	qty                      int
+	balance, seatMult, seats int64
+	charge                   int64
+	promoPercent             int
+	promoName                string
+}
+
+// price prices in's order, refusing everything the catalog does not sell, before
+// anything is held or charged.
+func price(db *datastore.Datastore, org *organization.Organization, in SubscribeIn, planID, sourceID string) (*priced, error) {
+	// Server-authoritative plan + price. A client amount is NEVER consulted — the
+	// charge is the plan's catalog price × billable seats, so a scripted request
+	// cannot underpay.
+	p, err := resolveSubscriptionPlan(db, planID)
+	switch {
+	case errors.Is(err, errPlanUnread):
+		return nil, saleRefusal{saleUnavailable, err.Error()}
+	case err != nil:
+		return nil, saleRefusal{saleMissing, "plan not found"}
+	}
+	// Every rule below reads the catalog by slug. A plan named by its row id is
+	// the same plan, so it is priced, seated and promoted as its slug is.
+	if p.Slug != "" {
+		planID = p.Slug
+	}
+	if !p.Listed() {
+		// Refused BEFORE the card is charged — a retired tier must never take money.
+		return nil, saleRefusal{saleMissing, "plan not found"}
+	}
+	if p.ContactSales {
+		// A plan sold by our sales team is never bought by card, whatever price its
+		// row states: its row may carry the seat price its card shows while it states
+		// no seat terms, and a card sale of it would then charge one seat for the
+		// whole plan.
+		return nil, saleRefusal{saleRefused, fmt.Sprintf("plan %q is sold by our sales team, not by card", planID)}
+	}
+	// The price this card is charged, chosen from what the catalog publishes. A
+	// level or a period the plan does not publish is refused here — before the card
+	// is touched, before the idempotency guard is taken, and without ever
+	// consulting an amount the client sent, because the client sends none.
+	p, err = planAt(p, in.Level, in.Interval)
+	if err != nil {
+		return nil, saleRefusal{saleRefused, err.Error()}
+	}
+	if int64(p.Price) <= 0 {
+		// A $0 plan needs no card — the free tier is self-serve via POST
+		// /v1/billing/subscriptions. This endpoint's contract is a PAID card sub.
+		return nil, saleRefusal{saleRefused,
+			fmt.Sprintf("plan %q is free — no card charge required; use POST /v1/billing/subscriptions", planID)}
+	}
+	// Currency is SERVER-AUTHORITATIVE: the plan's own currency (default USD). A
+	// client currency is honored ONLY when it matches the plan's; a mismatched
+	// currency (e.g. "jpy" for a USD-priced plan) is rejected — otherwise the
+	// price's minor units would be charged in a weaker unit (2000 JPY ~ $13 for a
+	// $20 plan), an underpayment.
+	cur := p.Currency
+	if cur == "" {
+		cur = currency.USD
+	}
+	if reqCur := currency.Type(strings.ToLower(strings.TrimSpace(in.Currency))); reqCur != "" && reqCur != cur {
+		return nil, saleRefusal{saleRefused,
+			fmt.Sprintf("plan priced in %s; currency %s not accepted", cur, reqCur)}
+	}
+	// A team's other seat types, priced at the period bought, as the plan is. A
+	// line naming a plan not on sale is the same miss as the plan itself.
+	lines, err := linesAt(db, p, in.Lines, p.Interval, cur)
+	switch {
+	case errors.Is(err, errLinePlan):
+		return nil, saleRefusal{saleMissing, "plan not found"}
+	case errors.Is(err, errPlanUnread):
+		return nil, saleRefusal{saleUnavailable, err.Error()}
+	case err != nil:
+		return nil, saleRefusal{saleRefused, err.Error()}
+	}
+	// Billable seats: a per-seat plan charges Price × quantity, and a team each of
+	// its other seat types' price × its seats, the team floored at the catalog's
+	// minSeats over every seat; a flat plan is always ×1. This MUST match
+	// buildPeriodInvoice's seat math so the first charge equals the invoice's
+	// AmountDue — never under-collect a per-seat plan yet record it paid in full.
+	qty := in.Quantity
+	if qty < 1 {
+		qty = 1
+	}
+	// The seat terms are the row's in hand, read once: the row that prices the
+	// sale is the row that seats it, and createSubscription stamps the same row on
+	// the subscription every invoice bills from.
+	terms := seatOf(p)
+	if why := terms.refusal(planID, qty, lines); why != "" {
+		return nil, saleRefusal{saleRefused, why}
+	}
+	if why := orderRefusal(org, p, planID, in, sourceID); why != "" {
+		return nil, saleRefusal{saleRefused, why}
+	}
+	bal := in.BalanceCents
+	seatMult := int64(1)
+	if terms.each {
+		seatMult = int64(qty)
+	}
+	// The seats the receipt states, every seat type counted.
+	seats := seatMult + int64(lineSeats(lines))
+	chargeCents := int64(p.Price)*seatMult + lineCents(lines)
+	// The advertised promo, actually applied. GET /v1/billing/plans annotates each
+	// plan with promoPercent off the SAME gate (active + inside its window +
+	// AppliesTo), and until now nothing subtracted it here: the page could say
+	// "50% off" while this line charged full price and the receipt agreed with the
+	// charge, not the offer. Resolved once, carried on the subscription, so every
+	// renewal prices identically — and computed through engine.Discounted, the
+	// same function that discounts the invoice, so charge == AmountDue by
+	// construction rather than by two implementations agreeing.
+	promoPercent, promoName := 0, ""
+	if pr := in.Promo; pr != nil && everyLine(planID, lines, pr.AppliesTo) {
+		promoPercent, promoName = pr.PercentOff, pr.Name()
+		chargeCents = engine.Discounted(chargeCents, promoPercent)
+	}
+	if chargeCents <= 0 {
+		// A 100%-off promo leaves nothing to charge, and a card sale of $0 is not a
+		// sale — Square rejects a zero charge, so this would surface as a decline.
+		// Refuse BEFORE the card is touched and name the real reason.
+		return nil, saleRefusal{saleRefused,
+			fmt.Sprintf("plan %q costs nothing after the current promotion — no card charge required; use POST /v1/billing/subscriptions", planID)}
+	}
+	return &priced{
+		plan: p, slug: planID, cur: cur, lines: lines, qty: qty,
+		balance: bal, seatMult: seatMult, seats: seats, charge: chargeCents,
+		promoPercent: promoPercent, promoName: promoName,
+	}, nil
+}
+
 // draft is what a card sale has decided by the time its charge settles: the
 // payment, and the receipt it answers with less the rows not written yet. It is
 // marked on the sale's guard then (enter), so a retry that re-claims the guard of a
@@ -1131,7 +1166,7 @@ func enter(org *organization.Organization, in SubscribeIn, rec *idempotencykey.I
 	if rec != nil {
 		order = idempotencykey.DeterministicID(rec.Scope, rec.IdemKey)
 	}
-	if err := paymentorg.Open(d.Payment, org.Name, in.Subject, order, d.Sale.BalanceCents, org.TestMode()); err != nil {
+	if err := paymentorg.Open(d.Payment, org.Name, in.Subject, order, string(processor.Square), d.Sale.BalanceCents, org.TestMode()); err != nil {
 		return err
 	}
 	if rec == nil {
@@ -1412,8 +1447,13 @@ const paymentWait = 3 * time.Second
 // holdPayment takes payment's lease, waiting up to paymentWait for its holder;
 // held=false means it was still held then.
 func holdPayment(db *datastore.Datastore, payment string) (*idempotencykey.Lease, bool, error) {
+	return hold(db, paymentScope, payment)
+}
+
+// hold takes the lease on (scope, key), waiting up to paymentWait for its holder.
+func hold(db *datastore.Datastore, scope, key string) (*idempotencykey.Lease, bool, error) {
 	for wait := time.Duration(0); ; wait += 25 * time.Millisecond {
-		lease, held, err := idempotencykey.Hold(db, paymentScope, payment)
+		lease, held, err := idempotencykey.Hold(db, scope, key)
 		if err != nil || held || wait >= paymentWait {
 			return lease, held, err
 		}
@@ -1460,7 +1500,7 @@ func endow(ctx context.Context, ev *events.Client, org *organization.Organizatio
 // payment's lease.
 func land(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, cur currency.Type, po *paymentorg.PaymentOrg, payment string) (*paymentorg.PaymentOrg, error) {
 	if po.Credit > 0 && po.Deposit == "" {
-		id, _, err := fund(ctx, ev, org, db, po.Subject, po.Credit, cur, processor.Square, payment)
+		id, _, err := fund(ctx, ev, org, db, po.Subject, po.Credit, cur, processor.ProcessorType(cmp.Or(po.Via, string(processor.Square))), payment)
 		if err != nil {
 			return nil, owedBalance
 		}
