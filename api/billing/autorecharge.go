@@ -19,6 +19,7 @@ import (
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
+	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
@@ -150,7 +151,8 @@ type AutoRecharge struct {
 	AmountCents     int64  `json:"amountCents"`
 	Currency        string `json:"currency"`
 	LastRechargedAt string `json:"lastRechargedAt"`
-	// PerDay is the most reloads the sweep makes in one UTC day (ReloadsPerDay).
+	// PerDay is the most reloads the sweep makes in one UTC day: the bound the
+	// org's plan states (reloadsFor), 0 when it is unbounded.
 	PerDay int `json:"perDay"`
 
 	Stored bool `json:"-"`
@@ -167,7 +169,8 @@ type AutoRechargeEdit struct {
 }
 
 // ReloadsPerDay is how many times the sweep asks the processor to charge one
-// org's card in a UTC day.
+// org's card in a UTC day, for an org whose plan states no bound of its own
+// (plan.Limits.ReloadsPerDay; reloadsFor).
 //
 // The sweep runs every 15 minutes, so a balance that drains as fast as it is
 // refilled — a leaked key, a runaway agent — would otherwise be reloaded 96 times
@@ -176,6 +179,40 @@ type AutoRechargeEdit struct {
 // down to the spend gate and a person adds funds by hand. A decline counts too, so
 // a failing card is not tried again all day.
 const ReloadsPerDay = 3
+
+// reloadsFor is the most reloads a day the sweep makes for org: the bound the plan
+// row the org is served as states — 0 for unbounded — and ReloadsPerDay when it
+// states none or the org holds no plan. db is the org's namespace.
+func reloadsFor(ctx context.Context, db *datastore.Datastore, org *organization.Organization) int {
+	if l := servedLimits(ctx, db, org); l != nil && l.ReloadsPerDay != nil && *l.ReloadsPerDay >= 0 {
+		return *l.ReloadsPerDay
+	}
+	return ReloadsPerDay
+}
+
+// servedLimits is the limits block of the plan authority row the org's own
+// account is served from, nil when it holds no plan or the row states none. db is
+// the org's namespace.
+func servedLimits(ctx context.Context, db *datastore.Datastore, org *organization.Organization) *plan.Limits {
+	s := servedSubscription(db, org.Name, org.TestMode())
+	if s == nil {
+		return nil
+	}
+	return authorityLimits(ctx, servedAs(subscriptionSlug(s)))
+}
+
+// authorityLimits is the limits block of the plan authority row for slug, nil when
+// there is no such row or it states none.
+func authorityLimits(ctx context.Context, slug string) *plan.Limits {
+	if slug == "" {
+		return nil
+	}
+	row := plan.New(plan.AuthorityDB(ctx))
+	if ok, err := row.Query().Filter("Slug=", slug).Get(); err != nil || !ok {
+		return nil
+	}
+	return row.Limits
+}
 
 // ErrNoDefaultPaymentMethod is the refusal of a rule armed with no card to charge.
 // Its text is the customer's sentence, and a client matches on it.
@@ -229,9 +266,9 @@ func usd(cents int64) string {
 // readers see. An org with no row has the DISABLED rule in usd, which is the rule
 // the sweep reads it as; that agreement is the point, since a reader shown one
 // default and a sweep applying another is two rules again.
-func autoRechargeView(cfg *autorecharge.AutoRecharge, subject string) AutoRecharge {
+func autoRechargeView(cfg *autorecharge.AutoRecharge, subject string, perDay int) AutoRecharge {
 	if cfg == nil {
-		return AutoRecharge{Subject: subject, Currency: "usd", PerDay: ReloadsPerDay}
+		return AutoRecharge{Subject: subject, Currency: "usd", PerDay: perDay}
 	}
 	return AutoRecharge{
 		Subject:         cfg.UserId,
@@ -240,7 +277,7 @@ func autoRechargeView(cfg *autorecharge.AutoRecharge, subject string) AutoRechar
 		AmountCents:     cfg.AmountCents,
 		Currency:        cfg.Currency,
 		LastRechargedAt: cfg.LastRechargedAt,
-		PerDay:          ReloadsPerDay,
+		PerDay:          perDay,
 		Stored:          true,
 	}
 }
@@ -281,7 +318,7 @@ func ReadAutoRecharge(ctx context.Context, org *organization.Organization) (Auto
 		return AutoRecharge{}, errors.New("auto-recharge: no organization")
 	}
 	db := datastore.New(org.Namespaced(ctx))
-	return autoRechargeView(loadAutoRecharge(db, org.Name), org.Name), nil
+	return autoRechargeView(loadAutoRecharge(db, org.Name), org.Name, reloadsFor(ctx, db, org)), nil
 }
 
 // WriteAutoRecharge sets the org's auto-recharge rule — the WRITE, with no HTTP in
@@ -297,17 +334,25 @@ func ReadAutoRecharge(ctx context.Context, org *organization.Organization) (Auto
 // else is the store failing us. Which status each becomes is the endpoint's
 // business, not this one's.
 func WriteAutoRecharge(ctx context.Context, org *organization.Organization, in AutoRechargeEdit) (AutoRecharge, error) {
+	v, _, err := writeRule(ctx, org, in, false)
+	return v, err
+}
+
+// writeRule is WriteAutoRecharge's one write. With keep set, a rule the org has
+// switched on is left exactly as it stands and nothing is written: the answer's
+// second value says whether the rule was written.
+func writeRule(ctx context.Context, org *organization.Organization, in AutoRechargeEdit, keep bool) (AutoRecharge, bool, error) {
 	if org == nil {
-		return AutoRecharge{}, errors.New("auto-recharge: no organization")
+		return AutoRecharge{}, false, errors.New("auto-recharge: no organization")
 	}
 	db := datastore.New(org.Namespaced(ctx))
 
 	if in.Enabled {
 		if err := checkRule(in); err != nil {
-			return AutoRecharge{}, err
+			return AutoRecharge{}, false, err
 		}
 		if defaultPaymentMethod(db, org.Name) == nil {
-			return AutoRecharge{}, ErrNoDefaultPaymentMethod
+			return AutoRecharge{}, false, ErrNoDefaultPaymentMethod
 		}
 	}
 
@@ -319,23 +364,49 @@ func WriteAutoRecharge(ctx context.Context, org *organization.Organization, in A
 	// The rule's own fields, and nothing the sweep keeps beside them (the day's
 	// reload count): a save that wrote a stale count back would reopen the limit.
 	set := func(c *autorecharge.AutoRecharge) bool {
+		if keep && c.Enabled {
+			return false
+		}
 		c.Enabled, c.ThresholdCents, c.AmountCents, c.Currency = in.Enabled, in.ThresholdCents, in.AmountCents, cur
 		return true
 	}
-	cfg, _, err := changeRule(db, org.Name, set)
+	cfg, wrote, err := changeRule(db, org.Name, set)
 	if err != nil {
-		return AutoRecharge{}, err
+		return AutoRecharge{}, false, err
 	}
 	if cfg == nil {
 		cfg = autorecharge.New(db)
 		cfg.UserId = org.Name
 		set(cfg)
 		if err := cfg.Create(); err != nil {
-			return AutoRecharge{}, err
+			return AutoRecharge{}, false, err
 		}
+		wrote = true
 	}
 
-	return autoRechargeView(cfg, org.Name), nil
+	return autoRechargeView(cfg, org.Name, reloadsFor(ctx, db, org)), wrote, nil
+}
+
+// armForPlan switches the org's auto-recharge on at the figures the plan row for
+// slug states (plan.Limits.Reload), when the org has no rule or has one switched
+// off; a rule the org switched on is its own and is left as it stands. It is run
+// once a card has paid a plan's first period. It never fails the sale: a rule it
+// cannot write — no card on file, figures out of range, the store — is logged.
+func armForPlan(ctx context.Context, org *organization.Organization, slug string, cur currency.Type) {
+	l := authorityLimits(ctx, slug)
+	if l == nil || l.Reload == nil {
+		return
+	}
+	v, wrote, err := writeRule(ctx, org, AutoRechargeEdit{
+		Enabled: true, ThresholdCents: l.Reload.ThresholdCents, AmountCents: l.Reload.AmountCents, Currency: string(cur),
+	}, true)
+	switch {
+	case err != nil:
+		log.Error("auto-recharge: plan %q did not switch on the rule for %q: %v", slug, org.Name, err)
+	case wrote:
+		log.Info("auto-recharge: plan %q switched on the rule for %q: reload %d %s below %d, at most %d a day (0 = unbounded)",
+			slug, org.Name, v.AmountCents, v.Currency, v.ThresholdCents, v.PerDay)
+	}
 }
 
 // GetAutoRecharge returns the org's auto-recharge config (or disabled defaults).
@@ -461,15 +532,18 @@ func RunAutoRecharge(ctx context.Context, ev *events.Client) (*RechargeRun, erro
 		// taken under compare-and-swap against the rule as it stands now, so a
 		// rule switched off or changed since it was read above is not charged, a
 		// second sweep cannot take the same last reload, and the limit holds
-		// however many sweeps overlap. A rule that has reloaded ReloadsPerDay
-		// times today waits for tomorrow, and says so in its row.
+		// however many sweeps overlap. A rule that has reloaded as many times
+		// today as the org's plan allows (reloadsFor) waits for tomorrow, and says
+		// so in its row; a plan that bounds nothing is reloaded whenever it is due,
+		// the day's count kept all the same.
 		today := time.Now().UTC().Format(time.DateOnly)
+		bound := reloadsFor(ctx, db, org)
 		full := false
 		cfg, reserved, rerr := changeRule(db, org.Name, func(c *autorecharge.AutoRecharge) bool {
 			if !c.Enabled || c.AmountCents <= 0 || available >= c.ThresholdCents {
 				return false
 			}
-			if c.Day == today && c.Reloads >= ReloadsPerDay {
+			if bound > 0 && c.Day == today && c.Reloads >= bound {
 				full = true
 				return false
 			}
@@ -488,7 +562,7 @@ func RunAutoRecharge(ctx context.Context, ev *events.Client) (*RechargeRun, erro
 		case full:
 			run.Results = append(run.Results, RechargeResult{
 				OrgName: org.Name, UserId: org.Name, Charged: false,
-				Error: fmt.Sprintf("auto-reload already charged %d times today", ReloadsPerDay),
+				Error: fmt.Sprintf("auto-reload already charged %d times today", bound),
 			})
 			continue
 		case !reserved:

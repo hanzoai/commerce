@@ -281,8 +281,10 @@ func (p *Plan) LevelPrice(level int) (currency.Cents, error) {
 	return p.Prices[level], nil
 }
 
-// YearlyTotal returns the authoritative yearly price charged upfront in cents,
-// falling back to AnnualTotal field or standard tier multipliers.
+// YearlyTotal returns the authoritative yearly price charged upfront in cents:
+// AnnualTotal, else the legacy rung's stated year. A plan stating neither answers
+// 0, which is not sold annually; PriceAnnual is a per-month price tag and is
+// never billed.
 func (p *Plan) YearlyTotal() currency.Cents {
 	if p.AnnualTotal > 0 {
 		return p.AnnualTotal
@@ -305,12 +307,6 @@ func (p *Plan) YearlyTotal() currency.Cents {
 	case "dns-enterprise":
 		return 24000
 	default:
-		if p.PriceAnnual > 0 {
-			return currency.Cents(int64(p.PriceAnnual) * 12)
-		}
-		if p.Price > 0 {
-			return currency.Cents(int64(p.Price) * 10)
-		}
 		return 0
 	}
 }
@@ -396,6 +392,23 @@ type Limits struct {
 	Zones          *int `json:"zones,omitempty"`
 	RecordsPerZone *int `json:"recordsPerZone,omitempty"`
 	QueriesPerDay  *int `json:"queriesPerDay,omitempty"`
+
+	// ReloadsPerDay is the most automatic reloads the auto-recharge sweep makes in
+	// one UTC day for an org this plan serves. nil is the sweep's own bound
+	// (api/billing ReloadsPerDay); 0 is unbounded; n is n.
+	ReloadsPerDay *int `json:"reloadsPerDay,omitempty"`
+
+	// Reload, when present, switches the buyer's auto-recharge on at its figures
+	// when this plan is bought with a card, unless the org already has a rule
+	// switched on. Neither field is served in the public catalog.
+	Reload *Reload `json:"reload,omitempty"`
+}
+
+// Reload is the auto-recharge rule buying a plan switches on: reload AmountCents
+// whenever the org's available balance falls below ThresholdCents.
+type Reload struct {
+	ThresholdCents int64 `json:"thresholdCents"`
+	AmountCents    int64 `json:"amountCents"`
 }
 
 // EnvelopeKey is the ONE Metadata key the display envelope is packed under. One
@@ -680,7 +693,9 @@ func limitsEqual(a, b *Limits) bool {
 		eqInt(a.IncludedCloudCreditsPerUser, b.IncludedCloudCreditsPerUser) &&
 		eqInt(a.Zones, b.Zones) &&
 		eqInt(a.RecordsPerZone, b.RecordsPerZone) &&
-		eqInt(a.QueriesPerDay, b.QueriesPerDay)
+		eqInt(a.QueriesPerDay, b.QueriesPerDay) &&
+		eqInt(a.ReloadsPerDay, b.ReloadsPerDay) &&
+		(a.Reload == nil) == (b.Reload == nil) && (a.Reload == nil || *a.Reload == *b.Reload)
 }
 
 // eqInt compares two optional ints by value; both-absent counts as equal.
