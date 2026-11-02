@@ -50,6 +50,11 @@ var (
 	// ErrNoSuchEntity is returned when an entity is not found
 	ErrNoSuchEntity = errors.New("db: no such entity")
 
+	// ErrDone is what an iterator answers past its last result, and only then: a
+	// query that failed answers its own error, so a reader can tell "no rows" from
+	// "the rows could not be read".
+	ErrDone = errors.New("db: no more results")
+
 	// ErrInvalidKey is returned when a key is invalid
 	ErrInvalidKey = errors.New("db: invalid key")
 

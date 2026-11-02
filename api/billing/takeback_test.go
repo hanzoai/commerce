@@ -3,6 +3,7 @@ package billing
 import (
 	"testing"
 
+	"github.com/hanzoai/commerce/billing/creditledger"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/paymentorg"
 	"github.com/hanzoai/commerce/util/test/ae"
@@ -59,6 +60,12 @@ func TestARefundedTopUpIsTakenBackFromItsWallet(t *testing.T) {
 		t.Fatalf("the top-up's payment is indexed as %+v (found %v, %v), want %s's wallet", where, found, err, org.Name)
 	}
 
+	// The host credits the top-up's settled charge under its payment (its settle),
+	// which is the credit a refund takes back from.
+	if _, _, err := led.Credit(ctx, creditledger.CreditInput{Org: org.Name, Subject: org.Name, Currency: "usd",
+		IdempotencyKey: "sqpay_topup_rf", AmountCents: 2500, Test: org.TestMode(), Cash: true}); err != nil {
+		t.Fatal(err)
+	}
 	deliver(t, ctx, secret, refundEvent("evt_topup_rf_1", "refund.updated", "sqrf_topup", "sqpay_topup_rf", "COMPLETED", 2500))
 	if len(led.clawbacks) != 1 || led.clawbacks[0].Subject != org.Name || led.clawbacks[0].Payment != "sqpay_topup_rf" ||
 		led.clawbacks[0].AmountCents != 2500 {

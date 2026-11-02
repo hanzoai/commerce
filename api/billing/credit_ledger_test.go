@@ -150,13 +150,18 @@ func (f *fakeLedger) Restore(_ context.Context, in creditledger.ClawbackInput) (
 	return "", nil
 }
 
-// Clawback takes money back once per Ref.
+// Clawback takes money back once per Ref, and only from a payment this ledger
+// credited — the real ledger's contract (finance.Clawback refuses a payment it
+// never deposited).
 func (f *fakeLedger) Clawback(_ context.Context, in creditledger.ClawbackInput) (string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	scope := f.scope(in.Org, in.Test, "clawback:"+in.Ref)
 	if id, ok := f.seen[scope]; ok {
 		return id, nil
+	}
+	if _, ok := f.seen[f.scope(in.Org, in.Test, in.Payment)]; !ok {
+		return "", fmt.Errorf("payment %s was never credited here", in.Payment)
 	}
 	f.bal[f.account(in.Org, in.Subject, "usd", in.Test)] -= in.AmountCents
 	f.nextID++

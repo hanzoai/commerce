@@ -597,14 +597,14 @@ func (it *sqliteIterator) Next(dst any) (Key, error) {
 	}
 
 	if it.rows == nil {
-		return nil, errors.New("db: iterator exhausted")
+		return nil, ErrDone
 	}
 
 	if !it.rows.Next() {
 		if err := it.rows.Err(); err != nil {
 			return nil, err
 		}
-		return nil, errors.New("db: no more results")
+		return nil, ErrDone
 	}
 
 	var id string

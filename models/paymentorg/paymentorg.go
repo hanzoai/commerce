@@ -39,6 +39,16 @@ type PaymentOrg struct {
 	Balance int64  `json:"balance,omitempty"`
 	Test    bool   `json:"test"`
 
+	// An organization's order keeps its starting balance's state here. Credited
+	// says the credit is decided, Credit is its amount — Balance less what refunds
+	// and disputes had taken by then — and Deposit the credit's receipt once it
+	// landed. Takes are what each refund and dispute took of the balance, credited
+	// or not, so a credit decided later nets against them.
+	Credited bool   `json:"credited,omitempty"`
+	Credit   int64  `json:"credit,omitempty"`
+	Deposit  string `json:"deposit,omitempty"`
+	Takes    []Take `json:"takes,omitempty"`
+
 	dispute.Report
 }
 
@@ -51,11 +61,18 @@ func db() *datastore.Datastore {
 
 // Put records that payment's receipt lives in org, for subject, the invoice it
 // paid ("" for a payment that credited subject's wallet) and the cents of it that
-// credited the wallet beside an invoice. Idempotent: the payment id is the key.
+// credited the wallet beside an invoice. Idempotent: the payment id is the key,
+// and a payment already recorded keeps what was taken of it and credited since.
 func Put(payment, org, subject, invoice string, balance int64, test bool) error {
 	payment = strings.TrimSpace(payment)
 	if payment == "" || org == "" {
 		return nil
+	}
+	if _, found, err := Change(payment, func(p *PaymentOrg) bool {
+		p.Org, p.Subject, p.Invoice, p.Balance, p.Test = org, subject, invoice, balance, test
+		return true
+	}); err != nil || found {
+		return err
 	}
 	d := db()
 	p := new(PaymentOrg)
@@ -63,6 +80,68 @@ func Put(payment, org, subject, invoice string, balance int64, test bool) error 
 	p.SetId(payment)
 	p.Org, p.Subject, p.Invoice, p.Balance, p.Test = org, subject, invoice, balance, test
 	return p.Put()
+}
+
+// Take is what one refund or dispute (Ref: "refund:<id>", "dispute:<id>") took of
+// an order's starting balance. Moved says it was taken out of the wallet, the
+// credit having been decided before it; otherwise the credit nets against it.
+// Restored says a dispute won gave it back.
+type Take struct {
+	Ref      string `json:"ref"`
+	Cents    int64  `json:"cents"`
+	Moved    bool   `json:"moved,omitempty"`
+	Restored bool   `json:"restored,omitempty"`
+}
+
+// Took is the take ref recorded, or nil.
+func (p *PaymentOrg) Took(ref string) *Take {
+	for i := range p.Takes {
+		if p.Takes[i].Ref == ref {
+			return &p.Takes[i]
+		}
+	}
+	return nil
+}
+
+// Taken is what refunds and disputes hold of the starting balance now.
+func (p *PaymentOrg) Taken() int64 {
+	n := int64(0)
+	for _, t := range p.Takes {
+		if !t.Restored {
+			n += t.Cents
+		}
+	}
+	return n
+}
+
+// Left is the starting balance no refund or dispute holds.
+func (p *PaymentOrg) Left() int64 {
+	return max(p.Balance-p.Taken(), 0)
+}
+
+// Change applies change to payment's record and swaps it in, reading it again
+// when another writer changed it first (mixin.Model.Swap), so two changes of one
+// payment — a credit and a refund, two refunds — are applied one after the
+// other. A change that answers false writes nothing. A payment nothing recorded
+// answers found=false.
+func Change(payment string, change func(*PaymentOrg) bool) (*PaymentOrg, bool, error) {
+	for range mixin.Swaps {
+		p, found, err := Get(payment)
+		if err != nil || !found {
+			return nil, found, err
+		}
+		if !change(p) {
+			return p, true, nil
+		}
+		ok, err := p.Swap()
+		if err != nil {
+			return nil, true, err
+		}
+		if ok {
+			return p, true, nil
+		}
+	}
+	return nil, true, fmt.Errorf("payment %s changed under %d reads in a row", payment, mixin.Swaps)
 }
 
 // Get answers where payment's receipt lives, and false when nothing recorded it.

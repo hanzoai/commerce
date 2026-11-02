@@ -791,20 +791,31 @@ may be). All four are served under `limits` on `GET /v1/billing/plans`
 
 - Buy: `POST /v1/billing/subscribe/card` with `balanceCents` beside the seats.
   ONE charge of seats x price + balance; the first-period invoice holds the
-  seats, and `endow` credits the balance LAST, keyed on the payment: `fund`
-  (commerce's deposit, one per payment) and, embedded, `bank` (the host ledger,
-  as a reload is). The receipt states `amountCents` (the whole payment),
-  `balanceCents`, `balanceId`, `seats`, `category` and `replaced`, and
-  `paymentorg` records `Balance` beside the invoice.
+  seats, and the balance is credited LAST (`conclude`). The receipt states
+  `amountCents` (the whole payment), `balanceCents` (what was credited),
+  `balanceId`, `seats`, `category` and `replaced`.
+- The balance's state is the payment's record (`paymentorg`): `Balance`
+  bought, `Takes` (each refund or dispute's part of it, by ref), `Credited` +
+  `Credit` (the credit, decided once as `Balance` less `Taken()`) and
+  `Deposit` (the credit landed). Every change of it runs under the payment's
+  lease (`paymentScope`, `idempotencykey.Hold`, renewed while held, released
+  only by its holder): `endow` decides and `land`s the credit (`fund`, one
+  deposit per payment, and embedded `bank`, both keyed on the payment);
+  `takeOrder` records a take in the same swap that reads `Credited`. Taken
+  before the credit is decided, the credit nets it and no wallet is touched (no
+  clawback against money the host never credited); taken after, it lands the
+  credit if it had not landed, then takes it from the wallet (`clawLocal`, the
+  host's `Clawback`). A dispute won gives back its take: `Restore`, or, if the
+  credit had left it out, `giveBack`. The rest of a refund is the invoice's.
 - One sale per subject in flight, whatever its key (`saleScope` lock, atomic);
   a key reused for another order is 409. The receipt is sealed owing the balance
-  before it is credited, so a failed credit (500) is completed by the retry under
-  the same key (`complete`), once.
-- Refunds and disputes of an order take the balance back first, up to what the
-  payment credited less what earlier refunds took (`claimed`); the rest is the
-  invoice's (`RecordRefund`), and a dispute records every state on the invoice.
-  `clawLocal` writes the take in commerce's books (the balance standalone),
-  then the host ledger's `Clawback`/`Restore`; a refund stops the reload.
+  before it is credited, so a failed credit (503, "send the same order again")
+  is completed by the retry under the same key (`complete`), once, crediting
+  what the record says is owed then. The plan's reload switches on only after
+  the credit, and never for a payment a refund or dispute took part of.
+- A query that FAILS is an error, never an absence: an iterator answers
+  `db.ErrDone` only past its last row, and `query.First` reports anything
+  else. Before, a failed slug lookup read as "no row" and fell back to the embed.
 - Refused before the card: a balance not in whole dollars, negative, over
   `balanceCeiling`, on a row with no ceiling, paid from prepaid money, by a
   wallet token, or on a sale that opens a free trial.

@@ -21,10 +21,12 @@
 package idempotencykey
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -73,6 +75,10 @@ type IdempotencyKey struct {
 	// RecoveryPoint lets a caller record how far a multi-step side effect got,
 	// so a retry can resume rather than restart. Optional.
 	RecoveryPoint string `json:"recoveryPoint,omitempty"`
+
+	// Holder names whoever holds the guard as a lease (Hold), so only its holder
+	// renews or releases it.
+	Holder string `json:"holder,omitempty"`
 }
 
 func (k *IdempotencyKey) Load(ps []datastore.Property) error {
@@ -187,4 +193,83 @@ func Query(db *datastore.Datastore) datastore.Query {
 // op (fail-closed, caller 409s).
 func (k *IdempotencyKey) Recoverable() bool {
 	return k.Status == StatusStarted && nowFn().Sub(k.UpdatedAt) >= StartedTTL
+}
+
+// Lease is a lock held under one (scope, key) guard: taken atomically by Begin,
+// renewed while its holder works so it never lapses under a slow holder, and
+// released only by its holder, so a release can never take another's lease.
+type Lease struct {
+	db    *datastore.Datastore
+	id    string
+	token string
+	stop  chan struct{}
+	wg    sync.WaitGroup
+}
+
+// Hold takes the lease for (scope, key). It answers taken=false, with nothing
+// held, when a live holder has it; a lease whose holder stopped renewing for
+// StartedTTL is taken over, as Begin re-claims a crashed guard.
+func Hold(db *datastore.Datastore, scope, key string) (*Lease, bool, error) {
+	rec, replay, err := Begin(db, scope, key)
+	if err != nil || replay {
+		return nil, false, err
+	}
+	var b [12]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		_ = rec.Delete()
+		return nil, false, err
+	}
+	l := &Lease{db: db, id: DeterministicID(scope, key), token: hex.EncodeToString(b[:]), stop: make(chan struct{})}
+	rec.Holder = l.token
+	if ok, err := rec.Swap(); err != nil || !ok {
+		return nil, false, err
+	}
+	l.wg.Add(1)
+	go l.renew()
+	return l, true, nil
+}
+
+// renew keeps the lease fresh while it is held: every third of StartedTTL it is
+// written again, while it is still this holder's.
+func (l *Lease) renew() {
+	defer l.wg.Done()
+	t := time.NewTicker(StartedTTL / 3)
+	defer t.Stop()
+	for {
+		select {
+		case <-l.stop:
+			return
+		case <-t.C:
+			if rec, ok := l.mine(); ok {
+				_, _ = rec.Swap()
+			}
+		}
+	}
+}
+
+// mine reads the lease and reports whether this holder still holds it.
+func (l *Lease) mine() (*IdempotencyKey, bool) {
+	rec := New(l.db)
+	if err := rec.Get(l.db.NewKey(rec.Kind(), l.id, 0, nil)); err != nil {
+		return nil, false
+	}
+	return rec, rec.Holder == l.token
+}
+
+// Release gives the lease up, if it is still this holder's. Releasing twice is
+// releasing once.
+func (l *Lease) Release() {
+	if l == nil {
+		return
+	}
+	select {
+	case <-l.stop:
+		return
+	default:
+		close(l.stop)
+	}
+	l.wg.Wait()
+	if rec, ok := l.mine(); ok {
+		_ = rec.Delete()
+	}
 }

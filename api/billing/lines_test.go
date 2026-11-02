@@ -297,6 +297,10 @@ func TestAnOfferCoversATeamOnlyWhenItCoversEverySeatType(t *testing.T) {
 
 // The catalog serves both seat types with the group that sells them together.
 func TestTheCatalogNamesTheTeamsSeatTypes(t *testing.T) {
+	// An open store with no rows: the catalog answers. A closed one is a failed
+	// read, never an absent row (seatFor).
+	ctx := ae.NewContext()
+	defer ctx.Close()
 	for _, slug := range []string{"team", "team-premium"} {
 		p := lookupPlan(slug)
 		if s, err := seatFor(slug); p == nil || p.Group != "team" || !p.PerSeat || err != nil || s.least != 2 || s.most != 100 {
