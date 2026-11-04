@@ -109,10 +109,15 @@ func answered(err error) bool {
 	return errors.As(err, &a) && a.Answered()
 }
 
-// walletRailFrom is the org's Square processor, when it can hold and take a
+// walletRailFrom resolves the org's wallet processor (Square by default, or an
+// explicitly requested provider such as PayPal) when it can hold and take a
 // payment.
-func walletRailFrom(ctx context.Context, reg *processor.Registry) (walletRail, bool) {
-	p, err := reg.Get(processor.Square)
+func walletRailFrom(ctx context.Context, reg *processor.Registry, provider ...string) (walletRail, bool) {
+	target := processor.Square
+	if len(provider) > 0 && strings.TrimSpace(provider[0]) != "" {
+		target = processor.ProcessorType(strings.ToLower(strings.TrimSpace(provider[0])))
+	}
+	p, err := reg.Get(target)
 	if err != nil || p == nil || !p.IsAvailable(ctx) {
 		return nil, false
 	}
@@ -184,7 +189,7 @@ func walletSale(ctx context.Context, db *datastore.Datastore, org *organization.
 			"plan %q starts with a %d-day free trial, which begins on a card kept on file; pay by card to start it",
 			t.slug, t.plan.TrialPeriodDays)}
 	}
-	wr, ok := walletRailFrom(ctx, processorsForOrg(org))
+	wr, ok := walletRailFrom(ctx, processorsForOrg(org), in.Provider)
 	if !ok {
 		t.abandon()
 		return nil, saleRefusal{saleUnchargeable, "no wallet payment processor available for this organization"}

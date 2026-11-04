@@ -139,21 +139,39 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 		}))
 	}
 
-	// PayPal — use v2 REST API client credentials
-	// The legacy org.Paypal fields use Adaptive Payments (deprecated).
-	// Map securityUserId → clientID, securityPassword → clientSecret.
-	ppCreds := org.Paypal.Live
-	ppSandbox := false
-	if org.TestMode() {
-		ppCreds = org.Paypal.Test
-		ppSandbox = true
-	}
-	if ppCreds.SecurityUserId != "" {
-		reg.Register(paypal.NewProvider(paypal.Config{
-			ClientID:     ppCreds.SecurityUserId,
-			ClientSecret: ppCreds.SecurityPassword,
-			Sandbox:      ppSandbox,
-		}))
+	// PayPal — REST API v2 OAuth2 client credentials, resolved through the same
+	// single org.TestMode() authority as Square: per-org REST v2 ClientId/ClientSecret
+	// first, then legacy SecurityUserId/SecurityPassword when both are present,
+	// then the deployment's env fallback (paypal.FromEnv) matching useSandbox.
+	{
+		useSandbox := org.TestMode()
+		ppCfg := org.PayPalConfig(useSandbox)
+		clientID := strings.TrimSpace(ppCfg.ClientId)
+		clientSecret := strings.TrimSpace(ppCfg.ClientSecret)
+		webhookID := strings.TrimSpace(ppCfg.WebhookId)
+		if webhookID == "" && !useSandbox {
+			webhookID = strings.TrimSpace(org.Paypal.WebhookId)
+		}
+		if clientID == "" && ppCfg.SecurityUserId != "" && ppCfg.SecurityPassword != "" {
+			clientID = strings.TrimSpace(ppCfg.SecurityUserId)
+			clientSecret = strings.TrimSpace(ppCfg.SecurityPassword)
+		}
+		if clientID == "" || clientSecret == "" {
+			creds := paypal.FromEnv(useSandbox)
+			clientID, clientSecret = creds.ClientID, creds.ClientSecret
+			if webhookID == "" {
+				webhookID = creds.WebhookID
+			}
+		}
+		if clientID != "" && clientSecret != "" {
+			reg.Register(paypal.NewProvider(paypal.Config{
+				ClientID:     clientID,
+				ClientSecret: clientSecret,
+				WebhookID:    webhookID,
+				Sandbox:      useSandbox,
+				Org:          org.Name,
+			}))
+		}
 	}
 
 	// Recurly

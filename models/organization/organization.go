@@ -420,6 +420,13 @@ func (o Organization) SquareConfig(sandbox bool) integration.SquareConnection {
 	return o.Square.Production
 }
 
+func (o Organization) PayPalConfig(sandbox bool) integration.PaypalConnection {
+	if sandbox {
+		return o.Paypal.Test
+	}
+	return o.Paypal.Live
+}
+
 func (o Organization) StripeToken() string {
 	if !o.TestMode() {
 		return o.Stripe.Live.AccessToken

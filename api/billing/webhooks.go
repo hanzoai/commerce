@@ -2,6 +2,7 @@ package billing
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -182,6 +183,12 @@ func bookedOrg(ctx context.Context, event *processor.WebhookEvent) *organization
 	if err := org.GetOrCreate("Name=", name); err != nil {
 		log.Warn("webhook org resolve for '%s' failed: %v", name, err)
 		return nil
+	}
+	if event != nil && event.Data != nil {
+		if sb, _ := event.Data["paypal_sandbox"].(bool); sb {
+			cp := org.In(organization.Test)
+			return &cp
+		}
 	}
 	return org
 }
@@ -713,7 +720,260 @@ func tryValidateWebhook(ctx context.Context, providerHint string, payload []byte
 		// be recorded once, so it is not applied at all.
 		return nil, fmt.Errorf("%w: %s delivery carries no event id", processor.ErrWebhookValidationFailed, providerHint)
 	}
+	if evt != nil && evt.Processor == processor.PayPal {
+		normalizePayPalWebhookEvent(evt)
+	}
 	return evt, nil
+}
+
+// encodePayPalWebhookHeaders packs PayPal's 5 transmission signature headers
+// into the JSON object paypal.Provider.ValidateWebhook forwards to
+// POST /v1/notifications/verify-webhook-signature.
+func encodePayPalWebhookHeaders(h http.Header) string {
+	sig := strings.TrimSpace(h.Get("Paypal-Transmission-Sig"))
+	if sig == "" {
+		return ""
+	}
+	b, err := json.Marshal(map[string]string{
+		"transmission_id":   strings.TrimSpace(h.Get("Paypal-Transmission-Id")),
+		"transmission_time": strings.TrimSpace(h.Get("Paypal-Transmission-Time")),
+		"cert_url":          strings.TrimSpace(h.Get("Paypal-Cert-Url")),
+		"auth_algo":         strings.TrimSpace(h.Get("Paypal-Auth-Algo")),
+		"transmission_sig":  sig,
+	})
+	if err != nil {
+		return ""
+	}
+	return string(b)
+}
+
+// normalizePayPalWebhookEvent maps PayPal REST API v2 event types and resource
+// payloads into the canonical settlement, refund, dispute, and subscription
+// event shapes HandleProviderWebhook applies.
+func normalizePayPalWebhookEvent(evt *processor.WebhookEvent) {
+	if evt == nil {
+		return
+	}
+	if evt.Data == nil {
+		evt.Data = map[string]interface{}{}
+	}
+	rawType := strings.ToUpper(strings.TrimSpace(evt.Type))
+	evt.Data["paypal_event_type"] = evt.Type
+	res, _ := evt.Data["resource"].(map[string]interface{})
+
+	switch rawType {
+	case "PAYMENT.CAPTURE.COMPLETED":
+		evt.Type = "payment.completed"
+		populatePayPalPaymentData(evt.Data, res, "COMPLETED")
+	case "PAYMENT.CAPTURE.PENDING", "PAYMENT.CAPTURE.DENIED", "PAYMENT.CAPTURE.DECLINED":
+		evt.Type = "payment.updated"
+		populatePayPalPaymentData(evt.Data, res, "")
+	case "PAYMENT.CAPTURE.REFUNDED":
+		evt.Type = "refund.updated"
+		populatePayPalRefundData(evt.Data, res, false)
+	case "PAYMENT.CAPTURE.REVERSED":
+		evt.Type = "refund.updated"
+		populatePayPalRefundData(evt.Data, res, true)
+	case "CUSTOMER.DISPUTE.CREATED", "CUSTOMER.DISPUTE.UPDATED", "CUSTOMER.DISPUTE.RESOLVED":
+		evt.Type = "dispute.state.updated"
+		populatePayPalDisputeData(evt.Data, res)
+	case "BILLING.SUBSCRIPTION.CANCELLED", "BILLING.SUBSCRIPTION.SUSPENDED", "BILLING.SUBSCRIPTION.EXPIRED":
+		evt.Type = "subscription.canceled"
+		if id := stringField(res, "id"); id != "" {
+			evt.Data["id"] = id
+		}
+		evt.Data["status"] = "canceled"
+	case "BILLING.SUBSCRIPTION.ACTIVATED", "BILLING.SUBSCRIPTION.UPDATED", "BILLING.SUBSCRIPTION.RE-ACTIVATED":
+		evt.Type = "subscription.updated"
+		if id := stringField(res, "id"); id != "" {
+			evt.Data["id"] = id
+		}
+		if st := strings.ToLower(stringField(res, "status")); st != "" {
+			evt.Data["status"] = st
+		}
+	}
+}
+
+func parsePayPalMoneyMap(raw interface{}) map[string]interface{} {
+	m, ok := raw.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	valStr := stringField(m, "value")
+	curCode := stringField(m, "currency_code")
+	if curCode == "" {
+		curCode = stringField(m, "currency")
+	}
+	if valStr == "" || curCode == "" {
+		return nil
+	}
+	cur := currency.Type(strings.ToLower(curCode))
+	cents, err := cur.Parse(valStr)
+	if err != nil {
+		return nil
+	}
+	return map[string]interface{}{
+		"amount":   int64(cents),
+		"currency": strings.ToUpper(curCode),
+	}
+}
+
+func populatePayPalPaymentData(dst map[string]interface{}, res map[string]interface{}, defaultStatus string) {
+	if res == nil {
+		return
+	}
+	pay := map[string]interface{}{}
+	if id := stringField(res, "id"); id != "" {
+		pay["id"] = id
+	}
+	st := stringField(res, "status")
+	if st == "" {
+		st = defaultStatus
+	}
+	if st != "" {
+		pay["status"] = st
+	}
+	if am := parsePayPalMoneyMap(res["amount"]); am != nil {
+		pay["amount_money"] = am
+	}
+	dst["payment"] = pay
+}
+
+func populatePayPalRefundData(dst map[string]interface{}, res map[string]interface{}, forceCompleted bool) {
+	if res == nil {
+		return
+	}
+	rf := map[string]interface{}{}
+	id := stringField(res, "id")
+	if id != "" {
+		rf["id"] = id
+	}
+	captureID := firstNonEmpty(
+		stringField(res, "capture_id"),
+		stringField(res, "payment_id"),
+		extractPayPalCaptureIDFromLinks(res["links"]),
+	)
+	if captureID == "" && forceCompleted {
+		captureID = id
+	}
+	if captureID != "" {
+		rf["payment_id"] = captureID
+	}
+	st := stringField(res, "status")
+	if forceCompleted || st == "" {
+		st = "COMPLETED"
+	}
+	rf["status"] = st
+	if am := parsePayPalMoneyMap(res["amount"]); am != nil {
+		rf["amount_money"] = am
+	}
+	dst["refund"] = rf
+}
+
+func extractPayPalCaptureIDFromLinks(raw interface{}) string {
+	links, ok := raw.([]interface{})
+	if !ok {
+		return ""
+	}
+	const marker = "/v2/payments/captures/"
+	for _, item := range links {
+		lm, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		rel := strings.ToLower(stringField(lm, "rel"))
+		href := stringField(lm, "href")
+		if rel != "up" && !strings.Contains(href, marker) {
+			continue
+		}
+		if idx := strings.Index(href, marker); idx >= 0 {
+			rest := href[idx+len(marker):]
+			if slash := strings.IndexAny(rest, "/?#"); slash >= 0 {
+				rest = rest[:slash]
+			}
+			if rest = strings.TrimSpace(rest); rest != "" {
+				return rest
+			}
+		}
+	}
+	return ""
+}
+
+func populatePayPalDisputeData(dst map[string]interface{}, res map[string]interface{}) {
+	if res == nil {
+		return
+	}
+	dp := map[string]interface{}{}
+	id := firstNonEmpty(stringField(res, "dispute_id"), stringField(res, "id"))
+	if id != "" {
+		dp["id"] = id
+	}
+	paymentID := firstNonEmpty(stringField(res, "payment_id"), extractPayPalDisputedCaptureID(res["disputed_transactions"]))
+	if paymentID != "" {
+		dp["payment_id"] = paymentID
+	}
+	dp["state"] = mapPayPalDisputeState(res)
+	if ut := firstNonEmpty(stringField(res, "update_time"), stringField(res, "create_time")); ut != "" {
+		dp["updated_at"] = ut
+	}
+	am := parsePayPalMoneyMap(res["dispute_amount"])
+	if am == nil {
+		am = parsePayPalMoneyMap(res["amount"])
+	}
+	if am != nil {
+		dp["amount_money"] = am
+	}
+	dst["dispute"] = dp
+}
+
+func extractPayPalDisputedCaptureID(raw interface{}) string {
+	txs, ok := raw.([]interface{})
+	if !ok {
+		return ""
+	}
+	for _, item := range txs {
+		tm, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if id := stringField(tm, "seller_transaction_id"); id != "" {
+			return id
+		}
+	}
+	return ""
+}
+
+func mapPayPalDisputeState(res map[string]interface{}) string {
+	stage := strings.ToUpper(stringField(res, "dispute_life_cycle_stage"))
+	status := strings.ToUpper(stringField(res, "status"))
+	outcome := ""
+	if om, ok := res["dispute_outcome"].(map[string]interface{}); ok {
+		outcome = strings.ToUpper(stringField(om, "outcome_code"))
+	}
+	if stage == "INQUIRY" {
+		switch status {
+		case "WAITING_FOR_SELLER_RESPONSE":
+			return "INQUIRY_EVIDENCE_REQUIRED"
+		case "RESOLVED":
+			return "INQUIRY_CLOSED"
+		default:
+			return "INQUIRY_PROCESSING"
+		}
+	}
+	if status == "RESOLVED" {
+		switch outcome {
+		case "RESOLVED_SELLER_FAVOUR", "CANCELED_BY_BUYER":
+			return dispute.StateWon
+		case "ACCEPTED":
+			return "ACCEPTED"
+		default:
+			return "LOST"
+		}
+	}
+	if status == "WAITING_FOR_SELLER_RESPONSE" {
+		return "EVIDENCE_REQUIRED"
+	}
+	return "PROCESSING"
 }
 
 // pickSignatureHeader returns the signature header for the given provider.
@@ -742,7 +1002,7 @@ func pickSignatureHeader(h http.Header, providerHint string) string {
 				return v
 			}
 		case "paypal":
-			if v := h.Get("Paypal-Transmission-Sig"); v != "" {
+			if v := encodePayPalWebhookHeaders(h); v != "" {
 				return v
 			}
 		case "coinbase":
@@ -757,6 +1017,9 @@ func pickSignatureHeader(h http.Header, providerHint string) string {
 	}
 	for _, name := range candidates {
 		if v := h.Get(name); v != "" {
+			if name == "Paypal-Transmission-Sig" {
+				return encodePayPalWebhookHeaders(h)
+			}
 			return v
 		}
 	}

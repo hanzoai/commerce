@@ -363,8 +363,11 @@ func Route(r *zip.Group, args ...zip.Handler) {
 	// Non-admin callers may only withdraw from their own account.
 	user.Raw(http.MethodPost, "/withdraw", Withdraw)
 
-	// Top-up with a Square Web Payments SDK nonce (no saved PM required)
+	// Top-up with a Square Web Payments SDK nonce or PayPal Order ID (no saved PM required)
 	user.Raw(http.MethodPost, "/topup/token", TopupWithToken)
+
+	// Open a server-priced PayPal REST v2 Order (CAPTURE for top-up, AUTHORIZE for plan)
+	user.Raw(http.MethodPost, "/paypal/order", CreatePayPalBillingOrder)
 
 	// TRUE card-on-file monthly subscription: vault a Square nonce as a reusable
 	// card, charge the first period at the SERVER-AUTHORITATIVE plan price, and

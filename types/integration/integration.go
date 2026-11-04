@@ -142,22 +142,25 @@ type Netlify struct {
 	Uid         string    `json:"uId,omitempty"`
 }
 
+// PaypalConnection holds PayPal credentials for one environment (live or sandbox).
+// ClientId, ClientSecret, and WebhookId configure PayPal REST API v2; the
+// legacy fields remain for backward compatibility with stored organization data.
+type PaypalConnection struct {
+	Email             string `json:"email,omitempty"`
+	SecurityUserId    string `json:"securityUserId,omitempty"`
+	SecurityPassword  string `json:"securityPassword,omitempty" datastore:",noindex"`
+	SecuritySignature string `json:"SecuritySignature,omitempty" datastore:",noindex"`
+	ApplicationId     string `json:"applicationId,omitempty"`
+	ClientId          string `json:"clientId,omitempty"`
+	ClientSecret      string `json:"clientSecret,omitempty" datastore:",noindex"`
+	WebhookId         string `json:"webhookId,omitempty"`
+}
+
 // Paypal connection
 type Paypal struct {
-	Live struct {
-		Email             string `json:"email,omitempty"`
-		SecurityUserId    string `json:"securityUserId,omitempty"`
-		SecurityPassword  string `json:"securityPassword,omitempty" datastore:",noindex"`
-		SecuritySignature string `json:"SecuritySignature,omitempty" datastore:",noindex"`
-		ApplicationId     string `json:"applicationId,omitempty"`
-	} `json:"live,omitempty"`
-	Test struct {
-		Email             string `json:"email,omitempty"`
-		SecurityUserId    string `json:"securityUserId,omitempty"`
-		SecurityPassword  string `json:"securityPassword,omitempty" datastore:",noindex"`
-		SecuritySignature string `json:"SecuritySignature,omitempty" datastore:",noindex"`
-		ApplicationId     string `json:"applicationId,omitempty"`
-	} `json:"test,omitempty"`
+	Live      PaypalConnection `json:"live,omitempty"`
+	Test      PaypalConnection `json:"test,omitempty"`
+	WebhookId string           `json:"webhookId,omitempty"`
 
 	ConfirmUrl string `json:"confirmUrl,omitempty" datastore:",noindex"`
 	CancelUrl  string `json:"cancelUrl,omitempty" datastore:",noindex"`

@@ -82,6 +82,10 @@ type TakePaymentIn struct {
 	// windowed derivation over the stable request facts, which is what the
 	// browser path does when it sends no X-Idempotency-Key.
 	IdempotencyKey string
+	// Provider names the explicit fiat payment processor ("square" or "paypal")
+	// when SourceID belongs to a specific rail (e.g. an approved PayPal Order ID).
+	// Empty uses the registry's default fiat selection.
+	Provider string
 }
 
 // TakePaymentOut is the settled result. The first three fields are the response
@@ -220,7 +224,18 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 	// The per-org processor registry. The global registry holds the webhook
 	// verifier, so a charge goes through the org-scoped one.
 	reg := processorsForOrg(org)
-	proc, err := reg.SelectProcessor(ctx, chargeReq)
+	var (
+		proc processor.PaymentProcessor
+		err  error
+	)
+	if prov := strings.ToLower(strings.TrimSpace(in.Provider)); prov != "" {
+		proc, err = reg.Get(processor.ProcessorType(prov))
+		if err == nil && (proc == nil || !proc.IsAvailable(ctx)) {
+			err = fmt.Errorf("processor %s is not available", prov)
+		}
+	} else {
+		proc, err = reg.SelectProcessor(ctx, chargeReq)
+	}
 	if err != nil {
 		abandon()
 		log.Error("No processor available for token topup: %v", err)

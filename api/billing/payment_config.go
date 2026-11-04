@@ -10,19 +10,30 @@ import (
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/payment"
+	"github.com/hanzoai/commerce/payment/processor"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 )
 
+// PayPalPublicConfig is the PUBLIC PayPal JS SDK configuration returned alongside
+// Square on GET /v1/billing/settings.
+type PayPalPublicConfig struct {
+	ClientId    string `json:"clientId"`
+	Environment string `json:"environment"`
+	Enabled     bool   `json:"enabled"`
+}
+
 // PaymentConfig is the PUBLIC payment configuration a browser needs to tokenize a
 // card for an org: which provider, which application and location it tokenizes
-// against, which environment that account lives in, and whether the money is
-// real. Every field is safe to hand a client.
+// against, which environment that account lives in, whether the money is real,
+// and the public PayPal JS SDK config when enabled. Every field is safe to hand
+// a client.
 type PaymentConfig struct {
-	Provider      string `json:"provider"`
-	ApplicationId string `json:"applicationId"`
-	LocationId    string `json:"locationId"`
-	Environment   string `json:"environment"`
-	Live          bool   `json:"live"`
+	Provider      string             `json:"provider"`
+	ApplicationId string             `json:"applicationId"`
+	LocationId    string             `json:"locationId"`
+	Environment   string             `json:"environment"`
+	Live          bool               `json:"live"`
+	PayPal        PayPalPublicConfig `json:"paypal"`
 }
 
 // ReadPaymentConfig resolves an org's public payment configuration.
@@ -42,12 +53,18 @@ type PaymentConfig struct {
 // answer is a value and no endpoint has an error to invent a status for.
 func ReadPaymentConfig(ctx context.Context, org *organization.Organization) *PaymentConfig {
 	sq := payment.SquarePublicConfig(org)
+	pp := payment.PayPalPublicConfig(org)
 	return &PaymentConfig{
 		Provider:      "square",
 		ApplicationId: sq.ApplicationID,
 		LocationId:    sq.LocationID,
 		Environment:   sq.Environment,
 		Live:          sq.Live,
+		PayPal: PayPalPublicConfig{
+			ClientId:    pp.ClientID,
+			Environment: pp.Environment,
+			Enabled:     pp.ClientID != "" && !processor.DisabledByPolicy(processor.PayPal),
+		},
 	}
 }
 

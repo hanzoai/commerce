@@ -42,6 +42,12 @@ func (o Organization) SquareEnvironment() string {
 	return o.kind().Word("square")
 }
 
+// PayPalEnvironment returns "sandbox" or "live" — the value PayPal REST API v2
+// and the PayPal JS SDK use — derived from TestMode (one authority).
+func (o Organization) PayPalEnvironment() string {
+	return o.kind().Word("paypal")
+}
+
 // A Kind is what an environment transacts with. There are two of them, and
 // every payment processor has the same two under a different name — which is
 // the whole reason to state them once here. Stripe says live and test, Square

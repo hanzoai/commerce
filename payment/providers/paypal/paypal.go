@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -29,28 +32,52 @@ const (
 
 // Config holds PayPal API credentials.
 type Config struct {
-	ClientID     string
-	ClientSecret string
-	WebhookID    string
-	Sandbox      bool
+	ClientID            string
+	ClientSecret        string
+	WebhookID           string
+	Sandbox             bool
+	Org                 string
+	SandboxClientID     string
+	SandboxClientSecret string
+	SandboxWebhookID    string
 }
 
-// Provider implements processor.PaymentProcessor for PayPal REST API v2.
+// Provider implements processor.PaymentProcessor and processor.WebhookReceiver
+// for PayPal REST API v2.
 type Provider struct {
 	*processor.BaseProcessor
 
-	mu          sync.RWMutex
-	config      Config
-	httpClient  *http.Client
-	accessToken string
-	tokenExpiry time.Time
+	mu                 sync.RWMutex
+	config             Config
+	httpClient         *http.Client
+	accessToken        string
+	tokenExpiry        time.Time
+	sandboxAccessToken string
+	sandboxTokenExpiry time.Time
 }
 
 func init() {
-	processor.Register(&Provider{
+	p := &Provider{
 		BaseProcessor: processor.NewBaseProcessor(processor.PayPal, supportedCurrencies()),
 		httpClient:    &http.Client{Timeout: 30 * time.Second},
-	})
+	}
+	p.Configure(configFromEnv())
+	processor.Register(p)
+}
+
+func configFromEnv() Config {
+	sandbox := SandboxEnv()
+	creds := FromEnv(sandbox)
+	sbCreds := FromEnv(true)
+	return Config{
+		ClientID:            creds.ClientID,
+		ClientSecret:        creds.ClientSecret,
+		WebhookID:           creds.WebhookID,
+		Sandbox:             sandbox,
+		SandboxClientID:     sbCreds.ClientID,
+		SandboxClientSecret: sbCreds.ClientSecret,
+		SandboxWebhookID:    sbCreds.WebhookID,
+	}
 }
 
 // NewProvider creates a configured PayPal provider instance.
@@ -70,6 +97,8 @@ func (p *Provider) Configure(cfg Config) {
 	p.config = cfg
 	p.accessToken = ""
 	p.tokenExpiry = time.Time{}
+	p.sandboxAccessToken = ""
+	p.sandboxTokenExpiry = time.Time{}
 	p.SetConfigured(cfg.ClientID != "" && cfg.ClientSecret != "")
 }
 
@@ -83,6 +112,16 @@ func (p *Provider) IsAvailable(_ context.Context) bool {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return p.config.ClientID != "" && p.config.ClientSecret != ""
+}
+
+// ReceivesWebhooks reports whether this account holds the credentials and
+// webhook subscription ID needed to verify inbound PayPal webhook deliveries.
+func (p *Provider) ReceivesWebhooks() bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	primary := p.config.ClientID != "" && p.config.ClientSecret != "" && p.config.WebhookID != ""
+	sandbox := p.config.SandboxClientID != "" && p.config.SandboxClientSecret != "" && p.config.SandboxWebhookID != ""
+	return primary || sandbox
 }
 
 // SupportedCurrencies returns currencies supported by PayPal.
@@ -103,8 +142,28 @@ func supportedCurrencies() []currency.Type {
 }
 
 // ---------------------------------------------------------------------------
-// PaymentProcessor interface
+// Order creation & PaymentProcessor interface
 // ---------------------------------------------------------------------------
+
+// CreateOrder creates a server-side PayPal REST v2 order (intent "CAPTURE" or
+// "AUTHORIZE") so the PayPal JS SDK can approve a server-authoritative amount.
+func (p *Provider) CreateOrder(ctx context.Context, req processor.PaymentRequest, intent string) (string, string, error) {
+	if err := p.checkAvailable(); err != nil {
+		return "", "", err
+	}
+	if err := processor.ValidateRequest(req); err != nil {
+		return "", "", err
+	}
+	intent = strings.ToUpper(strings.TrimSpace(intent))
+	if intent != "AUTHORIZE" {
+		intent = "CAPTURE"
+	}
+	created, err := p.createOrder(ctx, req, intent)
+	if err != nil {
+		return "", "", err
+	}
+	return created.ID, created.Status, nil
+}
 
 // Charge creates a PayPal order with CAPTURE intent and captures it immediately.
 // If req.Token is set, it is treated as an existing approved order ID to capture.
@@ -127,16 +186,19 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 	}
 
 	// Capture the order.
-	capture, err := p.captureOrder(ctx, orderID)
+	capture, err := p.captureOrderWithKey(ctx, orderID, req.IdempotencyKey)
 	if err != nil {
 		return nil, err
 	}
 
+	card, wallet := paidWith(capture)
 	result := &processor.PaymentResult{
 		Success:       capture.Status == "COMPLETED",
 		TransactionID: capture.ID,
 		ProcessorRef:  captureIDFromOrder(capture),
 		Status:        capture.Status,
+		Card:          card,
+		Wallet:        wallet,
 		Metadata:      map[string]interface{}{"paypal_order_id": capture.ID},
 	}
 	if !result.Success {
@@ -165,17 +227,20 @@ func (p *Provider) Authorize(ctx context.Context, req processor.PaymentRequest) 
 		orderID = created.ID
 	}
 
-	auth, err := p.authorizeOrder(ctx, orderID)
+	auth, err := p.authorizeOrderWithKey(ctx, orderID, req.IdempotencyKey)
 	if err != nil {
 		return nil, err
 	}
 
 	authID := authorizationIDFromOrder(auth)
+	card, wallet := paidWith(auth)
 	result := &processor.PaymentResult{
 		Success:       auth.Status == "COMPLETED",
 		TransactionID: auth.ID,
 		ProcessorRef:  authID,
 		Status:        auth.Status,
+		Card:          card,
+		Wallet:        wallet,
 		Metadata: map[string]interface{}{
 			"paypal_order_id":         auth.ID,
 			"paypal_authorization_id": authID,
@@ -186,6 +251,20 @@ func (p *Provider) Authorize(ctx context.Context, req processor.PaymentRequest) 
 		result.Error = processor.ErrPaymentFailed
 	}
 	return result, nil
+}
+
+// CancelAuthorization voids an uncaptured PayPal authorization.
+func (p *Provider) CancelAuthorization(ctx context.Context, authorizationID string) error {
+	if err := p.checkAvailable(); err != nil {
+		return err
+	}
+	authorizationID = strings.TrimSpace(authorizationID)
+	if authorizationID == "" {
+		return processor.ErrInvalidPaymentRequest
+	}
+	path := fmt.Sprintf("%s/%s/void", authCapture, authorizationID)
+	_, err := p.doRequest(ctx, http.MethodPost, path, nil)
+	return err
 }
 
 // Capture captures a previously authorized payment.
@@ -265,7 +344,7 @@ func (p *Provider) Refund(ctx context.Context, req processor.RefundRequest) (*pr
 	}
 
 	path := fmt.Sprintf("%s/%s/refund", capturesPath, req.TransactionID)
-	resp, err := p.doRequest(ctx, http.MethodPost, path, payload)
+	resp, _, err := p.doRequestDetailed(ctx, http.MethodPost, path, payload, req.IdempotencyKey)
 	if err != nil {
 		return &processor.RefundResult{
 			Success:      false,
@@ -292,7 +371,9 @@ func (p *Provider) Refund(ctx context.Context, req processor.RefundRequest) (*pr
 	return result, nil
 }
 
-// GetTransaction retrieves order details by order ID.
+// GetTransaction retrieves order details by order ID, falling back to a payment
+// authorization lookup when txID is a PayPal authorization ID (e.g. during
+// walletSale settlement recovery).
 func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.Transaction, error) {
 	if err := p.checkAvailable(); err != nil {
 		return nil, err
@@ -302,8 +383,13 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 	}
 
 	path := fmt.Sprintf("%s/%s", ordersPath, txID)
-	resp, err := p.doRequest(ctx, http.MethodGet, path, nil)
+	resp, status, err := p.doRequestDetailed(ctx, http.MethodGet, path, nil, "")
 	if err != nil {
+		if status == http.StatusNotFound {
+			if tx, authErr := p.getAuthorizationTransaction(ctx, txID); authErr == nil {
+				return tx, nil
+			}
+		}
 		return nil, err
 	}
 
@@ -362,6 +448,56 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 	return tx, nil
 }
 
+func (p *Provider) getAuthorizationTransaction(ctx context.Context, authID string) (*processor.Transaction, error) {
+	path := fmt.Sprintf("%s/%s", authCapture, authID)
+	resp, err := p.doRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var auth paypalAuthorizationDetail
+	if err := json.Unmarshal(resp, &auth); err != nil {
+		return nil, p.payErr("PARSE_ERROR", "failed to parse authorization response", err)
+	}
+
+	mappedStatus := strings.ToUpper(strings.TrimSpace(auth.Status))
+	switch mappedStatus {
+	case "CAPTURED":
+		mappedStatus = "COMPLETED"
+	case "CREATED", "PENDING", "PARTIALLY_CAPTURED":
+		mappedStatus = "APPROVED"
+	case "VOIDED", "DENIED", "EXPIRED":
+		mappedStatus = "CANCELED"
+	}
+
+	tx := &processor.Transaction{
+		ID:           auth.ID,
+		ProcessorRef: auth.ID,
+		Type:         "authorize",
+		Status:       mappedStatus,
+		Metadata: map[string]interface{}{
+			"paypal_authorization_status": auth.Status,
+		},
+	}
+	if auth.Amount.CurrencyCode != "" && auth.Amount.Value != "" {
+		tx.Currency = currency.Type(strings.ToLower(auth.Amount.CurrencyCode))
+		if amt, err := tx.Currency.Parse(auth.Amount.Value); err == nil {
+			tx.Amount = amt
+		}
+	}
+	if auth.CreateTime != "" {
+		if t, err := time.Parse(time.RFC3339, auth.CreateTime); err == nil {
+			tx.CreatedAt = t.Unix()
+		}
+	}
+	if auth.UpdateTime != "" {
+		if t, err := time.Parse(time.RFC3339, auth.UpdateTime); err == nil {
+			tx.UpdatedAt = t.Unix()
+		}
+	}
+	return tx, nil
+}
+
 // ValidateWebhook verifies a PayPal webhook notification.
 // signature should contain the JSON-encoded transmission headers:
 //
@@ -370,19 +506,8 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 //
 // payload is the raw webhook event body.
 func (p *Provider) ValidateWebhook(ctx context.Context, payload []byte, signature string) (*processor.WebhookEvent, error) {
-	if err := p.checkAvailable(); err != nil {
-		return nil, err
-	}
-
-	p.mu.RLock()
-	webhookID := p.config.WebhookID
-	p.mu.RUnlock()
-
-	if webhookID == "" {
-		return nil, processor.ErrWebhookValidationFailed
-	}
-
-	// Parse the transmission headers from the signature string.
+	// Parse the transmission headers from the signature string first so a dual-configured
+	// global singleton can select sandbox vs live verification based on cert_url.
 	var headers struct {
 		TransmissionID   string `json:"transmission_id"`
 		TransmissionTime string `json:"transmission_time"`
@@ -390,8 +515,45 @@ func (p *Provider) ValidateWebhook(ctx context.Context, payload []byte, signatur
 		AuthAlgo         string `json:"auth_algo"`
 		TransmissionSig  string `json:"transmission_sig"`
 	}
-	if err := json.Unmarshal([]byte(signature), &headers); err != nil {
-		return nil, p.payErr("WEBHOOK_PARSE", "failed to parse webhook signature headers", err)
+
+	p.mu.RLock()
+	cfg := p.config
+	p.mu.RUnlock()
+
+	useSandboxAlt := false
+	webhookID := cfg.WebhookID
+
+	if signature != "" {
+		if err := json.Unmarshal([]byte(signature), &headers); err != nil {
+			if cfg.ClientID == "" || cfg.ClientSecret == "" {
+				return nil, processor.NewPaymentError(processor.PayPal, "NOT_CONFIGURED", "paypal processor not configured", nil)
+			}
+			if webhookID == "" {
+				return nil, processor.ErrWebhookValidationFailed
+			}
+			return nil, p.payErr("WEBHOOK_PARSE", "failed to parse webhook signature headers", err)
+		}
+	}
+
+	isSandboxCert := isPayPalSandboxCertURL(headers.CertURL)
+	if !cfg.Sandbox && isSandboxCert && cfg.SandboxClientID != "" && cfg.SandboxClientSecret != "" && cfg.SandboxWebhookID != "" {
+		useSandboxAlt = true
+		webhookID = cfg.SandboxWebhookID
+	} else {
+		if cfg.ClientID == "" || cfg.ClientSecret == "" {
+			return nil, processor.NewPaymentError(processor.PayPal, "NOT_CONFIGURED", "paypal processor not configured", nil)
+		}
+	}
+
+	if webhookID == "" {
+		return nil, processor.ErrWebhookValidationFailed
+	}
+
+	if headers.CertURL != "" {
+		u, uerr := url.Parse(headers.CertURL)
+		if uerr != nil || !strings.EqualFold(u.Scheme, "https") {
+			return nil, processor.ErrWebhookValidationFailed
+		}
 	}
 
 	// Parse the event body to include in verification request.
@@ -415,7 +577,12 @@ func (p *Provider) ValidateWebhook(ctx context.Context, payload []byte, signatur
 		return nil, p.payErr("MARSHAL_ERROR", "failed to marshal verify request", err)
 	}
 
-	resp, err := p.doRequest(ctx, http.MethodPost, webhookVerify, reqBody)
+	var resp []byte
+	if useSandboxAlt {
+		resp, err = p.doSandboxWebhookVerify(ctx, reqBody)
+	} else {
+		resp, err = p.doRequest(ctx, http.MethodPost, webhookVerify, reqBody)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -451,17 +618,32 @@ func (p *Provider) ValidateWebhook(ctx context.Context, payload []byte, signatur
 		}
 	}
 
+	data := map[string]interface{}{
+		"resource":      event.Resource,
+		"resource_type": event.ResourceType,
+		"summary":       event.Summary,
+	}
+	if useSandboxAlt || (cfg.Sandbox && isSandboxCert) {
+		data["paypal_sandbox"] = true
+	}
+
 	return &processor.WebhookEvent{
 		ID:        event.ID,
 		Type:      event.EventType,
 		Processor: processor.PayPal,
-		Data: map[string]interface{}{
-			"resource":      event.Resource,
-			"resource_type": event.ResourceType,
-			"summary":       event.Summary,
-		},
+		Org:       cfg.Org,
+		Data:      data,
 		Timestamp: ts,
 	}, nil
+}
+
+func isPayPalSandboxCertURL(raw string) bool {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return false
+	}
+	h := strings.ToLower(u.Hostname())
+	return h == "api.sandbox.paypal.com" || h == "api-m.sandbox.paypal.com" || strings.HasSuffix(h, ".sandbox.paypal.com")
 }
 
 // ---------------------------------------------------------------------------
@@ -493,30 +675,66 @@ func (p *Provider) refreshToken(ctx context.Context) (string, error) {
 		return p.accessToken, nil
 	}
 
-	base := p.baseURL()
+	token, expiresIn, err := p.fetchOAuthToken(ctx, p.baseURL(), p.config.ClientID, p.config.ClientSecret)
+	if err != nil {
+		return "", err
+	}
+
+	p.accessToken = token
+	p.tokenExpiry = time.Now().Add(time.Duration(expiresIn) * time.Second)
+
+	return p.accessToken, nil
+}
+
+func (p *Provider) getSandboxAccessToken(ctx context.Context) (string, error) {
+	p.mu.RLock()
+	token := p.sandboxAccessToken
+	expiry := p.sandboxTokenExpiry
+	p.mu.RUnlock()
+
+	if token != "" && time.Now().Before(expiry.Add(-60*time.Second)) {
+		return token, nil
+	}
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.sandboxAccessToken != "" && time.Now().Before(p.sandboxTokenExpiry.Add(-60*time.Second)) {
+		return p.sandboxAccessToken, nil
+	}
+
+	tok, expiresIn, err := p.fetchOAuthToken(ctx, sandboxBaseURL, p.config.SandboxClientID, p.config.SandboxClientSecret)
+	if err != nil {
+		return "", err
+	}
+	p.sandboxAccessToken = tok
+	p.sandboxTokenExpiry = time.Now().Add(time.Duration(expiresIn) * time.Second)
+	return p.sandboxAccessToken, nil
+}
+
+func (p *Provider) fetchOAuthToken(ctx context.Context, base, clientID, clientSecret string) (string, int, error) {
 	body := strings.NewReader("grant_type=client_credentials")
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+tokenPath, body)
 	if err != nil {
-		return "", p.payErr("TOKEN_REQUEST", "failed to create token request", err)
+		return "", 0, p.payErr("TOKEN_REQUEST", "failed to create token request", err)
 	}
-	req.SetBasicAuth(p.config.ClientID, p.config.ClientSecret)
+	req.SetBasicAuth(clientID, clientSecret)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
-		return "", p.payErr("TOKEN_NETWORK", "failed to fetch access token", err)
+		return "", 0, p.payErr("TOKEN_NETWORK", "failed to fetch access token", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", p.payErr("TOKEN_READ", "failed to read token response", err)
+		return "", 0, p.payErr("TOKEN_READ", "failed to read token response", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", p.payErr("TOKEN_ERROR",
+		return "", 0, p.payErr("TOKEN_ERROR",
 			fmt.Sprintf("paypal token endpoint returned %d: %s", resp.StatusCode, string(respBody)), nil)
 	}
 
@@ -526,17 +744,43 @@ func (p *Provider) refreshToken(ctx context.Context) (string, error) {
 		ExpiresIn   int    `json:"expires_in"`
 	}
 	if err := json.Unmarshal(respBody, &tokenResp); err != nil {
-		return "", p.payErr("TOKEN_PARSE", "failed to parse token response", err)
+		return "", 0, p.payErr("TOKEN_PARSE", "failed to parse token response", err)
 	}
 
 	if tokenResp.AccessToken == "" {
-		return "", p.payErr("TOKEN_EMPTY", "paypal returned empty access token", nil)
+		return "", 0, p.payErr("TOKEN_EMPTY", "paypal returned empty access token", nil)
 	}
 
-	p.accessToken = tokenResp.AccessToken
-	p.tokenExpiry = time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+	return tokenResp.AccessToken, tokenResp.ExpiresIn, nil
+}
 
-	return p.accessToken, nil
+func (p *Provider) doSandboxWebhookVerify(ctx context.Context, reqBody []byte) ([]byte, error) {
+	token, err := p.getSandboxAccessToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, sandboxBaseURL+webhookVerify, bytes.NewReader(reqBody))
+	if err != nil {
+		return nil, p.payErr("REQUEST_BUILD", "failed to build request", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := p.httpClient.Do(req)
+	if err != nil {
+		return nil, p.payErr("NETWORK_ERROR", "paypal api request failed", err)
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, p.payErr("READ_ERROR", "failed to read paypal response", err)
+	}
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return respBody, nil
+	}
+	return nil, p.payErr("API_ERROR",
+		fmt.Sprintf("paypal POST %s returned %d: %s", webhookVerify, resp.StatusCode, string(respBody)), nil)
 }
 
 // ---------------------------------------------------------------------------
@@ -552,9 +796,14 @@ func (p *Provider) baseURL() string {
 
 // doRequest executes an authenticated request against the PayPal API.
 func (p *Provider) doRequest(ctx context.Context, method, path string, body []byte) ([]byte, error) {
+	resp, _, err := p.doRequestDetailed(ctx, method, path, body, "")
+	return resp, err
+}
+
+func (p *Provider) doRequestDetailed(ctx context.Context, method, path string, body []byte, idempotencyKey string) ([]byte, int, error) {
 	token, err := p.getAccessToken(ctx)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	base := p.baseURL()
@@ -565,37 +814,56 @@ func (p *Provider) doRequest(ctx context.Context, method, path string, body []by
 
 	req, err := http.NewRequestWithContext(ctx, method, base+path, reqBody)
 	if err != nil {
-		return nil, p.payErr("REQUEST_BUILD", "failed to build request", err)
+		return nil, 0, p.payErr("REQUEST_BUILD", "failed to build request", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	if idempotencyKey = strings.TrimSpace(idempotencyKey); idempotencyKey != "" && method == http.MethodPost {
+		req.Header.Set("PayPal-Request-Id", idempotencyKey)
+	}
 
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
-		return nil, p.payErr("NETWORK_ERROR", "paypal api request failed", err)
+		return nil, 0, p.payErr("NETWORK_ERROR", "paypal api request failed", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, p.payErr("READ_ERROR", "failed to read paypal response", err)
+		return nil, resp.StatusCode, p.payErr("READ_ERROR", "failed to read paypal response", err)
 	}
 
 	// PayPal returns 200, 201, or 204 for success.
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		return respBody, nil
+		return respBody, resp.StatusCode, nil
 	}
 
 	// Parse PayPal error response for detail.
 	var apiErr paypalAPIError
 	if json.Unmarshal(respBody, &apiErr) == nil && apiErr.Name != "" {
-		return nil, p.payErr(apiErr.Name,
+		return nil, resp.StatusCode, p.payErr(apiErr.Name,
 			fmt.Sprintf("paypal %s %s: %s - %s", method, path, apiErr.Name, apiErr.Message), nil)
 	}
 
-	return nil, p.payErr("API_ERROR",
+	return nil, resp.StatusCode, p.payErr("API_ERROR",
 		fmt.Sprintf("paypal %s %s returned %d: %s", method, path, resp.StatusCode, string(respBody)), nil)
+}
+
+// said marks a definitive 4xx refusal from PayPal (other than 408 or an
+// in-flight idempotency key collision) as a processor.Answer so callers such as
+// walletSale know PayPal reached a "no" decision and holds no authorization.
+func said(status int, err error) error {
+	if err == nil {
+		return nil
+	}
+	if status >= 400 && status < 500 && status != http.StatusRequestTimeout {
+		msg := strings.ToUpper(err.Error())
+		if !strings.Contains(msg, "IDEMPOTENCY_REQUEST_IN_PROGRESS") && !strings.Contains(msg, "DUPLICATE_REQUEST_ID") {
+			return &processor.Answer{Err: err}
+		}
+	}
+	return err
 }
 
 // ---------------------------------------------------------------------------
@@ -614,6 +882,10 @@ func (p *Provider) createOrder(ctx context.Context, req processor.PaymentRequest
 					"value":         cur.ToStringNoSymbol(req.Amount),
 				},
 			},
+		},
+		"application_context": map[string]string{
+			"shipping_preference": "NO_SHIPPING",
+			"user_action":         "PAY_NOW",
 		},
 	}
 
@@ -641,9 +913,9 @@ func (p *Provider) createOrder(ctx context.Context, req processor.PaymentRequest
 		return nil, p.payErr("MARSHAL_ERROR", "failed to marshal order request", err)
 	}
 
-	resp, err := p.doRequest(ctx, http.MethodPost, ordersPath, body)
+	resp, status, err := p.doRequestDetailed(ctx, http.MethodPost, ordersPath, body, req.IdempotencyKey)
 	if err != nil {
-		return nil, err
+		return nil, said(status, err)
 	}
 
 	var order paypalOrder
@@ -656,12 +928,16 @@ func (p *Provider) createOrder(ctx context.Context, req processor.PaymentRequest
 
 // captureOrder captures an approved order.
 func (p *Provider) captureOrder(ctx context.Context, orderID string) (*paypalOrder, error) {
+	return p.captureOrderWithKey(ctx, orderID, "")
+}
+
+func (p *Provider) captureOrderWithKey(ctx context.Context, orderID, idemKey string) (*paypalOrder, error) {
 	path := fmt.Sprintf("%s/%s/capture", ordersPath, orderID)
 
 	// PayPal expects an empty JSON body or no body for capture.
-	resp, err := p.doRequest(ctx, http.MethodPost, path, []byte("{}"))
+	resp, status, err := p.doRequestDetailed(ctx, http.MethodPost, path, []byte("{}"), idemKey)
 	if err != nil {
-		return nil, err
+		return nil, said(status, err)
 	}
 
 	var order paypalOrder
@@ -674,11 +950,15 @@ func (p *Provider) captureOrder(ctx context.Context, orderID string) (*paypalOrd
 
 // authorizeOrder authorizes an approved order.
 func (p *Provider) authorizeOrder(ctx context.Context, orderID string) (*paypalOrder, error) {
+	return p.authorizeOrderWithKey(ctx, orderID, "")
+}
+
+func (p *Provider) authorizeOrderWithKey(ctx context.Context, orderID, idemKey string) (*paypalOrder, error) {
 	path := fmt.Sprintf("%s/%s/authorize", ordersPath, orderID)
 
-	resp, err := p.doRequest(ctx, http.MethodPost, path, []byte("{}"))
+	resp, status, err := p.doRequestDetailed(ctx, http.MethodPost, path, []byte("{}"), idemKey)
 	if err != nil {
-		return nil, err
+		return nil, said(status, err)
 	}
 
 	var order paypalOrder
@@ -698,10 +978,27 @@ type paypalOrder struct {
 	Intent        string               `json:"intent"`
 	Status        string               `json:"status"`
 	PurchaseUnits []paypalPurchaseUnit `json:"purchase_units"`
+	PaymentSource *paypalPaymentSource `json:"payment_source,omitempty"`
 	Payer         interface{}          `json:"payer"`
 	Links         interface{}          `json:"links"`
 	CreateTime    string               `json:"create_time"`
 	UpdateTime    string               `json:"update_time"`
+}
+
+type paypalPaymentSource struct {
+	Card   *paypalCardSource   `json:"card,omitempty"`
+	PayPal *paypalWalletSource `json:"paypal,omitempty"`
+}
+
+type paypalCardSource struct {
+	LastDigits string `json:"last_digits"`
+	Brand      string `json:"brand"`
+	Expiry     string `json:"expiry"` // "YYYY-MM"
+}
+
+type paypalWalletSource struct {
+	AccountID    string `json:"account_id"`
+	EmailAddress string `json:"email_address"`
 }
 
 type paypalPurchaseUnit struct {
@@ -736,6 +1033,14 @@ type paypalAuthorization struct {
 	Amount paypalAmount `json:"amount"`
 }
 
+type paypalAuthorizationDetail struct {
+	ID         string       `json:"id"`
+	Status     string       `json:"status"`
+	Amount     paypalAmount `json:"amount"`
+	CreateTime string       `json:"create_time"`
+	UpdateTime string       `json:"update_time"`
+}
+
 type paypalRefund struct {
 	ID     string       `json:"id"`
 	Status string       `json:"status"`
@@ -751,6 +1056,42 @@ type paypalAPIError struct {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+// paidWith extracts card/account details from a captured or authorized PayPal
+// order so one-use-per-card/payer coupon rules (walletCard) can key on it.
+func paidWith(order *paypalOrder) (*processor.Card, string) {
+	if order == nil {
+		return nil, ""
+	}
+	if ps := order.PaymentSource; ps != nil {
+		if c := ps.Card; c != nil && (c.Brand != "" || c.LastDigits != "") {
+			var expYear, expMonth int
+			if yearStr, monthStr, ok := strings.Cut(strings.TrimSpace(c.Expiry), "-"); ok {
+				expYear, _ = strconv.Atoi(yearStr)
+				expMonth, _ = strconv.Atoi(monthStr)
+			}
+			return &processor.Card{
+				Brand:    c.Brand,
+				Last4:    c.LastDigits,
+				ExpYear:  expYear,
+				ExpMonth: expMonth,
+			}, "PAYPAL"
+		}
+		if w := ps.PayPal; w != nil && strings.TrimSpace(w.AccountID) != "" {
+			return &processor.Card{
+				Fingerprint: "paypal:" + strings.TrimSpace(w.AccountID),
+			}, "PAYPAL"
+		}
+	}
+	if payerMap, ok := order.Payer.(map[string]interface{}); ok {
+		if payerID, _ := payerMap["payer_id"].(string); strings.TrimSpace(payerID) != "" {
+			return &processor.Card{
+				Fingerprint: "paypal:" + strings.TrimSpace(payerID),
+			}, "PAYPAL"
+		}
+	}
+	return nil, "PAYPAL"
+}
 
 // captureIDFromOrder extracts the first capture ID from order purchase units.
 func captureIDFromOrder(order *paypalOrder) string {
@@ -785,5 +1126,18 @@ func (p *Provider) payErr(code, msg string, err error) *processor.PaymentError {
 	return processor.NewPaymentError(processor.PayPal, code, msg, err)
 }
 
-// Compile-time interface check.
-var _ processor.PaymentProcessor = (*Provider)(nil)
+// UnwrapPaymentError extracts the underlying *processor.PaymentError even when
+// wrapped in *processor.Answer.
+func UnwrapPaymentError(err error) (*processor.PaymentError, bool) {
+	var pe *processor.PaymentError
+	if errors.As(err, &pe) {
+		return pe, true
+	}
+	return nil, false
+}
+
+// Compile-time interface checks.
+var (
+	_ processor.PaymentProcessor = (*Provider)(nil)
+	_ processor.WebhookReceiver  = (*Provider)(nil)
+)

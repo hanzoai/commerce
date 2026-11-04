@@ -18,9 +18,10 @@ import (
 // subject already saved goes through POST /v1/billing/topup (paymentMethodId), the
 // one saved-card endpoint.
 type topupTokenRequest struct {
-	SourceID    string `json:"sourceId"` // Square Web Payments SDK nonce
+	SourceID    string `json:"sourceId"` // Square Web Payments SDK nonce or approved PayPal Order ID
 	AmountCents int64  `json:"amountCents"`
 	Currency    string `json:"currency,omitempty"`
+	Provider    string `json:"provider,omitempty"` // "square" | "paypal"
 }
 
 // The default top-up floor and ceiling, in cents. They are named constants and
@@ -110,6 +111,7 @@ func TopupWithToken(c *zip.Ctx) error {
 		Currency:       req.Currency,
 		Subject:        userBillingKey(c),
 		IdempotencyKey: strings.TrimSpace(c.Header("X-Idempotency-Key")),
+		Provider:       req.Provider,
 	})
 	if f != nil {
 		return jsonhttp.Fail(c, f.Status, f.Message, f.Err)

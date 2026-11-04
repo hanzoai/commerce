@@ -1512,3 +1512,165 @@ func TestGetTransaction_AmountScalesByItsOwnCurrency(t *testing.T) {
 		})
 	}
 }
+
+func TestFromEnv_StrictIsolation(t *testing.T) {
+	t.Setenv("PAYPAL_CLIENT_ID", "live-cid")
+	t.Setenv("PAYPAL_CLIENT_SECRET", "live-sec")
+	t.Setenv("PAYPAL_WEBHOOK_ID", "live-wh")
+	t.Setenv("PAYPAL_SANDBOX_CLIENT_ID", "sb-cid")
+	t.Setenv("PAYPAL_SANDBOX_CLIENT_SECRET", "sb-sec")
+	t.Setenv("PAYPAL_SANDBOX_WEBHOOK_ID", "sb-wh")
+
+	live := FromEnv(false)
+	if live.ClientID != "live-cid" || live.ClientSecret != "live-sec" || live.WebhookID != "live-wh" {
+		t.Fatalf("live FromEnv = %+v", live)
+	}
+	sb := FromEnv(true)
+	if sb.ClientID != "sb-cid" || sb.ClientSecret != "sb-sec" || sb.WebhookID != "sb-wh" {
+		t.Fatalf("sandbox FromEnv = %+v", sb)
+	}
+}
+
+func TestReceivesWebhooks(t *testing.T) {
+	p := NewProvider(Config{ClientID: "id", ClientSecret: "sec"})
+	if p.ReceivesWebhooks() {
+		t.Fatal("expected ReceivesWebhooks=false without WebhookID")
+	}
+	p.Configure(Config{ClientID: "id", ClientSecret: "sec", WebhookID: "WH-1"})
+	if !p.ReceivesWebhooks() {
+		t.Fatal("expected ReceivesWebhooks=true when ClientID+ClientSecret+WebhookID set")
+	}
+}
+
+func TestCreateOrderAndIdempotencyHeader(t *testing.T) {
+	var gotIdem, gotIntent, gotShipping string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotIdem = r.Header.Get("PayPal-Request-Id")
+		var body map[string]interface{}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		gotIntent, _ = body["intent"].(string)
+		if ac, ok := body["application_context"].(map[string]interface{}); ok {
+			gotShipping, _ = ac["shipping_preference"].(string)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(paypalOrder{ID: "ORD-NEW-1", Status: "CREATED", Intent: gotIntent})
+	}))
+	defer server.Close()
+
+	p := configuredProvider(server.URL)
+	id, status, err := p.CreateOrder(context.Background(), processor.PaymentRequest{
+		Amount:         2500,
+		Currency:       currency.USD,
+		IdempotencyKey: "idem-order-1",
+	}, "AUTHORIZE")
+	if err != nil {
+		t.Fatalf("CreateOrder: %v", err)
+	}
+	if id != "ORD-NEW-1" || status != "CREATED" {
+		t.Fatalf("got (%q, %q), want (ORD-NEW-1, CREATED)", id, status)
+	}
+	if gotIdem != "idem-order-1" {
+		t.Errorf("PayPal-Request-Id = %q, want idem-order-1", gotIdem)
+	}
+	if gotIntent != "AUTHORIZE" || gotShipping != "NO_SHIPPING" {
+		t.Errorf("intent=%q shipping=%q", gotIntent, gotShipping)
+	}
+}
+
+func TestCancelAuthorization_Void(t *testing.T) {
+	var gotPath string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	p := configuredProvider(server.URL)
+	if err := p.CancelAuthorization(context.Background(), "AUTH-VOID-1"); err != nil {
+		t.Fatalf("CancelAuthorization: %v", err)
+	}
+	if gotPath != "/v2/payments/authorizations/AUTH-VOID-1/void" {
+		t.Errorf("path = %q", gotPath)
+	}
+}
+
+func TestAuthorize_PaidWithCardAndAnsweredRefusal(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.Contains(r.URL.Path, "ORD-DECLINE") {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			_ = json.NewEncoder(w).Encode(paypalAPIError{Name: "INSTRUMENT_DECLINED", Message: "declined"})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(paypalOrder{
+			ID:     "ORD-CARD-1",
+			Status: "COMPLETED",
+			PaymentSource: &paypalPaymentSource{
+				Card: &paypalCardSource{Brand: "VISA", LastDigits: "4242", Expiry: "2028-11"},
+			},
+			PurchaseUnits: []paypalPurchaseUnit{{
+				Payments: &paypalPayments{Authorizations: []paypalAuthorization{{ID: "AUTH-CARD-1", Status: "CREATED"}}},
+			}},
+		})
+	}))
+	defer server.Close()
+
+	p := configuredProvider(server.URL)
+	res, err := p.Authorize(context.Background(), processor.PaymentRequest{
+		Token: "ORD-CARD-1", Amount: 2000, Currency: currency.USD, IdempotencyKey: "idem-auth-1",
+	})
+	if err != nil {
+		t.Fatalf("Authorize: %v", err)
+	}
+	if res.Card == nil || res.Card.Last4 != "4242" || res.Card.ExpYear != 2028 || res.Card.ExpMonth != 11 || res.Wallet != "PAYPAL" {
+		t.Fatalf("unexpected Card/Wallet: %+v / %q", res.Card, res.Wallet)
+	}
+
+	_, err = p.Authorize(context.Background(), processor.PaymentRequest{
+		Token: "ORD-DECLINE", Amount: 2000, Currency: currency.USD,
+	})
+	if err == nil {
+		t.Fatal("expected error for declined authorization")
+	}
+	var ans interface{ Answered() bool }
+	if !strings.Contains(err.Error(), "INSTRUMENT_DECLINED") {
+		t.Errorf("error = %v, want INSTRUMENT_DECLINED", err)
+	}
+	if _, ok := UnwrapPaymentError(err); !ok {
+		t.Errorf("expected PaymentError inside Answer: %T", err)
+	}
+	if a, ok := err.(interface{ Answered() bool }); !ok || !a.Answered() {
+		_ = ans
+		t.Errorf("expected processor.Answer for 422 refusal, got %T", err)
+	}
+}
+
+func TestGetTransaction_FallbackToAuthorization(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/v2/checkout/orders/AUTH-FALLBACK-1" {
+			w.WriteHeader(http.StatusNotFound)
+			_ = json.NewEncoder(w).Encode(paypalAPIError{Name: "RESOURCE_NOT_FOUND", Message: "not an order"})
+			return
+		}
+		if r.URL.Path == "/v2/payments/authorizations/AUTH-FALLBACK-1" {
+			_ = json.NewEncoder(w).Encode(paypalAuthorizationDetail{
+				ID:     "AUTH-FALLBACK-1",
+				Status: "CAPTURED",
+				Amount: paypalAmount{CurrencyCode: "USD", Value: "29.00"},
+			})
+			return
+		}
+		t.Fatalf("unexpected path: %s", r.URL.Path)
+	}))
+	defer server.Close()
+
+	tx, err := configuredProvider(server.URL).GetTransaction(context.Background(), "AUTH-FALLBACK-1")
+	if err != nil {
+		t.Fatalf("GetTransaction fallback: %v", err)
+	}
+	if tx.Status != "COMPLETED" || tx.Amount != 2900 {
+		t.Fatalf("got status=%q amount=%d, want COMPLETED/2900", tx.Status, tx.Amount)
+	}
+}

@@ -1,7 +1,10 @@
 package checkout
 
 import (
+	"encoding/json"
 	"testing"
+
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/organization"
 )
@@ -350,5 +353,74 @@ func TestReturnHosts_EachConsoleIsItsBrands(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestOrgJSON_PayPalAlongsideSquareIn8CountriesAndReplacesElsewhere(t *testing.T) {
+	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "sandbox-sq0idb-TEST")
+	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "LOCTEST")
+	t.Setenv("PAYPAL_SANDBOX_CLIENT_ID", "sb-paypal-client-id")
+
+	r := NewOrgResolver(nil)
+	run := func(countryHeader, queryCountry string) publicView {
+		t.Helper()
+		app := zip.New(zip.Config{DisableStartupMessage: true})
+		c := app.TestCtx("GET", "/v1/commerce/org")
+		c.Fiber().Request().URI().SetHost("pay.hanzo.ai")
+		if queryCountry != "" {
+			c.Fiber().Request().URI().SetQueryString("country=" + queryCountry)
+		}
+		if countryHeader != "" {
+			c.Fiber().Request().Header.Set("CF-IPCountry", countryHeader)
+		}
+		if err := OrgJSON(r)(c); err != nil {
+			t.Fatalf("OrgJSON: %v", err)
+		}
+		var pv publicView
+		if err := json.Unmarshal(c.Fiber().Response().Body(), &pv); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		return pv
+	}
+
+	hasProvider := func(pv publicView, name string) bool {
+		for _, p := range pv.Providers {
+			if p.Name == name && p.Enabled {
+				return true
+			}
+		}
+		return false
+	}
+
+	for _, c := range []string{"US", "CA", "AU", "JP", "GB", "IE", "FR", "ES"} {
+		pv := run(c, "")
+		if !hasProvider(pv, "square") || !hasProvider(pv, "paypal") {
+			t.Fatalf("country %s: providers=%+v, want both square and paypal enabled", c, pv.Providers)
+		}
+		if pv.Square.ApplicationID == "" || pv.PayPal.ClientID != "sb-paypal-client-id" {
+			t.Fatalf("country %s: square=%+v paypal=%+v", c, pv.Square, pv.PayPal)
+		}
+		if pv.Country != c {
+			t.Fatalf("country %s: got pv.Country=%q", c, pv.Country)
+		}
+	}
+
+	for _, c := range []string{"DE", "BR", "IN", "SG", "NL", "KR", "MX"} {
+		pv := run(c, "")
+		if hasProvider(pv, "square") {
+			t.Fatalf("non-Square country %s: square must be disabled, got %+v", c, pv.Providers)
+		}
+		if pv.Square.ApplicationID != "" {
+			t.Fatalf("non-Square country %s: square config must be cleared, got %+v", c, pv.Square)
+		}
+		if !hasProvider(pv, "paypal") || pv.PayPal.ClientID != "sb-paypal-client-id" {
+			t.Fatalf("non-Square country %s: paypal must replace square, got %+v / %+v", c, pv.Providers, pv.PayPal)
+		}
+	}
+
+	// Query parameter override (?country=DE) overrides CF-IPCountry: US.
+	pv := run("US", "DE")
+	if hasProvider(pv, "square") || !hasProvider(pv, "paypal") || pv.Country != "DE" {
+		t.Fatalf("query override failed: country=%q providers=%+v", pv.Country, pv.Providers)
 	}
 }

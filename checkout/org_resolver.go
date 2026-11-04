@@ -72,14 +72,22 @@ func (r *OrgResolver) Resolve(host string) (Org, error) {
 		org.Name = b.slug
 	}
 
-	// The deployment's Square credentials are its default brand's account. Any
-	// other brand takes cards only with an account of its own; resolved onto the
-	// default's, its buyers would pay that merchant under this brand's name.
+	// The deployment's Square and PayPal credentials belong to its default brand's
+	// accounts. Any other brand takes cards/PayPal only with an account of its own;
+	// resolved onto the default's, its buyers would pay that merchant under this
+	// brand's name.
 	card := b.slug == defaultBrand().slug || payment.SquareOwned(org)
 	var sq payment.SquarePublic
 	if card {
 		sq = payment.SquarePublicConfig(org)
 	}
+
+	paypalAllowed := b.slug == defaultBrand().slug || payment.PayPalOwned(org)
+	var pp payment.PayPalPublic
+	if paypalAllowed {
+		pp = payment.PayPalPublicConfig(org)
+	}
+	hasPayPal := paypalAllowed && pp.ClientID != ""
 
 	return Org{
 		Name: b.slug,
@@ -95,12 +103,16 @@ func (r *OrgResolver) Resolve(host string) (Org, error) {
 			Issuer:   b.iamIssuer,
 			ClientID: b.iamClientID,
 		},
-		Providers:          enabledProviders(card),
+		Providers:          enabledProviders(card, hasPayPal),
 		ReturnURLAllowlist: returnHostsFor(b.slug),
 		Square: SquarePublic{
 			ApplicationID: sq.ApplicationID,
 			LocationID:    sq.LocationID,
 			Environment:   sq.Environment,
+		},
+		PayPal: PayPalPublic{
+			ClientID:    pp.ClientID,
+			Environment: pp.Environment,
 		},
 	}, nil
 }
@@ -195,14 +207,19 @@ func returnHostsFor(slug string) []string {
 }
 
 // enabledProviders is the payment-method surface the pay SPA renders, honoring
-// the deploy-wide disabled policy. Square is the fiat card processor, surfaced
-// where the brand has a card account (`card`) and the policy allows it; crypto
-// (MPC) and bank wire are always available. Stripe is NEVER surfaced for new
-// charges.
-func enabledProviders(card bool) []Provider {
-	out := make([]Provider, 0, 3)
+// the deploy-wide disabled policy. Square is surfaced where the brand has a
+// card account (`card`) and the policy allows it; PayPal runs alongside Square
+// (and replaces Square in non-Square countries via applyCountryPolicy) when
+// configured (`paypal`); crypto (MPC) and bank wire are always available.
+// Stripe is NEVER surfaced for new charges.
+func enabledProviders(card bool, paypal ...bool) []Provider {
+	hasPayPal := len(paypal) > 0 && paypal[0]
+	out := make([]Provider, 0, 4)
 	if card && !processor.DisabledByPolicy(processor.Square) {
 		out = append(out, Provider{Name: "square", Enabled: true})
+	}
+	if hasPayPal && !processor.DisabledByPolicy(processor.PayPal) {
+		out = append(out, Provider{Name: "paypal", Enabled: true})
 	}
 	out = append(out, Provider{Name: "crypto", Enabled: true})
 	out = append(out, Provider{Name: "wire", Enabled: true})

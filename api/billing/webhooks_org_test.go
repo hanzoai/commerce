@@ -224,7 +224,7 @@ func TestTheWebhookReceiversAreTheSecretHolders(t *testing.T) {
 		}
 	}
 	sort.Strings(got)
-	if strings.Join(got, ",") != "mpc,square" {
-		t.Fatalf("webhook receivers = %v, want exactly [mpc square]", got)
+	if strings.Join(got, ",") != "mpc,paypal,square" {
+		t.Fatalf("webhook receivers = %v, want exactly [mpc paypal square]", got)
 	}
 }

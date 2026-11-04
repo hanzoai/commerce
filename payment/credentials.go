@@ -88,12 +88,21 @@ var credentials = []credential{
 	{"paypal", "PAYPAL_LIVE_SECURITY_PASSWORD", func(o *organization.Organization, v string) { o.Paypal.Live.SecurityPassword = v }},
 	{"paypal", "PAYPAL_LIVE_SECURITY_SIGNATURE", func(o *organization.Organization, v string) { o.Paypal.Live.SecuritySignature = v }},
 	{"paypal", "PAYPAL_LIVE_APPLICATION_ID", func(o *organization.Organization, v string) { o.Paypal.Live.ApplicationId = v }},
-	// PayPal — Test
+	{"paypal", "PAYPAL_LIVE_CLIENT_ID", func(o *organization.Organization, v string) { o.Paypal.Live.ClientId = v }},
+	{"paypal", "PAYPAL_LIVE_CLIENT_SECRET", func(o *organization.Organization, v string) { o.Paypal.Live.ClientSecret = v }},
+	{"paypal", "PAYPAL_LIVE_WEBHOOK_ID", func(o *organization.Organization, v string) { o.Paypal.Live.WebhookId = v }},
+	// PayPal — Sandbox / Test
 	{"paypal", "PAYPAL_TEST_EMAIL", func(o *organization.Organization, v string) { o.Paypal.Test.Email = v }},
 	{"paypal", "PAYPAL_TEST_SECURITY_USER_ID", func(o *organization.Organization, v string) { o.Paypal.Test.SecurityUserId = v }},
 	{"paypal", "PAYPAL_TEST_SECURITY_PASSWORD", func(o *organization.Organization, v string) { o.Paypal.Test.SecurityPassword = v }},
 	{"paypal", "PAYPAL_TEST_SECURITY_SIGNATURE", func(o *organization.Organization, v string) { o.Paypal.Test.SecuritySignature = v }},
 	{"paypal", "PAYPAL_TEST_APPLICATION_ID", func(o *organization.Organization, v string) { o.Paypal.Test.ApplicationId = v }},
+	{"paypal", "PAYPAL_SANDBOX_APPLICATION_ID", func(o *organization.Organization, v string) { o.Paypal.Test.ApplicationId = v }},
+	{"paypal", "PAYPAL_SANDBOX_CLIENT_ID", func(o *organization.Organization, v string) { o.Paypal.Test.ClientId = v }},
+	{"paypal", "PAYPAL_SANDBOX_CLIENT_SECRET", func(o *organization.Organization, v string) { o.Paypal.Test.ClientSecret = v }},
+	{"paypal", "PAYPAL_SANDBOX_WEBHOOK_ID", func(o *organization.Organization, v string) { o.Paypal.Test.WebhookId = v }},
+	// PayPal — Webhook
+	{"paypal", "PAYPAL_WEBHOOK_ID", func(o *organization.Organization, v string) { o.Paypal.WebhookId = v }},
 
 	// Adyen
 	{"adyen", "ADYEN_API_KEY", func(o *organization.Organization, v string) { o.Adyen.APIKey = v }},

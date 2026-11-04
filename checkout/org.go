@@ -22,6 +22,8 @@ import (
 	"strings"
 
 	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/payment"
 )
 
 // ErrUnknownOrg is returned when the incoming Host header does not map
@@ -69,6 +71,16 @@ type Org struct {
 	// Every field is public — no secret ever crosses this boundary.
 	Square SquarePublic `json:"square"`
 
+	// PayPal carries the PUBLIC PayPal JS SDK config (client id + environment)
+	// so the SPA can mount PayPal Smart Buttons alongside Square in the 8
+	// Square-supported countries and replace Square everywhere else. Every field
+	// is public — no client secret or webhook ID ever crosses this boundary.
+	PayPal PayPalPublic `json:"paypal"`
+
+	// Country is the caller's resolved ISO 3166-1 alpha-2 country code when
+	// present on the request (?country= or edge geo-IP headers).
+	Country string `json:"country,omitempty"`
+
 	// Backend tells the checkout API how to proxy deposit intents. For
 	// the example org this resolves to BD; other orgs supply
 	// their own URL. Kind is an opaque free-form label ("bd", "custom").
@@ -82,6 +94,13 @@ type SquarePublic struct {
 	ApplicationID string `json:"applicationId"`
 	LocationID    string `json:"locationId"`
 	Environment   string `json:"environment"`
+}
+
+// PayPalPublic is the public PayPal JS SDK config surfaced to the checkout SPA.
+// All fields are public.
+type PayPalPublic struct {
+	ClientID    string `json:"clientId"`
+	Environment string `json:"environment"`
 }
 
 // Brand controls visible white-label surface.
@@ -223,6 +242,8 @@ type publicView struct {
 	Providers          []publicProvider `json:"providers"`
 	ReturnURLAllowlist []string         `json:"returnUrlAllowlist"`
 	Square             SquarePublic     `json:"square"`
+	PayPal             PayPalPublic     `json:"paypal"`
+	Country            string           `json:"country,omitempty"`
 }
 
 type publicIAM struct {
@@ -258,17 +279,77 @@ func toPublicView(t Org) publicView {
 		// the entire /onboard page ("Could not load org configuration").
 		ReturnURLAllowlist: append([]string{}, t.ReturnURLAllowlist...),
 		Square:             t.Square,
+		PayPal:             t.PayPal,
+		Country:            t.Country,
 	}
+}
+
+// RequestCountry extracts and validates a 2-letter ISO 3166-1 alpha-2 country
+// code from ?country= or edge geo-IP headers (Cloudflare, CloudFront, Vercel).
+// Pseudo-codes ("XX", "T1") and malformed values return "".
+func RequestCountry(c *zip.Ctx) string {
+	for _, raw := range []string{
+		c.Query("country"),
+		c.Header("CF-IPCountry"),
+		c.Header("CloudFront-Viewer-Country"),
+		c.Header("X-Vercel-IP-Country"),
+		c.Header("X-Country-Code"),
+	} {
+		code := normalizeCountryCode(firstForwarded(raw))
+		if code != "" {
+			return code
+		}
+	}
+	return ""
+}
+
+func normalizeCountryCode(raw string) string {
+	s := strings.ToUpper(strings.TrimSpace(raw))
+	if len(s) != 2 {
+		return ""
+	}
+	for i := 0; i < 2; i++ {
+		if s[i] < 'A' || s[i] > 'Z' {
+			return ""
+		}
+	}
+	if s == "XX" || s == "T1" {
+		return ""
+	}
+	return s
+}
+
+// applyCountryPolicy enforces geographic payment rail availability: Square runs
+// alongside PayPal in the 8 Square-supported countries (US, CA, AU, JP, GB/UK,
+// IE, FR, ES) and is replaced by PayPal everywhere else.
+func applyCountryPolicy(t Org, country string) Org {
+	t.Country = country
+	if country == "" || payment.IsSquareCountry(country) {
+		return t
+	}
+	filtered := make([]Provider, 0, len(t.Providers))
+	for _, p := range t.Providers {
+		if p.Name == "square" {
+			p.Enabled = false
+		}
+		filtered = append(filtered, p)
+	}
+	t.Providers = filtered
+	t.Square = SquarePublic{}
+	return t
 }
 
 // OrgJSON returns a zip.Handler for GET /v1/commerce/org. The
 // handler:
 //  1. Extracts and normalizes the Host header.
 //  2. Resolves to a Org (or 404 with no Host echo on failure).
-//  3. Projects through toPublicView and JSON-encodes.
+//  3. Applies country-based payment rail policy (Square in 8 countries + PayPal
+//     globally; PayPal replaces Square outside the 8 countries).
+//  4. Projects through toPublicView and JSON-encodes.
 //
-// Cache policy: short public cache (60s) to absorb SPA boot storms
-// without leaking per-user state. Org config is not user-specific.
+// Cache policy: private 60s browser cache (never shared CDN cache, because
+// Cloudflare keys shared cache on URL alone while this response varies by
+// CF-IPCountry, Host, X-Forwarded-Host, and X-Publishable-Key).
 func OrgJSON(r Resolver) zip.Handler {
 	return func(c *zip.Ctx) error {
 		t, err := r.Resolve(RequestHost(c))
@@ -278,8 +359,16 @@ func OrgJSON(r Resolver) zip.Handler {
 			c.SetHeader("Cache-Control", "no-store")
 			return c.Bytes(http.StatusNotFound, []byte(`{"error":"unknown org"}`))
 		}
+		if country := RequestCountry(c); country != "" {
+			t = applyCountryPolicy(t, country)
+		}
 		c.SetHeader("Content-Type", "application/json; charset=utf-8")
-		c.SetHeader("Cache-Control", "public, max-age=60")
+		c.SetHeader("Vary", "Host, X-Forwarded-Host, X-Publishable-Key, CF-IPCountry, CloudFront-Viewer-Country, X-Vercel-IP-Country, X-Country-Code")
+		if strings.TrimSpace(c.Query("country")) != "" {
+			c.SetHeader("Cache-Control", "no-store")
+		} else {
+			c.SetHeader("Cache-Control", "private, max-age=60")
+		}
 		b, _ := json.Marshal(toPublicView(t))
 		return c.Bytes(http.StatusOK, b)
 	}

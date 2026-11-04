@@ -111,9 +111,12 @@ type subscribeCardRequest struct {
 	// month — a code, never an amount: the percent is the stored coupon's.
 	Coupon string `json:"coupon,omitempty"`
 	// Wallet says SourceID is a wallet's single-use token (Apple Pay, Google Pay,
-	// Cash App Pay): it pays the first period itself and is kept nowhere, so the
-	// subscription renews from the prepaid balance.
+	// Cash App Pay, PayPal): it pays the first period itself and is kept nowhere,
+	// so the subscription renews from the prepaid balance.
 	Wallet bool `json:"wallet,omitempty"`
+	// Provider names the explicit wallet/card rail ("square" or "paypal") when
+	// SourceID belongs to a specific provider such as PayPal Orders v2.
+	Provider string `json:"provider,omitempty"`
 	// BalanceCents is the starting usage balance an organization's order adds to
 	// its prepaid balance in the same payment (see SubscribeIn.BalanceCents).
 	BalanceCents int64 `json:"balanceCents,omitempty"`
@@ -165,6 +168,9 @@ type SubscribeIn struct {
 	// authorized on it, captured once any coupon's use is reserved against the
 	// card behind it, and every renewal is drawn from the prepaid balance.
 	Wallet bool
+	// Provider names the explicit wallet processor ("square" or "paypal"); empty
+	// defaults to Square.
+	Provider string
 	// IdempotencyKey is the caller's explicit retry key. Empty falls back to the
 	// windowed derivation over the stable facts (store, plan, level).
 	IdempotencyKey string
@@ -425,6 +431,9 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	}
 	if in.Subject == "" {
 		return nil, errors.New("subscribe: no subject")
+	}
+	if strings.EqualFold(strings.TrimSpace(in.Provider), string(processor.PayPal)) {
+		in.Wallet = true
 	}
 	db := datastore.New(org.Namespaced(ctx))
 
@@ -1718,6 +1727,7 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		Email:          iamEmail,
 		Coupon:         req.Coupon,
 		Wallet:         req.Wallet,
+		Provider:       req.Provider,
 		IdempotencyKey: strings.TrimSpace(c.Header("X-Idempotency-Key")),
 		Promo:          promo.Active(c),
 		Events:         eventsOf(c),

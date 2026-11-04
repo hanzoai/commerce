@@ -79,8 +79,16 @@ func verifyCardWithPreAuth(ctx context.Context, reg *processor.Registry, nonce, 
 // parseCardDeclineReason returns a single clean sentence explaining why the card was declined.
 func parseCardDeclineReason(result *processor.PaymentResult, err error) string {
 	if result == nil && err != nil {
-		if strings.Contains(err.Error(), "timeout") {
+		errLower := strings.ToLower(err.Error())
+		switch {
+		case strings.Contains(errLower, "timeout"):
 			return "Card verification timed out. Please try again."
+		case strings.Contains(errLower, "instrument_declined"):
+			return "Payment declined by your bank or PayPal. Please choose a different funding method."
+		case strings.Contains(errLower, "order_not_approved") || strings.Contains(errLower, "payer_action_required"):
+			return "PayPal order has not been approved yet. Please complete approval in PayPal and try again."
+		case strings.Contains(errLower, "compliance_violation") || strings.Contains(errLower, "transaction_refused"):
+			return "Payment declined. Please try a different payment method."
 		}
 		return "Unable to verify card. Please try again or use a different card."
 	}
