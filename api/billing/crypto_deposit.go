@@ -771,12 +771,20 @@ func GetCryptoDeposit(ctx context.Context, org *organization.Organization, payer
 	if payer == "" {
 		return CryptoDeposit{}, errors.New("crypto deposit: no payer")
 	}
-	intent := cryptopaymentintent.New(datastore.New(org.Namespaced(ctx)))
+	db := datastore.New(org.Namespaced(ctx))
+	intent := cryptopaymentintent.New(db)
 	if err := intent.GetById(id); err != nil {
 		return CryptoDeposit{}, errDepositNotFound
 	}
 	if intent.CustomerRef != payer {
 		return CryptoDeposit{}, errDepositNotFound
+	}
+	if (intent.Status == cryptopaymentintent.Pending || intent.Status == cryptopaymentintent.Confirming) &&
+		strings.HasPrefix(intent.WalletID, "kraken:") {
+		if svc := depositledger.Default(); svc != nil && svc.Running() {
+			_, _ = svc.SyncOnce(ctx)
+			_ = intent.GetById(id)
+		}
 	}
 	return toCryptoDepositResponse(intent), nil
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/hanzoai/commerce/billing/depositwatch"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/payment/providers/kraken"
 )
 
 // defaultInterval is how often the watcher looks at the chains.
@@ -30,6 +31,8 @@ const defaultInterval = 30 * time.Second
 type Service struct {
 	assets   []depositwatch.Asset
 	watcher  *depositwatch.Watcher
+	kraken   *kraken.Processor
+	store    depositwatch.Store
 	cursor   depositwatch.Cursor
 	interval time.Duration
 
@@ -85,24 +88,35 @@ func New(environ []string, opts ...Option) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &Service{assets: assets, cursor: b.cursor, interval: b.interval}
-	if len(assets) == 0 {
-		return s, nil // disabled: nothing configured
-	}
-	bound := make([]depositwatch.Bound, 0, len(assets))
-	for _, a := range assets {
-		r, err := b.reader(a)
-		if err != nil {
-			return nil, err
+	kp, krakenAssets := krakenFromEnv(environ)
+	s := &Service{assets: assets, kraken: kp, store: b.store, cursor: b.cursor, interval: b.interval}
+	if len(assets) > 0 {
+		bound := make([]depositwatch.Bound, 0, len(assets))
+		for _, a := range assets {
+			r, err := b.reader(a)
+			if err != nil {
+				return nil, err
+			}
+			bound = append(bound, depositwatch.Bound{Asset: a, Reader: r})
 		}
-		bound = append(bound, depositwatch.Bound{Asset: a, Reader: r})
+		s.watcher = depositwatch.New(bound, b.store, b.cursor)
 	}
-	s.watcher = depositwatch.New(bound, b.store, b.cursor)
+	if len(krakenAssets) > 0 {
+		existing := make(map[string]bool, len(s.assets))
+		for _, a := range s.assets {
+			existing[strings.ToLower(a.Chain)+":"+strings.ToLower(a.Token)] = true
+		}
+		for _, ka := range krakenAssets {
+			if !existing[ka.Chain+":"+ka.Token] {
+				s.assets = append(s.assets, ka)
+			}
+		}
+	}
 	return s, nil
 }
 
 // Enabled reports whether any asset is being watched.
-func (s *Service) Enabled() bool { return s != nil && s.watcher != nil }
+func (s *Service) Enabled() bool { return s != nil && (s.watcher != nil || s.kraken != nil) }
 
 // Assets reports the watched assets (boot log / diagnostics).
 func (s *Service) Assets() []depositwatch.Asset {
@@ -122,7 +136,7 @@ func (s *Service) Assets() []depositwatch.Asset {
 // would follow the money to a balance. So this, not Enabled, is what the mint
 // gate consults (api/billing.watchedAssets).
 func (s *Service) Running() bool {
-	if s == nil || s.watcher == nil {
+	if s == nil || (s.watcher == nil && s.kraken == nil) {
 		return false
 	}
 	s.mu.Lock()
@@ -212,7 +226,22 @@ func (s *Service) SyncOnce(ctx context.Context) (int, error) {
 	if !s.Enabled() {
 		return 0, nil
 	}
-	return s.watcher.Sync(ctx)
+	var total int
+	if s.watcher != nil {
+		n, err := s.watcher.Sync(ctx)
+		total += n
+		if err != nil {
+			return total, err
+		}
+	}
+	if s.kraken != nil {
+		n, err := s.syncKraken(ctx)
+		total += n
+		if err != nil {
+			return total, err
+		}
+	}
+	return total, nil
 }
 
 // Start begins the schedule.
@@ -278,7 +307,7 @@ func (s *Service) loop(ctx context.Context, done chan struct{}) {
 }
 
 func (s *Service) tick(ctx context.Context) {
-	n, err := s.watcher.Sync(ctx)
+	n, err := s.SyncOnce(ctx)
 	if err != nil {
 		if ctx.Err() != nil {
 			return // shutting down; not a failure

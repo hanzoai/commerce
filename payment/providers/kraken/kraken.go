@@ -249,8 +249,14 @@ func (p *Processor) GenerateAddress(ctx context.Context, customerID string, chai
 	}
 
 	// Always request a brand-new deposit address (new=true) for each payment so
-	// every crypto payment receives a unique, single-use address.
+	// every crypto payment receives a unique, single-use address. If Kraken
+	// reports EFunding:Too many addresses (when 5 consecutive unused addresses
+	// have already been minted on that network without a deposit landing yet),
+	// fall back to new=false and select one of the unused addresses.
 	addrs, err := p.fetchDepositAddresses(ctx, asset, method, true)
+	if err != nil && strings.Contains(strings.ToLower(err.Error()), "too many addresses") {
+		addrs, err = p.fetchDepositAddresses(ctx, asset, method, false)
+	}
 	if err != nil {
 		return processor.Wallet{}, err
 	}
@@ -491,18 +497,25 @@ func (p *Processor) depositMethodsForAsset(ctx context.Context, asset string) ([
 // networks share an "Ethereum" / "ERC-20" / unified method on the account.
 func matchMethodForChain(methods []DepositMethod, chain string) (string, bool) {
 	candidates := chainMethodKeywords(chain)
-	for _, kw := range candidates {
-		for _, m := range methods {
-			name := strings.ToLower(strings.TrimSpace(m.Method))
-			if name == "" {
-				continue
-			}
-			// On Bitcoin, never accidentally match "Bitcoin Lightning" unless lightning was asked.
-			if chain == "bitcoin" && strings.Contains(name, "lightning") {
-				continue
-			}
-			if strings.Contains(name, kw) {
-				return m.Method, true
+	// First pass: prefer canonical native asset methods over bridged/variant
+	// prefixes (such as "USDC.e", "USDT0", "USDCx").
+	for _, allowVariant := range []bool{false, true} {
+		for _, kw := range candidates {
+			for _, m := range methods {
+				name := strings.ToLower(strings.TrimSpace(m.Method))
+				if name == "" {
+					continue
+				}
+				// On Bitcoin, never accidentally match "Bitcoin Lightning" unless lightning was asked.
+				if chain == "bitcoin" && strings.Contains(name, "lightning") {
+					continue
+				}
+				if !allowVariant && (strings.Contains(name, ".e") || strings.HasPrefix(name, "usdt0") || strings.HasPrefix(name, "usdcx")) {
+					continue
+				}
+				if strings.Contains(name, kw) {
+					return m.Method, true
+				}
 			}
 		}
 	}
@@ -607,7 +620,7 @@ func pickDepositAddress(addrs []DepositAddress) (DepositAddress, bool) {
 func (p *Processor) nextNonce() string {
 	p.nonceMu.Lock()
 	defer p.nonceMu.Unlock()
-	now := time.Now().UnixNano() / int64(time.Microsecond)
+	now := time.Now().UnixNano()
 	if now <= p.lastNonce {
 		now = p.lastNonce + 1
 	}
