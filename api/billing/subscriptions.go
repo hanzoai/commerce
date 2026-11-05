@@ -15,6 +15,7 @@ import (
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/paymentorg"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -769,7 +770,9 @@ type periodPayment struct {
 // fee after discount less what was refunded — or, for a plan recorded as collected
 // outside commerce with no invoice, "external:<processor>" with the seats and the
 // price recorded with the period. A period unpaid, unknown, refunded in full or
-// disputed answers the zero value.
+// disputed answers the zero value. An order paid by wire holds its starting
+// balance on its invoice, so what refunds took of that balance counts toward
+// refunded in full (refunded).
 func periodPaid(db *datastore.Datastore, s *subscription.Subscription) periodPayment {
 	invs := make([]*billinginvoice.BillingInvoice, 0)
 	if _, err := billinginvoice.Query(db).Filter("SubscriptionId=", s.Id()).GetAll(&invs); err == nil {
@@ -777,7 +780,15 @@ func periodPaid(db *datastore.Datastore, s *subscription.Subscription) periodPay
 			if inv.Status != billinginvoice.Paid || !paysPeriod(inv, s) {
 				continue
 			}
-			if inv.Disputed() || (inv.AmountPaid > 0 && inv.Refunded() >= inv.AmountPaid) {
+			gone := inv.Refunded()
+			if _, ok := orderOf(inv); ok {
+				po, found, err := paymentorg.Get(inv.PaymentRef)
+				if err != nil || !found {
+					return periodPayment{}
+				}
+				gone = refunded(inv, po)
+			}
+			if inv.Disputed() || (inv.AmountPaid > 0 && gone >= inv.AmountPaid) {
 				return periodPayment{}
 			}
 			fee, seats, by := int64(0), int64(0), map[string]int{}

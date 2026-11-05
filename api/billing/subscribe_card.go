@@ -294,6 +294,26 @@ type saleRefusal struct {
 
 func (e saleRefusal) Error() string { return e.msg }
 
+// Refusal is a sale refusal that also names which one it is, as a Code a page
+// acts on instead of the sentence: "seats_out_of_range", "balance_out_of_range",
+// "org_required", "not_sold_by_invoice", "plan_held", "invoice_open",
+// "order_placing", "key_reused", "wire_not_configured". Open is the invoice an
+// "invoice_open" refusal names, with a new link to it. Every IsSale check reads
+// the refusal it carries.
+type Refusal struct {
+	saleRefusal
+	Code string
+	Open *InvoiceOrder
+}
+
+// Unwrap is the refusal Refusal carries.
+func (e *Refusal) Unwrap() error { return e.saleRefusal }
+
+// coded is a refusal of kind with its code.
+func coded(kind saleKind, code, msg string) *Refusal {
+	return &Refusal{saleRefusal: saleRefusal{kind, msg}, Code: code}
+}
+
 func isSale(err error, k saleKind) bool {
 	var e saleRefusal
 	return errors.As(err, &e) && e.kind == k
@@ -1101,10 +1121,10 @@ func price(db *datastore.Datastore, org *organization.Organization, in Subscribe
 	// the subscription every invoice bills from.
 	terms := seatOf(p)
 	if why := terms.refusal(planID, qty, lines); why != "" {
-		return nil, saleRefusal{saleRefused, why}
+		return nil, coded(saleRefused, "seats_out_of_range", why)
 	}
-	if why := orderRefusal(org, p, planID, in, sourceID); why != "" {
-		return nil, saleRefusal{saleRefused, why}
+	if code, why := orderRefusal(org, p, planID, in, sourceID); why != "" {
+		return nil, coded(saleRefused, code, why)
 	}
 	bal := in.BalanceCents
 	seatMult := int64(1)
@@ -1554,8 +1574,8 @@ func couponRefusal(code, slug, reason string) string {
 	return fmt.Sprintf("coupon %s is not valid", code)
 }
 
-// orderRefusal is why a sale breaks the order terms the plan's row states, or ""
-// when it keeps them.
+// orderRefusal is why a sale breaks the order terms the plan's row states, and its
+// code ("org_required" or "balance_out_of_range"), or "" when it keeps them.
 //
 // A row whose limits state how an organization orders it (plan.Limits Ordered) is
 // an organization's plan, so it is bought for the organization's own account and
@@ -1569,29 +1589,30 @@ func couponRefusal(code, slug, reason string) string {
 // not by a wallet token (kept nowhere, so there is no card to stand behind the
 // credit), and not on a sale that opens in a free trial and charges nothing. A row
 // that states no ceiling takes none.
-func orderRefusal(org *organization.Organization, p *plan.Plan, slug string, in SubscribeIn, source string) string {
+func orderRefusal(org *organization.Organization, p *plan.Plan, slug string, in SubscribeIn, source string) (code, why string) {
 	l := p.Limits
 	if l.Ordered() && !strings.EqualFold(in.Subject, org.Name) {
-		return fmt.Sprintf("plan %q is ordered by an organization: an admin of %s buys it for the organization", slug, org.Name)
+		return "org_required", fmt.Sprintf("plan %q is ordered by an organization: an admin of %s buys it for the organization", slug, org.Name)
 	}
+	const balance = "balance_out_of_range"
 	bal := in.BalanceCents
 	switch {
 	case bal == 0:
-		return ""
+		return "", ""
 	case bal < 0 || bal%100 != 0:
-		return "balanceCents is a whole number of dollars, 0 or more"
+		return balance, "balanceCents is a whole number of dollars, 0 or more"
 	case l == nil || l.BalanceCeiling == nil || *l.BalanceCeiling <= 0:
-		return fmt.Sprintf("plan %q takes no starting balance", slug)
+		return balance, fmt.Sprintf("plan %q takes no starting balance", slug)
 	case bal > int64(*l.BalanceCeiling)*100:
-		return fmt.Sprintf("plan %q takes a starting balance of at most $%d (got $%d)", slug, *l.BalanceCeiling, bal/100)
+		return balance, fmt.Sprintf("plan %q takes a starting balance of at most $%d (got $%d)", slug, *l.BalanceCeiling, bal/100)
 	case source == "credits" || source == "balance":
-		return "a starting balance is bought with a card, not paid from prepaid money"
+		return balance, "a starting balance is bought with a card, not paid from prepaid money"
 	case in.Wallet:
-		return "a starting balance is bought with a card: send sourceId or paymentMethodId"
+		return balance, "a starting balance is bought with a card: send sourceId or paymentMethodId"
 	case p.TrialPeriodDays > 0:
-		return fmt.Sprintf("plan %q opens in a free trial that charges nothing today, so it takes no starting balance", slug)
+		return balance, fmt.Sprintf("plan %q opens in a free trial that charges nothing today, so it takes no starting balance", slug)
 	}
-	return ""
+	return "", ""
 }
 
 // holdRefusal is a coupon reservation's refusal as a sale refusal: the coupon
@@ -1875,7 +1896,7 @@ func holdSale(db *datastore.Datastore, subject string) (*idempotencykey.Lease, e
 		log.Error("subscribe: the sale lease could not be taken (subject=%s): %v", subject, err)
 		return nil, saleRefusal{saleUnavailable, "billing could not be reached; nothing was charged, try again"}
 	case !held:
-		return nil, saleRefusal{saleHeld, "a sale for this account is already in progress"}
+		return nil, coded(saleHeld, "order_placing", "a sale for this account is already in progress")
 	}
 	return lease, nil
 }

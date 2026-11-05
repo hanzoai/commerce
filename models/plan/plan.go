@@ -419,16 +419,19 @@ type Limits struct {
 	// How an organization orders this plan by invoice, paying by wire: the
 	// invoice is due InvoiceDays after it is issued, and voided, activating
 	// nothing, GraceDays after that while unpaid. A plan that states no
-	// InvoiceDays is not sold by invoice.
+	// InvoiceDays is not sold by invoice; one that does is an organization's
+	// (Ordered).
 	InvoiceDays *int `json:"invoiceDays,omitempty"`
 	GraceDays   *int `json:"graceDays,omitempty"`
 }
 
 // Ordered reports whether the limits state how an organization orders the plan:
-// any of the spend limits, the starting-balance months or the ceiling. Such a plan
-// is sold to an organization's own account, never to a member's wallet.
+// any of the spend limits, the starting-balance months, the ceiling, or the days
+// an invoice for it is due in. Such a plan is sold to an organization's own
+// account, never to a member's wallet.
 func (l *Limits) Ordered() bool {
-	return l != nil && (len(l.SpendLimits) > 0 || l.SpendLimit != nil || l.BalanceMonths != nil || l.BalanceCeiling != nil)
+	return l != nil && (len(l.SpendLimits) > 0 || l.SpendLimit != nil || l.BalanceMonths != nil || l.BalanceCeiling != nil ||
+		l.InvoiceDays != nil)
 }
 
 // Reload is the auto-recharge rule buying a plan switches on: reload AmountCents
