@@ -13,15 +13,11 @@
 package x402
 
 import (
-	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"strconv"
 	"time"
-
-	"github.com/btcsuite/btcd/btcec/v2"
-	btcecdsa "github.com/btcsuite/btcd/btcec/v2/ecdsa"
-	"golang.org/x/crypto/sha3"
 )
 
 const (
@@ -230,152 +226,23 @@ func USDCAmount(cents int64) string {
 	return units.String()
 }
 
-// Keccak256 computes the Keccak-256 hash.
-func Keccak256(data []byte) [32]byte {
-	h := sha3.NewLegacyKeccak256()
-	h.Write(data)
-	var result [32]byte
-	copy(result[:], h.Sum(nil))
-	return result
-}
-
-// RecoverSigner recovers the Ethereum address from an EIP-712 typed data digest
-// and a 65-byte [R || S || V] signature. Used server-side to verify that the
-// payment authorization was signed by the claimed payer address.
-func RecoverSigner(digest [32]byte, sig []byte) (string, error) {
-	if len(sig) != 65 {
-		return "", fmt.Errorf("x402: invalid signature length %d, expected 65", len(sig))
+// digest is the EIP-712 hash of this authorization under the token's domain
+// (name, version, the request's chain and token): the one EIP-3009 encoding,
+// with every field read strictly.
+func (pa *PaymentAuthorization) digest(name, version string, req *PaymentRequest) ([32]byte, error) {
+	if pa.ValidAfter < 0 || pa.ValidBefore < 0 {
+		return [32]byte{}, fmt.Errorf("x402: negative validity window")
 	}
-
-	// btcec/v2 RecoverCompact expects [recoveryFlag(1) || R(32) || S(32)]
-	// Input sig is [R(32) || S(32) || V(1)] (Ethereum convention)
-	v := sig[64]
-	if v >= 27 {
-		v -= 27
-	}
-	if v > 1 {
-		return "", fmt.Errorf("x402: invalid recovery id %d", v)
-	}
-
-	compactSig := make([]byte, 65)
-	compactSig[0] = v + 27 // btcec expects 27 or 28
-	copy(compactSig[1:33], sig[:32])
-	copy(compactSig[33:65], sig[32:64])
-
-	pubKey, _, err := btcecdsa.RecoverCompact(compactSig, digest[:])
+	p, err := Authorization{
+		From:        pa.From,
+		To:          pa.To,
+		Value:       pa.Value,
+		ValidAfter:  strconv.FormatInt(pa.ValidAfter, 10),
+		ValidBefore: strconv.FormatInt(pa.ValidBefore, 10),
+		Nonce:       pa.Nonce,
+	}.Parse()
 	if err != nil {
-		return "", fmt.Errorf("x402: signature recovery failed: %w", err)
+		return [32]byte{}, fmt.Errorf("x402: authorization: %w", err)
 	}
-
-	return pubKeyToAddress(pubKey.ToECDSA()), nil
+	return Domain{Name: name, Version: version, ChainID: req.ChainID, VerifyingContract: req.Token}.Digest(p)
 }
-
-// pubKeyToAddress converts an ECDSA public key to an Ethereum-style checksumless address.
-func pubKeyToAddress(pub *ecdsa.PublicKey) string {
-	// Ethereum address = last 20 bytes of keccak256(uncompressed_pubkey_without_prefix)
-	xBytes := pub.X.Bytes()
-	yBytes := pub.Y.Bytes()
-	// Pad to 32 bytes each
-	pubBytes := make([]byte, 64)
-	copy(pubBytes[32-len(xBytes):32], xBytes)
-	copy(pubBytes[64-len(yBytes):64], yBytes)
-
-	hash := Keccak256(pubBytes)
-	return fmt.Sprintf("0x%x", hash[12:])
-}
-
-// VerifySignature checks that the recovered signer matches the claimed from address.
-func VerifySignature(digest [32]byte, sig []byte, expectedFrom string) error {
-	recovered, err := RecoverSigner(digest, sig)
-	if err != nil {
-		return err
-	}
-	if !addressEqual(recovered, expectedFrom) {
-		return fmt.Errorf("x402: signer mismatch: recovered %s, expected %s", recovered, expectedFrom)
-	}
-	return nil
-}
-
-// addressEqual compares two Ethereum addresses case-insensitively.
-func addressEqual(a, b string) bool {
-	if len(a) < 2 || len(b) < 2 {
-		return false
-	}
-	// Normalize: lowercase, strip 0x prefix for comparison
-	normalize := func(addr string) string {
-		s := addr
-		if len(s) > 2 && s[:2] == "0x" || s[:2] == "0X" {
-			s = s[2:]
-		}
-		result := make([]byte, len(s))
-		for i := 0; i < len(s); i++ {
-			c := s[i]
-			if c >= 'A' && c <= 'F' {
-				c += 32
-			}
-			result[i] = c
-		}
-		return string(result)
-	}
-	return normalize(a) == normalize(b)
-}
-
-// EIP712DomainSeparator computes the EIP-712 domain separator hash for
-// ERC-3009 transferWithAuthorization on a given token contract.
-func EIP712DomainSeparator(name, version string, chainID int64, verifyingContract string) [32]byte {
-	typeHash := Keccak256([]byte(
-		"EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)",
-	))
-
-	nameHash := Keccak256([]byte(name))
-	versionHash := Keccak256([]byte(version))
-	chainIDBig := big.NewInt(chainID)
-
-	// ABI-encode the domain separator struct
-	encoded := make([]byte, 0, 160)
-	encoded = append(encoded, typeHash[:]...)
-	encoded = append(encoded, nameHash[:]...)
-	encoded = append(encoded, versionHash[:]...)
-	encoded = append(encoded, padLeft(chainIDBig.Bytes(), 32)...)
-	encoded = append(encoded, padLeft(addressToBytes(verifyingContract), 32)...)
-
-	return Keccak256(encoded)
-}
-
-// padLeft pads a byte slice with leading zeros to the target length.
-func padLeft(b []byte, size int) []byte {
-	if len(b) >= size {
-		return b[len(b)-size:]
-	}
-	padded := make([]byte, size)
-	copy(padded[size-len(b):], b)
-	return padded
-}
-
-// addressToBytes converts a hex address string to bytes.
-func addressToBytes(addr string) []byte {
-	if len(addr) > 2 && (addr[:2] == "0x" || addr[:2] == "0X") {
-		addr = addr[2:]
-	}
-	b := make([]byte, len(addr)/2)
-	for i := 0; i < len(b); i++ {
-		b[i] = hexCharToByte(addr[i*2])<<4 | hexCharToByte(addr[i*2+1])
-	}
-	return b
-}
-
-func hexCharToByte(c byte) byte {
-	switch {
-	case c >= '0' && c <= '9':
-		return c - '0'
-	case c >= 'a' && c <= 'f':
-		return c - 'a' + 10
-	case c >= 'A' && c <= 'F':
-		return c - 'A' + 10
-	default:
-		return 0
-	}
-}
-
-// Ensure btcec is used (silence import).
-var _ = btcec.S256

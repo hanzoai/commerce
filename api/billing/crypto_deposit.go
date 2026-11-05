@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/hanzoai/commerce/billing/depositledger"
 	"github.com/hanzoai/commerce/billing/depositwatch"
+	"github.com/hanzoai/commerce/billing/gateway"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/cryptopaymentintent"
@@ -95,10 +97,13 @@ type CryptoDeposit struct {
 	CreditedCents int64 `json:"creditedCents,omitempty"`
 }
 
-// CryptoOptions is the menu of what the crypto deposit rail accepts: the
-// chains a payer may send on, the tokens they may send, and the pairs
-// themselves. None is ever nil — a picker handed `null` where it expects an
-// array is a client-side crash rather than an empty menu.
+// CryptoOptions is the menu of what the crypto rails accept. Chains, Tokens
+// and Assets are the deposit-address rail's: the chains a payer may send on,
+// the tokens they may send, and the pairs themselves. Gateway is the Circle
+// Gateway rail's: the CAIP-2 networks a signed USDC payment may be made on
+// (GET /v1/billing/crypto/gateway for the terms). None is ever nil — a picker
+// handed `null` where it expects an array is a client-side crash rather than
+// an empty menu.
 type CryptoOptions struct {
 	Chains []string `json:"chains"`
 	Tokens []string `json:"tokens"`
@@ -107,6 +112,8 @@ type CryptoOptions struct {
 	// its two axes, and a chain and a token each on offer are not a pair on offer:
 	// base may be watched for USDC alone.
 	Assets []CryptoAsset `json:"assets"`
+
+	Gateway []string `json:"gateway"`
 }
 
 // CryptoAsset is one pair the rail accepts: a token on a chain.
@@ -167,24 +174,55 @@ func IsDepositRefused(err error) bool {
 func IsDepositNotFound(err error) bool { return errors.Is(err, errDepositNotFound) }
 
 // cryptoProcessor resolves the ONE crypto custody processor (default MPC,
-// override via COMMERCE_DEFAULT_CRYPTO_PROCESSOR upstream in the registry).
+// cryptoProcessor resolves the active CryptoProcessor for minting per-payment
+// deposit addresses.
+//
+// Resolution order:
+//  1. Explicit COMMERCE_DEFAULT_CRYPTO_PROCESSOR environment override, if set.
+//  2. Kraken exchange processor (processor.Kraken), when KRAKEN_API_KEY and
+//     KRAKEN_API_SECRET are configured — mints 1 fresh exchange deposit address
+//     per payment via Kraken's DepositAddresses API (new=true).
+//  3. MPC threshold custody processor (processor.MPC).
+//
 // Availability is probed with a short deadline so an unconfigured or wedged
-// MPC endpoint answers 503 fast instead of hanging the request.
+// endpoint answers 503 fast instead of hanging the request.
 func cryptoProcessor(ctx context.Context) (processor.CryptoProcessor, error) {
-	p, err := processor.Get(processor.MPC)
-	if err != nil {
-		return nil, err
+	candidates := []processor.ProcessorType{processor.Kraken, processor.MPC}
+	if explicit := strings.ToLower(strings.TrimSpace(os.Getenv("COMMERCE_DEFAULT_CRYPTO_PROCESSOR"))); explicit != "" {
+		first := processor.ProcessorType(explicit)
+		candidates = []processor.ProcessorType{first}
+		for _, fallback := range []processor.ProcessorType{processor.Kraken, processor.MPC} {
+			if fallback != first {
+				candidates = append(candidates, fallback)
+			}
+		}
 	}
-	cp, ok := p.(processor.CryptoProcessor)
-	if !ok {
-		return nil, fmt.Errorf("processor %s does not support crypto operations", processor.MPC)
-	}
+
 	probe, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	if !cp.IsAvailable(probe) {
-		return nil, fmt.Errorf("crypto custody service unavailable")
+
+	var lastErr error
+	for _, pt := range candidates {
+		p, err := processor.Get(pt)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		cp, ok := p.(processor.CryptoProcessor)
+		if !ok {
+			lastErr = fmt.Errorf("processor %s does not support crypto operations", pt)
+			continue
+		}
+		if !cp.IsAvailable(probe) {
+			lastErr = fmt.Errorf("crypto processor %s unavailable", pt)
+			continue
+		}
+		return cp, nil
 	}
-	return cp, nil
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, fmt.Errorf("crypto custody service unavailable")
 }
 
 // GetCryptoOptions lists the assets the rail accepts — which is the set a
@@ -218,20 +256,27 @@ func GetCryptoOptions(ctx context.Context) (CryptoOptions, error) {
 	if err == nil {
 		assets = offeredAssets(watchedAssets(), cp.SupportedChains())
 	}
-	return menu(assets, err)
+	return menu(assets, err, gateway.Default().Networks())
 }
 
-// menu is the rail's offer: the error when the custody signer cannot be
-// reached (the endpoint's 503), else the pairs and their two axes.
-func menu(assets []CryptoAsset, custody error) (CryptoOptions, error) {
-	if custody != nil {
+// menu joins the two rails' offers. Either rail alone is a menu; only when
+// NEITHER can take money is the answer an error (the endpoint's 503), because
+// "no crypto rail" and "this rail is down" are different facts and only the
+// first means try again later. The deposit-address rail's error is returned
+// as it was when the Gateway rail offers nothing, so that rail's behaviour is
+// unchanged by the other's existence.
+func menu(assets []CryptoAsset, custody error, gw []string) (CryptoOptions, error) {
+	if custody != nil && len(gw) == 0 {
 		return CryptoOptions{}, custody
 	}
 	if assets == nil {
 		assets = []CryptoAsset{}
 	}
+	if gw == nil {
+		gw = []string{}
+	}
 	chains, tokens := axesOf(assets)
-	return CryptoOptions{Chains: chains, Tokens: tokens, Assets: assets}, nil
+	return CryptoOptions{Chains: chains, Tokens: tokens, Assets: assets, Gateway: gw}, nil
 }
 
 // GetBillingCryptoOptions is the picker's endpoint for that menu.
@@ -543,23 +588,29 @@ func CreateCryptoDeposit(ctx context.Context, org *organization.Organization, pa
 		}
 	}
 
-	// Reuse the payer's open intent for this asset before minting a new one.
-	if existing, ok := openIntentFor(db, payer, chain, token); ok {
-		// A pooled destination missing its tag names NOBODY: the payment would
-		// arrive at an address we own and be credited to no one (recorded as
-		// unattributed, refundable only by hand). It cannot arise from this
-		// path — the tag is allocated and written in the same record as the
-		// address — so a row like it is corruption, and the two tempting
-		// repairs are both worse than refusing. Handing it over takes money we
-		// cannot route; minting a replacement leaves the untagged row live and
-		// sprays the tag space on every refresh.
-		if !destinationIsComplete(existing) {
-			return CryptoDeposit{}, depositRefusal{
-				msg:   "Crypto deposits are temporarily unavailable — this deposit reference is incomplete. Contact support or choose another way to pay.",
-				cause: fmt.Errorf("crypto deposit intent %s on %s has no destination tag; refusing to reuse it", existing.Id(), chain),
+	// On a POOLED chain (e.g. XRPL), reuse the payer's open intent for this asset
+	// so page refreshes cannot spray the finite destination-tag space.
+	// On per-payment chains (Kraken / MPC), always mint a fresh wallet address
+	// per payment (1 address per payment) so external observers cannot track or
+	// correlate our wallets across payments.
+	if pooled {
+		if existing, ok := openIntentFor(db, payer, chain, token); ok {
+			// A pooled destination missing its tag names NOBODY: the payment would
+			// arrive at an address we own and be credited to no one (recorded as
+			// unattributed, refundable only by hand). It cannot arise from this
+			// path — the tag is allocated and written in the same record as the
+			// address — so a row like it is corruption, and the two tempting
+			// repairs are both worse than refusing. Handing it over takes money we
+			// cannot route; minting a replacement leaves the untagged row live and
+			// sprays the tag space on every refresh.
+			if !destinationIsComplete(existing) {
+				return CryptoDeposit{}, depositRefusal{
+					msg:   "Crypto deposits are temporarily unavailable — this deposit reference is incomplete. Contact support or choose another way to pay.",
+					cause: fmt.Errorf("crypto deposit intent %s on %s has no destination tag; refusing to reuse it", existing.Id(), chain),
+				}
 			}
+			return toCryptoDepositResponse(existing), nil
 		}
-		return toCryptoDepositResponse(existing), nil
 	}
 
 	// WHERE the payer sends, and WHAT names them when they arrive. This is the
@@ -597,11 +648,14 @@ func CreateCryptoDeposit(ctx context.Context, org *organization.Organization, pa
 		wallet = processor.Wallet{Address: addr}
 	} else {
 		var err error
-		if wallet, err = cp.GenerateAddress(ctx, payer, chain); err != nil {
+		if wallet, err = cp.GenerateAddress(processor.WithToken(ctx, token), payer, chain); err != nil {
 			return CryptoDeposit{}, depositRefusal{
 				msg:   "Crypto deposits are temporarily unavailable — the custody service is not accepting new addresses. Try again shortly or choose another way to pay.",
 				cause: fmt.Errorf("crypto deposit address generation failed for %q on %s: %w", payer, chain, err),
 			}
+		}
+		if tag == "" && wallet.Tag != "" {
+			tag = wallet.Tag
 		}
 	}
 

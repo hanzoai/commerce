@@ -200,49 +200,8 @@ func (c *Client) createAuthorization(paymentReq *PaymentRequest) (*PaymentAuthor
 	return auth, nil
 }
 
-// computeDigest computes the EIP-712 typed data hash for signing.
+// computeDigest is the EIP-712 hash the payer signs: the one EIP-3009
+// encoding (eip3009.go), under the token's domain.
 func (c *Client) computeDigest(paymentReq *PaymentRequest, auth *PaymentAuthorization) ([32]byte, error) {
-	// Domain separator.
-	domainSep := EIP712DomainSeparator(c.tokenName, c.tokenVersion, paymentReq.ChainID, paymentReq.Token)
-
-	// Type hash for TransferWithAuthorization.
-	typeHash := Keccak256([]byte(
-		"TransferWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)",
-	))
-
-	value, ok := new(big.Int).SetString(auth.Value, 10)
-	if !ok {
-		return [32]byte{}, fmt.Errorf("invalid value: %s", auth.Value)
-	}
-
-	nonceHex := auth.Nonce
-	if len(nonceHex) > 2 && (nonceHex[:2] == "0x" || nonceHex[:2] == "0X") {
-		nonceHex = nonceHex[2:]
-	}
-	nonceBytes, err := hex.DecodeString(nonceHex)
-	if err != nil {
-		return [32]byte{}, fmt.Errorf("invalid nonce: %w", err)
-	}
-	var nonce [32]byte
-	copy(nonce[32-len(nonceBytes):], nonceBytes)
-
-	// ABI-encode the struct fields.
-	encoded := make([]byte, 0, 224)
-	encoded = append(encoded, typeHash[:]...)
-	encoded = append(encoded, padLeft(addressToBytes(auth.From), 32)...)
-	encoded = append(encoded, padLeft(addressToBytes(auth.To), 32)...)
-	encoded = append(encoded, padLeft(value.Bytes(), 32)...)
-	encoded = append(encoded, padLeft(big.NewInt(auth.ValidAfter).Bytes(), 32)...)
-	encoded = append(encoded, padLeft(big.NewInt(auth.ValidBefore).Bytes(), 32)...)
-	encoded = append(encoded, nonce[:]...)
-
-	structHash := Keccak256(encoded)
-
-	// Final EIP-712 digest.
-	digestInput := make([]byte, 0, 66)
-	digestInput = append(digestInput, 0x19, 0x01)
-	digestInput = append(digestInput, domainSep[:]...)
-	digestInput = append(digestInput, structHash[:]...)
-
-	return Keccak256(digestInput), nil
+	return auth.digest(c.tokenName, c.tokenVersion, paymentReq)
 }

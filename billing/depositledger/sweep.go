@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/btcsuite/btcd/chaincfg"
 
@@ -96,6 +97,12 @@ func Sweep(ctx context.Context, c custody.Chain, s custody.Signer, a depositwatc
 			continue
 		}
 		seen[w.Org+"\x00"+w.Address] = true
+
+		if strings.HasPrefix(w.Wallet, "kraken:") {
+			// Kraken deposit addresses are exchange-custodied and swept by Kraken
+			// automatically; the MPC signer holds no key for them.
+			continue
+		}
 
 		if w.Wallet == "" {
 			// The keygen's wallet_id was dropped on the floor for a while, and

@@ -69,6 +69,7 @@ func DefaultConfig() *RegistryConfig {
 			Recurly,
 			LemonSqueezy,
 			// crypto
+			Kraken,
 			MPC,
 			SolanaPay,
 			CoinbaseCommerce,
@@ -274,7 +275,7 @@ func (r *Registry) SelectProcessor(ctx context.Context, req PaymentRequest) (Pay
 			}
 		}
 		// Fallback to any available crypto processor
-		for _, t := range []ProcessorType{SolanaPay, MPC, Ethereum, Bitcoin} {
+		for _, t := range []ProcessorType{Kraken, SolanaPay, MPC, Ethereum, Bitcoin} {
 			if p, ok := r.processors[t]; ok {
 				if !r.config.DisabledProcessors[t] && p.IsAvailable(ctx) {
 					if supportssCurrency(p, req.Currency) {

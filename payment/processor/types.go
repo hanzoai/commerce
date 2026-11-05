@@ -25,6 +25,7 @@ const (
 	Wire             ProcessorType = "wire"
 	SolanaPay        ProcessorType = "solanapay"
 	MoonPay          ProcessorType = "moonpay"
+	Kraken           ProcessorType = "kraken"
 )
 
 // PaymentRequest represents a payment to be processed
@@ -146,6 +147,10 @@ type Wallet struct {
 	// Empty where a provider has no such concept and addresses wallets by their
 	// address; that is a real answer, not a missing one.
 	ID string `json:"id,omitempty"`
+
+	// Tag is an optional destination tag / memo returned by the provider (e.g.,
+	// Kraken deposit addresses on networks that use a destination tag or memo).
+	Tag string `json:"tag,omitempty"`
 }
 
 // Balance represents a wallet balance
