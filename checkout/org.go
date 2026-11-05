@@ -321,21 +321,36 @@ func normalizeCountryCode(raw string) string {
 
 // applyCountryPolicy enforces geographic payment rail availability: Square runs
 // alongside PayPal in the 8 Square-supported countries (US, CA, AU, JP, GB/UK,
-// IE, FR, ES) and is replaced by PayPal everywhere else.
+// IE, FR, ES), PayPal replaces Square in the ~190 other countries where PayPal
+// operates, and Crypto remains enabled when neither Square nor PayPal supports
+// the caller's country.
 func applyCountryPolicy(t Org, country string) Org {
 	t.Country = country
-	if country == "" || payment.IsSquareCountry(country) {
+	if country == "" {
+		return t
+	}
+	squareOK := payment.IsSquareCountry(country)
+	paypalOK := payment.IsPayPalCountry(country)
+	if squareOK && paypalOK {
 		return t
 	}
 	filtered := make([]Provider, 0, len(t.Providers))
 	for _, p := range t.Providers {
-		if p.Name == "square" {
+		if p.Name == "square" && !squareOK {
+			p.Enabled = false
+		}
+		if p.Name == "paypal" && !paypalOK {
 			p.Enabled = false
 		}
 		filtered = append(filtered, p)
 	}
 	t.Providers = filtered
-	t.Square = SquarePublic{}
+	if !squareOK {
+		t.Square = SquarePublic{}
+	}
+	if !paypalOK {
+		t.PayPal = PayPalPublic{}
+	}
 	return t
 }
 

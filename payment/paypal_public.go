@@ -77,3 +77,22 @@ func IsSquareCountry(code string) bool {
 		return false
 	}
 }
+
+// IsPayPalCountry reports whether PayPal operates in the given ISO 3166-1
+// alpha-2 country/region code. PayPal operates in ~200 countries/regions; in
+// the unsupported or OFAC-restricted jurisdictions listed below, checkout
+// disables PayPal as well as Square so customers fall back to Crypto (or Wire).
+func IsPayPalCountry(code string) bool {
+	c := strings.ToUpper(strings.TrimSpace(code))
+	if c == "" {
+		return true
+	}
+	switch c {
+	case "AF", "BD", "BY", "CF", "CI", "CM", "CU", "ER", "GH", "HT",
+		"IQ", "IR", "KP", "LB", "LR", "LY", "MM", "PK", "PS", "RU",
+		"SD", "SS", "SY", "TL", "TR", "UZ", "YE", "ZW":
+		return false
+	default:
+		return len(c) == 2
+	}
+}
