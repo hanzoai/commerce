@@ -3,7 +3,6 @@ package x402
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/luxfi/crypto"
 
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
@@ -214,82 +215,29 @@ func (f *Facilitator) settleRemote(ctx context.Context, req *PaymentRequest, aut
 	return &receipt, nil
 }
 
-// verifyAuthorization verifies the ERC-3009 transferWithAuthorization signature.
+// verifyAuthorization verifies the ERC-3009 transferWithAuthorization signature
+// through the one EIP-3009 implementation (eip3009.go): strict parsing, the
+// token's domain, low-s, and the signer must be auth.From.
 func (f *Facilitator) verifyAuthorization(req *PaymentRequest, auth *PaymentAuthorization) error {
-	// Strip 0x prefix from signature.
-	sigHex := auth.Signature
-	if strings.HasPrefix(sigHex, "0x") || strings.HasPrefix(sigHex, "0X") {
-		sigHex = sigHex[2:]
-	}
-
-	sigBytes, err := hex.DecodeString(sigHex)
+	digest, err := auth.digest(f.tokenName, f.tokenVersion, req)
 	if err != nil {
-		return fmt.Errorf("invalid signature hex: %w", err)
+		return err
 	}
-
-	// Compute the EIP-712 digest for transferWithAuthorization.
-	digest, err := f.computeEIP712Digest(req, auth)
+	signer, err := Recover(digest, auth.Signature)
 	if err != nil {
-		return fmt.Errorf("compute EIP-712 digest: %w", err)
+		return err
 	}
-
-	// Verify that the recovered signer matches auth.From.
-	return VerifySignature(digest, sigBytes, auth.From)
-}
-
-// computeEIP712Digest computes the EIP-712 typed data hash for an ERC-3009
-// transferWithAuthorization.
-func (f *Facilitator) computeEIP712Digest(req *PaymentRequest, auth *PaymentAuthorization) ([32]byte, error) {
-	// Domain separator
-	domainSep := EIP712DomainSeparator(f.tokenName, f.tokenVersion, req.ChainID, req.Token)
-
-	// Struct hash: TransferWithAuthorization(address from, address to, uint256 value, uint256 validAfter, uint256 validBefore, bytes32 nonce)
-	typeHash := Keccak256([]byte(
-		"TransferWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)",
-	))
-
-	value, ok := new(big.Int).SetString(auth.Value, 10)
-	if !ok {
-		return [32]byte{}, fmt.Errorf("invalid value: %s", auth.Value)
+	from, _ := Address(auth.From) // digest parsed it already
+	if signer != from {
+		return fmt.Errorf("x402: signer mismatch: recovered %s, expected %s", Hex(signer[:]), strings.ToLower(auth.From))
 	}
-
-	nonceHex := auth.Nonce
-	if strings.HasPrefix(nonceHex, "0x") || strings.HasPrefix(nonceHex, "0X") {
-		nonceHex = nonceHex[2:]
-	}
-	nonceBytes, err := hex.DecodeString(nonceHex)
-	if err != nil {
-		return [32]byte{}, fmt.Errorf("invalid nonce hex: %w", err)
-	}
-	var nonce [32]byte
-	copy(nonce[32-len(nonceBytes):], nonceBytes)
-
-	// ABI-encode the struct fields
-	encoded := make([]byte, 0, 224) // 7 * 32 bytes
-	encoded = append(encoded, typeHash[:]...)
-	encoded = append(encoded, padLeft(addressToBytes(auth.From), 32)...)
-	encoded = append(encoded, padLeft(addressToBytes(auth.To), 32)...)
-	encoded = append(encoded, padLeft(value.Bytes(), 32)...)
-	encoded = append(encoded, padLeft(big.NewInt(auth.ValidAfter).Bytes(), 32)...)
-	encoded = append(encoded, padLeft(big.NewInt(auth.ValidBefore).Bytes(), 32)...)
-	encoded = append(encoded, nonce[:]...)
-
-	structHash := Keccak256(encoded)
-
-	// Final EIP-712 digest: keccak256("\x19\x01" || domainSeparator || structHash)
-	digestInput := make([]byte, 0, 66)
-	digestInput = append(digestInput, 0x19, 0x01)
-	digestInput = append(digestInput, domainSep[:]...)
-	digestInput = append(digestInput, structHash[:]...)
-
-	return Keccak256(digestInput), nil
+	return nil
 }
 
 // computeRequestHash computes a hash of the payment request for receipt tracking.
 func computeRequestHash(req *PaymentRequest) string {
 	data, _ := json.Marshal(req)
-	hash := Keccak256(data)
-	return fmt.Sprintf("0x%x", hash[:])
+	return Hex(crypto.Keccak256(data))
 }
 
 // chainFromNetwork maps a network name and chain ID to a chain string for the processor.

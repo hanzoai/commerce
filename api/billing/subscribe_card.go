@@ -634,7 +634,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		samePlan := (heldSlug == planID || held.PlanId == planID) && held.Plan.Price == p.Price
 		sameInterval := (isYear == heldYear)
 		sameQty := in.Quantity <= 1 || held.Quantity == in.Quantity
-		if samePlan && sameInterval && sameQty {
+		if held.Status == subscription.Trialing || (samePlan && sameInterval && sameQty) {
 			abandon()
 			return nil, saleRefusal{saleHeld, fmt.Sprintf(
 				"this account already pays for the %q plan (subscription %s); change that subscription instead of buying a second one",
