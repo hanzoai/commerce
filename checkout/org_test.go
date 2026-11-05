@@ -287,3 +287,36 @@ func TestOrgJSON_MalformedHost(t *testing.T) {
 		}
 	}
 }
+
+func TestApplyCountryPolicy_SquarePayPalCryptoFallback(t *testing.T) {
+	base := Org{
+		Name: "hanzo",
+		Providers: []Provider{
+			{Name: "square", Enabled: true},
+			{Name: "paypal", Enabled: true},
+			{Name: "crypto", Enabled: true},
+		},
+		Square: SquarePublic{ApplicationID: "sq-app", LocationID: "sq-loc", Environment: "production"},
+		PayPal: PayPalPublic{ClientID: "pp-client", Environment: "live"},
+	}
+
+	// US (one of the 8 Square countries): Square, PayPal, and Crypto all enabled.
+	us := toPublicView(applyCountryPolicy(base, "US"))
+	if len(us.Providers) != 3 || us.Square.ApplicationID == "" || us.PayPal.ClientID == "" {
+		t.Fatalf("US: expected square+paypal+crypto enabled, got %+v", us)
+	}
+
+	// DE (outside the 8 Square countries, PayPal supported): PayPal and Crypto enabled, Square disabled.
+	de := toPublicView(applyCountryPolicy(base, "DE"))
+	if len(de.Providers) != 2 || de.Square.ApplicationID != "" || de.PayPal.ClientID == "" {
+		t.Fatalf("DE: expected paypal+crypto enabled and square disabled, got %+v", de)
+	}
+
+	// TR / PK (neither Square nor PayPal supported): Crypto remains enabled, Square and PayPal disabled.
+	for _, code := range []string{"TR", "PK", "IR"} {
+		c := toPublicView(applyCountryPolicy(base, code))
+		if len(c.Providers) != 1 || c.Providers[0].Name != "crypto" || c.Square.ApplicationID != "" || c.PayPal.ClientID != "" {
+			t.Fatalf("%s: expected only crypto enabled, got %+v", code, c)
+		}
+	}
+}
