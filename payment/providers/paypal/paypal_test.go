@@ -500,6 +500,40 @@ func TestCharge_NotCompleted(t *testing.T) {
 	}
 }
 
+func TestCharge_AmountMismatch(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(paypalOrder{
+			ID:     "ORDER-MISMATCH",
+			Status: "COMPLETED",
+			PurchaseUnits: []paypalPurchaseUnit{{
+				Payments: &paypalPayments{
+					Captures: []paypalCapture{{
+						ID:     "CAP-1",
+						Status: "COMPLETED",
+						Amount: paypalAmount{CurrencyCode: "USD", Value: "5.00"},
+					}},
+				},
+			}},
+		})
+	}))
+	defer server.Close()
+
+	p := configuredProvider(server.URL)
+	// Request 2500 cents ($25.00) while PayPal order capture was only $5.00
+	result, err := p.Charge(context.Background(), processor.PaymentRequest{
+		Amount:   2500,
+		Currency: currency.USD,
+		Token:    "ORDER-MISMATCH",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Success {
+		t.Fatal("expected failure when captured amount does not match requested amount")
+	}
+}
+
 func TestCharge_APIError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

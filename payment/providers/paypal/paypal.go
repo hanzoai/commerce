@@ -204,6 +204,23 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 	if !result.Success {
 		result.ErrorMessage = fmt.Sprintf("paypal: order capture status %s", capture.Status)
 		result.Error = processor.ErrPaymentFailed
+		return result, nil
+	}
+	if req.Amount > 0 {
+		if capCents, capCur := capturedOrderCents(capture); capCents > 0 {
+			if capCents != int64(req.Amount) {
+				result.Success = false
+				result.Error = processor.ErrPaymentFailed
+				result.ErrorMessage = fmt.Sprintf("paypal: captured amount %d cents does not match requested amount %d cents", capCents, req.Amount)
+				return result, nil
+			}
+			if capCur != "" && !strings.EqualFold(capCur, req.Currency.Code()) {
+				result.Success = false
+				result.Error = processor.ErrPaymentFailed
+				result.ErrorMessage = fmt.Sprintf("paypal: captured currency %s does not match requested currency %s", capCur, req.Currency.Code())
+				return result, nil
+			}
+		}
 	}
 	return result, nil
 }
@@ -249,6 +266,23 @@ func (p *Provider) Authorize(ctx context.Context, req processor.PaymentRequest) 
 	if !result.Success {
 		result.ErrorMessage = fmt.Sprintf("paypal: order authorize status %s", auth.Status)
 		result.Error = processor.ErrPaymentFailed
+		return result, nil
+	}
+	if req.Amount > 0 {
+		if authCents, authCur := authorizedOrderCents(auth); authCents > 0 {
+			if authCents != int64(req.Amount) {
+				result.Success = false
+				result.Error = processor.ErrPaymentFailed
+				result.ErrorMessage = fmt.Sprintf("paypal: authorized amount %d cents does not match requested amount %d cents", authCents, req.Amount)
+				return result, nil
+			}
+			if authCur != "" && !strings.EqualFold(authCur, req.Currency.Code()) {
+				result.Success = false
+				result.Error = processor.ErrPaymentFailed
+				result.ErrorMessage = fmt.Sprintf("paypal: authorized currency %s does not match requested currency %s", authCur, req.Currency.Code())
+				return result, nil
+			}
+		}
 	}
 	return result, nil
 }
@@ -304,13 +338,30 @@ func (p *Provider) Capture(ctx context.Context, transactionID string, amount mon
 		return nil, p.payErr("PARSE_ERROR", "failed to parse capture response", err)
 	}
 
-	return &processor.PaymentResult{
+	result := &processor.PaymentResult{
 		Success:       capture.Status == "COMPLETED",
 		TransactionID: capture.ID,
 		ProcessorRef:  capture.ID,
 		Status:        capture.Status,
 		Metadata:      map[string]interface{}{"paypal_capture_id": capture.ID},
-	}, nil
+	}
+	if !result.Success {
+		result.ErrorMessage = fmt.Sprintf("paypal: capture status %s", capture.Status)
+		result.Error = processor.ErrPaymentFailed
+		return result, nil
+	}
+	if amount.Sign() > 0 && capture.Amount.Value != "" {
+		cur := currency.Type(strings.ToLower(capture.Amount.CurrencyCode))
+		expCur := currency.Type(strings.ToLower(amount.Currency().Code))
+		expCents, _ := expCur.Parse(amount.MajorString())
+		if cents, err := cur.Parse(capture.Amount.Value); err == nil && expCents > 0 && cents != expCents {
+			result.Success = false
+			result.Error = processor.ErrPaymentFailed
+			result.ErrorMessage = fmt.Sprintf("paypal: captured amount %d cents does not match expected amount %d cents", cents, expCents)
+			return result, nil
+		}
+	}
+	return result, nil
 }
 
 // Refund refunds a captured payment.
@@ -1111,6 +1162,56 @@ func authorizationIDFromOrder(order *paypalOrder) string {
 		}
 	}
 	return order.ID
+}
+
+// capturedOrderCents extracts the first capture amount in minor units and currency code.
+func capturedOrderCents(order *paypalOrder) (int64, string) {
+	if order == nil {
+		return 0, ""
+	}
+	for _, pu := range order.PurchaseUnits {
+		if pu.Payments != nil && len(pu.Payments.Captures) > 0 {
+			c := pu.Payments.Captures[0]
+			if c.Amount.Value != "" {
+				cur := currency.Type(strings.ToLower(c.Amount.CurrencyCode))
+				if cents, err := cur.Parse(c.Amount.Value); err == nil {
+					return int64(cents), strings.ToUpper(c.Amount.CurrencyCode)
+				}
+			}
+		}
+		if pu.Amount.Value != "" {
+			cur := currency.Type(strings.ToLower(pu.Amount.CurrencyCode))
+			if cents, err := cur.Parse(pu.Amount.Value); err == nil {
+				return int64(cents), strings.ToUpper(pu.Amount.CurrencyCode)
+			}
+		}
+	}
+	return 0, ""
+}
+
+// authorizedOrderCents extracts the first authorization amount in minor units and currency code.
+func authorizedOrderCents(order *paypalOrder) (int64, string) {
+	if order == nil {
+		return 0, ""
+	}
+	for _, pu := range order.PurchaseUnits {
+		if pu.Payments != nil && len(pu.Payments.Authorizations) > 0 {
+			a := pu.Payments.Authorizations[0]
+			if a.Amount.Value != "" {
+				cur := currency.Type(strings.ToLower(a.Amount.CurrencyCode))
+				if cents, err := cur.Parse(a.Amount.Value); err == nil {
+					return int64(cents), strings.ToUpper(a.Amount.CurrencyCode)
+				}
+			}
+		}
+		if pu.Amount.Value != "" {
+			cur := currency.Type(strings.ToLower(pu.Amount.CurrencyCode))
+			if cents, err := cur.Parse(pu.Amount.Value); err == nil {
+				return int64(cents), strings.ToUpper(pu.Amount.CurrencyCode)
+			}
+		}
+	}
+	return 0, ""
 }
 
 func (p *Provider) checkAvailable() error {
