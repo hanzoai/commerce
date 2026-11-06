@@ -123,8 +123,6 @@ type User struct {
 
 	AffiliateId string `json:"affiliateId,omitempty"`
 
-	FormId string `json:"formId,omitempty"`
-
 	// Affiliate commission terms
 	Commission commission.Commission `json:"commission"`
 

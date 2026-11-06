@@ -4,8 +4,6 @@ import (
 	"github.com/hanzoai/gochimp3"
 
 	"github.com/hanzoai/commerce/log"
-	// "github.com/hanzoai/commerce/models/form"
-	// "github.com/hanzoai/commerce/models/subscriber"
 	// "github.com/hanzoai/commerce/models/types/client"
 	"github.com/hanzoai/commerce/types/email"
 	"github.com/hanzoai/commerce/util/json"
