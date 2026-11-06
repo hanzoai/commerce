@@ -128,8 +128,8 @@ func (f *Form) Js() string {
 
 	}
 
-	// Endpoint for subscription
-	endpoint := config.UrlFor("api", "/form/", f.Id(), "/subscribe")
+	// The form posts its submissions here.
+	endpoint := config.UrlFor("api", "/form/", f.Id(), "/submit")
 	// Check for development environment via environment variable
 	if env := os.Getenv("ENV"); env == "development" || env == "dev" {
 		endpoint = "http://localhost:8080" + endpoint

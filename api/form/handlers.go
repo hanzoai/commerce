@@ -18,7 +18,6 @@ func Route(router *zip.Group, args ...zip.Handler) {
 	f.Use(middleware.AccessControl("*"))
 
 	f.Raw(http.MethodPost, "/:formid/submit", handleForm)
-	f.Raw(http.MethodPost, "/:formid/subscribe", handleForm)
 	f.Raw(http.MethodGet, "/:formid/js", cdn.Js)
 
 	// DEPRECATED
@@ -26,6 +25,5 @@ func Route(router *zip.Group, args ...zip.Handler) {
 	m.Use(middleware.AccessControl("*"))
 
 	m.Raw(http.MethodPost, "/:formid/submit", handleForm)
-	m.Raw(http.MethodPost, "/:formid/subscribe", handleForm)
 	m.Raw(http.MethodGet, "/:formid/js", cdn.Js)
 }
