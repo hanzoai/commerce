@@ -106,7 +106,8 @@ func Begin(db *datastore.Datastore, scope, key string) (rec *IdempotencyKey, rep
 	// processes as well as goroutines: of two first sightings, one inserts the row
 	// and the other finds it there and replays; of two recoveries of a stale
 	// guard, one re-claims it and the other reads it again, fresh, and replays.
-	for range mixin.Swaps {
+	for lost := range mixin.Swaps {
+		mixin.Pause(lost)
 		// Read it by its EXACT storage key (kind + deterministic id + namespace). Do
 		// NOT route this read through GetById: GetById decodes the id as a hashid,
 		// and a deterministic NON-hashid string ("idem_<hex>") decodes to a KIND-LESS

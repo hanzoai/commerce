@@ -230,7 +230,8 @@ func pendQuantity(sub *subscription.Subscription, quantity int) {
 // keeps the seats it was paid for. The team's floor and ceiling count every seat.
 // holder is as AssignSeats's.
 func ChangeSeats(ctx context.Context, org *organization.Organization, holder, id string, quantity int, lines []LineIn) (*Subscription, error) {
-	for range mixin.Swaps {
+	for lost := range mixin.Swaps {
+		mixin.Pause(lost)
 		sub, err := heldSubscription(ctx, org, holder, id)
 		if err != nil {
 			return nil, err

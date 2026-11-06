@@ -85,7 +85,8 @@ func load(id string) (*remittance.Remittance, error) {
 // it say. This is how the request and the reconciler, on any number of
 // replicas, move one remittance without either losing the other's change.
 func update(id string, fn func(*remittance.Remittance) bool) (*remittance.Remittance, error) {
-	for range mixin.Swaps {
+	for lost := range mixin.Swaps {
+		mixin.Pause(lost)
 		r, err := load(id)
 		if err != nil {
 			return nil, err
@@ -172,7 +173,8 @@ func (s *Service) Submit(ctx context.Context, org *organization.Organization, pa
 // of replicas exactly one inserts and the other reads what it inserted.
 func (s *Service) claim(ctx context.Context, l *link, org *organization.Organization, payer string, c checked) (*remittance.Remittance, error) {
 	id := ID(c.chain.ID, c.auth.From, c.auth.Nonce)
-	for range mixin.Swaps {
+	for lost := range mixin.Swaps {
+		mixin.Pause(lost)
 		r, err := load(id)
 		switch {
 		case err == nil:

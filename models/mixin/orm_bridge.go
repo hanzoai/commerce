@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"reflect"
 	"time"
 
@@ -253,6 +254,17 @@ func (b *Model[T]) Update() error {
 // Swaps is how many times a read-modify-write reads again after another writer
 // changed its entity under it, before it reports the contention as an error.
 const Swaps = 8
+
+// Pause waits before a read-modify-write's next attempt, given how many it lost:
+// nothing before the first, then a random while under a millisecond window that
+// doubles per loss (up to 64ms before the eighth). Writers that collided on one
+// entity then read again apart instead of in step and colliding again, so dozens
+// contending across replicas all land within Swaps attempts.
+func Pause(lost int) {
+	if lost > 0 {
+		time.Sleep(rand.N(time.Millisecond << (lost - 1)))
+	}
+}
 
 // Swap writes the entity only while the stored one is still the one this model
 // read: its updatedAt unchanged since, or nothing stored for an entity never
