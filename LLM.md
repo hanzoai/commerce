@@ -2171,21 +2171,25 @@ exactly — the shape is NOT ours to change.
   also trips (works only because its reads+writes are symmetric in default ns).
 
 ### Enso's prices are the model API's, read back on every boot (`catalogentry.Reprice`)
-Each paid Enso SKU sells at ONE fixed price set in hanzoai/ai
-`controllers/rates.go` (`ensoPrices`, owner 2026-10-15): enso-flash 0.33 / 1.65,
-enso-pro 4.40 / 22.00, enso-ultra 5.50 / 27.50 a million tokens, cache reads and
-writes in the same multiple. enso is the router over the three (ai v1.833.349),
-billed at the tier that answers and listed at a request's that states no depth,
-enso-flash's; enso-free is the one free model. ai lists and bills those numbers
+Five Enso models are served, listed and sold: enso (the router, also served as
+enso-auto, the default for everyone), enso-flash, enso-pro, enso-max and
+enso-ultra. Each paid tier sells at ONE fixed price set in hanzoai/ai
+`controllers/rates.go` (`ensoPrices`), input / output / cache read / cache write a
+million tokens: flash 0.33 / 1.65 / 0.033 / 0.4125, pro 3.30 / 16.50 / 0.165 /
+4.125, max 4.30 / 21.50 / 0.215 / 5.375, ultra 5.236 / 26.18 / 0.2618 / 6.545. The
+router is billed at the tier that answers and listed at a request's that states no
+depth, enso-flash's. No Enso model is free; the Free and Starter tiers' lane
+(`billing/tier` `freeLane`) is enso-auto alone. ai lists and bills those numbers
 whatever a catalog row says, so an Enso price is not an admin's merchandising choice.
 `seed/enso-models.json` carries it (`seed_test.go` `billedRetail` is the second
 witness, moved in the same commit), and `runEnsoCatalogSeed` calls `Reprice` after
 the first-boot seed: each Enso row the seed names takes the seed's price, rate by
 rate (a missing class is added), compared as decimals so twice is once. Cost (a
-sync's), name, order, published, a row the seed does not name (enso-free) and a
-deleted row are untouched. A new SKU in the seed (enso-pro) is created only on a
-store the seed has never run on; production's admin adds it, or the price list
-(cloud `apps/pricing/enso.go`) appends it from ai's answer.
+sync's), name, order, published, a row the seed does not name (enso-free, and
+enso-vl / enso-vl-pro, which the seed no longer names) and a deleted row are
+untouched. A new SKU in the seed (enso-max) is created only on a store the seed
+has never run on; production's admin adds it, or the price list (cloud
+`apps/pricing/enso.go`) appends it from ai's answer.
 
 ### Model catalog — the OpenRouter cost sync (models/catalogentry/{openrouter,sync}.go)
 
@@ -4630,21 +4634,25 @@ exactly — the shape is NOT ours to change.
   also trips (works only because its reads+writes are symmetric in default ns).
 
 ### Enso's prices are the model API's, read back on every boot (`catalogentry.Reprice`)
-Each paid Enso SKU sells at ONE fixed price set in hanzoai/ai
-`controllers/rates.go` (`ensoPrices`, owner 2026-10-15): enso-flash 0.33 / 1.65,
-enso-pro 4.40 / 22.00, enso-ultra 5.50 / 27.50 a million tokens, cache reads and
-writes in the same multiple. enso is the router over the three (ai v1.833.349),
-billed at the tier that answers and listed at a request's that states no depth,
-enso-flash's; enso-free is the one free model. ai lists and bills those numbers
+Five Enso models are served, listed and sold: enso (the router, also served as
+enso-auto, the default for everyone), enso-flash, enso-pro, enso-max and
+enso-ultra. Each paid tier sells at ONE fixed price set in hanzoai/ai
+`controllers/rates.go` (`ensoPrices`), input / output / cache read / cache write a
+million tokens: flash 0.33 / 1.65 / 0.033 / 0.4125, pro 3.30 / 16.50 / 0.165 /
+4.125, max 4.30 / 21.50 / 0.215 / 5.375, ultra 5.236 / 26.18 / 0.2618 / 6.545. The
+router is billed at the tier that answers and listed at a request's that states no
+depth, enso-flash's. No Enso model is free; the Free and Starter tiers' lane
+(`billing/tier` `freeLane`) is enso-auto alone. ai lists and bills those numbers
 whatever a catalog row says, so an Enso price is not an admin's merchandising choice.
 `seed/enso-models.json` carries it (`seed_test.go` `billedRetail` is the second
 witness, moved in the same commit), and `runEnsoCatalogSeed` calls `Reprice` after
 the first-boot seed: each Enso row the seed names takes the seed's price, rate by
 rate (a missing class is added), compared as decimals so twice is once. Cost (a
-sync's), name, order, published, a row the seed does not name (enso-free) and a
-deleted row are untouched. A new SKU in the seed (enso-pro) is created only on a
-store the seed has never run on; production's admin adds it, or the price list
-(cloud `apps/pricing/enso.go`) appends it from ai's answer.
+sync's), name, order, published, a row the seed does not name (enso-free, and
+enso-vl / enso-vl-pro, which the seed no longer names) and a deleted row are
+untouched. A new SKU in the seed (enso-max) is created only on a store the seed
+has never run on; production's admin adds it, or the price list (cloud
+`apps/pricing/enso.go`) appends it from ai's answer.
 
 ### Model catalog — the OpenRouter cost sync (models/catalogentry/{openrouter,sync}.go)
 

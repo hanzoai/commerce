@@ -32,21 +32,17 @@ var hanzoCatalogSeed []byte
 //go:embed seed/infra-tiers.json
 var infraTiersSeed []byte
 
-// ensoModelsSeed is the Enso family: the six SKUs the enso service serves, at
-// the price the model API bills. Each paid SKU sells at ONE fixed price
-// (hanzoai/ai controllers/rates.go ensoPrices, owner 2026-10-15): enso-flash
-// 0.33 / 1.65, enso-pro 4.40 / 22.00, enso-ultra 5.50 / 27.50 a million tokens,
-// with cache reads and writes in the same multiple. enso is the router over the
-// three (hanzoai/ai v1.833.349), billed at the tier that answers and listed at a
-// request's that states no depth, enso-flash's. Retail
+// ensoModelsSeed is the Enso family: the five models the enso service serves,
+// lists and sells, at the price the model API bills. Each paid tier sells at ONE
+// fixed price a million tokens (hanzoai/ai controllers/rates.go ensoPrices),
+// input / output / cache read / cache write: enso-flash 0.33 / 1.65 / 0.033 /
+// 0.4125, enso-pro 3.30 / 16.50 / 0.165 / 4.125, enso-max 4.30 / 21.50 / 0.215 /
+// 5.375, enso-ultra 5.236 / 26.18 / 0.2618 / 6.545. enso is the router over the
+// four (served as enso-auto too), billed at the tier that answers and listed at
+// a request's that states no depth, enso-flash's. No Enso model is free. Retail
 // is the one number a sync may not write — UpsertModels strips Price by design —
 // so the prices arrive here, and [Reprice] reads them back over the store on
 // every boot. It carries no cost: cost comes only from a sync.
-//
-// enso-vl and enso-vl-pro are seeded UNPUBLISHED. They are internal vision
-// engines the family reaches through its vision fallback, never listed SKUs, so
-// they carry their rates — a price the billing history can reference — without
-// appearing on the public price list.
 //
 //go:embed seed/enso-models.json
 var ensoModelsSeed []byte
@@ -509,10 +505,9 @@ func priced(have, want []Rate) ([]Rate, bool) {
 // category. It used to count category rows, which answers a different question
 // and got it wrong in production: a deployment carried one enso row that this
 // seed does not contain (enso-free, created by another path), the count came back
-// non-zero, and the five SKUs the enso service actually sells — enso, enso-flash,
-// enso-ultra and the two vision rows — were never created. The catalog served a
-// single free tier while every paid tier 400'd as an unknown model, and the guard
-// read as working correctly the whole time.
+// non-zero, and the SKUs the enso service actually sold were never created. The
+// catalog served a single free tier while every paid tier 400'd as an unknown
+// model, and the guard read as working correctly the whole time.
 //
 // A foreign row cannot answer whether we have seeded, so it no longer votes. A
 // row we DID seed still does, which is what keeps a deletion authoritative.

@@ -57,10 +57,10 @@ type Config struct {
 	AllowedModels []string `json:"allowedModels"`
 }
 
-// freeLane is what a caller with no paid plan may invoke: enso-auto, which
-// answers free callers from the free models, and the free Hanzo SKUs. No vendor
-// model is on it; a paid rung opens the rest.
-var freeLane = []string{"enso-auto", "enso-free", "zen-free", "free"}
+// freeLane is what a caller with no paid plan may invoke: enso-auto, the default
+// for everyone. No other Enso tier and no vendor model is on it; a paid rung
+// opens the rest.
+var freeLane = []string{"enso-auto"}
 
 // registry is the authoritative tier configuration.
 var registry = map[Name]*Config{

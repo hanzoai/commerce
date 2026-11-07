@@ -55,16 +55,16 @@
       "enabled": true
     },
     "rates": [
-      { "key": "in", "unit": "mtok", "price": "4.40" },
-      { "key": "out", "unit": "mtok", "price": "22.00" },
-      { "key": "cacheRead", "unit": "mtok", "price": "0.22" },
-      { "key": "cacheWrite", "unit": "mtok", "price": "5.50" }
+      { "key": "in", "unit": "mtok", "price": "3.30" },
+      { "key": "out", "unit": "mtok", "price": "16.50" },
+      { "key": "cacheRead", "unit": "mtok", "price": "0.165" },
+      { "key": "cacheWrite", "unit": "mtok", "price": "4.125" }
     ]
   },
   {
-    "slug": "enso-ultra",
-    "name": "Enso Ultra",
-    "description": "Adaptive fan-out — probes a task-appropriate model, escalates to a top-K panel only when needed, then verifies-then-selects the best answer.",
+    "slug": "enso-max",
+    "name": "Enso Max",
+    "description": "Enso's deep-reasoning tier, between Pro and Ultra, thinking at max at a 1M context window.",
     "published": true,
     "order": 4,
     "spec": {
@@ -76,51 +76,31 @@
       "enabled": true
     },
     "rates": [
-      { "key": "in", "unit": "mtok", "price": "5.50" },
-      { "key": "out", "unit": "mtok", "price": "27.50" },
-      { "key": "cacheRead", "unit": "mtok", "price": "0.275" },
-      { "key": "cacheWrite", "unit": "mtok", "price": "6.875" }
+      { "key": "in", "unit": "mtok", "price": "4.30" },
+      { "key": "out", "unit": "mtok", "price": "21.50" },
+      { "key": "cacheRead", "unit": "mtok", "price": "0.215" },
+      { "key": "cacheWrite", "unit": "mtok", "price": "5.375" }
     ]
   },
   {
-    "slug": "enso-vl",
-    "name": "Enso VL",
-    "description": "Internal vision engine — reached only through the family's vision fallback, never as a selectable SKU.",
-    "published": false,
+    "slug": "enso-ultra",
+    "name": "Enso Ultra",
+    "description": "Adaptive fan-out — probes a task-appropriate model, escalates to a top-K panel only when needed, then verifies-then-selects the best answer.",
+    "published": true,
     "order": 5,
     "spec": {
       "family": "enso",
       "serves": "enso",
       "modality": "chat",
-      "contextWindow": 262144,
-      "capabilities": ["vision"],
-      "enabled": false,
-      "unavailable": "internal vision engine — resolved by vision fallback, not directly callable"
-    },
-    "rates": [
-      { "key": "in", "unit": "mtok", "price": "2.28" },
-      { "key": "out", "unit": "mtok", "price": "9.60" }
-    ]
-  },
-  {
-    "slug": "enso-vl-pro",
-    "name": "Enso VL Pro",
-    "description": "Internal prepaid vision engine for paid callers — reached only through the family's vision fallback, never as a selectable SKU.",
-    "published": false,
-    "order": 6,
-    "spec": {
-      "family": "enso",
-      "serves": "enso",
-      "modality": "chat",
-      "contextWindow": 1048576,
-      "capabilities": ["vision"],
+      "contextWindow": 1000000,
       "minTier": "paid",
-      "enabled": false,
-      "unavailable": "internal vision engine — resolved by vision fallback, not directly callable"
+      "enabled": true
     },
     "rates": [
-      { "key": "in", "unit": "mtok", "price": "9.00" },
-      { "key": "out", "unit": "mtok", "price": "45.00" }
+      { "key": "in", "unit": "mtok", "price": "5.236" },
+      { "key": "out", "unit": "mtok", "price": "26.18" },
+      { "key": "cacheRead", "unit": "mtok", "price": "0.2618" },
+      { "key": "cacheWrite", "unit": "mtok", "price": "6.545" }
     ]
   }
 ]
