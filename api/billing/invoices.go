@@ -363,6 +363,10 @@ type Invoice struct {
 	DueDate        *time.Time                `json:"dueDate,omitempty"`
 	PaidAt         *time.Time                `json:"paidAt,omitempty"`
 	VoidedAt       *time.Time                `json:"voidedAt,omitempty"`
+	// DiscountName names what Discount took off: a customer's own price
+	// ("Customer price: $195.00/month"), the promo, a coupon's month, joined by
+	// "; ". Empty with no discount.
+	DiscountName string `json:"discountName,omitempty"`
 }
 
 // invoiceResponse projects the model onto that view. It stays the ONE projection
@@ -379,6 +383,7 @@ func invoiceResponse(inv *billinginvoice.BillingInvoice) Invoice {
 		Subtotal:       inv.Subtotal,
 		Tax:            inv.Tax,
 		Discount:       inv.Discount,
+		DiscountName:   inv.DiscountName,
 		CreditApplied:  inv.CreditApplied,
 		AmountDue:      inv.AmountDue,
 		AmountPaid:     inv.AmountPaid,
