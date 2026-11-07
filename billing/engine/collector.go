@@ -24,7 +24,7 @@ type CollectionResult struct {
 
 // Prepaid is the money a subject paid in advance: its credit grants, then its
 // balance on the one ledger the host keeps. The collector draws from it before
-// it touches a card.
+// it touches a card, for an invoice that bills no plan.
 //
 // It is injected, like ProviderCharger, because both halves live above the
 // engine — the grants in api/billing, the balance on whichever ledger the host
@@ -73,6 +73,12 @@ type ProviderCharger func(ctx context.Context, db *datastore.Datastore, inv *bil
 // waterfall: prepaid money first (credits, then the balance), the card on file
 // for the rest. Either may be nil, and that leg is skipped.
 //
+// A PLAN IS NEVER PAID FROM PREPAID MONEY. Credits and the balance are bought or
+// granted for usage; an invoice that bills a subscription's period (SubscriptionId
+// set: a renewal, a trial's first paid period, a plan ordered by invoice) is
+// collected from the card on file alone, and with no card it stays open and the
+// row goes past due. Only an invoice that bills no plan draws prepaid money.
+//
 // IT IS ALL OR NOTHING AGAINST THE PREPAID MONEY. The allocation is read first
 // and the card, the one leg that can refuse for reasons of its own, is charged
 // before anything prepaid moves. A decline, or no card at all, therefore leaves
@@ -87,6 +93,9 @@ func CollectInvoice(ctx context.Context, db *datastore.Datastore, inv *billingin
 		return nil, fmt.Errorf("invoice must be open to collect, current status: %s", inv.Status)
 	}
 
+	if inv.SubscriptionId != "" {
+		prepaid = nil
+	}
 	result := &CollectionResult{}
 	ref := ""
 	owed := inv.AmountDue - inv.AmountPaid

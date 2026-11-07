@@ -16,9 +16,11 @@ import (
 // A plan paid outside checkout: an invoice raised by hand in the processor's
 // dashboard. These pin what recording it does, and what it must never do.
 
+// The recorded period is the one running now: a plan collected outside commerce
+// lapses at its end, so a period already over would read as no plan at all.
 var (
-	recStart = time.Date(2026, 9, 16, 0, 0, 0, 0, time.UTC)
-	recEnd   = time.Date(2026, 10, 16, 0, 0, 0, 0, time.UTC)
+	recStart = time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 0, -15)
+	recEnd   = recStart.AddDate(0, 1, 0)
 )
 
 func recordDev(t *testing.T, db *datastore.Datastore) RecordIn {

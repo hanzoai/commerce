@@ -58,6 +58,18 @@ type createSubscriptionRequest struct {
 	// priced is Lines priced at the period bought (linesAt), set by the caller
 	// that resolved them; it is what the row is opened with.
 	priced []subscription.Line
+	// starts opens the row, and its bundle rows, SCHEDULED at that time: a card
+	// plan that follows the plan the subject holds (scheduleSale). Zero opens it now.
+	starts time.Time
+	// provider is the rail the row is billed on; empty is "internal".
+	provider string
+	// promoPercent and promoName are the promotion the row was bought under, which
+	// every invoice it raises prices with.
+	promoPercent int
+	promoName    string
+	// customerCents is the price staff agreed the subject pays for one seat of the
+	// plan each period (customerprice); 0 for none.
+	customerCents int64
 }
 
 type updateSubscriptionRequest struct {
@@ -441,6 +453,11 @@ func createSubscription(db *datastore.Datastore, p *plan.Plan, req *createSubscr
 	sub.StoreId = req.StoreId
 	sub.DefaultPaymentMethod = req.DefaultPaymentMethod
 	sub.ProviderType = "internal"
+	if req.provider != "" {
+		sub.ProviderType = req.provider
+	}
+	sub.DiscountPercent, sub.DiscountName = req.promoPercent, req.promoName
+	sub.CustomerCents = req.customerCents
 	sub.Quantity = quantity
 	sub.Lines = req.priced
 	sub.Test = req.Test
@@ -453,6 +470,9 @@ func createSubscription(db *datastore.Datastore, p *plan.Plan, req *createSubscr
 	engine.StartSubscription(sub, p)
 	if c := req.Collected; c != nil {
 		c.open(sub)
+	}
+	if !req.starts.IsZero() {
+		schedule(sub, req.starts)
 	}
 
 	if err := sub.Create(); err != nil {
@@ -499,6 +519,9 @@ func createSubscription(db *datastore.Datastore, p *plan.Plan, req *createSubscr
 		}
 		childSub.Metadata = childMeta
 		engine.StartSubscription(childSub, childPlan)
+		if !req.starts.IsZero() {
+			schedule(childSub, req.starts)
+		}
 		childSub.PlanId = childSlug // stable label; the child plan is a local snapshot, not an authority row
 		if err := childSub.Create(); err != nil {
 			log.Error("Failed to create bundled subscription %q for parent %q: %v", childSlug, req.PlanId, err)
@@ -1125,6 +1148,10 @@ type Subscription struct {
 	// Held reports that this row is the subject's one paid plan: while it stands,
 	// a second paid sale is refused (409).
 	Held bool `json:"held"`
+	// CustomerCents is the price staff agreed this subscriber pays for one seat
+	// each period, below the plan's list price (SetCustomerPrice); absent when
+	// none was.
+	CustomerCents int64 `json:"customerCents,omitempty"`
 	// NextCouponCode and NextCouponPercent are the percent off the next renewal
 	// invoice staff put on the row (SetNextCoupon); absent when none waits.
 	NextCouponCode    string `json:"nextCouponCode,omitempty"`
@@ -1212,6 +1239,7 @@ func viewSubscription(sub *subscription.Subscription) *Subscription {
 		ProviderType:         sub.ProviderType,
 		DefaultPaymentMethod: sub.DefaultPaymentMethod,
 		Held:                 holdsPlan(sub),
+		CustomerCents:        sub.CustomerCents,
 		NextCouponCode:       sub.NextCouponCode,
 		NextCouponPercent:    sub.NextCouponPercent,
 		Plan: SubscriptionPlan{

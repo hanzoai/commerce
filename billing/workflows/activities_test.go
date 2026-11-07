@@ -265,9 +265,10 @@ func TestRenewSubscriptionActivity_Succeeds(t *testing.T) {
 	}
 }
 
-// TestRenewSubscriptionActivity_PaidFromBalance proves a priced renewal collects
-// from the user's prepaid balance and marks the invoice paid.
-func TestRenewSubscriptionActivity_PaidFromBalance(t *testing.T) {
+// TestRenewSubscriptionActivity_NeverPaidFromBalance proves a priced renewal is
+// not collected from the user's prepaid balance, however much it holds: a plan's
+// period is the card's, so with no card it stays open and the row past due.
+func TestRenewSubscriptionActivity_NeverPaidFromBalance(t *testing.T) {
 	const ns = "acme"
 	_, ctx := wctx(t, ns)
 	db := seedDB(ctx)
@@ -293,19 +294,19 @@ func TestRenewSubscriptionActivity_PaidFromBalance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("renew: %v", err)
 	}
-	if !res.Success {
-		t.Fatalf("renew from balance = %+v, want success", res)
+	if res.Success {
+		t.Fatalf("renew = %+v, want it unpaid: the balance pays no plan", res)
 	}
-	if w[user] != 3000 {
-		t.Fatalf("balance after renewal = %d, want 3000", w[user])
+	if w[user] != 5000 {
+		t.Fatalf("balance after renewal = %d, want the 5000 untouched", w[user])
 	}
 
 	inv := billinginvoice.New(db)
 	if err := inv.GetById(res.InvoiceId); err != nil {
 		t.Fatalf("load invoice: %v", err)
 	}
-	if inv.Status != billinginvoice.Paid {
-		t.Fatalf("invoice status = %s, want paid", inv.Status)
+	if inv.Status != billinginvoice.Open {
+		t.Fatalf("invoice status = %s, want open", inv.Status)
 	}
 }
 

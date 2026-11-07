@@ -276,12 +276,12 @@ func TestRenewSubscription_TheExistingInvoiceDecidesTheRow(t *testing.T) {
 		}
 		return sub, inv
 	}
-	pre := &purse{balance: 100000}
+	pre := &card{}
 
 	// The owed period is paid, but the row was never moved onto it: it moves now,
 	// and nothing is drawn.
 	sub, inv := seed("renew-settle/paid", true)
-	got, res, err := RenewSubscription(context.Background(), db, sub, pre, nil)
+	got, res, err := RenewSubscription(context.Background(), db, sub, nil, pre.charge)
 	if err != nil || got.Id() != inv.Id() || !res.Success {
 		t.Fatalf("renew: inv=%v res=%+v err=%v, want the paid invoice back", got, res, err)
 	}
@@ -291,15 +291,15 @@ func TestRenewSubscription_TheExistingInvoiceDecidesTheRow(t *testing.T) {
 
 	// Unpaid: the row is past due, and nothing is drawn.
 	sub, inv = seed("renew-settle/open", false)
-	got, res, err = RenewSubscription(context.Background(), db, sub, pre, nil)
+	got, res, err = RenewSubscription(context.Background(), db, sub, nil, pre.charge)
 	if err != nil || got.Id() != inv.Id() || res.Success {
 		t.Fatalf("renew: inv=%v res=%+v err=%v, want the open invoice back, unpaid", got, res, err)
 	}
 	if sub.Status != subscription.PastDue {
 		t.Fatalf("status = %s, want past_due: an ended period with an unpaid invoice is not active", sub.Status)
 	}
-	if len(pre.draws) != 0 {
-		t.Fatalf("drew %v; an existing invoice is never charged again here", pre.draws)
+	if len(pre.charges) != 0 {
+		t.Fatalf("charged %v; an existing invoice is never charged again here", pre.charges)
 	}
 }
 
@@ -332,16 +332,16 @@ func TestRenewSubscription_BillsTheNextPeriodInAdvance(t *testing.T) {
 	}
 
 	// Mid-period nothing is owed.
-	pre := &purse{balance: 10000}
-	if inv, _, _ := RenewSubscription(context.Background(), db, sub, pre, nil); inv != nil || len(pre.draws) != 0 {
-		t.Fatalf("a renewal inside the paid period billed %v, drew %v", inv != nil, pre.draws)
+	pre := &card{}
+	if inv, _, _ := RenewSubscription(context.Background(), db, sub, nil, pre.charge); inv != nil || len(pre.charges) != 0 {
+		t.Fatalf("a renewal inside the paid period billed %v, charged %v", inv != nil, pre.charges)
 	}
 
 	// At its end, the next period is billed in full and the row moves onto it.
 	end := sub.PeriodEnd
 	sub.PeriodStart, sub.PeriodEnd = sub.PeriodStart.AddDate(0, -1, 0), time.Now().Add(-time.Minute)
 	end = sub.PeriodEnd
-	inv, res, err := RenewSubscription(context.Background(), db, sub, pre, nil)
+	inv, res, err := RenewSubscription(context.Background(), db, sub, nil, pre.charge)
 	if err != nil || !res.Success {
 		t.Fatalf("renew: %+v, %v", res, err)
 	}
@@ -371,17 +371,17 @@ func TestRenewSubscription_AMissedRowPaysOnlyThePeriodRunningNow(t *testing.T) {
 	if err := sub.Create(); err != nil {
 		t.Fatalf("create sub: %v", err)
 	}
-	pre := &purse{balance: 100000}
-	inv, res, err := RenewSubscription(context.Background(), db, sub, pre, nil)
+	pre := &card{}
+	inv, res, err := RenewSubscription(context.Background(), db, sub, nil, pre.charge)
 	if err != nil || !res.Success {
 		t.Fatalf("renew: %+v, %v", res, err)
 	}
 	now := time.Now()
-	if len(pre.draws) != 1 || pre.draws[0] != 2500 || inv.PeriodStart.After(now) || !inv.PeriodEnd.After(now) {
-		t.Fatalf("drew %v for %s..%s; want one period, the one running now", pre.draws, inv.PeriodStart, inv.PeriodEnd)
+	if len(pre.charges) != 1 || pre.charges[0] != 2500 || inv.PeriodStart.After(now) || !inv.PeriodEnd.After(now) {
+		t.Fatalf("charged %v for %s..%s; want one period, the one running now", pre.charges, inv.PeriodStart, inv.PeriodEnd)
 	}
-	if again, _, _ := RenewSubscription(context.Background(), db, sub, pre, nil); again != nil || len(pre.draws) != 1 {
-		t.Fatalf("a second renewal billed again: %v, %v", again != nil, pre.draws)
+	if again, _, _ := RenewSubscription(context.Background(), db, sub, nil, pre.charge); again != nil || len(pre.charges) != 1 {
+		t.Fatalf("a second renewal billed again: %v, %v", again != nil, pre.charges)
 	}
 }
 
@@ -459,8 +459,8 @@ func TestCreatePaidFirstInvoice_CouponIsTheFirstInvoiceOnly(t *testing.T) {
 		t.Fatalf("first invoice due=%d discount=%d %q meta=%v", first.AmountDue, first.Discount, first.DiscountName, first.Metadata)
 	}
 
-	pre := &purse{balance: 100000}
-	inv, res, err := renewAt(context.Background(), db, sub, pre, nil, sub.PeriodEnd.Add(time.Hour))
+	pre := &card{}
+	inv, res, err := renewAt(context.Background(), db, sub, nil, pre.charge, sub.PeriodEnd.Add(time.Hour))
 	if err != nil || !res.Success {
 		t.Fatalf("renew: %+v, %v", res, err)
 	}
@@ -499,8 +499,8 @@ func TestRenewSubscription_TheNextCouponIsOneRenewal(t *testing.T) {
 	db.SetNamespace("next-coupon")
 
 	sub := nextCoupon(t, db, "next-coupon/alice")
-	pre := &purse{balance: 100000}
-	inv, res, err := RenewSubscription(context.Background(), db, sub, pre, nil)
+	pre := &card{}
+	inv, res, err := RenewSubscription(context.Background(), db, sub, nil, pre.charge)
 	if err != nil || !res.Success {
 		t.Fatalf("renew: %+v, %v", res, err)
 	}
@@ -518,7 +518,7 @@ func TestRenewSubscription_TheNextCouponIsOneRenewal(t *testing.T) {
 	if err := stale.GetById(sub.Id()); err != nil || stale.NextCouponCode != "WINBACK" {
 		t.Fatalf("stored row %q, %v; want it still carrying WINBACK", stale.NextCouponCode, err)
 	}
-	again, _, err := RenewSubscription(context.Background(), db, stale, pre, nil)
+	again, _, err := RenewSubscription(context.Background(), db, stale, nil, pre.charge)
 	if err != nil || again.Id() != inv.Id() {
 		t.Fatalf("renewing the unsaved row: %v, %v; want invoice %s again", again, err, inv.Id())
 	}
@@ -527,7 +527,7 @@ func TestRenewSubscription_TheNextCouponIsOneRenewal(t *testing.T) {
 	}
 
 	stale.PeriodStart, stale.PeriodEnd = stale.PeriodStart.AddDate(0, -1, 0), time.Now().Add(-time.Second)
-	after, res, err := RenewSubscription(context.Background(), db, stale, pre, nil)
+	after, res, err := RenewSubscription(context.Background(), db, stale, nil, pre.charge)
 	if err != nil || !res.Success || after.Id() == inv.Id() {
 		t.Fatalf("the period after: %v, %+v, %v", after, res, err)
 	}
@@ -565,16 +565,16 @@ func TestRenewSubscription_AFailedRenewalKeepsTheNextCoupon(t *testing.T) {
 	if err := row.GetById(sub.Id()); err != nil {
 		t.Fatalf("read: %v", err)
 	}
-	pre := &purse{balance: 100000}
-	if inv, _, err := RenewSubscription(context.Background(), broken, row, pre, nil); err == nil {
+	pre := &card{}
+	if inv, _, err := RenewSubscription(context.Background(), broken, row, nil, pre.charge); err == nil {
 		t.Fatalf("a renewal that could not store its invoice succeeded: %v", inv)
 	}
-	if row.NextCouponCode != "WINBACK" || row.NextCouponPercent != 50 || len(pre.draws) != 0 {
-		t.Fatalf("after a failed renewal the row carries %q at %d, drew %v; want WINBACK at 50, nothing drawn",
-			row.NextCouponCode, row.NextCouponPercent, pre.draws)
+	if row.NextCouponCode != "WINBACK" || row.NextCouponPercent != 50 || len(pre.charges) != 0 {
+		t.Fatalf("after a failed renewal the row carries %q at %d, charged %v; want WINBACK at 50, nothing charged",
+			row.NextCouponCode, row.NextCouponPercent, pre.charges)
 	}
 
-	inv, res, err := RenewSubscription(context.Background(), db, row, pre, nil)
+	inv, res, err := RenewSubscription(context.Background(), db, row, nil, pre.charge)
 	if err != nil || !res.Success || inv.AmountDue != 4000 || row.NextCouponCode != "" {
 		t.Fatalf("the retry: due=%v %+v %v, row %q; want 4000 with WINBACK spent", inv, res, err, row.NextCouponCode)
 	}

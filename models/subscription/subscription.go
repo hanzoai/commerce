@@ -67,6 +67,12 @@ const (
 	PastDue  Status = "past_due"
 	Canceled Status = "canceled"
 	Unpaid   Status = "unpaid"
+	// Scheduled is a plan bought by card that starts later: when the plan the
+	// subscriber holds now, paid outside checkout, runs out. Its card is on file
+	// and nothing is charged until its start (PeriodStart, which equals PeriodEnd
+	// until then); it confers nothing before it, and the renewal that bills its
+	// first period makes it active (billing/engine.IsDue).
+	Scheduled Status = "scheduled"
 )
 
 // CountsTowardMRR reports whether a subscription in this status is recurring
@@ -164,6 +170,12 @@ type Subscription struct {
 	// Zero percent = no promo; every invoice for this subscription prices the same way.
 	DiscountPercent int    `json:"discountPercent,omitempty"`
 	DiscountName    string `json:"discountName,omitempty"`
+
+	// CustomerCents is the price staff agreed this subscriber pays for one seat of
+	// the plan each period (models/customerprice), below its list price; 0 when
+	// none was. Every invoice bills the plan at list and takes the difference off
+	// as the customer's discount, before any promo or coupon.
+	CustomerCents int64 `json:"customerCents,omitempty"`
 
 	// The plan coupon the subscription was bought with (api/promo): CouponPercent
 	// off the plan fee of each of its first CouponMonths billing cycles, counted

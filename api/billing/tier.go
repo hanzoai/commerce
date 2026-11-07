@@ -116,6 +116,11 @@ type TierView struct {
 	// multiplies — is keyed on this. A retired slug answers as its successor, the
 	// same rung every other gate reads, so a max holder reads max-5x here.
 	Plan string `json:"plan,omitempty"`
+	// PlanName is the display name of the plan Plan names ("Unlimited"), as the
+	// row that serves it holds it; "" when no row serves the subject. A plan only
+	// the plan authority knows has no catalog name to fall back on, so a reader
+	// shows this rather than the tier.
+	PlanName string `json:"planName,omitempty"`
 	// Subscription is the id of the subscription row Plan is served from, when the
 	// tier answered is the one that row confers; "" when no row serves the subject,
 	// or another of the subject's rows confers the tier.
@@ -208,9 +213,9 @@ func ReadTier(ctx context.Context, org *organization.Organization, user string) 
 	// Reading it twice is two chances to answer for two different plans in one
 	// payload.
 	served := servedSubscription(datastore.New(ctx), user, org.TestMode())
-	slug, servedID := "", ""
+	slug, servedID, planName := "", "", ""
 	if served != nil {
-		slug = subscriptionSlug(served)
+		slug, planName = subscriptionSlug(served), served.Plan.Name
 		if rowTier(served) == name {
 			servedID = served.Id()
 		}
@@ -219,6 +224,7 @@ func ReadTier(ctx context.Context, org *organization.Organization, user string) 
 	return &TierView{
 		User:         user,
 		Plan:         servedAs(slug),
+		PlanName:     planName,
 		Subscription: servedID,
 		Tier:         tierLimits(cfg, slug),
 		Balance: TierBalance{

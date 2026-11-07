@@ -1087,6 +1087,47 @@ on the row the caller persists, and restores it when no invoice was built.
 renewal whose row was not saved after its invoice cannot hand it to a second
 period. Cloud reaches it as the plane op `billing_subscription_coupon`.
 
+## A plan is paid by card; prepaid money pays usage (owner, 2026-11-07)
+
+- **Never from prepaid money.** `engine.CollectInvoice` draws credits and the
+  balance only for an invoice that bills no plan; an invoice with a
+  `SubscriptionId` (renewal, a trial's or a scheduled plan's first period, an
+  invoice-rail order) is the card's alone, and with no card it stays open and the
+  row goes past due. The sale refuses `sourceId` balance/credits/credit/prepaid
+  (`plan_needs_card`); `RecordSubscription` refuses those as processors too, and
+  any processor outside `RecordProcessors` (square, paypal, wire, ach, check,
+  crypto, comp) is `processor_unknown`. The balance record path is deleted. Rows a
+  balance or a wallet opened (`DefaultPaymentMethod "credits"`, `prepaidRenewed`)
+  go past due at their next renewal. Tests: `record_card_test.go`,
+  `engine/collector_provider_test.go TestCollectInvoice_APlanIsNeverPaidFromPrepaid`.
+- **External plans lapse.** `engine.Over` is true for a `Type External` row past its
+  period end (before, nothing ended one: it stayed active and held). The renewal
+  sweep marks it (`lapse` in cycle.go, `Renewal.Lapsed`, `RenewalRun.Lapsed`).
+- **A card plan that follows** (`schedule.go`). A card sale by a subject whose held
+  row is external or prepaid-renewed (`followed`) vaults the card, charges nothing,
+  opens the row `Status scheduled` at the held row's `PeriodEnd` (PeriodStart =
+  PeriodEnd = start), and sets the held row `EndCancel`. `IsDue` answers at the
+  start; `settle` makes it active or past due. Refused with a wallet, a starting
+  balance or a coupon; a second sale while one waits is 409. Receipt:
+  `startsAt`, `startsCents`, `follows`. A scheduled row confers nothing.
+- **Reminders** (`remind.go`). `RemindDue(ctx, now, send)` finds active external,
+  comp and prepaid-renewed rows ending within `RemindLeads` (7 days, 1 day) with no
+  scheduled successor; one claim per (row, end, lead) in `idempotencykey`
+  `billing-remind:<sub>`, released when `send` fails. The host (cloud) mails.
+- **Customer price** (`customer_price.go`, `models/customerprice`). One row per
+  (subject, plan, interval). The sale charges it, the row carries
+  `CustomerCents`, and `buildPeriodInvoice` bills the plan at list with the
+  difference as the first discount ("Customer price: $195.00/month"); no promo
+  beside it. A private plan is sold by card only to a subject with a price of it.
+  `RecordSubscription` checks a payment against it.
+- **Adjust** (`adjust.go`). `AdjustPeriod` moves an active row's end (or a scheduled
+  row's start) into the future and moves a scheduled successor with it; kept in
+  metadata `adjustments`.
+- **Comps confer their plan's tier.** `paidRow` reads a comp by `metadata.listCents`
+  (stamped at record time) or, on older comps, as paid; before, a comp of a plan
+  only the authority holds was not held (replaces refused it) and read Free.
+  `TierView.PlanName` is the served row's plan name.
+
 ## One way to give plan time — `billing.Gift` (api/billing/gift.go)
 
 Days of a plan given, never sold: a referral's free week. A subject on a paid

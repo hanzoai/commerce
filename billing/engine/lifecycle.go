@@ -176,8 +176,8 @@ func renewAt(ctx context.Context, db *datastore.Datastore, sub *subscription.Sub
 		return inv, nil, err
 	}
 
-	// Attempt collection: prepaid (credits, then the balance), then the vaulted
-	// card (chargeProvider).
+	// Attempt collection: the vaulted card (chargeProvider). A plan's period is
+	// never paid from prepaid money (CollectInvoice).
 	result, err := CollectInvoice(ctx, db, inv, prepaid, chargeProvider)
 	if err != nil {
 		return inv, result, fmt.Errorf("collection error: %w", err)
@@ -197,6 +197,16 @@ func renewAt(ctx context.Context, db *datastore.Datastore, sub *subscription.Sub
 	}
 
 	return inv, result, nil
+}
+
+// CustomerPriceLabel is how an invoice names a customer's own price: "Customer
+// price: $195.00/month".
+func CustomerPriceLabel(cents int64, interval types.Interval) string {
+	per := "month"
+	if interval == types.Yearly {
+		per = "year"
+	}
+	return fmt.Sprintf("Customer price: $%d.%02d/%s", cents/100, cents%100, per)
 }
 
 // period is one billing period, [start, end).
@@ -222,14 +232,14 @@ func owed(sub *subscription.Subscription, now time.Time) period {
 
 // IsDue reports whether a subscription has been served everything it holds and
 // is eligible to be (re)invoiced: Active or PastDue with a PeriodEnd in the past,
-// or Trialing on a card with a TrialEnd in the past. The single definition of
-// "due", shared by the billing-cycle filter and RenewSubscription's new-period
-// check.
+// Trialing on a card with a TrialEnd in the past, or Scheduled on a card whose
+// start has come. The single definition of "due", shared by the billing-cycle
+// filter and RenewSubscription's new-period check.
 //
 // An externally collected subscription is never due. Its customer pays the
 // processor directly, so an invoice built here would bill a period nobody owes us
-// for, and collecting it would burn their credits, then their balance, then a card.
-// Its next period is recorded when that payment arrives, not renewed.
+// for. Its next period is recorded when that payment arrives, not renewed, and
+// when none is it lapses at its end (Over).
 //
 // A trial with no card on it is never due either: nothing was agreed to pay for
 // the period after it, so it lapses at its end and is never invoiced.
@@ -239,7 +249,7 @@ func IsDue(sub *subscription.Subscription, now time.Time) bool {
 	}
 	switch sub.Status {
 	case subscription.Active, subscription.PastDue:
-	case subscription.Trialing:
+	case subscription.Trialing, subscription.Scheduled:
 		if sub.DefaultPaymentMethod == "" {
 			return false
 		}
@@ -375,18 +385,27 @@ func buildPeriodInvoice(db *datastore.Datastore, sub *subscription.Subscription,
 		}
 		bought = couponOf(sub, fee.start, n)
 	}
-	if inv.Subtotal > 0 && (sub.DiscountPercent > 0 || bought.Percent > 0 || renewal.Percent > 0) {
+	// The customer's own price comes first: the plan's seats bill at list and the
+	// difference is the customer's discount, every period.
+	agreed := int64(0)
+	if c := sub.CustomerCents; c > 0 && c < int64(sub.Plan.Price) {
+		agreed = (int64(sub.Plan.Price) - c) * seats(&sub.Plan, sub.Quantity)
+	}
+	if inv.Subtotal > 0 && (agreed > 0 || sub.DiscountPercent > 0 || bought.Percent > 0 || renewal.Percent > 0) {
 		planFee := int64(0)
 		for _, li := range inv.LineItems {
 			if li.Type == billinginvoice.LineSubscription {
 				planFee += li.Amount
 			}
 		}
-		sold := Discounted(planFee-full, sub.DiscountPercent)
+		sold := Discounted(planFee-full-agreed, sub.DiscountPercent)
 		kept := Discounted(sold, bought.Percent)
 		due := Discounted(kept+full, renewal.Percent)
-		names := make([]string, 0, 3)
-		if sold < planFee-full {
+		names := make([]string, 0, 4)
+		if agreed > 0 {
+			names = append(names, CustomerPriceLabel(sub.CustomerCents, sub.Plan.Interval))
+		}
+		if sold < planFee-full-agreed {
 			names = append(names, sub.DiscountName)
 		}
 		note := func(kv ...interface{}) {
@@ -513,14 +532,15 @@ func assignInvoiceNumber(db *datastore.Datastore, inv *billinginvoice.BillingInv
 	}
 }
 
-// Over reports whether a row canceled at the end of what it has been served
-// (servedTo: its period, or its trial) has reached that end. Such a row confers
-// nothing from then on, whether or not a sweep has yet marked it canceled
-// ([ended] is that mark), so a reader never serves a plan past its last day
-// because the renewal sweep has not run.
+// Over reports whether a row that does not renew has reached the end of what it
+// has been served (servedTo: its period, or its trial): one canceled at the end of
+// it, or one collected outside commerce, whose next period arrives only when its
+// payment is recorded. Such a row confers nothing from then on, whether or not a
+// sweep has yet marked it ended ([ended] is that mark), so a reader never serves a
+// plan past its last day because the renewal sweep has not run.
 func Over(sub *subscription.Subscription, now time.Time) bool {
 	end := servedTo(sub)
-	return sub.EndCancel && !end.IsZero() && !now.Before(end)
+	return (sub.EndCancel || sub.Type == subscription.External) && !end.IsZero() && !now.Before(end)
 }
 
 // ended ends a row canceled at the end of what it has been served once that is
@@ -532,7 +552,7 @@ func ended(sub *subscription.Subscription, now time.Time) bool {
 	}
 	end := servedTo(sub)
 	switch sub.Status {
-	case subscription.Active, subscription.PastDue, subscription.Trialing:
+	case subscription.Active, subscription.PastDue, subscription.Trialing, subscription.Scheduled:
 	default:
 		return false
 	}
@@ -540,6 +560,17 @@ func ended(sub *subscription.Subscription, now time.Time) bool {
 	sub.Canceled = true
 	sub.Ended = end
 	return true
+}
+
+// Lapse ends a row that does not renew once it is Over — canceled at the end of
+// its period, or collected outside commerce with no later payment recorded — and
+// voids what it still owes. It reports whether it ended the row; the caller
+// persists the row.
+func Lapse(db *datastore.Datastore, sub *subscription.Subscription, now time.Time) (bool, error) {
+	if !ended(sub, now) {
+		return false, nil
+	}
+	return true, VoidOpen(db, sub)
 }
 
 // VoidOpen voids the unpaid invoices a subscription still carries. A row that has
@@ -595,11 +626,11 @@ func voidUnpaid(db *datastore.Datastore, key datastore.Key) error {
 
 // settle moves the row by what its owed period's invoice says: paid moves it onto
 // that period and makes it active, anything else leaves it past due. Only a row
-// the cycle renews is moved — active, past due, or trialing into its first paid
-// period; a canceled one is not the engine's.
+// the cycle renews is moved — active, past due, or trialing or scheduled into its
+// first paid period; a canceled one is not the engine's.
 func settle(sub *subscription.Subscription, inv *billinginvoice.BillingInvoice) {
 	switch sub.Status {
-	case subscription.Active, subscription.PastDue, subscription.Trialing:
+	case subscription.Active, subscription.PastDue, subscription.Trialing, subscription.Scheduled:
 	default:
 		return
 	}

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -201,10 +200,10 @@ func TestSubscribeCoupon_FirstMonthHalfRenewalFull(t *testing.T) {
 
 // 50OFFBETA, the whole way: the quote says three months, the sale charges $10 and
 // grants the subscription three months from the period it sold, the first
-// invoice reads month 1 of 3, and the renewal a month later is drawn from the
-// ledger for $10 and reads month 2 of 3 — the discount recorded on its invoice
+// invoice reads month 1 of 3, and the renewal a month later is charged to the
+// card for $10 and reads month 2 of 3 — the discount recorded on its invoice
 // exactly as the first month's is.
-func TestSubscribeCoupon_ThreeMonthsOnTheLedger(t *testing.T) {
+func TestSubscribeCoupon_ThreeMonthsOnTheCard(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	warmCouponNS(t, ctx)
@@ -238,7 +237,8 @@ func TestSubscribeCoupon_ThreeMonthsOnTheLedger(t *testing.T) {
 		t.Fatalf("first invoice due %d %q", first.AmountDue, first.DiscountName)
 	}
 
-	// A month on, the renewal is paid from the org's balance on the ledger.
+	// A month on, the renewal is charged to the card, at the coupon's price, and
+	// the balance beside it is untouched: a plan is never paid from prepaid money.
 	led := newFakeLedger()
 	injectLedger(t, led)
 	if _, _, err := led.Credit(ctx, creditledger.CreditInput{Org: ledgerOrg(org), Subject: "cp-beta", Currency: "usd", AmountCents: 100000, Cash: true}); err != nil {
@@ -253,12 +253,11 @@ func TestSubscribeCoupon_ThreeMonthsOnTheLedger(t *testing.T) {
 		inv.Metadata["coupon"] != "50OFFBETA" || inv.Metadata["couponPercent"] != 50 || inv.Metadata["couponCents"] != int64(1000) {
 		t.Fatalf("month 2 due %d discount %d %q meta %v", inv.AmountDue, inv.Discount, inv.DiscountName, inv.Metadata)
 	}
-	ref := "sub:" + s.Id() + ":period:" + strconv.FormatInt(inv.PeriodStart.Unix(), 10)
-	if len(led.debits) != 1 || led.debits[0].AmountCents != 1000 || led.debits[0].Ref != ref || led.debits[0].Reason != "subscription "+ref {
-		t.Fatalf("ledger debits %+v, want one of 1000 under %s", led.debits, ref)
+	if len(led.debits) != 0 {
+		t.Fatalf("ledger debits %+v, want none: the plan's period is the card's", led.debits)
 	}
-	if m.chargeCalls != 1 {
-		t.Fatalf("the card was charged %d times, want only the sale", m.chargeCalls)
+	if m.chargeCalls != 2 || m.lastChargeAmount != 1000 {
+		t.Fatalf("the card was charged %d times, last %d; want the sale and month 2 at 1000", m.chargeCalls, m.lastChargeAmount)
 	}
 }
 

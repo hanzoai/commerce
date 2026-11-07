@@ -2,6 +2,7 @@ package billing
 
 import (
 	"testing"
+	"time"
 
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/util/test/ae"
@@ -18,7 +19,8 @@ func TestSubscription_AnotherWalletsRowIsNotFound(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	org, db := balanceSetup(t, ctx, "bal-holder", 20000)
-	got, err := RecordSubscription(ctx, org, balanceIn())
+	start := time.Now().UTC().Truncate(24 * time.Hour)
+	got, err := RecordSubscription(ctx, org, recordIn(balSubject, balSlug, balPrice, start, start.AddDate(0, 1, 0)))
 	if err != nil {
 		t.Fatalf("record: %v", err)
 	}
