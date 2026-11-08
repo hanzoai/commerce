@@ -148,11 +148,11 @@ func TestSeedApiRouteAgreesWithApiPath(t *testing.T) {
 	}
 }
 
-// billedRetail is what an Enso SKU is CHARGED, per MTok, as the model API sets
-// it: hanzoai/ai controllers/rates.go ensoPrices, each paid SKU at one fixed
-// price, 2 to 3 times the list price of the upstream its route typically answers
-// on (owner, 2026-10-15). enso is the router over the three tiers, billed at the
-// tier that answers and listed at a request's that states no depth: enso-flash's.
+// billedRetail is what an Enso model is CHARGED, per MTok, as the model API sets
+// it: hanzoai/ai controllers/rates.go ensoPrices, each paid tier at one fixed
+// price. enso is the router over the four tiers, billed at the tier that answers
+// and listed at a request's that states no depth: enso-flash's. These five are
+// every Enso model served, listed and sold; none is free.
 //
 // This table is the SECOND WITNESS to the seed, and that is its whole job. The
 // bug it exists to stop is not a typo — it is someone changing the published
@@ -165,12 +165,11 @@ func TestSeedApiRouteAgreesWithApiPath(t *testing.T) {
 // never from a figure an earlier price list carried (20/60, 2/6, 40/120, 4/20,
 // 2/4, 5/25).
 var billedRetail = map[string]struct{ in, out, read, write string }{
-	"enso":        {"0.33", "1.65", "0.033", "0.4125"},
-	"enso-flash":  {"0.33", "1.65", "0.033", "0.4125"},
-	"enso-pro":    {"4.40", "22.00", "0.22", "5.50"},
-	"enso-ultra":  {"5.50", "27.50", "0.275", "6.875"},
-	"enso-vl":     {"2.28", "9.60", "", ""},
-	"enso-vl-pro": {"9.00", "45.00", "", ""},
+	"enso":       {"0.33", "1.65", "0.033", "0.4125"},
+	"enso-flash": {"0.33", "1.65", "0.033", "0.4125"},
+	"enso-pro":   {"3.30", "16.50", "0.165", "4.125"},
+	"enso-max":   {"4.30", "21.50", "0.215", "5.375"},
+	"enso-ultra": {"5.236", "26.18", "0.2618", "6.545"},
 }
 
 func TestEnsoSeedPublishesTheBilledPrice(t *testing.T) {
@@ -242,22 +241,27 @@ func TestEnsoSeedNeverPublishesAnUnpricedModel(t *testing.T) {
 	}
 }
 
-// The vision engines are reached only through the family's vision_fallback and
-// are marked "NEVER listed SKUs" in the billing catalog. Seeding them published
-// would put two internal engines on the public price list.
-func TestEnsoSeedKeepsTheVisionEnginesUnlisted(t *testing.T) {
+// The seed is the five Enso models in their listed order, every one published:
+// the router, then Flash, Pro, Max and Ultra, Max sitting between Pro and Ultra.
+// A free, vision or unlisted Enso row is not one of them.
+func TestEnsoSeedListsTheFiveModelsInOrder(t *testing.T) {
 	rows, err := EnsoSeedRows()
 	if err != nil {
 		t.Fatalf("EnsoSeedRows: %v", err)
 	}
-	internal := map[string]bool{"enso-vl": true, "enso-vl-pro": true}
-	for _, r := range rows {
-		if internal[r.Slug] && r.Published {
-			t.Errorf("%s is seeded published — it is an internal vision engine, never a listed SKU", r.Slug)
+	want := []string{"enso", "enso-flash", "enso-pro", "enso-max", "enso-ultra"}
+	got := make([]string, 0, len(rows))
+	for i, r := range rows {
+		got = append(got, r.Slug)
+		if !r.Published {
+			t.Errorf("%s is seeded unpublished — every Enso model is listed", r.Slug)
 		}
-		if !internal[r.Slug] && !r.Published {
-			t.Errorf("%s is seeded unpublished — the four public SKUs must be listed for discovery", r.Slug)
+		if i > 0 && r.Order <= rows[i-1].Order {
+			t.Errorf("%s has order %d, not after %s's %d", r.Slug, r.Order, rows[i-1].Slug, rows[i-1].Order)
 		}
+	}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("seed lists %v, want %v", got, want)
 	}
 }
 
@@ -289,7 +293,7 @@ func TestEnsoSeedIsNotBlockedByAForeignRow(t *testing.T) {
 	if created == 0 {
 		t.Fatal("a foreign enso row blocked the seed — the paid tiers would never exist")
 	}
-	for _, slug := range []string{"enso", "enso-flash", "enso-ultra"} {
+	for slug := range billedRetail {
 		e := New(db)
 		ok, qerr := e.Query().Filter("Slug=", slug).Get()
 		if qerr != nil {
@@ -331,9 +335,10 @@ func TestEnsoSeedRespectsCuration(t *testing.T) {
 }
 
 // A row born at an old price keeps it forever unless something reads the seed
-// back over it: production's Enso rows were seeded at 4/20, 2/4 and 5/25 and the
-// model API bills neither. Reprice moves the price and nothing else, adds a class
-// the row lacks, leaves a row the seed does not name, and twice is once.
+// back over it: production's Enso rows were seeded at 4/20 and 2/4, and Pro and
+// Ultra listed at 4.40/22.00 and 5.50/27.50 before the five-model lineup, and the
+// model API bills none of them. Reprice moves the price and nothing else, adds a
+// class the row lacks, leaves a row the seed does not name, and twice is once.
 func TestRepriceMovesTheEnsoPriceAndNothingElse(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
@@ -344,7 +349,7 @@ func TestRepriceMovesTheEnsoPriceAndNothingElse(t *testing.T) {
 	}
 	// Age the store the way production aged: the rows hold the old prices beside a
 	// cost a sync wrote, and a human has renamed one.
-	old := map[string][2]string{"enso": {"4.00", "20.00"}, "enso-flash": {"2.00", "4.00"}, "enso-ultra": {"5.00", "25.00"}}
+	old := map[string][2]string{"enso": {"4.00", "20.00"}, "enso-flash": {"2.00", "4.00"}, "enso-pro": {"4.40", "22.00"}, "enso-ultra": {"5.50", "27.50"}}
 	for slug, p := range old {
 		e := New(db)
 		if ok, err := e.Query().Filter("Slug=", slug).Get(); err != nil || !ok {
