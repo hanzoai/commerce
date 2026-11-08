@@ -75,9 +75,10 @@ type ProviderCharger func(ctx context.Context, db *datastore.Datastore, inv *bil
 //
 // A PLAN IS NEVER PAID FROM PREPAID MONEY. Credits and the balance are bought or
 // granted for usage; an invoice that bills a subscription's period (SubscriptionId
-// set: a renewal, a trial's first paid period, a plan ordered by invoice) is
-// collected from the card on file alone, and with no card it stays open and the
-// row goes past due. Only an invoice that bills no plan draws prepaid money.
+// set: a renewal, a trial's first paid period; or a subscription line: a plan
+// ordered by invoice, which has no SubscriptionId until it settles) is collected
+// from the card on file alone, and with no card it stays open and the row goes
+// past due. Only an invoice that bills no plan draws prepaid money.
 //
 // IT IS ALL OR NOTHING AGAINST THE PREPAID MONEY. The allocation is read first
 // and the card, the one leg that can refuse for reasons of its own, is charged
@@ -93,7 +94,7 @@ func CollectInvoice(ctx context.Context, db *datastore.Datastore, inv *billingin
 		return nil, fmt.Errorf("invoice must be open to collect, current status: %s", inv.Status)
 	}
 
-	if inv.SubscriptionId != "" {
+	if billsPlan(inv) {
 		prepaid = nil
 	}
 	result := &CollectionResult{}
@@ -182,6 +183,21 @@ func CollectInvoice(ctx context.Context, db *datastore.Datastore, inv *billingin
 		return result, err
 	}
 	return result, nil
+}
+
+// billsPlan reports whether an invoice charges for a plan: it belongs to a
+// subscription, or any of its lines is a subscription line. An order invoice
+// carries the line and no SubscriptionId until it settles.
+func billsPlan(inv *billinginvoice.BillingInvoice) bool {
+	if inv.SubscriptionId != "" {
+		return true
+	}
+	for _, li := range inv.LineItems {
+		if li.Type == billinginvoice.LineSubscription {
+			return true
+		}
+	}
+	return false
 }
 
 // unpaid records an attempt that moved no money and says what is still owed.

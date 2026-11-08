@@ -191,6 +191,50 @@ func TestCollectInvoice_APlanIsNeverPaidFromPrepaid(t *testing.T) {
 	}
 }
 
+// TestCollectInvoice_AnOrderInvoiceIsNeverPaidFromPrepaid: a plan ordered by
+// invoice has a subscription line and no SubscriptionId until it settles. The
+// line alone keeps credits and the balance out of it, and a one-off or usage
+// invoice with no such line still draws them.
+func TestCollectInvoice_AnOrderInvoiceIsNeverPaidFromPrepaid(t *testing.T) {
+	open := func(id string, lines ...billinginvoice.LineItem) *billinginvoice.BillingInvoice {
+		inv := &billinginvoice.BillingInvoice{}
+		inv.Status = billinginvoice.Open
+		inv.AmountDue = 2500
+		inv.UserId = "u_order"
+		inv.Id_ = id
+		inv.LineItems = lines
+		return inv
+	}
+	plan := billinginvoice.LineItem{Id: "li_plan_pro", Type: billinginvoice.LineSubscription, Amount: 2000}
+	extra := billinginvoice.LineItem{Id: "li_balance", Type: billinginvoice.LineOneOff, Amount: 500}
+
+	pre := &purse{credit: 1000, balance: 5000}
+	bare := open("inv_order_bare", plan, extra)
+	result, err := CollectInvoice(context.Background(), nil, bare, pre, nil)
+	if err != nil || result.Success || bare.Status != billinginvoice.Open {
+		t.Fatalf("result=%+v err=%v status=%s, want unpaid and open", result, err, bare.Status)
+	}
+	if pre.credit != 1000 || pre.balance != 5000 || len(pre.draws) != 0 || bare.AmountPaid != 0 {
+		t.Fatalf("prepaid left %d/%d draws %v, paid %d; want nothing drawn for an order", pre.credit, pre.balance, pre.draws, bare.AmountPaid)
+	}
+
+	pay := &card{}
+	carded := open("inv_order_card", plan, extra)
+	result, err = CollectInvoice(context.Background(), nil, carded, pre, pay.charge)
+	if err != nil || !result.Success || carded.PaymentMethod != "card" {
+		t.Fatalf("result=%+v err=%v method=%q, want the card to pay it", result, err, carded.PaymentMethod)
+	}
+	if len(pay.charges) != 1 || pay.charges[0] != 2500 || len(pre.draws) != 0 {
+		t.Fatalf("card charged %v, draws %v; want the card charged 2500 and no draw", pay.charges, pre.draws)
+	}
+
+	usage := open("inv_usage_only", billinginvoice.LineItem{Id: "li_use", Type: billinginvoice.LineUsage, Amount: 2500})
+	result, err = CollectInvoice(context.Background(), nil, usage, pre, nil)
+	if err != nil || !result.Success || result.CreditUsed+result.BalanceUsed != 2500 {
+		t.Fatalf("result=%+v err=%v, want a usage invoice paid from prepaid money", result, err)
+	}
+}
+
 // TestCollectInvoice_DeclineLeavesPrepaidUntouched: prepaid money covers part of
 // the invoice and the card is asked for the rest. The card declines, and the
 // credits and the balance are exactly where they were — a failed collection
