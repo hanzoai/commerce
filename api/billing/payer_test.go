@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/hanzoai/commerce/billing/creditledger"
 	"github.com/hanzoai/commerce/datastore"
@@ -319,39 +318,6 @@ func TestAPersonalPurchaseArmsThePersonsRule(t *testing.T) {
 	}
 	if c := loadAutoRecharge(datastore.New(org.Namespaced(ctx)), "hanzo"); c != nil {
 		t.Fatalf("a person's purchase armed the org's own account: %+v", c)
-	}
-}
-
-// A plan paid from the balance arms the rule when a card is on file, and tells the
-// buyer it needs one when none is.
-func TestABalancePurchaseArmsWhenACardIsOnFile(t *testing.T) {
-	for _, card := range []bool{false, true} {
-		ctx := ae.NewContext()
-		reloadPlan(t, ctx, "ultra", 19500, nil, ultraReload)
-		name := "arm-balance"
-		if card {
-			name = "arm-balance-card"
-		}
-		org := moneyOrg(name)
-		db := datastore.New(org.Namespaced(ctx))
-		seedCredit(db, name, 19500, "topup", time.Time{})
-		if card {
-			seedSavedCard(t, db, name, "ccof_b", "cust_b")
-		}
-		withFakeSquare(t, squareMock("", "", ""))
-
-		out := subscribeAs(t, ctx, org, `{"sourceId":"balance","planId":"ultra"}`, nil)
-		want := needsCard
-		if card {
-			want = armed
-		}
-		if got := reloadState(out); got != want {
-			t.Errorf("card on file %v: receipt reload state %q, want %q", card, got, want)
-		}
-		if got := armedAt(t, ctx, org, name); got != card {
-			t.Errorf("card on file %v: rule armed %v", card, got)
-		}
-		ctx.Close()
 	}
 }
 

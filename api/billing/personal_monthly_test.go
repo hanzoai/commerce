@@ -70,7 +70,7 @@ func TestAYearOfAPersonalPlanIsRefused(t *testing.T) {
 		invokeSub(org, ctx, c1MintPrincipal, CreateBillingSubscription, `{"userId":"monthly","planId":"dev","interval":"year"}`))
 
 	start := time.Now().Add(-time.Hour)
-	for _, processor := range []string{"wire", processorBalance} {
+	for _, processor := range []string{"wire", "square"} {
 		_, err := RecordSubscription(ctx, org, RecordIn{
 			Subject: "monthly", PlanID: "dev", Interval: types.Yearly, PriceCents: int64(lookupPlan("dev").AnnualTotal),
 			PeriodStart: start, PeriodEnd: start.AddDate(1, 0, 0), Processor: processor,

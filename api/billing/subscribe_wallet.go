@@ -3,10 +3,12 @@ package billing
 // A plan bought with a wallet: Apple Pay, Google Pay or Cash App Pay.
 //
 // A wallet's token is single-use and Square keeps none on file, so the wallet
-// pays the FIRST period itself and every renewal is drawn from the prepaid
-// balance — the subscription is opened exactly as one paid from the balance is
-// (ProviderType "credit", DefaultPaymentMethod "credits"), with its first invoice
-// paid by the wallet's Square payment rather than by a draw.
+// pays the FIRST period itself and keeps nothing a renewal could charge. A plan's
+// period is never paid from prepaid money (engine.CollectInvoice), so the row
+// (ProviderType "credit", DefaultPaymentMethod "credits") goes past due at its
+// end unless its subscriber subscribes by card before then: they are reminded a
+// week and a day before (RemindDue), and a card sale made meanwhile starts at that
+// end (scheduleSale).
 //
 // THE PAYMENT IS AUTHORIZED BEFORE IT IS TAKEN. An authorization is what names
 // the card behind an Apple Pay or Google Pay token (its fingerprint, brand, last
@@ -142,6 +144,7 @@ type walletTerms struct {
 	couponPlans  []string // the plan slugs the coupon covers, granted with it
 	promoPercent int
 	promoName    string
+	customer     int64 // the price staff agreed for one seat each period; 0 for none
 	sourceID     string
 	guard        string
 	rec          *idempotencykey.IdempotencyKey
@@ -338,6 +341,7 @@ func walletSale(ctx context.Context, db *datastore.Datastore, org *organization.
 	// Stamped before the invoice is built, which prices the promo and the coupon
 	// off the row.
 	sub.DiscountPercent, sub.DiscountName = t.promoPercent, t.promoName
+	sub.CustomerCents = t.customer
 	engine.Grant(sub, t.coupon, t.couponPlans, sub.PeriodStart)
 	// The paid first invoice is what makes a balance-renewed plan payment-backed,
 	// so it is written twice before it is given up on, and then reconciled.

@@ -94,12 +94,11 @@ func RunBillingCycleAllOrgs(c *zip.Ctx) error {
 	return c.JSON(200, run)
 }
 
-// Renewal is what renewing one due subscription did. AmountCents is what the
-// card was charged for it, in minor units of Currency: the part of the invoice
-// that is new money. A period paid from credits or from a balance a top-up
-// already bought is zero here, so a caller stating renewals as sales never
-// counts money twice or counts a grant as a sale. Test is the row's mode: a
-// sandbox renewal is no sale.
+// Renewal is what renewing one due subscription did, or that a plan which does not
+// renew ended (Lapsed). AmountCents is what the card was charged for it, in minor
+// units of Currency. A plan's period is paid by its card alone, so this is the
+// whole of what the invoice collected. Test is the row's mode: a sandbox renewal
+// is no sale.
 type Renewal struct {
 	OrgName        string `json:"orgName"`
 	UserId         string `json:"userId"`
@@ -110,21 +109,27 @@ type Renewal struct {
 	Test           bool   `json:"test,omitempty"`
 	Success        bool   `json:"success"`
 	Error          string `json:"error,omitempty"`
+	// Lapsed says this row was not renewed but ended: a plan collected outside
+	// commerce whose period ran out with no later payment recorded.
+	Lapsed bool `json:"lapsed,omitempty"`
 }
 
 // RenewalRun is one sweep: how many organizations were considered, how many
-// subscriptions were due, and what renewing each one did.
+// subscriptions were due, how many of those renewed, how many plans collected
+// outside commerce lapsed, and what each one did.
 type RenewalRun struct {
 	Orgs    int       `json:"orgs"`
 	Due     int       `json:"due"`
 	Renewed int       `json:"renewed"`
+	Lapsed  int       `json:"lapsed"`
 	Results []Renewal `json:"results"`
 }
 
 // RenewDue renews every due subscription in every organization: it invoices the
-// period that ended and collects it through the one waterfall — prepaid money
-// first, the card on file for the rest — moving the row on when it is paid and
-// leaving it past due when it is not.
+// period that ended and charges it to the card on file — never to prepaid money,
+// which pays for usage — moving the row on when it is paid and leaving it past
+// due when it is not. A plan collected outside commerce whose period ran out with
+// no later payment recorded is ended.
 //
 // It takes values because the caller is a SCHEDULE, not a person. A failure to
 // collect one subscription is that subscription's result, not the sweep's: the
@@ -137,9 +142,14 @@ func RenewDue(ctx context.Context) (*RenewalRun, error) {
 	run := &RenewalRun{Orgs: len(orgs), Results: make([]Renewal, 0)}
 	for _, org := range orgs {
 		for _, r := range renewDue(ctx, org, "") {
-			run.Due++
-			if r.Success {
+			switch {
+			case r.Lapsed:
+				run.Lapsed++
+			case r.Success:
+				run.Due++
 				run.Renewed++
+			default:
+				run.Due++
 			}
 			run.Results = append(run.Results, r)
 		}
@@ -189,12 +199,45 @@ func renewDue(ctx context.Context, org *organization.Organization, user string) 
 		// A row renews from the books of its own mode, and the org's prepaid money
 		// is the org's mode: a sandbox row is never paid from live money, nor a
 		// live row from sandbox money.
-		if sub.Test != org.TestMode() || !engine.IsDue(sub, now) {
+		if sub.Test != org.TestMode() {
+			continue
+		}
+		if !engine.IsDue(sub, now) {
+			if r, ok := lapse(db, org, sub, now); ok {
+				out = append(out, r)
+			}
 			continue
 		}
 		out = append(out, renewOne(ctx, db, org, sub, pre, charge))
 	}
 	return out
+}
+
+// lapse ends a plan collected outside commerce once its period is over with no
+// later payment recorded (engine.Over). Readers already serve it nothing from that
+// end; this is the mark, so its row says it ended. Any other row is left alone.
+func lapse(db *datastore.Datastore, org *organization.Organization, sub *subscription.Subscription, now time.Time) (Renewal, bool) {
+	if sub.Type != subscription.External || sub.Status != subscription.Active || !engine.Over(sub, now) {
+		return Renewal{}, false
+	}
+	r := Renewal{OrgName: org.Name, UserId: sub.UserId, SubscriptionId: sub.Id(), Test: sub.Test, Lapsed: true}
+	row := subscription.New(db)
+	if err := row.GetById(sub.Id()); err != nil {
+		r.Error = err.Error()
+		return r, true
+	}
+	ended, err := engine.Lapse(db, row, now)
+	if err != nil {
+		log.Error("Billing cycle: subscription %s lapsed and its open invoices were not voided: %v", row.Id(), err)
+	}
+	if !ended {
+		return Renewal{}, false
+	}
+	if err := row.Update(); err != nil {
+		log.Error("Billing cycle: failed to end lapsed subscription %s: %v", row.Id(), err)
+		r.Error = err.Error()
+	}
+	return r, true
 }
 
 // renewOne invoices and collects one subscription's due period, then persists

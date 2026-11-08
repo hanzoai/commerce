@@ -111,15 +111,15 @@ func TestCollectInvoice_ProviderCharger_DeclineLeavesOpen(t *testing.T) {
 	}
 }
 
-// TestCollectInvoice_CreditsCoverFully_NoProviderCharge proves the waterfall order:
-// when credits settle the invoice, the vaulted card is NEVER charged.
+// TestCollectInvoice_CreditsCoverFully_NoProviderCharge proves the waterfall order
+// for an invoice that bills no plan: when credits settle it, the vaulted card is
+// NEVER charged.
 func TestCollectInvoice_CreditsCoverFully_NoProviderCharge(t *testing.T) {
 	inv := &billinginvoice.BillingInvoice{}
 	inv.Status = billinginvoice.Open
 	inv.AmountDue = 1000
 	inv.UserId = "u_credit_first"
 	inv.Id_ = "inv_u_credit_first" // every invoice the collector sees is stored
-	inv.SubscriptionId = "sub_credit_first"
 
 	pre := &purse{credit: 1000}
 	cardCalls := 0
@@ -143,6 +143,51 @@ func TestCollectInvoice_CreditsCoverFully_NoProviderCharge(t *testing.T) {
 	}
 	if result.CreditUsed != 1000 {
 		t.Fatalf("CreditUsed = %d, want 1000", result.CreditUsed)
+	}
+}
+
+// TestCollectInvoice_APlanIsNeverPaidFromPrepaid: an invoice that bills a
+// subscription's period is the card's alone. Credits and a balance that would
+// cover it all are not touched: the card is charged the whole amount, and with no
+// card the invoice stays open and prepaid money stays where it was.
+func TestCollectInvoice_APlanIsNeverPaidFromPrepaid(t *testing.T) {
+	open := func(id string) *billinginvoice.BillingInvoice {
+		inv := &billinginvoice.BillingInvoice{}
+		inv.Status = billinginvoice.Open
+		inv.AmountDue = 2500
+		inv.UserId = "u_plan"
+		inv.Id_ = id
+		inv.SubscriptionId = "sub_plan"
+		return inv
+	}
+	pre := &purse{credit: 1000, balance: 5000}
+	pay := &card{}
+	inv := open("inv_plan_card")
+	result, err := CollectInvoice(context.Background(), nil, inv, pre, pay.charge)
+	if err != nil || !result.Success {
+		t.Fatalf("result=%+v err=%v, want the card to pay it", result, err)
+	}
+	if len(pay.charges) != 1 || pay.charges[0] != 2500 || result.CreditUsed != 0 || result.BalanceUsed != 0 {
+		t.Fatalf("card charged %v, credit %d, balance %d; want the card charged 2500 and no prepaid money used",
+			pay.charges, result.CreditUsed, result.BalanceUsed)
+	}
+	if inv.PaymentMethod != "card" || pre.credit != 1000 || pre.balance != 5000 || len(pre.draws) != 0 {
+		t.Fatalf("paid by %q, prepaid left %d/%d draws %v; want card, and prepaid untouched", inv.PaymentMethod, pre.credit, pre.balance, pre.draws)
+	}
+
+	// No card on file: the plan's period is not paid from the balance instead.
+	bare := open("inv_plan_bare")
+	result, err = CollectInvoice(context.Background(), nil, bare, pre, nil)
+	if err != nil || result.Success || bare.Status != billinginvoice.Open {
+		t.Fatalf("result=%+v err=%v status=%s, want unpaid and open", result, err, bare.Status)
+	}
+	if pre.credit != 1000 || pre.balance != 5000 || len(pre.draws) != 0 || bare.AmountPaid != 0 {
+		t.Fatalf("prepaid left %d/%d draws %v, paid %d; want nothing drawn for a plan", pre.credit, pre.balance, pre.draws, bare.AmountPaid)
+	}
+	declined := open("inv_plan_declined")
+	result, err = CollectInvoice(context.Background(), nil, declined, pre, (&card{decline: true}).charge)
+	if err != nil || result.Success || len(pre.draws) != 0 {
+		t.Fatalf("a declined card: result=%+v err=%v draws %v; want unpaid with nothing drawn", result, err, pre.draws)
 	}
 }
 
@@ -217,6 +262,21 @@ func TestCollectInvoice_PrepaidAndCard(t *testing.T) {
 
 // purse is a Prepaid holding credit and balance in memory. Draw is all or
 // nothing, credits first, exactly as the real one is.
+// card is a card on file: it takes every charge it is asked for, unless it
+// declines.
+type card struct {
+	decline bool
+	charges []int64
+}
+
+func (c *card) charge(_ context.Context, _ *datastore.Datastore, _ *billinginvoice.BillingInvoice, amount int64) (string, error) {
+	if c.decline {
+		return "", fmt.Errorf("card declined")
+	}
+	c.charges = append(c.charges, amount)
+	return fmt.Sprintf("sq_%d", len(c.charges)), nil
+}
+
 type purse struct {
 	credit, balance int64
 	readErr         error
@@ -255,15 +315,15 @@ func (halfPrepaid) Draw(_ context.Context, _ string, _ currency.Type, amount int
 	return Drawn{Credit: amount}, nil
 }
 
-// A renewal the card paid only part of — prepaid credit took the rest — is settled
-// "mixed", never "card": only a period a card paid in full reads as the customer's
-// own money.
+// An invoice for no plan the card paid only part of — prepaid credit took the rest
+// — is settled "mixed", never "card": only money a card paid in full reads as the
+// customer's own.
 func TestCollectInvoice_CreditBesideACardIsMixed(t *testing.T) {
 	inv := &billinginvoice.BillingInvoice{}
 	inv.Status = billinginvoice.Open
 	inv.AmountDue = 2000
 	inv.UserId = "u_mix"
-	inv.SubscriptionId = "sub_mix"
+	inv.Id_ = "inv_u_mix"
 	charger := ProviderCharger(func(context.Context, *datastore.Datastore, *billinginvoice.BillingInvoice, int64) (string, error) {
 		return "sqpay_mix", nil
 	})

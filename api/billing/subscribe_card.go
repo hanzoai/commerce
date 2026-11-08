@@ -165,8 +165,9 @@ type SubscribeIn struct {
 	// charged — it never silently sells at full price.
 	Coupon string
 	// Wallet says SourceID is a wallet's single-use token: the first period is
-	// authorized on it, captured once any coupon's use is reserved against the
-	// card behind it, and every renewal is drawn from the prepaid balance.
+	// authorized on it and captured once any coupon's use is reserved against the
+	// card behind it. A wallet keeps no card, so its plan renews only once a card
+	// plan is bought to follow it.
 	Wallet bool
 	// Provider names the explicit wallet processor ("square" or "paypal"); empty
 	// defaults to Square.
@@ -251,6 +252,17 @@ type Sale struct {
 	// seats, less any promotion — collected as every renewal is. Absent when the
 	// sale charged today.
 	TrialEndCents int64 `json:"trialEndCents,omitempty"`
+	// StartsAt is when the plan this sale bought starts and its card is first
+	// charged: the end of the plan the account held, paid outside checkout or from
+	// the balance (Follows). Absent when the sale charged today.
+	StartsAt *time.Time `json:"startsAt,omitempty"`
+	// StartsCents is what the first period costs at StartsAt — price x seats, less
+	// any promotion — collected as every renewal is. Absent when the sale charged
+	// today.
+	StartsCents int64 `json:"startsCents,omitempty"`
+	// Follows is the subscription the account held that this sale's plan follows:
+	// it ends at StartsAt, as it was going to. Absent when the sale charged today.
+	Follows string `json:"follows,omitempty"`
 	// Currency is the ISO code, the plan's own.
 	Currency string `json:"currency"`
 	// Status is "ok" on a settled sale. A failure is an error, never a status.
@@ -297,7 +309,9 @@ func (e saleRefusal) Error() string { return e.msg }
 // Refusal is a sale refusal that also names which one it is, as a Code a page
 // acts on instead of the sentence: "seats_out_of_range", "balance_out_of_range",
 // "org_required", "not_sold_by_invoice", "plan_held", "invoice_open",
-// "order_placing", "key_reused", "wire_not_configured". Open is the invoice an
+// "order_placing", "key_reused", "wire_not_configured", "plan_needs_card" (a plan
+// asked of prepaid money), "processor_unknown" (a record naming no processor of
+// RecordProcessors). Open is the invoice an
 // "invoice_open" refusal names, with a new link to it. Every IsSale check reads
 // the refusal it carries.
 type Refusal struct {
@@ -460,10 +474,15 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	sourceID := strings.TrimSpace(in.SourceID)
 	methodID := strings.TrimSpace(in.MethodID)
 	planID := strings.TrimSpace(in.PlanID)
-	if (sourceID == "") == (methodID == "") && sourceID != "credits" && sourceID != "balance" {
+	if prepaidSource(sourceID) {
+		// A plan is never bought from prepaid money: credits and the balance pay for
+		// usage, and a plan is billed to a card every period.
+		return nil, coded(saleRefused, "plan_needs_card", "a plan is bought with a card: prepaid credit and the balance pay for usage only")
+	}
+	if (sourceID == "") == (methodID == "") {
 		return nil, saleRefusal{saleRefused, "send exactly one of sourceId (a new card) or paymentMethodId (a saved card)"}
 	}
-	if in.Wallet && (sourceID == "" || sourceID == "credits" || sourceID == "balance") {
+	if in.Wallet && sourceID == "" {
 		return nil, saleRefusal{saleRefused, "a wallet pays with the token it minted: send it as sourceId"}
 	}
 	if planID == "" {
@@ -490,6 +509,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	p, planID, cur, lines, qty := q.plan, q.slug, q.cur, q.lines, q.qty
 	bal, seatMult, seats, chargeCents := q.balance, q.seatMult, q.seats, q.charge
 	promoPercent, promoName := q.promoPercent, q.promoName
+	customer := q.customer
 
 	// A coupon's request shape is checked here, before anything is held. Whether
 	// the coupon stands, covers this plan and is still this org's to redeem is
@@ -503,9 +523,6 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		switch {
 		case couponCode == "":
 			return nil, saleRefusal{saleRefused, "coupon is not valid"}
-		case sourceID == "credits" || sourceID == "balance":
-			// One use per card is half the rule, and prepaid money has no card.
-			return nil, saleRefusal{saleRefused, "a coupon is redeemed with a card: send sourceId or paymentMethodId"}
 		case !engine.BillsMonthly(p):
 			return nil, saleRefusal{saleRefused,
 				fmt.Sprintf("coupon %s takes a percent off monthly periods, so it applies to monthly billing only", couponCode)}
@@ -644,7 +661,40 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// must replay that receipt — asking first would answer a conflict to the customer
 	// whose payment actually went through.
 	held := billingSubscription(db, in.Subject, org.TestMode())
-	if held != nil {
+	// A card plan already waiting to start is this subject's next plan, so a second
+	// one is refused as a second paid plan is.
+	if waiting := scheduledFor(db, in.Subject, org.TestMode()); waiting != nil {
+		abandon()
+		return nil, saleRefusal{saleHeld, fmt.Sprintf(
+			"this account's %q plan already starts by card on %s (subscription %s); cancel it to buy another",
+			subscriptionSlug(waiting), waiting.PeriodStart.UTC().Format(time.DateOnly), waiting.Id())}
+	}
+	// A plan paid outside checkout, or one the balance used to renew, does not renew
+	// by card. Bought by card while it runs, the card plan starts when it ends, so
+	// nothing is paid twice: the card is kept now and charged at that start.
+	starts := time.Time{}
+	if held != nil && followed(held) {
+		starts = held.PeriodEnd
+	}
+	switch {
+	case starts.IsZero():
+	case in.Wallet:
+		abandon()
+		return nil, saleRefusal{saleRefused, fmt.Sprintf(
+			"this account's plan runs to %s, and a plan that starts then is charged to a card on file: a wallet keeps none, so pay with a card",
+			starts.UTC().Format(time.DateOnly))}
+	case bal > 0:
+		abandon()
+		return nil, coded(saleRefused, "balance_out_of_range", fmt.Sprintf(
+			"this account's plan runs to %s and the card plan starts then, charging nothing today, so it takes no starting balance",
+			starts.UTC().Format(time.DateOnly)))
+	case couponCode != "":
+		abandon()
+		return nil, saleRefusal{saleRefused, fmt.Sprintf(
+			"this account's plan runs to %s and the card plan starts then, charging nothing today; a coupon is redeemed on a charge made today",
+			starts.UTC().Format(time.DateOnly))}
+	}
+	if held != nil && starts.IsZero() {
 		heldSlug := held.Plan.Slug
 		if heldSlug == "" {
 			heldSlug = held.PlanId
@@ -704,87 +754,11 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		replaced = held.Id()
 	}
 
-	if sourceID == "credits" || sourceID == "balance" {
-		// The first period is paid from prepaid money, all or nothing, before the
-		// row exists. Every subject pays this way or by card, our own orgs included.
-		drawn, err := prepaidFor(ctx, org).Draw(ctx, in.Subject, cur, chargeCents, "subscribe:"+in.Subject+":"+guard)
-		switch {
-		case err == nil:
-		case errors.Is(err, errShort):
-			abandon()
-			return nil, saleRefusal{saleDeclined, fmt.Sprintf("insufficient credits/balance to subscribe to %s: %v", p.Name, err)}
-		default:
-			abandon()
-			return nil, err
-		}
-
-		sub, inv, err := openPaid(db, p, &createSubscriptionRequest{
-			UserId:               in.Subject,
-			PlanId:               planID,
-			StoreId:              in.StoreID,
-			DefaultPaymentMethod: "credits",
-			Quantity:             qty,
-			Metadata:             map[string]interface{}{"source": "subscribe/credits"},
-			Test:                 org.TestMode(),
-			priced:               lines,
-		}, promoPercent, promoName, drawn)
-		if err != nil {
-			// The money moved and no subscription holds it. Leave the guard
-			// STARTED so a retry replays rather than drawing again.
-			uncredited(ctx, in.Events, org.Name, in.Subject, drawn.Ref,
-				"the first period was drawn from prepaid money and no subscription was opened: "+err.Error(),
-				chargeCents, false)
-			return nil, err
-		}
-
-		invoiceID := ""
-		if inv != nil {
-			invoiceID = inv.Id()
-		}
-		sale := &Sale{
-			SubscriptionID:  sub.Id(),
-			InvoiceID:       invoiceID,
-			PlanID:          planID,
-			Level:           in.Level,
-			Interval:        p.Interval,
-			PaymentMethodID: "credits",
-			AmountCents:     chargeCents,
-			Seats:           seats,
-			Category:        p.Category,
-			Replaced:        replaced,
-			Currency:        string(cur),
-			Status:          "ok",
-		}
-		// Paid from the balance, the reload a plan states still charges the buyer's
-		// card on file, so it switches on when there is one (armForPlan).
-		sale.Reload = armSale(ctx, org, in, planID, cur)
-		if rec != nil {
-			if body, mErr := json.Marshal(sale); mErr == nil {
-				_ = idempotencykey.Complete(rec, string(body))
-			}
-		}
-		noticeSale(ctx, saleNote{
-			Org: org.Name, Email: in.Email, Plan: p, Seats: seats, Sale: sale,
-			ListCents: listCents, PromoName: promoName, Test: org.TestMode(),
-		})
-		if held != nil && held.Id() != sub.Id() {
-			toCancel := subscription.New(db)
-			if err := toCancel.GetById(held.Id()); err == nil {
-				_ = engine.CancelSubscription(toCancel, false)
-				_ = toCancel.Update()
-			}
-			if was := subscriptionSlug(held); was != planID {
-				disarm(ctx, org, in.Subject, was)
-			}
-		}
-		return &saleOutcome{Sale: sale, Sub: sub, Inv: inv}, nil
-	}
-
 	if in.Wallet {
 		return walletSale(ctx, db, org, in, walletTerms{
 			plan: p, planID: planID, slug: slug, qty: qty, seats: seatMult, lines: lines,
 			charge: chargeCents, list: listCents, cur: cur, coupon: cpn, couponPlans: couponPlans,
-			promoPercent: promoPercent, promoName: promoName,
+			promoPercent: promoPercent, promoName: promoName, customer: customer,
 			sourceID: sourceID, guard: guard, rec: rec, abandon: abandon,
 		})
 	}
@@ -834,6 +808,13 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			_ = cp.RemovePaymentMethod(ctx, squareCustomerIDOf(pm), pm.ProviderRef)
 			_ = pm.Delete()
 		}
+	}
+
+	if !starts.IsZero() {
+		return scheduleSale(ctx, db, org, in, rec, p, pm, held, starts, saleTerms{
+			planID: planID, slug: slug, qty: qty, lines: lines, seats: seats, charge: chargeCents,
+			list: listCents, cur: cur, promoPercent: promoPercent, promoName: promoName, customer: customer,
+		}, unvault, abandon)
 	}
 
 	// A plan sold with a free trial opens in it when this is the plan's first
@@ -909,6 +890,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			// the coupon it was bought with when the trial ends.
 			sub.ProviderType = string(processor.Square)
 			sub.DiscountPercent, sub.DiscountName = promoPercent, promoName
+			sub.CustomerCents = customer
 			engine.Grant(sub, cpn, couponPlans, sub.PeriodStart)
 			if err := sub.Update(); err != nil {
 				log.Error("subscribe: failed to update trial subscription %s (subject=%s): %v", sub.Id(), in.Subject, err)
@@ -1012,6 +994,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		List:        listCents,
 		Promo:       promoPercent,
 		PromoName:   promoName,
+		Customer:    customer,
 		CouponPlans: couponPlans,
 	}
 	if err := enter(org, in, rec, d); err != nil {
@@ -1038,6 +1021,9 @@ type priced struct {
 	charge                   int64
 	promoPercent             int
 	promoName                string
+	// customer is the price staff agreed this subject pays for one seat of the
+	// plan each period (customerprice); 0 when none was.
+	customer int64
 }
 
 // price prices in's order, refusing everything the catalog does not sell, before
@@ -1058,7 +1044,7 @@ func price(db *datastore.Datastore, org *organization.Organization, in Subscribe
 	if p.Slug != "" {
 		planID = p.Slug
 	}
-	if !p.Listed() {
+	if !p.Listed() && p.Status != plan.StatusPrivate {
 		// Refused BEFORE the card is charged — a retired tier must never take money.
 		return nil, saleRefusal{saleMissing, "plan not found"}
 	}
@@ -1134,6 +1120,21 @@ func price(db *datastore.Datastore, org *organization.Organization, in Subscribe
 	// The seats the receipt states, every seat type counted.
 	seats := seatMult + int64(lineSeats(lines))
 	chargeCents := int64(p.Price)*seatMult + lineCents(lines)
+	// A price staff agreed for this customer and plan replaces the list price of
+	// the plan's own seats, today and at every renewal; no promotion applies
+	// beside it, since it is the price this customer pays.
+	customer, err := agreedPrice(db, in.Subject, planID, p)
+	if err != nil {
+		return nil, saleRefusal{saleUnavailable, "the price agreed for this account could not be read; nothing was charged, try again"}
+	}
+	// A private plan is made for one customer: it is sold by card only to a
+	// subject staff agreed a price of it with, and is no plan to anyone else.
+	if !p.Listed() && customer == 0 {
+		return nil, saleRefusal{saleMissing, "plan not found"}
+	}
+	if customer > 0 {
+		chargeCents = customer*seatMult + lineCents(lines)
+	}
 	// The advertised promo, actually applied. GET /v1/billing/plans annotates each
 	// plan with promoPercent off the SAME gate (active + inside its window +
 	// AppliesTo), and until now nothing subtracted it here: the page could say
@@ -1143,7 +1144,7 @@ func price(db *datastore.Datastore, org *organization.Organization, in Subscribe
 	// same function that discounts the invoice, so charge == AmountDue by
 	// construction rather than by two implementations agreeing.
 	promoPercent, promoName := 0, ""
-	if pr := in.Promo; pr != nil && everyLine(planID, lines, pr.AppliesTo) {
+	if pr := in.Promo; customer == 0 && pr != nil && everyLine(planID, lines, pr.AppliesTo) {
 		promoPercent, promoName = pr.PercentOff, pr.Name()
 		chargeCents = engine.Discounted(chargeCents, promoPercent)
 	}
@@ -1157,7 +1158,7 @@ func price(db *datastore.Datastore, org *organization.Organization, in Subscribe
 	return &priced{
 		plan: p, slug: planID, cur: cur, lines: lines, qty: qty,
 		balance: bal, seatMult: seatMult, seats: seats, charge: chargeCents,
-		promoPercent: promoPercent, promoName: promoName,
+		promoPercent: promoPercent, promoName: promoName, customer: customer,
 	}, nil
 }
 
@@ -1172,6 +1173,7 @@ type draft struct {
 	List        int64    `json:"list"`
 	Promo       int      `json:"promo,omitempty"`
 	PromoName   string   `json:"promoName,omitempty"`
+	Customer    int64    `json:"customer,omitempty"`
 	CouponPlans []string `json:"couponPlans,omitempty"`
 }
 
@@ -1281,6 +1283,7 @@ func sell(ctx context.Context, db *datastore.Datastore, org *organization.Organi
 	// first period at full price against a discounted charge.
 	sub.ProviderType = string(processor.Square)
 	sub.DiscountPercent, sub.DiscountName = d.Promo, d.PromoName
+	sub.CustomerCents = d.Customer
 	engine.Grant(sub, cpn, d.CouponPlans, sub.PeriodStart)
 	inv, err := paidBy(db, sub, d.Payment)
 	if err == nil {
@@ -1605,8 +1608,6 @@ func orderRefusal(org *organization.Organization, p *plan.Plan, slug string, in 
 		return balance, fmt.Sprintf("plan %q takes no starting balance", slug)
 	case bal > int64(*l.BalanceCeiling)*100:
 		return balance, fmt.Sprintf("plan %q takes a starting balance of at most $%d (got $%d)", slug, *l.BalanceCeiling, bal/100)
-	case source == "credits" || source == "balance":
-		return balance, "a starting balance is bought with a card, not paid from prepaid money"
 	case in.Wallet:
 		return balance, "a starting balance is bought with a card: send sourceId or paymentMethodId"
 	case p.TrialPeriodDays > 0:

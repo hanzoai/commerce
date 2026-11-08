@@ -53,9 +53,9 @@ func sold(t *testing.T, db *datastore.Datastore, user string, c Coupon, plans ..
 
 // renewNext renews sub as of an hour after the period it holds ends, and stores
 // the row as the billing cycle does.
-func renewNext(t *testing.T, db *datastore.Datastore, sub *subscription.Subscription, pre Prepaid) *billinginvoice.BillingInvoice {
+func renewNext(t *testing.T, db *datastore.Datastore, sub *subscription.Subscription, pre *card) *billinginvoice.BillingInvoice {
 	t.Helper()
-	inv, res, err := renewAt(context.Background(), db, sub, pre, nil, sub.PeriodEnd.Add(time.Hour))
+	inv, res, err := renewAt(context.Background(), db, sub, nil, pre.charge, sub.PeriodEnd.Add(time.Hour))
 	if err != nil || inv == nil || res == nil || !res.Success {
 		t.Fatalf("renew: inv=%v res=%+v err=%v", inv, res, err)
 	}
@@ -86,7 +86,7 @@ func planFee(inv *billinginvoice.BillingInvoice) int64 {
 // TestPlanCoupon_ThreeMonthsThenFull is the 50OFFBETA contract: the sale and two
 // renewals bill $10 each, every renewal after them $20, and each discount reads
 // as its month of three, lands on the invoice the way the first month's does,
-// and is what the ledger is drawn for.
+// and is what the card is charged.
 func TestPlanCoupon_ThreeMonthsThenFull(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
@@ -97,7 +97,7 @@ func TestPlanCoupon_ThreeMonthsThenFull(t *testing.T) {
 	if sub.CouponMonths != 3 || !sub.CouponFrom.Equal(sub.PeriodStart) {
 		t.Fatalf("granted %d months from %v, want three from %v", sub.CouponMonths, sub.CouponFrom, sub.PeriodStart)
 	}
-	pre := &purse{balance: 1000000}
+	pre := &card{}
 	invs := []*billinginvoice.BillingInvoice{first}
 	for range 4 {
 		invs = append(invs, renewNext(t, db, sub, pre))
@@ -131,10 +131,10 @@ func TestPlanCoupon_ThreeMonthsThenFull(t *testing.T) {
 			t.Fatalf("invoice %d starts %v, not where %d ended (%v)", i+1, inv.PeriodStart, i, invs[i-1].PeriodEnd)
 		}
 	}
-	// The ledger: each renewal draws its invoice's AmountDue, so what the books
-	// record as paid for months 2 and 3 is the discounted $10.
-	if got := pre.draws; len(got) != 4 || got[0] != 1000 || got[1] != 1000 || got[2] != 2000 || got[3] != 2000 {
-		t.Fatalf("ledger draws %v, want [1000 1000 2000 2000]", got)
+	// The card: each renewal charges its invoice's AmountDue, so what is paid for
+	// months 2 and 3 is the discounted $10.
+	if got := pre.charges; len(got) != 4 || got[0] != 1000 || got[1] != 1000 || got[2] != 2000 || got[3] != 2000 {
+		t.Fatalf("card charges %v, want [1000 1000 2000 2000]", got)
 	}
 	// Nothing on the row was spent: the window is what it was at the sale.
 	if sub.CouponCode != "50OFFBETA" || sub.CouponMonths != 3 || sub.CouponPercent != 50 {
@@ -153,9 +153,9 @@ func TestPlanCoupon_RenewingAgainSpendsNoMonth(t *testing.T) {
 	db.SetNamespace("coupon-rerun")
 
 	sub, first := sold(t, db, "coupon-rerun/bob", beta, "dev")
-	pre := &purse{balance: 1000000}
+	pre := &card{}
 	at := sub.PeriodEnd.Add(time.Hour)
-	second, _, err := renewAt(context.Background(), db, sub, pre, nil, at)
+	second, _, err := renewAt(context.Background(), db, sub, nil, pre.charge, at)
 	if err != nil || second == nil {
 		t.Fatalf("renew: %v", err)
 	}
@@ -167,12 +167,12 @@ func TestPlanCoupon_RenewingAgainSpendsNoMonth(t *testing.T) {
 	if !stale.PeriodEnd.Before(at) {
 		t.Fatal("the stored row already moved; the test needs an unsaved renewal")
 	}
-	again, _, err := renewAt(context.Background(), db, stale, pre, nil, at)
+	again, _, err := renewAt(context.Background(), db, stale, nil, pre.charge, at)
 	if err != nil || again == nil || again.Id() != second.Id() {
 		t.Fatalf("renewing the unsaved row: %v, %v; want invoice %s again", again, err, second.Id())
 	}
 	// Asked again at once, the period is not due and nothing is billed.
-	if inv, res, err := renewAt(context.Background(), db, stale, pre, nil, at); err != nil || inv != nil || res == nil || res.Success {
+	if inv, res, err := renewAt(context.Background(), db, stale, nil, pre.charge, at); err != nil || inv != nil || res == nil || res.Success {
 		t.Fatalf("an early renewal billed %v (%+v, %v)", inv, res, err)
 	}
 	if err := stale.Update(); err != nil {
@@ -196,8 +196,8 @@ func TestPlanCoupon_RenewingAgainSpendsNoMonth(t *testing.T) {
 		t.Fatalf("%d invoices, %d discounted, dues %d %d %d %d; want 4 with 3 discounted, 1000 1000 1000 2000",
 			len(all), discounted, first.AmountDue, second.AmountDue, third.AmountDue, fourth.AmountDue)
 	}
-	if got := pre.draws; len(got) != 3 || got[0] != 1000 || got[1] != 1000 || got[2] != 2000 {
-		t.Fatalf("ledger draws %v, want one each: [1000 1000 2000]", got)
+	if got := pre.charges; len(got) != 3 || got[0] != 1000 || got[1] != 1000 || got[2] != 2000 {
+		t.Fatalf("card charges %v, want one each: [1000 1000 2000]", got)
 	}
 }
 
@@ -211,7 +211,7 @@ func TestPlanCoupon_AYearIsNeverDiscounted(t *testing.T) {
 	db.SetNamespace("coupon-annual")
 
 	sub, _ := sold(t, db, "coupon-annual/carol", beta, "dev")
-	pre := &purse{balance: 1000000}
+	pre := &card{}
 	if second := renewNext(t, db, sub, pre); second.AmountDue != 1000 {
 		t.Fatalf("month 2 due %d, want 1000", second.AmountDue)
 	}
@@ -239,7 +239,7 @@ func TestPlanCoupon_OnlyThePlansItNames(t *testing.T) {
 	db.SetNamespace("coupon-plans")
 
 	max5 := row(db, plan.Plan{Name: "Max", Slug: "max-5x", Price: currency.Cents(10000), Currency: currency.USD, Interval: types.Monthly, IntervalCount: 1})
-	pre := &purse{balance: 1000000}
+	pre := &card{}
 
 	proOnly, _ := sold(t, db, "coupon-plans/dan", beta, "dev")
 	if _, err := ChangePlan(proOnly, max5, false); err != nil {
@@ -280,8 +280,8 @@ func TestPlanCoupon_ATrialComesFirst(t *testing.T) {
 	if sub.Status != subscription.Trialing || !sub.CouponFrom.Equal(sub.TrialEnd) {
 		t.Fatalf("status %s, window from %v; want a trial and the window from its end %v", sub.Status, sub.CouponFrom, sub.TrialEnd)
 	}
-	pre := &purse{balance: 1000000}
-	inv, res, err := renewAt(context.Background(), db, sub, pre, nil, sub.TrialEnd.Add(time.Hour))
+	pre := &card{}
+	inv, res, err := renewAt(context.Background(), db, sub, nil, pre.charge, sub.TrialEnd.Add(time.Hour))
 	if err != nil || !res.Success {
 		t.Fatalf("the trial's end: %+v %v", res, err)
 	}
@@ -311,7 +311,7 @@ func TestPlanCoupon_StacksWithTheRenewalCoupon(t *testing.T) {
 
 	sub, _ := sold(t, db, "coupon-stack/gus", beta, "dev")
 	sub.NextCouponCode, sub.NextCouponPercent = "WINBACK", 50
-	pre := &purse{balance: 1000000}
+	pre := &card{}
 	inv := renewNext(t, db, sub, pre)
 	if inv.AmountDue != Discounted(2000, 50, 50) || inv.Discount != 1500 ||
 		inv.DiscountName != "50OFFBETA — 50% off, month 2 of 3; WINBACK — 50% off this renewal" ||
@@ -341,7 +341,7 @@ func TestPlanCoupon_AGiftSpendsNoMonth(t *testing.T) {
 	if err := sub.Update(); err != nil {
 		t.Fatalf("give: %v", err)
 	}
-	pre := &purse{balance: 1000000}
+	pre := &card{}
 	dues := []int64{first.AmountDue}
 	names := []string{first.DiscountName}
 	for range 3 {
@@ -364,8 +364,8 @@ func TestPlanCoupon_AVoidedPeriodSpendsNoMonth(t *testing.T) {
 	db.SetNamespace("coupon-lapse")
 
 	sub, _ := sold(t, db, "coupon-lapse/jon", beta, "dev")
-	broke := &purse{}
-	unpaid, res, err := renewAt(context.Background(), db, sub, broke, nil, sub.PeriodEnd.Add(time.Hour))
+	broke := &card{decline: true}
+	unpaid, res, err := renewAt(context.Background(), db, sub, nil, broke.charge, sub.PeriodEnd.Add(time.Hour))
 	if err != nil || res.Success || unpaid.AmountDue != 1000 || sub.Status != subscription.PastDue {
 		t.Fatalf("month 2 unpaid: %v %+v %v status %s", unpaid, res, err, sub.Status)
 	}
@@ -373,8 +373,8 @@ func TestPlanCoupon_AVoidedPeriodSpendsNoMonth(t *testing.T) {
 		t.Fatalf("store: %v", err)
 	}
 	// Two months on, the lapsed period is void and the one running now is owed.
-	pre := &purse{balance: 1000000}
-	inv, res, err := renewAt(context.Background(), db, sub, pre, nil, unpaid.PeriodEnd.AddDate(0, 1, 0).Add(-time.Hour))
+	pre := &card{}
+	inv, res, err := renewAt(context.Background(), db, sub, nil, pre.charge, unpaid.PeriodEnd.AddDate(0, 1, 0).Add(-time.Hour))
 	if err != nil || !res.Success || inv.Id() == unpaid.Id() {
 		t.Fatalf("after the lapse: %v %+v %v", inv, res, err)
 	}
@@ -395,7 +395,7 @@ func TestPlanCoupon_ACanceledRowIsNotRenewed(t *testing.T) {
 	if err := CancelSubscription(sub, true); err != nil {
 		t.Fatalf("cancel: %v", err)
 	}
-	inv, res, err := renewAt(context.Background(), db, sub, &purse{balance: 1000000}, nil, sub.PeriodEnd.Add(time.Hour))
+	inv, res, err := renewAt(context.Background(), db, sub, nil, (&card{}).charge, sub.PeriodEnd.Add(time.Hour))
 	if err != nil || inv != nil || res == nil || res.Success || sub.Status != subscription.Canceled {
 		t.Fatalf("a canceled row renewed: inv %v res %+v err %v status %s", inv, res, err, sub.Status)
 	}

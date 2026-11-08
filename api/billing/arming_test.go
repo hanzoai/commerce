@@ -4,7 +4,6 @@ import (
 	stdjson "encoding/json"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/autorecharge"
@@ -44,10 +43,9 @@ func TestSavingACardArmsOnlyAWaitingReload(t *testing.T) {
 		reloadPlan(t, ctx, "ultra", 19500, nil, ultraReload)
 		org := moneyOrg("save-waiting")
 		db := datastore.New(org.Namespaced(ctx))
-		seedCredit(db, org.Name, 19500, "topup", time.Time{})
-		withFakeSquare(t, squareMock("cust_sw", "ccof_sw", ""))
+		withFakeSquare(t, walletMock("fp_wallet_save-waiting"))
 
-		out := subscribeAs(t, ctx, org, `{"sourceId":"balance","planId":"ultra"}`, nil)
+		out := subscribeAs(t, ctx, org, walletBody("wnon:apple", "ultra", "", ""), nil)
 		if got := reloadState(out); got != needsCard {
 			t.Fatalf("receipt reload state %q, want %q", got, needsCard)
 		}

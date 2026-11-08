@@ -108,8 +108,8 @@ func TestOurOrgsGetAPlanOnlyFromARecordedSubscription(t *testing.T) {
 }
 
 // A subscription for our orgs takes payment like anyone's: no card and no
-// source is refused, credits with nothing behind them are declined, and money
-// on the ledger pays.
+// source is refused, and prepaid money, with or without anything behind it, buys
+// no plan.
 func TestOurOrgsPayToSubscribe(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -133,13 +133,17 @@ func TestOurOrgsPayToSubscribe(t *testing.T) {
 		t.Fatalf("lux opened %s from an empty wallet", s.Id())
 	}
 
+	// Money on the ledger pays for usage, never for a plan.
 	deposit(t, luxDB, "lux", 5000)
 	resp = invokeSubscribeCard(lux, ctx, `{"sourceId":"balance","planId":"team","quantity":2}`, nil)
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("lux paying 5000 from a funded wallet: %d %s; want 201", resp.StatusCode, bodyOf(resp))
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("lux paying from a funded wallet: %d %s; want 400", resp.StatusCode, bodyOf(resp))
 	}
-	if got := walletOf(t, ctx, lux, "lux"); got != 0 {
-		t.Fatalf("lux wallet after paying 5000 of 5000 = %d; want 0", got)
+	if got := walletOf(t, ctx, lux, "lux"); got != 5000 {
+		t.Fatalf("lux wallet after a refused plan = %d; want 5000", got)
+	}
+	if s := parentSub(t, luxDB, "lux", "team"); s != nil {
+		t.Fatalf("lux opened %s from its balance", s.Id())
 	}
 
 	// The org's own admin is not a minter, so a paid plan for the org account

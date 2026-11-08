@@ -734,7 +734,24 @@ func paidTier(slug string) bool {
 // slug the catalog publishes answers from the catalog (paidTier); a plan only the
 // plan authority holds — a private plan made for one customer — answers from the
 // snapshot the subscription carries, the price and contactSales it was sold at.
+//
+// A comp is a paid plan given away. Its snapshot is held at price 0 so it adds
+// nothing to MRR, and read from that snapshot a comp of a plan only the authority
+// holds was no paid plan at all: not the subject's plan (holdsPlan), so a record
+// naming it in replaces was told the account held nothing to replace, and it
+// conferred no tier.
+//
+// So a comp is judged by the price its plan listed at when it was given
+// (metadata "listCents"), and its contactSales: a comp of a paid plan is a paid
+// plan. A comp recorded before the price was kept beside it was always of a paid
+// plan, and reads as one.
 func paidRow(s *subscription.Subscription) bool {
+	if s.Type == subscription.External && strings.EqualFold(strings.TrimSpace(s.ProviderType), processorComp) {
+		if _, kept := s.Metadata["listCents"]; kept {
+			return metaInt64(s.Metadata, "listCents", 0) > 0 || s.Plan.ContactSales
+		}
+		return true
+	}
 	return paidPlan(subscriptionSlug(s), &s.Plan)
 }
 
