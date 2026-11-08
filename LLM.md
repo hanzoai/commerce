@@ -2226,9 +2226,14 @@ whatever a catalog row says, so an Enso price is not an admin's merchandising ch
 witness, moved in the same commit), and `runEnsoCatalogSeed` calls `Reprice` after
 the first-boot seed: each Enso row the seed names takes the seed's price, rate by
 rate (a missing class is added), compared as decimals so twice is once. Cost (a
-sync's), name, order, published, a row the seed does not name (enso-free, and
-enso-vl / enso-vl-pro, which the seed no longer names) and a deleted row are
-untouched. A new SKU in the seed (enso-max) is created only on a store the seed
+sync's), name, order, published, a row the seed does not name and a deleted row
+are untouched. `catalogentry.Retire` runs after it on every boot and deletes
+enso-free, enso-vl and enso-vl-pro, the three rows the lineup dropped. The Free
+and Starter lane (`billing/tier` `freeLane`) names the router by both its ids,
+enso (the catalog slug) and enso-auto (what ai serves), and `IsModelAllowed`
+matches an id whole: as a prefix, enso would open every paid rung. The vendored
+`@hanzo/plans` is 1.9.1, whose Free plan lists enso-auto alone. `Refresh` lands
+no `:free` variant of an upstream's model; one a past run listed is withdrawn. A new SKU in the seed (enso-max) is created only on a store the seed
 has never run on; production's admin adds it, or the price list (cloud
 `apps/pricing/enso.go`) appends it from ai's answer.
 
@@ -4689,9 +4694,14 @@ whatever a catalog row says, so an Enso price is not an admin's merchandising ch
 witness, moved in the same commit), and `runEnsoCatalogSeed` calls `Reprice` after
 the first-boot seed: each Enso row the seed names takes the seed's price, rate by
 rate (a missing class is added), compared as decimals so twice is once. Cost (a
-sync's), name, order, published, a row the seed does not name (enso-free, and
-enso-vl / enso-vl-pro, which the seed no longer names) and a deleted row are
-untouched. A new SKU in the seed (enso-max) is created only on a store the seed
+sync's), name, order, published, a row the seed does not name and a deleted row
+are untouched. `catalogentry.Retire` runs after it on every boot and deletes
+enso-free, enso-vl and enso-vl-pro, the three rows the lineup dropped. The Free
+and Starter lane (`billing/tier` `freeLane`) names the router by both its ids,
+enso (the catalog slug) and enso-auto (what ai serves), and `IsModelAllowed`
+matches an id whole: as a prefix, enso would open every paid rung. The vendored
+`@hanzo/plans` is 1.9.1, whose Free plan lists enso-auto alone. `Refresh` lands
+no `:free` variant of an upstream's model; one a past run listed is withdrawn. A new SKU in the seed (enso-max) is created only on a store the seed
 has never run on; production's admin adds it, or the price list (cloud
 `apps/pricing/enso.go`) appends it from ai's answer.
 

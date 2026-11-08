@@ -7,7 +7,7 @@
     "priceMonthly": 0,
     "priceAnnual": 0,
     "features": [
-      "Chat on the web with Enso Free and Zen Free",
+      "Chat on the web with Enso Auto",
       "50 free requests every day",
       "Search the web from chat",
       "Write, edit and create content",
@@ -28,10 +28,7 @@
       "ai.agents": 1,
       "ai.bots": 0,
       "ai.models": [
-        "enso-auto",
-        "enso-free",
-        "zen-free",
-        "free"
+        "enso-auto"
       ]
     }
   },
@@ -47,7 +44,7 @@
       "Build apps with Hanzo Dev",
       "Connect any MCP server in Hanzo Dev",
       "The Hanzo CLI for macOS, Windows and Linux",
-      "Every model, including Enso Ultra and Kai",
+      "Every model, including Enso Auto, Flash, Pro, Max and Ultra, and Kai",
       "Usage included on every model",
       "Priority inference and priority support",
       "Your own agents, working in the background",

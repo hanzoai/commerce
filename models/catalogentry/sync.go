@@ -2,6 +2,8 @@ package catalogentry
 
 import (
 	"errors"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -24,6 +26,11 @@ import (
 // conversations reference it by slug, and deleting it turns every one of those
 // into a dangling id. It stays published and priced — an entry with an honest
 // reason it cannot be called is more useful than a row that vanished.
+
+// freeSuffix ends the slug of an upstream's no-cost variant ("vendor/model:free").
+// No plan sells a free model, so Refresh never lands one. A row of the kind that
+// is already listed is no longer published, and the sweep withdraws it.
+const freeSuffix = ":free"
 
 // ErrEmptyUpstream is a REFUSAL, not a result. See the fail-safe above.
 var ErrEmptyUpstream = errors.New("refusing to sync an empty upstream catalog")
@@ -57,6 +64,7 @@ type RefreshResult struct {
 //
 // db MUST be namespaced to the catalog-owning "system" org.
 func Refresh(db *datastore.Datastore, serves string, rows []ModelRow) (RefreshResult, error) {
+	rows = slices.DeleteFunc(slices.Clone(rows), func(r ModelRow) bool { return strings.HasSuffix(r.Slug, freeSuffix) })
 	if len(rows) == 0 {
 		return RefreshResult{}, ErrEmptyUpstream
 	}

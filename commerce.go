@@ -989,6 +989,14 @@ func (app *App) runEnsoCatalogSeed() {
 	if repriced > 0 {
 		slog.Info("enso catalog repriced", "models", repriced)
 	}
+	retired, err := catalogentry.Retire(db)
+	if err != nil {
+		slog.Error("enso catalog retire failed", "err", err)
+		return
+	}
+	if retired > 0 {
+		slog.Info("enso catalog retired", "models", retired)
+	}
 }
 
 // runCurrencySeed populates the global currency reference table (DEFAULT
