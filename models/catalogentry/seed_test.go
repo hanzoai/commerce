@@ -420,3 +420,45 @@ func TestRepriceMovesTheEnsoPriceAndNothingElse(t *testing.T) {
 		t.Fatalf("re-reprice wrote %d rows (err %v), want 0", again, err)
 	}
 }
+
+// Retire removes the three Enso rows the lineup dropped, wherever they came from,
+// and nothing else: the five seeded models, a row of another family and an
+// admin's edit to a kept row all stay. Twice is once.
+func TestRetireDeletesTheDroppedEnsoRowsOnly(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	if _, err := SeedEnsoModels(db); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	for _, slug := range []string{"enso-free", "enso-vl", "enso-vl-pro", "zen-free"} {
+		e := New(db)
+		e.Slug = slug
+		e.Category = CategoryEnso
+		if err := e.Put(); err != nil {
+			t.Fatalf("plant %s: %v", slug, err)
+		}
+	}
+
+	n, err := Retire(db)
+	if err != nil || n != 3 {
+		t.Fatalf("retired %d rows (err %v), want the 3 dropped", n, err)
+	}
+	for _, slug := range []string{"enso-free", "enso-vl", "enso-vl-pro"} {
+		if ok, _ := New(db).Query().Filter("Slug=", slug).Get(); ok {
+			t.Errorf("%s is still listed", slug)
+		}
+	}
+	for slug := range billedRetail {
+		if ok, _ := New(db).Query().Filter("Slug=", slug).Get(); !ok {
+			t.Errorf("%s was retired with the rest", slug)
+		}
+	}
+	if ok, _ := New(db).Query().Filter("Slug=", "zen-free").Get(); !ok {
+		t.Error("a row the lineup never named was retired")
+	}
+	if again, err := Retire(db); err != nil || again != 0 {
+		t.Fatalf("second retire deleted %d rows (err %v), want 0", again, err)
+	}
+}

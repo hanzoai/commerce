@@ -160,6 +160,45 @@ func TestRefresh_WithdrawnModelIsMarkedNotDeleted(t *testing.T) {
 	}
 }
 
+// TestRefresh_NoFreeModelLands: no plan sells a free model, so an upstream's
+// ":free" variants are never listed. One a previous run already landed is no
+// longer published, and the sweep withdraws it. A payload of nothing but free
+// models is an empty upstream and changes nothing.
+func TestRefresh_NoFreeModelLands(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	if _, err := UpsertModels(db, []ModelRow{orRow("meta-llama/llama-4:free", "0.10")}); err != nil {
+		t.Fatalf("land an old free row: %v", err)
+	}
+	payload := []ModelRow{orRow("openai/gpt-5", "1.25"), orRow("google/gemini-3:free", "0.10"), orRow("meta-llama/llama-4:free", "0.10")}
+	res, err := Refresh(db, ServesOpenRouter, payload)
+	if err != nil {
+		t.Fatalf("refresh: %v", err)
+	}
+	if res.Upstream != 1 || res.Created != 1 {
+		t.Fatalf("upstream %d, created %d; want the one paid model", res.Upstream, res.Created)
+	}
+	if ok, _ := New(db).Query().Filter("Slug=", "google/gemini-3:free").Get(); ok {
+		t.Fatal("a free model was listed")
+	}
+	old := bySlug(t, db, "meta-llama/llama-4:free")
+	if old.Spec.Enabled || old.Spec.Unavailable != WithdrawnUpstream {
+		t.Fatalf("the old free row is enabled %v / reason %q, want withdrawn", old.Spec.Enabled, old.Spec.Unavailable)
+	}
+	if !bySlug(t, db, "openai/gpt-5").Spec.Enabled {
+		t.Fatal("the paid model must stay listed")
+	}
+
+	if _, err := Refresh(db, ServesOpenRouter, []ModelRow{orRow("google/gemini-3:free", "0.10")}); err != ErrEmptyUpstream {
+		t.Fatalf("all-free payload err = %v, want ErrEmptyUpstream", err)
+	}
+	if !bySlug(t, db, "openai/gpt-5").Spec.Enabled {
+		t.Fatal("a refused sync must leave the catalog as it was")
+	}
+}
+
 // TestRefresh_DoesNotReverseAHumanDisable: an operator who turned a model off by
 // hand keeps that decision. Only a model the sync itself withdrew is restored —
 // the upstream never had the authority to reverse an operator.

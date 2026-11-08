@@ -471,6 +471,33 @@ func Reprice(db *datastore.Datastore) (repriced int, err error) {
 	return repriced, nil
 }
 
+// retired are the Enso rows no model is sold under any more: the free tier
+// (enso-free) and the vision pair (enso-vl, enso-vl-pro). The lineup is the five
+// models in the seed, and the Free lane is the router alone.
+var retired = []string{"enso-free", "enso-vl", "enso-vl-pro"}
+
+// Retire deletes the retired Enso rows and returns how many it deleted. The seed
+// no longer names them, so nothing else removes the rows an older seed or another
+// path created, and they would stay listed beside the five. A slug that is not
+// there is skipped, so twice is once.
+func Retire(db *datastore.Datastore) (deleted int, err error) {
+	for _, slug := range retired {
+		e := New(db)
+		ok, qerr := e.Query().Filter("Slug=", slug).Get()
+		if qerr != nil {
+			return deleted, qerr
+		}
+		if !ok {
+			continue
+		}
+		if err := e.Delete(); err != nil {
+			return deleted, err
+		}
+		deleted++
+	}
+	return deleted, nil
+}
+
 // priced is have with each of want's prices laid over the rate of the same
 // identity (key, unit, context rung) and each rate of want's that have lacks
 // appended, and whether anything moved.

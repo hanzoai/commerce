@@ -2,7 +2,7 @@
 //
 // Each IAM user has a "tier" property stored in hanzo.id (Hanzo IAM) user
 // properties and propagated via JWT claims. The tier determines:
-//   - which model prefixes are allowed
+//   - which models are allowed
 //   - a daily replenishing credit allowance (the generic mechanism; the
 //     Free tier's allowance is 0, see below)
 //
@@ -15,6 +15,8 @@
 // never grants a standing balance to anyone. Paid tiers use prepaid balances
 // managed by the existing billing engine.
 package tier
+
+import "strings"
 
 // Name is the canonical tier identifier stored in IAM user properties.
 type Name string
@@ -52,15 +54,18 @@ type Config struct {
 	// configuration. Prepaid balance is managed externally by the billing engine.
 	DailyCreditsCents int64 `json:"dailyCreditsCents"`
 
-	// AllowedModels lists the model prefixes the tier may invoke.
+	// AllowedModels lists the model ids the tier may invoke, each matched whole.
 	// A single entry of "*" means all models are allowed.
 	AllowedModels []string `json:"allowedModels"`
 }
 
-// freeLane is what a caller with no paid plan may invoke: enso-auto, the default
-// for everyone. No other Enso tier and no vendor model is on it; a paid rung
-// opens the rest.
-var freeLane = []string{"enso-auto"}
+// freeLane is what a caller with no paid plan may invoke: the Enso router, the
+// default for everyone, under both names it answers to: enso, the slug the catalog
+// lists it under, and enso-auto, the id hanzoai/ai serves it as. No other Enso tier
+// and no vendor model is on it; a paid rung opens the rest. The ids match whole
+// (see IsModelAllowed): enso as a prefix would open enso-flash, enso-pro, enso-max
+// and enso-ultra.
+var freeLane = []string{"enso", "enso-auto"}
 
 // registry is the authoritative tier configuration.
 var registry = map[Name]*Config{
@@ -141,14 +146,12 @@ func Parse(raw string) Name {
 }
 
 // IsModelAllowed checks whether the given model identifier is permitted
-// under the tier's allowedModels list. Matching is prefix-based: an
-// entry "claude-sonnet" matches "claude-sonnet-4-20250514".
+// under the tier's allowedModels list. An entry matches the whole id, ignoring
+// case: "enso" is the router and not enso-flash.
 func (c *Config) IsModelAllowed(model string) bool {
-	for _, prefix := range c.AllowedModels {
-		if prefix == "*" {
-			return true
-		}
-		if len(model) >= len(prefix) && model[:len(prefix)] == prefix {
+	model = strings.TrimSpace(model)
+	for _, id := range c.AllowedModels {
+		if id == "*" || strings.EqualFold(id, model) {
 			return true
 		}
 	}

@@ -55,14 +55,16 @@ var _ = Describe("Tier", func() {
 			Expect(cfg.IsModelAllowed("anything")).To(BeTrue())
 		})
 
-		It("holds free and trial callers to enso-auto alone", func() {
+		It("holds free and trial callers to the Enso router alone, by either name", func() {
 			for _, name := range []tier.Name{tier.Free, tier.Starter} {
 				cfg := tier.Get(name)
-				Expect(cfg.AllowedModels).To(Equal([]string{"enso-auto"}), "%s's lane", name)
-				Expect(cfg.IsModelAllowed("enso-auto")).To(BeTrue(), "%s may call enso-auto", name)
+				Expect(cfg.AllowedModels).To(Equal([]string{"enso", "enso-auto"}), "%s's lane", name)
+				for _, model := range []string{"enso", "enso-auto", "Enso-Auto"} {
+					Expect(cfg.IsModelAllowed(model)).To(BeTrue(), "%s may call %s", name, model)
+				}
 				for _, model := range []string{
 					"enso-flash", "enso-pro", "enso-max", "enso-ultra",
-					"enso-free", "enso-vl", "zen-free", "zen6-free", "free", "openrouter/free",
+					"enso-free", "enso-vl", "zen-free", "zen6-free", "free", "openrouter/free", "enso-auto-fast", "ensoultra",
 					"anthropic/claude-opus-5.5", "claude-sonnet-4-20250514", "openai/gpt-6-sol", "zen5-pro",
 				} {
 					Expect(cfg.IsModelAllowed(model)).To(BeFalse(), "%s must not call %s", name, model)
@@ -73,7 +75,7 @@ var _ = Describe("Tier", func() {
 		It("opens the five Enso models to a paid tier", func() {
 			for _, name := range []tier.Name{tier.Pro, tier.Enterprise} {
 				cfg := tier.Get(name)
-				for _, model := range []string{"enso-auto", "enso-flash", "enso-pro", "enso-max", "enso-ultra"} {
+				for _, model := range []string{"enso", "enso-auto", "enso-flash", "enso-pro", "enso-max", "enso-ultra"} {
 					Expect(cfg.IsModelAllowed(model)).To(BeTrue(), "%s may call %s", name, model)
 				}
 			}
