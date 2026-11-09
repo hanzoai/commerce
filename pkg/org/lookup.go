@@ -86,6 +86,19 @@ const (
 	// rather than hanging until the upstream cancels — which previously wedged
 	// the create half-done and cascaded to a bogus 401.
 	resolveTimeout = 4 * time.Second
+
+	// maxStale is how long after its last successful resolve an org is still
+	// served when a refresh fails. A refresh fails when the store is slow (a
+	// reader queued behind a flooded writer), and a caller that is already
+	// authenticated then needs the org it had a minute ago, not a 503: run
+	// admission refused every coding run of an org whose store was busy. The bound
+	// keeps a disabled or changed org from being served past it.
+	maxStale = 10 * time.Minute
+
+	// staleRetry is how soon a store that failed a refresh is asked again while
+	// the last resolved org is served, so a busy store gets one asker every
+	// staleRetry rather than every caller waiting out resolveTimeout.
+	staleRetry = 10 * time.Second
 )
 
 // ErrResolveFailed wraps any failure to resolve/provision an org for an
@@ -98,8 +111,9 @@ var ErrResolveFailed = errors.New("org: could not resolve organization")
 // handed to a caller — Resolve copies it — so nothing outside this package can
 // mutate a cached org.
 type entry struct {
-	org     *organization.Organization
-	expires time.Time
+	org      *organization.Organization
+	expires  time.Time
+	resolved time.Time // when the store last answered for it
 }
 
 var (
@@ -167,11 +181,17 @@ func Resolve(ctx context.Context, name string) (*organization.Organization, erro
 		// SEV1: the cached id was a pre-hashid legacy value that could never
 		// match the org's real key, so every lookup missed.
 		if err := o.GetOrCreate("Name=", name); err != nil {
+			if e, ok := cache.Get(name); ok && now().Sub(e.resolved) < maxStale {
+				log.Warn("org: resolve %q failed, serving the org resolved %s ago: %v", name, now().Sub(e.resolved).Round(time.Second), err)
+				cache.Add(name, entry{org: e.org, expires: now().Add(staleRetry), resolved: e.resolved})
+				return e.org, nil
+			}
 			log.Warn("org: resolve %q failed: %v", name, err)
 			return nil, err
 		}
 
-		cache.Add(name, entry{org: o, expires: now().Add(ttl)})
+		at := now()
+		cache.Add(name, entry{org: o, expires: at.Add(ttl), resolved: at})
 		return o, nil
 	})
 	if err != nil {
