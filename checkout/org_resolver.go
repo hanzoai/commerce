@@ -164,6 +164,9 @@ func returnHostsFor(slug string) []string {
 			// host list (returnHostsFor), not brandDomains.
 			"https://hanzo.agency",
 			"https://www.hanzo.agency",
+			// hanzo.team — the Team workspace. Its /start sells the per-seat
+			// Team plan here and asks to come back to the workspace once paid.
+			"https://hanzo.team",
 		}
 	case "lux":
 		return []string{
