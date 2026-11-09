@@ -21,6 +21,8 @@ func TestAllowedCheckoutRedirect(t *testing.T) {
 		{"hanzo agency onboarding success", "https://hanzo.agency/onboarding-success", "hanzo", nil, true},
 		{"hanzo agency www", "https://www.hanzo.agency/onboarding-success", "hanzo", nil, true},
 		{"hanzo agency cancel to pricing", "https://hanzo.agency/pricing", "hanzo", nil, true},
+		{"hanzo team workspace after Team checkout", "https://hanzo.team/", "hanzo", nil, true},
+		{"lux org to hanzo.team rejected", "https://hanzo.team/", "lux", nil, false},
 		{"http scheme accepted", "http://hanzo.ai/x", "hanzo", nil, true},
 
 		// hanzo.agency is first-party to the hanzo brand ONLY — a lux org
