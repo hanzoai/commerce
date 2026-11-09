@@ -42,6 +42,13 @@ type PostgresDBConfig struct {
 	// If set, uses PostgreSQL schemas for multi-tenancy
 	Schema string
 
+	// TenantColumn names the column of _entities that holds a row's tenant. The
+	// zero value is "tenant_id", the shared store's. A store a host keeps for one
+	// tenant (NewPostgresDBOn) uses "namespace", which is what the SQLite store
+	// calls it: the two stores are one shape, so a tenant's file can be moved to
+	// the server as it is.
+	TenantColumn string
+
 	// EnableVectorSearch enables pgvector extension
 	EnableVectorSearch bool
 
@@ -55,6 +62,9 @@ type PostgresDB struct {
 	db     *sql.DB
 	mu     sync.RWMutex
 	closed bool
+
+	// tenantCol is the column of _entities that holds a row's tenant.
+	tenantCol string
 
 	// Prepared statements for hot-path operations. Every one is tenant-scoped:
 	// the shared Postgres store is multi-tenant, so a row is addressed by its
@@ -76,7 +86,29 @@ func (db *PostgresDB) tenantFor(ctx context.Context) string {
 	if ns := nscontext.GetNamespace(ctx); ns != "" {
 		return ns
 	}
+	if db.tenantCol == seamTenantColumn {
+		// A file's rows are scoped by the namespace the request carried and by nothing
+		// else: one written with none has none. The store that took the file's rows as
+		// they were finds them under the same scope.
+		return ""
+	}
 	return db.config.TenantID
+}
+
+// column is the name of the tenant column a config asks for.
+func (c *PostgresDBConfig) column() string {
+	if c.TenantColumn != "" {
+		return c.TenantColumn
+	}
+	return "tenant_id"
+}
+
+// q renders a statement over _entities with the tenant column this store keeps it in.
+func (db *PostgresDB) q(statement string) string {
+	if db.tenantCol == "" || db.tenantCol == "tenant_id" {
+		return statement
+	}
+	return strings.ReplaceAll(statement, "tenant_id", db.tenantCol)
 }
 
 // NewPostgresDB creates a new PostgreSQL database connection
@@ -122,8 +154,9 @@ func NewPostgresDB(cfg *PostgresDBConfig) (*PostgresDB, error) {
 	}
 
 	pdb := &PostgresDB{
-		config: cfg,
-		db:     db,
+		config:    cfg,
+		db:        db,
+		tenantCol: cfg.column(),
 	}
 
 	// Initialize schema
@@ -154,26 +187,26 @@ func NewPostgresDB(cfg *PostgresDBConfig) (*PostgresDB, error) {
 func (db *PostgresDB) prepareStatements() error {
 	var err error
 
-	db.stmtGet, err = db.db.Prepare(
-		`SELECT data FROM _entities WHERE id = $1 AND kind = $2 AND tenant_id = $3 AND deleted = FALSE`)
+	db.stmtGet, err = db.db.Prepare(db.q(
+		`SELECT data FROM _entities WHERE id = $1 AND kind = $2 AND tenant_id = $3 AND deleted = FALSE`))
 	if err != nil {
 		return fmt.Errorf("prepare stmtGet: %w", err)
 	}
 
-	db.stmtPut, err = db.db.Prepare(`
+	db.stmtPut, err = db.db.Prepare(db.q(`
 		INSERT INTO _entities (id, kind, tenant_id, parent_id, data, updated_at)
 		VALUES ($1, $2, $3, $4, $5, NOW())
 		ON CONFLICT (id, kind, tenant_id) DO UPDATE SET
 			parent_id = EXCLUDED.parent_id,
 			data = EXCLUDED.data,
 			updated_at = NOW()
-	`)
+	`))
 	if err != nil {
 		return fmt.Errorf("prepare stmtPut: %w", err)
 	}
 
-	db.stmtDel, err = db.db.Prepare(
-		`UPDATE _entities SET deleted = TRUE, updated_at = NOW() WHERE id = $1 AND kind = $2 AND tenant_id = $3`)
+	db.stmtDel, err = db.db.Prepare(db.q(
+		`UPDATE _entities SET deleted = TRUE, updated_at = NOW() WHERE id = $1 AND kind = $2 AND tenant_id = $3`))
 	if err != nil {
 		return fmt.Errorf("prepare stmtDel: %w", err)
 	}
@@ -195,29 +228,42 @@ func (db *PostgresDB) initSchema() error {
 		}
 	}
 
-	// Create metadata table
-	_, err := db.db.Exec(`
-		CREATE TABLE IF NOT EXISTS _metadata (
+	for _, stmt := range db.schemaDDL() {
+		if _, err := db.db.Exec(stmt); err != nil {
+			return err
+		}
+	}
+
+	// The credential guard travels with the table it protects — see guard.go.
+	for _, stmt := range postgresGuardDDL(db.tenantCol) {
+		if _, err := db.db.Exec(stmt); err != nil {
+			return fmt.Errorf("credential guard: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// schemaDDL is the statements that make the store's tables and indexes, in order.
+func (db *PostgresDB) schemaDDL() []string {
+	return []string{
+		// Create metadata table
+		`CREATE TABLE IF NOT EXISTS _metadata (
 			key TEXT PRIMARY KEY,
 			value TEXT,
 			updated_at TIMESTAMPTZ DEFAULT NOW()
-		)
-	`)
-	if err != nil {
-		return err
-	}
+		)`,
 
-	// Create generic entity storage table with JSONB.
-	//
-	// The PRIMARY KEY is COMPOSITE (id, kind, tenant_id): the same entity id in
-	// two different tenants is two distinct rows, so org B's write can never
-	// overwrite org A's row, and the ON CONFLICT upsert only ever collides
-	// within one tenant. tenant_id is NOT NULL DEFAULT '' so it can participate
-	// in the key (a NULL column can't be a reliable PK member). This mirrors the
-	// SQLite store's (id, kind, namespace) key — one canonical multi-tenant
-	// shape across both backends (Red CRIT-2).
-	_, err = db.db.Exec(`
-		CREATE TABLE IF NOT EXISTS _entities (
+		// Create generic entity storage table with JSONB.
+		//
+		// The PRIMARY KEY is COMPOSITE (id, kind, tenant_id): the same entity id in
+		// two different tenants is two distinct rows, so org B's write can never
+		// overwrite org A's row, and the ON CONFLICT upsert only ever collides
+		// within one tenant. tenant_id is NOT NULL DEFAULT '' so it can participate
+		// in the key (a NULL column can't be a reliable PK member). This mirrors the
+		// SQLite store's (id, kind, namespace) key — one canonical multi-tenant
+		// shape across both backends (Red CRIT-2).
+		db.q(`CREATE TABLE IF NOT EXISTS _entities (
 			id TEXT NOT NULL,
 			kind TEXT NOT NULL,
 			tenant_id TEXT NOT NULL DEFAULT '',
@@ -227,43 +273,24 @@ func (db *PostgresDB) initSchema() error {
 			updated_at TIMESTAMPTZ DEFAULT NOW(),
 			deleted BOOLEAN DEFAULT FALSE,
 			PRIMARY KEY (id, kind, tenant_id)
-		)
-	`)
-	if err != nil {
-		return err
-	}
+		)`),
 
-	// Create indexes
-	_, err = db.db.Exec(`
-		CREATE INDEX IF NOT EXISTS idx_entities_kind ON _entities(kind);
-		CREATE INDEX IF NOT EXISTS idx_entities_tenant ON _entities(tenant_id);
-		CREATE INDEX IF NOT EXISTS idx_entities_parent ON _entities(parent_id);
-		CREATE INDEX IF NOT EXISTS idx_entities_deleted ON _entities(deleted);
-		CREATE INDEX IF NOT EXISTS idx_entities_data ON _entities USING GIN (data);
-	`)
-	if err != nil {
-		return err
-	}
+		// Create indexes
+		`CREATE INDEX IF NOT EXISTS idx_entities_kind ON _entities(kind)`,
+		db.q(`CREATE INDEX IF NOT EXISTS idx_entities_tenant ON _entities(tenant_id)`),
+		`CREATE INDEX IF NOT EXISTS idx_entities_parent ON _entities(parent_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_entities_deleted ON _entities(deleted)`,
+		`CREATE INDEX IF NOT EXISTS idx_entities_data ON _entities USING GIN (data)`,
 
-	// The named-counter table. See db.Sequencer.
-	//
-	// It is deliberately NOT keyed by tenant_id, unlike _entities. A counter's
-	// scope is whatever its NAME says it is, and the one this was built for —
-	// the destination tag on a pooled XRPL custody account — is shared by every
-	// org, because the account is. Adding tenant_id to the key would silently
-	// hand two orgs the same tag for the same address.
-	if _, err = db.db.Exec(sequenceDDL); err != nil {
-		return err
+		// The named-counter table. See db.Sequencer.
+		//
+		// It is deliberately NOT keyed by tenant_id, unlike _entities. A counter's
+		// scope is whatever its NAME says it is, and the one this was built for —
+		// the destination tag on a pooled XRPL custody account — is shared by every
+		// org, because the account is. Adding tenant_id to the key would silently
+		// hand two orgs the same tag for the same address.
+		sequenceDDL,
 	}
-
-	// The credential guard travels with the table it protects — see guard.go.
-	for _, stmt := range postgresGuardDDL() {
-		if _, err := db.db.Exec(stmt); err != nil {
-			return fmt.Errorf("credential guard: %w", err)
-		}
-	}
-
-	return nil
 }
 
 // NextSequence atomically increments the named counter and returns its new
@@ -474,20 +501,20 @@ func (db *PostgresDB) Swap(ctx context.Context, key Key, prev string, src interf
 	}
 	var res sql.Result
 	if prev == "" {
-		res, err = db.db.ExecContext(ctx, `
+		res, err = db.db.ExecContext(ctx, db.q(`
 			INSERT INTO _entities (id, kind, tenant_id, parent_id, data, updated_at)
 			VALUES ($1, $2, $3, $4, $5, NOW())
 			ON CONFLICT (id, kind, tenant_id) DO UPDATE SET
 				parent_id = EXCLUDED.parent_id, data = EXCLUDED.data,
 				updated_at = NOW(), deleted = FALSE
 			WHERE _entities.deleted
-		`, key.Encode(), key.Kind(), db.tenantFor(ctx), parentID, data)
+		`), key.Encode(), key.Kind(), db.tenantFor(ctx), parentID, data)
 	} else {
-		res, err = db.db.ExecContext(ctx, `
+		res, err = db.db.ExecContext(ctx, db.q(`
 			UPDATE _entities SET parent_id = $4, data = $5, updated_at = NOW()
 			WHERE id = $1 AND kind = $2 AND tenant_id = $3 AND NOT deleted
 				AND data->>'updatedAt' = $6
-		`, key.Encode(), key.Kind(), db.tenantFor(ctx), parentID, data, prev)
+		`), key.Encode(), key.Kind(), db.tenantFor(ctx), parentID, data, prev)
 	}
 	if err != nil {
 		return false, err
@@ -519,7 +546,7 @@ func (db *PostgresDB) GetMulti(ctx context.Context, keys []Key, dst interface{})
 	}
 
 	// Always tenant-scoped — a multi-get must not reach across tenants.
-	query := `SELECT id, data FROM _entities WHERE id = ANY($1) AND tenant_id = $2 AND deleted = FALSE`
+	query := db.q(`SELECT id, data FROM _entities WHERE id = ANY($1) AND tenant_id = $2 AND deleted = FALSE`)
 	args := []interface{}{ids, db.tenantFor(ctx)}
 
 	rows, err := db.db.QueryContext(ctx, query, args...)
@@ -547,6 +574,26 @@ func (db *PostgresDB) GetMulti(ctx context.Context, keys []Key, dst interface{})
 
 	sliceVal := dstVal.Elem()
 	elemType := sliceVal.Type().Elem()
+
+	// A slice as long as the keys is filled in place, as SQLiteDB fills it: the
+	// datastore layer allocates one that long and reads the answers from it, so
+	// appending would leave its zero values first and the answers after them.
+	if sliceVal.Len() == len(keys) {
+		for i, k := range keys {
+			data, ok := results[k.Encode()]
+			if !ok {
+				sliceVal.Index(i).Set(reflect.Zero(elemType))
+				continue
+			}
+			elem := reflect.New(elemType.Elem())
+			if err := unmarshalForDB(data, elem.Interface()); err != nil {
+				return err
+			}
+			callPostLoad(elem)
+			sliceVal.Index(i).Set(elem)
+		}
+		return nil
+	}
 
 	for _, k := range keys {
 		data, ok := results[k.Encode()]
@@ -588,14 +635,14 @@ func (db *PostgresDB) PutMulti(ctx context.Context, keys []Key, src interface{})
 	}
 	defer tx.Rollback()
 
-	stmt, err := tx.PrepareContext(ctx, `
+	stmt, err := tx.PrepareContext(ctx, db.q(`
 		INSERT INTO _entities (id, kind, tenant_id, parent_id, data, updated_at)
 		VALUES ($1, $2, $3, $4, $5, NOW())
 		ON CONFLICT (id, kind, tenant_id) DO UPDATE SET
 			parent_id = EXCLUDED.parent_id,
 			data = EXCLUDED.data,
 			updated_at = NOW()
-	`)
+	`))
 	if err != nil {
 		return nil, err
 	}
@@ -640,7 +687,7 @@ func (db *PostgresDB) DeleteMulti(ctx context.Context, keys []Key) error {
 	}
 
 	// Always tenant-scoped — a multi-delete must not reach across tenants.
-	query := `UPDATE _entities SET deleted = TRUE, updated_at = NOW() WHERE id = ANY($1) AND tenant_id = $2`
+	query := db.q(`UPDATE _entities SET deleted = TRUE, updated_at = NOW() WHERE id = ANY($1) AND tenant_id = $2`)
 	args := []interface{}{ids, db.tenantFor(ctx)}
 
 	_, err := db.db.ExecContext(ctx, query, args...)
@@ -878,7 +925,7 @@ type postgresTransaction struct {
 }
 
 func (t *postgresTransaction) Get(key Key, dst interface{}) error {
-	query := `SELECT data FROM _entities WHERE id = $1 AND kind = $2 AND tenant_id = $3 AND deleted = FALSE`
+	query := t.db.q(`SELECT data FROM _entities WHERE id = $1 AND kind = $2 AND tenant_id = $3 AND deleted = FALSE`)
 	args := []interface{}{key.Encode(), key.Kind(), t.tenant}
 
 	row := t.tx.QueryRow(query, args...)
@@ -910,20 +957,20 @@ func (t *postgresTransaction) Put(key Key, src interface{}) (Key, error) {
 		parentID = &id
 	}
 
-	_, err = t.tx.Exec(`
+	_, err = t.tx.Exec(t.db.q(`
 		INSERT INTO _entities (id, kind, tenant_id, parent_id, data, updated_at)
 		VALUES ($1, $2, $3, $4, $5, NOW())
 		ON CONFLICT (id, kind, tenant_id) DO UPDATE SET
 			parent_id = EXCLUDED.parent_id,
 			data = EXCLUDED.data,
 			updated_at = NOW()
-	`, key.Encode(), key.Kind(), t.tenant, parentID, data)
+	`), key.Encode(), key.Kind(), t.tenant, parentID, data)
 
 	return key, err
 }
 
 func (t *postgresTransaction) Delete(key Key) error {
-	query := `UPDATE _entities SET deleted = TRUE, updated_at = NOW() WHERE id = $1 AND kind = $2 AND tenant_id = $3`
+	query := t.db.q(`UPDATE _entities SET deleted = TRUE, updated_at = NOW() WHERE id = $1 AND kind = $2 AND tenant_id = $3`)
 	args := []interface{}{key.Encode(), key.Kind(), t.tenant}
 
 	_, err := t.tx.Exec(query, args...)
@@ -953,6 +1000,14 @@ type postgresQuery struct {
 	limit       int
 	offset      int
 	distinct    bool
+}
+
+// tenantColumn is the column the query scopes by: the store's, tenant_id when it has none.
+func (q *postgresQuery) tenantColumn() string {
+	if q.db == nil || q.db.tenantCol == "" {
+		return "tenant_id"
+	}
+	return q.db.tenantCol
 }
 
 func (q *postgresQuery) Filter(filterStr string, value interface{}) Query {
@@ -1214,7 +1269,7 @@ func (q *postgresQuery) buildWhere(tenant string) (string, []interface{}) {
 	argNum := 2 // $1 is kind
 
 	// Tenant filter — always present.
-	conditions = append(conditions, fmt.Sprintf("tenant_id = $%d", argNum))
+	conditions = append(conditions, fmt.Sprintf("%s = $%d", q.tenantColumn(), argNum))
 	args = append(args, tenant)
 	argNum++
 

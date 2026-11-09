@@ -118,6 +118,12 @@ type Config struct {
 	// standalone deployment's path.
 	MasterKey []byte
 
+	// Seam, when set, is where every org's store lives: the host opens it, wherever it
+	// keeps it, and commerce builds its store over the handle. See Seam. It is not
+	// used for a user's store, which has no namespace, and it replaces the master key:
+	// the host keys what it opens.
+	Seam Seam
+
 	// MaxOpenTenants bounds how many per-tenant stores are open at once; the
 	// least recently used idle one is closed to stay under it.
 	// Defaults to defaultMaxOpenTenants.
@@ -263,12 +269,14 @@ func NewManager(cfg *Config) (*Manager, error) {
 	// posture is decided from COMMERCE_KMS_MASTER_KEY exactly as before.
 	var err error
 	masterKey := cfg.MasterKey
-	if masterKey == nil {
+	switch {
+	case masterKey != nil && len(masterKey) != 32:
+		return nil, fmt.Errorf("commerce: embedder MasterKey must be 32 bytes, got %d", len(masterKey))
+	case masterKey == nil && cfg.Seam == nil:
+		// With a seam the host keys what it opens, and a user's store stays unencrypted.
 		if masterKey, err = ResolveMasterKey(); err != nil {
 			return nil, err
 		}
-	} else if len(masterKey) != 32 {
-		return nil, fmt.Errorf("commerce: embedder MasterKey must be 32 bytes, got %d", len(masterKey))
 	}
 
 	m := &Manager{
@@ -345,6 +353,9 @@ func (m *Manager) openTenant(n ormdb.Namespace, path string) (DB, error) {
 	if !ok {
 		return nil, fmt.Errorf("db: unsafe namespace %q", n)
 	}
+	if m.config.Seam != nil && typ != tenantUser {
+		return m.openSeam(typ, id)
+	}
 	return NewSQLiteDB(&SQLiteDBConfig{
 		Path:               path,
 		Config:             m.config.SQLite,
@@ -419,7 +430,7 @@ func (m *Manager) Datastore() Datastore {
 // Encrypted reports whether per-tenant SQLite files are SQLCipher-encrypted at
 // rest (i.e. COMMERCE_KMS_MASTER_KEY was supplied and this build can encrypt).
 func (m *Manager) Encrypted() bool {
-	return m.masterKey != nil
+	return m.masterKey != nil || m.config.Seam != nil
 }
 
 // Close closes all database connections

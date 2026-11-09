@@ -1221,6 +1221,27 @@ live in `models/contributor/`; the executor is `cron/payout/contributor/`.
   (respects the chain's 25 gwei `minBaseFee`); the old hardcoded `1` wei caused
   "transaction underpriced" on Hanzo EVM.
 
+## An embedder opens the stores (`db.Seam`)
+
+`Config.Seam` / `EmbedConfig.Seam` hands the opening of every org's store (and the system
+one) to the embedder: `Seam(ns, open)` is given the store's namespace and `open(h, postgres)`,
+which builds the module's store over the `*sql.DB` the embedder made for it and returns it as
+an `io.Closer`. The embedder decides where the handle lives (a file, or a schema on a server)
+and keys it; the module is given no master key and writes no DDL the embedder has to know.
+User stores (`tenantUser`) are never given to a seam.
+
+- **The server store is the file's shape** (`TenantColumn: "namespace"`): the same columns
+  and `(id, kind, namespace)` key as `SQLiteDB`, so a file's rows move to it as they are and
+  a binary on the file and a binary on the server read the same records. A request with no
+  namespace is scoped by none (`tenantFor`), as in a file; the standalone `PostgresDB` keeps
+  `tenant_id` and falls back to its `TenantID`.
+- **Opening is idempotent under load**: `PostgresDB.migrate` skips the DDL when `_entities`
+  and the guard trigger exist, so a replica opening a store while the others write to it
+  takes no lock on it. `reject_bearer_tenant` carries the `search_path` it was made under,
+  so a session on another path (a bulk copy into the store) meets the same guard.
+- Held by `db/seam_test.go`: the file leg and the server leg (`COMMERCE_TEST_POSTGRES_DSN`)
+  run the same exercise; the shape, the idempotence and the guard are asserted on the server.
+
 ## Versioning (tag == binary)
 
 `commerce.Version` is a `var` (commerce.go), default = the current release.

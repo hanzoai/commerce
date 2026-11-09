@@ -125,7 +125,7 @@ func TestGuardIsIdempotent(t *testing.T) {
 // secret.Prefixes reaches the database without anyone remembering to edit SQL.
 // This is the property that keeps the Go check and the DB check from drifting.
 func TestGuardCoversEveryPrefix(t *testing.T) {
-	pg := strings.Join(postgresGuardDDL(), "\n")
+	pg := strings.Join(postgresGuardDDL("tenant_id"), "\n")
 	lite := strings.Join(sqliteGuardDDL(), "\n")
 	for _, p := range secret.Prefixes {
 		if !strings.Contains(pg, p) {

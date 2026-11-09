@@ -62,7 +62,12 @@ func dedent(s string) string {
 // postgresGuardDDL creates the credential predicate and the trigger that
 // enforces it. Every statement is idempotent, so it is safe to run against a
 // database that already carries the out-of-band original.
-func postgresGuardDDL() []string {
+//
+// The trigger function carries the search_path it was made under, so it finds
+// secret_like beside it whoever writes the row: a store that lives in a schema of
+// its own is also written by a session whose path is another's (a bulk copy
+// moving a file's rows into it), and that session must meet the same guard.
+func postgresGuardDDL(tenantCol string) []string {
 	// Normalize exactly as secret.Normalize does: strip Blank runes, trim,
 	// lowercase. btrim removes ASCII spaces only, which is why the non-ASCII
 	// spaces are in Blank and stripped rather than trimmed.
@@ -71,15 +76,9 @@ func postgresGuardDDL() []string {
 	match := fmt.Sprintf("%s ~ %s", norm,
 		sqlText("^("+strings.Join(secret.Prefixes, "|")+")"))
 
-	return []string{
-		dedent(fmt.Sprintf(`
-			CREATE OR REPLACE FUNCTION secret_like(text) RETURNS boolean
-			LANGUAGE sql IMMUTABLE AS $fn$ SELECT %s $fn$
-		`, match)),
-
-		dedent(`
+	reject := strings.ReplaceAll(`
 			CREATE OR REPLACE FUNCTION reject_bearer_tenant() RETURNS trigger
-			LANGUAGE plpgsql AS $fn$
+			LANGUAGE plpgsql SET search_path FROM CURRENT AS $fn$
 			BEGIN
 			  IF secret_like(NEW.tenant_id)
 			     OR (NEW.kind = 'organization' AND secret_like(NEW.data->>'name'))
@@ -92,7 +91,15 @@ func postgresGuardDDL() []string {
 			  RETURN NEW;
 			END;
 			$fn$
-		`),
+		`, "tenant_id", tenantCol)
+
+	return []string{
+		dedent(fmt.Sprintf(`
+			CREATE OR REPLACE FUNCTION secret_like(text) RETURNS boolean
+			LANGUAGE sql IMMUTABLE AS $fn$ SELECT %s $fn$
+		`, match)),
+
+		dedent(reject),
 
 		dedent(`DROP TRIGGER IF EXISTS trg_reject_bearer_tenant ON _entities`),
 
