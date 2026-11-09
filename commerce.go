@@ -88,6 +88,10 @@ type Config struct {
 	// which is the standalone path.
 	MasterKey []byte
 
+	// Seam, when set, is where every org's store lives (EmbedConfig.Seam). It
+	// replaces SQL_URL and the per-org files commerce would open itself.
+	Seam db.Seam
+
 	// Dev enables development mode
 	Dev bool
 
@@ -537,6 +541,7 @@ func (app *App) Bootstrap() error {
 	dbConfig.VectorDimensions = 1536
 	dbConfig.IsDev = app.config.Dev
 	dbConfig.MasterKey = app.config.MasterKey
+	dbConfig.Seam = app.config.Seam
 
 	var err error
 	app.DB, err = db.NewManager(dbConfig)
@@ -547,7 +552,7 @@ func (app *App) Bootstrap() error {
 	// Wire the primary data store. Prefer PostgreSQL (SQL_URL) in production;
 	// fall back to per-org SQLite for local/dev environments.
 	var systemDB db.DB
-	if sqlURL := getEnv("SQL_URL", ""); sqlURL != "" {
+	if sqlURL := getEnv("SQL_URL", ""); sqlURL != "" && app.config.Seam == nil {
 		pdb, pgErr := db.NewPostgresDB(&db.PostgresDBConfig{
 			DSN:                sqlURL,
 			MaxOpenConns:       4,
@@ -566,8 +571,10 @@ func (app *App) Bootstrap() error {
 		systemDB = pdb
 		fmt.Println("Commerce: using PostgreSQL as primary data store")
 	} else {
-		// Dev/local fallback: per-org SQLite in DataDir.
-		fmt.Fprintln(os.Stderr, "Commerce: SQL_URL not set, falling back to SQLite (not for production)")
+		// The host's seam, or the dev/local fallback: per-org SQLite in DataDir.
+		if app.config.Seam == nil {
+			fmt.Fprintln(os.Stderr, "Commerce: SQL_URL not set, falling back to SQLite (not for production)")
+		}
 		var dbErr error
 		systemDB, dbErr = app.DB.Org("system")
 		if dbErr != nil {

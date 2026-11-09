@@ -27,6 +27,7 @@ import (
 	"github.com/hanzoai/commerce/billing/creditledger"
 	"github.com/hanzoai/commerce/billing/depositledger"
 	"github.com/hanzoai/commerce/billing/gateway"
+	"github.com/hanzoai/commerce/db"
 	"github.com/hanzoai/commerce/mail"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/webhook/census"
@@ -97,6 +98,14 @@ type EmbedConfig struct {
 	// for the same process. nil ⇒ the env var decides, unchanged, which is the
 	// standalone path.
 	MasterKey []byte
+
+	// Seam is where every org's store lives, when the host keeps its stores in one
+	// place: commerce asks it for the store of a namespace and builds its own over
+	// the handle it is given (see db.Seam). The host decides whether that is a schema
+	// on a server or a file, and moves a file to the server; SQL_URL is not read, and
+	// MasterKey is not needed for what the host opens. nil ⇒ unchanged: commerce opens
+	// its own files, or SQL_URL's server.
+	Seam db.Seam
 
 	// Ledger is the host-injected double-entry credit ledger. When the cloud
 	// binary embeds commerce it passes a ledger-backed impl here, so
@@ -170,6 +179,7 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 	if len(cfg.MasterKey) > 0 {
 		appCfg.MasterKey = cfg.MasterKey
 	}
+	appCfg.Seam = cfg.Seam
 	if len(cfg.AllowedOrigins) > 0 {
 		appCfg.AllowedOrigins = cfg.AllowedOrigins
 	}
