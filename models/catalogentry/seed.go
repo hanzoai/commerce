@@ -37,9 +37,9 @@ var infraTiersSeed []byte
 // fixed price a million tokens (hanzoai/ai controllers/rates.go ensoPrices),
 // input / output / cache read / cache write: enso-flash 0.33 / 1.65 / 0.033 /
 // 0.4125, enso-pro 3.30 / 16.50 / 0.165 / 4.125, enso-max 4.30 / 21.50 / 0.215 /
-// 5.375, enso-ultra 5.236 / 26.18 / 0.2618 / 6.545. enso is the router over the
-// four (served as enso-auto too), billed at the tier that answers and listed at
-// a request's that states no depth, enso-flash's. No Enso model is free. Retail
+// 5.375, enso-ultra 5.236 / 26.18 / 0.2618 / 6.545. enso-auto is the router over
+// the four, billed at the tier that answers and listed at a request's that states
+// no depth, enso-flash's. No Enso model is free. Retail
 // is the one number a sync may not write — UpsertModels strips Price by design —
 // so the prices arrive here, and [Reprice] reads them back over the store on
 // every boot. It carries no cost: cost comes only from a sync.
@@ -471,10 +471,11 @@ func Reprice(db *datastore.Datastore) (repriced int, err error) {
 	return repriced, nil
 }
 
-// retired are the Enso rows no model is sold under any more: the free tier
-// (enso-free) and the vision pair (enso-vl, enso-vl-pro). The lineup is the five
-// models in the seed, and the Free lane is the router alone.
-var retired = []string{"enso-free", "enso-vl", "enso-vl-pro"}
+// retired are the Enso rows no model is sold under any more: the ambiguous bare
+// router slug (enso, superseded by enso-auto), the free tier (enso-free) and the
+// vision pair (enso-vl, enso-vl-pro). The lineup is the five models in the seed,
+// and the Free lane is enso-auto alone.
+var retired = []string{"enso", "enso-free", "enso-vl", "enso-vl-pro"}
 
 // Retire deletes the retired Enso rows and returns how many it deleted. The seed
 // no longer names them, so nothing else removes the rows an older seed or another

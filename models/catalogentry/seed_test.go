@@ -165,7 +165,7 @@ func TestSeedApiRouteAgreesWithApiPath(t *testing.T) {
 // never from a figure an earlier price list carried (20/60, 2/6, 40/120, 4/20,
 // 2/4, 5/25).
 var billedRetail = map[string]struct{ in, out, read, write string }{
-	"enso":       {"0.33", "1.65", "0.033", "0.4125"},
+	"enso-auto":  {"0.33", "1.65", "0.033", "0.4125"},
 	"enso-flash": {"0.33", "1.65", "0.033", "0.4125"},
 	"enso-pro":   {"3.30", "16.50", "0.165", "4.125"},
 	"enso-max":   {"4.30", "21.50", "0.215", "5.375"},
@@ -249,7 +249,7 @@ func TestEnsoSeedListsTheFiveModelsInOrder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EnsoSeedRows: %v", err)
 	}
-	want := []string{"enso", "enso-flash", "enso-pro", "enso-max", "enso-ultra"}
+	want := []string{"enso-auto", "enso-flash", "enso-pro", "enso-max", "enso-ultra"}
 	got := make([]string, 0, len(rows))
 	for i, r := range rows {
 		got = append(got, r.Slug)
@@ -349,7 +349,7 @@ func TestRepriceMovesTheEnsoPriceAndNothingElse(t *testing.T) {
 	}
 	// Age the store the way production aged: the rows hold the old prices beside a
 	// cost a sync wrote, and a human has renamed one.
-	old := map[string][2]string{"enso": {"4.00", "20.00"}, "enso-flash": {"2.00", "4.00"}, "enso-pro": {"4.40", "22.00"}, "enso-ultra": {"5.50", "27.50"}}
+	old := map[string][2]string{"enso-auto": {"4.00", "20.00"}, "enso-flash": {"2.00", "4.00"}, "enso-pro": {"4.40", "22.00"}, "enso-ultra": {"5.50", "27.50"}}
 	for slug, p := range old {
 		e := New(db)
 		if ok, err := e.Query().Filter("Slug=", slug).Get(); err != nil || !ok {
@@ -432,7 +432,7 @@ func TestRetireDeletesTheDroppedEnsoRowsOnly(t *testing.T) {
 	if _, err := SeedEnsoModels(db); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	for _, slug := range []string{"enso-free", "enso-vl", "enso-vl-pro", "zen-free"} {
+	for _, slug := range []string{"enso", "enso-free", "enso-vl", "enso-vl-pro", "zen-free"} {
 		e := New(db)
 		e.Slug = slug
 		e.Category = CategoryEnso
@@ -442,10 +442,10 @@ func TestRetireDeletesTheDroppedEnsoRowsOnly(t *testing.T) {
 	}
 
 	n, err := Retire(db)
-	if err != nil || n != 3 {
-		t.Fatalf("retired %d rows (err %v), want the 3 dropped", n, err)
+	if err != nil || n != 4 {
+		t.Fatalf("retired %d rows (err %v), want the 4 dropped", n, err)
 	}
-	for _, slug := range []string{"enso-free", "enso-vl", "enso-vl-pro"} {
+	for _, slug := range []string{"enso", "enso-free", "enso-vl", "enso-vl-pro"} {
 		if ok, _ := New(db).Query().Filter("Slug=", slug).Get(); ok {
 			t.Errorf("%s is still listed", slug)
 		}

@@ -259,7 +259,7 @@ func TestRefresh_ScopedByServes(t *testing.T) {
 	db := sysDB(c)
 
 	if _, err := UpsertModels(db, []ModelRow{{
-		Slug: "enso", Name: "Enso",
+		Slug: "enso-auto", Name: "Enso Auto",
 		Spec: ModelSpec{Family: FamilyEnso, Serves: "enso", Enabled: true},
 	}}); err != nil {
 		t.Fatalf("seed enso: %v", err)
@@ -267,7 +267,7 @@ func TestRefresh_ScopedByServes(t *testing.T) {
 	if _, err := Refresh(db, ServesOpenRouter, []ModelRow{orRow("openai/gpt-5", "1.25")}); err != nil {
 		t.Fatalf("refresh: %v", err)
 	}
-	if e := bySlug(t, db, "enso"); !e.Spec.Enabled {
+	if e := bySlug(t, db, "enso-auto"); !e.Spec.Enabled {
 		t.Fatal("an OpenRouter refresh withdrew an Enso model — the sweep must be scoped by serves")
 	}
 }

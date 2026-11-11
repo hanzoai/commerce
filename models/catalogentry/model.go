@@ -16,11 +16,12 @@ import (
 // carried in ModelSpec; its economics are the generic Rate vector every entry
 // already has.
 
-// Model families. Enso and Zen are OURS and are presented as ours — never
+// Model families. Enso, Kai and Zen are OURS and are presented as ours — never
 // described in terms of an upstream model. Everything we resell is third-party,
 // named plainly by its VENDOR ("Meta", never "Meta Llama").
 const (
 	FamilyEnso       = "enso"
+	FamilyKai        = "kai"
 	FamilyZen        = "zen"
 	FamilyThirdParty = "third-party"
 )
@@ -28,10 +29,11 @@ const (
 // Model categories. Following the infra-tier precedent exactly: model rows get
 // their own categories, surfaced under the brand-neutral "models" SCOPE, so
 // they never pollute the ten canonical cloud-primitive product categories.
-// Our two families are their own categories — that IS the split between ours
+// Our families are their own categories — that IS the split between ours
 // and resold, expressed as data rather than as a naming convention.
 const (
 	CategoryEnso  = "enso"
+	CategoryKai   = "kai"
 	CategoryZen   = "zen"
 	CategoryModel = "model" // third-party, grouped for display by ModelSpec.Vendor
 )
@@ -39,7 +41,7 @@ const (
 // modelCategories is the exact set of model categories. Like infraCategories it
 // is BOTH the "models" brand scope (see brandCategories) and the kind test.
 // One definition, one way.
-var modelCategories = []string{CategoryEnso, CategoryZen, CategoryModel}
+var modelCategories = []string{CategoryEnso, CategoryKai, CategoryZen, CategoryModel}
 
 // CategoryForFamily maps a family to the category its entries live in, so a
 // syncer never has to know the taxonomy.
@@ -47,6 +49,8 @@ func CategoryForFamily(family string) string {
 	switch family {
 	case FamilyEnso:
 		return CategoryEnso
+	case FamilyKai:
+		return CategoryKai
 	case FamilyZen:
 		return CategoryZen
 	default:

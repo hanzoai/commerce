@@ -12,8 +12,8 @@ import (
 // per component, with the family's own per-context rungs preserved.
 func ensoRow() ModelRow {
 	return ModelRow{
-		Slug: "enso",
-		Name: "Enso",
+		Slug: "enso-auto",
+		Name: "Enso Auto",
 		Spec: ModelSpec{
 			Vendor:        "Hanzo",
 			Family:        FamilyEnso,
@@ -44,7 +44,7 @@ func TestUpsertModels_CreatesModelRows(t *testing.T) {
 	}
 
 	e := New(db)
-	ok, err := e.Query().Filter("Slug=", "enso").Get()
+	ok, err := e.Query().Filter("Slug=", "enso-auto").Get()
 	if err != nil || !ok {
 		t.Fatalf("load enso: ok=%v err=%v", ok, err)
 	}
@@ -75,7 +75,7 @@ func TestUpsertModels_SyncOwnsCostAdminOwnsPrice(t *testing.T) {
 
 	// Admin sets a retail price, a markup, a tier and takes the model offline.
 	e := New(db)
-	if ok, _ := e.Query().Filter("Slug=", "enso").Get(); !ok {
+	if ok, _ := e.Query().Filter("Slug=", "enso-auto").Get(); !ok {
 		t.Fatal("enso missing")
 	}
 	e.Rates[0].Price = "20.00"
@@ -105,7 +105,7 @@ func TestUpsertModels_SyncOwnsCostAdminOwnsPrice(t *testing.T) {
 	}
 
 	got := New(db)
-	if ok, _ := got.Query().Filter("Slug=", "enso").Get(); !ok {
+	if ok, _ := got.Query().Filter("Slug=", "enso-auto").Get(); !ok {
 		t.Fatal("enso missing after re-sync")
 	}
 	if got.Rates[0].Cost != "9.00" {
@@ -143,7 +143,7 @@ func TestUpsertModels_RateSetFollowsUpstream(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	e := New(db)
-	e.Query().Filter("Slug=", "enso").Get()
+	e.Query().Filter("Slug=", "enso-auto").Get()
 	e.Rates[0].Price = "20.00"
 	e.Rates[1].Price = "40.00"
 	if err := e.Update(); err != nil {
@@ -156,7 +156,7 @@ func TestUpsertModels_RateSetFollowsUpstream(t *testing.T) {
 	}
 
 	got := New(db)
-	got.Query().Filter("Slug=", "enso").Get()
+	got.Query().Filter("Slug=", "enso-auto").Get()
 	if len(got.Rates) != 1 {
 		t.Fatalf("rates = %d, want 1 (the withdrawn rung is gone)", len(got.Rates))
 	}
@@ -213,7 +213,7 @@ func TestProjectModels_PublicHidesCostAdminShowsMargin(t *testing.T) {
 		t.Fatalf("sync: %v", err)
 	}
 	e := New(db)
-	e.Query().Filter("Slug=", "enso").Get()
+	e.Query().Filter("Slug=", "enso-auto").Get()
 	e.Rates[0].Price = "20.00"
 	e.Update()
 
@@ -279,7 +279,7 @@ func TestModelsScope_IsolatedFromProductCatalog(t *testing.T) {
 			t.Fatalf("project %s: %v", brand, err)
 		}
 		for _, p := range cat.Products {
-			if p.Slug == "enso" {
+			if p.Slug == "enso-auto" {
 				t.Fatalf("brand %s surfaced a model row", brand)
 			}
 		}
@@ -288,8 +288,8 @@ func TestModelsScope_IsolatedFromProductCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("project models: %v", err)
 	}
-	if len(models.Products) != 1 || models.Products[0].Slug != "enso" {
-		t.Fatalf("models scope = %d products, want just enso", len(models.Products))
+	if len(models.Products) != 1 || models.Products[0].Slug != "enso-auto" {
+		t.Fatalf("models scope = %d products, want just enso-auto", len(models.Products))
 	}
 	if len(models.Categories) != len(modelCategories) {
 		t.Fatalf("models taxonomy = %d, want %d", len(models.Categories), len(modelCategories))
