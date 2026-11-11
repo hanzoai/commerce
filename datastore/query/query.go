@@ -366,7 +366,7 @@ func (q *Query) ById(id string, dst interface{}) (iface.Key, bool, error) {
 		filterField = "Slug="
 	case "variant":
 		filterField = "SKU="
-	case "form", "namespace", "organization", "site":
+	case "namespace", "organization", "site":
 		filterField = "Name="
 	case "aggregate":
 		filterField = "Instance="
@@ -382,8 +382,8 @@ func (q *Query) ById(id string, dst interface{}) (iface.Key, bool, error) {
 		return q.couponFromId(id, dst)
 	case "order":
 		return q.orderFromId(id, dst)
-	case "affiliate", "cart", "discount", "subscription", "referral", "submission",
-		"subscriber", "webhook", "meter", "credit-grant", "token", "payment",
+	case "affiliate", "cart", "discount", "subscription", "referral",
+		"webhook", "meter", "credit-grant", "token", "payment",
 		"transaction", "oauthtoken", "app", "wallet", "blockaddress", "blocktransaction",
 		"tokentransaction", "paymentmethod", "fee", "transfer", "reversal", "partner",
 		"referralprogram", "review", "return", "note", "bundle", "campaign",

@@ -13,10 +13,8 @@ import (
 	"github.com/hanzoai/commerce/email"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
-	"github.com/hanzoai/commerce/models/form"
 	"github.com/hanzoai/commerce/models/referral"
 	"github.com/hanzoai/commerce/models/referrer"
-	"github.com/hanzoai/commerce/models/subscriber"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/thirdparty/mailchimp"
@@ -72,7 +70,6 @@ func create(c *zip.Ctx) error {
 	req.Email = "☺"
 	req.FirstName = "☺"
 	req.LastName = "☺"
-	req.FormId = "☺"
 
 	log.Info("Decoding User Creation Request", c)
 	// Decode response body to create new user
@@ -99,7 +96,6 @@ func create(c *zip.Ctx) error {
 	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
 	usr.Username = strings.ToLower(strings.TrimSpace(usr.Username))
 	un := usr.Username
-	uf := usr.FormId
 
 	usr2 := user.New(db)
 	// Email can't already exist or if it does, can't have a password
@@ -118,10 +114,6 @@ func create(c *zip.Ctx) error {
 			// Username isn't set in stone until actually registered
 			if un != "" && un != "☺" {
 				usr2.Username = un
-			}
-			// Username isn't set in stone until actually registered
-			if uf != "" && uf != "☺" {
-				usr2.FormId = uf
 			}
 
 			usr = usr2
@@ -145,10 +137,6 @@ func create(c *zip.Ctx) error {
 	if org.SignUpOptions.AllowAffiliateSignup {
 		log.Info("Signing up as Affiliate? %v", req.User.IsAffiliate, c)
 		usr.IsAffiliate = req.User.IsAffiliate
-	}
-
-	if uf == "☺" {
-		usr.FormId = ""
 	}
 
 	if un == "☺" {
@@ -276,30 +264,6 @@ func create(c *zip.Ctx) error {
 	counter.IncrUser(usr.Context(), usr.CreatedAt)
 
 	log.Info("Sending Emails", c)
-
-	if usr.FormId != "" {
-		log.Info("Adding User %v To Form %v", usr.Id(), usr.FormId, c)
-		f := form.New(usr.Datastore())
-
-		if err := f.GetById(usr.FormId); err != nil {
-			log.Warn("Form %v does not exist.", usr.FormId, c)
-		}
-
-		s := subscriber.New(db)
-		s.Email = usr.Email
-		s.UserId = usr.Id()
-		s.FirstName = usr.FirstName
-		s.LastName = usr.LastName
-		s.Tags = []string{"account-creation"}
-
-		if err := f.AddSubscriber(s); err != nil {
-			log.Info("Subscriber %v Encountered Non-Fatal Error: %v", usr.Id(), err, c)
-		}
-
-		if f.EmailList.Enabled {
-			email.Subscribe(ctx, f, s, org)
-		}
-	}
 
 	// Send welcome, email confirmation emails
 	if !enabled {
