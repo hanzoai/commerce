@@ -21,8 +21,9 @@ import (
 )
 
 // TestPlans_TeamCommercialModel — GET /v1/billing/plans serves the hanzo.team
-// commercial model in cents: pro $20, plus $100, max $200, team $25/user with
-// per-seat billing, minSeats 2, and the teamGuests limit on paid personal tiers.
+// commercial model in cents: the personal ladder Go $8, Pro $15, Dev $45, Max $95
+// and Ultra $195 (@hanzo/plans 1.10.0), team $25/user with per-seat billing,
+// minSeats 2, and the teamGuests limit on paid personal tiers.
 func TestPlans_TeamCommercialModel(t *testing.T) {
 	a := zip.New(zip.Config{DisableStartupMessage: true})
 	a.Raw(http.MethodGet, "/v1/billing/plans", ListPlans)
@@ -38,7 +39,9 @@ func TestPlans_TeamCommercialModel(t *testing.T) {
 	}
 	bySlug := indexBySlug(plans)
 
-	for slug, cents := range map[string]int64{"free": 0, "dev": 2000, "max-5x": 10000, "max-20x": 20000, "team": 2500} {
+	for slug, cents := range map[string]int64{
+		"free": 0, "go": 800, "pro-3x": 1500, "dev-5x": 4500, "max-15x": 9500, "ultra": 19500, "team": 2500,
+	} {
 		p, ok := bySlug[slug]
 		if !ok {
 			t.Fatalf("plan %q missing from GET /v1/billing/plans", slug)
@@ -58,9 +61,9 @@ func TestPlans_TeamCommercialModel(t *testing.T) {
 	if team.Limits.IncludedCloudCreditsPerUser != nil {
 		t.Error("team must not serve limits.includedCloudCreditsPerUser — a seat covers AI, it mints no credit")
 	}
-	dev := bySlug["dev"]
-	if dev.Limits == nil || dev.Limits.TeamGuests == nil || *dev.Limits.TeamGuests != 3 {
-		t.Error("dev must serve limits.teamGuests=3 (team.guests back-compat source)")
+	entry := bySlug["go"]
+	if entry.Limits == nil || entry.Limits.TeamGuests == nil || *entry.Limits.TeamGuests != 3 {
+		t.Error("go must serve limits.teamGuests=3 (team.guests back-compat source)")
 	}
 	// The wire carries a real annual discount on a business plan, not a copy of the
 	// monthly price — stated as a relationship so it survives a reprice and still
@@ -69,8 +72,8 @@ func TestPlans_TeamCommercialModel(t *testing.T) {
 	if team.annual() <= 0 || team.annual() >= team.Price {
 		t.Errorf("team priceAnnual = %d cents, monthly = %d; annual must be a discount", team.annual(), team.Price)
 	}
-	if dev.PriceAnnual != nil || dev.AnnualTotal != 0 {
-		t.Errorf("dev serves an annual price (%v, %d); a personal plan is sold by the month", dev.PriceAnnual, dev.AnnualTotal)
+	if entry.PriceAnnual != nil || entry.AnnualTotal != 0 {
+		t.Errorf("go serves an annual price (%v, %d); a personal plan is sold by the month", entry.PriceAnnual, entry.AnnualTotal)
 	}
 }
 

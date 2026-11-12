@@ -20,6 +20,10 @@ import (
 // entry whose digests must equal the new bytes, and editing the bytes under the
 // current version breaks the current entry.
 var versionDigests = map[string]struct{ subscription, dns string }{
+	"1.10.0": {
+		subscription: "457bb229defbb9b0de028c17b472f9521566eecb94c2333fd69dcc7a5334f088",
+		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
+	},
 	"1.9.1": {
 		subscription: "df4733e28e95c676a06ac5ef3c11e402064bcdd5183ad2f44ac166812b3deed4",
 		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
@@ -143,12 +147,12 @@ func TestVendoredPlansMatchPinnedVersion(t *testing.T) {
 
 // TestVendoredPlanPrices is a diagnostic price-canary: if a money-bearing plan's
 // cents change, THIS test names which one (the digest test only says "drifted").
-// These are the @hanzo/plans@1.8.17 cents — monthly, the annual price tag shown
+// These are the @hanzo/plans@1.10.0 cents — monthly, the annual price tag shown
 // per month, and the year a yearly subscription is charged. contactSales plans
 // are null-priced → stored as 0 + ContactSales (never a chargeable $0).
 func TestVendoredPlanPrices(t *testing.T) {
-	if got := len(catalog); got != 14 { // 11 subscription + 3 dns
-		t.Fatalf("catalog = %d, want 14 (11 subscription + 3 dns)", got)
+	if got := len(catalog); got != 19 { // 16 subscription + 3 dns
+		t.Fatalf("catalog = %d, want 19 (16 subscription + 3 dns)", got)
 	}
 	if got := len(dnsPlans); got != 3 {
 		t.Fatalf("dnsPlans = %d, want 3", got)
@@ -163,20 +167,26 @@ func TestVendoredPlanPrices(t *testing.T) {
 		monthly, annual, year int64
 		contactSales          bool
 	}
-	// A personal year is ten months ($200, $1,000, $2,000) and a team seat's is
-	// $240 against $25 monthly; the annual tag is that year over twelve, rounded
-	// to the cent. The catalog states the total because twelve rounded tags would
-	// bill $200.04.
+	// The personal ladder is sold by the month and states no year. The archived
+	// rungs keep the years they were sold at: ten months ($200, $1,000, $2,000,
+	// $5,000). A team seat's year is $240 against $25 monthly; the annual tag is
+	// that year over twelve, rounded to the cent. The catalog states the total
+	// because twelve rounded tags would bill $200.04.
 	cases := map[string]want{
-		"free":           {0, 0, 0, false},           // a real $0 rung, not a null price
-		"dev":            {2000, 1667, 20000, false}, // shown as Pro
-		"max-5x":         {10000, 8333, 100000, false},
-		"max-20x":        {20000, 16667, 200000, false},
-		"max-50x":        {50000, 41667, 500000, false}, // draft: priced, held unlisted
-		"max-100x":       {100000, 83333, 1000000, false},
-		"team":           {2500, 2000, 24000, false},  // per seat
-		"team-premium":   {10000, 8000, 96000, false}, // per seat, the team's premium seat
-		"advisory":       {499900, none, 0, false},    // agency, monthly only
+		"free":           {0, 0, 0, false}, // a real $0 rung, not a null price
+		"go":             {800, none, 0, false},
+		"pro-3x":         {1500, none, 0, false}, // shown as Pro
+		"dev-5x":         {4500, none, 0, false}, // shown as Dev
+		"max-15x":        {9500, none, 0, false}, // shown as Max
+		"ultra":          {19500, none, 0, false},
+		"unlimited":      {99500, none, 0, false},       // private: priced, sold by no checkout
+		"dev":            {2000, 1667, 20000, false},    // archived: the old Pro, as it was sold
+		"max-5x":         {10000, 8333, 100000, false},  // archived
+		"max-20x":        {20000, 16667, 200000, false}, // archived
+		"max-50x":        {50000, 41667, 500000, false}, // archived
+		"team":           {2500, 2000, 24000, false},    // per seat
+		"team-premium":   {10000, 8000, 96000, false},   // per seat, the team's premium seat
+		"advisory":       {499900, none, 0, false},      // agency, monthly only
 		"dedicated":      {999900, none, 0, false},
 		"enterprise":     {0, none, 0, true}, // null price → 0 + contactSales
 		"dns-free":       {0, 0, 0, false},
@@ -215,11 +225,18 @@ func TestVendoredPlanPrices(t *testing.T) {
 func TestVendoredPlanRoster(t *testing.T) {
 	cases := map[string]struct{ agents, bots int }{
 		"free":         {1, 0},  // one personal agent, no bot
-		"dev":          {10, 0}, // Pro, the $20 tier
-		"max-5x":       {10, 1}, // a Max rung's own bots grow with it: 1, 3, 5, 10
+		"go":           {10, 0}, // the $8 entry rung
+		"pro-3x":       {10, 1}, // the bots grow up the ladder: 1, 2, 5, 10
+		"dev-5x":       {10, 2},
+		"max-15x":      {10, 5},
+		"ultra":        {10, 10},
+		"unlimited":    {10, 10},
+		"pro-2x":       {10, 1}, // renamed, and answered by pro-3x for its holders
+		"max-10x":      {10, 5}, // renamed, and answered by max-15x for its holders
+		"dev":          {10, 0}, // archived: the old $20 Pro
+		"max-5x":       {10, 1}, // archived Max rungs keep the bots they were sold with
 		"max-20x":      {10, 3},
 		"max-50x":      {10, 5},
-		"max-100x":     {10, 10},
 		"max":          {10, 1}, // retired, and answered by max-5x for its holders
 		"advisory":     {10, 1},
 		"dedicated":    {-1, 1},
@@ -294,10 +311,14 @@ func TestRetiredSlugsAreNotInTheEmbed(t *testing.T) {
 		bySlug[p.Slug] = true
 	}
 	for _, slug := range []string{
-		// go ($9), pro ($49) and max ($99) came off the ladder; a renewal still
-		// prices through its own snapshot, but the embed must not offer them for
-		// sale again. max is answered by max-5x (its "replaces"), never listed.
-		"go", "pro", "max",
+		// pro ($49) and max ($99) came off the ladder; a renewal still prices
+		// through its own snapshot, but the embed must not offer them for sale
+		// again. max is answered by max-5x (its "replaces"), never listed. go ($9)
+		// came off too, and @hanzo/plans 1.10.0 publishes the slug again as the
+		// $8 entry rung, so it is not retired any more. max-100x was a draft that
+		// 1.10.0 drops, and pro-2x and max-10x are answered by the rungs that
+		// renamed them (pro-3x, max-15x).
+		"pro", "max", "max-100x", "pro-2x", "max-10x",
 		"developer", "plus", "team-max", "custom",
 		"world-free", "world-pro", "world-team", "world-enterprise",
 		"social-free", "social-pro", "social-team", "social-team-max", "social-enterprise",
@@ -311,7 +332,7 @@ func TestRetiredSlugsAreNotInTheEmbed(t *testing.T) {
 // TestVendoredAllotmentAmounts canaries what a plan gives away: no rung mints
 // prepaid credit — the ledger holds only credit a buyer bought.
 func TestVendoredAllotmentAmounts(t *testing.T) {
-	for _, slug := range []string{"free", "dev", "max-5x", "max-20x", "max", "team", "team-premium", "advisory", "dedicated", "enterprise", "dns-pro", "go", "pro"} {
+	for _, slug := range []string{"free", "go", "pro-3x", "dev-5x", "max-15x", "ultra", "unlimited", "dev", "max-5x", "max-20x", "max", "team", "team-premium", "advisory", "dedicated", "enterprise", "dns-pro", "pro"} {
 		if got := IncludedMonthlyCents(slug); got != 0 {
 			t.Errorf("IncludedMonthlyCents(%q) = %d, want 0 — no rung mints credit", slug, got)
 		}
@@ -325,7 +346,15 @@ func TestVendoredAllotmentAmounts(t *testing.T) {
 func TestVendoredMoveScores(t *testing.T) {
 	for slug, cents := range map[string]int64{
 		"free":         0,
-		"dev":          2000,
+		"go":           800,
+		"pro-3x":       1500,
+		"dev-5x":       4500,
+		"max-15x":      9500,
+		"ultra":        19500,
+		"unlimited":    99500,
+		"pro-2x":       1500, // renamed; scored as pro-3x
+		"max-10x":      9500, // renamed; scored as max-15x
+		"dev":          2000, // archived, scored at the price it was sold at
 		"max-5x":       10000,
 		"max-20x":      20000,
 		"max":          10000, // retired; scored as max-5x
@@ -335,8 +364,7 @@ func TestVendoredMoveScores(t *testing.T) {
 		"dedicated":    999900,
 		"enterprise":   math.MaxInt64, // priced by negotiation
 		"dns-pro":      500,
-		"go":           0, // retired with no successor
-		"pro":          0,
+		"pro":          0, // retired with no successor
 	} {
 		if got := listCents(slug); got != cents {
 			t.Errorf("listCents(%q) = %d, want %d", slug, got, cents)

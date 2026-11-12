@@ -149,7 +149,7 @@ func TestSubscribeTrial_NoChargeCardVaultedTrialing(t *testing.T) {
 
 	// The trial is the subject's subscription: a second paid plan is refused
 	// before any card is touched.
-	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:2","planId":"dev"}`, nil); r.StatusCode != http.StatusConflict {
+	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:2","planId":"go"}`, nil); r.StatusCode != http.StatusConflict {
 		t.Fatalf("second plan during the trial: status=%d %s, want 409", r.StatusCode, bodyOf(r))
 	}
 	if m.chargeCalls != 0 {

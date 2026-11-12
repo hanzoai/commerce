@@ -196,7 +196,7 @@ func TestAnnualPeriodIsAYear(t *testing.T) {
 // from the discount the other rungs happen to carry would invent a price and then
 // charge a year of it up front.
 func TestAnnualAtALevelIsRefused(t *testing.T) {
-	maxLevels(t)
+	levels(t, "max-5x") // archived, and the one kind of personal rung that still states a year
 	personal := planFromStatic(lookupPlan("max-5x"))
 
 	// Max is a personal plan, sold by the month at every rung.
@@ -311,12 +311,12 @@ func TestSubscribeWithCardChargesTheWholeYear(t *testing.T) {
 // vaulted card, no subscription. The refusal lands before the card is touched, so
 // the buyer reads why rather than reading a decline.
 func TestSubscribeWithCardRefusesAnnualWithoutAnAnnualPrice(t *testing.T) {
-	maxLevels(t)
+	levels(t, "pro-3x")
 	cases := map[string]string{
 		"free tier has no annual price": `{"sourceId":"cnon:ok","planId":"free","interval":"year"}`,
 		"contact sales has no price":    `{"sourceId":"cnon:ok","planId":"enterprise","interval":"year"}`,
-		"a period we do not sell":       `{"sourceId":"cnon:ok","planId":"dev","interval":"week"}`,
-		"annual at a level":             `{"sourceId":"cnon:ok","planId":"max-5x","level":3,"interval":"year"}`,
+		"a period we do not sell":       `{"sourceId":"cnon:ok","planId":"go","interval":"week"}`,
+		"annual at a level":             `{"sourceId":"cnon:ok","planId":"pro-3x","level":3,"interval":"year"}`,
 	}
 
 	for name, body := range cases {
@@ -341,7 +341,7 @@ func TestSubscribeWithCardRefusesAnnualWithoutAnAnnualPrice(t *testing.T) {
 			}
 
 			db := datastore.New(org.Namespaced(ctx))
-			for _, slug := range []string{"free", "enterprise", "dev", "max-5x"} {
+			for _, slug := range []string{"free", "enterprise", "go", "pro-3x"} {
 				if s := parentSub(t, db, "yr-refuse", slug); s != nil {
 					t.Errorf("a %s subscription was created (%s) for a refused purchase", slug, s.Id())
 				}
@@ -357,11 +357,11 @@ func TestSubscribeWithCardRefusesAnnualWithoutAnAnnualPrice(t *testing.T) {
 // keeps buying exactly what it bought before, and naming "month" explicitly is the
 // same purchase as naming nothing.
 func TestAbsentIntervalBuysTheMonthlyPrice(t *testing.T) {
-	monthly, _, _ := annual(t, "dev")
+	monthly := lookupPlan("go").Price
 
 	for name, body := range map[string]string{
-		"absent": `{"sourceId":"cnon:ok","planId":"dev"}`,
-		"month":  `{"sourceId":"cnon:ok","planId":"dev","interval":"month"}`,
+		"absent": `{"sourceId":"cnon:ok","planId":"go"}`,
+		"month":  `{"sourceId":"cnon:ok","planId":"go","interval":"month"}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			ctx := ae.NewContext()
@@ -380,9 +380,9 @@ func TestAbsentIntervalBuysTheMonthlyPrice(t *testing.T) {
 			}
 
 			db := datastore.New(org.Namespaced(ctx))
-			sub := parentSub(t, db, "yr-base", "dev")
+			sub := parentSub(t, db, "yr-base", "go")
 			if sub == nil {
-				t.Fatal("no dev subscription created")
+				t.Fatal("no go subscription created")
 			}
 			if want := sub.PeriodStart.AddDate(0, 1, 0); !sub.PeriodEnd.Equal(want) {
 				t.Fatalf("period ends %s, want a month at %s", sub.PeriodEnd, want)
@@ -397,10 +397,12 @@ func TestAbsentIntervalBuysTheMonthlyPrice(t *testing.T) {
 // by id, so the price under test is the one that survived storage rather than one
 // held in memory from the purchase.
 //
-// The subscription is a personal plan held by the year, as the store may already
-// hold one: personal plans are sold by the month (monthlyOnly asks a purchase or a
-// move onto a plan), and a subscription the store holds by the year still renews
-// by the year.
+// The subscription is a personal plan held by the year, as the store already
+// holds them: personal plans are sold by the month (monthlyOnly asks a purchase or
+// a move onto a plan), and a subscription the store holds by the year still renews
+// by the year. dev is the rung such a holder bought — archived in @hanzo/plans
+// 1.10.0 exactly as it was sold, $200 a year — so the row is the store's, not a
+// purchase: nothing sells dev any more.
 func TestAnnualRenewalChargesTheYearAgain(t *testing.T) {
 	monthly, _, stated := annual(t, "dev")
 	want := int64(stated)
@@ -411,20 +413,8 @@ func TestAnnualRenewalChargesTheYearAgain(t *testing.T) {
 	m := squareMock("cust_ry", "ccof_ry", "sqpay_ry")
 	withFakeSquare(t, m)
 
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev"}`, nil)
-	if resp.StatusCode != http.StatusCreated {
-		raw, _ := io.ReadAll(resp.Body)
-		t.Fatalf("subscribe status=%d body=%s, want 201", resp.StatusCode, string(raw))
-	}
-	if int64(m.lastChargeAmount) != int64(monthly) {
-		t.Fatalf("first charge=%d, want %d", m.lastChargeAmount, monthly)
-	}
-
 	db := datastore.New(org.Namespaced(ctx))
-	sub := parentSub(t, db, "yr-renew", "dev")
-	if sub == nil {
-		t.Fatal("no dev subscription created")
-	}
+	sub := seedCardBackedSub(t, db, "yr-renew", "dev", "ccof_ry", "cust_ry")
 
 	// Age it to the end of the year it paid for — a renewal bills the next year
 	// once the paid one is over.
@@ -448,11 +438,11 @@ func TestAnnualRenewalChargesTheYearAgain(t *testing.T) {
 		raw, _ := io.ReadAll(renew.Body)
 		t.Fatalf("renew status=%d body=%s, want 200", renew.StatusCode, string(raw))
 	}
-	if m.chargeCalls != 2 {
-		t.Fatalf("charge calls=%d, want 2 (the purchase and the renewal)", m.chargeCalls)
+	if m.chargeCalls != 1 {
+		t.Fatalf("charge calls=%d, want 1 (the renewal)", m.chargeCalls)
 	}
 	if int64(m.lastChargeAmount) == int64(monthly) {
-		t.Fatalf("the renewal charged the MONTHLY price %d — the year was lost between the purchase and the renewal", monthly)
+		t.Fatalf("the renewal charged the MONTHLY price %d — the year was lost between storage and the renewal", monthly)
 	}
 	if int64(m.lastChargeAmount) != want {
 		t.Fatalf("renewal charged %d, want %d", m.lastChargeAmount, want)

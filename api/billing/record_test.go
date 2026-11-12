@@ -23,15 +23,15 @@ var (
 	recEnd   = recStart.AddDate(0, 1, 0)
 )
 
-func recordDev(t *testing.T, db *datastore.Datastore) RecordIn {
+func recordGo(t *testing.T, db *datastore.Datastore) RecordIn {
 	t.Helper()
-	p, err := resolveSubscriptionPlan(db, "dev")
+	p, err := resolveSubscriptionPlan(db, "go")
 	if err != nil || p.Price <= 0 {
-		t.Fatalf("the catalog must sell a paid dev plan: %v (price %d)", err, p.Price)
+		t.Fatalf("the catalog must sell a paid go plan: %v (price %d)", err, p.Price)
 	}
 	return RecordIn{
 		Subject:     "acme",
-		PlanID:      "dev",
+		PlanID:      "go",
 		PriceCents:  int64(p.Price),
 		PeriodStart: recStart,
 		PeriodEnd:   recEnd,
@@ -57,7 +57,7 @@ func TestRecordSubscription_OpensTheExternalPlanAndMovesNoMoney(t *testing.T) {
 	m := squareMock("cust_1", "ccof_1", "sqpay_1")
 	withFakeSquare(t, m)
 	db := datastore.New(org.Namespaced(ctx))
-	in := recordDev(t, db)
+	in := recordGo(t, db)
 
 	before, err := bucketedSplit(org.Namespaced(ctx), in.Subject, currency.USD, org.TestMode())
 	if err != nil {
@@ -86,7 +86,7 @@ func TestRecordSubscription_OpensTheExternalPlanAndMovesNoMoney(t *testing.T) {
 	if !s.PeriodStart.Equal(recStart) || !s.PeriodEnd.Equal(recEnd) || !s.TrialEnd.IsZero() {
 		t.Fatalf("period %s..%s trialEnd %s, want the paid period and no trial", s.PeriodStart, s.PeriodEnd, s.TrialEnd)
 	}
-	if int64(s.Plan.Price) != in.PriceCents || s.Plan.Slug != "dev" {
+	if int64(s.Plan.Price) != in.PriceCents || s.Plan.Slug != "go" {
 		t.Fatalf("plan %q at %d, want dev at %d", s.Plan.Slug, s.Plan.Price, in.PriceCents)
 	}
 	ref, _ := s.Metadata["reference"].(map[string]interface{})
@@ -121,7 +121,7 @@ func TestRecordedPlanIsNeverChargedOrRenewedByTheProcessor(t *testing.T) {
 	defer ctx.Close()
 	org := moneyOrg("rec-never")
 	db := datastore.New(org.Namespaced(ctx))
-	if _, err := RecordSubscription(ctx, org, recordDev(t, db)); err != nil {
+	if _, err := RecordSubscription(ctx, org, recordGo(t, db)); err != nil {
 		t.Fatalf("record: %v", err)
 	}
 	s := subsOf(t, db, "acme")[0]
@@ -154,7 +154,7 @@ func TestRecordSubscription_RetryIsUnchangedAndTheNextPaymentExtends(t *testing.
 	defer ctx.Close()
 	org := moneyOrg("rec-next")
 	db := datastore.New(org.Namespaced(ctx))
-	in := recordDev(t, db)
+	in := recordGo(t, db)
 	in.Processor = "wire" // a processor with no card rail still holds the one paid row
 	if _, err := RecordSubscription(ctx, org, in); err != nil {
 		t.Fatalf("record: %v", err)
@@ -196,7 +196,7 @@ func TestRecordSubscription_Refusals(t *testing.T) {
 
 	org := moneyOrg("rec-price")
 	db := datastore.New(org.Namespaced(ctx))
-	wrong := recordDev(t, db)
+	wrong := recordGo(t, db)
 	wrong.PriceCents++
 	if _, err := RecordSubscription(ctx, org, wrong); !IsSaleRefused(err) {
 		t.Fatalf("a payment that is not the plan's price: err=%v, want refused", err)
@@ -205,13 +205,13 @@ func TestRecordSubscription_Refusals(t *testing.T) {
 		t.Fatalf("a refused record wrote %d row(s)", n)
 	}
 
-	unknown := recordDev(t, db)
+	unknown := recordGo(t, db)
 	unknown.PlanID = "no-such-plan"
 	if _, err := RecordSubscription(ctx, org, unknown); !IsSaleNotFound(err) {
 		t.Fatalf("an unknown plan: err=%v, want not found", err)
 	}
 
-	noRef := recordDev(t, db)
+	noRef := recordGo(t, db)
 	noRef.Reference = map[string]string{"invoice": " "}
 	if _, err := RecordSubscription(ctx, org, noRef); !IsSaleRefused(err) {
 		t.Fatalf("no reference: err=%v, want refused", err)
@@ -219,8 +219,8 @@ func TestRecordSubscription_Refusals(t *testing.T) {
 
 	paying := moneyOrg("rec-paying")
 	pdb := datastore.New(paying.Namespaced(ctx))
-	liveSub(t, pdb, "acme", "dev", "square")
-	if _, err := RecordSubscription(ctx, paying, recordDev(t, pdb)); !IsSaleConflict(err) {
+	liveSub(t, pdb, "acme", "go", "square")
+	if _, err := RecordSubscription(ctx, paying, recordGo(t, pdb)); !IsSaleConflict(err) {
 		t.Fatalf("a subject already paying through checkout: err=%v, want conflict", err)
 	}
 }
@@ -233,10 +233,10 @@ func TestListSubscriptions_ReadsTheRowsTheStoreHolds(t *testing.T) {
 	defer ctx.Close()
 	org := moneyOrg("rec-list")
 	db := datastore.New(org.Namespaced(ctx))
-	if _, err := RecordSubscription(ctx, org, recordDev(t, db)); err != nil {
+	if _, err := RecordSubscription(ctx, org, recordGo(t, db)); err != nil {
 		t.Fatalf("record: %v", err)
 	}
-	liveSub(t, db, "other", "dev", "square")
+	liveSub(t, db, "other", "go", "square")
 
 	for _, tc := range []struct {
 		user, status string
@@ -264,10 +264,10 @@ func TestSubscriptionsSayHowThePeriodWasPaid(t *testing.T) {
 	org := moneyOrg("rec-settled")
 	withFakeSquare(t, squareMock("cust_1", "ccof_1", "sqpay_1"))
 	db := datastore.New(org.Namespaced(ctx))
-	paid := recordDev(t, db)
+	paid := recordGo(t, db)
 	paid.Subject = "acme-square"
 	comp := compEnterprise("acme-comp")
-	comp.PlanID = "dev"
+	comp.PlanID = "go"
 	for _, in := range []RecordIn{paid, comp} {
 		if _, err := RecordSubscription(ctx, org, in); err != nil {
 			t.Fatalf("record %s: %v", in.Processor, err)

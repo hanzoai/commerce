@@ -26,7 +26,7 @@ func TestExtendCoupon(t *testing.T) {
 	warmCouponNS(t, ctx)
 	now := time.Now().UTC()
 	start, end := now.Add(-time.Minute), now.Add(30*24*time.Hour)
-	spec := promo.CouponSpec{Percent: 50, Start: &start, End: &end, Limit: 100, Plans: []string{"dev"}, Enabled: true}
+	spec := promo.CouponSpec{Percent: 50, Start: &start, End: &end, Limit: 100, Plans: []string{"go"}, Enabled: true}
 	planCoupon(t, ctx, "50OFFBETA", spec)
 	m := squareMock("cust_ex", "ccof_ex", "sqpay_ex")
 	withFakeSquare(t, m)
@@ -35,11 +35,11 @@ func TestExtendCoupon(t *testing.T) {
 		t.Helper()
 		org := webhookOrg(t, ctx, name, true)
 		m.vaultCard = processor.Card{Brand: "VISA", Last4: "4242", ExpMonth: 12, ExpYear: 2030, Fingerprint: fp}
-		if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:`+name+`","planId":"dev","coupon":"50OFFBETA"}`, nil); r.StatusCode != http.StatusCreated {
+		if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:`+name+`","planId":"go","coupon":"50OFFBETA"}`, nil); r.StatusCode != http.StatusCreated {
 			t.Fatalf("%s: status=%d %s", name, r.StatusCode, bodyOf(r))
 		}
 		db := datastore.New(org.Namespaced(ctx))
-		return parentSub(t, db, name, "dev"), db
+		return parentSub(t, db, name, "go"), db
 	}
 	old, oldDB := buy("cp-ext-old", "fp_old")
 	fresh, freshDB := buy("cp-ext-new", "fp_new")
@@ -121,7 +121,7 @@ func TestExtendCoupon(t *testing.T) {
 	// The old buyer's renewal a month on is month 2 of 3.
 	s := soldAgo(t, oldDB, old.Id(), 35)
 	inv, _, err := engine.RenewSubscription(ctx, oldDB, s, prepaidFor(ctx, webhookOrg(t, ctx, "cp-ext-old", true)), chargeProviderForOrg(webhookOrg(t, ctx, "cp-ext-old", true)))
-	if err != nil || inv == nil || inv.AmountDue != 1000 || inv.DiscountName != "50OFFBETA — 50% off, month 2 of 3" {
+	if err != nil || inv == nil || inv.AmountDue != 400 || inv.DiscountName != "50OFFBETA — 50% off, month 2 of 3" {
 		t.Fatalf("month 2 after the extension: %v %v", inv, err)
 	}
 }

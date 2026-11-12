@@ -102,7 +102,7 @@ func TestUpdateSubscription_AnExternalPlanTakesItsSeatsWithTheNextRecord(t *test
 	defer ctx.Close()
 	org := moneyOrg("seats-ext")
 	db := datastore.New(org.Namespaced(ctx))
-	in := recordDev(t, db)
+	in := recordGo(t, db)
 	in.Subject, in.PlanID, in.Quantity, in.PriceCents = "seats-ext", "team", 2, 5000
 	got, err := RecordSubscription(ctx, org, in)
 	if err != nil {

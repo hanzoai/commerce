@@ -85,13 +85,13 @@ func TestF2_DBPriceZero_StillGatedByEmbedPaidTier(t *testing.T) {
 	defer ctx.Close()
 	org := moneyOrg("acme")
 
-	// Seed the authority, then SuperAdmin-edit "max-5x" DB Price → 0.
+	// Seed the authority, then SuperAdmin-edit "pro-3x" DB Price → 0.
 	if _, _, err := SeedPlans(ctx); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 	adb := plan.AuthorityDB(ctx)
 	p := plan.New(adb)
-	if ok, _ := p.Query().Filter("Slug=", "max-5x").Get(); !ok {
+	if ok, _ := p.Query().Filter("Slug=", "pro-3x").Get(); !ok {
 		t.Fatal("max-5x not seeded")
 	}
 	p.Price = 0
@@ -101,7 +101,7 @@ func TestF2_DBPriceZero_StillGatedByEmbedPaidTier(t *testing.T) {
 
 	// Prove the edit LANDED: the charge path now resolves max at Price 0.
 	odb := datastore.New(org.Namespaced(ctx))
-	rp, err := resolveSubscriptionPlan(odb, "max-5x")
+	rp, err := resolveSubscriptionPlan(odb, "pro-3x")
 	if err != nil {
 		t.Fatalf("resolve: %v", err)
 	}
@@ -110,8 +110,8 @@ func TestF2_DBPriceZero_StillGatedByEmbedPaidTier(t *testing.T) {
 	}
 
 	// Yet the C1-a gate STILL refuses a non-mint org owner — it reads the embed
-	// paidTier("max-5x"), not the DB Price=0. No free provision of the paid tier.
-	w := invokeSub(org, ctx, c1OrgAdmin, CreateBillingSubscription, `{"userId":"acme/self","planId":"max-5x"}`)
+	// paidTier("pro-3x"), not the DB Price=0. No free provision of the paid tier.
+	w := invokeSub(org, ctx, c1OrgAdmin, CreateBillingSubscription, `{"userId":"acme/self","planId":"pro-3x"}`)
 	if w.StatusCode != http.StatusForbidden {
 		t.Fatalf("DB Price=0 must NOT bypass C1-a: status=%d body=%s, want 403 (embed paidTier gates)", w.StatusCode, bodyOf(w))
 	}

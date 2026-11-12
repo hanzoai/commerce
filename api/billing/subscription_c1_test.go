@@ -55,7 +55,7 @@ func TestCreateSubscription_OrgAdminPaidTier_Denied(t *testing.T) {
 	defer ctx.Close()
 	org := moneyOrg("acme")
 
-	body := `{"userId":"acme/self","planId":"max-5x"}`
+	body := `{"userId":"acme/self","planId":"pro-3x"}`
 	w := invokeSub(org, ctx, c1OrgAdmin, CreateBillingSubscription, body)
 	if w.StatusCode != http.StatusForbidden {
 		t.Fatalf("org-admin self-subscribe to paid 'max': status=%d body=%s, want 403 (no free paid tier)", w.StatusCode, func() string { b, _ := io.ReadAll(w.Body); return string(b) }())
@@ -84,7 +84,7 @@ func TestCreateSubscription_MintPrincipalPaidTier_Allowed(t *testing.T) {
 	defer ctx.Close()
 	org := moneyOrg("acme")
 
-	body := `{"userId":"acme/self","planId":"max-5x"}`
+	body := `{"userId":"acme/self","planId":"pro-3x"}`
 	w := invokeSub(org, ctx, c1MintPrincipal, CreateBillingSubscription, body)
 	if w.StatusCode == http.StatusForbidden {
 		t.Fatalf("service-token create paid 'max': status=403 body=%s, want allowed (authorized mint principal)", func() string { b, _ := io.ReadAll(w.Body); return string(b) }())

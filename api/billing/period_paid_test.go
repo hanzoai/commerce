@@ -116,7 +116,7 @@ func TestSubscriptions_AnExternalPeriodReadsWhatWasRecorded(t *testing.T) {
 	defer ctx.Close()
 	org := moneyOrg("pp-ext")
 	db := datastore.New(org.Namespaced(ctx))
-	in := recordDev(t, db)
+	in := recordGo(t, db)
 	in.Subject, in.PlanID, in.Quantity, in.PriceCents = "pp-ext", "team", 3, 7500
 	if _, err := RecordSubscription(ctx, org, in); err != nil {
 		t.Fatalf("record: %v", err)
@@ -131,7 +131,7 @@ func TestSubscriptions_AnExternalPeriodReadsWhatWasRecorded(t *testing.T) {
 		t.Fatalf("period metadata %#v; want its price", last)
 	}
 
-	flat := recordDev(t, db)
+	flat := recordGo(t, db)
 	flat.Subject = "pp-ext-flat"
 	if _, err := RecordSubscription(ctx, org, flat); err != nil {
 		t.Fatalf("record flat: %v", err)
@@ -146,7 +146,7 @@ func TestSubscriptions_ALegacyExternalPeriodReadsTheRow(t *testing.T) {
 	defer ctx.Close()
 	org := moneyOrg("pp-legacy")
 	db := datastore.New(org.Namespaced(ctx))
-	in := recordDev(t, db)
+	in := recordGo(t, db)
 	in.Subject, in.PlanID, in.Quantity, in.PriceCents = "pp-legacy", "team", 3, 7500
 	got, err := RecordSubscription(ctx, org, in)
 	if err != nil {
@@ -256,12 +256,12 @@ func TestWebhook_ADisputeOfAPlanPaymentUnpaysItsPeriodUntilWon(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	org := webhookOrg(t, ctx, "pp-dispute", true)
-	price := lookupPlan("dev").Price
+	price := lookupPlan("go").Price
 
 	withFakeSquare(t, squareMock("cust_lost", "ccof_lost", "sqpay_lost"))
-	subscribed(t, ctx, org, "pp-dispute-lost", "dev", 1, nil)
+	subscribed(t, ctx, org, "pp-dispute-lost", "go", 1, nil)
 	withFakeSquare(t, squareMock("cust_won", "ccof_won", "sqpay_won"))
-	subscribed(t, ctx, org, "pp-dispute-won", "dev", 1, nil)
+	subscribed(t, ctx, org, "pp-dispute-won", "go", 1, nil)
 
 	deliver(t, ctx, secret,
 		disputeEvent("evt_pp_dl_0", "dispute.created", "dp_lost", "sqpay_lost", "EVIDENCE_REQUIRED", price),

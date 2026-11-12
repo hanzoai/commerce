@@ -79,7 +79,7 @@ func TestPublicPlansStateNoAIUsage(t *testing.T) {
 	}
 	clean("GET /v1/billing/plans", get("/v1/billing/plans", "/v1/billing/plans", ListPlans))
 	clean("GET /v1/billing/plans/pod", get("/v1/billing/plans/:id", "/v1/billing/plans/pod", GetPlan))
-	clean("GET /v1/billing/plans/max-20x", get("/v1/billing/plans/:id", "/v1/billing/plans/max-20x", GetPlan))
+	clean("GET /v1/billing/plans/max-15x", get("/v1/billing/plans/:id", "/v1/billing/plans/max-15x", GetPlan))
 
 	// The embed fallback answers the same way.
 	raw, _ = stdjson.Marshal(views(catalog))

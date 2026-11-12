@@ -39,19 +39,19 @@ func TestPlanMoveScoresListPrice(t *testing.T) {
 		return got.Plan.Slug
 	}
 
-	up := sub("acme/up", "dev")
-	if r := invokeSubPatch(org, ctx, c1OrgAdmin, up.Id(), `{"planId":"max-20x"}`); r.StatusCode != http.StatusForbidden {
+	up := sub("acme/up", "go")
+	if r := invokeSubPatch(org, ctx, c1OrgAdmin, up.Id(), `{"planId":"max-15x"}`); r.StatusCode != http.StatusForbidden {
 		t.Fatalf("org admin PATCH dev→max-20x: status=%d body=%s, want 403", r.StatusCode, bodyOf(r))
 	}
-	if got := slugOf(up); got != "dev" {
+	if got := slugOf(up); got != "go" {
 		t.Fatalf("refused upgrade left the subscription on %q, want dev", got)
 	}
 
-	down := sub("acme/down", "max-20x")
-	if r := invokeSubPatch(org, ctx, c1OrgAdmin, down.Id(), `{"planId":"dev"}`); r.StatusCode != http.StatusOK {
+	down := sub("acme/down", "max-15x")
+	if r := invokeSubPatch(org, ctx, c1OrgAdmin, down.Id(), `{"planId":"go"}`); r.StatusCode != http.StatusOK {
 		t.Fatalf("org admin PATCH max-20x→dev: status=%d body=%s, want 200", r.StatusCode, bodyOf(r))
 	}
-	if got := slugOf(down); got != "dev" {
+	if got := slugOf(down); got != "go" {
 		t.Fatalf("downgrade left the subscription on %q, want dev", got)
 	}
 }

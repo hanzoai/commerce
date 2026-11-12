@@ -52,11 +52,11 @@ func TestOnlyAnOrgAdminSubscribesTheOrgAccount(t *testing.T) {
 
 	org := moneyOrg("hanzo")
 	member := map[string]string{"X-User-IsOrgAdmin": "false", "X-User-Id": "alice"}
-	resp := invokeSubscribeCard(org, ctx, `{"planId":"max-20x"}`, member)
+	resp := invokeSubscribeCard(org, ctx, `{"planId":"max-15x"}`, member)
 	if resp.StatusCode < 400 {
 		t.Fatalf("a member subscribed with no card: %d %s", resp.StatusCode, bodyOf(resp))
 	}
-	resp = invokeSubscribeCard(org, ctx, `{"planId":"max-20x","userId":"hanzo/bob","sourceId":"credits"}`, member)
+	resp = invokeSubscribeCard(org, ctx, `{"planId":"max-15x","userId":"hanzo/bob","sourceId":"credits"}`, member)
 	if body := bodyOf(resp); strings.Contains(body, "hanzo/bob") {
 		t.Fatalf("a member acted on another member's account: %d %s", resp.StatusCode, body)
 	}

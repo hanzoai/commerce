@@ -57,13 +57,16 @@ func TestCatalogConverges_OldStoreToPublishedLadder(t *testing.T) {
 	}
 
 	// The published ladder is what is offered, at the published prices.
-	for slug, want := range map[string]int64{"free": 0, "dev": 2000, "max-5x": 10000, "max-20x": 20000, "team": 2500} {
-		if got[slug] != want {
-			t.Errorf("public %q = %d cents, want %d", slug, got[slug], want)
+	for slug, want := range map[string]int64{
+		"free": 0, "go": 800, "pro-3x": 1500, "dev-5x": 4500, "max-15x": 9500, "ultra": 19500, "team": 2500,
+	} {
+		if v, ok := got[slug]; !ok || v != want {
+			t.Errorf("public %q = %d cents (listed %v), want %d", slug, v, ok, want)
 		}
 	}
-	// The retired tiers are gone from the offer.
-	for _, slug := range []string{"developer", "plus", "world-pro", "pro", "max"} {
+	// The retired tiers are gone from the offer, and so are the rungs the catalog
+	// archives and the one it keeps private.
+	for _, slug := range []string{"developer", "plus", "world-pro", "pro", "max", "dev", "max-5x", "max-20x", "max-50x", "unlimited"} {
 		if _, still := got[slug]; still {
 			t.Errorf("retired %q is still on sale", slug)
 		}
@@ -79,13 +82,15 @@ func TestCatalogConverges_OldStoreToPublishedLadder(t *testing.T) {
 
 func currencyCents(v int64) currency.Cents { return currency.Cents(v) }
 
-// THE TOP OF THE LADDER IS PUBLISHED AND SOLD BY NOTHING UNTIL THE OWNER SAYS. Max
-// 100x ($1,000) is a draft in the catalog: a boot creates its row unlisted, the
-// public catalog does not list it, and every purchase entrypoint treats it as a
-// slug that never existed — so a deploy that carries the price charges no one.
-// Max 50x ($500) left draft on the owner's word (@hanzo/plans 1.8.19): it is
-// listed and sold like every other rung.
-func TestDraftTiersAreSeededUnlistedAndSoldByNothing(t *testing.T) {
+// A PLAN THE CATALOG DOES NOT SELL IS PUBLISHED AND SOLD BY NOTHING. @hanzo/plans
+// 1.10.0 keeps Unlimited ($995) private — staff assign it, no checkout sells it —
+// and the rungs commerce retired (dev, max-5x, max-20x, max-50x) archived, exactly
+// as they were sold. A boot creates each row at its status, the public catalog
+// does not list it, and every purchase entrypoint treats it as a slug that never
+// existed — so a deploy that carries the price charges no one. Each still resolves
+// at its price, for the renewals and invoices that recorded it. Max 100x, the one
+// draft before, is gone from the catalog.
+func TestUnlistedTiersAreSeededUnlistedAndSoldByNothing(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
 	db := datastore.New(nscontext.WithNamespace(c, plan.Namespace))
@@ -93,44 +98,66 @@ func TestDraftTiersAreSeededUnlistedAndSoldByNothing(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
+	unlisted := map[string]struct {
+		status string
+		cents  int64
+	}{
+		"unlimited": {plan.StatusPrivate, 99500},
+		"dev":       {plan.StatusArchived, 2000},
+		"max-5x":    {plan.StatusArchived, 10000},
+		"max-20x":   {plan.StatusArchived, 20000},
+		"max-50x":   {plan.StatusArchived, 50000},
+	}
+	held := 0
+	for i := range catalog {
+		if !plan.ListedStatus(catalog[i].Status) {
+			held++
+			if _, named := unlisted[catalog[i].Slug]; !named {
+				t.Errorf("the catalog holds %s %s, which this test does not name", catalog[i].Slug, catalog[i].Status)
+			}
+		}
+	}
+	if held != len(unlisted) {
+		t.Errorf("the catalog holds %d plans unlisted, want the %d named here", held, len(unlisted))
+	}
+
 	listed, ok := planAuthorityRows(c)
 	if !ok {
 		t.Fatal("authority read failed")
 	}
-	sold := false
 	for _, r := range listed {
-		if r.Slug == "max-100x" {
-			t.Errorf("%s is in the public catalog while it is a draft", r.Slug)
+		if _, hidden := unlisted[r.Slug]; hidden {
+			t.Errorf("%s is in the public catalog while it is %s", r.Slug, unlisted[r.Slug].status)
 		}
-		sold = sold || r.Slug == "max-50x"
 	}
-	if !sold {
-		t.Error("max-50x is on sale and missing from the public catalog")
-	}
-	for slug, cents := range map[string]int64{"max-50x": 50000, "max-100x": 100000} {
+	for slug, want := range unlisted {
 		p, err := resolveSubscriptionPlan(db, slug)
 		if err != nil {
 			t.Fatalf("%s must still resolve (renewals, invoices): %v", slug, err)
 		}
-		if int64(p.Price) != cents {
-			t.Errorf("%s resolves at %d cents, want %d", slug, p.Price, cents)
+		if int64(p.Price) != want.cents {
+			t.Errorf("%s resolves at %d cents, want %d", slug, p.Price, want.cents)
 		}
-		if on := p.Listed(); on != (slug == "max-50x") {
-			t.Errorf("%s resolves listed=%v", slug, on)
+		if p.Status != want.status || p.Listed() {
+			t.Errorf("%s resolves status=%q listed=%v, want %q and unlisted", slug, p.Status, p.Listed(), want.status)
+		}
+		if lookupPlan(slug) == nil {
+			t.Errorf("%s must still be answerable by lookupPlan", slug)
 		}
 	}
-	// The embed fallback, used when the authority cannot answer, offers the draft to no one.
+	// The embed fallback, used when the authority cannot answer, offers none of
+	// them to anyone.
 	for _, p := range listedCatalog() {
-		if p.Slug == "max-100x" {
+		if _, hidden := unlisted[p.Slug]; hidden {
 			t.Errorf("the embed fallback offers %s", p.Slug)
 		}
 	}
 	for _, p := range StaticPlans() {
-		if p.Slug == "max-100x" {
+		if _, hidden := unlisted[p.Slug]; hidden {
 			t.Errorf("StaticPlans hands %s to a seeder", p.Slug)
 		}
 	}
-	if lookupPlan("max-100x") == nil {
-		t.Error("a draft plan must still be answerable by lookupPlan")
+	if lookupPlan("max-100x") != nil {
+		t.Error("max-100x is answerable, and @hanzo/plans 1.10.0 drops it")
 	}
 }

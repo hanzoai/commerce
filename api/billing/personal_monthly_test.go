@@ -27,6 +27,24 @@ func authorityRow(t *testing.T, db *datastore.Datastore, slug, category string, 
 	}
 }
 
+// restored puts a plan the catalog archived back on sale, as admin.hanzo.ai does
+// when it un-archives a row: the catalog's own row for it, active and the admin's.
+func restored(t *testing.T, db *datastore.Datastore, slug string) {
+	t.Helper()
+	sp := lookupPlan(slug)
+	if sp == nil || plan.ListedStatus(sp.Status) {
+		t.Fatalf("%s is not a plan the catalog archived", slug)
+	}
+	p := plan.New(plan.AuthorityDB(db.Context))
+	r := planFromStatic(sp)
+	p.Slug, p.Name, p.Category, p.Price, p.PriceAnnual, p.AnnualTotal = r.Slug, r.Name, r.Category, r.Price, r.PriceAnnual, r.AnnualTotal
+	p.Currency, p.Interval, p.IntervalCount = r.Currency, r.Interval, r.IntervalCount
+	p.Status, p.AdminEdited, p.Managed = plan.StatusActive, true, true
+	if err := p.Create(); err != nil {
+		t.Fatalf("restore %s: %v", slug, err)
+	}
+}
+
 // refusedMonthly asserts a 400 naming the monthly rule.
 func refusedMonthly(t *testing.T, what string, r *http.Response) {
 	t.Helper()
@@ -37,14 +55,16 @@ func refusedMonthly(t *testing.T, what string, r *http.Response) {
 }
 
 // A personal plan is not sold by the year on any buy path, whether its row carries
-// an annual price (dev) or none (an admin-added go): the refusal names the rule,
-// lands before a card is touched, and leaves no subscription. By the month it sells.
+// an annual price (dev, which the catalog archives with its $200 year, put back on
+// sale by an admin) or none (an admin-added go): the refusal names the rule, lands
+// before a card is touched, and leaves no subscription. By the month it sells.
 func TestAYearOfAPersonalPlanIsRefused(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	org := moneyOrg("monthly")
 	db := datastore.New(org.Namespaced(ctx))
 	authorityRow(t, db, "go", categoryPersonal, 800, types.Monthly)
+	restored(t, db, "dev")
 	m := squareMock("cust_mo", "ccof_mo", "sqpay_mo")
 	withFakeSquare(t, m)
 

@@ -119,8 +119,8 @@ func TestATeamIsTwoMembersInAllAndAtMostAHundred(t *testing.T) {
 		{"a line of no seats", "team", 2, []LineIn{{PlanID: "team-premium", Quantity: 0}}},
 		{"the plan again as a line", "team", 1, []LineIn{{PlanID: "team", Quantity: 1}}},
 		{"one seat type twice", "team", 1, []LineIn{{PlanID: "team-premium", Quantity: 1}, {PlanID: "team-premium", Quantity: 1}}},
-		{"a plan of no team", "team", 1, []LineIn{{PlanID: "dev", Quantity: 1}}},
-		{"lines on a plan sold alone", "dev", 1, premiumLine},
+		{"a plan of no team", "team", 1, []LineIn{{PlanID: "go", Quantity: 1}}},
+		{"lines on a plan sold alone", "go", 1, premiumLine},
 	} {
 		_, err := SubscribeCard(ctx, org, SubscribeIn{SourceID: "cnon:ok", PlanID: tc.plan, Subject: org.Name, Quantity: tc.qty, Lines: tc.lines})
 		if !IsSaleRefused(err) {
@@ -171,7 +171,7 @@ func TestATeamRenewsEverySeatTypeAndChangesItsSeatsAtRenewal(t *testing.T) {
 	}
 	for _, body := range []string{
 		`{"lines":[{"planId":"team-premium","quantity":0}],"quantity":1}`,
-		`{"lines":[{"planId":"max-5x","quantity":1}]}`,
+		`{"lines":[{"planId":"pro-3x","quantity":1}]}`,
 		`{"planId":"team-premium"}`,
 	} {
 		if r := invokeSubPatch(org, ctx, c1MintPrincipal, id, body); r.StatusCode != http.StatusBadRequest {
@@ -231,7 +231,7 @@ func TestAnAdminAssignsEachMemberASeatTypeWithinTheSeatsBought(t *testing.T) {
 	for name, seats := range map[string][]subscription.Seat{
 		"a second premium member on one premium seat": {alice, bob, carol},
 		"a member on two seats":                       {alice, {Member: alice.Member, Plan: "team-premium"}},
-		"a seat type the team does not hold":          {{Member: "team-assign/dan", Plan: "max-5x"}},
+		"a seat type the team does not hold":          {{Member: "team-assign/dan", Plan: "pro-3x"}},
 		"a seat with no member":                       {{Plan: "team"}},
 	} {
 		if _, err := AssignSeats(ctx, org, AnyHolder, id, seats); !IsSubscriptionRefused(err) {
@@ -251,11 +251,11 @@ func TestAnAdminAssignsEachMemberASeatTypeWithinTheSeatsBought(t *testing.T) {
 
 	// A plan sold alone has no seats to assign.
 	solo := moneyOrg("solo-assign")
-	one, err := SubscribeCard(ctx, solo, SubscribeIn{SourceID: "cnon:ok", PlanID: "dev", Subject: solo.Name})
+	one, err := SubscribeCard(ctx, solo, SubscribeIn{SourceID: "cnon:ok", PlanID: "go", Subject: solo.Name})
 	if err != nil {
 		t.Fatalf("subscribe dev: %v", err)
 	}
-	if _, err := AssignSeats(ctx, solo, AnyHolder, one.Sale.SubscriptionID, []subscription.Seat{{Member: "solo-assign/a", Plan: "dev"}}); !IsSubscriptionRefused(err) {
+	if _, err := AssignSeats(ctx, solo, AnyHolder, one.Sale.SubscriptionID, []subscription.Seat{{Member: "solo-assign/a", Plan: "go"}}); !IsSubscriptionRefused(err) {
 		t.Errorf("assigning a Pro plan's seat: %v, want refused", err)
 	}
 }

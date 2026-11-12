@@ -18,18 +18,18 @@ import (
 
 const agencyPrice = 20000
 
-// heldMax records the plan the subject holds before the move: max-20x, paid
+// heldMax records the plan the subject holds before the move: max-15x, paid
 // outside checkout, on the period running now.
 func heldMax(t *testing.T, ctx context.Context, org *organization.Organization, db *datastore.Datastore) *subscription.Subscription {
 	t.Helper()
-	p, err := resolveSubscriptionPlan(db, "max-20x")
+	p, err := resolveSubscriptionPlan(db, "max-15x")
 	if err != nil || p.Price <= 0 {
-		t.Fatalf("the catalog must sell a paid max-20x plan: %v", err)
+		t.Fatalf("the catalog must sell a paid max-15x plan: %v", err)
 	}
 	start := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 0, -8)
 	got, err := RecordSubscription(ctx, org, RecordIn{
 		Subject:     balSubject,
-		PlanID:      "max-20x",
+		PlanID:      "max-15x",
 		PriceCents:  int64(p.Price),
 		PeriodStart: start,
 		PeriodEnd:   start.AddDate(0, 1, 0),
@@ -140,11 +140,11 @@ func TestRecordReplaces_ACompOfAPrivatePlanIsTheHeldPlan(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	org, db := agencySetup(t, ctx, "rep-comp", 0)
-	authorityPlan(t, ctx, "ultra", "personal", plan.StatusPrivate, 19500)
+	authorityPlan(t, ctx, "patron", "personal", plan.StatusPrivate, 19500)
 	start := time.Now().UTC().Truncate(24 * time.Hour)
 	comp, err := RecordSubscription(ctx, org, RecordIn{
-		Subject: balSubject, PlanID: "ultra", PeriodStart: start, PeriodEnd: start.AddDate(0, 1, 0),
-		Processor: "comp", Reference: map[string]string{"order": "comp-ultra"}, Terms: "given",
+		Subject: balSubject, PlanID: "patron", PeriodStart: start, PeriodEnd: start.AddDate(0, 1, 0),
+		Processor: "comp", Reference: map[string]string{"order": "comp-patron"}, Terms: "given",
 	})
 	if err != nil {
 		t.Fatalf("comp: %v", err)

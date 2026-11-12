@@ -374,11 +374,11 @@ func TestAPlanReadThatFailsIsUnavailable(t *testing.T) {
 	withFakeSquare(t, m)
 	up := datastore.New(ctx).DB()
 	datastore.SetDefaultDB(plansDown{up})
-	_, err := resolveSubscriptionPlan(datastore.New(ctx), "dev")
-	_, sold := subscribe(ctx, org, SubscribeIn{Subject: "plan-unread", SourceID: "cnon:ok", PlanID: "dev"})
+	_, err := resolveSubscriptionPlan(datastore.New(ctx), "go")
+	_, sold := subscribe(ctx, org, SubscribeIn{Subject: "plan-unread", SourceID: "cnon:ok", PlanID: "go"})
 	datastore.SetDefaultDB(up)
 	if !errors.Is(err, errPlanUnread) {
-		t.Fatalf("FINDING: a failed read of plan dev answered %v, want errPlanUnread", err)
+		t.Fatalf("FINDING: a failed read of plan go answered %v, want errPlanUnread", err)
 	}
 	if !IsSaleUnavailable(sold) || m.chargeCalls != 0 {
 		t.Fatalf("FINDING: a sale whose plan could not be read answered %v with %d charges, want unavailable and none", sold, m.chargeCalls)
@@ -386,7 +386,7 @@ func TestAPlanReadThatFailsIsUnavailable(t *testing.T) {
 	if _, err := resolveSubscriptionPlan(datastore.New(ctx), "no-such-plan"); err == nil || errors.Is(err, errPlanUnread) {
 		t.Fatalf("an unknown plan answered %v, want a miss", err)
 	}
-	if p, err := resolveSubscriptionPlan(datastore.New(ctx), "dev"); err != nil || p.Slug != "dev" {
-		t.Fatalf("with the store back, plan dev answered %v %v", p, err)
+	if p, err := resolveSubscriptionPlan(datastore.New(ctx), "go"); err != nil || p.Slug != "go" {
+		t.Fatalf("with the store back, plan go answered %v %v", p, err)
 	}
 }

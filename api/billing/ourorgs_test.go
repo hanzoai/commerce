@@ -154,7 +154,7 @@ func TestOurOrgsPayToSubscribe(t *testing.T) {
 		c.Locals("iam_authenticated", true)
 		c.Locals("iam_claims", &auth.IAMClaims{Owner: "hanzo", IsAdmin: true})
 	}
-	w := invokeSub(hanzo, ctx, orgAdmin, CreateBillingSubscription, `{"userId":"hanzo","planId":"max-5x"}`)
+	w := invokeSub(hanzo, ctx, orgAdmin, CreateBillingSubscription, `{"userId":"hanzo","planId":"pro-3x"}`)
 	if w.StatusCode != http.StatusForbidden {
 		t.Fatalf("hanzo's admin opening max-5x for hanzo unpaid: %d %s; want 403", w.StatusCode, bodyOf(w))
 	}

@@ -66,7 +66,7 @@ func fiftyOff(t *testing.T, ctx context.Context) {
 	start, end := now.Add(-time.Minute), now.Add(24*time.Hour)
 	planCoupon(t, ctx, "50OFF", promo.CouponSpec{
 		Percent: 50, Start: &start, End: &end, Limit: 5,
-		Plans: []string{"dev", "max-5x", "max-20x"}, Enabled: true,
+		Plans: []string{"go", "pro-3x", "max-15x"}, Enabled: true,
 	})
 }
 
@@ -117,7 +117,7 @@ func betaOff(t *testing.T, ctx context.Context) {
 	now := time.Now().UTC()
 	start, end := now.Add(-time.Minute), now.Add(30*24*time.Hour)
 	planCoupon(t, ctx, "50OFFBETA", promo.CouponSpec{
-		Percent: 50, Months: 3, Start: &start, End: &end, Limit: 100, Plans: []string{"dev"}, Enabled: true,
+		Percent: 50, Months: 3, Start: &start, End: &end, Limit: 100, Plans: []string{"go"}, Enabled: true,
 	})
 }
 
@@ -133,10 +133,10 @@ func TestSubscribeCoupon_FirstMonthHalfRenewalFull(t *testing.T) {
 	m := squareMock("cust_cf", "ccof_cf", "sqpay_cf")
 	withFakeSquare(t, m)
 
-	list := lookupPlan("dev").Price
+	list := lookupPlan("go").Price
 	half := list - engine.DiscountCents(list, 50)
 
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev","coupon":" 50off "}`, nil)
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"go","coupon":" 50off "}`, nil)
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("status=%d body=%s, want 201", resp.StatusCode, bodyOf(resp))
 	}
@@ -149,7 +149,7 @@ func TestSubscribeCoupon_FirstMonthHalfRenewalFull(t *testing.T) {
 	}
 
 	db := datastore.New(org.Namespaced(ctx))
-	sub := parentSub(t, db, "cp-first", "dev")
+	sub := parentSub(t, db, "cp-first", "go")
 	if sub == nil {
 		t.Fatal("no subscription")
 	}
@@ -213,27 +213,27 @@ func TestSubscribeCoupon_ThreeMonthsOnTheCard(t *testing.T) {
 	withFakeSquare(t, m)
 
 	_, rows := listPlansWith(t, "?coupon=50offbeta")
-	if dev := bySlug(rows)["dev"]; dev["couponMonths"] != float64(3) || dev["couponPercent"] != float64(50) || dev["couponFirstCents"] != float64(1000) {
-		t.Fatalf("dev quote %v, want 50%% for 3 months, 1000 a month", dev)
+	if entry := bySlug(rows)["go"]; entry["couponMonths"] != float64(3) || entry["couponPercent"] != float64(50) || entry["couponFirstCents"] != float64(400) {
+		t.Fatalf("go quote %v, want 50%% for 3 months, 400 a month", entry)
 	}
 
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev","coupon":"50OFFBETA"}`, nil)
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"go","coupon":"50OFFBETA"}`, nil)
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("status=%d body=%s, want 201", resp.StatusCode, bodyOf(resp))
 	}
 	out := jsonBody(t, resp)
-	if out["amountCents"] != float64(1000) || out["coupon"] != "50OFFBETA" || out["couponMonths"] != float64(3) || m.lastChargeAmount != 1000 {
-		t.Fatalf("receipt %+v charged %d, want 1000 under 50OFFBETA for 3 months", out, m.lastChargeAmount)
+	if out["amountCents"] != float64(400) || out["coupon"] != "50OFFBETA" || out["couponMonths"] != float64(3) || m.lastChargeAmount != 400 {
+		t.Fatalf("receipt %+v charged %d, want 400 under 50OFFBETA for 3 months", out, m.lastChargeAmount)
 	}
 	db := datastore.New(org.Namespaced(ctx))
-	sub := parentSub(t, db, "cp-beta", "dev")
-	if sub.CouponCode != "50OFFBETA" || sub.CouponPercent != 50 || sub.CouponMonths != 3 || len(sub.CouponPlans) != 1 || sub.CouponPlans[0] != "dev" ||
+	sub := parentSub(t, db, "cp-beta", "go")
+	if sub.CouponCode != "50OFFBETA" || sub.CouponPercent != 50 || sub.CouponMonths != 3 || len(sub.CouponPlans) != 1 || sub.CouponPlans[0] != "go" ||
 		!sub.CouponFrom.Equal(sub.PeriodStart) {
-		t.Fatalf("granted %q %d%% %d months %v from %v, want 50OFFBETA 50%% 3 months [dev] from %v",
+		t.Fatalf("granted %q %d%% %d months %v from %v, want 50OFFBETA 50%% 3 months [go] from %v",
 			sub.CouponCode, sub.CouponPercent, sub.CouponMonths, sub.CouponPlans, sub.CouponFrom, sub.PeriodStart)
 	}
 	first := invoicesForSub(t, db, sub.Id())[0]
-	if first.AmountDue != 1000 || first.DiscountName != "50OFFBETA — 50% off, month 1 of 3" {
+	if first.AmountDue != 400 || first.DiscountName != "50OFFBETA — 50% off, month 1 of 3" {
 		t.Fatalf("first invoice due %d %q", first.AmountDue, first.DiscountName)
 	}
 
@@ -249,15 +249,15 @@ func TestSubscribeCoupon_ThreeMonthsOnTheCard(t *testing.T) {
 	if err != nil || inv == nil || !res.Success {
 		t.Fatalf("renew: inv=%v res=%+v err=%v", inv, res, err)
 	}
-	if inv.AmountDue != 1000 || inv.Discount != 1000 || inv.DiscountName != "50OFFBETA — 50% off, month 2 of 3" ||
-		inv.Metadata["coupon"] != "50OFFBETA" || inv.Metadata["couponPercent"] != 50 || inv.Metadata["couponCents"] != int64(1000) {
+	if inv.AmountDue != 400 || inv.Discount != 400 || inv.DiscountName != "50OFFBETA — 50% off, month 2 of 3" ||
+		inv.Metadata["coupon"] != "50OFFBETA" || inv.Metadata["couponPercent"] != 50 || inv.Metadata["couponCents"] != int64(400) {
 		t.Fatalf("month 2 due %d discount %d %q meta %v", inv.AmountDue, inv.Discount, inv.DiscountName, inv.Metadata)
 	}
 	if len(led.debits) != 0 {
 		t.Fatalf("ledger debits %+v, want none: the plan's period is the card's", led.debits)
 	}
-	if m.chargeCalls != 2 || m.lastChargeAmount != 1000 {
-		t.Fatalf("the card was charged %d times, last %d; want the sale and month 2 at 1000", m.chargeCalls, m.lastChargeAmount)
+	if m.chargeCalls != 2 || m.lastChargeAmount != 400 {
+		t.Fatalf("the card was charged %d times, last %d; want the sale and month 2 at 400", m.chargeCalls, m.lastChargeAmount)
 	}
 }
 
@@ -273,24 +273,24 @@ func TestSubscribeCoupon_CancelThenBuyAgain(t *testing.T) {
 	m := squareMock("cust_ca", "ccof_ca", "sqpay_ca")
 	withFakeSquare(t, m)
 
-	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev","coupon":"50OFFBETA"}`, nil); r.StatusCode != http.StatusCreated {
+	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"go","coupon":"50OFFBETA"}`, nil); r.StatusCode != http.StatusCreated {
 		t.Fatalf("sale: status=%d %s", r.StatusCode, bodyOf(r))
 	}
 	db := datastore.New(org.Namespaced(ctx))
-	sub := parentSub(t, db, "cp-again", "dev")
+	sub := parentSub(t, db, "cp-again", "go")
 	if _, err := CancelSubscription(ctx, org, "cp-again", sub.Id(), false); err != nil {
 		t.Fatalf("cancel: %v", err)
 	}
-	r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok2","planId":"dev","coupon":"50OFFBETA"}`, map[string]string{"X-Idempotency-Key": "again-1"})
+	r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok2","planId":"go","coupon":"50OFFBETA"}`, map[string]string{"X-Idempotency-Key": "again-1"})
 	if body := bodyOf(r); r.StatusCode != http.StatusConflict || !strings.Contains(body, "already redeemed") {
 		t.Fatalf("again with the coupon: status=%d %s, want 409", r.StatusCode, body)
 	}
-	r = invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok3","planId":"dev"}`, map[string]string{"X-Idempotency-Key": "again-2"})
+	r = invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok3","planId":"go"}`, map[string]string{"X-Idempotency-Key": "again-2"})
 	if r.StatusCode != http.StatusCreated {
 		t.Fatalf("again without: status=%d %s", r.StatusCode, bodyOf(r))
 	}
-	if out := jsonBody(t, r); out["amountCents"] != float64(2000) || out["coupon"] != nil {
-		t.Fatalf("again without: %+v, want 2000 and no coupon", out)
+	if out := jsonBody(t, r); out["amountCents"] != float64(800) || out["coupon"] != nil {
+		t.Fatalf("again without: %+v, want 800 and no coupon", out)
 	}
 	if n := couponUses(t, ctx, "50OFFBETA"); n != 1 {
 		t.Fatalf("coupon used %d, want 1", n)
@@ -309,12 +309,12 @@ func TestSubscribeCoupon_StacksOnPromo(t *testing.T) {
 	m := squareMock("cust_cs", "ccof_cs", "sqpay_cs")
 	withFakeSquare(t, m)
 
-	list := lookupPlan("max-5x").Price
+	list := lookupPlan("pro-3x").Price
 	pr := &promo.Promo{PercentOff: 20, Active: true}
 	want := engine.Discounted(list, 20, 50)
 
 	sale, err := Subscribe(ctx, org, SubscribeIn{
-		SourceID: "cnon:ok", PlanID: "max-5x", Subject: "cp-stack", Promo: pr, Coupon: "50OFF",
+		SourceID: "cnon:ok", PlanID: "pro-3x", Subject: "cp-stack", Promo: pr, Coupon: "50OFF",
 	})
 	if err != nil {
 		t.Fatalf("sale: %v", err)
@@ -323,7 +323,7 @@ func TestSubscribeCoupon_StacksOnPromo(t *testing.T) {
 		t.Fatalf("charged %d (receipt %d), want %d", m.lastChargeAmount, sale.AmountCents, want)
 	}
 	db := datastore.New(org.Namespaced(ctx))
-	sub := parentSub(t, db, "cp-stack", "max-5x")
+	sub := parentSub(t, db, "cp-stack", "pro-3x")
 	first := invoicesForSub(t, db, sub.Id())[0]
 	if first.AmountDue != want || first.DiscountName != "20% off; 50OFF — 50% off first month" {
 		t.Fatalf("first invoice due=%d name=%q, want %d with both discounts named", first.AmountDue, first.DiscountName, want)
@@ -351,12 +351,12 @@ func TestSubscribeCoupon_Refusals(t *testing.T) {
 	fiftyOff(t, ctx)
 	now := time.Now().UTC()
 	past, future := now.Add(-time.Hour), now.Add(time.Hour)
-	planCoupon(t, ctx, "OLD", promo.CouponSpec{Percent: 50, End: &past, Plans: []string{"dev"}, Enabled: true})
-	planCoupon(t, ctx, "SOON", promo.CouponSpec{Percent: 50, Start: &future, Plans: []string{"dev"}, Enabled: true})
-	planCoupon(t, ctx, "DARK", promo.CouponSpec{Percent: 50, Plans: []string{"dev"}, Enabled: false})
-	planCoupon(t, ctx, "MAXONLY", promo.CouponSpec{Percent: 50, Plans: []string{"max-5x"}, Enabled: true})
-	planCoupon(t, ctx, "ONEUSE", promo.CouponSpec{Percent: 50, Limit: 1, Plans: []string{"dev"}, Enabled: true})
-	planCoupon(t, ctx, "FREEBIE", promo.CouponSpec{Percent: 100, Plans: []string{"dev"}, Enabled: true})
+	planCoupon(t, ctx, "OLD", promo.CouponSpec{Percent: 50, End: &past, Plans: []string{"go"}, Enabled: true})
+	planCoupon(t, ctx, "SOON", promo.CouponSpec{Percent: 50, Start: &future, Plans: []string{"go"}, Enabled: true})
+	planCoupon(t, ctx, "DARK", promo.CouponSpec{Percent: 50, Plans: []string{"go"}, Enabled: false})
+	planCoupon(t, ctx, "MAXONLY", promo.CouponSpec{Percent: 50, Plans: []string{"pro-3x"}, Enabled: true})
+	planCoupon(t, ctx, "ONEUSE", promo.CouponSpec{Percent: 50, Limit: 1, Plans: []string{"go"}, Enabled: true})
+	planCoupon(t, ctx, "FREEBIE", promo.CouponSpec{Percent: 100, Plans: []string{"go"}, Enabled: true})
 	if _, err := promo.Reserve(ctx, "ONEUSE", "someone-else", "fp:else", now); err != nil {
 		t.Fatalf("spend ONEUSE: %v", err)
 	}
@@ -365,18 +365,18 @@ func TestSubscribeCoupon_Refusals(t *testing.T) {
 		name, body, says string
 		status           int
 	}{
-		{"expired", `{"sourceId":"cnon:ok","planId":"dev","coupon":"OLD"}`, "expired", 400},
-		{"not started", `{"sourceId":"cnon:ok","planId":"dev","coupon":"SOON"}`, "not valid", 400},
-		{"disabled", `{"sourceId":"cnon:ok","planId":"dev","coupon":"DARK"}`, "not valid", 400},
-		{"exhausted", `{"sourceId":"cnon:ok","planId":"dev","coupon":"ONEUSE"}`, "fully redeemed", 400},
-		{"unknown", `{"sourceId":"cnon:ok","planId":"dev","coupon":"NOSUCH"}`, "not valid", 400},
-		{"malformed", `{"sourceId":"cnon:ok","planId":"dev","coupon":"50 OFF"}`, "not valid", 400},
-		{"wrong plan", `{"sourceId":"cnon:ok","planId":"dev","coupon":"MAXONLY"}`, "does not apply", 400},
+		{"expired", `{"sourceId":"cnon:ok","planId":"go","coupon":"OLD"}`, "expired", 400},
+		{"not started", `{"sourceId":"cnon:ok","planId":"go","coupon":"SOON"}`, "not valid", 400},
+		{"disabled", `{"sourceId":"cnon:ok","planId":"go","coupon":"DARK"}`, "not valid", 400},
+		{"exhausted", `{"sourceId":"cnon:ok","planId":"go","coupon":"ONEUSE"}`, "fully redeemed", 400},
+		{"unknown", `{"sourceId":"cnon:ok","planId":"go","coupon":"NOSUCH"}`, "not valid", 400},
+		{"malformed", `{"sourceId":"cnon:ok","planId":"go","coupon":"50 OFF"}`, "not valid", 400},
+		{"wrong plan", `{"sourceId":"cnon:ok","planId":"go","coupon":"MAXONLY"}`, "does not apply", 400},
 		{"not a covered plan", `{"sourceId":"cnon:ok","planId":"team","quantity":2,"coupon":"50OFF"}`, "does not apply", 400},
-		{"annual", `{"sourceId":"cnon:ok","planId":"dev","interval":"year","coupon":"50OFF"}`, "monthly", 400},
-		{"prepaid", `{"sourceId":"credits","planId":"dev","coupon":"50OFF"}`, "card", 400},
+		{"annual", `{"sourceId":"cnon:ok","planId":"go","interval":"year","coupon":"50OFF"}`, "monthly", 400},
+		{"prepaid", `{"sourceId":"credits","planId":"go","coupon":"50OFF"}`, "card", 400},
 		{"free", `{"sourceId":"cnon:ok","planId":"free","coupon":"50OFF"}`, "free", 400},
-		{"nothing left to charge", `{"sourceId":"cnon:ok","planId":"dev","coupon":"FREEBIE"}`, "nothing to charge", 400},
+		{"nothing left to charge", `{"sourceId":"cnon:ok","planId":"go","coupon":"FREEBIE"}`, "nothing to charge", 400},
 	}
 	for i, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -418,14 +418,14 @@ func TestSubscribeCoupon_OncePerOrgAndCard(t *testing.T) {
 	withFakeSquare(t, m)
 
 	a := moneyOrg("cp-org-a")
-	if r := invokeSubscribeCard(a, ctx, `{"sourceId":"cnon:a","planId":"dev","coupon":"50OFF"}`, nil); r.StatusCode != http.StatusCreated {
+	if r := invokeSubscribeCard(a, ctx, `{"sourceId":"cnon:a","planId":"go","coupon":"50OFF"}`, nil); r.StatusCode != http.StatusCreated {
 		t.Fatalf("first sale status=%d %s", r.StatusCode, bodyOf(r))
 	}
 
 	// Another account in the same org, with another card: the org has redeemed.
 	m.vaultCard = processor.Card{Brand: "VISA", Last4: "1111", ExpMonth: 1, ExpYear: 2031, Fingerprint: "fp_other_card"}
 	vaults := m.createCustomerCalls
-	r := invokeSubscribeCard(a, ctx, `{"sourceId":"cnon:a2","planId":"dev","userId":"cp-org-a/member","coupon":"50OFF"}`, nil)
+	r := invokeSubscribeCard(a, ctx, `{"sourceId":"cnon:a2","planId":"go","userId":"cp-org-a/member","coupon":"50OFF"}`, nil)
 	if body := bodyOf(r); r.StatusCode != http.StatusConflict || !strings.Contains(body, "organization has already redeemed") {
 		t.Fatalf("same org again: status=%d %s, want 409", r.StatusCode, body)
 	}
@@ -436,7 +436,7 @@ func TestSubscribeCoupon_OncePerOrgAndCard(t *testing.T) {
 	// Another org, the first org's card: the card has redeemed.
 	m.vaultCard = processor.Card{Brand: "VISA", Last4: "4242", ExpMonth: 12, ExpYear: 2030, Fingerprint: "fp_same_card"}
 	b := moneyOrg("cp-org-b")
-	r = invokeSubscribeCard(b, ctx, `{"sourceId":"cnon:b","planId":"dev","coupon":"50OFF"}`, nil)
+	r = invokeSubscribeCard(b, ctx, `{"sourceId":"cnon:b","planId":"go","coupon":"50OFF"}`, nil)
 	if body := bodyOf(r); r.StatusCode != http.StatusConflict || !strings.Contains(body, "card has already redeemed") {
 		t.Fatalf("same card again: status=%d %s, want 409", r.StatusCode, body)
 	}
@@ -455,7 +455,7 @@ func TestSubscribeCoupon_OncePerOrgAndCard(t *testing.T) {
 
 	// The same org B with its own card, no coupon: an ordinary sale.
 	m.vaultCard = processor.Card{Brand: "VISA", Last4: "5555", ExpMonth: 2, ExpYear: 2032, Fingerprint: "fp_b_card"}
-	if r := invokeSubscribeCard(b, ctx, `{"sourceId":"cnon:b2","planId":"dev"}`, nil); r.StatusCode != http.StatusCreated {
+	if r := invokeSubscribeCard(b, ctx, `{"sourceId":"cnon:b2","planId":"go"}`, nil); r.StatusCode != http.StatusCreated {
 		t.Fatalf("plain sale after a refused coupon: status=%d %s", r.StatusCode, bodyOf(r))
 	}
 }
@@ -473,11 +473,11 @@ func TestSubscribeCoupon_Idempotent(t *testing.T) {
 
 	// No key: an unknown code refuses and holds nothing, so the next attempt
 	// with the right code is a sale, not a replay of the refusal.
-	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:1","planId":"dev","coupon":"TYPO"}`, nil); r.StatusCode != 400 {
+	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:1","planId":"go","coupon":"TYPO"}`, nil); r.StatusCode != 400 {
 		t.Fatalf("typo status=%d, want 400", r.StatusCode)
 	}
 	hdr := map[string]string{"X-Idempotency-Key": "coupon-sale-1"}
-	body := `{"sourceId":"cnon:2","planId":"dev","coupon":"50OFF"}`
+	body := `{"sourceId":"cnon:2","planId":"go","coupon":"50OFF"}`
 	r1 := invokeSubscribeCard(org, ctx, body, hdr)
 	if r1.StatusCode != http.StatusCreated {
 		t.Fatalf("sale status=%d %s", r1.StatusCode, bodyOf(r1))
@@ -496,7 +496,7 @@ func TestSubscribeCoupon_Idempotent(t *testing.T) {
 
 	// No key, no coupon, inside the window: a different purchase — refused because
 	// the account already pays, never handed the discounted receipt.
-	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:3","planId":"dev"}`, nil); r.StatusCode != http.StatusConflict {
+	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:3","planId":"go"}`, nil); r.StatusCode != http.StatusConflict {
 		t.Fatalf("coupon-less retry status=%d, want 409 (a different purchase)", r.StatusCode)
 	}
 }
@@ -513,7 +513,7 @@ func TestSubscribeCoupon_DeclineReleasesTheUse(t *testing.T) {
 	m.chargeErr = errors.New("CARD_DECLINED")
 	withFakeSquare(t, m)
 
-	body := `{"sourceId":"cnon:d","planId":"dev","coupon":"50OFF"}`
+	body := `{"sourceId":"cnon:d","planId":"go","coupon":"50OFF"}`
 	if r := invokeSubscribeCard(org, ctx, body, map[string]string{"X-Idempotency-Key": "d-1"}); r.StatusCode != http.StatusPaymentRequired {
 		t.Fatalf("decline status=%d %s, want 402", r.StatusCode, bodyOf(r))
 	}
@@ -539,7 +539,7 @@ func TestSubscribeCoupon_ConcurrentSalesNeverExceedLimit(t *testing.T) {
 	defer ctx.Close()
 	warmCouponNS(t, ctx)
 	const limit, buyers = 3, 12
-	planCoupon(t, ctx, "RUSH", promo.CouponSpec{Percent: 50, Limit: limit, Plans: []string{"dev"}, Enabled: true})
+	planCoupon(t, ctx, "RUSH", promo.CouponSpec{Percent: 50, Limit: limit, Plans: []string{"go"}, Enabled: true})
 	m := squareMock("", "", "sqpay_rush")
 	withFakeSquare(t, m)
 
@@ -570,7 +570,7 @@ func TestSubscribeCoupon_ConcurrentSalesNeverExceedLimit(t *testing.T) {
 			defer wg.Done()
 			<-start
 			_, err := Subscribe(ctx, orgs[i], SubscribeIn{
-				MethodID: methods[i], PlanID: "dev", Subject: orgs[i].Name, Coupon: "RUSH",
+				MethodID: methods[i], PlanID: "go", Subject: orgs[i].Name, Coupon: "RUSH",
 			})
 			mu.Lock()
 			defer mu.Unlock()
@@ -644,16 +644,16 @@ func TestSaleNotice(t *testing.T) {
 
 	// Unset: nobody is told.
 	t.Setenv(saleNotifyEnv, "")
-	if r := invokeSubscribeCard(moneyOrg("cp-note-0"), ctx, `{"sourceId":"cnon:0","planId":"dev"}`, nil); r.StatusCode != 201 {
+	if r := invokeSubscribeCard(moneyOrg("cp-note-0"), ctx, `{"sourceId":"cnon:0","planId":"go"}`, nil); r.StatusCode != 201 {
 		t.Fatalf("sale status=%d", r.StatusCode)
 	}
 	quiet()
 
 	t.Setenv(saleNotifyEnv, " ops@example.test, not an address ,second@example.test")
-	dev := lookupPlan("dev")
+	entry := lookupPlan("go")
 	hdr := map[string]string{"X-Idempotency-Key": "note-1"}
 	org := moneyOrg("cp-note-1")
-	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:1","planId":"dev","coupon":"50OFF"}`, hdr); r.StatusCode != 201 {
+	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:1","planId":"go","coupon":"50OFF"}`, hdr); r.StatusCode != 201 {
 		t.Fatalf("coupon sale status=%d %s", r.StatusCode, bodyOf(r))
 	}
 	s, ok := next()
@@ -663,10 +663,10 @@ func TestSaleNotice(t *testing.T) {
 	if strings.Join(s.to, ",") != "ops@example.test,second@example.test" {
 		t.Fatalf("sent to %v", s.to)
 	}
-	half := dev.Price - engine.DiscountCents(dev.Price, 50)
+	half := entry.Price - engine.DiscountCents(entry.Price, 50)
 	for _, want := range []string{
-		"cp-note-1", "buyer@acme.test", dev.Name + " (dev)", "month",
-		"Charged:        " + cents(half, "USD"), "List price:     " + cents(dev.Price, "USD"),
+		"cp-note-1", "buyer@acme.test", entry.Name + " (go)", "month",
+		"Charged:        " + cents(half, "USD"), "List price:     " + cents(entry.Price, "USD"),
 		"50OFF — 50% off first month", "Mode:           live",
 	} {
 		if !strings.Contains(s.body, want) {
@@ -678,13 +678,13 @@ func TestSaleNotice(t *testing.T) {
 	}
 
 	// The replay is not a sale.
-	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:1","planId":"dev","coupon":"50OFF"}`, hdr); r.StatusCode != 200 {
+	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:1","planId":"go","coupon":"50OFF"}`, hdr); r.StatusCode != 200 {
 		t.Fatalf("replay status=%d", r.StatusCode)
 	}
 	quiet()
 
 	// A plain sale is told too, with no coupon.
-	if r := invokeSubscribeCard(moneyOrg("cp-note-2"), ctx, `{"sourceId":"cnon:2","planId":"max-5x"}`, nil); r.StatusCode != 201 {
+	if r := invokeSubscribeCard(moneyOrg("cp-note-2"), ctx, `{"sourceId":"cnon:2","planId":"pro-3x"}`, nil); r.StatusCode != 201 {
 		t.Fatalf("plain sale status=%d", r.StatusCode)
 	}
 	if s, ok = next(); !ok || !strings.Contains(s.body, "Coupon:         none") {
@@ -703,14 +703,14 @@ func TestSaleNotice(t *testing.T) {
 		return ctx.Err()
 	}))
 	began := time.Now()
-	if r := invokeSubscribeCard(moneyOrg("cp-note-3"), ctx, `{"sourceId":"cnon:3","planId":"dev"}`, nil); r.StatusCode != 201 {
+	if r := invokeSubscribeCard(moneyOrg("cp-note-3"), ctx, `{"sourceId":"cnon:3","planId":"go"}`, nil); r.StatusCode != 201 {
 		t.Fatalf("sale behind a stuck mail rail status=%d", r.StatusCode)
 	}
 	if d := time.Since(began); d > 3*time.Second {
 		t.Fatalf("a stuck mail rail held the sale %v", d)
 	}
 	mail.Set(senderFunc(func(context.Context, []string, string, string) error { return errors.New("rail down") }))
-	if r := invokeSubscribeCard(moneyOrg("cp-note-4"), ctx, `{"sourceId":"cnon:4","planId":"dev"}`, nil); r.StatusCode != 201 {
+	if r := invokeSubscribeCard(moneyOrg("cp-note-4"), ctx, `{"sourceId":"cnon:4","planId":"go"}`, nil); r.StatusCode != 201 {
 		t.Fatalf("sale behind a failing mail rail status=%d", r.StatusCode)
 	}
 	// A mail rail that PANICS is the notice's failure and nobody else's: unrecovered,
@@ -720,7 +720,7 @@ func TestSaleNotice(t *testing.T) {
 		close(panicked)
 		panic("rail exploded")
 	}))
-	if r := invokeSubscribeCard(moneyOrg("cp-note-5"), ctx, `{"sourceId":"cnon:5","planId":"dev"}`, nil); r.StatusCode != 201 {
+	if r := invokeSubscribeCard(moneyOrg("cp-note-5"), ctx, `{"sourceId":"cnon:5","planId":"go"}`, nil); r.StatusCode != 201 {
 		t.Fatalf("sale behind a panicking mail rail status=%d", r.StatusCode)
 	}
 	select {
@@ -787,8 +787,8 @@ func TestPlansCouponQuote(t *testing.T) {
 	fiftyOff(t, ctx)
 	now := time.Now().UTC()
 	past := now.Add(-time.Hour)
-	planCoupon(t, ctx, "OLD", promo.CouponSpec{Percent: 50, End: &past, Plans: []string{"dev"}, Enabled: true})
-	planCoupon(t, ctx, "ONEUSE", promo.CouponSpec{Percent: 50, Limit: 1, Plans: []string{"dev"}, Enabled: true})
+	planCoupon(t, ctx, "OLD", promo.CouponSpec{Percent: 50, End: &past, Plans: []string{"go"}, Enabled: true})
+	planCoupon(t, ctx, "ONEUSE", promo.CouponSpec{Percent: 50, Limit: 1, Plans: []string{"go"}, Enabled: true})
 	if _, err := promo.Reserve(ctx, "ONEUSE", "someone", "fp:x", now); err != nil {
 		t.Fatalf("spend ONEUSE: %v", err)
 	}
@@ -803,7 +803,7 @@ func TestPlansCouponQuote(t *testing.T) {
 	v, _ := promo.ReadCoupon(ctx, "50OFF")
 	_, rows = listPlansWith(t, "?coupon=50off")
 	plans := bySlug(rows)
-	for _, slug := range []string{"dev", "max-5x", "max-20x"} {
+	for _, slug := range []string{"go", "pro-3x", "max-15x"} {
 		r := plans[slug]
 		price := int64(r["price"].(float64))
 		if r["couponCode"] != "50OFF" || r["couponPercent"] != float64(50) || r["couponMonths"] != float64(1) ||

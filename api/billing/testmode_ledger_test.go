@@ -103,7 +103,7 @@ func TestH1_TestModeSale_OpensNoLiveEntitlement(t *testing.T) {
 	org.Live = false
 	withFakeSquare(t, squareMock("cust_c", "ccof_c", "sqpay_c"))
 
-	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:card-nonce-ok","planId":"dev"}`, nil); r.StatusCode != http.StatusCreated {
+	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:card-nonce-ok","planId":"go"}`, nil); r.StatusCode != http.StatusCreated {
 		b, _ := io.ReadAll(r.Body)
 		t.Fatalf("status=%d body=%s, want 201", r.StatusCode, string(b))
 	}

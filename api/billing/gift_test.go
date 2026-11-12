@@ -29,11 +29,11 @@ func giftRows(t *testing.T, db *datastore.Datastore, subject string) []*subscrip
 	return out
 }
 
-// buyDev subscribes subject to Pro with a card, as checkout does, and answers the
+// buyGo subscribes subject to Go with a card, as checkout does, and answers the
 // row.
-func buyDev(t *testing.T, org *organization.Organization, ctx ae.Context, subject string) *subscription.Subscription {
+func buyGo(t *testing.T, org *organization.Organization, ctx ae.Context, subject string) *subscription.Subscription {
 	t.Helper()
-	sale, err := Subscribe(ctx, org, SubscribeIn{SourceID: "cnon:ok", PlanID: "dev", Subject: subject})
+	sale, err := Subscribe(ctx, org, SubscribeIn{SourceID: "cnon:ok", PlanID: "go", Subject: subject})
 	if err != nil {
 		t.Fatalf("subscribe: %v", err)
 	}
@@ -103,7 +103,7 @@ func TestGift_PaidSubjectsPeriodRunsTheDaysLonger(t *testing.T) {
 	org := moneyOrg("gift-paid")
 	withFakeSquare(t, squareMock("cust_g", "ccof_g", "sqpay_g"))
 	db := datastore.New(org.Namespaced(ctx))
-	sub := buyDev(t, org, ctx, "gift-paid")
+	sub := buyGo(t, org, ctx, "gift-paid")
 	end := sub.PeriodEnd
 
 	got, err := Gift(ctx, org, GiftIn{Subject: "gift-paid", Days: week, Key: "referral:bob"})
@@ -172,7 +172,7 @@ func TestGift_SandboxTimeNeverLandsOnALiveRow(t *testing.T) {
 	org := moneyOrg("gift-test")
 	withFakeSquare(t, squareMock("cust_t", "ccof_t", "sqpay_t"))
 	db := datastore.New(org.Namespaced(ctx))
-	sub := buyDev(t, org, ctx, "gift-test")
+	sub := buyGo(t, org, ctx, "gift-test")
 
 	if _, err := Gift(ctx, org, GiftIn{Subject: "gift-test", Days: week, Key: "referral:sandbox", Test: true}); err != nil {
 		t.Fatalf("gift: %v", err)
@@ -220,7 +220,7 @@ func TestPaymentsOf_FirstCardPeriodAndCards(t *testing.T) {
 		t.Fatalf("before any sale: %+v %v, want nothing", none, err)
 	}
 
-	sub := buyDev(t, org, ctx, "pay-first")
+	sub := buyGo(t, org, ctx, "pay-first")
 	got, err := PaymentsOf(ctx, org, "pay-first")
 	if err != nil {
 		t.Fatalf("payments: %v", err)

@@ -32,11 +32,11 @@ func TestPlanStatus_UnlistedRowsAreHiddenButKept(t *testing.T) {
 		t.Fatal("authority read failed after seed")
 	}
 
-	// Archive one row the way the admin CRUD does.
+	// Archive one listed row the way the admin CRUD does.
 	p := plan.New(db)
-	found, err := p.Query().Filter("Slug=", "dev").Get()
+	found, err := p.Query().Filter("Slug=", "go").Get()
 	if err != nil || !found {
-		t.Fatalf("load dev: found=%v err=%v", found, err)
+		t.Fatalf("load go: found=%v err=%v", found, err)
 	}
 	p.Status = plan.StatusArchived
 	if err := p.Update(); err != nil {
@@ -53,15 +53,15 @@ func TestPlanStatus_UnlistedRowsAreHiddenButKept(t *testing.T) {
 		t.Fatalf("public rows %d, want %d (one archived)", len(after), len(before)-1)
 	}
 	for _, r := range after {
-		if r.Slug == "dev" {
+		if r.Slug == "go" {
 			t.Fatal("archived plan still served publicly")
 		}
 	}
 
 	// 2. The ROW SURVIVES — this is the whole difference from DELETE. A renewal
-	//    or invoice that recorded "dev" must still resolve it.
+	//    or invoice that recorded "go" must still resolve it.
 	kept := plan.New(db)
-	stillThere, err := kept.Query().Filter("Slug=", "dev").Get()
+	stillThere, err := kept.Query().Filter("Slug=", "go").Get()
 	if err != nil || !stillThere {
 		t.Fatalf("archived plan was destroyed: found=%v err=%v", stillThere, err)
 	}
@@ -95,13 +95,13 @@ func TestPlanStatus_ArchivedPlanCannotBeBought(t *testing.T) {
 	// Control: the mint principal really does BUY this tier while it is listed —
 	// asserted as a 2xx, not merely "not 404", or the test would still pass if the
 	// purchase were failing for some unrelated reason.
-	body := `{"userId":"acme/self","planId":"max-5x"}`
+	body := `{"userId":"acme/self","planId":"pro-3x"}`
 	if w := invokeSub(org, ctx, c1MintPrincipal, CreateBillingSubscription, body); w.StatusCode/100 != 2 {
 		b, _ := io.ReadAll(w.Body)
 		t.Fatalf("control failed: mint principal could not buy a LISTED plan: %d %s", w.StatusCode, string(b))
 	}
 
-	archivePlan(t, ctx, "max-5x")
+	archivePlan(t, ctx, "pro-3x")
 
 	w := invokeSub(org, ctx, c1MintPrincipal, CreateBillingSubscription, body)
 	if w.StatusCode != http.StatusNotFound {
@@ -183,8 +183,9 @@ func TestPaidTier_ContactSalesIsNotSelfServe(t *testing.T) {
 	if paidTier("free") {
 		t.Error(`paidTier("free") = true; a $0 rung is not a paid tier`)
 	}
-	// max is retired and answered by max-5x, so a holder of it is still paid.
-	for _, slug := range []string{"dev", "max-5x", "max-20x", "team", "max"} {
+	// max is retired and answered by max-5x, so a holder of it is still paid; the
+	// archived rungs and the private one are paid for whoever holds them.
+	for _, slug := range []string{"go", "pro-3x", "dev-5x", "max-15x", "ultra", "unlimited", "dev", "max-5x", "max-20x", "max-50x", "team", "max", "pro-2x", "max-10x"} {
 		if !paidTier(slug) {
 			t.Errorf("paidTier(%q) = false; every priced rung is paid", slug)
 		}

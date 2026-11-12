@@ -25,15 +25,15 @@ import (
 // The second is the one that would be silent. A first charge is watched by the
 // customer and by a receipt; the second month's is watched by nobody.
 
-// maxLevels gives max-5x a price ladder for the life of one test and returns it.
+// levels gives slug a price ladder for the life of one test and returns it.
 // The published catalog sells every rung at one price — the multiples are their
 // own rungs — so the level mechanism is exercised against a fixture ladder built
 // from the rung's own price, and restored when the test ends.
-func maxLevels(t *testing.T) []int64 {
+func levels(t *testing.T, slug string) []int64 {
 	t.Helper()
-	p := lookupPlan("max-5x")
+	p := lookupPlan(slug)
 	if p == nil {
-		t.Fatal("plan \"max-5x\" missing from the catalog")
+		t.Fatalf("plan %q missing from the catalog", slug)
 	}
 	was := p.Prices
 	p.Prices = []int64{p.Price, 2 * p.Price, 3 * p.Price, 4 * p.Price, 5 * p.Price, 6 * p.Price}
@@ -89,15 +89,15 @@ func TestLevelPrice(t *testing.T) {
 // price the catalog never published is to name a level it never published, and
 // that is what this refuses.
 func TestSubscribeWithCardRefusesUnpublishedLevel(t *testing.T) {
-	ladder := maxLevels(t)
+	ladder := levels(t, "pro-3x")
 
 	// One past the end of the ladder, negative, absurd, and a level on a plan that
 	// publishes no ladder at all.
 	cases := map[string]string{
-		"one past the end":   `{"sourceId":"cnon:ok","planId":"max-5x","level":` + itoa(len(ladder)) + `}`,
-		"far past the end":   `{"sourceId":"cnon:ok","planId":"max-5x","level":999}`,
-		"negative":           `{"sourceId":"cnon:ok","planId":"max-5x","level":-1}`,
-		"plan has no ladder": `{"sourceId":"cnon:ok","planId":"dev","level":1}`,
+		"one past the end":   `{"sourceId":"cnon:ok","planId":"pro-3x","level":` + itoa(len(ladder)) + `}`,
+		"far past the end":   `{"sourceId":"cnon:ok","planId":"pro-3x","level":999}`,
+		"negative":           `{"sourceId":"cnon:ok","planId":"pro-3x","level":-1}`,
+		"plan has no ladder": `{"sourceId":"cnon:ok","planId":"go","level":1}`,
 	}
 
 	for name, body := range cases {
@@ -124,7 +124,7 @@ func TestSubscribeWithCardRefusesUnpublishedLevel(t *testing.T) {
 			}
 
 			db := datastore.New(org.Namespaced(ctx))
-			if s := parentSub(t, db, "lvl-refuse", "max-5x"); s != nil {
+			if s := parentSub(t, db, "lvl-refuse", "pro-3x"); s != nil {
 				t.Errorf("a subscription was created (%s) for a refused level", s.Id())
 			}
 			if s := parentSub(t, db, "lvl-refuse", "pro"); s != nil {
@@ -140,7 +140,7 @@ func TestSubscribeWithCardRefusesUnpublishedLevel(t *testing.T) {
 // TestSubscribeWithCardChargesTheChosenLevel: the first charge is the level's
 // price, and the subscription carries it.
 func TestSubscribeWithCardChargesTheChosenLevel(t *testing.T) {
-	ladder := maxLevels(t)
+	ladder := levels(t, "pro-3x")
 	const level = 3
 	want := ladder[level]
 
@@ -150,7 +150,7 @@ func TestSubscribeWithCardChargesTheChosenLevel(t *testing.T) {
 	m := squareMock("cust_l", "ccof_l", "sqpay_l")
 	withFakeSquare(t, m)
 
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"max-5x","level":3}`, nil)
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"pro-3x","level":3}`, nil)
 	if resp.StatusCode != http.StatusCreated {
 		raw, _ := io.ReadAll(resp.Body)
 		t.Fatalf("status=%d body=%s, want 201", resp.StatusCode, string(raw))
@@ -166,15 +166,15 @@ func TestSubscribeWithCardChargesTheChosenLevel(t *testing.T) {
 	// The subscription carries the chosen price, which is what every later invoice
 	// is built from.
 	db := datastore.New(org.Namespaced(ctx))
-	sub := parentSub(t, db, "lvl-buy", "max-5x")
+	sub := parentSub(t, db, "lvl-buy", "pro-3x")
 	if sub == nil {
-		t.Fatal("no max-5x subscription created")
+		t.Fatal("no pro-3x subscription created")
 	}
 	if int64(sub.Plan.Price) != want {
 		t.Fatalf("subscription plan price=%d, want %d", sub.Plan.Price, want)
 	}
-	if sub.Plan.Slug != "max-5x" {
-		t.Fatalf("subscription plan slug=%q, want max-5x — a level is a price, never a different tier", sub.Plan.Slug)
+	if sub.Plan.Slug != "pro-3x" {
+		t.Fatalf("subscription plan slug=%q, want pro-3x — a level is a price, never a different tier", sub.Plan.Slug)
 	}
 
 	// The plan the subscription points AT is the same row a base-price purchase
@@ -182,12 +182,12 @@ func TestSubscribeWithCardChargesTheChosenLevel(t *testing.T) {
 	// copy has to keep the row's identity: PlanId is what the renewal charger,
 	// the invoice line and every entitlement read resolve through, so a copy that
 	// lost it would leave the subscription pointing at nothing.
-	base, err := resolveSubscriptionPlan(db, "max-5x")
+	base, err := resolveSubscriptionPlan(db, "pro-3x")
 	if err != nil {
-		t.Fatalf("resolve max-5x: %v", err)
+		t.Fatalf("resolve pro-3x: %v", err)
 	}
 	if sub.PlanId != base.Id() || sub.PlanId == "" {
-		t.Fatalf("subscription PlanId=%q, want the max-5x plan id %q", sub.PlanId, base.Id())
+		t.Fatalf("subscription PlanId=%q, want the pro-3x plan id %q", sub.PlanId, base.Id())
 	}
 	if int64(base.Price) != ladder[0] {
 		t.Fatalf("the authority row was repriced to %d by a level purchase; it must still be %d",
@@ -196,14 +196,14 @@ func TestSubscribeWithCardChargesTheChosenLevel(t *testing.T) {
 }
 
 // TestRenewalChargesTheChosenLevel is the one that matters: a customer who buys
-// Max at a level is charged that level AGAIN at renewal, not the base price.
+// a plan at a level is charged that level AGAIN at renewal, not the base price.
 //
 // It renews through the HTTP endpoint, which re-reads the subscription by id, so the
 // price under test is the one that survived storage — not one held in memory
-// from the purchase. A subscription that silently dropped to $99 in month two
+// from the purchase. A subscription that silently dropped to the base price in month two
 // would pass every test that never re-read it.
 func TestRenewalChargesTheChosenLevel(t *testing.T) {
-	ladder := maxLevels(t)
+	ladder := levels(t, "pro-3x")
 	const level = 5
 	want := ladder[level]
 	base := ladder[0]
@@ -214,7 +214,7 @@ func TestRenewalChargesTheChosenLevel(t *testing.T) {
 	m := squareMock("cust_r", "ccof_r", "sqpay_r")
 	withFakeSquare(t, m)
 
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"max-5x","level":5}`, nil)
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"pro-3x","level":5}`, nil)
 	if resp.StatusCode != http.StatusCreated {
 		raw, _ := io.ReadAll(resp.Body)
 		t.Fatalf("subscribe status=%d body=%s, want 201", resp.StatusCode, string(raw))
@@ -224,9 +224,9 @@ func TestRenewalChargesTheChosenLevel(t *testing.T) {
 	}
 
 	db := datastore.New(org.Namespaced(ctx))
-	sub := parentSub(t, db, "lvl-renew", "max-5x")
+	sub := parentSub(t, db, "lvl-renew", "pro-3x")
 	if sub == nil {
-		t.Fatal("no max-5x subscription created")
+		t.Fatal("no pro-3x subscription created")
 	}
 
 	// Age the subscription so its current period has elapsed — a renewal only
@@ -284,18 +284,18 @@ func TestRenewalChargesTheChosenLevel(t *testing.T) {
 // TestSweptRenewalStatesTheCardCharge: the sweep's result for a card renewal
 // names what the card was charged, which is the renewal's new money.
 func TestSweptRenewalStatesTheCardCharge(t *testing.T) {
-	want := maxLevels(t)[5]
+	want := levels(t, "pro-3x")[5]
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	org := moneyOrg("swept-card")
 	m := squareMock("cust_s", "ccof_s", "sqpay_s")
 	withFakeSquare(t, m)
-	if resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"max-5x","level":5}`, nil); resp.StatusCode != http.StatusCreated {
+	if resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"pro-3x","level":5}`, nil); resp.StatusCode != http.StatusCreated {
 		raw, _ := io.ReadAll(resp.Body)
 		t.Fatalf("subscribe status=%d body=%s, want 201", resp.StatusCode, string(raw))
 	}
 	db := datastore.New(org.Namespaced(ctx))
-	sub := parentSub(t, db, "swept-card", "max-5x")
+	sub := parentSub(t, db, "swept-card", "pro-3x")
 	fresh := subscription.New(db)
 	if err := fresh.GetById(sub.Id()); err != nil {
 		t.Fatalf("re-read subscription: %v", err)
@@ -318,11 +318,11 @@ func TestSweptRenewalStatesTheCardCharge(t *testing.T) {
 // buying exactly what it bought before, and naming level 0 explicitly is the
 // same purchase as naming nothing.
 func TestAbsentLevelBuysTheBasePrice(t *testing.T) {
-	base := maxLevels(t)[0]
+	base := levels(t, "pro-3x")[0]
 
 	for name, body := range map[string]string{
-		"absent":  `{"sourceId":"cnon:ok","planId":"max-5x"}`,
-		"level 0": `{"sourceId":"cnon:ok","planId":"max-5x","level":0}`,
+		"absent":  `{"sourceId":"cnon:ok","planId":"pro-3x"}`,
+		"level 0": `{"sourceId":"cnon:ok","planId":"pro-3x","level":0}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			ctx := ae.NewContext()
@@ -348,10 +348,10 @@ func TestAbsentLevelBuysTheBasePrice(t *testing.T) {
 // and a client would have to hardcode the prices to draw the control — which is
 // exactly the two-places-for-one-price the catalog exists to prevent.
 func TestCatalogPublishesTheLadder(t *testing.T) {
-	maxLevels(t)
-	max := lookupPlan("max-5x")
+	levels(t, "pro-3x")
+	max := lookupPlan("pro-3x")
 	if len(max.Prices) == 0 {
-		t.Fatal("the catalog serves no ladder for max-5x; nothing can render the control")
+		t.Fatal("the catalog serves no ladder for pro-3x; nothing can render the control")
 	}
 	if max.Prices[0] != max.Price {
 		t.Fatalf("ladder starts at %d but the plan's price is %d; the first position on the control would quote one number and charge another",

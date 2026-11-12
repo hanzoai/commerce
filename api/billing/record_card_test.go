@@ -253,12 +253,12 @@ func TestRenewDue_ACardPlanRenewsOnItsCardNotTheBalance(t *testing.T) {
 	deposit(t, db, org.Name, 100000)
 	m := squareMock("cust_rn", "ccof_rn", "sqpay_rn")
 	withFakeSquare(t, m)
-	price := lookupPlan("dev").Price
+	price := lookupPlan("go").Price
 
-	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev"}`, nil); r.StatusCode != 201 {
+	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"go"}`, nil); r.StatusCode != 201 {
 		t.Fatalf("sale: %d %s", r.StatusCode, bodyOf(r))
 	}
-	sub := parentSub(t, db, org.Name, "dev")
+	sub := parentSub(t, db, org.Name, "go")
 	if m.chargeCalls != 1 || m.lastChargeAmount != price || sub == nil {
 		t.Fatalf("sale charged %d time(s), last %d, row %v; want once at %d", m.chargeCalls, m.lastChargeAmount, sub, price)
 	}
@@ -368,16 +368,16 @@ func TestSubscribe_ACardPlanStartsWhenTheExternalPlanEnds(t *testing.T) {
 	withFakeSquare(t, m)
 	start := time.Now().UTC().Truncate(time.Second).AddDate(0, 0, -20)
 	end := start.AddDate(0, 0, 30)
-	comp, err := RecordSubscription(ctx, org, compIn(org.Name, "dev", start, end))
+	comp, err := RecordSubscription(ctx, org, compIn(org.Name, "go", start, end))
 	if err != nil {
 		t.Fatalf("comp: %v", err)
 	}
 
 	// A wallet keeps no card to charge at the start.
-	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"wnon:ok","planId":"dev","wallet":true}`, nil); r.StatusCode != 400 {
+	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"wnon:ok","planId":"go","wallet":true}`, nil); r.StatusCode != 400 {
 		t.Fatalf("a wallet for a plan that starts later: %d %s, want 400", r.StatusCode, bodyOf(r))
 	}
-	r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev"}`, nil)
+	r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"go"}`, nil)
 	if r.StatusCode != 201 {
 		t.Fatalf("sale: %d %s", r.StatusCode, bodyOf(r))
 	}
@@ -398,7 +398,7 @@ func TestSubscribe_ACardPlanStartsWhenTheExternalPlanEnds(t *testing.T) {
 	if hold := billingSubscription(db, org.Name, false); hold == nil || hold.Id() != comp.Subscription.ID {
 		t.Fatalf("held = %v, want the comp until its end", hold)
 	}
-	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev"}`, map[string]string{"X-Idempotency-Key": "second"}); r.StatusCode != 409 {
+	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"go"}`, map[string]string{"X-Idempotency-Key": "second"}); r.StatusCode != 409 {
 		t.Fatalf("a second card plan: %d %s, want 409", r.StatusCode, bodyOf(r))
 	}
 
@@ -427,7 +427,7 @@ func TestSubscribe_ACardPlanStartsWhenTheExternalPlanEnds(t *testing.T) {
 	if lapsed != 1 || renewed != 1 {
 		t.Fatalf("sweep = %+v, want the comp ended and the card plan's first period charged", out)
 	}
-	if m.chargeCalls != 1 || m.lastChargeAmount != lookupPlan("dev").Price {
+	if m.chargeCalls != 1 || m.lastChargeAmount != lookupPlan("go").Price {
 		t.Fatalf("card charged %d time(s), last %d; want once, the plan's price", m.chargeCalls, m.lastChargeAmount)
 	}
 	s := reload(t, db, next.Id())
@@ -450,26 +450,26 @@ func TestRemindDue_AWeekThenADayOnceEach(t *testing.T) {
 	db := datastore.New(org.Namespaced(ctx))
 	now := time.Now().UTC().Truncate(time.Second)
 	end := now.Add(6 * 24 * time.Hour)
-	wire, err := RecordSubscription(ctx, org, recordIn("pc-remind/wire", "dev", lookupPlan("dev").Price, end.AddDate(0, -1, 0), end))
+	wire, err := RecordSubscription(ctx, org, recordIn("pc-remind/wire", "go", lookupPlan("go").Price, end.AddDate(0, -1, 0), end))
 	if err != nil {
 		t.Fatalf("record: %v", err)
 	}
-	legacy := legacyBalanceRow(t, ctx, db, "pc-remind/legacy", "dev")
+	legacy := legacyBalanceRow(t, ctx, db, "pc-remind/legacy", "go")
 	legacy.PeriodStart, legacy.PeriodEnd = end.AddDate(0, -1, 0), end
 	if err := legacy.Update(); err != nil {
 		t.Fatalf("save: %v", err)
 	}
-	card := seedCardBackedSub(t, db, "pc-remind/card", "dev", "ccof_x", "cust_x")
+	card := seedCardBackedSub(t, db, "pc-remind/card", "go", "ccof_x", "cust_x")
 	card.PeriodStart, card.PeriodEnd = end.AddDate(0, -1, 0), end
 	if err := card.Update(); err != nil {
 		t.Fatalf("save: %v", err)
 	}
-	followed, err := RecordSubscription(ctx, org, compIn("pc-remind/followed", "dev", end.AddDate(0, -1, 0), end))
+	followed, err := RecordSubscription(ctx, org, compIn("pc-remind/followed", "go", end.AddDate(0, -1, 0), end))
 	if err != nil {
 		t.Fatalf("comp: %v", err)
 	}
 	next := subscription.New(db)
-	next.UserId, next.PlanId, next.DefaultPaymentMethod = "pc-remind/followed", "dev", "pm_next"
+	next.UserId, next.PlanId, next.DefaultPaymentMethod = "pc-remind/followed", "go", "pm_next"
 	schedule(next, end)
 	if err := next.Create(); err != nil {
 		t.Fatalf("scheduled: %v", err)
@@ -529,7 +529,8 @@ func TestRemindDue_AWeekThenADayOnceEach(t *testing.T) {
 
 // A customer's own price is what the card is charged, at the sale and at every
 // renewal, and the invoice shows the plan at list with the difference as their
-// discount. A private plan is sold by card only to a customer with a price of it.
+// discount. A private plan is sold by card only to a customer with a price of it:
+// the catalog's Unlimited, seeded private at $995.
 // Mutation: drop the agreed step in buildPeriodInvoice and the renewal charges list.
 func TestCustomerPrice_TheCardIsChargedTheAgreedPriceEveryPeriod(t *testing.T) {
 	ctx := ae.NewContext()
@@ -537,7 +538,6 @@ func TestCustomerPrice_TheCardIsChargedTheAgreedPriceEveryPeriod(t *testing.T) {
 	if _, _, err := SeedPlans(ctx); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	authorityPlan(t, ctx, "unlimited", "personal", plan.StatusPrivate, 99500)
 	org := moneyOrg("pc-price")
 	db := datastore.New(org.Namespaced(ctx))
 	m := squareMock("cust_up", "ccof_up", "sqpay_up")
@@ -675,18 +675,30 @@ func (c *countingPrepaid) Draw(context.Context, string, currency.Type, int64, st
 // A comp of a plan only the plan authority knows confers the tier that plan's row
 // gives — paid, Pro; enterprise, Enterprise — and the tier names the plan. A comp
 // of a free row, and a self-created internal $0 row, confer nothing. Mutation:
-// drop the comp case in paidRow and the Unlimited comp reads Free.
+// drop the comp case in paidRow and the patron comp reads Free.
+//
+// The catalog's own private plan, Unlimited, is the comp staff give at
+// admin.hanzo.ai: it confers Pro from the catalog, and names itself.
 func TestTier_ACompOfAPrivatePlanConfersItsTier(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	if _, _, err := SeedPlans(ctx); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	authorityPlan(t, ctx, "unlimited", "personal", plan.StatusPrivate, 99500)
+	authorityPlan(t, ctx, "patron", "personal", plan.StatusPrivate, 99500)
 	authorityPlan(t, ctx, "partner", "enterprise", plan.StatusPrivate, 500000)
 	authorityPlan(t, ctx, "sampler", "personal", plan.StatusPrivate, 0)
 	start := time.Now().UTC().Truncate(24 * time.Hour)
-	for slug, want := range map[string]tier.Name{"unlimited": tier.Pro, "partner": tier.Enterprise, "sampler": tier.Free} {
+
+	unlimited := moneyOrg("tier-comp-unlimited")
+	if _, err := RecordSubscription(ctx, unlimited, compIn(unlimited.Name, "unlimited", start, start.AddDate(0, 1, 0))); err != nil {
+		t.Fatalf("comp unlimited: %v", err)
+	}
+	if v, err := ReadTier(ctx, unlimited, unlimited.Name); err != nil || v.Tier.Name != tier.Pro || v.Plan != "unlimited" || v.PlanName != "Unlimited" {
+		t.Fatalf("a comp of the catalog's Unlimited: %+v, %v; want Pro, plan unlimited named Unlimited", v, err)
+	}
+
+	for slug, want := range map[string]tier.Name{"patron": tier.Pro, "partner": tier.Enterprise, "sampler": tier.Free} {
 		org := moneyOrg("tier-comp-" + slug)
 		if _, err := RecordSubscription(ctx, org, compIn(org.Name, slug, start, start.AddDate(0, 1, 0))); err != nil {
 			t.Fatalf("comp %s: %v", slug, err)
@@ -706,7 +718,7 @@ func TestTier_ACompOfAPrivatePlanConfersItsTier(t *testing.T) {
 	// A row nobody paid for and staff never recorded confers nothing.
 	org := moneyOrg("tier-internal")
 	db := datastore.New(org.Namespaced(ctx))
-	p, err := resolveSubscriptionPlan(db, "unlimited")
+	p, err := resolveSubscriptionPlan(db, "patron")
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
@@ -731,7 +743,6 @@ func TestRecordSubscription_ChecksTheCustomersOwnPrice(t *testing.T) {
 	if _, _, err := SeedPlans(ctx); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	authorityPlan(t, ctx, "unlimited", "personal", plan.StatusPrivate, 99500)
 	org := moneyOrg("rec-price")
 	start := time.Now().UTC().Truncate(24 * time.Hour)
 	in := recordIn(org.Name, "unlimited", 19500, start, start.AddDate(0, 1, 0))

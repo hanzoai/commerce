@@ -50,10 +50,10 @@ func TestWalletCoupon_FirstUseIsHalfPaidByTheWallet(t *testing.T) {
 	m := walletMock("fp_apple_pay")
 	withFakeSquare(t, m)
 
-	list := lookupPlan("dev").Price
+	list := lookupPlan("go").Price
 	half := list - engine.DiscountCents(list, 50)
 
-	r := invokeSubscribeCard(org, ctx, walletBody("wnon:apple", "dev", "50off", ""), nil)
+	r := invokeSubscribeCard(org, ctx, walletBody("wnon:apple", "go", "50off", ""), nil)
 	if r.StatusCode != http.StatusCreated {
 		t.Fatalf("status=%d %s, want 201", r.StatusCode, bodyOf(r))
 	}
@@ -75,11 +75,11 @@ func TestWalletCoupon_FirstUseIsHalfPaidByTheWallet(t *testing.T) {
 	}
 
 	db := datastore.New(org.Namespaced(ctx))
-	sub := parentSub(t, db, "wl-first", "dev")
+	sub := parentSub(t, db, "wl-first", "go")
 	if sub == nil {
 		t.Fatal("no subscription")
 	}
-	if v := viewSubscription(sub); v.Plan.Slug != "dev" || !v.Held {
+	if v := viewSubscription(sub); v.Plan.Slug != "go" || !v.Held {
 		t.Fatalf("the row reads as plan %+v held=%v, want slug dev and held", v.Plan, v.Held)
 	}
 	if sub.DefaultPaymentMethod != "credits" || sub.ProviderType != "credit" || sub.DiscountPercent != 0 {
@@ -125,13 +125,13 @@ func TestWalletCoupon_OncePerCardAndPerOrg(t *testing.T) {
 	withFakeSquare(t, m)
 
 	a := moneyOrg("wl-org-a")
-	if r := invokeSubscribeCard(a, ctx, walletBody("wnon:a", "dev", "50OFF", ""), nil); r.StatusCode != http.StatusCreated {
+	if r := invokeSubscribeCard(a, ctx, walletBody("wnon:a", "go", "50OFF", ""), nil); r.StatusCode != http.StatusCreated {
 		t.Fatalf("first sale status=%d %s", r.StatusCode, bodyOf(r))
 	}
 
 	// Another org, the same card behind the wallet: the card has redeemed.
 	b := moneyOrg("wl-org-b")
-	r := invokeSubscribeCard(b, ctx, walletBody("wnon:b", "dev", "50OFF", ""), nil)
+	r := invokeSubscribeCard(b, ctx, walletBody("wnon:b", "go", "50OFF", ""), nil)
 	if body := bodyOf(r); r.StatusCode != http.StatusConflict || !strings.Contains(body, "card has already redeemed") {
 		t.Fatalf("same card again: status=%d %s, want 409", r.StatusCode, body)
 	}
@@ -143,7 +143,7 @@ func TestWalletCoupon_OncePerCardAndPerOrg(t *testing.T) {
 	// and that is known before the wallet is asked for anything.
 	m.walletCard = &processor.Card{Brand: "Mastercard", Last4: "5100", ExpMonth: 1, ExpYear: 2031, Fingerprint: "fp_other_phone"}
 	holds := m.authorizeCalls
-	r = invokeSubscribeCard(a, ctx, walletBody("wnon:a2", "dev", "50OFF", "wl-org-a/member"), nil)
+	r = invokeSubscribeCard(a, ctx, walletBody("wnon:a2", "go", "50OFF", "wl-org-a/member"), nil)
 	if body := bodyOf(r); r.StatusCode != http.StatusConflict || !strings.Contains(body, "organization has already redeemed") {
 		t.Fatalf("same org again: status=%d %s, want 409", r.StatusCode, body)
 	}
@@ -156,8 +156,8 @@ func TestWalletCoupon_OncePerCardAndPerOrg(t *testing.T) {
 
 	// Org B with its own card and no coupon: an ordinary wallet sale at full price.
 	m.walletCard = &processor.Card{Brand: "Visa", Last4: "1881", ExpMonth: 3, ExpYear: 2032, Fingerprint: "fp_b_phone"}
-	r = invokeSubscribeCard(b, ctx, walletBody("wnon:b2", "dev", "", ""), nil)
-	if r.StatusCode != http.StatusCreated || m.lastAuthorizeAmount != lookupPlan("dev").Price {
+	r = invokeSubscribeCard(b, ctx, walletBody("wnon:b2", "go", "", ""), nil)
+	if r.StatusCode != http.StatusCreated || m.lastAuthorizeAmount != lookupPlan("go").Price {
 		t.Fatalf("plain wallet sale status=%d held %d, want 201 at the list price", r.StatusCode, m.lastAuthorizeAmount)
 	}
 }
@@ -187,7 +187,7 @@ func TestWalletCoupon_ConcurrentDoubleSubmitSellsOnce(t *testing.T) {
 			// Each press is its own account in the org, so only the coupon can
 			// stop the second sale.
 			_, err := Subscribe(ctx, org, SubscribeIn{
-				SourceID: fmt.Sprintf("wnon:%d", i), Wallet: true, PlanID: "dev", Coupon: "50OFF",
+				SourceID: fmt.Sprintf("wnon:%d", i), Wallet: true, PlanID: "go", Coupon: "50OFF",
 				Subject: fmt.Sprintf("wl-double/u%d", i), IdempotencyKey: fmt.Sprintf("press-%d", i),
 			})
 			mu.Lock()
@@ -229,7 +229,7 @@ func TestWalletCoupon_ConcurrentDoubleSubmitSellsOnce(t *testing.T) {
 		go func(i int) {
 			defer wg2.Done()
 			_, errs[i] = Subscribe(ctx, org2, SubscribeIn{
-				SourceID: fmt.Sprintf("wnon:k%d", i), Wallet: true, PlanID: "dev", Coupon: "50OFF",
+				SourceID: fmt.Sprintf("wnon:k%d", i), Wallet: true, PlanID: "go", Coupon: "50OFF",
 				Subject: "wl-samekey", IdempotencyKey: "one-press",
 			})
 		}(i)
@@ -257,15 +257,15 @@ func TestWalletCoupon_CashAppTakesNoCode(t *testing.T) {
 	withFakeSquare(t, m)
 	org := moneyOrg("wl-cashapp")
 
-	r := invokeSubscribeCard(org, ctx, walletBody("wnon:cash", "dev", "50OFF", ""), nil)
+	r := invokeSubscribeCard(org, ctx, walletBody("wnon:cash", "go", "50OFF", ""), nil)
 	if body := bodyOf(r); r.StatusCode != http.StatusBadRequest || !strings.Contains(body, "card, Apple Pay or Google Pay") {
 		t.Fatalf("cash app with a code: status=%d %s, want 400", r.StatusCode, body)
 	}
 	if m.captureCalls != 0 || m.cancelCalls != 1 || couponUses(t, ctx, "50OFF") != 0 {
 		t.Fatalf("captured %d voided %d used %d, want the hold voided and nothing spent", m.captureCalls, m.cancelCalls, couponUses(t, ctx, "50OFF"))
 	}
-	r = invokeSubscribeCard(org, ctx, walletBody("wnon:cash2", "dev", "", ""), nil)
-	if r.StatusCode != http.StatusCreated || m.lastAuthorizeAmount != lookupPlan("dev").Price || m.captureCalls != 1 {
+	r = invokeSubscribeCard(org, ctx, walletBody("wnon:cash2", "go", "", ""), nil)
+	if r.StatusCode != http.StatusCreated || m.lastAuthorizeAmount != lookupPlan("go").Price || m.captureCalls != 1 {
 		t.Fatalf("cash app without a code: status=%d %s held %d", r.StatusCode, bodyOf(r), m.lastAuthorizeAmount)
 	}
 }
@@ -283,7 +283,7 @@ func TestWalletCoupon_CaptureOutcomes(t *testing.T) {
 	m.captureStatus = "FAILED"
 	withFakeSquare(t, m)
 	org := moneyOrg("wl-capfail")
-	r := invokeSubscribeCard(org, ctx, walletBody("wnon:x", "dev", "50OFF", ""), nil)
+	r := invokeSubscribeCard(org, ctx, walletBody("wnon:x", "go", "50OFF", ""), nil)
 	if r.StatusCode != http.StatusPaymentRequired {
 		t.Fatalf("refused capture: status=%d %s, want 402", r.StatusCode, bodyOf(r))
 	}
@@ -296,7 +296,7 @@ func TestWalletCoupon_CaptureOutcomes(t *testing.T) {
 	taken.captureLost = 1
 	taken.readStatus = "COMPLETED"
 	withFakeSquare(t, taken)
-	if r := invokeSubscribeCard(moneyOrg("wl-taken"), ctx, walletBody("wnon:t", "dev", "50OFF", ""), nil); r.StatusCode != http.StatusCreated {
+	if r := invokeSubscribeCard(moneyOrg("wl-taken"), ctx, walletBody("wnon:t", "go", "50OFF", ""), nil); r.StatusCode != http.StatusCreated {
 		t.Fatalf("capture read back as taken: status=%d %s, want 201", r.StatusCode, bodyOf(r))
 	}
 	if taken.authorizeCalls != 1 || taken.captureCalls != 1 || taken.readCalls != 1 || taken.cancelCalls != 0 {
@@ -309,7 +309,7 @@ func TestWalletCoupon_CaptureOutcomes(t *testing.T) {
 	held.captureLost = 1
 	held.readStatus = "APPROVED"
 	withFakeSquare(t, held)
-	if r := invokeSubscribeCard(moneyOrg("wl-held"), ctx, walletBody("wnon:h", "dev", "", ""), nil); r.StatusCode != http.StatusCreated || held.captureCalls != 2 {
+	if r := invokeSubscribeCard(moneyOrg("wl-held"), ctx, walletBody("wnon:h", "go", "", ""), nil); r.StatusCode != http.StatusCreated || held.captureCalls != 2 {
 		t.Fatalf("held after a lost capture: status=%d %s captures=%d, want 201 after a second capture", r.StatusCode, bodyOf(r), held.captureCalls)
 	}
 
@@ -318,13 +318,13 @@ func TestWalletCoupon_CaptureOutcomes(t *testing.T) {
 	gone.captureLost = 1
 	gone.readStatus = "CANCELED"
 	withFakeSquare(t, gone)
-	r = invokeSubscribeCard(moneyOrg("wl-gone"), ctx, walletBody("wnon:g", "dev", "50OFF", ""), map[string]string{"X-Idempotency-Key": "gone-1"})
+	r = invokeSubscribeCard(moneyOrg("wl-gone"), ctx, walletBody("wnon:g", "go", "50OFF", ""), map[string]string{"X-Idempotency-Key": "gone-1"})
 	if r.StatusCode != http.StatusPaymentRequired || promo.Redeemed(ctx, "50OFF", "wl-gone") {
 		t.Fatalf("capture read back as canceled: status=%d %s redeemed=%v, want 402 and the use given back",
 			r.StatusCode, bodyOf(r), promo.Redeemed(ctx, "50OFF", "wl-gone"))
 	}
 	gone.readStatus = ""
-	if r := invokeSubscribeCard(moneyOrg("wl-gone"), ctx, walletBody("wnon:g2", "dev", "50OFF", ""), map[string]string{"X-Idempotency-Key": "gone-1"}); r.StatusCode != http.StatusCreated {
+	if r := invokeSubscribeCard(moneyOrg("wl-gone"), ctx, walletBody("wnon:g2", "go", "50OFF", ""), map[string]string{"X-Idempotency-Key": "gone-1"}); r.StatusCode != http.StatusCreated {
 		t.Fatalf("retry after nothing was taken: status=%d %s, want 201", r.StatusCode, bodyOf(r))
 	}
 
@@ -334,7 +334,7 @@ func TestWalletCoupon_CaptureOutcomes(t *testing.T) {
 	withFakeSquare(t, lost)
 	org2 := moneyOrg("wl-caplost")
 	hdr := map[string]string{"X-Idempotency-Key": "lost-1"}
-	if r := invokeSubscribeCard(org2, ctx, walletBody("wnon:y", "dev", "50OFF", ""), hdr); r.StatusCode != http.StatusBadGateway {
+	if r := invokeSubscribeCard(org2, ctx, walletBody("wnon:y", "go", "50OFF", ""), hdr); r.StatusCode != http.StatusBadGateway {
 		t.Fatalf("unconfirmed capture: status=%d %s, want 502", r.StatusCode, bodyOf(r))
 	}
 	db := datastore.New(org2.Namespaced(ctx))
@@ -342,7 +342,7 @@ func TestWalletCoupon_CaptureOutcomes(t *testing.T) {
 		t.Fatalf("the attempt was not sealed: replay=%v err=%v", replay, err)
 	}
 	lost.captureErr = nil
-	if r := invokeSubscribeCard(org2, ctx, walletBody("wnon:y2", "dev", "50OFF", ""), hdr); r.StatusCode != http.StatusConflict {
+	if r := invokeSubscribeCard(org2, ctx, walletBody("wnon:y2", "go", "50OFF", ""), hdr); r.StatusCode != http.StatusConflict {
 		t.Fatalf("retry after an unconfirmed capture: status=%d %s, want 409", r.StatusCode, bodyOf(r))
 	}
 	if lost.authorizeCalls != 1 || lost.cancelCalls != 0 {
@@ -364,7 +364,7 @@ func TestWalletSale_AuthorizeOutcomes(t *testing.T) {
 	once := walletMock("fp_once")
 	once.authorizeLost = 1
 	withFakeSquare(t, once)
-	if r := invokeSubscribeCard(moneyOrg("wl-auth1"), ctx, walletBody("wnon:a", "dev", "", ""), nil); r.StatusCode != http.StatusCreated {
+	if r := invokeSubscribeCard(moneyOrg("wl-auth1"), ctx, walletBody("wnon:a", "go", "", ""), nil); r.StatusCode != http.StatusCreated {
 		t.Fatalf("one lost authorization: status=%d %s, want 201", r.StatusCode, bodyOf(r))
 	}
 	if once.authorizeCalls != 2 || once.authorizeKeys[0] != once.authorizeKeys[1] || once.captureCalls != 1 {
@@ -374,7 +374,7 @@ func TestWalletSale_AuthorizeOutcomes(t *testing.T) {
 	no := walletMock("fp_no")
 	no.authorizeErr = &processor.Answer{Err: errors.New("402: CARD_DECLINED")}
 	withFakeSquare(t, no)
-	if r := invokeSubscribeCard(moneyOrg("wl-auth2"), ctx, walletBody("wnon:b", "dev", "", ""), nil); r.StatusCode != http.StatusPaymentRequired {
+	if r := invokeSubscribeCard(moneyOrg("wl-auth2"), ctx, walletBody("wnon:b", "go", "", ""), nil); r.StatusCode != http.StatusPaymentRequired {
 		t.Fatalf("declined: status=%d %s, want 402", r.StatusCode, bodyOf(r))
 	}
 	if no.authorizeCalls != 1 {
@@ -386,10 +386,10 @@ func TestWalletSale_AuthorizeOutcomes(t *testing.T) {
 	withFakeSquare(t, silent)
 	hdr := map[string]string{"X-Idempotency-Key": "silent-1"}
 	org := moneyOrg("wl-auth3")
-	if r := invokeSubscribeCard(org, ctx, walletBody("wnon:c", "dev", "", ""), hdr); r.StatusCode != http.StatusServiceUnavailable {
+	if r := invokeSubscribeCard(org, ctx, walletBody("wnon:c", "go", "", ""), hdr); r.StatusCode != http.StatusServiceUnavailable {
 		t.Fatalf("two lost authorizations: status=%d %s, want 503", r.StatusCode, bodyOf(r))
 	}
-	if r := invokeSubscribeCard(org, ctx, walletBody("wnon:c2", "dev", "", ""), hdr); r.StatusCode != http.StatusConflict || silent.authorizeCalls != 2 {
+	if r := invokeSubscribeCard(org, ctx, walletBody("wnon:c2", "go", "", ""), hdr); r.StatusCode != http.StatusConflict || silent.authorizeCalls != 2 {
 		t.Fatalf("retry inside the attempt: status=%d authorized %d, want 409 and no new hold", r.StatusCode, silent.authorizeCalls)
 	}
 }
@@ -456,8 +456,8 @@ func TestWalletSale_Refusals(t *testing.T) {
 	withFakeSquare(t, m)
 	org := moneyOrg("wl-refuse")
 	for _, body := range []string{
-		`{"sourceId":"balance","wallet":true,"planId":"dev"}`,
-		`{"paymentMethodId":"pm_1","wallet":true,"planId":"dev"}`,
+		`{"sourceId":"balance","wallet":true,"planId":"go"}`,
+		`{"paymentMethodId":"pm_1","wallet":true,"planId":"go"}`,
 	} {
 		if r := invokeSubscribeCard(org, ctx, body, nil); r.StatusCode != http.StatusBadRequest {
 			t.Fatalf("%s: status=%d %s, want 400", body, r.StatusCode, bodyOf(r))
