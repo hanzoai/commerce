@@ -118,7 +118,7 @@ func ExtendCoupon(ctx context.Context, raw string, apply bool, by string) (*Coup
 // while the row is the one it read (Swap) and reads again when a renewal wrote
 // first, so it never puts back a period a renewal moved.
 func extendOne(ctx context.Context, org *organization.Organization, id string, cpn *promo.CouponView, apply bool, by string) Extended {
-	for range mixin.Swaps {
+	for range mixin.Rounds() {
 		e, sub, before, after := grantOne(ctx, org, id, cpn)
 		if e.Error != "" || !apply || !e.Changed {
 			return e

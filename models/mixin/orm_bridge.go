@@ -18,6 +18,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
+	"math/rand/v2"
 	"reflect"
 	"time"
 
@@ -250,9 +252,31 @@ func (b *Model[T]) Update() error {
 	return err
 }
 
-// Swaps is how many times a read-modify-write reads again after another writer
-// changed its entity under it, before it reports the contention as an error.
-const Swaps = 8
+// Swaps is how many rounds a read-modify-write takes before it reports the
+// contention as an error: one read and one swap a round (Rounds).
+const Swaps = 16
+
+// Rounds yields the rounds of a read-modify-write, Swaps of them, and pauses
+// before every round after the first: a random time below 1ms doubled each
+// round and held at 64ms. A swap that lost read an entity another writer was
+// changing at the same moment; read again at once, every loser of that round
+// meets the others again, and with enough writers on one row some lose every
+// round: 72 writers on one invoice over 10 CPUs had a writer lose 8 rounds in a
+// row in 8 runs of 20. The random pause spreads the losers so each next round
+// has fewer of them; with it and 16 rounds, 0 of 300.
+func Rounds() iter.Seq[int] {
+	return func(yield func(int) bool) {
+		for round := range Swaps {
+			if round > 0 {
+				window := min(time.Millisecond<<(round-1), 64*time.Millisecond)
+				time.Sleep(rand.N(window))
+			}
+			if !yield(round) {
+				return
+			}
+		}
+	}
+}
 
 // Swap writes the entity only while the stored one is still the one this model
 // read: its updatedAt unchanged since, or nothing stored for an entity never
