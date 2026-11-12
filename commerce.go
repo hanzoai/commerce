@@ -1022,10 +1022,10 @@ func (app *App) runCurrencySeed() {
 	}
 }
 
-// runPlansSeed reconciles the subscription/DNS plan authority (models/plan,
-// "system" ns) to the embedded @hanzo/plans catalog on EVERY boot. It logs the
-// counts because a boot that silently reprices the catalog is a boot nobody can
-// audit afterwards — the SAME
+// runPlansSeed imports the vendored plan catalog into a plan authority that
+// holds no row, once. A store that holds rows is never reconciled to the
+// vendored copy: its rows are what is sold and only a SuperAdmin's edit changes
+// one (billing.SeedPlans). It logs what it wrote.
 func (app *App) runPlansSeed() {
 	created, corrected, err := billingPkg.SeedPlans(context.Background())
 	if err != nil {

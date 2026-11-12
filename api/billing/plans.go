@@ -176,6 +176,11 @@ type staticPlan struct {
 	// Multiple is the rung's usage multiple of Go as the catalog states it, 0 for a
 	// plan that is no rung of the ladder or has no caps. It is never served.
 	Multiple int `json:"-"`
+	// Entitlements and Replaces are the vendored catalog's entitlement block and
+	// renamed slugs, carried so the one import writes them onto the row. Neither
+	// is served here: what a plan grants is read off its row.
+	Entitlements map[string]any `json:"-"`
+	Replaces     []string       `json:"-"`
 }
 
 // PlanView is a plan as this service SELLS it — the wire type GET /billing/plans
@@ -426,8 +431,24 @@ func parsePlans(data []byte) ([]staticPlan, error) {
 		if cp.Usage != nil && cp.Usage.Multiple != nil {
 			sp.Multiple = *cp.Usage.Multiple
 		}
+		sp.Replaces = cp.Replaces
 
 		plans[i] = sp
+	}
+
+	// The whole entitlement block, as the catalog wrote it. canonicalPlan reads
+	// only its licensing.* keys, typed; the row carries all of it.
+	var blocks []struct {
+		Entitlements map[string]any `json:"entitlements"`
+	}
+	if err := json.Unmarshal(data, &blocks); err != nil {
+		return nil, err
+	}
+	for i := range plans {
+		plans[i].Entitlements = blocks[i].Entitlements
+		if plans[i].Entitlements == nil {
+			plans[i].Entitlements = map[string]any{}
+		}
 	}
 
 	return plans, nil
