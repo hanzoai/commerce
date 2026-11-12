@@ -227,6 +227,23 @@ func TestTheMerchantAPINeverWritesAHanzoSubscription(t *testing.T) {
 			got.PlanId, billing.Unlocks(api.db.Context, got, time.Now()))
 	}
 
+	// A cancellation is written as every update is: naming a plan the merchant
+	// does not have, it is refused and nothing is written.
+	api.do(t, http.MethodPatch, "/subscribe/"+id, map[string]any{
+		"planId": "ultra", "plan": map[string]any{"slug": "ultra", "price": 19500}, "status": "active", "providerType": "square",
+		"quantity": 0, "current_period_end": later,
+	})
+	if code, body = api.do(t, http.MethodPatch, "/subscribe/"+id, map[string]any{"quantity": 0}); code != http.StatusOK {
+		t.Fatalf("a merchant's own cancellation: %d %s", code, body)
+	}
+	if err := got.GetById(id); err != nil {
+		t.Fatal(err)
+	}
+	if got.PlanId != own.Id() || billing.Unlocks(api.db.Context, got, time.Now()) {
+		t.Fatalf("a merchant cancellation naming ultra: planId %q, unlocks %v; want the merchant plan's id and nothing opened",
+			got.PlanId, billing.Unlocks(api.db.Context, got, time.Now()))
+	}
+
 	if code, body = api.do(t, http.MethodPatch, "/subscribe/"+id, map[string]any{"providerType": "manual_gift", "quantity": 1}); code != http.StatusForbidden {
 		t.Fatalf("a merchant row made a staff gift: %d %s, want 403", code, body)
 	}

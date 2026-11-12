@@ -124,11 +124,6 @@ func updateSubscribe(c *zip.Ctx, org *organization.Organization, sub *subscripti
 
 	log.Warn("Quantity %v", sub.Quantity)
 
-	// Delete Case
-	if sub.Quantity < 1 {
-		return unsubscribe(c, org, sub)
-	}
-
 	pln := plan.New(db)
 	err := pln.GetById(sub.PlanId)
 	if err != nil {
@@ -140,6 +135,12 @@ func updateSubscribe(c *zip.Ctx, org *organization.Organization, sub *subscripti
 	// the body's string.
 	sub.PlanId = pln.Id()
 	sub.Plan = *pln
+
+	// Delete Case: written as every update is, only once the row names the
+	// merchant's plan.
+	if sub.Quantity < 1 {
+		return unsubscribe(c, org, sub)
+	}
 
 	sub.MustPut()
 
