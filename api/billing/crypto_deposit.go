@@ -541,6 +541,12 @@ func CreateCryptoDeposit(ctx context.Context, org *organization.Organization, pa
 	if payer == "" {
 		return CryptoDeposit{}, errors.New("crypto deposit: no payer")
 	}
+	// A deposit address is a new payment: with the card rail moved off Square, it
+	// is closed to new deposits (IsRailMoved). An address already minted is still
+	// watched and credited — this refuses only the next one.
+	if Rail(ctx) != processor.Square {
+		return CryptoDeposit{}, errRailMoved
+	}
 	db := datastore.New(org.Namespaced(ctx))
 
 	chain = strings.ToLower(strings.TrimSpace(chain))

@@ -189,6 +189,12 @@ func bookedOrg(ctx context.Context, event *processor.WebhookEvent) *organization
 			cp := org.In(organization.Test)
 			return &cp
 		}
+		// A Stripe event of a test-mode object is test money, whatever the org
+		// record says: it can only ever touch the test books.
+		if live, ok := event.Data["stripe_livemode"].(bool); ok && !live {
+			cp := org.In(organization.Test)
+			return &cp
+		}
 	}
 	return org
 }
@@ -722,6 +728,9 @@ func tryValidateWebhook(ctx context.Context, providerHint string, payload []byte
 	}
 	if evt != nil && evt.Processor == processor.PayPal {
 		normalizePayPalWebhookEvent(evt)
+	}
+	if evt != nil && evt.Processor == processor.Stripe {
+		normalizeStripeWebhookEvent(evt)
 	}
 	return evt, nil
 }

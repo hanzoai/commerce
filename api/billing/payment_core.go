@@ -42,6 +42,7 @@ package billing
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -82,10 +83,14 @@ type TakePaymentIn struct {
 	// windowed derivation over the stable request facts, which is what the
 	// browser path does when it sends no X-Idempotency-Key.
 	IdempotencyKey string
-	// Provider names the explicit fiat payment processor ("square" or "paypal")
-	// when SourceID belongs to a specific rail (e.g. an approved PayPal Order ID).
-	// Empty uses the registry's default fiat selection.
+	// Provider names the explicit fiat payment processor ("square", "stripe" or
+	// "paypal") when SourceID belongs to a specific rail (e.g. an approved PayPal
+	// Order ID). Empty is the card rail (rail.go).
 	Provider string
+	// PaymentIntent is the Stripe PaymentIntent (pi_…) a requires_action answer
+	// to this same top-up named, which the buyer has since authenticated. The
+	// top-up is sent again whole, with the same key.
+	PaymentIntent string
 }
 
 // TakePaymentOut is the settled result. The first three fields are the response
@@ -123,6 +128,11 @@ type PaymentFault struct {
 	Message string
 	// Err is the underlying cause, for logs. Never sent to the caller verbatim.
 	Err error
+	// Code names the refusal for a page that acts on it: "requires_action",
+	// "rail_moved". Empty for the rest.
+	Code string
+	// Action is the authentication a "requires_action" fault waits on.
+	Action *processor.ActionRequired
 }
 
 func (f *PaymentFault) Error() string {
@@ -213,28 +223,37 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		}
 	}
 
+	// The card rail decides: a named processor it has closed opens nothing new,
+	// and an unnamed one is the rail's own.
+	prov := processor.ProcessorType(strings.ToLower(strings.TrimSpace(in.Provider)))
+	if !opens(ctx, prov) {
+		abandon()
+		f := fault(400, errRailMoved.Error(), nil)
+		f.Code = codeRailMoved
+		return nil, f
+	}
+	if prov == "" {
+		prov = Rail(ctx)
+	}
+
 	chargeReq := processor.PaymentRequest{
 		Token:          in.SourceID,
 		Amount:         currency.Cents(in.AmountCents),
 		Currency:       cur,
 		IdempotencyKey: squareKey,
 		Description:    fmt.Sprintf("Top-up %d %s for org %s", in.AmountCents, cur, in.Subject),
+		Options:        map[string]interface{}{"processor": prov},
+	}
+	if prov == processor.Stripe && strings.TrimSpace(in.PaymentIntent) != "" {
+		chargeReq.Options["payment_intent"] = strings.TrimSpace(in.PaymentIntent)
 	}
 
 	// The per-org processor registry. The global registry holds the webhook
 	// verifier, so a charge goes through the org-scoped one.
 	reg := processorsForOrg(org)
-	var (
-		proc processor.PaymentProcessor
-		err  error
-	)
-	if prov := strings.ToLower(strings.TrimSpace(in.Provider)); prov != "" {
-		proc, err = reg.Get(processor.ProcessorType(prov))
-		if err == nil && (proc == nil || !proc.IsAvailable(ctx)) {
-			err = fmt.Errorf("processor %s is not available", prov)
-		}
-	} else {
-		proc, err = reg.SelectProcessor(ctx, chargeReq)
+	proc, err := reg.Get(prov)
+	if err == nil && (proc == nil || !proc.IsAvailable(ctx)) {
+		err = fmt.Errorf("processor %s is not available", prov)
 	}
 	if err != nil {
 		abandon()
@@ -242,16 +261,15 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		return nil, fault(422, "no payment processor available", err)
 	}
 
-	// Stripe cannot fund a prepaid balance yet: its refunds and disputes reach
-	// this service only through a webhook receiver that verifies Stripe's
-	// signature and maps charge.refunded / charge.dispute.* onto a clawback, and
-	// neither exists. Credit taken through Stripe could be charged back and kept.
-	if proc.Type() == processor.Stripe {
-		abandon()
-		return nil, fault(422, "card payments in this currency are not available for balance top-ups yet", nil)
-	}
-
 	result, err := proc.Charge(ctx, chargeReq)
+	if act, ok := errors.AsType[*processor.ActionRequired](err); ok {
+		// The bank wants the buyer; nothing moved. The guard is released so the
+		// same top-up sent again, naming the intent, reads it back.
+		abandon()
+		f := fault(402, act.Error(), nil)
+		f.Code, f.Action = codeRequiresAction, act
+		return nil, f
+	}
 	if err != nil || (result != nil && !result.Success) {
 		abandon()
 		log.Error("Charge failed for token topup (org=%s): %v", in.Subject, err)

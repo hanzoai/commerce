@@ -109,11 +109,35 @@ func (p *Provider) SupportedCurrencies() []currency.Type {
 // PaymentProcessor
 // ---------------------------------------------------------------------------
 
-// Charge creates a PaymentIntent and confirms it immediately.
+// Charge creates a PaymentIntent and confirms it, or reads back the one the
+// buyer has just authenticated.
+//
+// The options a caller passes in req.Options (all optional):
+//
+//   - "off_session": true — the buyer is not there (a renewal, a dunning retry,
+//     an automatic reload). Stripe is told so, and a card whose bank insists on
+//     authentication is a decline (authentication_required): nobody is present
+//     to authenticate, and the payer is asked to update the card instead.
+//   - "save": true — the buyer is there and the card will be charged again off
+//     session: setup_future_usage=off_session, so Stripe collects the mandate
+//     and SCA exemptions a later off-session charge needs.
+//   - "payment_intent": "pi_…" — the intent this order already started, which
+//     the buyer then authenticated in the page. It is read, never created again,
+//     and it must be this order's: its amount, currency, customer, payment
+//     method and the order's idempotency key (stamped as metadata on creation)
+//     all agree, or it is refused.
+//
+// A buyer-present charge whose bank asks for authentication answers
+// *processor.ActionRequired with the client secret the page needs; no money
+// has moved.
 func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*processor.PaymentResult, error) {
 	if err := processor.ValidateRequest(req); err != nil {
 		return nil, err
 	}
+	if id := optString(req.Options, "payment_intent"); id != "" {
+		return p.resume(ctx, req, id)
+	}
+	off := optBool(req.Options, "off_session")
 
 	params := url.Values{}
 	params.Set("amount", strconv.FormatInt(int64(req.Amount), 10))
@@ -121,6 +145,11 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 	params.Set("confirm", "true")
 	params.Set("automatic_payment_methods[enabled]", "true")
 	params.Set("automatic_payment_methods[allow_redirects]", "never")
+	if off {
+		params.Set("off_session", "true")
+	} else if optBool(req.Options, "save") {
+		params.Set("setup_future_usage", "off_session")
+	}
 
 	if req.Token != "" {
 		params.Set("payment_method", req.Token)
@@ -137,6 +166,9 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 	for k, v := range req.Metadata {
 		params.Set("metadata["+k+"]", fmt.Sprintf("%v", v))
 	}
+	if k := strings.TrimSpace(req.IdempotencyKey); k != "" {
+		params.Set("metadata["+orderKey+"]", fitKey(k))
+	}
 
 	var pi paymentIntent
 	if err := p.postKey(ctx, "/payment_intents", params, req.IdempotencyKey, &pi); err != nil {
@@ -146,31 +178,81 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 			Error:        err,
 		}, err
 	}
+	return p.settled(&pi, off)
+}
 
-	// A PaymentIntent that needs the buyer (3-D Secure) has moved no money, and
-	// this charge cannot finish it: confirm=true with redirects off has no page to
-	// send the buyer to. It is a failed charge, never a settled one — a caller that
-	// credits on Success would otherwise credit money that never arrived.
-	if pi.Status == "requires_action" {
-		err := processor.NewPaymentError(processor.Stripe, "authentication_required",
-			"this card needs its bank's authentication, which this checkout cannot complete; use another card", nil)
+// orderKey is the metadata name a PaymentIntent carries the order's
+// idempotency key under, which is how a later request proves the intent it
+// names is its own.
+const orderKey = "hanzo_key"
+
+// settled is what a PaymentIntent's status means for the charge that made or
+// read it.
+func (p *Provider) settled(pi *paymentIntent, off bool) (*processor.PaymentResult, error) {
+	switch pi.Status {
+	case "succeeded":
 		return &processor.PaymentResult{
-			Success:       false,
+			Success:       true,
 			TransactionID: pi.ID,
-			ProcessorRef:  pi.ID,
+			ProcessorRef:  pi.LatestCharge,
 			Status:        pi.Status,
-			ErrorMessage:  err.Error(),
-			Error:         err,
-		}, err
+		}, nil
+	case "requires_action":
+		// A PaymentIntent that needs the buyer (3-D Secure) has moved no money.
+		// With the buyer present the page finishes it; off session nobody can, so
+		// it is a decline the payer answers by updating the card.
+		res := &processor.PaymentResult{Success: false, TransactionID: pi.ID, ProcessorRef: pi.ID, Status: pi.Status}
+		if off {
+			err := processor.NewPaymentError(processor.Stripe, "authentication_required",
+				"this card needs its bank's authentication, which a charge made without you cannot complete; update the card", nil)
+			res.ErrorMessage, res.Error = err.Error(), err
+			return res, err
+		}
+		err := &processor.ActionRequired{Processor: processor.Stripe, Intent: pi.ID, ClientSecret: pi.ClientSecret}
+		res.ErrorMessage, res.Error = err.Error(), err
+		return res, err
 	}
-
+	err := processor.NewPaymentError(processor.Stripe, "payment_incomplete",
+		"the payment did not complete (status "+pi.Status+"); nothing was charged", nil)
 	return &processor.PaymentResult{
-		Success:       pi.Status == "succeeded",
-		TransactionID: pi.ID,
-		ProcessorRef:  pi.LatestCharge,
-		Fee:           0, // Fee available via balance_transaction, not on PI
-		Status:        pi.Status,
-	}, nil
+		Success: false, TransactionID: pi.ID, ProcessorRef: pi.ID, Status: pi.Status,
+		ErrorMessage: err.Error(), Error: err,
+	}, err
+}
+
+// resume reads the PaymentIntent a buyer authenticated and answers it as the
+// charge req describes, refusing one that is not req's own.
+func (p *Provider) resume(ctx context.Context, req processor.PaymentRequest, id string) (*processor.PaymentResult, error) {
+	if !strings.HasPrefix(id, "pi_") {
+		err := processor.NewPaymentError(processor.Stripe, "invalid_intent", "paymentIntent must be a Stripe PaymentIntent id (pi_…)", nil)
+		return &processor.PaymentResult{ErrorMessage: err.Error(), Error: err}, err
+	}
+	var pi paymentIntent
+	if err := p.get(ctx, "/payment_intents/"+url.PathEscape(id), nil, &pi); err != nil {
+		return &processor.PaymentResult{ErrorMessage: err.Error(), Error: err}, err
+	}
+	key := strings.TrimSpace(req.IdempotencyKey)
+	own := key != "" && fmt.Sprint(pi.Metadata[orderKey]) == fitKey(key) &&
+		pi.Amount == int64(req.Amount) &&
+		strings.EqualFold(pi.Currency, string(req.Currency)) &&
+		(req.CustomerID == "" || pi.Customer == req.CustomerID) &&
+		(req.Token == "" || pi.PaymentMethod == req.Token)
+	if !own {
+		err := processor.NewPaymentError(processor.Stripe, "intent_mismatch",
+			"the payment named is not this order's; nothing was charged", nil)
+		return &processor.PaymentResult{TransactionID: pi.ID, ErrorMessage: err.Error(), Error: err}, err
+	}
+	return p.settled(&pi, false)
+}
+
+func optString(opts map[string]interface{}, key string) string {
+	s, _ := opts[key].(string)
+	return strings.TrimSpace(s)
+}
+
+func optBool(opts map[string]interface{}, key string) bool {
+	b, _ := opts[key].(bool)
+	return b
 }
 
 // Authorize creates a PaymentIntent with capture_method=manual.
@@ -291,52 +373,89 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 }
 
 // ValidateWebhook verifies a Stripe webhook signature and parses the event.
+//
+// The signature is Stripe's scheme v1: HMAC-SHA256 under the endpoint's
+// signing secret over "<t>.<raw body>", with t within webhookTolerance of now in
+// either direction. The header may carry several v1 signatures while a secret
+// is rolled; any one of them verifying is enough.
+//
+// The event keeps Stripe's own type (charge.refunded, charge.dispute.created,
+// ...). What it means for the books is decided by the billing receiver, which
+// also reads the event's livemode and created time, carried in Data as
+// stripe_livemode and stripe_created beside the object's own fields.
 func (p *Provider) ValidateWebhook(ctx context.Context, payload []byte, signature string) (*processor.WebhookEvent, error) {
 	if p.webhookSecret == "" {
 		return nil, processor.ErrWebhookValidationFailed
 	}
-
-	// Parse Stripe-Signature header: t=...,v1=...
-	parts := parseSignatureHeader(signature)
-	timestamp := parts["t"]
-	v1Sig := parts["v1"]
-
-	if timestamp == "" || v1Sig == "" {
+	timestamp, sigs := parseSignatures(signature)
+	if timestamp == "" || len(sigs) == 0 {
 		return nil, processor.ErrWebhookValidationFailed
 	}
-
-	// Verify signature: HMAC-SHA256(secret, "timestamp.payload")
-	signedPayload := timestamp + "." + string(payload)
-	mac := hmac.New(sha256.New, []byte(p.webhookSecret))
-	mac.Write([]byte(signedPayload))
-	expectedSig := hex.EncodeToString(mac.Sum(nil))
-
-	if !hmac.Equal([]byte(v1Sig), []byte(expectedSig)) {
-		return nil, processor.ErrWebhookValidationFailed
-	}
-
-	// Check timestamp tolerance (5 minutes)
 	ts, err := strconv.ParseInt(timestamp, 10, 64)
 	if err != nil {
 		return nil, processor.ErrWebhookValidationFailed
 	}
-	if time.Since(time.Unix(ts, 0)) > 5*time.Minute {
+	if d := time.Since(time.Unix(ts, 0)); d > webhookTolerance || d < -webhookTolerance {
+		return nil, processor.ErrWebhookValidationFailed
+	}
+	mac := hmac.New(sha256.New, []byte(p.webhookSecret))
+	mac.Write([]byte(timestamp + "." + string(payload)))
+	want := []byte(hex.EncodeToString(mac.Sum(nil)))
+	ok := false
+	for _, sig := range sigs {
+		if hmac.Equal([]byte(sig), want) {
+			ok = true
+		}
+	}
+	if !ok {
 		return nil, processor.ErrWebhookValidationFailed
 	}
 
-	// Parse event
 	var evt stripeEvent
 	if err := json.Unmarshal(payload, &evt); err != nil {
 		return nil, fmt.Errorf("failed to parse webhook event: %w", err)
 	}
-
+	data := evt.Data.Object
+	if data == nil {
+		data = map[string]interface{}{}
+	}
+	data["stripe_livemode"] = evt.Livemode
+	data["stripe_created"] = evt.Created
 	return &processor.WebhookEvent{
 		ID:        evt.ID,
-		Type:      mapEventType(evt.Type),
+		Type:      evt.Type,
 		Processor: processor.Stripe,
-		Data:      evt.Data.Object,
+		Data:      data,
 		Timestamp: ts,
 	}, nil
+}
+
+// webhookTolerance is how far a delivery's signed time may be from now:
+// Stripe's own libraries default to five minutes.
+const webhookTolerance = 5 * time.Minute
+
+// ReceivesWebhooks reports whether this provider holds the endpoint signing
+// secret its deliveries are verified with.
+func (p *Provider) ReceivesWebhooks() bool { return p.webhookSecret != "" }
+
+// parseSignatures reads a Stripe-Signature header: the t= timestamp and every
+// v1= signature.
+func parseSignatures(header string) (string, []string) {
+	var t string
+	var v1 []string
+	for _, part := range strings.Split(header, ",") {
+		k, v, ok := strings.Cut(strings.TrimSpace(part), "=")
+		if !ok {
+			continue
+		}
+		switch k {
+		case "t":
+			t = v
+		case "v1":
+			v1 = append(v1, v)
+		}
+	}
+	return t, v1
 }
 
 // ---------------------------------------------------------------------------
@@ -455,8 +574,17 @@ func (p *Provider) CreateCustomer(ctx context.Context, email, name string, metad
 		params.Set("metadata["+k+"]", fmt.Sprintf("%v", v))
 	}
 
+	// A customer made for a reference is made once: retried under the same
+	// reference within Stripe's idempotency window it is the same customer.
+	// The email is part of the key: Stripe refuses a key reused with other
+	// parameters, and a second customer for a changed address is harmless where a
+	// refused create would stop the checkout.
+	key := ""
+	if ref, _ := metadata["reference"].(string); ref != "" {
+		key = "customer:" + ref + ":" + strings.ToLower(strings.TrimSpace(email))
+	}
 	var cust stripeCustomer
-	if err := p.post(ctx, "/customers", params, &cust); err != nil {
+	if err := p.postKey(ctx, "/customers", params, key, &cust); err != nil {
 		return "", err
 	}
 	return cust.ID, nil
@@ -611,15 +739,16 @@ func (p *Provider) doRequest(req *http.Request, result interface{}) error {
 // ---------------------------------------------------------------------------
 
 type paymentIntent struct {
-	ID           string                 `json:"id"`
-	Status       string                 `json:"status"`
-	Amount       int64                  `json:"amount"`
-	Currency     string                 `json:"currency"`
-	Customer     string                 `json:"customer"`
-	LatestCharge string                 `json:"latest_charge"`
-	ClientSecret string                 `json:"client_secret"`
-	Created      int64                  `json:"created"`
-	Metadata     map[string]interface{} `json:"metadata"`
+	ID            string                 `json:"id"`
+	Status        string                 `json:"status"`
+	Amount        int64                  `json:"amount"`
+	Currency      string                 `json:"currency"`
+	Customer      string                 `json:"customer"`
+	LatestCharge  string                 `json:"latest_charge"`
+	PaymentMethod string                 `json:"payment_method"`
+	ClientSecret  string                 `json:"client_secret"`
+	Created       int64                  `json:"created"`
+	Metadata      map[string]interface{} `json:"metadata"`
 }
 
 type refund struct {
@@ -656,9 +785,11 @@ type stripeCustomer struct {
 }
 
 type stripeEvent struct {
-	ID   string `json:"id"`
-	Type string `json:"type"`
-	Data struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Livemode bool   `json:"livemode"`
+	Created  int64  `json:"created"`
+	Data     struct {
 		Object map[string]interface{} `json:"object"`
 	} `json:"data"`
 }
@@ -714,46 +845,12 @@ func mapRefundReason(reason string) string {
 	}
 }
 
-func mapEventType(stripeType string) string {
-	switch stripeType {
-	case "payment_intent.succeeded":
-		return "payment.completed"
-	case "payment_intent.payment_failed":
-		return "payment.failed"
-	case "charge.refunded":
-		return "refund.succeeded"
-	case "charge.refund.updated":
-		return "refund.updated"
-	case "charge.dispute.created":
-		return "dispute.created"
-	case "charge.dispute.closed":
-		return "dispute.resolved"
-	case "customer.subscription.created":
-		return "subscription.created"
-	case "customer.subscription.updated":
-		return "subscription.updated"
-	case "customer.subscription.deleted":
-		return "subscription.canceled"
-	case "invoice.paid":
-		return "invoice.paid"
-	case "invoice.payment_failed":
-		return "invoice.payment_failed"
-	case "customer.created":
-		return "customer.created"
-	case "customer.updated":
-		return "customer.updated"
-	case "customer.deleted":
-		return "customer.deleted"
-	default:
-		return stripeType
-	}
-}
-
 // Compile-time interface checks.
 var (
 	_ processor.PaymentProcessor      = (*Provider)(nil)
 	_ processor.SubscriptionProcessor = (*Provider)(nil)
 	_ processor.CustomerProcessor     = (*Provider)(nil)
+	_ processor.WebhookReceiver       = (*Provider)(nil)
 )
 
 // Reaches reports whether Stripe takes a payment by method from a buyer in

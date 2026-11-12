@@ -51,17 +51,39 @@ type Intent struct {
 	Params        url.Values // the form it was created with
 }
 
+// Method is one PaymentMethod as the server holds it. A test id
+// (pm_card_visa, ...) is Stripe's: each attach of one mints a new
+// PaymentMethod, so Of is the test id the method was made from.
+type Method struct {
+	ID       string
+	Of       string
+	Customer string
+}
+
+// Setup is one SetupIntent as the server holds it.
+type Setup struct {
+	ID            string
+	Customer      string
+	PaymentMethod string
+	Status        string
+	Usage         string
+	Params        url.Values
+}
+
 // Server is Stripe's API for one account.
 type Server struct {
 	*httptest.Server
 	SecretKey string
 
-	c       contract
-	mu      sync.Mutex
-	seq     int
-	intents map[string]*Intent
-	replies map[string]reply // Idempotency-Key -> the first answer
-	Keys    []string         // every Idempotency-Key received, in order
+	c         contract
+	mu        sync.Mutex
+	seq       int
+	intents   map[string]*Intent
+	methods   map[string]*Method
+	setups    map[string]*Setup
+	customers map[string]url.Values
+	replies   map[string]reply // Idempotency-Key -> the first answer
+	Keys      []string         // every Idempotency-Key received, in order
 }
 
 type reply struct {
@@ -77,7 +99,8 @@ func New(t testing.TB, secretKey string) *Server {
 	if err := json.Unmarshal(contractJSON, &c); err != nil {
 		t.Fatalf("stripetest: contract.json: %v", err)
 	}
-	s := &Server{SecretKey: secretKey, c: c, intents: map[string]*Intent{}, replies: map[string]reply{}}
+	s := &Server{SecretKey: secretKey, c: c, intents: map[string]*Intent{}, methods: map[string]*Method{},
+		setups: map[string]*Setup{}, customers: map[string]url.Values{}, replies: map[string]reply{}}
 	s.Server = httptest.NewServer(http.HandlerFunc(s.serve))
 	t.Cleanup(s.Close)
 	return s
@@ -108,6 +131,72 @@ func (s *Server) Intent(id string) *Intent {
 		return &cp
 	}
 	return nil
+}
+
+// Customers is how many customers the account holds.
+func (s *Server) Customers() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.customers)
+}
+
+// Setups is how many SetupIntents the account holds.
+func (s *Server) Setups() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.setups)
+}
+
+// Method returns the PaymentMethod as the server holds it, or nil.
+func (s *Server) Method(id string) *Method {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if m := s.methods[id]; m != nil {
+		cp := *m
+		return &cp
+	}
+	return nil
+}
+
+// Authenticate is the buyer completing the bank's challenge in the browser
+// (stripe.handleNextAction): a PaymentIntent or SetupIntent waiting in
+// requires_action moves on as Stripe moves it — a PaymentIntent to succeeded
+// (or requires_capture), a SetupIntent to succeeded.
+func (s *Server) Authenticate(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if in := s.intents[id]; in != nil && in.Status == "requires_action" {
+		in.Status = "succeeded"
+		if in.CaptureMethod == "manual" {
+			in.Status = "requires_capture"
+		}
+	}
+	if st := s.setups[id]; st != nil && st.Status == "requires_action" {
+		st.Status = "succeeded"
+	}
+}
+
+// Fail is the buyer failing (or abandoning) the bank's challenge: the intent
+// goes back to requires_payment_method, as Stripe leaves it.
+func (s *Server) Fail(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if in := s.intents[id]; in != nil && in.Status == "requires_action" {
+		in.Status = "requires_payment_method"
+	}
+	if st := s.setups[id]; st != nil && st.Status == "requires_action" {
+		st.Status = "requires_payment_method"
+	}
+}
+
+// outcome is what a payment method does when it is charged: the test id's
+// documented outcome, through a method attached from one.
+func (s *Server) outcome(pm string) (string, bool) {
+	if m := s.methods[pm]; m != nil {
+		pm = m.Of
+	}
+	o, ok := s.c.TestPaymentMethods[pm]
+	return o, ok
 }
 
 // Intents is how many PaymentIntents the account holds.
@@ -193,6 +282,33 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request, form url.Values) 
 		if s.check(w, "/v1/refunds", form) {
 			s.refund(w, form)
 		}
+	case r.Method == http.MethodPost && path == "/customers":
+		if s.check(w, "/v1/customers", form) {
+			s.customer(w, form)
+		}
+	case r.Method == http.MethodGet && strings.HasPrefix(path, "/payment_methods/"):
+		s.getMethod(w, strings.TrimPrefix(path, "/payment_methods/"))
+	case r.Method == http.MethodPost && strings.HasPrefix(path, "/payment_methods/") && strings.HasSuffix(path, "/attach"):
+		if s.check(w, "/v1/payment_methods/{payment_method}/attach", form) {
+			s.attach(w, strings.TrimSuffix(strings.TrimPrefix(path, "/payment_methods/"), "/attach"), form)
+		}
+	case r.Method == http.MethodPost && strings.HasPrefix(path, "/payment_methods/") && strings.HasSuffix(path, "/detach"):
+		if s.check(w, "/v1/payment_methods/{payment_method}/detach", form) {
+			s.detach(w, strings.TrimSuffix(strings.TrimPrefix(path, "/payment_methods/"), "/detach"))
+		}
+	case r.Method == http.MethodPost && path == "/setup_intents":
+		if s.check(w, "/v1/setup_intents", form) {
+			s.setup(w, form)
+		}
+	case r.Method == http.MethodGet && strings.HasPrefix(path, "/setup_intents/"):
+		s.mu.Lock()
+		st := s.setups[strings.TrimPrefix(path, "/setup_intents/")]
+		s.mu.Unlock()
+		if st == nil {
+			fail(w, http.StatusNotFound, "invalid_request_error", "resource_missing", "intent", "No such setupintent")
+			return
+		}
+		s.writeSetup(w, http.StatusOK, st)
 	default:
 		fail(w, http.StatusNotFound, "invalid_request_error", "", "", "Unrecognized request URL ("+r.Method+": "+r.URL.Path+").")
 	}
@@ -257,9 +373,31 @@ func (s *Server) create(w http.ResponseWriter, form url.Values) {
 		s.writeIntent(w, http.StatusOK, in)
 		return
 	}
-	outcome, ok := s.c.TestPaymentMethods[in.PaymentMethod]
+	s.mu.Lock()
+	outcome, ok := s.outcome(in.PaymentMethod)
+	m := s.methods[in.PaymentMethod]
+	s.mu.Unlock()
 	if !ok {
 		fail(w, http.StatusBadRequest, "invalid_request_error", "resource_missing", "payment_method", "No such PaymentMethod: '"+in.PaymentMethod+"'")
+		return
+	}
+	if m != nil && m.Customer != "" && form.Get("customer") != m.Customer {
+		fail(w, http.StatusBadRequest, "invalid_request_error", "", "payment_method",
+			"The provided PaymentMethod belongs to a different Customer than the one on this PaymentIntent.")
+		return
+	}
+	if outcome == "requires_action" && form.Get("off_session") == "true" {
+		// An off-session charge has nobody to authenticate it: Stripe refuses it
+		// as a card error and leaves the intent waiting for a new method.
+		s.mu.Lock()
+		in.Status = "requires_payment_method"
+		s.mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusPaymentRequired)
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": map[string]any{
+			"type": "card_error", "code": "authentication_required", "decline_code": "authentication_required",
+			"message": "Your card was declined. This transaction requires authentication.", "payment_intent": s.object(in),
+		}})
 		return
 	}
 	s.mu.Lock()
@@ -347,6 +485,188 @@ func (s *Server) refund(w http.ResponseWriter, form url.Values) {
 	write(w, http.StatusOK, body)
 }
 
+func (s *Server) customer(w http.ResponseWriter, form url.Values) {
+	var body map[string]any
+	_ = json.Unmarshal(s.c.Fixtures["customer"], &body)
+	s.mu.Lock()
+	s.seq++
+	id := fmt.Sprintf("cus_contract%06d", s.seq)
+	s.customers[id] = form
+	s.mu.Unlock()
+	body["id"] = id
+	body["email"] = form.Get("email")
+	write(w, http.StatusOK, body)
+}
+
+// card is the card a test payment method is: Stripe's documented numbers.
+func card(of string) (brand, last4, fingerprint string) {
+	switch of {
+	case "pm_card_chargeDeclined":
+		return "visa", "0002", "fpDeclined0002"
+	case "pm_card_authenticationRequired":
+		return "visa", "3184", "fpAuth3184"
+	}
+	return "visa", "4242", "fpVisa4242"
+}
+
+func (s *Server) methodObject(id, of, customer string) map[string]any {
+	var body map[string]any
+	_ = json.Unmarshal(s.c.Fixtures["payment_method"], &body)
+	brand, last4, fp := card(of)
+	body["id"] = id
+	body["type"] = "card"
+	if customer == "" {
+		body["customer"] = nil
+	} else {
+		body["customer"] = customer
+	}
+	c, _ := body["card"].(map[string]any)
+	if c == nil {
+		c = map[string]any{}
+	}
+	c["brand"], c["last4"], c["fingerprint"], c["exp_month"], c["exp_year"] = brand, last4, fp, 12, 2034
+	body["card"] = c
+	return body
+}
+
+func (s *Server) getMethod(w http.ResponseWriter, id string) {
+	s.mu.Lock()
+	m := s.methods[id]
+	_, test := s.c.TestPaymentMethods[id]
+	s.mu.Unlock()
+	switch {
+	case m != nil:
+		write(w, http.StatusOK, s.methodObject(m.ID, m.Of, m.Customer))
+	case test:
+		write(w, http.StatusOK, s.methodObject(id, id, ""))
+	default:
+		fail(w, http.StatusNotFound, "invalid_request_error", "resource_missing", "payment_method", "No such PaymentMethod: '"+id+"'")
+	}
+}
+
+func (s *Server) attach(w http.ResponseWriter, id string, form url.Values) {
+	cus := form.Get("customer")
+	s.mu.Lock()
+	_, known := s.customers[cus]
+	m := s.methods[id]
+	_, test := s.c.TestPaymentMethods[id]
+	switch {
+	case !known:
+		s.mu.Unlock()
+		fail(w, http.StatusBadRequest, "invalid_request_error", "resource_missing", "customer", "No such customer: '"+cus+"'")
+		return
+	case m == nil && !test:
+		s.mu.Unlock()
+		fail(w, http.StatusNotFound, "invalid_request_error", "resource_missing", "payment_method", "No such PaymentMethod: '"+id+"'")
+		return
+	case m != nil && m.Customer != "" && m.Customer != cus:
+		s.mu.Unlock()
+		fail(w, http.StatusBadRequest, "invalid_request_error", "", "payment_method",
+			"The payment method you provided has already been attached to a customer.")
+		return
+	case m == nil:
+		s.seq++
+		m = &Method{ID: fmt.Sprintf("pm_contract%06d", s.seq), Of: id}
+		s.methods[m.ID] = m
+	}
+	m.Customer = cus
+	body := s.methodObject(m.ID, m.Of, m.Customer)
+	s.mu.Unlock()
+	write(w, http.StatusOK, body)
+}
+
+func (s *Server) detach(w http.ResponseWriter, id string) {
+	s.mu.Lock()
+	m := s.methods[id]
+	if m == nil || m.Customer == "" {
+		s.mu.Unlock()
+		fail(w, http.StatusBadRequest, "invalid_request_error", "", "payment_method", "The payment method you provided is not attached to a customer so detachment is impossible.")
+		return
+	}
+	m.Customer = ""
+	body := s.methodObject(m.ID, m.Of, "")
+	s.mu.Unlock()
+	write(w, http.StatusOK, body)
+}
+
+func (s *Server) setup(w http.ResponseWriter, form url.Values) {
+	s.mu.Lock()
+	s.seq++
+	st := &Setup{ID: fmt.Sprintf("seti_contract%06d", s.seq), Customer: form.Get("customer"),
+		PaymentMethod: form.Get("payment_method"), Status: "requires_payment_method", Usage: form.Get("usage"), Params: form}
+	if st.Usage == "" {
+		st.Usage = "off_session"
+	}
+	s.setups[st.ID] = st
+	outcome, ok := s.outcome(st.PaymentMethod)
+	m := s.methods[st.PaymentMethod]
+	s.mu.Unlock()
+	if form.Get("confirm") != "true" || st.PaymentMethod == "" {
+		s.writeSetup(w, http.StatusOK, st)
+		return
+	}
+	if !ok {
+		fail(w, http.StatusBadRequest, "invalid_request_error", "resource_missing", "payment_method", "No such PaymentMethod: '"+st.PaymentMethod+"'")
+		return
+	}
+	if m != nil && m.Customer != "" && st.Customer != m.Customer {
+		fail(w, http.StatusBadRequest, "invalid_request_error", "", "payment_method",
+			"The provided PaymentMethod belongs to a different Customer than the one on this SetupIntent.")
+		return
+	}
+	s.mu.Lock()
+	switch outcome {
+	case "succeeded":
+		st.Status = "succeeded"
+	case "requires_action":
+		st.Status = "requires_action"
+	case "card_declined":
+		st.Status = "requires_payment_method"
+	}
+	s.mu.Unlock()
+	if outcome == "card_declined" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusPaymentRequired)
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": map[string]any{
+			"type": "card_error", "code": "card_declined", "decline_code": "generic_decline",
+			"message": "Your card was declined.", "setup_intent": s.setupObject(st),
+		}})
+		return
+	}
+	s.writeSetup(w, http.StatusOK, st)
+}
+
+func (s *Server) setupObject(st *Setup) map[string]any {
+	var body map[string]any
+	_ = json.Unmarshal(s.c.Fixtures["setup_intent"], &body)
+	body["id"] = st.ID
+	body["status"] = st.Status
+	body["usage"] = st.Usage
+	body["client_secret"] = st.ID + "_secret_contract"
+	body["customer"] = st.Customer
+	body["payment_method"] = st.PaymentMethod
+	body["metadata"] = metadataOf(st.Params)
+	return body
+}
+
+// metadataOf is the metadata[k]=v of a form, as the object Stripe answers.
+func metadataOf(form url.Values) map[string]any {
+	meta := map[string]any{}
+	for k, v := range form {
+		if strings.HasPrefix(k, "metadata[") && strings.HasSuffix(k, "]") && len(v) > 0 {
+			meta[strings.TrimSuffix(strings.TrimPrefix(k, "metadata["), "]")] = v[0]
+		}
+	}
+	return meta
+}
+
+func (s *Server) writeSetup(w http.ResponseWriter, status int, st *Setup) {
+	s.mu.Lock()
+	body := s.setupObject(st)
+	s.mu.Unlock()
+	write(w, status, body)
+}
+
 func (s *Server) object(in *Intent) map[string]any {
 	var body map[string]any
 	_ = json.Unmarshal(s.c.Fixtures["payment_intent"], &body)
@@ -365,6 +685,11 @@ func (s *Server) object(in *Intent) map[string]any {
 	if in.PaymentMethod != "" {
 		body["payment_method"] = in.PaymentMethod
 	}
+	body["customer"] = nil
+	if c := in.Params.Get("customer"); c != "" {
+		body["customer"] = c
+	}
+	body["metadata"] = metadataOf(in.Params)
 	return body
 }
 

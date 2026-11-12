@@ -70,18 +70,15 @@ type roundTripper func(*http.Request) (*http.Response, error)
 
 func (f roundTripper) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
-// Stripe cannot fund a prepaid balance until its webhook receiver and clawback
-// mapping exist: a currency Square does not take, and a caller naming Stripe,
-// are refused before Stripe is called, and nothing is credited.
-func TestStripeContract_TopupRefusedUntilClawbackExists(t *testing.T) {
+// While the card rail is Square, a top-up that names no processor is Square's
+// in every currency — the rail is one processor, not a currency fallback — and
+// Stripe is never called for it.
+func TestStripeContract_SquareRailTopupNeverReachesStripe(t *testing.T) {
 	o := stripeContractOrg(t)
-	for _, in := range []TakePaymentIn{
-		{SourceID: "pm_card_visa", AmountCents: 2500, Currency: "chf", Subject: "hanzo/alice", IdempotencyKey: "chf-1"},
-		{SourceID: "pm_card_visa", AmountCents: 1200, Currency: "usd", Subject: "hanzo/alice", IdempotencyKey: "usd-stripe-1", Provider: "stripe"},
-	} {
-		if _, f := TakePayment(o.ctx, o.org, in); f == nil || f.Status != 422 {
-			t.Fatalf("%s top-up via Stripe = %+v; want 422", in.Currency, f)
-		}
+	if _, f := TakePayment(o.ctx, o.org, TakePaymentIn{
+		SourceID: "cnon:card-nonce-ok", AmountCents: 2500, Currency: "chf", Subject: "hanzo/alice", IdempotencyKey: "chf-1",
+	}); f == nil {
+		t.Fatal("Square answered unavailable, so the top-up must fail")
 	}
 	if o.stripe.Intents() != 0 || len(o.stripe.Keys) != 0 {
 		t.Fatalf("Stripe was called: intents=%d keys=%q", o.stripe.Intents(), o.stripe.Keys)

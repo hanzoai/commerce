@@ -1,7 +1,7 @@
 {
  "_source": {
   "spec": "github.com/stripe/openapi@0dbb29c019c4ceb4733211f30da858a11aaa3019 openapi/spec3.json (API version 2026-09-30.endive)",
-  "fixtures": "github.com/stripe/openapi@0dbb29c019c4ceb4733211f30da858a11aaa3019 openapi/fixtures3.json (payment_intent, refund) \u2014 the objects stripe-mock serves",
+  "fixtures": "github.com/stripe/openapi@0dbb29c019c4ceb4733211f30da858a11aaa3019 openapi/fixtures3.json (payment_intent, refund, customer, payment_method, setup_intent) \u2014 the objects stripe-mock serves",
   "documented": "test payment methods and their outcomes, the Idempotency-Key limit and replay rules, and the error bodies are Stripe's documented test-mode behaviour: docs.stripe.com/testing, docs.stripe.com/api/idempotent_requests, docs.stripe.com/api/errors"
  },
  "endpoints": {
@@ -87,6 +87,74 @@
     "reason",
     "refund_application_fee",
     "reverse_transfer"
+   ],
+   "required": []
+  },
+  "/v1/customers": {
+   "params": [
+    "address",
+    "balance",
+    "business_name",
+    "cash_balance",
+    "description",
+    "email",
+    "expand",
+    "individual_name",
+    "invoice_prefix",
+    "invoice_settings",
+    "metadata",
+    "name",
+    "next_invoice_sequence",
+    "payment_method",
+    "phone",
+    "preferred_locales",
+    "shipping",
+    "source",
+    "tax",
+    "tax_exempt",
+    "tax_id_data",
+    "test_clock"
+   ],
+   "required": []
+  },
+  "/v1/payment_methods/{payment_method}/attach": {
+   "params": [
+    "customer",
+    "customer_account",
+    "expand"
+   ],
+   "required": []
+  },
+  "/v1/payment_methods/{payment_method}/detach": {
+   "params": [
+    "expand"
+   ],
+   "required": []
+  },
+  "/v1/setup_intents": {
+   "params": [
+    "allowed_payment_method_types",
+    "attach_to_self",
+    "automatic_payment_methods",
+    "confirm",
+    "confirmation_token",
+    "customer",
+    "customer_account",
+    "description",
+    "excluded_payment_method_types",
+    "expand",
+    "flow_directions",
+    "mandate_data",
+    "metadata",
+    "on_behalf_of",
+    "payment_method",
+    "payment_method_configuration",
+    "payment_method_data",
+    "payment_method_options",
+    "return_url",
+    "single_use",
+    "usage",
+    "use_stripe_sdk"
    ],
    "required": []
   }
@@ -194,6 +262,164 @@
    "customer": null,
    "customer_account": null,
    "payment_method": null
+  },
+  "customer": {
+   "address": {
+    "city": null,
+    "country": null,
+    "line1": null,
+    "line2": null,
+    "postal_code": null,
+    "state": null
+   },
+   "balance": 0,
+   "created": 1234567890,
+   "currency": "usd",
+   "default_source": null,
+   "delinquent": false,
+   "description": null,
+   "discount": {
+    "checkout_session": null,
+    "customer": null,
+    "end": null,
+    "id": "obj_123",
+    "invoice": null,
+    "invoice_item": null,
+    "object": "discount",
+    "promotion_code": null,
+    "start": 109757538,
+    "subscription": null,
+    "subscription_item": null,
+    "source": {
+     "coupon": null,
+     "type": "coupon"
+    },
+    "customer_account": null
+   },
+   "email": null,
+   "id": "cus_QXg1o8vcGmoR32",
+   "invoice_prefix": "7FE1103",
+   "invoice_settings": {
+    "custom_fields": null,
+    "default_payment_method": null,
+    "footer": null,
+    "rendering_options": {
+     "amount_tax_display": null,
+     "template": null
+    }
+   },
+   "livemode": false,
+   "metadata": {},
+   "name": null,
+   "next_invoice_sequence": 1,
+   "object": "customer",
+   "phone": null,
+   "preferred_locales": [],
+   "shipping": {},
+   "tax_exempt": "none",
+   "test_clock": null
+  },
+  "payment_method": {
+   "allow_redisplay": "unspecified",
+   "billing_details": {
+    "address": {
+     "city": "San Francisco",
+     "country": "US",
+     "line1": "1234 Fake Street",
+     "line2": null,
+     "postal_code": "94102",
+     "state": "CA"
+    },
+    "email": "jenny@example.com",
+    "name": null,
+    "phone": "+15555555555",
+    "tax_id": null
+   },
+   "card": {
+    "brand": "visa",
+    "checks": {
+     "address_line1_check": null,
+     "address_postal_code_check": null,
+     "cvc_check": "pass"
+    },
+    "country": "US",
+    "display_brand": "visa",
+    "exp_month": 8,
+    "exp_year": 2030,
+    "fingerprint": "AOB934RVNwzk6xtn",
+    "funding": "credit",
+    "generated_from": {
+     "charge": null,
+     "payment_method_details": {
+      "type": "type"
+     },
+     "setup_attempt": null
+    },
+    "last4": "4242",
+    "networks": {
+     "available": [
+      "visa"
+     ],
+     "preferred": null
+    },
+    "three_d_secure_usage": {
+     "supported": true
+    },
+    "wallet": {
+     "dynamic_last4": null,
+     "type": "link"
+    },
+    "regulated_status": null
+   },
+   "created": 1234567890,
+   "customer": null,
+   "id": "pm_1Pgc75B7WZ01zgkWlHVgdEGJ",
+   "livemode": false,
+   "metadata": {
+    "order_id": "123456789"
+   },
+   "object": "payment_method",
+   "type": "card",
+   "customer_account": null
+  },
+  "setup_intent": {
+   "application": null,
+   "automatic_payment_methods": {
+    "enabled": null
+   },
+   "cancellation_reason": null,
+   "client_secret": "seti_1Pgag7B7WZ01zgkWSgwGdb8Z_secret_QXg2AQLdBxJwtY51IkwvUaBVsnCqPSp",
+   "created": 1234567890,
+   "customer": null,
+   "description": null,
+   "flow_directions": null,
+   "id": "seti_1Pgag7B7WZ01zgkWSgwGdb8Z",
+   "last_setup_error": {
+    "type": "idempotency_error"
+   },
+   "latest_attempt": null,
+   "livemode": false,
+   "mandate": null,
+   "metadata": {},
+   "next_action": {
+    "type": "type"
+   },
+   "object": "setup_intent",
+   "on_behalf_of": null,
+   "payment_method": null,
+   "payment_method_configuration_details": {
+    "id": "obj_123",
+    "parent": null
+   },
+   "payment_method_options": {},
+   "payment_method_types": [
+    "card"
+   ],
+   "single_use_mandate": null,
+   "status": "requires_payment_method",
+   "usage": "off_session",
+   "excluded_payment_method_types": null,
+   "allowed_payment_method_types": null
   }
  },
  "test_payment_methods": {
