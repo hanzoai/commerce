@@ -12,7 +12,7 @@ import (
 )
 
 // ensureDefaultProcessorPolicy guarantees COMMERCE_DISABLED_PROCESSORS is UNSET
-// so the default (Stripe disabled) applies. t.Setenv cannot unset.
+// so the default (nothing denied) applies. t.Setenv cannot unset.
 func ensureDefaultProcessorPolicy(t *testing.T) {
 	t.Helper()
 	if v, ok := os.LookupEnv("COMMERCE_DISABLED_PROCESSORS"); ok {
@@ -108,9 +108,10 @@ func TestProcessorsForOrg_SquareEnvVarFallback_FollowsOrgMode(t *testing.T) {
 	}
 }
 
-// A hydrated Stripe token leaves Stripe REGISTERED (inert, for historical data)
-// but a USD charge selects Square and Stripe is never selectable directly.
-func TestProcessorsForOrg_StripeHydratedButSquareSelected(t *testing.T) {
+// A hydrated Stripe token registers Stripe and leaves Square the default: a USD
+// charge selects Square, a currency Square does not take selects Stripe, and a
+// caller naming Stripe reaches it.
+func TestProcessorsForOrg_StripeHydratedSquareStillDefault(t *testing.T) {
 	ensureDefaultProcessorPolicy(t)
 	t.Setenv("SQUARE_ENVIRONMENT", "production")
 
@@ -120,26 +121,59 @@ func TestProcessorsForOrg_StripeHydratedButSquareSelected(t *testing.T) {
 
 	reg := ProcessorsForOrg(org)
 
-	// Stripe IS registered (inert historical provider) ...
-	registered := false
-	for _, tp := range reg.ListTypes() {
-		if tp == processor.Stripe {
-			registered = true
-		}
+	if _, err := reg.Get(processor.Stripe); err != nil {
+		t.Fatalf("Get(Stripe) with a hydrated Stripe token: %v", err)
 	}
-	if !registered {
-		t.Fatal("Stripe should be REGISTERED (inert) when the org has a Stripe token")
-	}
-	// ... but it is disabled for direct Get ...
-	if _, err := reg.Get(processor.Stripe); err == nil {
-		t.Fatal("Get(Stripe) must error (disabled) under the default policy")
-	}
-	// ... and a USD charge selects Square, never Stripe.
 	proc, err := reg.SelectProcessor(context.Background(), processor.PaymentRequest{Amount: 500, Currency: currency.USD})
 	if err != nil {
 		t.Fatalf("SelectProcessor(USD): %v", err)
 	}
 	if proc.Type() != processor.Square {
-		t.Fatalf("USD selected %q; want square (Stripe hydrated but must not be selected)", proc.Type())
+		t.Fatalf("USD selected %q; want square (Square takes every payment it can)", proc.Type())
+	}
+	proc, err = reg.SelectProcessor(context.Background(), processor.PaymentRequest{Amount: 500, Currency: currency.CHF})
+	if err != nil {
+		t.Fatalf("SelectProcessor(CHF): %v", err)
+	}
+	if proc.Type() != processor.Stripe {
+		t.Fatalf("CHF selected %q; want stripe (Square does not take CHF)", proc.Type())
+	}
+}
+
+// With no Stripe keys of its own, an org charges the deployment's Stripe
+// account of its own kind — and never a key of the other kind.
+func TestStripeKeys_EnvFallbackByKind(t *testing.T) {
+	t.Setenv("STRIPE_SECRET_KEY", "sk_live_DEPLOY")
+	t.Setenv("STRIPE_PUBLISHABLE_KEY", "pk_live_DEPLOY")
+	t.Setenv("STRIPE_TEST_SECRET_KEY", "sk_test_DEPLOY")
+	t.Setenv("STRIPE_TEST_PUBLISHABLE_KEY", "pk_test_DEPLOY")
+
+	live := &organization.Organization{Live: true}
+	if k := StripeKeys(live); k.SecretKey != "sk_live_DEPLOY" || k.PublishableKey != "pk_live_DEPLOY" {
+		t.Fatalf("live org keys = %+v; want the deployment's live keys", k)
+	}
+	test := &organization.Organization{}
+	if k := StripeKeys(test); k.SecretKey != "sk_test_DEPLOY" || k.PublishableKey != "pk_test_DEPLOY" {
+		t.Fatalf("test org keys = %+v; want the deployment's test keys", k)
+	}
+	if pub := StripePublicConfig(test); pub.PublishableKey != "pk_test_DEPLOY" || pub.Environment != "test" || pub.Live {
+		t.Fatalf("test org public = %+v", pub)
+	}
+
+	// A key of the wrong kind under a name is dropped, never used.
+	t.Setenv("STRIPE_SECRET_KEY", "sk_test_MISFILED")
+	if k := StripeKeys(live); k.SecretKey != "" {
+		t.Fatalf("live org took a test key: %+v", k)
+	}
+	if reg := ProcessorsForOrg(live); func() bool { _, err := reg.Get(processor.Stripe); return err == nil }() {
+		t.Fatal("Stripe registered for a live org from a test key")
+	}
+
+	// The org's own keys win over the deployment's.
+	own := &organization.Organization{Live: true}
+	own.Stripe.Live.AccessToken = "sk_live_OWN"
+	own.Stripe.Live.PublishableKey = "pk_live_OWN"
+	if k := StripeKeys(own); k.SecretKey != "sk_live_OWN" || k.PublishableKey != "pk_live_OWN" || !StripeOwned(own) {
+		t.Fatalf("own keys = %+v owned=%v", k, StripeOwned(own))
 	}
 }

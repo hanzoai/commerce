@@ -1811,6 +1811,10 @@ func chargeSavedCard(ctx context.Context, reg *processor.Registry, cardID, custo
 		Currency:       cur,
 		IdempotencyKey: idempotencyKey, // Square de-dups the money move on this key
 		Description:    desc,
+		// The card on file is Square's (square_cardonfile.go vaults it), so only
+		// Square can charge it: named, never chosen by currency, which would hand a
+		// Square card id to Stripe wherever Square does not take the currency.
+		Options: map[string]interface{}{"processor": processor.Square},
 	}
 	proc, err := reg.SelectProcessor(ctx, req)
 	if err != nil {

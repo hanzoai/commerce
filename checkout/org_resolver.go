@@ -89,6 +89,26 @@ func (r *OrgResolver) Resolve(host string) (Org, error) {
 	}
 	hasPayPal := paypalAllowed && pp.ClientID != ""
 
+	// Stripe is shown on the same terms as Square: the deployment's own brand, or
+	// a brand with an account of its own — and only with a publishable key, the
+	// one thing its card form cannot mount without.
+	var st payment.StripePublic
+	if b.slug == defaultBrand().slug || payment.StripeOwned(org) {
+		st = payment.StripePublicConfig(org)
+	}
+
+	// The processors the selection rule may choose between for this brand: the
+	// org's, less any this brand may not show. Cards (applyCountryPolicy) is the
+	// rule's answer over exactly these, so the form the page mounts is the
+	// processor the charge will use.
+	reg := payment.ProcessorsForOrg(org)
+	if !card {
+		reg.Unregister(processor.Square)
+	}
+	if st.PublishableKey == "" {
+		reg.Unregister(processor.Stripe)
+	}
+
 	return Org{
 		Name: b.slug,
 		Brand: Brand{
@@ -103,7 +123,7 @@ func (r *OrgResolver) Resolve(host string) (Org, error) {
 			Issuer:   b.iamIssuer,
 			ClientID: b.iamClientID,
 		},
-		Providers:          enabledProviders(card, hasPayPal),
+		Providers:          enabledProviders(card, hasPayPal, st.PublishableKey != ""),
 		ReturnURLAllowlist: returnHostsFor(b.slug),
 		Square: SquarePublic{
 			ApplicationID: sq.ApplicationID,
@@ -114,6 +134,11 @@ func (r *OrgResolver) Resolve(host string) (Org, error) {
 			ClientID:    pp.ClientID,
 			Environment: pp.Environment,
 		},
+		Stripe: StripePublic{
+			PublishableKey: st.PublishableKey,
+			Environment:    st.Environment,
+		},
+		reg: reg,
 	}, nil
 }
 
@@ -211,17 +236,19 @@ func returnHostsFor(slug string) []string {
 
 // enabledProviders is the payment-method surface the pay SPA renders, honoring
 // the deploy-wide disabled policy. Square is surfaced where the brand has a
-// card account (`card`) and the policy allows it; PayPal runs alongside Square
-// (and replaces Square in non-Square countries via applyCountryPolicy) when
-// configured (`paypal`); crypto (MPC) and bank wire are always available.
-// Stripe is NEVER surfaced for new charges.
-func enabledProviders(card bool, paypal ...bool) []Provider {
-	hasPayPal := len(paypal) > 0 && paypal[0]
-	out := make([]Provider, 0, 4)
+// card account (`card`), Stripe where it has a Stripe account (`stripe`), and
+// PayPal when configured (`paypal`); applyCountryPolicy then turns each card
+// processor on only where the selection rule chooses it. Crypto (MPC) and bank
+// wire are always available.
+func enabledProviders(card, paypal, stripe bool) []Provider {
+	out := make([]Provider, 0, 5)
 	if card && !processor.DisabledByPolicy(processor.Square) {
 		out = append(out, Provider{Name: "square", Enabled: true})
 	}
-	if hasPayPal && !processor.DisabledByPolicy(processor.PayPal) {
+	if stripe && !processor.DisabledByPolicy(processor.Stripe) {
+		out = append(out, Provider{Name: "stripe", Enabled: true})
+	}
+	if paypal && !processor.DisabledByPolicy(processor.PayPal) {
 		out = append(out, Provider{Name: "paypal", Enabled: true})
 	}
 	out = append(out, Provider{Name: "crypto", Enabled: true})

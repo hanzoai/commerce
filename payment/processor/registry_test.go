@@ -12,7 +12,7 @@ import (
 )
 
 // withDefaultDisabledPolicy guarantees COMMERCE_DISABLED_PROCESSORS is UNSET for
-// the test, so DefaultConfig() applies the safe default (Stripe disabled). t.Setenv
+// the test, so DefaultConfig() applies the default (nothing denied). t.Setenv
 // cannot unset, so we save/unset/restore by hand.
 func withDefaultDisabledPolicy(t *testing.T) {
 	t.Helper()
@@ -25,8 +25,8 @@ func withDefaultDisabledPolicy(t *testing.T) {
 }
 
 // configuredStripe returns a REAL Stripe provider whose IsAvailable() is true —
-// i.e. a Stripe secret key IS hydrated. The decisive property under test is that
-// such a Stripe is STILL never selected for a new charge.
+// a Stripe secret key IS hydrated. Selection never calls Stripe, so the key is
+// never sent anywhere.
 func configuredStripe() processor.PaymentProcessor {
 	return stripe.NewProvider(stripe.Config{SecretKey: "sk_live_DECISIVE_FAKE"})
 }
@@ -62,13 +62,12 @@ func (f *fakeProcessor) ValidateWebhook(context.Context, []byte, string) (*proce
 	return &processor.WebhookEvent{}, nil
 }
 
-// THE DECISIVE TEST: a USD top-up selects Square, NEVER Stripe, even when a
-// Stripe secret key IS hydrated (Stripe.IsAvailable()==true). Proves the disable
-// is deterministic, not credential-dependent.
-func TestSelectProcessor_USD_NeverStripe_EvenWhenStripeSecretKeySet(t *testing.T) {
+// Square stays the default wherever it works: a USD charge selects Square even
+// when a Stripe secret key IS hydrated (Stripe.IsAvailable()==true).
+func TestSelectProcessor_USD_SquareEvenWhenStripeConfigured(t *testing.T) {
 	withDefaultDisabledPolicy(t)
 	reg := processor.NewRegistry(processor.DefaultConfig())
-	reg.Register(configuredStripe()) // IsAvailable()==true (secret key hydrated)
+	reg.Register(configuredStripe())
 	reg.Register(configuredSquare())
 
 	proc, err := reg.SelectProcessor(context.Background(), processor.PaymentRequest{
@@ -78,12 +77,12 @@ func TestSelectProcessor_USD_NeverStripe_EvenWhenStripeSecretKeySet(t *testing.T
 		t.Fatalf("SelectProcessor(USD): %v", err)
 	}
 	if proc.Type() != processor.Square {
-		t.Fatalf("USD selected %q; want square — Stripe must be un-selectable even with a hydrated secret key", proc.Type())
+		t.Fatalf("USD selected %q; want square — Square takes every payment it can", proc.Type())
 	}
 }
 
-// Stripe is never selected for ANY Square-supported fiat currency under the default config.
-func TestSelectProcessor_StripeNeverSelected_AllSquareFiat(t *testing.T) {
+// Every currency Square takes goes to Square, never Stripe.
+func TestSelectProcessor_SquareCurrenciesStayOnSquare(t *testing.T) {
 	withDefaultDisabledPolicy(t)
 	reg := processor.NewRegistry(processor.DefaultConfig())
 	reg.Register(configuredStripe())
@@ -94,18 +93,47 @@ func TestSelectProcessor_StripeNeverSelected_AllSquareFiat(t *testing.T) {
 		if err != nil {
 			t.Fatalf("SelectProcessor(%s): %v", cur, err)
 		}
-		if proc.Type() == processor.Stripe {
-			t.Fatalf("currency %s selected Stripe; Stripe must never be selected", cur)
-		}
 		if proc.Type() != processor.Square {
 			t.Fatalf("currency %s selected %q; want square", cur, proc.Type())
 		}
 	}
 }
 
-// An EXPLICIT stripe preference (Options["processor"]) is denied when Stripe is
-// disabled — it falls through to Square, mirroring the registry's deny contract.
-func TestSelectProcessor_ExplicitStripePreference_DeniedFallsThroughToSquare(t *testing.T) {
+// A currency Square does not take falls back to Stripe.
+func TestSelectProcessor_StripeTakesWhatSquareCannot(t *testing.T) {
+	withDefaultDisabledPolicy(t)
+	reg := processor.NewRegistry(processor.DefaultConfig())
+	reg.Register(configuredStripe()) // takes CHF
+	reg.Register(configuredSquare()) // does NOT take CHF
+
+	proc, err := reg.SelectProcessor(context.Background(), processor.PaymentRequest{Amount: 100, Currency: currency.CHF})
+	if err != nil {
+		t.Fatalf("SelectProcessor(CHF): %v", err)
+	}
+	if proc.Type() != processor.Stripe {
+		t.Fatalf("CHF selected %q; want stripe — Square does not take CHF", proc.Type())
+	}
+}
+
+// An org with no usable Square account falls back to Stripe, in a currency
+// Square would otherwise take.
+func TestSelectProcessor_NoSquareAccount_Stripe(t *testing.T) {
+	withDefaultDisabledPolicy(t)
+	reg := processor.NewRegistry(processor.DefaultConfig())
+	reg.Register(configuredStripe())
+	reg.Register(square.NewProvider(square.Config{})) // registered, no credentials: unavailable
+
+	proc, err := reg.SelectProcessor(context.Background(), processor.PaymentRequest{Amount: 100, Currency: currency.USD})
+	if err != nil {
+		t.Fatalf("SelectProcessor(USD): %v", err)
+	}
+	if proc.Type() != processor.Stripe {
+		t.Fatalf("USD with Square unconfigured selected %q; want stripe", proc.Type())
+	}
+}
+
+// A caller that names Stripe gets Stripe, even where Square would take the payment.
+func TestSelectProcessor_ExplicitStripe(t *testing.T) {
 	withDefaultDisabledPolicy(t)
 	reg := processor.NewRegistry(processor.DefaultConfig())
 	reg.Register(configuredStripe())
@@ -119,25 +147,58 @@ func TestSelectProcessor_ExplicitStripePreference_DeniedFallsThroughToSquare(t *
 		if err != nil {
 			t.Fatalf("SelectProcessor(explicit %v): %v", pref, err)
 		}
-		if proc.Type() != processor.Square {
-			t.Fatalf("explicit stripe pref %v must be denied and fall through to square; got %q", pref, proc.Type())
+		if proc.Type() != processor.Stripe {
+			t.Fatalf("explicit %v selected %q; want stripe", pref, proc.Type())
 		}
 	}
 }
 
-// Stripe is SO un-selectable that a Stripe-only currency (Square unsupported)
-// yields NO processor rather than falling back to Stripe. This is the intended
-// "an org with only Stripe creds can't charge" behavior.
-func TestSelectProcessor_StripeOnlyCurrency_YieldsNoProcessor(t *testing.T) {
+// A named processor that cannot take the payment yields NO processor — never a
+// substitute. Its token is that processor's, so any other one would fail the
+// charge (or, worse, take it against the wrong account).
+func TestSelectProcessor_NamedButUnavailable_NoSubstitute(t *testing.T) {
 	withDefaultDisabledPolicy(t)
 	reg := processor.NewRegistry(processor.DefaultConfig())
-	reg.Register(configuredStripe()) // supports CHF
-	reg.Register(configuredSquare()) // does NOT support CHF
+	reg.Register(configuredSquare()) // Stripe not registered
 
-	if _, err := reg.SelectProcessor(context.Background(), processor.PaymentRequest{
-		Amount: 100, Currency: currency.CHF,
+	if p, err := reg.SelectProcessor(context.Background(), processor.PaymentRequest{
+		Amount: 100, Currency: currency.USD,
+		Options: map[string]interface{}{"processor": "stripe"},
 	}); err == nil {
-		t.Fatal("CHF (Square-unsupported, Stripe-only) must yield NO processor since Stripe is disabled; got one")
+		t.Fatalf("explicit stripe with no Stripe account selected %q; want an error", p.Type())
+	}
+
+	// Named Square, in a currency Square does not take: no processor, not Stripe.
+	reg.Register(configuredStripe())
+	if p, err := reg.SelectProcessor(context.Background(), processor.PaymentRequest{
+		Amount: 100, Currency: currency.CHF,
+		Options: map[string]interface{}{"processor": processor.Square},
+	}); err == nil {
+		t.Fatalf("explicit square for CHF selected %q; want an error", p.Type())
+	}
+}
+
+// The deny switch binds every branch: with Stripe denied, a Stripe-only currency
+// has no processor and a caller naming Stripe is refused.
+func TestSelectProcessor_DeniedStripe(t *testing.T) {
+	t.Setenv("COMMERCE_DISABLED_PROCESSORS", "stripe")
+	reg := processor.NewRegistry(processor.DefaultConfig())
+	reg.Register(configuredStripe())
+	reg.Register(configuredSquare())
+
+	if p, err := reg.SelectProcessor(context.Background(), processor.PaymentRequest{Amount: 100, Currency: currency.CHF}); err == nil {
+		t.Fatalf("CHF with Stripe denied selected %q; want none", p.Type())
+	}
+	if p, err := reg.SelectProcessor(context.Background(), processor.PaymentRequest{
+		Amount: 100, Currency: currency.USD, Options: map[string]interface{}{"processor": "stripe"},
+	}); err == nil {
+		t.Fatalf("explicit stripe with Stripe denied selected %q; want none", p.Type())
+	}
+	if _, err := reg.Get(processor.Stripe); err == nil {
+		t.Fatal("Get(Stripe) must error when Stripe is denied")
+	}
+	if p, err := reg.Fiat(context.Background(), processor.Need{Currency: currency.USD, Country: "DE", Method: "card"}); err == nil {
+		t.Fatalf("a DE card with Stripe denied selected %q; want none", p.Type())
 	}
 }
 
@@ -158,65 +219,102 @@ func TestSelectProcessor_Crypto_SelectsMPC(t *testing.T) {
 	}
 }
 
-// Default policy disables Stripe ONLY (Square stays enabled).
-func TestDisabledByPolicy_DefaultDisablesStripeOnly(t *testing.T) {
+// Fiat with a buyer's country and method: Square in Square's countries and
+// methods, Stripe for a card outside them, nobody for what neither takes.
+func TestFiat_CountryAndMethod(t *testing.T) {
 	withDefaultDisabledPolicy(t)
-	if !processor.DisabledByPolicy(processor.Stripe) {
-		t.Fatal("default policy must disable Stripe")
-	}
-	if processor.DisabledByPolicy(processor.Square) {
-		t.Fatal("default policy must NOT disable Square")
-	}
-}
+	reg := processor.NewRegistry(processor.DefaultConfig())
+	reg.Register(configuredStripe())
+	reg.Register(configuredSquare())
+	// A processor with no Reach is never chosen for a stated country or method:
+	// nothing says where it takes payments.
+	reg.Register(newFakeProcessor(processor.Adyen, true, []currency.Type{currency.USD}))
 
-// M1: COMMERCE_DISABLED_PROCESSORS empty or whitespace (a k8s placeholder) must
-// NOT re-enable Stripe — it keeps the safe default {Stripe}.
-func TestDisabledByPolicy_EmptyKeepsDefault(t *testing.T) {
-	for _, v := range []string{"", "   "} {
-		t.Setenv("COMMERCE_DISABLED_PROCESSORS", v)
-		if !processor.DisabledByPolicy(processor.Stripe) {
-			t.Fatalf("COMMERCE_DISABLED_PROCESSORS=%q must keep Stripe disabled (safe default)", v)
+	cases := []struct {
+		country, method string
+		want            processor.ProcessorType // "" = no processor
+	}{
+		{"US", "card", processor.Square},
+		{"GB", "apple_pay", processor.Square},
+		{"UK", "card", processor.Square},
+		{"US", "cash_app", processor.Square},
+		{"", "card", processor.Square},
+		{"DE", "card", processor.Stripe},
+		{"BR", "google_pay", processor.Stripe},
+		{"DE", "cash_app", ""}, // Cash App Pay is Square's, and Square does not take DE
+		{"US", "ach", ""},      // Square declines ACH; Stripe's form here takes no ACH
+	}
+	for _, c := range cases {
+		p, err := reg.Fiat(context.Background(), processor.Need{Currency: currency.USD, Country: c.country, Method: c.method})
+		switch {
+		case c.want == "" && err == nil:
+			t.Errorf("%s/%s: selected %q; want none", c.country, c.method, p.Type())
+		case c.want != "" && err != nil:
+			t.Errorf("%s/%s: %v; want %s", c.country, c.method, err, c.want)
+		case c.want != "" && p.Type() != c.want:
+			t.Errorf("%s/%s: selected %q; want %s", c.country, c.method, p.Type(), c.want)
 		}
 	}
 }
 
-// The explicit sentinel "none" re-enables Stripe, but Square stays first in
-// priority for a USD charge; with only Stripe registered, Stripe becomes selectable.
-func TestSelectProcessor_EnvOverride_NoneReenablesStripeBehindSquare(t *testing.T) {
-	t.Setenv("COMMERCE_DISABLED_PROCESSORS", "none")
-	if processor.DisabledByPolicy(processor.Stripe) {
-		t.Fatal(`COMMERCE_DISABLED_PROCESSORS=none must disable nothing`)
-	}
-
+// Cards is Fiat's answer for a card, per currency: what a checkout mounts.
+func TestCards_PerCountry(t *testing.T) {
+	withDefaultDisabledPolicy(t)
 	reg := processor.NewRegistry(processor.DefaultConfig())
 	reg.Register(configuredStripe())
 	reg.Register(configuredSquare())
-	proc, err := reg.SelectProcessor(context.Background(), processor.PaymentRequest{Amount: 100, Currency: currency.USD})
-	if err != nil {
-		t.Fatalf("SelectProcessor(USD): %v", err)
+
+	us := reg.Cards(context.Background(), "US")
+	if us[currency.USD] != processor.Square || us[currency.EUR] != processor.Square {
+		t.Fatalf("US cards = %v; want usd and eur on square", us)
 	}
-	if proc.Type() != processor.Square {
-		t.Fatalf("with Stripe re-enabled, USD still prefers Square first; got %q", proc.Type())
+	if us[currency.CHF] != processor.Stripe {
+		t.Fatalf("US cards = %v; want chf on stripe (Square does not take CHF)", us)
+	}
+	de := reg.Cards(context.Background(), "DE")
+	for _, cur := range []currency.Type{currency.USD, currency.EUR, currency.CHF} {
+		if de[cur] != processor.Stripe {
+			t.Fatalf("DE cards = %v; want %s on stripe (Square does not take DE)", de, cur)
+		}
 	}
 
-	regStripeOnly := processor.NewRegistry(processor.DefaultConfig())
-	regStripeOnly.Register(configuredStripe())
-	proc2, err := regStripeOnly.SelectProcessor(context.Background(), processor.PaymentRequest{Amount: 100, Currency: currency.USD})
-	if err != nil {
-		t.Fatalf("SelectProcessor(USD) stripe-only: %v", err)
+	squareOnly := processor.NewRegistry(processor.DefaultConfig())
+	squareOnly.Register(configuredSquare())
+	if de := squareOnly.Cards(context.Background(), "DE"); len(de) != 0 {
+		t.Fatalf("DE cards with Square only = %v; want none", de)
 	}
-	if proc2.Type() != processor.Stripe {
-		t.Fatalf(`with COMMERCE_DISABLED_PROCESSORS=none and only Stripe registered, want stripe; got %q`, proc2.Type())
+	if us := squareOnly.Cards(context.Background(), "US"); us[currency.USD] != processor.Square || us[currency.CHF] != "" {
+		t.Fatalf("US cards with Square only = %v; want usd on square and no chf", us)
 	}
 }
 
-// The deny list REPLACES the default: disabling Square leaves Stripe enabled.
-func TestDisabledByPolicy_EnvOverride_ReplacesDefault(t *testing.T) {
-	t.Setenv("COMMERCE_DISABLED_PROCESSORS", "square")
-	if !processor.DisabledByPolicy(processor.Square) {
-		t.Fatal("COMMERCE_DISABLED_PROCESSORS=square must disable Square")
+// The default policy denies nothing.
+func TestDisabledByPolicy_DefaultDeniesNothing(t *testing.T) {
+	withDefaultDisabledPolicy(t)
+	for _, p := range []processor.ProcessorType{processor.Stripe, processor.Square, processor.PayPal} {
+		if processor.DisabledByPolicy(p) {
+			t.Fatalf("default policy denies %s", p)
+		}
+	}
+}
+
+// COMMERCE_DISABLED_PROCESSORS empty or whitespace (a k8s placeholder) denies nothing.
+func TestDisabledByPolicy_EmptyDeniesNothing(t *testing.T) {
+	for _, v := range []string{"", "   ", " , "} {
+		t.Setenv("COMMERCE_DISABLED_PROCESSORS", v)
+		if processor.DisabledByPolicy(processor.Stripe) || processor.DisabledByPolicy(processor.Square) {
+			t.Fatalf("COMMERCE_DISABLED_PROCESSORS=%q denied a processor", v)
+		}
+	}
+}
+
+// The deny list names exactly what it denies.
+func TestDisabledByPolicy_ListDeniesWhatItNames(t *testing.T) {
+	t.Setenv("COMMERCE_DISABLED_PROCESSORS", " Square, paypal ")
+	if !processor.DisabledByPolicy(processor.Square) || !processor.DisabledByPolicy(processor.PayPal) {
+		t.Fatal("COMMERCE_DISABLED_PROCESSORS=square,paypal must deny both")
 	}
 	if processor.DisabledByPolicy(processor.Stripe) {
-		t.Fatal("COMMERCE_DISABLED_PROCESSORS=square replaces the default, so Stripe is NOT disabled")
+		t.Fatal("COMMERCE_DISABLED_PROCESSORS=square,paypal must not deny Stripe")
 	}
 }

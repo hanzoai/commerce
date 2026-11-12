@@ -30,6 +30,8 @@ import (
 	"github.com/hanzoai/commerce/models/store"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
+	squareprovider "github.com/hanzoai/commerce/payment/providers/square"
+	stripeprovider "github.com/hanzoai/commerce/payment/providers/stripe"
 	sqenv "github.com/hanzoai/commerce/thirdparty/square"
 	"github.com/hanzoai/commerce/util/json/http"
 )
@@ -297,15 +299,59 @@ func websiteURLs(org *organization.Organization) []string {
 	return out
 }
 
+// checkoutProcessors is the merchant's own processors a hosted checkout may
+// charge: Square on the account squareCheckoutCredentials resolves, Stripe on
+// the org's own Stripe key. Neither falls back to the deployment's live account.
+func checkoutProcessors(org *organization.Organization) *processor.Registry {
+	reg := processor.NewRegistry(processor.DefaultConfig())
+	if token, locationID, err := squareCheckoutCredentials(org); err == nil {
+		reg.Register(squareprovider.NewProvider(squareprovider.Config{
+			AccessToken: token,
+			LocationID:  locationID,
+			Environment: org.SquareEnvironment(),
+			Org:         org.Name,
+		}))
+	}
+	if sk := org.StripeToken(); sk != "" {
+		reg.Register(stripeprovider.NewProvider(stripeprovider.Config{SecretKey: sk}))
+	}
+	return reg
+}
+
+// currencyType is an ISO 4217 code in the form the processors name currencies.
+func currencyType(code string) currency.Type {
+	return currency.Type(strings.ToLower(strings.TrimSpace(code)))
+}
+
 // squareCheckoutClientForOrg creates a Square Payment Links client using the
 // org's own credentials (payment.Hydrate). A sandbox org with none uses the
 // deployment's sandbox account; a live org with none is refused.
 func squareCheckoutClientForOrg(org *organization.Organization) (*sqpaymentlinks.Client, string, error) {
+	token, locationID, err := squareCheckoutCredentials(org)
+	if err != nil {
+		return nil, "", err
+	}
+
+	baseURL := "https://connect.squareup.com"
+	if org.TestMode() {
+		baseURL = "https://connect.squareupsandbox.com"
+	}
+
+	client := sqpaymentlinks.NewClient(core.NewRequestOptions(
+		option.WithToken(token),
+		option.WithBaseURL(baseURL),
+	))
+	return client, locationID, nil
+}
+
+// squareCheckoutCredentials is the Square account a hosted checkout charges:
+// the org's own, or — in sandbox only — the deployment's sandbox account.
+func squareCheckoutCredentials(org *organization.Organization) (token, locationID string, err error) {
 	isSandbox := org.TestMode()
 	sqCfg := org.SquareConfig(isSandbox)
 
-	token := sqCfg.AccessToken
-	locationID := sqCfg.LocationId
+	token = sqCfg.AccessToken
+	locationID = sqCfg.LocationId
 
 	// FAIL-CLOSED in production. An org that has not configured its OWN
 	// per-tenant Square credentials (KMS) can NEVER borrow the deployment's
@@ -317,26 +363,16 @@ func squareCheckoutClientForOrg(org *organization.Organization) (*sqpaymentlinks
 	// names only (sqenv.FromEnv).
 	if token == "" {
 		if !isSandbox {
-			return nil, "", errors.New("square is not configured for this organization")
+			return "", "", errors.New("square is not configured for this organization")
 		}
 		creds := sqenv.FromEnv(true)
 		token, locationID = creds.AccessToken, creds.LocationID
 	}
 
 	if token == "" || locationID == "" {
-		return nil, "", errors.New("square is not configured for this organization")
+		return "", "", errors.New("square is not configured for this organization")
 	}
-
-	baseURL := "https://connect.squareup.com"
-	if isSandbox {
-		baseURL = "https://connect.squareupsandbox.com"
-	}
-
-	client := sqpaymentlinks.NewClient(core.NewRequestOptions(
-		option.WithToken(token),
-		option.WithBaseURL(baseURL),
-	))
-	return client, locationID, nil
+	return token, locationID, nil
 }
 
 // Sessions creates a provider-agnostic hosted checkout session.
@@ -441,21 +477,33 @@ func Sessions(c *zip.Ctx) error {
 	discountCents := applyDiscount(subtotalCents, cpn)
 	finalCents := subtotalCents - discountCents
 
-	// Select payment provider, honoring the SAME disabled-processor policy
-	// SelectProcessor enforces (processor.DisabledByPolicy). Stripe is disabled
-	// by default — "we do NOT use Stripe" — so neither an explicit stripe hint
-	// nor a hydrated Stripe token routes a NEW checkout to Stripe; Square is
-	// used. Stripe checkout code stays for historical / existing-customer flows.
-	hint := strings.ToLower(strings.TrimSpace(req.ProviderHint))
-	stripeAllowed := !processor.DisabledByPolicy(processor.Stripe)
-	var sessionResp checkoutSessionResponse
-
-	switch {
-	case stripeAllowed && (hint == "stripe" || (hint == "" && org.StripeToken() != "")):
-		sessionResp, err = createStripeCheckout(c, org, items, subtotalCents, discountCents, finalCents, cpn, currency, req)
-
+	// Select the payment provider by THE rule (processor.Registry.Fiat) over
+	// this merchant's own accounts: Square wherever Square takes the payment,
+	// Stripe where it does not, and the processor the caller named when it names
+	// one ("square" or "stripe"). A hosted checkout charges the merchant's own
+	// account only, so the registry holds exactly those (checkoutProcessors).
+	var want processor.ProcessorType
+	switch hint := strings.ToLower(strings.TrimSpace(req.ProviderHint)); hint {
+	case "", "card":
+	case string(processor.Square), string(processor.Stripe):
+		want = processor.ProcessorType(hint)
 	default:
-		// Square Payment Links (default).
+		return http.Fail(c, 400, "Invalid providerHint", fmt.Errorf("providerHint %q is not square, stripe or wire", hint))
+	}
+	chosen, err := checkoutProcessors(org).Fiat(c.Context(), processor.Need{
+		Currency: currencyType(currency),
+		Country:  hostedcheckout.RequestCountry(c),
+		Method:   "card",
+		Want:     want,
+	})
+	if err != nil {
+		return http.Fail(c, 422, "No payment processor takes this checkout", err)
+	}
+	var sessionResp checkoutSessionResponse
+	if chosen.Type() == processor.Stripe {
+		sessionResp, err = createStripeCheckout(c, org, items, subtotalCents, discountCents, finalCents, cpn, currency, req)
+	} else {
+		// Square Payment Links.
 		sessionResp, err = createSquareCheckout(c, org, items, subtotalCents, discountCents, finalCents, cpn, currency, req)
 	}
 

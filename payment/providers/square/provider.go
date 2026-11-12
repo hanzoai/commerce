@@ -127,6 +127,35 @@ func (p *Provider) SupportedCurrencies() []currency.Type {
 	return thirdparty.SquareSupportedCurrencies()
 }
 
+// Reaches reports whether Square takes a payment from a buyer in country by
+// method, as this deployment sells it.
+//
+// Countries: the eight where Square card processing is enabled — US, CA, AU,
+// JP, GB (also written UK), IE, FR, ES. Outside them a checkout does not mount
+// Square's card form, and a payment from an unknown country ("") is not refused
+// on its country.
+//
+// Methods: what Square's Web Payments SDK tokenizes and this service charges —
+// a typed card, Apple Pay, Google Pay and Cash App Pay. ACH is declined on
+// Square (its settlement is not synchronous), and "" is a token already minted,
+// whose method was Square's to choose.
+func (p *Provider) Reaches(country, method string) bool {
+	return Country(country) && squareMethods[method]
+}
+
+// Country reports whether Square card processing is enabled for an ISO 3166-1
+// alpha-2 country code; "" (unknown) is not refused.
+func Country(code string) bool {
+	switch strings.ToUpper(strings.TrimSpace(code)) {
+	case "", "US", "CA", "AU", "JP", "GB", "UK", "IE", "FR", "ES":
+		return true
+	default:
+		return false
+	}
+}
+
+var squareMethods = map[string]bool{"": true, "card": true, "apple_pay": true, "google_pay": true, "cash_app": true}
+
 // ApplicationID returns the browser-facing application ID.
 func (p *Provider) ApplicationID() string { return p.config.ApplicationID }
 
@@ -139,4 +168,5 @@ func (p *Provider) Environment() string { return p.config.Environment }
 var (
 	_ processor.PaymentProcessor  = (*Provider)(nil)
 	_ processor.CustomerProcessor = (*Provider)(nil)
+	_ processor.Reach             = (*Provider)(nil)
 )

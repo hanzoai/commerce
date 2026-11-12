@@ -139,7 +139,7 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 	}
 
 	var pi paymentIntent
-	if err := p.post(ctx, "/payment_intents", params, &pi); err != nil {
+	if err := p.postKey(ctx, "/payment_intents", params, req.IdempotencyKey, &pi); err != nil {
 		return &processor.PaymentResult{
 			Success:      false,
 			ErrorMessage: err.Error(),
@@ -147,16 +147,21 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 		}, err
 	}
 
+	// A PaymentIntent that needs the buyer (3-D Secure) has moved no money, and
+	// this charge cannot finish it: confirm=true with redirects off has no page to
+	// send the buyer to. It is a failed charge, never a settled one — a caller that
+	// credits on Success would otherwise credit money that never arrived.
 	if pi.Status == "requires_action" {
+		err := processor.NewPaymentError(processor.Stripe, "authentication_required",
+			"this card needs its bank's authentication, which this checkout cannot complete; use another card", nil)
 		return &processor.PaymentResult{
-			Success:       true,
+			Success:       false,
 			TransactionID: pi.ID,
 			ProcessorRef:  pi.ID,
-			Status:        "action_required",
-			Metadata: map[string]interface{}{
-				"client_secret": pi.ClientSecret,
-			},
-		}, nil
+			Status:        pi.Status,
+			ErrorMessage:  err.Error(),
+			Error:         err,
+		}, err
 	}
 
 	return &processor.PaymentResult{
@@ -196,7 +201,7 @@ func (p *Provider) Authorize(ctx context.Context, req processor.PaymentRequest) 
 	}
 
 	var pi paymentIntent
-	if err := p.post(ctx, "/payment_intents", params, &pi); err != nil {
+	if err := p.postKey(ctx, "/payment_intents", params, req.IdempotencyKey, &pi); err != nil {
 		return &processor.PaymentResult{
 			Success:      false,
 			ErrorMessage: err.Error(),
@@ -249,7 +254,7 @@ func (p *Provider) Refund(ctx context.Context, req processor.RefundRequest) (*pr
 	}
 
 	var ref refund
-	if err := p.post(ctx, "/refunds", params, &ref); err != nil {
+	if err := p.postKey(ctx, "/refunds", params, req.IdempotencyKey, &ref); err != nil {
 		return &processor.RefundResult{
 			Success:      false,
 			ErrorMessage: err.Error(),
@@ -522,9 +527,19 @@ func (p *Provider) RemovePaymentMethod(ctx context.Context, customerID, paymentM
 // ---------------------------------------------------------------------------
 
 func (p *Provider) post(ctx context.Context, path string, params url.Values, result interface{}) error {
+	return p.postKey(ctx, path, params, "", result)
+}
+
+// postKey is post carrying an Idempotency-Key, so Stripe de-dups a retried money
+// move at Stripe itself — the backstop every card money move in this service
+// relies on (processor.PaymentRequest.IdempotencyKey). An empty key sends none.
+func (p *Provider) postKey(ctx context.Context, path string, params url.Values, key string, result interface{}) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+path, strings.NewReader(params.Encode()))
 	if err != nil {
 		return err
+	}
+	if key = strings.TrimSpace(key); key != "" {
+		req.Header.Set("Idempotency-Key", fitKey(key))
 	}
 	return p.doRequest(req, result)
 }
@@ -740,3 +755,20 @@ var (
 	_ processor.SubscriptionProcessor = (*Provider)(nil)
 	_ processor.CustomerProcessor     = (*Provider)(nil)
 )
+
+// Reaches reports whether Stripe takes a payment by method from a buyer in
+// country. Stripe's card form takes a typed card, Apple Pay and Google Pay;
+// Charge confirms with redirects off, so a redirect method (iDEAL, Bancontact,
+// ...) and a delayed one (ACH, SEPA debit) are not taken here. No country is
+// refused: nothing in this service records where Stripe declines a buyer, so
+// none is guessed at.
+func (p *Provider) Reaches(country, method string) bool {
+	switch method {
+	case "", "card", "apple_pay", "google_pay":
+		return true
+	default:
+		return false
+	}
+}
+
+var _ processor.Reach = (*Provider)(nil)
