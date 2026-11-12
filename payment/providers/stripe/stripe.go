@@ -376,7 +376,7 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 		CustomerID:   pi.Customer,
 		CreatedAt:    pi.Created,
 		UpdatedAt:    pi.Created,
-		Metadata:     withPaymentMethod(pi.Metadata, pi.PaymentMethod),
+		Metadata:     withSecret(withPaymentMethod(pi.Metadata, pi.PaymentMethod), pi.ClientSecret),
 	}, nil
 }
 
@@ -961,4 +961,31 @@ func (p *Provider) ChargeSound(ctx context.Context, chargeID string, amount int6
 		return false, nil
 	}
 	return true, nil
+}
+
+// withSecret adds the intent's client secret, which only a caller that is about
+// to hand it to the buyer's own browser may use.
+func withSecret(meta map[string]interface{}, secret string) map[string]interface{} {
+	if secret != "" {
+		meta["client_secret"] = secret
+	}
+	return meta
+}
+
+// CancelIntent cancels a PaymentIntent that waits on its buyer, so it can never
+// succeed after commerce has stopped waiting for it.
+func (p *Provider) CancelIntent(ctx context.Context, id string) error {
+	var pi paymentIntent
+	return p.post(ctx, "/payment_intents/"+url.PathEscape(id)+"/cancel", url.Values{"cancellation_reason": {"abandoned"}}, &pi)
+}
+
+// ChargeRefunds lists the refunds made on a charge, newest first.
+func (p *Provider) ChargeRefunds(ctx context.Context, chargeID string) ([]map[string]interface{}, error) {
+	var list struct {
+		Data []map[string]interface{} `json:"data"`
+	}
+	if err := p.get(ctx, "/refunds", url.Values{"charge": {chargeID}, "limit": {"100"}}, &list); err != nil {
+		return nil, err
+	}
+	return list.Data, nil
 }

@@ -30,6 +30,9 @@ const (
 	Topup  = "topup"  // credits subject's wallet
 	Reload = "reload" // credits subject's wallet, charged off-session by the auto-reload
 	Sale   = "sale"   // a plan's first period: finished by the sale itself, refunded if it never is
+	// Invoice is a past-due invoice paid on-session after an off-session renewal
+	// needed its bank: finished by the next press of "pay", refunded if never.
+	Invoice = "invoice"
 )
 
 // Intent is one PaymentIntent waiting on its buyer.
@@ -42,6 +45,13 @@ type Intent struct {
 	Cents    int64  `json:"cents"`
 	Currency string `json:"currency"`
 	Test     bool   `json:"test"`
+	// Ref names what the intent pays beyond the buyer: the invoice, for Invoice.
+	Ref string `json:"ref,omitempty"`
+	// Tries is how many sweeps failed to settle it, Next the earliest the next one
+	// may try (exponential back-off), Last why the last one failed.
+	Tries int       `json:"tries,omitempty"`
+	Next  time.Time `json:"next,omitempty"`
+	Last  string    `json:"last,omitempty"`
 	// Done says the intent was settled — credited, finished by its sale, or
 	// refunded — and is never settled again.
 	Done bool `json:"done,omitempty"`
@@ -56,6 +66,11 @@ func db() *datastore.Datastore {
 
 // Put records intent id as waiting on subject in org, for purpose. Idempotent.
 func Put(id, org, subject, purpose string, cents int64, currency string, test bool) error {
+	return PutRef(id, org, subject, purpose, "", cents, currency, test)
+}
+
+// PutRef is Put for an intent that also names what it pays (an invoice).
+func PutRef(id, org, subject, purpose, ref string, cents int64, currency string, test bool) error {
 	id = strings.TrimSpace(id)
 	if id == "" || org == "" || subject == "" {
 		return nil
@@ -67,7 +82,7 @@ func Put(id, org, subject, purpose string, cents int64, currency string, test bo
 	i := new(Intent)
 	i.Init(d)
 	i.SetId(id)
-	i.Org, i.Subject, i.Purpose, i.Cents, i.Currency, i.Test = org, subject, purpose, cents, strings.ToLower(currency), test
+	i.Org, i.Subject, i.Purpose, i.Ref, i.Cents, i.Currency, i.Test = org, subject, purpose, ref, cents, strings.ToLower(currency), test
 	return i.Put()
 }
 
@@ -106,21 +121,59 @@ func Settle(id string) (bool, error) {
 	return false, nil
 }
 
-// Open lists the intents not yet settled that were recorded before cutoff.
+// Open lists the intents not yet settled that were recorded before cutoff and whose
+// back-off has passed, oldest first.
 func Open(cutoff time.Time) ([]*Intent, error) {
 	rows := make([]*Intent, 0)
 	if _, err := db().Query("pending-intent").Filter("Done=", false).GetAll(&rows); err != nil {
 		return nil, err
 	}
+	now := time.Now()
 	var out []*Intent
 	for _, r := range rows {
-		if r.CreatedAt.Before(cutoff) {
+		if r.CreatedAt.Before(cutoff) && !r.Next.After(now) {
 			out = append(out, r)
 		}
 	}
-	// Oldest first, so a sweep that reads only some of them reads the oldest.
 	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.Before(out[j].CreatedAt) })
 	return out, nil
+}
+
+// Failed records that a sweep could not settle id, and backs the next try off:
+// 5 minutes doubling to 6 hours. It answers how many sweeps have failed.
+func Failed(id, why string) (int, error) {
+	for range mixin.Swaps {
+		i, found, err := Get(id)
+		if err != nil || !found {
+			return 0, err
+		}
+		i.Tries++
+		wait := 5 * time.Minute << min(i.Tries-1, 6)
+		i.Next, i.Last = time.Now().Add(min(wait, 6*time.Hour)), why
+		ok, err := i.Swap()
+		if err != nil {
+			return 0, err
+		}
+		if ok {
+			return i.Tries, nil
+		}
+	}
+	return 0, nil
+}
+
+// OpenFor is the unsettled intent that pays ref for subject, or nil.
+func OpenFor(subject, ref string) (*Intent, error) {
+	rows := make([]*Intent, 0)
+	if _, err := db().Query("pending-intent").Filter("Subject=", subject).Filter("Done=", false).GetAll(&rows); err != nil {
+		return nil, err
+	}
+	var best *Intent
+	for _, r := range rows {
+		if r.Ref == ref && (best == nil || r.CreatedAt.After(best.CreatedAt)) {
+			best = r
+		}
+	}
+	return best, nil
 }
 
 // CountOpen is how many intents subject has waiting.

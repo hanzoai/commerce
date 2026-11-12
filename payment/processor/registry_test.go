@@ -287,6 +287,7 @@ func TestCards_PerCountry(t *testing.T) {
 // charge, however configured, and Stripe takes every one.
 func TestChargePolicy_DefaultIsStripeOnly(t *testing.T) {
 	t.Setenv(processor.ChargeProcessors, "")
+	t.Setenv("STRIPE_TEST_SECRET_KEY", "sk_test_present")
 	if processor.DisabledByPolicy(processor.Stripe) {
 		t.Fatal("the default policy denies Stripe")
 	}
@@ -319,5 +320,26 @@ func TestChargePolicy_DefaultIsStripeOnly(t *testing.T) {
 	t.Setenv(processor.ChargeProcessors, "*")
 	if processor.DisabledByPolicy(processor.PayPal) || processor.DisabledByPolicy(processor.MPC) {
 		t.Fatal("COMMERCE_CHARGE_PROCESSORS=* must allow every processor")
+	}
+}
+
+// A deployment that names no policy and holds no Stripe key cannot be Stripe-only:
+// the processors it did configure keep taking payments, and it is said loudly.
+func TestChargePolicy_NoStripeKeyFallsBackToWhatIsConfigured(t *testing.T) {
+	t.Setenv(processor.ChargeProcessors, "")
+	t.Setenv("STRIPE_SECRET_KEY", "")
+	t.Setenv("STRIPE_TEST_SECRET_KEY", "")
+	if processor.DisabledByPolicy(processor.Square) || processor.DisabledByPolicy(processor.PayPal) {
+		t.Fatal("with no Stripe key the default left a configured processor unable to take a payment")
+	}
+	t.Setenv("STRIPE_TEST_SECRET_KEY", "sk_test_present")
+	if !processor.DisabledByPolicy(processor.Square) {
+		t.Fatal("with a Stripe key the default must be Stripe alone")
+	}
+	// An explicit policy is never second-guessed.
+	t.Setenv("STRIPE_TEST_SECRET_KEY", "")
+	t.Setenv(processor.ChargeProcessors, "stripe")
+	if !processor.DisabledByPolicy(processor.Square) {
+		t.Fatal("an explicit stripe-only policy was widened because no key was found")
 	}
 }

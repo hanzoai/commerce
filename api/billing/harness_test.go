@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/zap-proto/zip"
 
@@ -59,7 +60,9 @@ func driveSeeded(seed func(*zip.Ctx), routePattern string, req *http.Request, ha
 		}
 		return c.Next()
 	}, handler)
-	resp, err := app.Test(req)
+	// A webhook that asks Stripe whether a charge is sound makes network calls, so the
+	// request is given the time a delivery has (the handler's own bound is 15s).
+	resp, err := app.Test(req, zip.TestConfig{Timeout: 30 * time.Second, FailOnTimeout: true})
 	if err != nil {
 		panic(err)
 	}

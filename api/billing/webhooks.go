@@ -132,6 +132,17 @@ func HandleProviderWebhook(c *zip.Ctx) error {
 	if isClawbackEvent(event.Type) {
 		effects = append(effects, applyClawbackEvent(ctx, db, org, event))
 	}
+	// charge.refunded names the charge; the refunds on it are read from Stripe and
+	// each taken back once, by its own id.
+	if event.Processor == processor.Stripe && event.Type == "refund.succeeded" {
+		test, _ := event.Data["stripe_test"].(bool)
+		refunds, rerr := stripeRefunds(ctx, org, stringField(event.Data, "charge"), test)
+		effects = append(effects, rerr)
+		for _, r := range refunds {
+			r.ID = event.ID
+			effects = append(effects, applyClawbackEvent(ctx, db, org, r))
+		}
+	}
 	if err := errors.Join(effects...); err != nil {
 		log.Error("webhook %s %s: an effect did not land; the delivery stays open for the provider to redeliver: %v", event.Processor, event.ID, err)
 		return jsonhttp.Fail(c, nethttp.StatusServiceUnavailable, "webhook effect did not land; redeliver", err)
@@ -308,7 +319,7 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 			// Already accounted for by an endpoint that owns the credit: a registered
 			// intent's row is closed with it.
 			if pi := stringField(pay, "payment_intent"); event.Processor == processor.Stripe && pi != "" {
-				_, _ = pendingintent.Settle(pi)
+				settleWallet(pi)
 			}
 			return nil
 		}
@@ -332,27 +343,43 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 			if g.Status != idempotencykey.StatusCompleted {
 				return fmt.Errorf("settlement %s: another path holds the intent's claim; redeliver", paymentID)
 			}
-			_, _ = pendingintent.Settle(pi)
+			settleWallet(pi)
 			return nil
 		}
 		claim = g
 		// Money in hand only: a charge already refunded or disputed is not credited.
-		if sp, serr := payment.ProcessorsForOrg(org).Existing(ctx, processor.Stripe); serr == nil {
-			if cs, ok := sp.(interface {
-				ChargeSound(context.Context, string, int64) (bool, error)
-			}); ok {
-				sound, cerr := cs.ChargeSound(ctx, paymentID, int64(amount))
-				if cerr != nil {
-					_ = g.Delete()
-					return fmt.Errorf("settlement %s: the charge could not be read: %w", paymentID, cerr)
-				}
-				if !sound {
-					_ = idempotencykey.Complete(g, "unsound")
-					_, _ = pendingintent.Settle(pi)
-					log.Warn("settlement %s: charge refunded, disputed or short; nothing credited", paymentID)
-					return nil
-				}
+		// The check is never skipped: a processor that cannot be asked is a retry, and
+		// it is asked with the keys of the org the intent was recorded in, in the
+		// mode it was recorded in.
+		keysOrg := org
+		if pr, found, _ := pendingintent.Get(pi); found {
+			o, oerr := intentOrg(ctx, pr.Org, pr.Test)
+			if oerr != nil {
+				_ = g.Delete()
+				return fmt.Errorf("settlement %s: %w", paymentID, oerr)
 			}
+			keysOrg = o
+		}
+		sp, serr := payment.ProcessorsForOrg(keysOrg).Existing(ctx, processor.Stripe)
+		cs, ok := sp.(interface {
+			ChargeSound(context.Context, string, int64) (bool, error)
+		})
+		if serr != nil || !ok {
+			_ = g.Delete()
+			return fmt.Errorf("settlement %s: Stripe cannot be asked about the charge: %v", paymentID, serr)
+		}
+		sound, cerr := cs.ChargeSound(ctx, paymentID, int64(amount))
+		if cerr != nil {
+			_ = g.Delete()
+			return fmt.Errorf("settlement %s: the charge could not be read: %w", paymentID, cerr)
+		}
+		if !sound {
+			// Taken money that is refunded in part, disputed or short is not credited,
+			// and is said loudly: someone must place what is left of it.
+			_ = idempotencykey.Complete(g, "unsound")
+			settleWallet(pi)
+			log.Error("RECONCILE: charge %s (intent %s, %d %s) was taken and is refunded, disputed or short, so nothing was credited; place what remains of it by hand", paymentID, pi, amount, cur)
+			return nil
 		}
 	}
 	release := func() {
@@ -429,11 +456,23 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 		_ = idempotencykey.Complete(claim, paymentID)
 	}
 	if pi := stringField(pay, "payment_intent"); pi != "" {
-		if _, err := pendingintent.Settle(pi); err != nil {
-			log.Warn("settlement %s: pending intent %s was not marked settled: %v", paymentID, pi, err)
-		}
+		settleWallet(pi)
 	}
 	return nil
+}
+
+// settleWallet closes a pending intent that credited a wallet. It NEVER closes a
+// plan's or an invoice's: those are finished by their own sale or payment, or
+// refunded by the reconciler, and a webhook that closed one would leave a charge
+// with no plan, no refund and no alarm.
+func settleWallet(pi string) {
+	p, found, err := pendingintent.Get(pi)
+	if err != nil || !found || p.Purpose == pendingintent.Sale || p.Purpose == pendingintent.Invoice {
+		return
+	}
+	if _, err := pendingintent.Settle(pi); err != nil {
+		log.Warn("pending intent %s was not marked settled: %v", pi, err)
+	}
 }
 
 // destination is WHERE a settled payment's money belongs: the ledger, the account
@@ -539,10 +578,19 @@ func settlementDestination(db *datastore.Datastore, org *organization.Organizati
 			if found {
 				amount, cur := settlementAmount(pay)
 				switch {
-				case p.Purpose == pendingintent.Sale:
+				case p.Purpose == pendingintent.Sale || p.Purpose == pendingintent.Invoice:
 					return nil, "", nil
 				case int64(amount) != p.Cents || !strings.EqualFold(string(cur), p.Currency):
 					return nil, fmt.Sprintf("intent %s was registered for %d %s and settled %d %s", pi, p.Cents, p.Currency, amount, cur), nil
+				}
+				// The receipt may already be in the PAYER's org, whose books are not the
+				// event's org's: asked of both, or a payment the browser credited is
+				// credited again.
+				payer := transaction.New(datastore.New(nscontext.WithNamespace(db.Context, strings.ToLower(strings.TrimSpace(p.Org)))))
+				if dup, derr := payer.Query().Filter("SourceKind=", kind).Filter("SourceId=", paymentID).Get(); derr != nil {
+					return nil, "", fmt.Errorf("the payer's ledger could not be read: %w", derr)
+				} else if dup {
+					return nil, "", nil
 				}
 				return &destination{org: strings.ToLower(strings.TrimSpace(p.Org)), subject: strings.ToLower(strings.TrimSpace(p.Subject)), test: p.Test}, "", nil
 			}

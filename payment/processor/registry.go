@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/types/currency"
 )
 
@@ -98,6 +99,23 @@ var allTypes = []ProcessorType{
 func chargeAllowed() map[ProcessorType]bool {
 	raw := strings.TrimSpace(os.Getenv(ChargeProcessors))
 	if raw == "" {
+		if !stripeKeyed() {
+			// THE DEFAULT IS STRIPE ALONE ONLY WHERE STRIPE CAN CHARGE. A deployment
+			// that names no policy and holds no Stripe key at all — a Secret not yet
+			// sealed, a projection that did not land — would otherwise have no way to
+			// take any payment, which is worse than the processors it did configure.
+			// Failing to boot is worse still: billing is embedded in the host, and a
+			// crash-looping pod takes everything else down with it. So the processors
+			// that ARE configured keep taking payments, and it is said loudly, once.
+			missingStripe.Do(func() {
+				log.Error("ALARM: COMMERCE_CHARGE_PROCESSORS is unset and no Stripe key is configured (STRIPE_SECRET_KEY / STRIPE_TEST_SECRET_KEY), so the Stripe-only default cannot hold: every configured processor may take a new charge until Stripe's keys are sealed")
+			})
+			allowed := map[ProcessorType]bool{}
+			for _, t := range allTypes {
+				allowed[t] = true
+			}
+			return allowed
+		}
 		return map[ProcessorType]bool{Stripe: true}
 	}
 	allowed := map[ProcessorType]bool{}
@@ -113,6 +131,13 @@ func chargeAllowed() map[ProcessorType]bool {
 		}
 	}
 	return allowed
+}
+
+var missingStripe sync.Once
+
+// stripeKeyed reports whether the deployment holds a Stripe secret key of either mode.
+func stripeKeyed() bool {
+	return strings.TrimSpace(os.Getenv("STRIPE_SECRET_KEY")) != "" || strings.TrimSpace(os.Getenv("STRIPE_TEST_SECRET_KEY")) != ""
 }
 
 // disabledProcessors is every processor type the policy does not allow.

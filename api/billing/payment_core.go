@@ -257,13 +257,15 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 	var intentGuard *idempotencykey.IdempotencyKey
 	ownsIntent := false
 	if strings.HasPrefix(in.SourceID, "pi_") {
-		// A registered SALE intent pays for a plan, never a wallet.
+		// Only an intent commerce registered for a wallet — a top-up's or a reload's,
+		// for this buyer — is a top-up. A plan's pays for a plan; one commerce never
+		// sent to the buyer's bank is not ours to credit.
 		if reg, found, rerr := pendingintent.Get(in.SourceID); rerr != nil {
 			abandon()
 			return nil, fault(503, "billing is temporarily unavailable; please retry", rerr)
-		} else if found && reg.Purpose == pendingintent.Sale {
+		} else if !found || (reg.Purpose != pendingintent.Topup && reg.Purpose != pendingintent.Reload) || !strings.EqualFold(reg.Subject, in.Subject) {
 			abandon()
-			return nil, fault(422, "this payment is for a plan, not a top-up", nil)
+			return nil, fault(422, "this payment was not made for a top-up of this account", nil)
 		}
 		// ONE claim per intent, in the system namespace, shared by the webhook, the
 		// reconciler, a top-up and a sale: whoever holds it credits. A claim that is
@@ -341,7 +343,7 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 			if ownedHere && intentGuard != nil {
 				_ = idempotencykey.Complete(intentGuard, result.ProcessorRef)
 			}
-			_, _ = pendingintent.Settle(in.SourceID)
+			settleWallet(in.SourceID)
 			return &TakePaymentOut{TransactionID: stamped.Id(), BalanceCents: int64(bal), Status: "ok", ProcessorRef: result.ProcessorRef, Test: org.TestMode()}, nil
 		}
 		// Credited by nobody yet, and the claim is another's: that holder is
@@ -426,7 +428,7 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		_ = idempotencykey.Complete(intentGuard, trans.Id())
 	}
 	if intentGuard != nil {
-		_, _ = pendingintent.Settle(in.SourceID)
+		settleWallet(in.SourceID)
 	}
 	return out, nil
 }

@@ -8,7 +8,9 @@ import (
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
+	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/util/nscontext"
@@ -119,6 +121,9 @@ func existingCustomerID(db *datastore.Datastore, subject string, via processor.P
 
 // customerIDOf is the processor customer that owns a vaulted card.
 func customerIDOf(pm *paymentmethod.PaymentMethod) string {
+	if providerOf(pm) == processor.Square {
+		return firstNonEmpty(metaStr(pm, "squareCustomerId"), metaStr(pm, "customerId"))
+	}
 	return firstNonEmpty(metaStr(pm, "customerId"), metaStr(pm, "squareCustomerId"))
 }
 
@@ -382,4 +387,102 @@ func metaStr(pm *paymentmethod.PaymentMethod, key string) string {
 	}
 	v, _ := pm.Metadata[key].(string)
 	return strings.TrimSpace(v)
+}
+
+// repointRenewals moves subject's subscriptions that renew on a card of ANOTHER
+// processor onto to, a card saved with the processor the policy takes. It is what
+// makes "a subscription renews on its Square card until its owner saves a Stripe
+// one" true in both halves: the Square card keeps renewing until this runs, and
+// from then on the Stripe card does. A subscription paid some other way (credit,
+// wire, an external record) is left alone.
+func repointRenewals(ctx context.Context, org *organization.Organization, subject string, to *paymentmethod.PaymentMethod) {
+	if org == nil || to == nil {
+		return
+	}
+	subs, err := ListSubscriptions(ctx, org, subject, "")
+	if err != nil {
+		log.Warn("repoint renewals of %s onto %s: %v", subject, to.Id(), err)
+		return
+	}
+	db := datastore.New(org.Namespaced(ctx))
+	for _, sub := range subs {
+		held := strings.TrimSpace(sub.DefaultPaymentMethod)
+		if held == "" || held == to.Id() || sub.Status == subscription.Canceled {
+			continue
+		}
+		old := paymentmethod.New(db)
+		if err := old.GetById(held); err != nil || providerOf(old) == providerOf(to) {
+			continue // not a saved card (credits, wire…), or already on this processor
+		}
+		live := subscription.New(db)
+		if err := live.GetById(sub.Id()); err != nil {
+			continue
+		}
+		live.DefaultPaymentMethod = to.Id()
+		if err := live.Update(); err != nil {
+			log.Error("RECONCILE: subscription %s could not be moved onto card %s: %v", sub.Id(), to.Id(), err)
+		}
+	}
+}
+
+// moveRenewalsOff gives the subscriptions renewing on a card about to be removed
+// another card of the same subject — their default, else any other — so a detach
+// does not leave a subscription pointing at a card that is gone. With none left it
+// leaves them: the renewal fails and the subscription goes past due, as it would
+// for a card that declines.
+func moveRenewalsOff(ctx context.Context, org *organization.Organization, subject string, gone *paymentmethod.PaymentMethod) {
+	subs, err := ListSubscriptions(ctx, org, subject, "")
+	if err != nil {
+		return
+	}
+	db := datastore.New(org.Namespaced(ctx))
+	var heir *paymentmethod.PaymentMethod
+	for _, sub := range subs {
+		if strings.TrimSpace(sub.DefaultPaymentMethod) != gone.Id() || sub.Status == subscription.Canceled {
+			continue
+		}
+		if heir == nil {
+			heir = heirOf(db, subject, gone.Id())
+		}
+		if heir == nil {
+			log.Error("RECONCILE: subscription %s renews on card %s, which is being removed and %s has no other card", sub.Id(), gone.Id(), subject)
+			continue
+		}
+		live := subscription.New(db)
+		if err := live.GetById(sub.Id()); err != nil {
+			continue
+		}
+		live.DefaultPaymentMethod = heir.Id()
+		if err := live.Update(); err != nil {
+			log.Error("RECONCILE: subscription %s could not be moved off card %s: %v", sub.Id(), gone.Id(), err)
+		}
+	}
+}
+
+// heirOf is the card a removed card's renewals move to: of subject's other saved
+// cards, a default Stripe card, else a default card, else a Stripe card, else any.
+func heirOf(db *datastore.Datastore, subject, gone string) *paymentmethod.PaymentMethod {
+	var best *paymentmethod.PaymentMethod
+	bestScore := 0
+	iter := paymentmethod.Query(db).Ancestor(db.NewKey("synckey", "", 1, nil)).Filter("CustomerId=", subject).Run()
+	for {
+		pm := paymentmethod.New(db)
+		if _, err := iter.Next(pm); err != nil {
+			break
+		}
+		if pm.Id() == gone || !strings.EqualFold(strings.TrimSpace(pm.Type), "card") || strings.TrimSpace(pm.ProviderRef) == "" {
+			continue
+		}
+		score := 1
+		if providerOf(pm) == processor.Stripe {
+			score += 1
+		}
+		if pm.IsDefault {
+			score += 2
+		}
+		if score > bestScore {
+			best, bestScore = pm, score
+		}
+	}
+	return best
 }

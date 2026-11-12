@@ -1921,6 +1921,16 @@ func chargeSavedCard(ctx context.Context, reg *processor.Registry, pm *paymentme
 // failure returns an error → CollectInvoice
 // leaves the invoice OPEN (no double-charge on retry).
 func chargeProviderForOrg(org *organization.Organization) engine.ProviderCharger {
+	return chargeProvider(org, false)
+}
+
+// chargeProvider is chargeProviderForOrg with the buyer present or not. A renewal is
+// off-session: a bank that wants the buyer ends it as a past-due invoice, never a
+// lapse. The buyer's own press of "pay" on that invoice is ON-session: the same
+// charge, which the bank may now ask them to authenticate — answered as the step,
+// the intent recorded for the invoice, and finished by the next press of "pay"
+// once the buyer has run it.
+func chargeProvider(org *organization.Organization, buyerPresent bool) engine.ProviderCharger {
 	return func(ctx context.Context, db *datastore.Datastore, inv *billinginvoice.BillingInvoice, amountCents int64) (string, error) {
 		if amountCents <= 0 {
 			return "", fmt.Errorf("nothing to charge")
@@ -1957,8 +1967,20 @@ func chargeProviderForOrg(org *organization.Organization) engine.ProviderCharger
 			":period:" + strconv.FormatInt(inv.PeriodStart.Unix(), 10) +
 			":attempt:" + strconv.Itoa(inv.AttemptCount)
 		reg := processorsForOrg(org)
-		res, err := chargeSavedCard(ctx, reg, pm, amountCents, cur, squareKey,
-			fmt.Sprintf("Subscription renewal invoice %s", inv.NumberStr), false)
+		desc := fmt.Sprintf("Subscription renewal invoice %s", inv.NumberStr)
+		var res *processor.PaymentResult
+		var err error
+		if open := finishedInvoiceIntent(ctx, reg, pm, inv, buyerPresent); open != nil {
+			// The buyer ran their bank's step for this invoice: charge the intent.
+			res, err = payInvoiceIntent(ctx, reg, pm, open, amountCents, cur, desc)
+		} else {
+			res, err = chargeSavedCard(ctx, reg, pm, amountCents, cur, squareKey, desc, buyerPresent)
+			if buyerPresent && actionOf(res, err) != nil {
+				if rerr := registerActionFor(res, err, org, inv.UserId, pendingintent.Invoice, inv.Id(), amountCents, cur); rerr != nil {
+					return "", rerr
+				}
+			}
+		}
 		if err != nil || res == nil || !res.Success {
 			return "", fmt.Errorf("%s", parseCardDeclineReason(res, err))
 		}
@@ -2024,4 +2046,49 @@ func chargeFinished(ctx context.Context, reg *processor.Registry, pm *paymentmet
 		Token: intent, Amount: currency.Cents(amountCents), Currency: cur, Description: desc,
 		Metadata: map[string]interface{}{"hanzo_subject": pm.CustomerId},
 	})
+}
+
+// finishedInvoiceIntent is the intent recorded for inv when its buyer was last sent
+// to their bank, when this is the buyer's own press of "pay": nil when there is
+// none. The intent may be finished (charge it) or still waiting (answer the step
+// again: the same secret, not a second charge).
+func finishedInvoiceIntent(ctx context.Context, reg *processor.Registry, pm *paymentmethod.PaymentMethod, inv *billinginvoice.BillingInvoice, buyerPresent bool) *pendingintent.Intent {
+	if !buyerPresent {
+		return nil
+	}
+	p, err := pendingintent.OpenFor(strings.ToLower(inv.UserId), inv.Id())
+	if err != nil || p == nil || p.Purpose != pendingintent.Invoice {
+		return nil
+	}
+	return p
+}
+
+// payInvoiceIntent charges the invoice's recorded intent if the buyer finished it,
+// and says the step again if they have not.
+func payInvoiceIntent(ctx context.Context, reg *processor.Registry, pm *paymentmethod.PaymentMethod, p *pendingintent.Intent, amountCents int64, cur currency.Type, desc string) (*processor.PaymentResult, error) {
+	sp, err := reg.Existing(ctx, processor.Stripe)
+	if err != nil {
+		return nil, fmt.Errorf("%w: stripe: %v", errNoProcessorFor, err)
+	}
+	tx, err := sp.GetTransaction(ctx, p.Id())
+	if err != nil {
+		return nil, err
+	}
+	if tx.Status != "succeeded" {
+		secret, _ := tx.Metadata["client_secret"].(string)
+		ar := &processor.ActionRequired{ID: p.Id(), ClientSecret: secret}
+		return &processor.PaymentResult{Success: false, Error: ar, ErrorMessage: ar.Error()}, ar
+	}
+	claim, replayed, cerr := idemBegin(webhookGuardDB(ctx), "billing-intent", p.Id())
+	if cerr != nil || replayed {
+		return nil, fmt.Errorf("this payment is already being applied")
+	}
+	res, err := chargeFinished(ctx, reg, pm, p.Id(), amountCents, cur, desc)
+	if err != nil || res == nil || !res.Success {
+		_ = claim.Delete()
+		return res, err
+	}
+	_ = idempotencykey.Complete(claim, res.ProcessorRef)
+	_, _ = pendingintent.Settle(p.Id())
+	return res, nil
 }

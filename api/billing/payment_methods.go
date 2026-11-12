@@ -261,6 +261,10 @@ func CreateMethod(ctx context.Context, org *organization.Organization, email str
 			if err != nil {
 				return nil, false, declineError{parseCardDeclineReason(&processor.PaymentResult{ErrorMessage: err.Error()}, err)}
 			}
+			// A Stripe card saved is where a Square holder's renewals move to.
+			if providerOf(pm) == processor.Stripe {
+				repointRenewals(ctx, org, in.CustomerId, pm)
+			}
 			// Caller-supplied extras land on whichever row answered.
 			if in.BillingAddress != nil {
 				pm.BillingAddress = in.BillingAddress
@@ -630,6 +634,8 @@ func DetachMethod(ctx context.Context, org *organization.Organization, id, subje
 		}
 	}
 
+	moveRenewalsOff(ctx, org, pm.CustomerId, pm)
+
 	if err := pm.Delete(); err != nil {
 		return nil, err
 	}
@@ -776,6 +782,9 @@ func SetDefaultMethod(ctx context.Context, org *organization.Organization, id, s
 		if err := rewrite(db, was); err != nil {
 			return nil, err
 		}
+	}
+	if providerOf(pm) == processor.Stripe {
+		repointRenewals(ctx, org, subject, pm)
 	}
 	return &DefaultChange{Method: methodOf(pm), Previous: previous}, nil
 }

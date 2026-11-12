@@ -336,7 +336,8 @@ func collectInvoice(ctx context.Context, org *organization.Organization, id stri
 		return nil, fault(409, "invoice payment already in progress", nil)
 	}
 
-	result, err := engine.CollectInvoice(ctx, db, inv, prepaidFor(ctx, org), chargeProviderForOrg(org))
+	// The buyer pressing "pay" is present: their bank may ask them to authenticate.
+	result, err := engine.CollectInvoice(ctx, db, inv, prepaidFor(ctx, org), chargeProvider(org, true))
 	if err != nil {
 		if rec != nil {
 			_ = rec.Delete()

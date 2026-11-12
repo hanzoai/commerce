@@ -1,8 +1,12 @@
 package billing
 
 import (
+	"context"
+	"fmt"
 	"strings"
 
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
 )
 
@@ -21,6 +25,23 @@ import (
 // Any other event is dropped: its type is cleared, so it is recorded and
 // acknowledged and moves no money. Stripe's subscription and invoice events are
 // among them — commerce keeps the subscriptions; Stripe only moves the money.
+//
+// StripeWebhookEvents is the event list a Stripe webhook endpoint for commerce
+// must subscribe to — the one list, for production and for every test-mode
+// network, which universe's endpoint registration and the tests both read.
+// charge.refunded is read too: it names the charge, and the refunds on it are
+// read from Stripe (stripeRefunds), so a refund is taken back whether the endpoint
+// delivers refund.created, refund.updated or only charge.refunded.
+var StripeWebhookEvents = []string{
+	"payment_intent.succeeded",
+	"charge.refunded",
+	"refund.created",
+	"refund.updated",
+	"charge.dispute.created",
+	"charge.dispute.updated",
+	"charge.dispute.closed",
+}
+
 func normalizeStripeWebhookEvent(evt *processor.WebhookEvent) {
 	obj := evt.Data
 	if obj == nil {
@@ -47,6 +68,9 @@ func normalizeStripeWebhookEvent(evt *processor.WebhookEvent) {
 		out["id"], out["status"] = charge, "COMPLETED"
 		out["payment_intent"] = stringField(obj, "id")
 		copyKeys("amount", "currency")
+	case "refund.succeeded": // charge.refunded
+		out["charge"] = stringField(obj, "id")
+		copyKeys("currency")
 	case "refund.created", "refund.updated":
 		out["id"], out["payment_id"] = stringField(obj, "id"), stringField(obj, "charge")
 		out["status"] = "PENDING"
@@ -86,4 +110,38 @@ func stripeDisputeState(status string) string {
 		return "LOST"
 	}
 	return ""
+}
+
+// stripeRefunds are the succeeded refunds on a charge, each as the refund event
+// the clawback reads, so charge.refunded takes back exactly what refund.created
+// would have: once per refund id.
+func stripeRefunds(ctx context.Context, org *organization.Organization, chargeID string, test bool) ([]*processor.WebhookEvent, error) {
+	sp, err := payment.ProcessorsForOrg(org).Existing(ctx, processor.Stripe)
+	if err != nil {
+		return nil, err
+	}
+	lr, ok := sp.(interface {
+		ChargeRefunds(context.Context, string) ([]map[string]interface{}, error)
+	})
+	if !ok {
+		return nil, fmt.Errorf("the Stripe processor cannot list refunds")
+	}
+	refunds, err := lr.ChargeRefunds(ctx, chargeID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*processor.WebhookEvent, 0, len(refunds))
+	for _, r := range refunds {
+		if stringField(r, "status") != "succeeded" {
+			continue
+		}
+		out = append(out, &processor.WebhookEvent{
+			Type: "refund.updated", Processor: processor.Stripe,
+			Data: map[string]interface{}{
+				"id": stringField(r, "id"), "payment_id": chargeID, "status": "COMPLETED",
+				"amount": r["amount"], "currency": r["currency"], "stripe_test": test,
+			},
+		})
+	}
+	return out, nil
 }

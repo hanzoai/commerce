@@ -77,12 +77,11 @@ func liveSetup(t *testing.T) *liveStripe {
 	run := strconv.FormatInt(time.Now().UnixNano(), 36)
 	l := &liveStripe{t: t, sk: sk, run: run, subject: "hanzo/live-" + run}
 
-	ep := l.call("POST", "/webhook_endpoints", url.Values{
-		"url":               {"https://example.com/commerce-test"},
-		"enabled_events[0]": {"payment_intent.succeeded"}, "enabled_events[1]": {"refund.created"},
-		"enabled_events[2]": {"refund.updated"}, "enabled_events[3]": {"charge.dispute.created"},
-		"enabled_events[4]": {"charge.dispute.updated"}, "enabled_events[5]": {"charge.dispute.closed"},
-	})
+	form := url.Values{"url": {"https://example.com/commerce-test"}}
+	for i, e := range StripeWebhookEvents {
+		form.Set(fmt.Sprintf("enabled_events[%d]", i), e)
+	}
+	ep := l.call("POST", "/webhook_endpoints", form)
 	l.hook = str(ep["secret"])
 	t.Cleanup(func() { l.call("DELETE", "/webhook_endpoints/"+str(ep["id"]), nil) })
 
@@ -306,6 +305,7 @@ func TestLiveStripe_FinishedIntentIsCreditedOnceAndOnlyToItsBuyer(t *testing.T) 
 		return str(pi["id"])
 	}
 	id := make(l.subject, 2500)
+	l.register(id, pendingintent.Topup, 2500)
 
 	if _, f := l.topup(id, 3000, "usd", "live-pi-amount"); f == nil {
 		t.Fatal("an intent for 2500 paid a top-up of 3000")
@@ -894,5 +894,98 @@ func TestLiveStripe_SavedCardPlanFinishesFromIntentWithTheCardNamed(t *testing.T
 	sale, serr := Subscribe(*l.ctx, l.org, SubscribeIn{SourceID: str(pi["id"]), MethodID: pm.Id(), PlanID: "pro-3x", Subject: l.subject, Interval: types.Monthly, IdempotencyKey: l.run + "-saved-finish"})
 	if serr != nil || sale.SubscriptionID == "" || sale.AmountCents != 1500 {
 		t.Fatalf("saved-card plan from its intent = %+v (%v)", sale, serr)
+	}
+}
+
+// A webhook for a plan's intent must NEVER close its row: only the sale finishing,
+// or the reconciler's refund, does. Closed by the webhook, a plan charged for and
+// never finished would have no plan, no refund and no alarm.
+func TestRed_SaleWebhookClosesRowSoReconcilerNeverRefunds(t *testing.T) {
+	l := liveSetup(t)
+	id, charge := l.paid(1500)
+	l.register(id, pendingintent.Sale, 1500)
+	body := l.event("payment_intent.succeeded", func(o map[string]any) bool { return str(o["id"]) == id })
+	if status, _ := l.deliver(body, l.hook); status != 200 {
+		t.Fatalf("webhook status %d", status)
+	}
+	if p := mustIntent(t, id); p.Done {
+		t.Fatal("the webhook closed a plan's pending row")
+	}
+	if l.balance() != 0 {
+		t.Fatalf("balance %d: a plan's payment reached a wallet", l.balance())
+	}
+	if err := reconcileIntent(*l.ctx, mustIntent(t, id)); err != nil {
+		t.Fatal(err)
+	}
+	if ch := l.call("GET", "/charges/"+charge, nil); ch["refunded"] != true {
+		t.Fatalf("the plan that was never bought was not refunded: refunded=%v", ch["refunded"])
+	}
+}
+
+// charge.refunded alone — the one event an endpoint may be subscribed to — takes
+// the refund back, once, by the refund's own id, even beside refund.created.
+func TestLiveStripe_ChargeRefundedClawsBack(t *testing.T) {
+	l := liveSetup(t)
+	out, f := l.topup("pm_card_visa", 2500, "usd", "live-chargerefunded")
+	if f != nil {
+		t.Fatal(f)
+	}
+	ref := l.call("POST", "/refunds", url.Values{"charge": {out.ProcessorRef}, "amount": {"1000"}})
+	ev := l.event("charge.refunded", func(o map[string]any) bool { return str(o["id"]) == out.ProcessorRef })
+	if status, resp := l.deliver(ev, l.hook); status != 200 {
+		t.Fatalf("charge.refunded delivery = %d %v", status, resp)
+	}
+	if len(l.ledger.clawbacks) != 1 || l.ledger.clawbacks[0].AmountCents != 1000 {
+		t.Fatalf("clawbacks after charge.refunded = %+v; want one of 1000", l.ledger.clawbacks)
+	}
+	created := l.event("refund.created", func(o map[string]any) bool { return str(o["id"]) == str(ref["id"]) && str(o["status"]) == "succeeded" })
+	l.deliver(created, l.hook)
+	if len(l.ledger.clawbacks) != 1 {
+		t.Fatalf("the same refund clawed back %d times via two events", len(l.ledger.clawbacks))
+	}
+}
+
+// One org's rows that keep erroring do not hold another org's: they back off, are
+// closed with an alarm after giveUp sweeps, and a good row is settled in the same
+// sweep.
+func TestLiveStripe_ReconcilerIsFairAndBacksOff(t *testing.T) {
+	l := liveSetup(t)
+	var ghosts []*pendingintent.Intent
+	for i := 0; i < 30; i++ {
+		id := fmt.Sprintf("pi_ghost_%s_%d", l.run, i)
+		if err := pendingintent.Put(id, "no-such-org-"+l.run, "ghost/x", pendingintent.Topup, 100, "usd", true); err != nil {
+			t.Fatal(err)
+		}
+		ghosts = append(ghosts, mustIntent(t, id))
+	}
+	good, _ := l.paid(2500)
+	l.register(good, pendingintent.Topup, 2500)
+	reconcileAll(*l.ctx, append(ghosts, mustIntent(t, good)))
+	if l.balance() != 2500 {
+		t.Fatalf("balance %d: thirty stuck rows of another org held a good one", l.balance())
+	}
+	g := mustIntent(t, ghosts[0].Id())
+	if g.Done || g.Tries != 1 || !g.Next.After(time.Now()) || g.Last == "" {
+		t.Fatalf("a stuck row = %+v; want one failed try, backed off, with its reason", g)
+	}
+	// Due again only after the back-off.
+	open, err := pendingintent.Open(time.Now().Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range open {
+		if p.Id() == ghosts[0].Id() {
+			t.Fatal("a backed-off row is due at once")
+		}
+	}
+	// A row that keeps erroring is closed.
+	for i := 0; i < giveUp; i++ {
+		if _, err := pendingintent.Failed(ghosts[1].Id(), "still failing"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	reconcileAll(*l.ctx, []*pendingintent.Intent{mustIntent(t, ghosts[1].Id())})
+	if !mustIntent(t, ghosts[1].Id()).Done {
+		t.Fatal("a row that failed giveUp sweeps was not closed")
 	}
 }
