@@ -32,6 +32,23 @@ func reloadPlan(t *testing.T, ctx context.Context, slug string, cents int64, rel
 	}
 }
 
+// restate edits the seeded authority row for slug the way admin.hanzo.ai restates
+// a plan: in place, the admin's from then on. A test that seeds the catalog and
+// then adds a second row under the same slug describes a store that cannot exist;
+// the plan list would serve both rows and a purchase would resolve one of them.
+func restate(t *testing.T, ctx context.Context, slug string, edit func(*plan.Plan)) {
+	t.Helper()
+	p := plan.New(plan.AuthorityDB(ctx))
+	if ok, err := p.Query().Filter("Slug=", slug).Get(); err != nil || !ok {
+		t.Fatalf("load seeded %s: ok=%v err=%v", slug, ok, err)
+	}
+	edit(p)
+	p.AdminEdited, p.Managed = true, true
+	if err := p.Update(); err != nil {
+		t.Fatalf("restate %s: %v", slug, err)
+	}
+}
+
 // onPlan seeds a recharge org whose own account is served from slug.
 func onPlan(t *testing.T, ctx ae.Context, name, slug string) *organization.Organization {
 	t.Helper()
@@ -127,7 +144,11 @@ func TestThePublicCatalogServesTheReloadTerms(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	zero := 0
-	reloadPlan(t, ctx, "ultra", 19500, &zero, &plan.Reload{ThresholdCents: 1000, AmountCents: 5000})
+	restate(t, ctx, "ultra", func(p *plan.Plan) {
+		limits := *p.Limits
+		limits.ReloadsPerDay, limits.Reload = &zero, &plan.Reload{ThresholdCents: 1000, AmountCents: 5000}
+		p.Limits = &limits
+	})
 	plans, err := ReadPlans(ctx, "", "", nil)
 	if err != nil {
 		t.Fatalf("read plans: %v", err)
@@ -136,8 +157,8 @@ func TestThePublicCatalogServesTheReloadTerms(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(raw), `"slug":"ultra"`) {
-		t.Fatalf("the catalog does not list the row under test: %s", raw)
+	if n := strings.Count(string(raw), `"slug":"ultra"`); n != 1 {
+		t.Fatalf("the catalog lists %d ultra rows, want the one under test: %s", n, raw)
 	}
 	if !strings.Contains(string(raw), `"reload":{"thresholdCents":1000,"amountCents":5000,"perDay":0}`) {
 		t.Errorf("the public catalog does not serve ultra's reload terms: %s", raw)

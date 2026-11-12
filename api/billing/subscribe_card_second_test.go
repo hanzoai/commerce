@@ -89,7 +89,7 @@ func TestSubscribeWithCard_SamePaidTierRefusedBeforeCharge(t *testing.T) {
 			resp.StatusCode, string(body))
 	}
 	// The refusal has to name what the customer already has, or they cannot act on it.
-	if !strings.Contains(string(body), "go") {
+	if !strings.Contains(string(body), `\"go\" plan`) {
 		t.Errorf("409 body %s does not name the existing plan", string(body))
 	}
 
@@ -105,8 +105,8 @@ func TestSubscribeWithCard_SamePaidTierRefusedBeforeCharge(t *testing.T) {
 }
 
 // TestSubscribeWithCard_UpgradePaidTierCancelsOldAndChargesNew tests upgrading
-// an existing paid subscription: customer holding 'dev' upgrades to 'max-5x',
-// charges the new tier, cancels the old 'dev' subscription, and leaves 1 active subscription.
+// an existing paid subscription: customer holding 'go' upgrades to 'pro-3x',
+// charges the new tier, cancels the old 'go' subscription, and leaves 1 active subscription.
 func TestSubscribeWithCard_UpgradePaidTierCancelsOldAndChargesNew(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -119,7 +119,7 @@ func TestSubscribeWithCard_UpgradePaidTierCancelsOldAndChargesNew(t *testing.T) 
 	}
 	chargesAfterFirst := m.chargeCalls
 
-	// Upgrade to 'max-5x'
+	// Upgrade to 'pro-3x'
 	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok2","planId":"pro-3x"}`, nil)
 	if resp.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(resp.Body)
@@ -135,7 +135,7 @@ func TestSubscribeWithCard_UpgradePaidTierCancelsOldAndChargesNew(t *testing.T) 
 		t.Fatalf("live subscriptions=%d, want 1 after upgrade", len(live))
 	}
 	if live[0].PlanId != "pro-3x" && live[0].Plan.Slug != "pro-3x" {
-		t.Errorf("active subscription plan=%q, want 'max-5x'", live[0].PlanId)
+		t.Errorf("active subscription plan=%q, want 'pro-3x'", live[0].PlanId)
 	}
 }
 

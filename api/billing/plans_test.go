@@ -28,7 +28,7 @@ func TestPlansLoaded(t *testing.T) {
 	bySlug := indexBySlug(catalog)
 
 	// Core subscription plans that must exist regardless of catalog growth.
-	must := []string{"free", "dev", "max-5x", "max-20x", "team", "enterprise"}
+	must := []string{"free", "go", "pro-3x", "dev-5x", "max-15x", "ultra", "unlimited", "team", "enterprise", "dev", "max-5x", "max-20x"}
 	for _, slug := range must {
 		p, ok := bySlug[slug]
 		if !ok {
@@ -42,23 +42,24 @@ func TestPlansLoaded(t *testing.T) {
 		}
 	}
 
-	// `dev` is the entry paid rung; `enterprise` is priced by conversation, so it
-	// is the one row with a null price.
-	entry := bySlug["dev"]
-	if entry.Price != 2000 {
-		t.Errorf("Dev price = %d cents, want 2000", entry.Price)
+	// `go` is the entry paid rung (@hanzo/plans 1.10.0; `dev`, the $20 rung it
+	// follows, is archived); `enterprise` is priced by conversation, so it is the
+	// one row with a null price.
+	entry := bySlug["go"]
+	if entry.Price != 800 {
+		t.Errorf("Go price = %d cents, want 800", entry.Price)
 	}
 	if entry.Limits == nil {
-		t.Fatal("Dev plan should have limits")
+		t.Fatal("Go plan should have limits")
 	}
 	if entry.Limits.Agents == nil || *entry.Limits.Agents != 10 {
-		t.Error("Dev agents should be 10")
+		t.Error("Go agents should be 10")
 	}
 
-	// The ladder climbs. Asserted as an ORDERING rather than four numbers, so it
-	// keeps holding after a reprice and only fails on a rung that is out of order.
+	// The ladder climbs. Asserted as an ORDERING rather than numbers, so it keeps
+	// holding after a reprice and only fails on a rung that is out of order.
 	prev := int64(-1)
-	for _, slug := range []string{"free", "dev", "max-5x", "max-20x"} {
+	for _, slug := range []string{"free", "go", "pro-3x", "dev-5x", "max-15x", "ultra"} {
 		p := bySlug[slug]
 		if p.Price <= prev {
 			t.Errorf("ladder is not ascending at %q: %d cents follows %d", slug, p.Price, prev)
@@ -69,8 +70,10 @@ func TestPlansLoaded(t *testing.T) {
 	// A year is chosen per rung and stated as a total, and it is a discount on
 	// twelve months. Pinned as the RELATION rather than as numbers, so it keeps
 	// holding after a reprice. That the per-month tag is this year over twelve is
-	// TestAnnualNormalizesToTheAdvertisedPrice, over the whole catalog.
-	for _, slug := range []string{"dev", "max-5x", "max-20x", "team"} {
+	// TestAnnualNormalizesToTheAdvertisedPrice, over the whole catalog. The
+	// personal ladder states no year; the archived rungs keep the years they were
+	// sold at, which their yearly holders renew at.
+	for _, slug := range []string{"team", "team-premium", "dev", "max-5x", "max-20x"} {
 		p := bySlug[slug]
 		if p.AnnualTotal <= 0 || p.AnnualTotal >= 12*p.Price {
 			t.Errorf("plan %q year = %d cents, monthly = %d; a year must be a discount on twelve months", slug, p.AnnualTotal, p.Price)

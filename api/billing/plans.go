@@ -63,9 +63,9 @@ type canonicalPlan struct {
 	// Status is the catalog's word on whether the plan is sold: absent or "active"
 	// is on sale; "draft" (published for review), "private" (staff assign it, and a
 	// card buys it only at a price agreed with that customer) and "archived"
-	// (retired) are listed nowhere and opened by no other path (see plan.Listed). A
-	// deploy that carries such a row creates it unlisted, so its list price charges
-	// no one until the catalog makes it active.
+	// (retired) are listed nowhere and refused by every purchase entrypoint (see
+	// plan.Listed). A deploy that carries such a row creates it unlisted, so no
+	// checkout charges its list price until the catalog makes it active.
 	Status string `json:"status,omitempty"`
 	// TrialPeriodDays is the plan's free-trial length. A card sale of the plan
 	// (POST /v1/billing/subscribe/card) opens in a trial this long for a buyer

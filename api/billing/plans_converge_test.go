@@ -1,10 +1,12 @@
 package billing
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/plan"
+	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/test/ae"
@@ -159,5 +161,40 @@ func TestUnlistedTiersAreSeededUnlistedAndSoldByNothing(t *testing.T) {
 	}
 	if lookupPlan("max-100x") != nil {
 		t.Error("max-100x is answerable, and @hanzo/plans 1.10.0 drops it")
+	}
+
+	// Every purchase entrypoint refuses each of them as a slug that never existed,
+	// and nothing is charged: a card sale, a subscription opened by the one caller
+	// allowed to open a paid plan with no payment, and a move onto it.
+	org := moneyOrg("acme")
+	odb := datastore.New(org.Namespaced(c))
+	m := squareMock("cust_ul", "ccof_ul", "sqpay_ul")
+	withFakeSquare(t, m)
+	onGo := subscription.New(odb)
+	onGo.UserId, onGo.Status, onGo.ProviderType, onGo.Plan.Slug, onGo.PlanId = "acme/held", subscription.Active, "square", "go", "go"
+	if err := onGo.Create(); err != nil {
+		t.Fatalf("seed a go subscription: %v", err)
+	}
+	for slug := range unlisted {
+		if r := invokeSubscribeCard(org, c, `{"sourceId":"cnon:ok","planId":"`+slug+`"}`, nil); r.StatusCode != http.StatusNotFound {
+			t.Errorf("card sale of %s: %d %s, want 404", slug, r.StatusCode, bodyOf(r))
+		}
+		if r := invokeSub(org, c, c1MintPrincipal, CreateBillingSubscription, `{"userId":"acme/self","planId":"`+slug+`"}`); r.StatusCode != http.StatusNotFound {
+			t.Errorf("opening %s as the platform: %d %s, want 404", slug, r.StatusCode, bodyOf(r))
+		}
+		if r := invokeSubPatch(org, c, c1MintPrincipal, onGo.Id(), `{"planId":"`+slug+`"}`); r.StatusCode != http.StatusNotFound {
+			t.Errorf("a move onto %s as the platform: %d %s, want 404", slug, r.StatusCode, bodyOf(r))
+		}
+	}
+	if m.chargeCalls != 0 || m.addCardNonce != "" {
+		t.Errorf("refused sales charged %d time(s) and vaulted %q", m.chargeCalls, m.addCardNonce)
+	}
+	for _, who := range []string{"acme", "acme/self"} {
+		if n, _ := subscription.Query(odb).Filter("UserId=", who).Count(); n != 0 {
+			t.Errorf("refused sales opened %d subscription(s) for %s", n, who)
+		}
+	}
+	if got := reload(t, odb, onGo.Id()); got.Plan.Slug != "go" {
+		t.Errorf("a refused move left the subscription on %q, want go", got.Plan.Slug)
 	}
 }

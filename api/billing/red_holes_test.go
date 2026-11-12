@@ -92,7 +92,7 @@ func TestF2_DBPriceZero_StillGatedByEmbedPaidTier(t *testing.T) {
 	adb := plan.AuthorityDB(ctx)
 	p := plan.New(adb)
 	if ok, _ := p.Query().Filter("Slug=", "pro-3x").Get(); !ok {
-		t.Fatal("max-5x not seeded")
+		t.Fatal("pro-3x not seeded")
 	}
 	p.Price = 0
 	if err := p.Update(); err != nil {
@@ -106,7 +106,7 @@ func TestF2_DBPriceZero_StillGatedByEmbedPaidTier(t *testing.T) {
 		t.Fatalf("resolve: %v", err)
 	}
 	if rp.Price != 0 {
-		t.Fatalf("DB edit did not land: resolve(max-5x).Price = %d, want 0", rp.Price)
+		t.Fatalf("DB edit did not land: resolve(pro-3x).Price = %d, want 0", rp.Price)
 	}
 
 	// Yet the C1-a gate STILL refuses a non-mint org owner — it reads the embed
