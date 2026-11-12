@@ -768,7 +768,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// the existing row instead of stacking a duplicate); a paymentMethodId names
 	// a card the subject already saved, charged directly with nothing re-entered.
 	reg := processorsForOrg(org)
-	cp, ok := squareCustomerProcessorFrom(reg)
+	cp, ok := cardVaultFrom(reg)
 	if !ok {
 		abandon()
 		return nil, saleRefusal{saleUnchargeable, "no card-on-file payment processor available for this organization"}
@@ -788,7 +788,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			abandon()
 			return nil, errNoMethod
 		}
-		if strings.TrimSpace(pm.ProviderRef) == "" || squareCustomerIDOf(pm) == "" {
+		if strings.TrimSpace(pm.ProviderRef) == "" || customerIDOf(pm) == "" {
 			abandon()
 			return nil, errMethodUnchargeable
 		}
@@ -805,7 +805,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// already had on file (saved earlier, or the dedupe match) is theirs and stays.
 	unvault := func() {
 		if fresh {
-			_ = cp.RemovePaymentMethod(ctx, squareCustomerIDOf(pm), pm.ProviderRef)
+			_ = cp.RemovePaymentMethod(ctx, customerIDOf(pm), pm.ProviderRef)
 			_ = pm.Delete()
 		}
 	}
@@ -885,10 +885,10 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 				abandon()
 				return nil, err
 			}
-			// Square-backed like a paid sale, so it is the subject's subscription
+			// Card-backed like a paid sale, so it is the subject's subscription
 			// (billingSubscription) while it trials, and priced under the promo and
 			// the coupon it was bought with when the trial ends.
-			sub.ProviderType = string(processor.Square)
+			sub.ProviderType = string(providerOf(pm))
 			sub.DiscountPercent, sub.DiscountName = promoPercent, promoName
 			sub.CustomerCents = customer
 			engine.Grant(sub, cpn, couponPlans, sub.PeriodStart)
@@ -951,7 +951,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	if bal > 0 {
 		desc = fmt.Sprintf("Subscription %s — first period and starting usage balance", p.Name)
 	}
-	res, err := chargeSavedCard(ctx, reg, pm.ProviderRef, squareCustomerIDOf(pm), chargeCents+bal, cur, squareKey, desc)
+	res, err := chargeSavedCard(ctx, reg, pm, chargeCents+bal, cur, squareKey, desc)
 	if err != nil || res == nil || !res.Success {
 		hold.Release()
 		unvault()
@@ -974,6 +974,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// finished by the same order sent again (draftOf), and a refund or a dispute
 	// that arrives meanwhile is netted against the credit rather than lost.
 	d := &draft{
+		Via:     string(providerOf(pm)),
 		Payment: res.ProcessorRef,
 		Sale: Sale{
 			PlanID:          planID,
@@ -1168,6 +1169,7 @@ func price(db *datastore.Datastore, org *organization.Organization, in Subscribe
 // sale that stopped part-way finishes that sale from here rather than charging
 // again or refusing the plan just paid for.
 type draft struct {
+	Via         string   `json:"via,omitempty"` // the processor that took the payment; Square when absent
 	Payment     string   `json:"payment"`
 	Sale        Sale     `json:"sale"`
 	List        int64    `json:"list"`
@@ -1197,7 +1199,7 @@ func enter(org *organization.Organization, in SubscribeIn, rec *idempotencykey.I
 	if rec != nil {
 		order = idempotencykey.DeterministicID(rec.Scope, rec.IdemKey)
 	}
-	if err := paymentorg.Open(d.Payment, org.Name, in.Subject, order, string(processor.Square), d.Sale.BalanceCents, org.TestMode()); err != nil {
+	if err := paymentorg.Open(d.Payment, org.Name, in.Subject, order, cmp.Or(d.Via, string(processor.Square)), d.Sale.BalanceCents, org.TestMode()); err != nil {
 		return err
 	}
 	if rec == nil {
@@ -1281,7 +1283,7 @@ func sell(ctx context.Context, db *datastore.Datastore, org *organization.Organi
 	// the coupon are stamped BEFORE the invoice is built — buildPeriodInvoice
 	// prices both off the subscription, so setting them after would invoice the
 	// first period at full price against a discounted charge.
-	sub.ProviderType = string(processor.Square)
+	sub.ProviderType = cmp.Or(d.Via, string(processor.Square))
 	sub.DiscountPercent, sub.DiscountName = d.Promo, d.PromoName
 	sub.CustomerCents = d.Customer
 	engine.Grant(sub, cpn, d.CouponPlans, sub.PeriodStart)
@@ -1798,27 +1800,39 @@ func SubscribeWithCard(c *zip.Ctx) error {
 	return c.JSON(201, out.Sale)
 }
 
-// chargeSavedCard charges an already-vaulted card-on-file (cardID owned by the
-// Square customerID) for amountCents via the org's processor registry. It is the
-// ONE saved-card charge path — shared by SubscribeWithCard's first charge and the
-// renewal ProviderCharger. reg MUST be a per-org registry (processorsForOrg(org))
-// whose org has hydrated Square credentials.
-func chargeSavedCard(ctx context.Context, reg *processor.Registry, cardID, customerID string, amountCents int64, cur currency.Type, idempotencyKey, desc string) (*processor.PaymentResult, error) {
+// errNoProcessorFor is a saved card whose processor this org cannot reach.
+var errNoProcessorFor = errors.New("no payment processor for saved-card charge")
+
+// chargeSavedCard charges a card already on file, on the processor that vaulted
+// it, for amountCents. It is the ONE saved-card charge path — shared by
+// SubscribeWithCard's first charge, the renewal ProviderCharger, the saved-card
+// top-up and the auto-reload. reg MUST be a per-org registry (processorsForOrg).
+//
+// The processor is the CARD'S, never chosen by currency or policy: a card id
+// belongs to the processor that minted it, and the deployment's charge policy
+// governs where NEW cards are saved, not whether a customer's card on file keeps
+// being charged. So a subscription bought with a Square card renews on Square
+// until its owner saves a card with a processor the policy allows.
+//
+// The charge is off-session: the buyer is not present for a renewal or a reload.
+func chargeSavedCard(ctx context.Context, reg *processor.Registry, pm *paymentmethod.PaymentMethod, amountCents int64, cur currency.Type, idempotencyKey, desc string) (*processor.PaymentResult, error) {
 	req := processor.PaymentRequest{
-		Token:          cardID,     // Square card-on-file id as the SourceID
-		CustomerID:     customerID, // the Square customer that owns the card (required for card-on-file)
-		Amount:         currency.Cents(amountCents),
-		Currency:       cur,
-		IdempotencyKey: idempotencyKey, // Square de-dups the money move on this key
+		Token:      strings.TrimSpace(pm.ProviderRef), // the card-on-file token
+		CustomerID: customerIDOf(pm),                  // the customer that owns it
+		Amount:     currency.Cents(amountCents),
+		Currency:   cur,
+		// The processor de-dups the money move on this key, and saves the first answer
+		// under it — a decline included, replayed to any later request under the same
+		// key. The card is part of the key so a buyer who is declined and tries
+		// another card is not told the first one failed again.
+		IdempotencyKey: idempotencyKey + ":" + pm.Id(),
 		Description:    desc,
-		// The card on file is Square's (square_cardonfile.go vaults it), so only
-		// Square can charge it: named, never chosen by currency, which would hand a
-		// Square card id to Stripe wherever Square does not take the currency.
-		Options: map[string]interface{}{"processor": processor.Square},
+		Metadata:       map[string]interface{}{"hanzo_subject": pm.CustomerId},
+		Options:        map[string]interface{}{"offSession": true},
 	}
-	proc, err := reg.SelectProcessor(ctx, req)
+	proc, err := reg.Existing(ctx, providerOf(pm))
 	if err != nil {
-		return nil, fmt.Errorf("no payment processor for saved-card charge: %w", err)
+		return nil, fmt.Errorf("%w: %s: %v", errNoProcessorFor, providerOf(pm), err)
 	}
 	return proc.Charge(ctx, req)
 }
@@ -1867,7 +1881,7 @@ func chargeProviderForOrg(org *organization.Organization) engine.ProviderCharger
 			":period:" + strconv.FormatInt(inv.PeriodStart.Unix(), 10) +
 			":attempt:" + strconv.Itoa(inv.AttemptCount)
 		reg := processorsForOrg(org)
-		res, err := chargeSavedCard(ctx, reg, cardID, squareCustomerIDOf(pm), amountCents, cur, squareKey,
+		res, err := chargeSavedCard(ctx, reg, pm, amountCents, cur, squareKey,
 			fmt.Sprintf("Subscription renewal invoice %s", inv.NumberStr))
 		if err != nil || res == nil || !res.Success {
 			return "", fmt.Errorf("%s", parseCardDeclineReason(res, err))
@@ -1877,19 +1891,6 @@ func chargeProviderForOrg(org *organization.Organization) engine.ProviderCharger
 		}
 		return res.ProcessorRef, nil
 	}
-}
-
-// squareCustomerIDOf reads the Square customer id stored on a vaulted payment
-// method (the CreatePaymentMethod / subscribe-card convention:
-// Metadata["squareCustomerId"]). A card-on-file is only chargeable in its Square
-// customer's context, so this is required to charge a saved card.
-func squareCustomerIDOf(pm *paymentmethod.PaymentMethod) string {
-	if pm.Metadata != nil {
-		if v, ok := pm.Metadata["squareCustomerId"].(string); ok {
-			return strings.TrimSpace(v)
-		}
-	}
-	return ""
 }
 
 // holdSale takes subject's sale lease: one sale, completion or staff record for a

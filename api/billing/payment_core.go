@@ -183,7 +183,12 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 	if idemKey == "" {
 		idemKey = windowKey("amount:" + fmt.Sprint(in.AmountCents) + ":cur:" + string(cur))
 	}
-	squareKey := gatewayKey("topup", in.Subject, idemKey)
+	// The gateway key names the attempt's source too. A processor saves the
+	// first answer under a key — a decline, a 3-D Secure step — and replays it to
+	// any later request under the same key; a buyer who retries with another card
+	// for the same amount would be told the first card was declined again. The
+	// guard above is what keeps one ATTEMPT from charging twice.
+	squareKey := gatewayKey("topup", in.Subject, idemKey+":"+tokenTag(in.SourceID))
 
 	rec, replay, gerr := idemBegin(db, "billing-topup:"+in.Subject, idemKey)
 	if gerr != nil {
@@ -219,6 +224,8 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		Currency:       cur,
 		IdempotencyKey: squareKey,
 		Description:    fmt.Sprintf("Top-up %d %s for org %s", in.AmountCents, cur, in.Subject),
+		// An intent the buyer authenticated is bound to the account it was made for.
+		Metadata: map[string]interface{}{"hanzo_subject": in.Subject},
 	}
 
 	// The per-org processor registry. The global registry holds the webhook
@@ -242,17 +249,30 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		return nil, fault(422, "no payment processor available", err)
 	}
 
-	// Stripe cannot fund a prepaid balance yet: its refunds and disputes reach
-	// this service only through a webhook receiver that verifies Stripe's
-	// signature and maps charge.refunded / charge.dispute.* onto a clawback, and
-	// neither exists. Credit taken through Stripe could be charged back and kept.
-	if proc.Type() == processor.Stripe {
-		abandon()
-		return nil, fault(422, "card payments in this currency are not available for balance top-ups yet", nil)
+	// A PaymentIntent the buyer authenticated is a bearer token for ITS payment:
+	// credited once, whatever key the request carries. The guard is permanent for
+	// a payment that settles and released when it does not.
+	releaseIntent := func() {}
+	if strings.HasPrefix(in.SourceID, "pi_") {
+		ig, replayed, ierr := idemBegin(db, "billing-intent", in.SourceID)
+		switch {
+		case ierr != nil:
+			abandon()
+			return nil, fault(503, "billing is temporarily unavailable; please retry", ierr)
+		case replayed:
+			abandon()
+			return nil, fault(409, "this payment was already applied", nil)
+		}
+		releaseIntent = func() {
+			if ig != nil {
+				_ = ig.Delete()
+			}
+		}
 	}
 
 	result, err := proc.Charge(ctx, chargeReq)
 	if err != nil || (result != nil && !result.Success) {
+		releaseIntent()
 		abandon()
 		log.Error("Charge failed for token topup (org=%s): %v", in.Subject, err)
 		declineMsg := parseCardDeclineReason(result, err)

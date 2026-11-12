@@ -9,15 +9,16 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/paymentmethod"
+	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/util/nscontext"
 )
 
-// squareCustomerProcessor is the subset of processor.CustomerProcessor needed to
-// vault a card on file: create/reuse a customer and attach/detach a card. The
-// real *square.SquareProcessor satisfies this; the narrow interface keeps the
-// billing handlers decoupled from the Square SDK and easy to unit test.
-type squareCustomerProcessor interface {
+// cardVault is the subset of processor.CustomerProcessor needed to vault a card
+// on file: create/reuse a customer and attach/detach a card. Stripe and Square
+// satisfy it; the narrow interface keeps the billing handlers decoupled from
+// either SDK.
+type cardVault interface {
 	processor.PaymentProcessor
 
 	// CreateCustomer creates a customer profile and returns its id.
@@ -52,48 +53,73 @@ type finder interface {
 	FindCustomer(ctx context.Context, reference string) (string, error)
 }
 
-// squareCardOnFile holds the durable identifiers for a vaulted Square card.
-// A charge against the saved card needs BOTH: SourceID = CardID and the Square
-// CustomerID (a card-on-file id is only chargeable in its customer's context).
-type squareCardOnFile struct {
-	CustomerID string         // Square customer id (one per org)
-	CardID     string         // Square card-on-file id (reusable)
+// cardOnFile holds the durable identifiers for a vaulted card. A charge against
+// the saved card needs BOTH: the token is the card id and the customer owns it.
+type cardOnFile struct {
+	CustomerID string         // the processor's customer id (one per subject)
+	CardID     string         // the processor's reusable card token
 	Card       processor.Card // card facts when the processor reports them (may be zero)
 }
 
-// squareCustomerProcessorFrom returns the Square processor from a per-org
-// registry as a squareCustomerProcessor, or (nil, false) when Square is not
-// configured for the org or doesn't support customer/card-on-file management.
-func squareCustomerProcessorFrom(reg *processor.Registry) (squareCustomerProcessor, bool) {
-	p, err := reg.Get(processor.Square)
+// cardVaultFrom returns the processor that vaults a NEW card for this org: the
+// one the deployment's charge policy has take a card (the selection rule, Fiat),
+// when it can hold cards on file. Stripe under the default policy.
+func cardVaultFrom(reg *processor.Registry) (cardVault, bool) {
+	p, err := reg.Fiat(context.Background(), processor.Need{Currency: currency.USD})
 	if err != nil {
 		return nil, false
 	}
-	cp, ok := p.(squareCustomerProcessor)
+	cp, ok := p.(cardVault)
 	if !ok || !cp.IsAvailable(context.Background()) {
 		return nil, false
 	}
 	return cp, true
 }
 
-// existingSquareCustomerID returns the Square customer id already associated
-// with this org's saved cards (one Square customer per org), or "" if none.
-func existingSquareCustomerID(db *datastore.Datastore, customerID string) string {
+// cardVaultOf returns the processor a card ALREADY on file was vaulted with — a
+// card saved before the deployment's policy changed stays with its processor,
+// charged and detached there, regardless of the policy.
+func cardVaultOf(ctx context.Context, reg *processor.Registry, pm *paymentmethod.PaymentMethod) (cardVault, bool) {
+	p, err := reg.Existing(ctx, providerOf(pm))
+	if err != nil {
+		return nil, false
+	}
+	cp, ok := p.(cardVault)
+	return cp, ok
+}
+
+// providerOf is the processor a payment method was saved with. Rows saved before
+// processors were recorded are Square's.
+func providerOf(pm *paymentmethod.PaymentMethod) processor.ProcessorType {
+	if t := strings.ToLower(strings.TrimSpace(pm.ProviderType)); t != "" {
+		return processor.ProcessorType(t)
+	}
+	return processor.Square
+}
+
+// existingCustomerID returns the customer id already associated with this
+// subject's cards saved with processor via (one customer per subject), or "".
+func existingCustomerID(db *datastore.Datastore, subject string, via processor.ProcessorType) string {
 	rootKey := db.NewKey("synckey", "", 1, nil)
-	iter := paymentmethod.Query(db).Ancestor(rootKey).Filter("CustomerId=", customerID).Run()
+	iter := paymentmethod.Query(db).Ancestor(rootKey).Filter("CustomerId=", subject).Run()
 	for {
 		pm := paymentmethod.New(db)
 		if _, err := iter.Next(pm); err != nil {
 			break
 		}
-		if pm.Metadata == nil {
+		if providerOf(pm) != via {
 			continue
 		}
-		if v, ok := pm.Metadata["squareCustomerId"].(string); ok && v != "" {
-			return v
+		if id := customerIDOf(pm); id != "" {
+			return id
 		}
 	}
 	return ""
+}
+
+// customerIDOf is the processor customer that owns a vaulted card.
+func customerIDOf(pm *paymentmethod.PaymentMethod) string {
+	return firstNonEmpty(metaStr(pm, "customerId"), metaStr(pm, "squareCustomerId"))
 }
 
 // customerLocks serializes finding or making a subject's Square customer per
@@ -107,7 +133,7 @@ func customerLock(db *datastore.Datastore, subject string) *sync.Mutex {
 	return m.(*sync.Mutex)
 }
 
-// squareCustomer returns the one Square customer of a billing subject, found or
+// vaultCustomer returns the one customer of a billing subject, found or
 // made once: the customer a saved card already names, else the customer Square
 // holds under the subject's reference, else a new one made under it. The
 // reference is the subject qualified by its namespace, as the saved cards and
@@ -118,12 +144,12 @@ func customerLock(db *datastore.Datastore, subject string) *sync.Mutex {
 // request, answers that retry with the customer already made. Later retries find
 // it by reference. A failed search is logged and the keyed create still runs, so
 // a search outage never blocks a checkout.
-func squareCustomer(ctx context.Context, db *datastore.Datastore, cp squareCustomerProcessor, subject, email string) (string, error) {
+func vaultCustomer(ctx context.Context, db *datastore.Datastore, cp cardVault, subject, email string) (string, error) {
 	mu := customerLock(db, subject)
 	mu.Lock()
 	defer mu.Unlock()
 
-	if id := existingSquareCustomerID(db, subject); id != "" {
+	if id := existingCustomerID(db, subject, cp.Type()); id != "" {
 		return id, nil
 	}
 	ref := nscontext.GetNamespace(db.Context) + "/" + subject
@@ -143,28 +169,28 @@ func squareCustomer(ctx context.Context, db *datastore.Datastore, cp squareCusto
 	return id, nil
 }
 
-// attachSquareCardOnFile converts a single-use Square Web Payments nonce into a
+// attachCardOnFile converts a single-use Square Web Payments nonce into a
 // reusable card-on-file under customerID, the subject's one Square customer.
 //
 // Creating the card on file also validates the card with Square, so this both
 // verifies AND saves in a single nonce use. A separate $1 pre-auth would consume
 // the single-use nonce and make the subsequent attach fail — that's why the
 // card-on-file path replaces verifyCardWithPreAuth rather than running after it.
-func attachSquareCardOnFile(ctx context.Context, cp squareCustomerProcessor, customerID, nonce string) (squareCardOnFile, error) {
+func attachCardOnFile(ctx context.Context, cp cardVault, customerID, nonce string) (cardOnFile, error) {
 	// Prefer the vault face that reports the card's facts; fall back to the
 	// id-only attach for processors (and fakes) that don't have it.
 	if v, ok := cp.(vaulter); ok {
 		card, err := v.Vault(ctx, customerID, nonce)
 		if err != nil {
-			return squareCardOnFile{}, err
+			return cardOnFile{}, err
 		}
-		return squareCardOnFile{CustomerID: customerID, CardID: card.ID, Card: card}, nil
+		return cardOnFile{CustomerID: customerID, CardID: card.ID, Card: card}, nil
 	}
 	cardID, err := cp.AddPaymentMethod(ctx, customerID, nonce)
 	if err != nil {
-		return squareCardOnFile{}, err
+		return cardOnFile{}, err
 	}
-	return squareCardOnFile{CustomerID: customerID, CardID: cardID}, nil
+	return cardOnFile{CustomerID: customerID, CardID: cardID}, nil
 }
 
 // saveCard is the ONE constructor for a vaulted-card payment method: it vaults
@@ -181,12 +207,12 @@ func attachSquareCardOnFile(ctx context.Context, cp squareCustomerProcessor, cus
 // created reports whether a NEW row was persisted; a decline after saveCard
 // must only remove the Square card when created is true, or a retried checkout
 // would destroy the customer's existing saved card.
-func saveCard(ctx context.Context, db *datastore.Datastore, cp squareCustomerProcessor, subject, email, nonce string) (pm *paymentmethod.PaymentMethod, created bool, err error) {
-	customerID, err := squareCustomer(ctx, db, cp, subject, email)
+func saveCard(ctx context.Context, db *datastore.Datastore, cp cardVault, subject, email, nonce string) (pm *paymentmethod.PaymentMethod, created bool, err error) {
+	customerID, err := vaultCustomer(ctx, db, cp, subject, email)
 	if err != nil {
 		return nil, false, err
 	}
-	cof, err := attachSquareCardOnFile(ctx, cp, customerID, nonce)
+	cof, err := attachCardOnFile(ctx, cp, customerID, nonce)
 	if err != nil {
 		return nil, false, err
 	}
@@ -207,11 +233,11 @@ func saveCard(ctx context.Context, db *datastore.Datastore, cp squareCustomerPro
 	pm.UserId = subject
 	pm.Type = "card"
 	pm.ProviderRef = cof.CardID
-	pm.ProviderType = string(processor.Square)
+	pm.ProviderType = string(cp.Type())
 	pm.Metadata = map[string]interface{}{
-		"squareCustomerId": cof.CustomerID,
-		"squareCardId":     cof.CardID,
-		"squareVerified":   true,
+		"customerId": cof.CustomerID,
+		"cardId":     cof.CardID,
+		"verified":   true,
 	}
 	stampCard(pm, cof.Card)
 
@@ -297,28 +323,33 @@ func heal(ctx context.Context, reg *processor.Registry, methods []*paymentmethod
 	var needy []*paymentmethod.PaymentMethod
 	for _, pm := range methods {
 		if strings.EqualFold(strings.TrimSpace(pm.Type), "card") && pm.Card == nil &&
-			pm.ProviderRef != "" && metaStr(pm, "squareCustomerId") != "" {
+			pm.ProviderRef != "" && customerIDOf(pm) != "" {
 			needy = append(needy, pm)
 		}
 	}
 	if len(needy) == 0 {
 		return
 	}
-	p, err := reg.Get(processor.Square)
-	if err != nil {
-		return
+	// One list per processor customer (one per subject in practice).
+	type owner struct {
+		via      processor.ProcessorType
+		customer string
 	}
-	ls, ok := p.(lister)
-	if !ok {
-		return
-	}
-	// One list per Square customer (one per org in practice).
-	byCustomer := map[string][]*paymentmethod.PaymentMethod{}
+	byCustomer := map[owner][]*paymentmethod.PaymentMethod{}
 	for _, pm := range needy {
-		id := metaStr(pm, "squareCustomerId")
-		byCustomer[id] = append(byCustomer[id], pm)
+		o := owner{providerOf(pm), customerIDOf(pm)}
+		byCustomer[o] = append(byCustomer[o], pm)
 	}
-	for customerID, rows := range byCustomer {
+	for o, rows := range byCustomer {
+		customerID := o.customer
+		p, err := reg.Existing(ctx, o.via)
+		if err != nil {
+			continue
+		}
+		ls, ok := p.(lister)
+		if !ok {
+			continue
+		}
 		cards, err := ls.Cards(ctx, customerID)
 		if err != nil {
 			log.Warn("heal: list cards for %s failed: %v", customerID, err)

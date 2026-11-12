@@ -586,17 +586,17 @@ func createStripeCheckout(c *zip.Ctx, org *organization.Organization, items []ch
 		params.Set(prefix+"[quantity]", fmt.Sprintf("%d", it.Quantity))
 	}
 
-	// Apply coupon as a discount if present
+	// The coupon's discount is applied BY STRIPE, as a one-time coupon of exactly
+	// the amount the buyer was quoted: Checkout cannot take a flat inline discount,
+	// but it takes a coupon, and the buyer pays what the response says they owe.
 	if discountCents > 0 && cpn != nil {
-		// Create an inline coupon via discounts parameter
-		params.Set("discounts[0][coupon]", "")
-		// Use a promotion code or just adjust — Stripe Checkout doesn't support inline flat discounts
-		// directly, so we add a negative line item or use automatic_tax. For simplicity, adjust via
-		// a coupon created on-the-fly is complex. Instead, we adjust the unit amounts proportionally
-		// or note the discount in metadata.
+		couponID, err := createStripeCoupon(c.Context(), sk, discountCents, currency, cpn.Code())
+		if err != nil {
+			return checkoutSessionResponse{}, fmt.Errorf("stripe coupon: %w", err)
+		}
+		params.Set("discounts[0][coupon]", couponID)
 		params.Set("metadata[coupon_code]", cpn.Code())
 		params.Set("metadata[discount_cents]", fmt.Sprintf("%d", discountCents))
-		params.Del("discounts[0][coupon]")
 	}
 
 	params.Set("metadata[org]", org.Name)
@@ -608,7 +608,7 @@ func createStripeCheckout(c *zip.Ctx, org *organization.Organization, items []ch
 	}
 
 	stripeReq, err := nethttp.NewRequestWithContext(c.Context(), nethttp.MethodPost,
-		"https://api.stripe.com/v1/checkout/sessions",
+		stripeAPI+"/v1/checkout/sessions",
 		strings.NewReader(params.Encode()))
 	if err != nil {
 		return checkoutSessionResponse{}, fmt.Errorf("stripe request: %w", err)
@@ -644,6 +644,45 @@ func createStripeCheckout(c *zip.Ctx, org *organization.Organization, items []ch
 		SessionID:   stripeResp.ID,
 	}, nil
 }
+
+// createStripeCoupon makes a one-time coupon of amountOff minor units, which a
+// Checkout Session applies once.
+func createStripeCoupon(ctx context.Context, sk string, amountOff int64, currency, code string) (string, error) {
+	params := url.Values{}
+	params.Set("amount_off", fmt.Sprintf("%d", amountOff))
+	params.Set("currency", strings.ToLower(currency))
+	params.Set("duration", "once")
+	params.Set("max_redemptions", "1")
+	params.Set("name", strings.ToUpper(code))
+	r, err := nethttp.NewRequestWithContext(ctx, nethttp.MethodPost, stripeAPI+"/v1/coupons", strings.NewReader(params.Encode()))
+	if err != nil {
+		return "", err
+	}
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.SetBasicAuth(sk, "")
+	resp, err := nethttp.DefaultClient.Do(r)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	var out struct {
+		ID    string `json:"id"`
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(body, &out); err != nil || resp.StatusCode >= 400 || out.ID == "" {
+		return "", fmt.Errorf("stripe error %d: %s", resp.StatusCode, out.Error.Message)
+	}
+	return out.ID, nil
+}
+
+// stripeAPI is Stripe's API origin.
+const stripeAPI = "https://api.stripe.com"
 
 // createSquareCheckout creates a Square Payment Link using the org's Square credentials.
 func createSquareCheckout(c *zip.Ctx, org *organization.Organization, items []checkoutLineItem, subtotalCents, discountCents, finalCents int64, cpn *coupon.Coupon, currency string, req checkoutSessionRequest) (checkoutSessionResponse, error) {

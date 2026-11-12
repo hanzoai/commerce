@@ -43,7 +43,7 @@ import (
 // withFakeSquare points the saved-card processor seam (processorsForOrg) at a
 // registry holding m for the duration of the test — Square with real behavior,
 // no network. DefaultConfig prefers Square (and disables Stripe), so SelectProcessor
-// picks m for a USD card charge and squareCustomerProcessorFrom(reg) resolves it.
+// picks m for a USD card charge and cardVaultFrom(reg) resolves it.
 func withFakeSquare(t *testing.T, m *mockSquareProcessor) {
 	t.Helper()
 	old := processorsForOrg
@@ -184,8 +184,8 @@ func TestSubscribeWithCard_VaultChargeCreateInvoice(t *testing.T) {
 	if pms[0].ProviderRef != "ccof_1" {
 		t.Fatalf("pm.ProviderRef=%q, want ccof_1 (card-on-file id, not the nonce)", pms[0].ProviderRef)
 	}
-	if squareCustomerIDOf(pms[0]) != "cust_1" {
-		t.Fatalf("pm squareCustomerId=%q, want cust_1", squareCustomerIDOf(pms[0]))
+	if customerIDOf(pms[0]) != "cust_1" {
+		t.Fatalf("pm squareCustomerId=%q, want cust_1", customerIDOf(pms[0]))
 	}
 	if !pms[0].IsDefault {
 		t.Fatal("vaulted card should be the default payment method")

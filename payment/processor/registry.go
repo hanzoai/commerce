@@ -34,31 +34,28 @@ type RegistryConfig struct {
 	// "Stripe wherever Square does not work": see Fiat.
 	ProcessorPriority []ProcessorType
 
-	// DisabledProcessors is the deny policy: a processor in this set is NEVER
-	// returned by SelectProcessor, Fiat or Get, from any branch. It is an
-	// operator's switch (COMMERCE_DISABLED_PROCESSORS) and denies nothing by
-	// default.
+	// DisabledProcessors is the deny set: a processor in it is NEVER returned by
+	// SelectProcessor, Fiat or Get, from any branch. DefaultConfig fills it from
+	// the deployment's charge policy (ChargeProcessors): every type it does not
+	// name.
 	DisabledProcessors map[ProcessorType]bool
 }
 
 // DefaultConfig returns the default registry configuration.
 //
-// Fiat: Square first, Stripe second, then the rest. Square takes every payment
-// it can; Stripe takes the ones Square cannot (a currency or country Square does
-// not serve, a method Square does not take, or an org with no Square account),
-// and any payment the caller names Stripe for. Fiat is that rule.
+// Fiat: Square first, Stripe second, then the rest, and Fiat takes the first
+// that can serve the payment. WHICH processors may take a NEW charge at all is
+// the deployment's policy (ChargeProcessors): Stripe only, unless the
+// deployment says otherwise.
 //
 // Crypto: DefaultCryptoProcessor (MPC) plus the crypto fallback order in
 // SelectProcessor.
-//
-// Per-env overrides: COMMERCE_DISABLED_PROCESSORS, a comma-separated list of
-// processor types to deny, and COMMERCE_DEFAULT_CRYPTO_PROCESSOR.
 func DefaultConfig() *RegistryConfig {
 	return &RegistryConfig{
 		DefaultCryptoProcessor: envProcessor("COMMERCE_DEFAULT_CRYPTO_PROCESSOR", MPC),
 		ProcessorPriority: []ProcessorType{
-			Square, // fiat default — takes every payment it can
-			Stripe, // takes what Square cannot (Fiat)
+			Square, // takes every payment it can, where a deployment allows it
+			Stripe, // takes what Square cannot, or everything when it is alone
 			Adyen,
 			PayPal,
 			Braintree,
@@ -79,21 +76,59 @@ func DefaultConfig() *RegistryConfig {
 	}
 }
 
-// disabledProcessors returns the deny set that gates processor selection:
-// COMMERCE_DISABLED_PROCESSORS, comma-separated processor types. Unset or empty
-// denies nothing.
+// ChargeProcessors is the deployment's policy for NEW charges, by name:
+// COMMERCE_CHARGE_PROCESSORS, a comma-separated list of processor types, or "*"
+// for every one. Unset or empty is "stripe": Stripe is the only processor that
+// takes a new payment. Another processor comes back by naming it here, not by
+// restoring code.
+//
+// It governs NEW charges and offers only. A customer's card already on file with
+// a processor keeps being charged by that processor (Registry.Existing), so a
+// subscription renews on the card it was bought with until its owner saves one
+// with a processor the policy allows.
+const ChargeProcessors = "COMMERCE_CHARGE_PROCESSORS"
+
+// every processor type that can be named by the policy.
+var allTypes = []ProcessorType{
+	Stripe, Square, PayPal, Adyen, Braintree, Recurly, LemonSqueezy, BitPay,
+	CoinbaseCommerce, OpenNode, Bitcoin, Ethereum, MPC, Wire, SolanaPay, MoonPay, Kraken,
+}
+
+// chargeAllowed is the set of processor types ChargeProcessors names.
+func chargeAllowed() map[ProcessorType]bool {
+	raw := strings.TrimSpace(os.Getenv(ChargeProcessors))
+	if raw == "" {
+		return map[ProcessorType]bool{Stripe: true}
+	}
+	allowed := map[ProcessorType]bool{}
+	for _, name := range strings.Split(raw, ",") {
+		switch name = strings.ToLower(strings.TrimSpace(name)); name {
+		case "":
+		case "*":
+			for _, t := range allTypes {
+				allowed[t] = true
+			}
+		default:
+			allowed[ProcessorType(name)] = true
+		}
+	}
+	return allowed
+}
+
+// disabledProcessors is every processor type the policy does not allow.
 func disabledProcessors() map[ProcessorType]bool {
+	allowed := chargeAllowed()
 	disabled := make(map[ProcessorType]bool)
-	for _, name := range strings.Split(os.Getenv("COMMERCE_DISABLED_PROCESSORS"), ",") {
-		if name = strings.ToLower(strings.TrimSpace(name)); name != "" {
-			disabled[ProcessorType(name)] = true
+	for _, t := range allTypes {
+		if !allowed[t] {
+			disabled[t] = true
 		}
 	}
 	return disabled
 }
 
-// DisabledByPolicy reports whether processor t is denied by the deployment's
-// disabled-processor policy (COMMERCE_DISABLED_PROCESSORS).
+// DisabledByPolicy reports whether the deployment's charge policy
+// (ChargeProcessors) keeps processor t from taking a NEW charge.
 //
 // It is the SINGLE source of truth for "is this processor off for new charges,"
 // shared by the registry (via DisabledProcessors) AND by surfaces that list
@@ -160,6 +195,21 @@ func (r *Registry) Get(t ProcessorType) (PaymentProcessor, error) {
 	p, ok := r.processors[t]
 	if !ok {
 		return nil, fmt.Errorf("processor %s not registered", t)
+	}
+	return p, nil
+}
+
+// Existing returns the configured processor t for a customer already on it —
+// a card on file with t, a payment t took — IGNORING the new-charge policy: the
+// policy decides where NEW money goes, not whether a subscription renews on the
+// card it was bought with.
+func (r *Registry) Existing(ctx context.Context, t ProcessorType) (PaymentProcessor, error) {
+	p, err := r.Registered(t)
+	if err != nil {
+		return nil, err
+	}
+	if !p.IsAvailable(ctx) {
+		return nil, fmt.Errorf("processor %s is not available", t)
 	}
 	return p, nil
 }

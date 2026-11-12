@@ -59,6 +59,13 @@ func squareSignBodyOnly(secret string, body []byte) string {
 // to read/write. Signature-rejection tests short-circuit before touching it;
 // the validated-path test needs it.
 func TestMain(m *testing.M) {
+	// The package's long-standing tests drive Square, PayPal and the rest through
+	// injected processors. The deployment default is Stripe alone, so they run
+	// under the config that brings the others back (COMMERCE_CHARGE_PROCESSORS=*);
+	// the tests of the default say so with t.Setenv.
+	os.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
+	// The global registry read its policy at package init, before this ran.
+	processor.Global().SetConfig(processor.DefaultConfig())
 	// The spend-cap tests validate ENFORCEMENT (a cap denies), so the package runs
 
 	tempDir, err := os.MkdirTemp("", "billing-webhooks-test-*")

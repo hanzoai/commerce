@@ -51,7 +51,7 @@ func TestSaveCard_ADeclineAndARetryMakeOneCustomer(t *testing.T) {
 	if m.createCustomerCalls != 1 {
 		t.Fatalf("CreateCustomer calls=%d after a decline and a retry, want 1", m.createCustomerCalls)
 	}
-	if got := metaStr(pm, "squareCustomerId"); got != "cust_once" {
+	if got := customerIDOf(pm); got != "cust_once" {
 		t.Fatalf("saved card names customer %q, want cust_once", got)
 	}
 }
@@ -120,7 +120,7 @@ func TestSaveCard_AFailedSearchStillMakesTheCustomer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("saveCard: %v", err)
 	}
-	if m.createCustomerCalls != 1 || metaStr(pm, "squareCustomerId") != "cust_s" {
-		t.Fatalf("creates=%d customer=%q, want the customer made once", m.createCustomerCalls, metaStr(pm, "squareCustomerId"))
+	if m.createCustomerCalls != 1 || customerIDOf(pm) != "cust_s" {
+		t.Fatalf("creates=%d customer=%q, want the customer made once", m.createCustomerCalls, customerIDOf(pm))
 	}
 }

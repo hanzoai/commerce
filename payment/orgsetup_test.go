@@ -2,7 +2,6 @@ package payment
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/hanzoai/commerce/models/organization"
@@ -11,14 +10,11 @@ import (
 	"github.com/hanzoai/commerce/payment/providers/square"
 )
 
-// ensureDefaultProcessorPolicy guarantees COMMERCE_DISABLED_PROCESSORS is UNSET
-// so the default (nothing denied) applies. t.Setenv cannot unset.
+// ensureDefaultProcessorPolicy lets every processor take a new charge for the
+// test (COMMERCE_CHARGE_PROCESSORS=*); the deployment default is Stripe alone.
 func ensureDefaultProcessorPolicy(t *testing.T) {
 	t.Helper()
-	if v, ok := os.LookupEnv("COMMERCE_DISABLED_PROCESSORS"); ok {
-		os.Unsetenv("COMMERCE_DISABLED_PROCESSORS")
-		t.Cleanup(func() { _ = os.Setenv("COMMERCE_DISABLED_PROCESSORS", v) })
-	}
+	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
 }
 
 func orgWithSquareCreds() *organization.Organization {

@@ -169,41 +169,19 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 		}
 	}
 
-	squareCustomerID := pm.CustomerId
-	if pm.Metadata != nil {
-		if v, ok := pm.Metadata["squareCustomerId"].(string); ok && v != "" {
-			squareCustomerID = v
-		}
-	}
-
-	chargeReq := processor.PaymentRequest{
-		Token:      pm.ProviderRef,
-		Amount:     currency.Cents(amountCents),
-		Currency:   cur,
-		CustomerID: squareCustomerID,
-		// The gateway de-dups on this key, derived from the SAME stable guard key.
-		// It is the backstop that survives a guard-store outage or two racing
-		// submits, because it is enforced where the money actually moves.
-		IdempotencyKey: gatewayKey("charge", userId, idemKey),
-		Description:    description,
-	}
-
-	// The global registry holds empty singletons (Square is registered
-	// unconfigured at init), so charges must go through the org-scoped registry.
-	//
-	// Via the shared processorsForOrg seam (production: payment.ProcessorsForOrg)
-	// — the SAME one SubscribeWithCard and TopupWithToken use. Reaching for
-	// payment.ProcessorsForOrg directly is what made this primitive untestable:
-	// no test could substitute a processor, so the saved-card top-up AND the
-	// off-session auto-recharge cron both ran with zero coverage.
+	// The org-scoped registry (processorsForOrg, the seam SubscribeWithCard and
+	// TopupWithToken share): the global one holds empty singletons. The charge is
+	// the card's own processor's (chargeSavedCard), whatever the deployment's
+	// policy for NEW cards.
 	reg := processorsForOrg(org)
-	proc, err := reg.SelectProcessor(ctx, chargeReq)
-	if err != nil {
+	// The gateway de-dups on this key, derived from the SAME stable guard key. It
+	// is the backstop that survives a guard-store outage or two racing submits,
+	// because it is enforced where the money actually moves.
+	result, err := chargeSavedCard(ctx, reg, pm, amountCents, cur, gatewayKey("charge", userId, idemKey), description)
+	if err != nil && errors.Is(err, errNoProcessorFor) {
 		abandon()
 		return receipt{}, fmt.Errorf("%w: %v", errNoProcessor, err)
 	}
-
-	result, err := proc.Charge(ctx, chargeReq)
 	if err != nil {
 		abandon()
 		return receipt{}, fmt.Errorf("charge failed: %w", err)
@@ -216,8 +194,9 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 		}
 		return receipt{}, errors.New(msg)
 	}
+	via := providerOf(pm)
 
-	id, balanceCents, err := fund(ctx, ev, org, db, userId, amountCents, cur, proc.Type(), result.ProcessorRef)
+	id, balanceCents, err := fund(ctx, ev, org, db, userId, amountCents, cur, via, result.ProcessorRef)
 	if err != nil {
 		return receipt{}, err
 	}

@@ -319,8 +319,14 @@ func TestSubscribeTrial_EndChargesOnceAndActivates(t *testing.T) {
 		t.Fatalf("charged %d time(s), %d on %s/%s; want once, %d on the vaulted card", m.chargeCalls, m.lastChargeAmount, m.lastChargeToken, m.lastChargeCustomer, want)
 	}
 	key := "collect:sub:" + sale.SubscriptionID + ":period:" + strconv.FormatInt(trialing.TrialEnd.Unix(), 10) + ":attempt:0"
-	if _, ok := m.chargedKeys[key]; !ok || len(m.chargedKeys) != 1 {
-		t.Fatalf("charge keys %v, want exactly %q", m.chargedKeys, key)
+	// The key is the period's and attempt's, then the card's (chargeSavedCard).
+	if len(m.chargedKeys) != 1 {
+		t.Fatalf("charge keys %v, want exactly one", m.chargedKeys)
+	}
+	for k := range m.chargedKeys {
+		if !strings.HasPrefix(k, key+":") {
+			t.Fatalf("charge key %q, want %q then the card", k, key)
+		}
 	}
 
 	sub := reload(t, db, sale.SubscriptionID)

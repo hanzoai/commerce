@@ -185,7 +185,11 @@ func bookedOrg(ctx context.Context, event *processor.WebhookEvent) *organization
 		return nil
 	}
 	if event != nil && event.Data != nil {
-		if sb, _ := event.Data["paypal_sandbox"].(bool); sb {
+		sb, _ := event.Data["paypal_sandbox"].(bool)
+		if st, _ := event.Data["stripe_test"].(bool); st {
+			sb = true
+		}
+		if sb {
 			cp := org.In(organization.Test)
 			return &cp
 		}
@@ -722,6 +726,9 @@ func tryValidateWebhook(ctx context.Context, providerHint string, payload []byte
 	}
 	if evt != nil && evt.Processor == processor.PayPal {
 		normalizePayPalWebhookEvent(evt)
+	}
+	if evt != nil && evt.Processor == processor.Stripe {
+		normalizeStripeWebhookEvent(evt)
 	}
 	return evt, nil
 }

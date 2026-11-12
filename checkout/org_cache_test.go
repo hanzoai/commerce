@@ -20,6 +20,7 @@ func liveOrg(name string) *organization.Organization {
 // The whole point: a LIVE org row reaches the resolver, so the public org
 // advertises production. This is the case the nil loader could not express.
 func TestCachedOrgLoader_LiveOrgReachesResolver(t *testing.T) {
+	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
 	t.Setenv("SQUARE_ENVIRONMENT", "production")
 	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-PROD")
 	t.Setenv("SQUARE_LOCATION_ID", "LOCPROD")
@@ -43,6 +44,7 @@ func TestCachedOrgLoader_LiveOrgReachesResolver(t *testing.T) {
 // An org that is NOT live stays sandbox even with a production deployment env —
 // the org row is the authority, in both directions.
 func TestCachedOrgLoader_NotLiveOrgStaysSandbox(t *testing.T) {
+	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
 	t.Setenv("SQUARE_ENVIRONMENT", "production")
 	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-PROD")
 	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "sandbox-sq0idb-TEST")
@@ -63,6 +65,7 @@ func TestCachedOrgLoader_NotLiveOrgStaysSandbox(t *testing.T) {
 // A FAILED read must degrade to the synthetic org — i.e. sandbox. An outage can
 // never promote a org onto production rails.
 func TestCachedOrgLoader_ReadFailureFailsClosed(t *testing.T) {
+	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
 	t.Setenv("SQUARE_ENVIRONMENT", "production")
 	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-PROD")
 	t.Setenv("SQUARE_LOCATION_ID", "LOCPROD")

@@ -76,8 +76,36 @@ func verifyCardWithPreAuth(ctx context.Context, reg *processor.Registry, nonce, 
 	return nil
 }
 
+// authRequired is the answer for a card whose bank wants the buyer's
+// authentication (3-D Secure): not a decline. It is a JSON object in the
+// refusal's message — the one channel every layer between here and the browser
+// carries — naming the PaymentIntent or card setup that waits and the client
+// secret Stripe.js needs to run the step. The browser runs it, then asks again
+// naming the finished intent ("pi_…") as the source, which is charged without
+// being charged twice (stripe.Provider.completeIntent).
+type authRequired struct {
+	Code         string `json:"code"`
+	ID           string `json:"id"`
+	ClientSecret string `json:"clientSecret"`
+	Message      string `json:"message"`
+}
+
+// authRequiredIn is the authentication step an error or result asks of the
+// buyer, as the message to answer with, or "".
+func authRequiredIn(result *processor.PaymentResult, err error) string {
+	var ar *processor.ActionRequired
+	if !errors.As(err, &ar) && (result == nil || !errors.As(result.Error, &ar)) {
+		return ""
+	}
+	b, _ := json.Marshal(authRequired{Code: "authentication_required", ID: ar.ID, ClientSecret: ar.ClientSecret, Message: ar.Error()})
+	return string(b)
+}
+
 // parseCardDeclineReason returns a single clean sentence explaining why the card was declined.
 func parseCardDeclineReason(result *processor.PaymentResult, err error) string {
+	if m := authRequiredIn(result, err); m != "" {
+		return m
+	}
 	if result == nil && err != nil {
 		errLower := strings.ToLower(err.Error())
 		switch {
@@ -228,7 +256,7 @@ func CreateMethod(ctx context.Context, org *organization.Organization, email str
 	// again. Use the per-org registry so Square carries the org's credentials.
 	if in.ProviderRef != "" {
 		reg := processorsForOrg(org)
-		if cp, ok := squareCustomerProcessorFrom(reg); ok {
+		if cp, ok := cardVaultFrom(reg); ok {
 			pm, created, err := saveCard(ctx, db, cp, in.CustomerId, strings.TrimSpace(email), in.ProviderRef)
 			if err != nil {
 				return nil, false, declineError{parseCardDeclineReason(&processor.PaymentResult{ErrorMessage: err.Error()}, err)}
@@ -571,17 +599,13 @@ func DetachMethod(ctx context.Context, org *organization.Organization, id, subje
 		return nil, errNoMethod
 	}
 
-	// Best-effort: detach the card-on-file from Square so its vault stays in
-	// sync. Non-fatal — the local record is still soft-deleted on failure.
-	if pm.Metadata != nil {
-		custID, _ := pm.Metadata["squareCustomerId"].(string)
-		cardID, _ := pm.Metadata["squareCardId"].(string)
-		if custID != "" && cardID != "" {
-			reg := payment.ProcessorsForOrg(org)
-			if cp, ok := squareCustomerProcessorFrom(reg); ok {
-				if err := cp.RemovePaymentMethod(ctx, custID, cardID); err != nil {
-					log.Warn("Failed to remove Square card %s for customer %s: %v", cardID, custID, err)
-				}
+	// Best-effort: detach the card-on-file from the processor it was saved with
+	// so its vault stays in sync. Non-fatal — the local record is still
+	// soft-deleted on failure.
+	if custID, cardID := customerIDOf(pm), strings.TrimSpace(pm.ProviderRef); custID != "" && cardID != "" {
+		if cp, ok := cardVaultOf(ctx, payment.ProcessorsForOrg(org), pm); ok {
+			if err := cp.RemovePaymentMethod(ctx, custID, cardID); err != nil {
+				log.Warn("Failed to remove %s card %s for customer %s: %v", providerOf(pm), cardID, custID, err)
 			}
 		}
 	}

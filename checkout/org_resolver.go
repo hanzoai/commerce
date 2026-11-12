@@ -76,13 +76,13 @@ func (r *OrgResolver) Resolve(host string) (Org, error) {
 	// accounts. Any other brand takes cards/PayPal only with an account of its own;
 	// resolved onto the default's, its buyers would pay that merchant under this
 	// brand's name.
-	card := b.slug == defaultBrand().slug || payment.SquareOwned(org)
+	card := (b.slug == defaultBrand().slug || payment.SquareOwned(org)) && !processor.DisabledByPolicy(processor.Square)
 	var sq payment.SquarePublic
 	if card {
 		sq = payment.SquarePublicConfig(org)
 	}
 
-	paypalAllowed := b.slug == defaultBrand().slug || payment.PayPalOwned(org)
+	paypalAllowed := (b.slug == defaultBrand().slug || payment.PayPalOwned(org)) && !processor.DisabledByPolicy(processor.PayPal)
 	var pp payment.PayPalPublic
 	if paypalAllowed {
 		pp = payment.PayPalPublicConfig(org)
@@ -251,8 +251,12 @@ func enabledProviders(card, paypal, stripe bool) []Provider {
 	if paypal && !processor.DisabledByPolicy(processor.PayPal) {
 		out = append(out, Provider{Name: "paypal", Enabled: true})
 	}
-	out = append(out, Provider{Name: "crypto", Enabled: true})
-	out = append(out, Provider{Name: "wire", Enabled: true})
+	if !processor.DisabledByPolicy(processor.MPC) {
+		out = append(out, Provider{Name: "crypto", Enabled: true})
+	}
+	if !processor.DisabledByPolicy(processor.Wire) {
+		out = append(out, Provider{Name: "wire", Enabled: true})
+	}
 	return out
 }
 

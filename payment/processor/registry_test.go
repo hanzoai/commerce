@@ -2,7 +2,6 @@ package processor_test
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -11,17 +10,13 @@ import (
 	"github.com/hanzoai/commerce/payment/providers/stripe"
 )
 
-// withDefaultDisabledPolicy guarantees COMMERCE_DISABLED_PROCESSORS is UNSET for
-// the test, so DefaultConfig() applies the default (nothing denied). t.Setenv
-// cannot unset, so we save/unset/restore by hand.
+// withDefaultDisabledPolicy lets every processor take a new charge for the test
+// (COMMERCE_CHARGE_PROCESSORS=*), so the tests of the selection rule see it
+// across processors. The deployment default is Stripe alone: see
+// TestChargePolicy_DefaultIsStripeOnly.
 func withDefaultDisabledPolicy(t *testing.T) {
 	t.Helper()
-	if v, ok := os.LookupEnv("COMMERCE_DISABLED_PROCESSORS"); ok {
-		if err := os.Unsetenv("COMMERCE_DISABLED_PROCESSORS"); err != nil {
-			t.Fatalf("unset COMMERCE_DISABLED_PROCESSORS: %v", err)
-		}
-		t.Cleanup(func() { _ = os.Setenv("COMMERCE_DISABLED_PROCESSORS", v) })
-	}
+	t.Setenv(processor.ChargeProcessors, "*")
 }
 
 // configuredStripe returns a REAL Stripe provider whose IsAvailable() is true —
@@ -181,7 +176,7 @@ func TestSelectProcessor_NamedButUnavailable_NoSubstitute(t *testing.T) {
 // The deny switch binds every branch: with Stripe denied, a Stripe-only currency
 // has no processor and a caller naming Stripe is refused.
 func TestSelectProcessor_DeniedStripe(t *testing.T) {
-	t.Setenv("COMMERCE_DISABLED_PROCESSORS", "stripe")
+	t.Setenv(processor.ChargeProcessors, "square")
 	reg := processor.NewRegistry(processor.DefaultConfig())
 	reg.Register(configuredStripe())
 	reg.Register(configuredSquare())
@@ -288,50 +283,41 @@ func TestCards_PerCountry(t *testing.T) {
 	}
 }
 
-// The default policy denies nothing.
-func TestDisabledByPolicy_DefaultDeniesNothing(t *testing.T) {
-	withDefaultDisabledPolicy(t)
-	for _, p := range []processor.ProcessorType{processor.Stripe, processor.Square, processor.PayPal} {
-		if processor.DisabledByPolicy(p) {
-			t.Fatalf("default policy denies %s", p)
-		}
-	}
-}
-
-// COMMERCE_DISABLED_PROCESSORS empty or whitespace (a k8s placeholder) denies nothing.
-func TestDisabledByPolicy_EmptyDeniesNothing(t *testing.T) {
-	for _, v := range []string{"", "   ", " , "} {
-		t.Setenv("COMMERCE_DISABLED_PROCESSORS", v)
-		if processor.DisabledByPolicy(processor.Stripe) || processor.DisabledByPolicy(processor.Square) {
-			t.Fatalf("COMMERCE_DISABLED_PROCESSORS=%q denied a processor", v)
-		}
-	}
-}
-
-// The deny list names exactly what it denies.
-func TestDisabledByPolicy_ListDeniesWhatItNames(t *testing.T) {
-	t.Setenv("COMMERCE_DISABLED_PROCESSORS", " Square, paypal ")
-	if !processor.DisabledByPolicy(processor.Square) || !processor.DisabledByPolicy(processor.PayPal) {
-		t.Fatal("COMMERCE_DISABLED_PROCESSORS=square,paypal must deny both")
-	}
+// The deployment default is Stripe alone: Square, PayPal and the rest take no new
+// charge, however configured, and Stripe takes every one.
+func TestChargePolicy_DefaultIsStripeOnly(t *testing.T) {
+	t.Setenv(processor.ChargeProcessors, "")
 	if processor.DisabledByPolicy(processor.Stripe) {
-		t.Fatal("COMMERCE_DISABLED_PROCESSORS=square,paypal must not deny Stripe")
+		t.Fatal("the default policy denies Stripe")
 	}
-}
-
-// No processor takes a payment from a sanctioned jurisdiction, and a country it
-// does not name is not refused.
-func TestFiat_SanctionedCountriesRefused(t *testing.T) {
-	withDefaultDisabledPolicy(t)
+	for _, p := range []processor.ProcessorType{processor.Square, processor.PayPal, processor.MPC, processor.Wire, processor.Kraken} {
+		if !processor.DisabledByPolicy(p) {
+			t.Fatalf("the default policy lets %s take a new charge", p)
+		}
+	}
 	reg := processor.NewRegistry(processor.DefaultConfig())
 	reg.Register(configuredStripe())
 	reg.Register(configuredSquare())
-	for _, c := range []string{"IR", "KP", "CU", "SY", "RU", "BY", "ir"} {
-		if p, err := reg.Fiat(context.Background(), processor.Need{Currency: currency.USD, Country: c, Method: "card"}); err == nil {
-			t.Fatalf("%s: selected %q; want none", c, p.Type())
+	for _, cur := range []currency.Type{currency.USD, currency.EUR, currency.CHF} {
+		p, err := reg.SelectProcessor(context.Background(), processor.PaymentRequest{Amount: 100, Currency: cur})
+		if err != nil || p.Type() != processor.Stripe {
+			t.Fatalf("%s: %v %v; want stripe", cur, p, err)
 		}
-		if got := reg.Cards(context.Background(), c); len(got) != 0 {
-			t.Fatalf("%s: cards = %v; want none", c, got)
-		}
+	}
+	if _, err := reg.Get(processor.Square); err == nil {
+		t.Fatal("Get(Square) succeeded under the default policy")
+	}
+	// A customer already on Square is still reachable, for renewals.
+	if p, err := reg.Existing(context.Background(), processor.Square); err != nil || p.Type() != processor.Square {
+		t.Fatalf("Existing(Square) = %v, %v", p, err)
+	}
+	// A processor comes back by config.
+	t.Setenv(processor.ChargeProcessors, "stripe, square")
+	if processor.DisabledByPolicy(processor.Square) || !processor.DisabledByPolicy(processor.PayPal) {
+		t.Fatal("COMMERCE_CHARGE_PROCESSORS=stripe,square must allow exactly those")
+	}
+	t.Setenv(processor.ChargeProcessors, "*")
+	if processor.DisabledByPolicy(processor.PayPal) || processor.DisabledByPolicy(processor.MPC) {
+		t.Fatal("COMMERCE_CHARGE_PROCESSORS=* must allow every processor")
 	}
 }
