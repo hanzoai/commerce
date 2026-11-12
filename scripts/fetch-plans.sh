@@ -1,35 +1,31 @@
 #!/bin/sh
-# fetch-plans.sh — pull the latest @hanzo/plans tarball from npm and
-# extract its JSON files into ./api/billing/plans/.
+# fetch-plans.sh — re-vendor one @hanzo/plans version from npm into
+# ./api/billing/plans/.
 #
-# hanzoai/plans is published as @hanzo/plans on the public npm
-# registry (the catalog is customer-facing marketing data, no reason
-# to gate it). Commerce uses Go's go:embed at compile time, so we
-# can't `npm install` at runtime — but we CAN curl the tarball at
-# build time and unpack it. No git clone, no vendored copy.
+# hanzoai/plans is published as @hanzo/plans on the public npm registry.
+# Commerce embeds api/billing/plans/subscription.json and dns.json with
+# go:embed, tracked in git and pinned by PinnedPlansVersion and its digest
+# (api/billing/plans_drift_test.go). Builds and CI compile the vendored
+# bytes and never run this: it is how a person re-vendors, together with
+# bumping the pin and recording the new digest.
 #
 # Env:
-#   PLANS_VERSION  semver (default: tracks the highest published)
+#   PLANS_VERSION  the exact semver to vendor (required)
 #
-# Local dev: just run this script — public npm needs no auth.
+# Run: PLANS_VERSION=1.10.1 sh scripts/fetch-plans.sh — public npm needs no auth.
 
 set -eu
 
 DEST=$(cd "$(dirname "$0")/.." && pwd)/api/billing/plans
 TMP=$(mktemp -d)
 
-# Fetch the registry metadata once. We read both the latest dist-tag (when no
-# explicit PLANS_VERSION is requested) and the exact tarball URL for the
-# resolved version from it — the registry is authoritative for the tarball
-# path, so we never hand-build a URL that can 404 on a missing version.
+# The registry metadata names the exact tarball URL for the version, so a URL is
+# never hand-built and cannot 404 on a missing version.
 curl -fsSL "https://registry.npmjs.org/@hanzo/plans" -o "$TMP/meta.json"
 
-# Resolve version: explicit PLANS_VERSION wins, else the published "latest".
-PLANS_VERSION=${PLANS_VERSION:-$(
-  sed -n 's/.*"dist-tags":{[^}]*"latest":"\([^"]*\)".*/\1/p' "$TMP/meta.json"
-)}
+PLANS_VERSION=${PLANS_VERSION:-}
 if [ -z "$PLANS_VERSION" ]; then
-  echo "fetch-plans: could not resolve @hanzo/plans latest version" >&2
+  echo "fetch-plans: set PLANS_VERSION to the exact @hanzo/plans version to vendor" >&2
   exit 1
 fi
 
