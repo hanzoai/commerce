@@ -117,8 +117,8 @@ func TestValidateWebhook_ValidSignature(t *testing.T) {
 	if evt.ID != "evt_123" {
 		t.Errorf("expected event ID evt_123, got %s", evt.ID)
 	}
-	if evt.Type != "payment.completed" {
-		t.Errorf("expected type payment.completed, got %s", evt.Type)
+	if evt.Type != "payment_intent.succeeded" {
+		t.Errorf("expected Stripe's own type payment_intent.succeeded, got %s", evt.Type)
 	}
 	if evt.Processor != processor.Stripe {
 		t.Errorf("expected processor stripe, got %s", evt.Processor)
@@ -172,27 +172,6 @@ func TestValidateWebhook_EmptySecret(t *testing.T) {
 	_, err := p.ValidateWebhook(context.Background(), []byte("test"), "t=1,v1=abc")
 	if err != processor.ErrWebhookValidationFailed {
 		t.Errorf("expected ErrWebhookValidationFailed with empty secret, got %v", err)
-	}
-}
-
-func TestMapEventType(t *testing.T) {
-	cases := map[string]string{
-		"payment_intent.succeeded":      "payment.completed",
-		"payment_intent.payment_failed": "payment.failed",
-		"charge.refunded":               "refund.succeeded",
-		"charge.dispute.created":        "dispute.created",
-		"customer.subscription.created": "subscription.created",
-		"customer.subscription.deleted": "subscription.canceled",
-		"invoice.paid":                  "invoice.paid",
-		"invoice.payment_failed":        "invoice.payment_failed",
-		"customer.created":              "customer.created",
-		"unknown.event.type":            "unknown.event.type",
-	}
-	for input, expected := range cases {
-		got := mapEventType(input)
-		if got != expected {
-			t.Errorf("mapEventType(%q) = %q, want %q", input, got, expected)
-		}
 	}
 }
 

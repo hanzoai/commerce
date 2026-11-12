@@ -1,6 +1,9 @@
 package processor
 
-import "errors"
+import (
+	"errors"
+	"strings"
+)
 
 var (
 	// ErrProcessorNotFound is returned when a processor is not registered
@@ -80,3 +83,26 @@ func NewPaymentError(processor ProcessorType, code, message string, err error) *
 		Err:       err,
 	}
 }
+
+// ActionRequired is a payment the buyer has to finish in their browser: the
+// card's bank asked for authentication (3-D Secure, SCA) and no money has
+// moved. It is not a decline and not a success. The page hands ClientSecret to
+// the processor's browser SDK (Stripe's handleNextAction), and once the buyer
+// has authenticated it sends the same request again naming Intent, which the
+// processor then reads instead of starting a second payment.
+type ActionRequired struct {
+	Processor ProcessorType
+	// Intent is the processor's id for the payment (or the card setup) waiting
+	// on the buyer: a PaymentIntent "pi_…" or a SetupIntent "seti_…".
+	Intent string
+	// ClientSecret is what the processor's browser SDK takes to show the
+	// challenge. It authorizes only that one intent, for the buyer's browser.
+	ClientSecret string
+}
+
+func (e *ActionRequired) Error() string {
+	return "this card needs its bank's authentication; finish it in the page and send the request again"
+}
+
+// Setup reports whether Intent is a card setup rather than a payment.
+func (e *ActionRequired) Setup() bool { return strings.HasPrefix(e.Intent, "seti_") }
