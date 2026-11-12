@@ -320,16 +320,16 @@ func TestLiveStripe_FinishedIntentIsCreditedOnceAndOnlyToItsBuyer(t *testing.T) 
 	if f != nil || out.BalanceCents != 2500 {
 		t.Fatalf("the finished intent = %+v (%v); want 2500", out, f)
 	}
-	if _, f := l.topup(id, 2500, "usd", "live-pi-2"); f == nil || f.Status != 409 {
-		t.Fatalf("the same intent under another key = %+v; want 409", f)
+	// The same intent under another key is the credit that is there, not another.
+	if out, f := l.topup(id, 2500, "usd", "live-pi-2"); f != nil || out.BalanceCents != 2500 {
+		t.Fatalf("the same intent under another key = %+v (%v); want the credit already there", out, f)
 	}
 	if l.balance() != 2500 {
 		t.Fatalf("balance %d; the intent was credited more than once", l.balance())
 	}
 	// The intent's guard is COMPLETED, so it is never re-claimed as a crashed
 	// attempt once the in-flight window passes.
-	db := datastore.New(l.org.Namespaced(*l.ctx))
-	g, replayed, err := idemBegin(db, "billing-intent", id)
+	g, replayed, err := idemBegin(webhookGuardDB(*l.ctx), "billing-intent", id)
 	if err != nil || !replayed || g.Status != idempotencykey.StatusCompleted {
 		t.Fatalf("the spent intent's guard = replayed %v status %v (%v); want a completed one", replayed, g.Status, err)
 	}
@@ -753,5 +753,90 @@ func TestLiveStripe_CardCountryIsReadFromTheCard(t *testing.T) {
 		if !processor.Sanctioned(c) {
 			t.Fatalf("%s is not refused", c)
 		}
+	}
+}
+
+// A payment refunded — by the reconciler or by anyone — is not money in hand: the
+// intent still reads succeeded, and neither a top-up nor a sale may redeem it.
+func TestLiveStripe_RefundedIntentCannotBeRedeemed(t *testing.T) {
+	l := liveSetup(t)
+	id, charge := l.paid(2500)
+	l.call("POST", "/refunds", url.Values{"charge": {charge}})
+	if _, f := l.topup(id, 2500, "usd", "live-refunded-1"); f == nil {
+		t.Fatal("a refunded intent was credited")
+	}
+	if l.balance() != 0 {
+		t.Fatalf("balance %d from a refunded intent", l.balance())
+	}
+
+	// The reconciler's own refund of a sale that never finished.
+	sale, _ := l.paid(1500)
+	l.register(sale, pendingintent.Sale, 1500)
+	reconcileIntent(*l.ctx, mustIntent(t, sale))
+	db := datastore.New(l.org.Namespaced(*l.ctx))
+	cp := mustVault(t, l)
+	if _, _, err := saveCard(context.Background(), db, cp, l.subject, "buyer@example.com", "pm_card_visa"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Subscribe(*l.ctx, l.org, SubscribeIn{SourceID: sale, PlanID: "pro-3x", Subject: l.subject, Interval: types.Monthly, IdempotencyKey: l.run + "-refunded-sale"}); err == nil {
+		t.Fatal("an intent the reconciler refunded bought a plan")
+	}
+	if _, f := l.topup(sale, 1500, "usd", "live-refunded-2"); f == nil {
+		t.Fatal("an intent the reconciler refunded was credited to a wallet")
+	}
+}
+
+// One payment is one use: a top-up's intent cannot also buy a plan, and a plan's
+// cannot be a top-up.
+func TestLiveStripe_OneIntentIsOneUse(t *testing.T) {
+	l := liveSetup(t)
+	db := datastore.New(l.org.Namespaced(*l.ctx))
+	cp := mustVault(t, l)
+	if _, _, err := saveCard(context.Background(), db, cp, l.subject, "buyer@example.com", "pm_card_visa"); err != nil {
+		t.Fatal(err)
+	}
+	top, _ := l.paid(1500)
+	l.register(top, pendingintent.Topup, 1500)
+	body := l.event("payment_intent.succeeded", func(o map[string]any) bool { return str(o["id"]) == top })
+	if status, _ := l.deliver(body, l.hook); status != 200 || l.balance() != 1500 {
+		t.Fatalf("top-up intent by webhook: balance %d", l.balance())
+	}
+	if _, err := Subscribe(*l.ctx, l.org, SubscribeIn{SourceID: top, PlanID: "pro-3x", Subject: l.subject, Interval: types.Monthly, IdempotencyKey: l.run + "-onceuse-1"}); err == nil {
+		t.Fatal("a top-up's intent, already credited, bought a plan too")
+	}
+	plan, _ := l.paid(1500)
+	l.register(plan, pendingintent.Sale, 1500)
+	if _, f := l.topup(plan, 1500, "usd", "live-onceuse-2"); f == nil || f.Status != 422 {
+		t.Fatalf("a plan's intent as a top-up = %+v; want 422", f)
+	}
+	if l.balance() != 1500 {
+		t.Fatalf("balance %d; a plan's intent reached a wallet", l.balance())
+	}
+}
+
+// The browser's top-up and the intent's webhook credit one payment once, in either
+// order.
+func TestLiveStripe_BrowserThenWebhookCreditsOnce(t *testing.T) {
+	l := liveSetup(t)
+	id, _ := l.paid(2500)
+	l.register(id, pendingintent.Topup, 2500)
+	if out, f := l.topup(id, 2500, "usd", "live-order-1"); f != nil || out.BalanceCents != 2500 {
+		t.Fatalf("browser first = %+v (%v)", out, f)
+	}
+	body := l.event("payment_intent.succeeded", func(o map[string]any) bool { return str(o["id"]) == id })
+	if status, _ := l.deliver(body, l.hook); status != 200 || l.balance() != 2500 {
+		t.Fatalf("the webhook after the browser: balance %d; want 2500", l.balance())
+	}
+}
+
+// A buyer may have only a few payments waiting on their bank.
+func TestLiveStripe_UnfinishedStepsAreCapped(t *testing.T) {
+	l := liveSetup(t)
+	var last *PaymentFault
+	for i := 0; i < maxUnfinished+1; i++ {
+		_, last = l.topup("pm_card_authenticationRequired", 2500, "usd", fmt.Sprintf("live-cap-%d", i))
+	}
+	if last == nil || last.Status != 429 {
+		t.Fatalf("the step past the cap = %+v; want 429", last)
 	}
 }

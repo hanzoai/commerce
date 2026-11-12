@@ -310,6 +310,27 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 		return nil
 	}
 
+	// A Stripe intent is credited by ONE claimant across the webhook, the
+	// reconciler, the browser's top-up and a sale (the claim `billing-intent`). One
+	// that finds it taken has nothing to do; one that fails to credit gives it back
+	// so the redelivery can.
+	var claim *idempotencykey.IdempotencyKey
+	if pi := stringField(pay, "payment_intent"); event.Processor == processor.Stripe && pi != "" {
+		g, taken, cerr := idempotencykey.Begin(webhookGuardDB(ctx), "billing-intent", pi)
+		if cerr != nil {
+			return fmt.Errorf("settlement %s: the intent's claim could not be taken: %w", paymentID, cerr)
+		}
+		if taken {
+			return nil
+		}
+		claim = g
+	}
+	release := func() {
+		if claim != nil {
+			_ = claim.Delete()
+		}
+	}
+
 	// THE SPENDABLE LEDGER FIRST, the local receipt second, and that order is the
 	// recovery. This write is what makes the money spendable; the row below is a
 	// record of it AND the marker that stops the next delivery. Writing the marker
@@ -334,6 +355,7 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 			// them succeeds this is a payment that settled and a balance that did not.
 			log.Error("RECONCILE: settlement %s (%s %d %s) settled and the spendable balance was NOT credited: org=%s subject=%s test=%v: %v — retryable: the provider redelivers and the credit is keyed on the payment id",
 				paymentID, event.Type, amount, cur, who.org, who.subject, who.test, err)
+			release()
 			return fmt.Errorf("settlement %s: credit: %w", paymentID, err)
 		}
 	}
@@ -372,6 +394,9 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 	}
 	if err := paymentorg.Put(paymentID, who.org, who.subject, "", 0, who.test); err != nil {
 		log.Warn("settlement %s: the org index was not written: %v", paymentID, err)
+	}
+	if claim != nil {
+		_ = idempotencykey.Complete(claim, paymentID)
 	}
 	if pi := stringField(pay, "payment_intent"); pi != "" {
 		if _, err := pendingintent.Settle(pi); err != nil {

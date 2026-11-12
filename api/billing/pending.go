@@ -8,6 +8,7 @@ import (
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentorg"
 	"github.com/hanzoai/commerce/models/pendingintent"
@@ -34,15 +35,30 @@ func actionOf(result *processor.PaymentResult, err error) *processor.ActionRequi
 // reconciler, then puts the money where it belongs even when the buyer finishes
 // the step in a tab that never comes back. An intent for a SetupIntent ("seti_…")
 // moves no money and is not recorded.
-func registerAction(result *processor.PaymentResult, err error, org *organization.Organization, subject, purpose string, cents int64, cur currency.Type) {
+//
+// A buyer may have only maxUnfinished of them open at once: each is a row the
+// reconciler reads and a call to Stripe it makes, and a card that always asks
+// can be retried as fast as a client can press. Past it the step is refused.
+func registerAction(result *processor.PaymentResult, err error, org *organization.Organization, subject, purpose string, cents int64, cur currency.Type) error {
 	ar := actionOf(result, err)
 	if ar == nil || !strings.HasPrefix(ar.ID, "pi_") {
-		return
+		return nil
 	}
-	if perr := pendingintent.Put(ar.ID, org.Name, subject, purpose, cents, string(cur), org.TestMode()); perr != nil {
+	if n, cerr := pendingintent.CountOpen(strings.ToLower(subject)); cerr == nil && n >= maxUnfinished {
+		return errors.New("too many payments are waiting on your bank; finish or cancel them first")
+	}
+	if perr := pendingintent.Put(ar.ID, org.Name, strings.ToLower(subject), purpose, cents, string(cur), org.TestMode()); perr != nil {
 		log.Error("RECONCILE: the 3-D Secure intent %s for %s could not be recorded, so its payment cannot be attributed if the buyer does not come back: %v", ar.ID, subject, perr)
+		return errors.New("billing is temporarily unavailable; please retry")
 	}
+	return nil
 }
+
+// maxUnfinished is how many 3-D Secure payments one buyer may have waiting.
+const maxUnfinished = 5
+
+// maxPerSweep bounds the reconciler's calls to Stripe in one run.
+const maxPerSweep = 50
 
 // intentGrace is how long a buyer has to finish their bank's step before the
 // reconciler looks at the intent.
@@ -59,6 +75,9 @@ func reconcileIntents(ctx context.Context) {
 		log.Error("RECONCILE: the pending intents could not be read: %v", err)
 		return
 	}
+	if len(open) > maxPerSweep {
+		open = open[:maxPerSweep]
+	}
 	for _, p := range open {
 		reconcileIntent(ctx, p)
 	}
@@ -67,8 +86,8 @@ func reconcileIntents(ctx context.Context) {
 func reconcileIntent(ctx context.Context, p *pendingintent.Intent) {
 	org := organization.New(datastore.New(ctx))
 	org.Name = p.Org
-	if err := org.GetOrCreate("Name=", p.Org); err != nil {
-		log.Warn("reconcile intent %s: org %s: %v", p.Id(), p.Org, err)
+	if found, err := org.Query().Filter("Name=", p.Org).Get(); err != nil || !found {
+		log.Warn("reconcile intent %s: org %s: found %v: %v", p.Id(), p.Org, found, err)
 		return
 	}
 	if p.Test {
@@ -101,11 +120,19 @@ func reconcileIntent(ctx context.Context, p *pendingintent.Intent) {
 			_, _ = pendingintent.Settle(p.Id())
 			return
 		}
+		// The intent's one claim: a sale or a top-up that holds it is using it now,
+		// and one that is refunded here can never be redeemed again.
+		claim, taken, cerr := idemBegin(webhookGuardDB(ctx), "billing-intent", p.Id())
+		if cerr != nil || taken {
+			return
+		}
 		res, rerr := sp.Refund(ctx, processor.RefundRequest{TransactionID: p.Id(), Reason: "requested_by_customer", IdempotencyKey: "reconcile-refund:" + p.Id()})
 		if rerr != nil || res == nil || !res.Success {
+			_ = claim.Delete()
 			log.Error("RECONCILE: intent %s took %d %s for a plan that was never bought, and refunding it failed: %v", p.Id(), p.Cents, p.Currency, rerr)
 			return
 		}
+		_ = idempotencykey.Complete(claim, "refunded")
 		_, _ = pendingintent.Settle(p.Id())
 		return
 	}

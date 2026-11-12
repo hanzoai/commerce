@@ -780,8 +780,18 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// retry that finishes a sale whose card needed its bank ("pi_…"): the card it
 	// was charged on is the one already saved.
 	finished := ""
-	if strings.HasPrefix(sourceID, "pi_") && methodID == "" {
+	if strings.HasPrefix(sourceID, "pi_") {
 		finished = sourceID
+		// Only an intent registered for THIS sale — a plan's, this buyer's, for this
+		// amount — finishes it: a top-up's is a wallet's, and an unregistered one was
+		// never sent to the buyer's bank by this sale.
+		if reg, found, rerr := pendingintent.Get(finished); rerr != nil || !found || reg.Purpose != pendingintent.Sale ||
+			!strings.EqualFold(reg.Subject, in.Subject) || reg.Cents != chargeCents+bal {
+			abandon()
+			return nil, saleRefusal{saleDeclined, "this payment was not made for this purchase"}
+		}
+	}
+	if finished != "" && methodID == "" {
 		var ierr error
 		if pm, ierr = cardOfIntent(ctx, db, reg, in.Subject, finished); ierr != nil {
 			abandon()
@@ -969,7 +979,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// A finished intent is spent for good: the card is charged by naming it, once.
 	var spent *idempotencykey.IdempotencyKey
 	if finished != "" {
-		g, replayed, gerr := idemBegin(db, "billing-intent", finished)
+		g, replayed, gerr := idemBegin(webhookGuardDB(ctx), "billing-intent", finished)
 		switch {
 		case gerr != nil:
 			hold.Release()
@@ -992,7 +1002,11 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// finished by the retry, or the intent refunded if it never is), the card
 	// stays saved, and the answer is the step, not a decline.
 	if actionOf(res, err) != nil {
-		registerAction(res, err, org, in.Subject, pendingintent.Sale, chargeCents+bal, cur)
+		if rerr := registerAction(res, err, org, in.Subject, pendingintent.Sale, chargeCents+bal, cur); rerr != nil {
+			hold.Release()
+			abandon()
+			return nil, saleRefusal{saleDeclined, rerr.Error()}
+		}
 		hold.Release()
 		abandon()
 		return nil, saleRefusal{saleDeclined, authRequiredIn(res, err)}
@@ -1004,9 +1018,6 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		return nil, saleRefusal{saleUnavailable, "the payment could not be confirmed and may have gone through; check your plan before trying again"}
 	}
 	if err != nil || res == nil || !res.Success {
-		if spent != nil && err == nil {
-			_ = spent.Delete()
-		}
 		hold.Release()
 		unvault()
 		abandon()

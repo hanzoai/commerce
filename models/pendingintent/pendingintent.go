@@ -119,3 +119,12 @@ func Open(cutoff time.Time) ([]*Intent, error) {
 	}
 	return out, nil
 }
+
+// CountOpen is how many intents subject has waiting.
+func CountOpen(subject string) (int, error) {
+	rows := make([]*Intent, 0)
+	if _, err := db().Query("pending-intent").Filter("Subject=", subject).Filter("Done=", false).GetAll(&rows); err != nil {
+		return 0, err
+	}
+	return len(rows), nil
+}

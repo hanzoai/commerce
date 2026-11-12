@@ -185,7 +185,10 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 	if !buyerPresent {
 		purpose = pendingintent.Reload
 	}
-	registerAction(result, err, org, userId, purpose, amountCents, cur)
+	if rerr := registerAction(result, err, org, userId, purpose, amountCents, cur); rerr != nil {
+		abandon()
+		return receipt{}, rerr
+	}
 	if err != nil && errors.Is(err, errNoProcessorFor) {
 		abandon()
 		return receipt{}, fmt.Errorf("%w: %v", errNoProcessor, err)

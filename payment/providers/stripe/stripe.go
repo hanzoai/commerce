@@ -192,8 +192,26 @@ func (p *Provider) completeIntent(ctx context.Context, req processor.PaymentRequ
 		return &processor.PaymentResult{Success: false, ErrorMessage: err.Error(), Error: err}, err
 	}
 	if pi.PaymentMethod != "" {
-		if card, err := p.card(ctx, pi.PaymentMethod); err == nil && processor.Sanctioned(card.Country) {
+		card, err := p.card(ctx, pi.PaymentMethod)
+		if err != nil {
+			return &processor.PaymentResult{Success: false, ErrorMessage: err.Error(), Error: err}, err
+		}
+		if processor.Sanctioned(card.Country) {
 			return &processor.PaymentResult{Success: false, ErrorMessage: errSanctioned.Error(), Error: errSanctioned}, errSanctioned
+		}
+	}
+	// A payment already refunded, in whole or part, is not money in hand.
+	if pi.LatestCharge != "" {
+		var ch struct {
+			Refunded       bool  `json:"refunded"`
+			AmountRefunded int64 `json:"amount_refunded"`
+			AmountCaptured int64 `json:"amount_captured"`
+		}
+		if err := p.get(ctx, "/charges/"+url.PathEscape(pi.LatestCharge), nil, &ch); err != nil {
+			return &processor.PaymentResult{Success: false, ErrorMessage: err.Error(), Error: err}, err
+		}
+		if ch.Refunded || ch.AmountRefunded > 0 || (ch.AmountCaptured > 0 && ch.AmountCaptured < pi.Amount) {
+			return failed(&pi, "this payment was refunded or not received in full")
 		}
 	}
 	switch {

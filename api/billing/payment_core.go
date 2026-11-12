@@ -255,20 +255,30 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 	// a payment that settles and released when it does not.
 	releaseIntent := func() {}
 	var intentGuard *idempotencykey.IdempotencyKey
+	ownsIntent := false
 	if strings.HasPrefix(in.SourceID, "pi_") {
-		ig, replayed, ierr := idemBegin(db, "billing-intent", in.SourceID)
-		intentGuard = ig
-		switch {
-		case ierr != nil:
+		// A registered SALE intent pays for a plan, never a wallet.
+		if reg, found, rerr := pendingintent.Get(in.SourceID); rerr != nil {
+			abandon()
+			return nil, fault(503, "billing is temporarily unavailable; please retry", rerr)
+		} else if found && reg.Purpose == pendingintent.Sale {
+			abandon()
+			return nil, fault(422, "this payment is for a plan, not a top-up", nil)
+		}
+		// ONE claim per intent, in the system namespace, shared by the webhook, the
+		// reconciler, a top-up and a sale: whoever holds it credits. A claim that is
+		// not ours leaves us the READ-ONLY verification below and nothing else.
+		ig, replayed, ierr := idemBegin(webhookGuardDB(ctx), "billing-intent", in.SourceID)
+		if ierr != nil {
 			abandon()
 			return nil, fault(503, "billing is temporarily unavailable; please retry", ierr)
-		case replayed:
-			abandon()
-			return nil, fault(409, "this payment was already applied", nil)
 		}
-		releaseIntent = func() {
-			if ig != nil {
-				_ = ig.Delete()
+		intentGuard, ownsIntent = ig, !replayed
+		if ownsIntent {
+			releaseIntent = func() {
+				if ig != nil {
+					_ = ig.Delete()
+				}
 			}
 		}
 	}
@@ -293,7 +303,11 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 	// A card sent to its bank for authentication: the intent is recorded with its
 	// buyer and amount BEFORE the answer that sends them, so it is credited whether
 	// or not their browser comes back.
-	registerAction(result, err, org, in.Subject, pendingintent.Topup, in.AmountCents, cur)
+	if rerr := registerAction(result, err, org, in.Subject, pendingintent.Topup, in.AmountCents, cur); rerr != nil {
+		releaseIntent()
+		abandon()
+		return nil, fault(429, rerr.Error(), rerr)
+	}
 	if err != nil || (result != nil && !result.Success) {
 		releaseIntent()
 		abandon()
@@ -310,16 +324,23 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 	// once: answer the credit that is there.
 	if strings.HasPrefix(in.SourceID, "pi_") {
 		if _, found, perr := paymentorg.Get(result.ProcessorRef); perr == nil && found {
+			ownedHere := ownsIntent
 			var bal currency.Cents
 			if datas, derr := util.GetTransactionsByCurrency(org.Namespaced(ctx), in.Subject, "iam-user", cur, org.TestMode()); derr == nil {
 				if data, ok := datas.Data[cur]; ok {
 					bal = data.Balance
 				}
 			}
-			if intentGuard != nil {
+			if ownedHere && intentGuard != nil {
 				_ = idempotencykey.Complete(intentGuard, result.ProcessorRef)
 			}
 			return &TakePaymentOut{BalanceCents: int64(bal), Status: "ok", ProcessorRef: result.ProcessorRef, Test: org.TestMode()}, nil
+		}
+		// Credited by nobody yet, and the claim is another's: that holder is
+		// crediting it now. Not ours to credit a second time.
+		if !ownsIntent {
+			abandon()
+			return nil, fault(409, "this payment is being applied; check your balance in a moment", nil)
 		}
 	}
 
@@ -393,7 +414,7 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 	}
 	// The intent is spent for good: completed, so it is never claimed again as a
 	// crashed attempt.
-	if intentGuard != nil {
+	if intentGuard != nil && ownsIntent {
 		_ = idempotencykey.Complete(intentGuard, trans.Id())
 	}
 	return out, nil

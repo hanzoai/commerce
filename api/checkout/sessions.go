@@ -498,7 +498,7 @@ func Sessions(c *zip.Ctx) error {
 	case string(processor.Square), string(processor.Stripe):
 		want = processor.ProcessorType(hint)
 	default:
-		return http.Fail(c, 400, "Invalid providerHint", fmt.Errorf("providerHint %q is not square, stripe or wire", hint))
+		return http.Fail(c, 400, "Invalid providerHint", fmt.Errorf("providerHint %q is not square or stripe", hint))
 	}
 	chosen, err := checkoutProcessors(org).Fiat(c.Context(), processor.Need{
 		Currency: currencyType(currency),
