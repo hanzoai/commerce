@@ -50,6 +50,13 @@
       "Your own agents, working in the background",
       "Automations, with daily runs included"
     ],
+    "usage": {
+      "multiple": 1,
+      "session": 50,
+      "day": 150,
+      "premiumCents": 500,
+      "oursCents": 500
+    },
     "payouts": {
       "idleResalePercent": 20,
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
@@ -111,6 +118,13 @@
       "Hanzo Engine to run models on your own hardware",
       "Dedicated support"
     ],
+    "usage": {
+      "multiple": 3,
+      "session": 150,
+      "day": 450,
+      "premiumCents": 1500,
+      "oursCents": 1500
+    },
     "payouts": {
       "idleResalePercent": 20,
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
@@ -182,6 +196,13 @@
       "Hanzo Engine to run models on your own hardware",
       "Dedicated support"
     ],
+    "usage": {
+      "multiple": 5,
+      "session": 250,
+      "day": 750,
+      "premiumCents": 2500,
+      "oursCents": 2500
+    },
     "payouts": {
       "idleResalePercent": 20,
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
@@ -256,6 +277,13 @@
       "Hanzo Engine to run models on your own hardware",
       "Dedicated support"
     ],
+    "usage": {
+      "multiple": 15,
+      "session": 750,
+      "day": 2250,
+      "premiumCents": 7500,
+      "oursCents": 7500
+    },
     "payouts": {
       "idleResalePercent": 20,
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
@@ -328,6 +356,13 @@
       "Hanzo Engine to run models on your own hardware",
       "Dedicated support"
     ],
+    "usage": {
+      "multiple": 25,
+      "session": 1250,
+      "day": 3750,
+      "premiumCents": 12500,
+      "oursCents": 12500
+    },
     "payouts": {
       "idleResalePercent": 20,
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
@@ -383,15 +418,93 @@
     }
   },
   {
+    "id": "ultimate",
+    "name": "Ultimate",
+    "category": "personal",
+    "description": "Everything in Ultra, with 50x the usage.",
+    "priceMonthly": 495,
+    "priceAnnual": null,
+    "features": [
+      "Everything in Ultra, plus:",
+      "50x more usage than Go",
+      "50x higher limits every 5 hours and every day",
+      "Usage beyond what is included is paid from your prepaid balance at list price",
+      "Hanzo Bot: 10 bots of your own",
+      "Early access to new models and features",
+      "Train custom models on your data",
+      "Hanzo Engine to run models on your own hardware",
+      "Dedicated support"
+    ],
+    "usage": {
+      "multiple": 50,
+      "session": 2500,
+      "day": 7500,
+      "premiumCents": 25000,
+      "oursCents": 25000
+    },
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    },
+    "entitlements": {
+      "ai.premium_models": true,
+      "ai.priority_inference": true,
+      "ai.custom_training": true,
+      "ai.models": [
+        "*"
+      ],
+      "licensing.app_ids": [
+        "hanzo"
+      ],
+      "licensing.product_ids": [
+        "crm",
+        "engine",
+        "team"
+      ],
+      "licensing.seats": 1,
+      "licensing.engine_features": [
+        "inference",
+        "embeddings",
+        "vision",
+        "audio"
+      ],
+      "licensing.early_access": true,
+      "commerce.support_tier": "dedicated",
+      "commerce.idle_resale_percent": 20,
+      "team.guests": 3,
+      "ai.agents": 10,
+      "ai.bots": 10
+    },
+    "limits": {
+      "teamGuests": 3,
+      "agents": 10,
+      "bots": 10
+    },
+    "price_ref": {
+      "currency": "USD",
+      "recurring": {
+        "monthly_usd": 495,
+        "per_seat": false
+      },
+      "metered": [
+        {
+          "entitlement": "ai.tokens_per_min",
+          "unit": "per_mtok",
+          "source": "zen-gateway",
+          "included": -1
+        }
+      ]
+    }
+  },
+  {
     "id": "unlimited",
-    "status": "private",
     "name": "Unlimited",
     "category": "personal",
     "description": "Everything in Ultra, with no usage caps.",
     "priceMonthly": 995,
     "priceAnnual": null,
     "features": [
-      "Everything in Ultra, plus:",
+      "Everything in Ultimate, plus:",
       "No usage caps on any model",
       "No limits every 5 hours or every day",
       "Hanzo Bot: 10 bots of your own",
@@ -400,6 +513,10 @@
       "Hanzo Engine to run models on your own hardware",
       "Dedicated support"
     ],
+    "usage": {
+      "multiple": null,
+      "unlimited": true
+    },
     "payouts": {
       "idleResalePercent": 20,
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"

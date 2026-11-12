@@ -44,8 +44,8 @@ func TestPublishedTiersCarryLicensing(t *testing.T) {
 }
 
 // TestEarlyAccessIsAboveGo: licensing.early_access lands on the row of every paid
-// rung above Go (Pro, Dev, Max, Ultra, Unlimited) and of the archived Max rungs,
-// and of nothing else (@hanzo/plans 1.10.0), because cloud's beta predicate reads
+// rung above Go (Pro, Dev, Max, Ultra, Ultimate, Unlimited) and of the archived Max
+// rungs, and of nothing else (@hanzo/plans 1.10.1), because cloud's beta predicate reads
 // the row, never the catalog: a plan that carried it only in the catalog would
 // open no beta, and one that carried it by accident would open the betas to every
 // subscriber of it.
@@ -56,7 +56,7 @@ func TestEarlyAccessIsAboveGo(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	early := map[string]bool{
-		"pro-3x": true, "dev-5x": true, "max-15x": true, "ultra": true, "unlimited": true,
+		"pro-3x": true, "dev-5x": true, "max-15x": true, "ultra": true, "ultimate": true, "unlimited": true,
 		"max-5x": true, "max-20x": true, "max-50x": true,
 	}
 	for _, r := range SeedRows() {

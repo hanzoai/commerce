@@ -60,15 +60,16 @@ func TestCatalogConverges_OldStoreToPublishedLadder(t *testing.T) {
 
 	// The published ladder is what is offered, at the published prices.
 	for slug, want := range map[string]int64{
-		"free": 0, "go": 800, "pro-3x": 1500, "dev-5x": 4500, "max-15x": 9500, "ultra": 19500, "team": 2500,
+		"free": 0, "go": 800, "pro-3x": 1500, "dev-5x": 4500, "max-15x": 9500, "ultra": 19500,
+		"ultimate": 49500, "unlimited": 99500, "team": 2500,
 	} {
 		if v, ok := got[slug]; !ok || v != want {
 			t.Errorf("public %q = %d cents (listed %v), want %d", slug, v, ok, want)
 		}
 	}
 	// The retired tiers are gone from the offer, and so are the rungs the catalog
-	// archives and the one it keeps private.
-	for _, slug := range []string{"developer", "plus", "world-pro", "pro", "max", "dev", "max-5x", "max-20x", "max-50x", "unlimited"} {
+	// archives.
+	for _, slug := range []string{"developer", "plus", "world-pro", "pro", "max", "dev", "max-5x", "max-20x", "max-50x"} {
 		if _, still := got[slug]; still {
 			t.Errorf("retired %q is still on sale", slug)
 		}
@@ -85,13 +86,13 @@ func TestCatalogConverges_OldStoreToPublishedLadder(t *testing.T) {
 func currencyCents(v int64) currency.Cents { return currency.Cents(v) }
 
 // A PLAN THE CATALOG DOES NOT SELL IS PUBLISHED AND SOLD BY NOTHING. @hanzo/plans
-// 1.10.0 keeps Unlimited ($995) private — staff assign it, no checkout sells it —
-// and the rungs commerce retired (dev, max-5x, max-20x, max-50x) archived, exactly
-// as they were sold. A boot creates each row at its status, the public catalog
-// does not list it, and every purchase entrypoint treats it as a slug that never
-// existed — so a deploy that carries the price charges no one. Each still resolves
-// at its price, for the renewals and invoices that recorded it. Max 100x, the one
-// draft before, is gone from the catalog.
+// 1.10.1 keeps the rungs commerce retired (dev, max-5x, max-20x, max-50x)
+// archived, exactly as they were sold, and states no other plan unlisted. A boot
+// creates each row at its status, the public catalog does not list it, and every
+// purchase entrypoint treats it as a slug that never existed — so a deploy that
+// carries the price charges no one. Each still resolves at its price, for the
+// renewals and invoices that recorded it. Max 100x, the one draft before, is gone
+// from the catalog.
 func TestUnlistedTiersAreSeededUnlistedAndSoldByNothing(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
@@ -104,11 +105,10 @@ func TestUnlistedTiersAreSeededUnlistedAndSoldByNothing(t *testing.T) {
 		status string
 		cents  int64
 	}{
-		"unlimited": {plan.StatusPrivate, 99500},
-		"dev":       {plan.StatusArchived, 2000},
-		"max-5x":    {plan.StatusArchived, 10000},
-		"max-20x":   {plan.StatusArchived, 20000},
-		"max-50x":   {plan.StatusArchived, 50000},
+		"dev":     {plan.StatusArchived, 2000},
+		"max-5x":  {plan.StatusArchived, 10000},
+		"max-20x": {plan.StatusArchived, 20000},
+		"max-50x": {plan.StatusArchived, 50000},
 	}
 	held := 0
 	for i := range catalog {
@@ -196,5 +196,29 @@ func TestUnlistedTiersAreSeededUnlistedAndSoldByNothing(t *testing.T) {
 	}
 	if got := reload(t, odb, onGo.Id()); got.Plan.Slug != "go" {
 		t.Errorf("a refused move left the subscription on %q, want go", got.Plan.Slug)
+	}
+}
+
+// Every rung of the 1.10.1 ladder, Ultimate and Unlimited included, is bought by
+// card at its list price by the buyer themselves, with no price agreed and no
+// staff: the ladder is self-serve from Go to Unlimited.
+func TestEveryLadderRungSellsByCardAtList(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	if _, _, err := SeedPlans(c); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	for _, slug := range []string{"go", "pro-3x", "dev-5x", "max-15x", "ultra", "ultimate", "unlimited"} {
+		org := moneyOrg("rung-" + slug)
+		m := squareMock("cust_"+slug, "ccof_"+slug, "sqpay_"+slug)
+		withFakeSquare(t, m)
+		r := invokeSubscribeCard(org, c, `{"sourceId":"cnon:ok","planId":"`+slug+`"}`, nil)
+		if r.StatusCode != http.StatusCreated {
+			t.Errorf("%s by card: %d %s, want 201", slug, r.StatusCode, bodyOf(r))
+			continue
+		}
+		if want := lookupPlan(slug).Price; m.chargeCalls != 1 || m.lastChargeAmount != want {
+			t.Errorf("%s by card charged %d time(s), last %d; want once at its list %d", slug, m.chargeCalls, m.lastChargeAmount, want)
+		}
 	}
 }

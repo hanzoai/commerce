@@ -530,7 +530,7 @@ func TestRemindDue_AWeekThenADayOnceEach(t *testing.T) {
 // A customer's own price is what the card is charged, at the sale and at every
 // renewal, and the invoice shows the plan at list with the difference as their
 // discount. A private plan is sold by card only to a customer with a price of it:
-// the catalog's Unlimited, seeded private at $995.
+// one only the plan authority holds, as staff write it.
 // Mutation: drop the agreed step in buildPeriodInvoice and the renewal charges list.
 func TestCustomerPrice_TheCardIsChargedTheAgreedPriceEveryPeriod(t *testing.T) {
 	ctx := ae.NewContext()
@@ -538,28 +538,29 @@ func TestCustomerPrice_TheCardIsChargedTheAgreedPriceEveryPeriod(t *testing.T) {
 	if _, _, err := SeedPlans(ctx); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
+	authorityPlan(t, ctx, "patron", "personal", plan.StatusPrivate, 99500)
 	org := moneyOrg("pc-price")
 	db := datastore.New(org.Namespaced(ctx))
 	m := squareMock("cust_up", "ccof_up", "sqpay_up")
 	withFakeSquare(t, m)
 
-	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"unlimited"}`, nil); r.StatusCode != 404 || m.chargeCalls != 0 {
+	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"patron"}`, nil); r.StatusCode != 404 || m.chargeCalls != 0 {
 		t.Fatalf("a private plan with no price agreed: %d %s, charged %d; want 404, nothing charged", r.StatusCode, bodyOf(r), m.chargeCalls)
 	}
-	if _, err := SetCustomerPrice(ctx, org, PriceIn{Subject: org.Name, Plan: "unlimited", Cents: 99500}); !IsSaleRefused(err) {
+	if _, err := SetCustomerPrice(ctx, org, PriceIn{Subject: org.Name, Plan: "patron", Cents: 99500}); !IsSaleRefused(err) {
 		t.Fatalf("a price at list: %v, want refused", err)
 	}
-	set, err := SetCustomerPrice(ctx, org, PriceIn{Subject: org.Name, Plan: "unlimited", Cents: 19500, Note: "agreed with the owner"})
+	set, err := SetCustomerPrice(ctx, org, PriceIn{Subject: org.Name, Plan: "patron", Cents: 19500, Note: "agreed with the owner"})
 	if err != nil || set.Price.Cents != 19500 || set.Price.ListCents != 99500 {
 		t.Fatalf("set: %+v, %v", set, err)
 	}
-	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"unlimited"}`, nil); r.StatusCode != 201 {
+	if r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"patron"}`, nil); r.StatusCode != 201 {
 		t.Fatalf("sale: %d %s", r.StatusCode, bodyOf(r))
 	}
 	if m.chargeCalls != 1 || m.lastChargeAmount != 19500 {
 		t.Fatalf("sale charged %d time(s), last %d; want 19500", m.chargeCalls, m.lastChargeAmount)
 	}
-	sub := parentSub(t, db, org.Name, "unlimited")
+	sub := parentSub(t, db, org.Name, "patron")
 	if sub == nil || sub.CustomerCents != 19500 {
 		t.Fatalf("row %+v, want it to carry the customer's price", sub)
 	}
@@ -591,7 +592,7 @@ func TestCustomerPrice_TheCardIsChargedTheAgreedPriceEveryPeriod(t *testing.T) {
 	}
 
 	// Removed, the next period bills the list price.
-	cleared, err := SetCustomerPrice(ctx, org, PriceIn{Subject: org.Name, Plan: "unlimited"})
+	cleared, err := SetCustomerPrice(ctx, org, PriceIn{Subject: org.Name, Plan: "patron"})
 	if err != nil || len(cleared.Subscriptions) != 1 || cleared.Subscriptions[0].CustomerCents != 0 {
 		t.Fatalf("clear: %+v, %v", cleared, err)
 	}
