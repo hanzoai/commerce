@@ -190,8 +190,8 @@ func TestUnlistedTiersAreSeededUnlistedAndSoldByNothing(t *testing.T) {
 		t.Errorf("refused sales charged %d time(s) and vaulted %q", m.chargeCalls, m.addCardNonce)
 	}
 	for _, who := range []string{"acme", "acme/self"} {
-		if n, _ := subscription.Query(odb).Filter("UserId=", who).Count(); n != 0 {
-			t.Errorf("refused sales opened %d subscription(s) for %s", n, who)
+		if n, err := subscription.Query(odb).Filter("UserId=", who).Count(); err != nil || n != 0 {
+			t.Errorf("refused sales opened %d subscription(s) for %s (%v)", n, who, err)
 		}
 	}
 	if got := reload(t, odb, onGo.Id()); got.Plan.Slug != "go" {

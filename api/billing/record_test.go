@@ -2,6 +2,7 @@ package billing
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -220,8 +221,18 @@ func TestRecordSubscription_ARetiredPlanHeldTakesItsNextPayment(t *testing.T) {
 	short := next
 	short.PeriodStart, short.PeriodEnd = next.PeriodEnd, next.PeriodEnd.AddDate(0, 1, 0)
 	short.PriceCents--
-	if _, err := RecordSubscription(ctx, org, short); !IsSaleRefused(err) {
+	if _, err := RecordSubscription(ctx, org, short); !IsSaleRefused(err) || !strings.Contains(err.Error(), "costs 800 cents") {
 		t.Fatalf("a short payment for the retired plan held: err=%v, want refused against its price", err)
+	}
+	// Taking the held row over onto the retired plan opens it anew, which only a
+	// plan on sale or a private one may be.
+	held := subsOf(t, db, in.Subject)[0]
+	over := next
+	over.PeriodStart, over.PeriodEnd = short.PeriodStart, short.PeriodEnd
+	over.Replaces, over.Processor, over.PriceCents = held.Id(), "comp", 0
+	over.Reference, over.Terms = map[string]string{"order": "comp-retired"}, "given by the owner"
+	if _, err := RecordSubscription(ctx, org, over); !IsSaleNotFound(err) {
+		t.Fatalf("a comp taking the held row over onto the retired plan: err=%v, want not found", err)
 	}
 
 	other := in
