@@ -168,7 +168,7 @@ func Open(payment, org, subject, order, via string, balance int64, test bool) er
 	if payment == "" || org == "" {
 		return fmt.Errorf("paymentorg: a payment record names no payment or org")
 	}
-	for range mixin.Swaps {
+	for range mixin.Rounds() {
 		if _, found, err := Get(payment); err != nil || found {
 			return err
 		}
@@ -225,7 +225,7 @@ func Owing() ([]*PaymentOrg, []string, error) {
 // other. A change that answers false writes nothing. A payment nothing recorded
 // answers found=false.
 func Change(payment string, change func(*PaymentOrg) bool) (*PaymentOrg, bool, error) {
-	for range mixin.Swaps {
+	for range mixin.Rounds() {
 		p, found, err := Get(payment)
 		if err != nil || !found {
 			return nil, found, err
@@ -267,7 +267,7 @@ func Get(payment string) (*PaymentOrg, bool, error) {
 // The record is swapped in (mixin.Model.Swap): a report another writer beat to it
 // reads it again, so no report is lost to another, on this replica or another.
 func RecordDispute(payment, state string, version int64, at time.Time) (bool, error) {
-	for range mixin.Swaps {
+	for range mixin.Rounds() {
 		p, found, err := Get(payment)
 		if err != nil || !found {
 			return false, err

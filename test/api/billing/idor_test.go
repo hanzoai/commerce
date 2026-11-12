@@ -36,7 +36,14 @@ import (
 //
 // EdgeAuth/the gateway are not mounted in this unit harness, so idorShim reproduces
 // the gin context each real caller profile lands with after identity middleware:
-//   - nonpriv : an ordinary org member — no Admin bit, iam_claims.Owner == org slug.
+//   - nonpriv : an ordinary org member who pays from their own person wallet in
+//               the org (X-User-Id + X-Billing-Account-Id person:<slug>/<name>) —
+//               no Admin bit, iam_claims.Owner == org slug. The wallet rule
+//               (mayChangeWallet) lets this member change cards, so the IDOR guard
+//               is what confines it; reads never consult the wallet.
+//   - pool    : an ordinary member billed from the org's pool. The org's cards are
+//               its admins' to change, so every card write is refused 403 before
+//               the :id is read (no existence oracle) and nothing moves.
 //   - service : a verified COMMERCE_SERVICE_TOKEN — Admin bit, no IAM principal
 //               (EdgeAuth strips its identity headers); the sole privilege signal.
 // The namespace is the shared fixture org for both; the gap under test is INTRA-org
@@ -47,7 +54,12 @@ import (
 const (
 	idorService = "service"
 	idorNonPriv = "nonpriv"
+	idorPool    = "pool"
 )
+
+// idorMember is the name of the nonpriv member, whose person wallet is
+// <slug>/<idorMember>.
+const idorMember = "alice"
 
 // idorSubject is the caller's per-org billing subject — the org slug, exactly what
 // orgBillingKey resolves and what EdgeAuth pins owned records under.
@@ -76,6 +88,10 @@ func idorReq(method, uri, profile string, body io.Reader, ct string) *httptest.R
 		r.Header.Set("Content-Type", ct)
 	}
 	r.Header.Set("X-Test-Profile", profile)
+	if profile == idorNonPriv {
+		r.Header.Set("X-User-Id", idorMember)
+		r.Header.Set("X-Billing-Account-Id", "person:"+idorSubject()+"/"+idorMember)
+	}
 	return idorCl.Do(r)
 }
 
@@ -195,6 +211,23 @@ var _ = Describe("billing IDOR scoping", Ordered, ContinueOnFailure, func() {
 		It("ALLOWS the owning subject to detach its own card (200)", func() {
 			Expect(idorDelete(pmPath(seedPaymentMethod(subject)), idorNonPriv).Code).To(Equal(200))
 		})
+
+		It("REFUSES a pool member changing or detaching any card (403) and moves nothing", func() {
+			for _, owner := range []string{subject, other} {
+				id := seedPaymentMethod(owner)
+				Expect(idorPatch(pmPath(id), idorPool, map[string]interface{}{
+					"metadata": map[string]interface{}{"tamper": "x"},
+				}).Code).To(Equal(403))
+				Expect(idorDelete(pmPath(id), idorPool).Code).To(Equal(403))
+				pm := paymentmethod.New(db)
+				Expect(pm.GetById(id)).To(Succeed()) // still present
+				Expect(pm.Metadata["tamper"]).To(BeNil())
+			}
+		})
+		It("REFUSES a pool member changing a card that does not exist the same way (403, no oracle)", func() {
+			Expect(idorPatch(pmPath("nosuchcard"), idorPool, map[string]interface{}{}).Code).To(Equal(403))
+			Expect(idorDelete(pmPath("nosuchcard"), idorPool).Code).To(Equal(403))
+		})
 	})
 
 	// ── set-default (two unpinned owner refs: :id customer + body paymentMethodId) ──
@@ -216,6 +249,13 @@ var _ = Describe("billing IDOR scoping", Ordered, ContinueOnFailure, func() {
 		})
 		It("ALLOWS the owning subject to default its own card (200)", func() {
 			Expect(setDefault(subject, seedPaymentMethod(subject), idorNonPriv).Code).To(Equal(200))
+		})
+		It("REFUSES a pool member choosing any default (403) and flips nothing", func() {
+			own := seedPaymentMethod(subject)
+			Expect(setDefault(subject, own, idorPool).Code).To(Equal(403))
+			pm := paymentmethod.New(db)
+			Expect(pm.GetById(own)).To(Succeed())
+			Expect(pm.IsDefault).To(BeFalse())
 		})
 	})
 

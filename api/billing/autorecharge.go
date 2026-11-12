@@ -106,7 +106,7 @@ func reconcile(db *datastore.Datastore, cfg *autorecharge.AutoRecharge, own data
 // over one another: whichever writes second reads what the first wrote. change
 // answers false to write nothing. A nil rule is a payer with none.
 func changeRule(db *datastore.Datastore, payer string, change func(*autorecharge.AutoRecharge) bool) (*autorecharge.AutoRecharge, bool, error) {
-	for range mixin.Swaps {
+	for range mixin.Rounds() {
 		cfg := loadAutoRecharge(db, payer)
 		if cfg == nil {
 			return nil, false, nil
