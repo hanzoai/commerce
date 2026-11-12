@@ -160,6 +160,13 @@ func TestStripeKeys_EnvFallbackByKind(t *testing.T) {
 		t.Fatalf("test org public = %+v", pub)
 	}
 
+	// A secret key misfiled as the publishable key is never published.
+	t.Setenv("STRIPE_TEST_PUBLISHABLE_KEY", "sk_test_MISFILED")
+	if k := StripeKeys(test); k.PublishableKey != "" {
+		t.Fatalf("a secret key reached the publishable slot: %+v", k)
+	}
+	t.Setenv("STRIPE_TEST_PUBLISHABLE_KEY", "pk_test_DEPLOY")
+
 	// A key of the wrong kind under a name is dropped, never used.
 	t.Setenv("STRIPE_SECRET_KEY", "sk_test_MISFILED")
 	if k := StripeKeys(live); k.SecretKey != "" {

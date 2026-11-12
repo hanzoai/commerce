@@ -318,6 +318,15 @@ func checkoutProcessors(org *organization.Organization) *processor.Registry {
 	return reg
 }
 
+// sanctionedOnly passes a buyer's country through only when it is sanctioned, so
+// the rule refuses it, and otherwise says "unknown", which no processor refuses.
+func sanctionedOnly(country string) string {
+	if processor.Sanctioned(country) {
+		return country
+	}
+	return ""
+}
+
 // currencyType is an ISO 4217 code in the form the processors name currencies.
 func currencyType(code string) currency.Type {
 	return currency.Type(strings.ToLower(strings.TrimSpace(code)))
@@ -492,9 +501,11 @@ func Sessions(c *zip.Ctx) error {
 	}
 	chosen, err := checkoutProcessors(org).Fiat(c.Context(), processor.Need{
 		Currency: currencyType(currency),
-		Country:  hostedcheckout.RequestCountry(c),
-		Method:   "card",
-		Want:     want,
+		// Square's countries are where a Square SELLER can be; Payment Links take
+		// any buyer's card. Only sanctioned jurisdictions are refused.
+		Country: sanctionedOnly(hostedcheckout.RequestCountry(c)),
+		Method:  "card",
+		Want:    want,
 	})
 	if err != nil {
 		return http.Fail(c, 422, "No payment processor takes this checkout", err)

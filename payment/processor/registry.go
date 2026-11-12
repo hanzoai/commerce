@@ -279,9 +279,20 @@ func (r *Registry) fiat(ctx context.Context, n Need) (PaymentProcessor, error) {
 	return nil, fmt.Errorf("no processor available for currency %s", n.Currency)
 }
 
+// Sanctioned reports whether code (ISO 3166-1 alpha-2) names a jurisdiction no
+// fiat processor here may take a payment from: the comprehensively sanctioned
+// countries (Cuba, Iran, North Korea, Syria) plus Russia and Belarus.
+func Sanctioned(code string) bool {
+	switch strings.ToUpper(strings.TrimSpace(code)) {
+	case "CU", "IR", "KP", "SY", "RU", "BY":
+		return true
+	}
+	return false
+}
+
 // canTake returns processor t when it can take the payment n, else nil.
 func (r *Registry) canTake(ctx context.Context, t ProcessorType, n Need) PaymentProcessor {
-	if r.config.DisabledProcessors[t] {
+	if r.config.DisabledProcessors[t] || Sanctioned(n.Country) {
 		return nil
 	}
 	p, ok := r.processors[t]

@@ -492,9 +492,9 @@ func TestOrgJSON_StripeWhereSquareCannot(t *testing.T) {
 		t.Fatalf("DE: square=%+v stripe=%+v", de.Square, de.Stripe)
 	}
 
-	// IR: Stripe's card form takes the card; PayPal does not operate there.
+	// IR: sanctioned — no card form at all, and PayPal does not operate there.
 	ir, _ := view("pay.hanzo.ai", "IR")
-	if ir.Cards["usd"] != "stripe" || on(ir, "paypal") || ir.PayPal.ClientID != "" {
+	if len(ir.Cards) != 0 || on(ir, "stripe") || on(ir, "square") || on(ir, "paypal") || ir.PayPal.ClientID != "" {
 		t.Fatalf("IR: cards=%v providers=%+v paypal=%+v", ir.Cards, ir.Providers, ir.PayPal)
 	}
 

@@ -56,3 +56,23 @@ func TestCheckoutProcessors_Rule(t *testing.T) {
 		t.Fatalf("CHF for a merchant with no Stripe account chose %q", p.Type())
 	}
 }
+
+// Hosted checkout does not gate Square on the buyer's country (Square's countries
+// are where a SELLER can be), but a sanctioned buyer is refused.
+func TestSanctionedOnly(t *testing.T) {
+	for in, want := range map[string]string{"DE": "", "BR": "", "": "", "US": "", "IR": "IR", "ru": "ru"} {
+		if got := sanctionedOnly(in); got != want {
+			t.Errorf("sanctionedOnly(%q) = %q; want %q", in, got, want)
+		}
+	}
+	org := &organization.Organization{Live: true}
+	org.Square.Production.AccessToken = "sq-own"
+	org.Square.Production.LocationId = "LOC-OWN"
+	reg := checkoutProcessors(org)
+	if p, err := reg.Fiat(context.Background(), processor.Need{Currency: currency.USD, Country: sanctionedOnly("DE"), Method: "card"}); err != nil || p.Type() != processor.Square {
+		t.Fatalf("a Square-only merchant, buyer in DE: %v %v; want Square", p, err)
+	}
+	if _, err := reg.Fiat(context.Background(), processor.Need{Currency: currency.USD, Country: sanctionedOnly("IR"), Method: "card"}); err == nil {
+		t.Fatal("a buyer in IR was taken")
+	}
+}

@@ -242,6 +242,15 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		return nil, fault(422, "no payment processor available", err)
 	}
 
+	// Stripe cannot fund a prepaid balance yet: its refunds and disputes reach
+	// this service only through a webhook receiver that verifies Stripe's
+	// signature and maps charge.refunded / charge.dispute.* onto a clawback, and
+	// neither exists. Credit taken through Stripe could be charged back and kept.
+	if proc.Type() == processor.Stripe {
+		abandon()
+		return nil, fault(422, "card payments in this currency are not available for balance top-ups yet", nil)
+	}
+
 	result, err := proc.Charge(ctx, chargeReq)
 	if err != nil || (result != nil && !result.Success) {
 		abandon()

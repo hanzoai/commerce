@@ -318,3 +318,20 @@ func TestDisabledByPolicy_ListDeniesWhatItNames(t *testing.T) {
 		t.Fatal("COMMERCE_DISABLED_PROCESSORS=square,paypal must not deny Stripe")
 	}
 }
+
+// No processor takes a payment from a sanctioned jurisdiction, and a country it
+// does not name is not refused.
+func TestFiat_SanctionedCountriesRefused(t *testing.T) {
+	withDefaultDisabledPolicy(t)
+	reg := processor.NewRegistry(processor.DefaultConfig())
+	reg.Register(configuredStripe())
+	reg.Register(configuredSquare())
+	for _, c := range []string{"IR", "KP", "CU", "SY", "RU", "BY", "ir"} {
+		if p, err := reg.Fiat(context.Background(), processor.Need{Currency: currency.USD, Country: c, Method: "card"}); err == nil {
+			t.Fatalf("%s: selected %q; want none", c, p.Type())
+		}
+		if got := reg.Cards(context.Background(), c); len(got) != 0 {
+			t.Fatalf("%s: cards = %v; want none", c, got)
+		}
+	}
+}

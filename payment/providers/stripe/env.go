@@ -22,20 +22,21 @@ type Credentials struct {
 func FromEnv(test bool) Credentials {
 	if test {
 		return Credentials{
-			SecretKey:      kind(envValue("STRIPE_TEST_SECRET_KEY"), "_test_"),
-			PublishableKey: kind(envValue("STRIPE_TEST_PUBLISHABLE_KEY"), "_test_"),
+			SecretKey:      kind(envValue("STRIPE_TEST_SECRET_KEY"), "_test_", "sk", "rk"),
+			PublishableKey: kind(envValue("STRIPE_TEST_PUBLISHABLE_KEY"), "_test_", "pk"),
 		}
 	}
 	return Credentials{
-		SecretKey:      kind(envValue("STRIPE_SECRET_KEY"), "_live_"),
-		PublishableKey: kind(envValue("STRIPE_PUBLISHABLE_KEY"), "_live_"),
+		SecretKey:      kind(envValue("STRIPE_SECRET_KEY"), "_live_", "sk", "rk"),
+		PublishableKey: kind(envValue("STRIPE_PUBLISHABLE_KEY"), "_live_", "pk"),
 	}
 }
 
-// kind returns key when its prefix names the wanted kind ("_test_" or
-// "_live_"), else "".
-func kind(key, want string) string {
-	for _, p := range []string{"sk", "rk", "pk"} {
+// kind returns key when its prefix is one of prefixes followed by the wanted
+// kind ("_test_" or "_live_"), else "". A publishable slot takes only pk_, so a
+// secret key misfiled there is never published.
+func kind(key, want string, prefixes ...string) string {
+	for _, p := range prefixes {
 		if strings.HasPrefix(key, p+want) {
 			return key
 		}

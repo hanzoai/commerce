@@ -70,21 +70,21 @@ type roundTripper func(*http.Request) (*http.Response, error)
 
 func (f roundTripper) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
-// A currency Square does not take is charged on Stripe, once, and credited.
-func TestStripeContract_CurrencySquareCannotTake(t *testing.T) {
+// Stripe cannot fund a prepaid balance until its webhook receiver and clawback
+// mapping exist: a currency Square does not take, and a caller naming Stripe,
+// are refused before Stripe is called, and nothing is credited.
+func TestStripeContract_TopupRefusedUntilClawbackExists(t *testing.T) {
 	o := stripeContractOrg(t)
-	out, f := TakePayment(o.ctx, o.org, TakePaymentIn{
-		SourceID: "pm_card_visa", AmountCents: 2500, Currency: "chf", Subject: "hanzo/alice", IdempotencyKey: "chf-1",
-	})
-	if f != nil {
-		t.Fatalf("CHF top-up: %d %s (%v)", f.Status, f.Message, f.Err)
+	for _, in := range []TakePaymentIn{
+		{SourceID: "pm_card_visa", AmountCents: 2500, Currency: "chf", Subject: "hanzo/alice", IdempotencyKey: "chf-1"},
+		{SourceID: "pm_card_visa", AmountCents: 1200, Currency: "usd", Subject: "hanzo/alice", IdempotencyKey: "usd-stripe-1", Provider: "stripe"},
+	} {
+		if _, f := TakePayment(o.ctx, o.org, in); f == nil || f.Status != 422 {
+			t.Fatalf("%s top-up via Stripe = %+v; want 422", in.Currency, f)
+		}
 	}
-	if out.BalanceCents != 2500 || o.stripe.Intents() != 1 || o.squares.Load() != 0 {
-		t.Fatalf("out=%+v stripeIntents=%d squareRequests=%d; want 2500 credited through Stripe alone",
-			out, o.stripe.Intents(), o.squares.Load())
-	}
-	if len(o.stripe.Keys) != 1 || !strings.HasPrefix(o.stripe.Keys[0], "topup:hanzo/alice:") {
-		t.Fatalf("Stripe saw Idempotency-Keys %q; want the top-up's gateway key", o.stripe.Keys)
+	if o.stripe.Intents() != 0 || len(o.stripe.Keys) != 0 {
+		t.Fatalf("Stripe was called: intents=%d keys=%q", o.stripe.Intents(), o.stripe.Keys)
 	}
 }
 
@@ -100,38 +100,6 @@ func TestStripeContract_SquareServedNeverReachesStripe(t *testing.T) {
 	if o.squares.Load() == 0 || o.stripe.Intents() != 0 || len(o.stripe.Keys) != 0 {
 		t.Fatalf("squareRequests=%d stripeIntents=%d; want the USD charge on Square and none on Stripe",
 			o.squares.Load(), o.stripe.Intents())
-	}
-}
-
-// A caller that names Stripe is charged on Stripe in a currency Square takes.
-func TestStripeContract_ExplicitStripe(t *testing.T) {
-	o := stripeContractOrg(t)
-	out, f := TakePayment(o.ctx, o.org, TakePaymentIn{
-		SourceID: "pm_card_visa", AmountCents: 1200, Currency: "usd", Subject: "hanzo/alice",
-		IdempotencyKey: "usd-stripe-1", Provider: "stripe",
-	})
-	if f != nil {
-		t.Fatalf("explicit Stripe top-up: %d %s (%v)", f.Status, f.Message, f.Err)
-	}
-	if out.BalanceCents != 1200 || o.stripe.Intents() != 1 || o.squares.Load() != 0 {
-		t.Fatalf("out=%+v stripeIntents=%d squareRequests=%d", out, o.stripe.Intents(), o.squares.Load())
-	}
-}
-
-// A card that needs 3-D Secure is refused and credits nothing.
-func TestStripeContract_AuthenticationRequiredCreditsNothing(t *testing.T) {
-	o := stripeContractOrg(t)
-	if _, f := TakePayment(o.ctx, o.org, TakePaymentIn{
-		SourceID: "pm_card_authenticationRequired", AmountCents: 2500, Currency: "chf", Subject: "hanzo/alice", IdempotencyKey: "chf-3ds",
-	}); f == nil || f.Status != 402 {
-		t.Fatalf("3-D Secure card = %+v; want 402", f)
-	}
-	// The same buyer then pays with a card that settles: only that one counts.
-	out, f := TakePayment(o.ctx, o.org, TakePaymentIn{
-		SourceID: "pm_card_visa", AmountCents: 700, Currency: "chf", Subject: "hanzo/alice", IdempotencyKey: "chf-ok",
-	})
-	if f != nil || out.BalanceCents != 700 {
-		t.Fatalf("after a refused 3-D Secure card the balance is %+v (%v); want 700", out, f)
 	}
 }
 
