@@ -306,11 +306,14 @@ func stampCard(pm *paymentmethod.PaymentMethod, card processor.Card) {
 			pm.Name = card.Brand + " ending in " + card.Last4
 		}
 	}
+	if pm.Metadata == nil {
+		pm.Metadata = map[string]interface{}{}
+	}
 	if card.Fingerprint != "" {
-		if pm.Metadata == nil {
-			pm.Metadata = map[string]interface{}{}
-		}
 		pm.Metadata["fingerprint"] = card.Fingerprint
+	}
+	if card.Country != "" {
+		pm.Metadata["country"] = card.Country
 	}
 }
 

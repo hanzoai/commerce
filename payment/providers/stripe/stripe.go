@@ -128,6 +128,16 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 	if strings.HasPrefix(req.Token, "pi_") {
 		return p.completeIntent(ctx, req)
 	}
+	// The card's own country, read from the card: a buyer cannot choose it.
+	if strings.HasPrefix(req.Token, "pm_") {
+		card, err := p.card(ctx, req.Token)
+		if err != nil {
+			return &processor.PaymentResult{Success: false, ErrorMessage: err.Error(), Error: err}, err
+		}
+		if processor.Sanctioned(card.Country) {
+			return &processor.PaymentResult{Success: false, ErrorMessage: errSanctioned.Error(), Error: errSanctioned}, errSanctioned
+		}
+	}
 
 	params := url.Values{}
 	params.Set("amount", strconv.FormatInt(int64(req.Amount), 10))
@@ -180,6 +190,11 @@ func (p *Provider) completeIntent(ctx context.Context, req processor.PaymentRequ
 	var pi paymentIntent
 	if err := p.get(ctx, "/payment_intents/"+url.PathEscape(req.Token), nil, &pi); err != nil {
 		return &processor.PaymentResult{Success: false, ErrorMessage: err.Error(), Error: err}, err
+	}
+	if pi.PaymentMethod != "" {
+		if card, err := p.card(ctx, pi.PaymentMethod); err == nil && processor.Sanctioned(card.Country) {
+			return &processor.PaymentResult{Success: false, ErrorMessage: errSanctioned.Error(), Error: errSanctioned}, errSanctioned
+		}
 	}
 	switch {
 	case pi.Amount != int64(req.Amount) || !strings.EqualFold(pi.Currency, string(req.Currency)):
@@ -347,7 +362,7 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 		CustomerID:   pi.Customer,
 		CreatedAt:    pi.Created,
 		UpdatedAt:    pi.Created,
-		Metadata:     pi.Metadata,
+		Metadata:     withPaymentMethod(pi.Metadata, pi.PaymentMethod),
 	}, nil
 }
 
@@ -901,3 +916,16 @@ var (
 	_ processor.Reach           = (*Provider)(nil)
 	_ processor.WebhookReceiver = (*Provider)(nil)
 )
+
+// withPaymentMethod is the intent's metadata with the card it names, so a caller
+// that holds only the intent's id can find the saved card it was charged on.
+func withPaymentMethod(meta map[string]interface{}, pm string) map[string]interface{} {
+	out := map[string]interface{}{}
+	for k, v := range meta {
+		out[k] = v
+	}
+	if pm != "" {
+		out["payment_method"] = pm
+	}
+	return out
+}

@@ -16,6 +16,11 @@ import (
 // what a renewal or an auto-reload relies on. A card whose bank wants the buyer's
 // authentication is refused with *processor.ActionRequired, nothing saved.
 func (p *Provider) Vault(ctx context.Context, customerID, paymentMethodID string) (processor.Card, error) {
+	// A SetupIntent the buyer authenticated in the browser ("seti_…") is finished,
+	// not made again: it must have succeeded FOR THIS CUSTOMER.
+	if strings.HasPrefix(paymentMethodID, "seti_") {
+		return p.finishSetup(ctx, customerID, paymentMethodID)
+	}
 	params := url.Values{}
 	params.Set("customer", customerID)
 	params.Set("payment_method", paymentMethodID)
@@ -43,8 +48,44 @@ func (p *Provider) Vault(ctx context.Context, customerID, paymentMethodID string
 	// The card on file is the PaymentMethod the SetupIntent saved, by the id it
 	// answers with: the one attached to the customer, which is what a later charge
 	// must name.
-	return p.card(ctx, si.PaymentMethod)
+	return p.saved(ctx, customerID, si.PaymentMethod)
 }
+
+// finishSetup is the card a SetupIntent the buyer authenticated saved, for
+// customerID only.
+func (p *Provider) finishSetup(ctx context.Context, customerID, id string) (processor.Card, error) {
+	var si struct {
+		Status        string `json:"status"`
+		Customer      string `json:"customer"`
+		PaymentMethod string `json:"payment_method"`
+	}
+	if err := p.get(ctx, "/setup_intents/"+url.PathEscape(id), nil, &si); err != nil {
+		return processor.Card{}, err
+	}
+	if si.Status != "succeeded" || si.Customer != customerID || si.PaymentMethod == "" {
+		return processor.Card{}, &processor.Answer{Err: processor.NewPaymentError(processor.Stripe, "setup_not_completed",
+			"the card was not confirmed for this account", nil)}
+	}
+	return p.saved(ctx, customerID, si.PaymentMethod)
+}
+
+// saved reads the card a PaymentMethod is and refuses one issued in a sanctioned
+// country, detaching it again.
+func (p *Provider) saved(ctx context.Context, customerID, pm string) (processor.Card, error) {
+	card, err := p.card(ctx, pm)
+	if err != nil {
+		return card, err
+	}
+	if processor.Sanctioned(card.Country) {
+		_ = p.RemovePaymentMethod(ctx, customerID, pm)
+		return processor.Card{}, errSanctioned
+	}
+	return card, nil
+}
+
+// errSanctioned is the refusal of a card issued where no payment can be taken.
+var errSanctioned = &processor.Answer{Err: processor.NewPaymentError(processor.Stripe, "card_country_unsupported",
+	"cards issued in this country cannot be used here", nil)}
 
 // card reads a PaymentMethod's card facts.
 func (p *Provider) card(ctx context.Context, id string) (processor.Card, error) {
@@ -93,6 +134,7 @@ type stripePaymentMethod struct {
 		ExpMonth    int    `json:"exp_month"`
 		ExpYear     int    `json:"exp_year"`
 		Fingerprint string `json:"fingerprint"`
+		Country     string `json:"country"`
 	} `json:"card"`
 	Customer string `json:"customer"`
 }
@@ -101,6 +143,6 @@ func (m stripePaymentMethod) card() processor.Card {
 	return processor.Card{
 		ID: m.ID, Brand: m.Card.Brand, Last4: m.Card.Last4,
 		ExpMonth: m.Card.ExpMonth, ExpYear: m.Card.ExpYear,
-		Fingerprint: m.Card.Fingerprint, CustomerID: m.Customer,
+		Fingerprint: m.Card.Fingerprint, CustomerID: m.Customer, Country: m.Card.Country,
 	}
 }

@@ -29,6 +29,7 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/store"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
 	squareprovider "github.com/hanzoai/commerce/payment/providers/square"
 	stripeprovider "github.com/hanzoai/commerce/payment/providers/stripe"
@@ -312,7 +313,7 @@ func checkoutProcessors(org *organization.Organization) *processor.Registry {
 			Org:         org.Name,
 		}))
 	}
-	if sk := org.StripeToken(); sk != "" {
+	if sk := payment.OwnStripeSecret(org); sk != "" {
 		reg.Register(stripeprovider.NewProvider(stripeprovider.Config{SecretKey: sk}))
 	}
 	return reg
@@ -562,7 +563,7 @@ func Sessions(c *zip.Ctx) error {
 
 // createStripeCheckout creates a Stripe Checkout Session using the org's Stripe credentials.
 func createStripeCheckout(c *zip.Ctx, org *organization.Organization, items []checkoutLineItem, subtotalCents, discountCents, finalCents int64, cpn *coupon.Coupon, currency string, req checkoutSessionRequest) (checkoutSessionResponse, error) {
-	sk := org.StripeToken()
+	sk := payment.OwnStripeSecret(org)
 	if sk == "" {
 		return checkoutSessionResponse{}, errors.New("stripe is not configured for this organization")
 	}

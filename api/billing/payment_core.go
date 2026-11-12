@@ -51,6 +51,7 @@ import (
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentorg"
+	"github.com/hanzoai/commerce/models/pendingintent"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -289,6 +290,10 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		log.Error("RECONCILE: Stripe top-up for %s got no answer; the guard stays held: %v", in.Subject, err)
 		return nil, fault(503, "the payment could not be confirmed and may have gone through; check your balance before trying again", err)
 	}
+	// A card sent to its bank for authentication: the intent is recorded with its
+	// buyer and amount BEFORE the answer that sends them, so it is credited whether
+	// or not their browser comes back.
+	registerAction(result, err, org, in.Subject, pendingintent.Topup, in.AmountCents, cur)
 	if err != nil || (result != nil && !result.Success) {
 		releaseIntent()
 		abandon()
@@ -298,6 +303,24 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 			declineMsg = "charge declined"
 		}
 		return nil, fault(402, declineMsg, err)
+	}
+
+	// An intent the buyer finished may already have been credited — by its webhook,
+	// which arrives as soon as their bank confirms, before this request. Credit
+	// once: answer the credit that is there.
+	if strings.HasPrefix(in.SourceID, "pi_") {
+		if _, found, perr := paymentorg.Get(result.ProcessorRef); perr == nil && found {
+			var bal currency.Cents
+			if datas, derr := util.GetTransactionsByCurrency(org.Namespaced(ctx), in.Subject, "iam-user", cur, org.TestMode()); derr == nil {
+				if data, ok := datas.Data[cur]; ok {
+					bal = data.Balance
+				}
+			}
+			if intentGuard != nil {
+				_ = idempotencykey.Complete(intentGuard, result.ProcessorRef)
+			}
+			return &TakePaymentOut{BalanceCents: int64(bal), Status: "ok", ProcessorRef: result.ProcessorRef, Test: org.TestMode()}, nil
+		}
 	}
 
 	// Credit the canonical balance for the subject the caller's endpoint bounded.

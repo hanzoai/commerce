@@ -85,6 +85,22 @@ test:
         ./models/networktoken/... \
         ./models/product/... \
         ./payment/...
+  # Commerce's money paths against STRIPE'S OWN TEST MODE, with Stripe's test cards
+  # (api/billing/stripe_live_test.go). The tests read STRIPE_TEST_SECRET_KEY and
+  # STRIPE_TEST_PUBLISHABLE_KEY from the environment and FAIL without them: a
+  # money gate that skips when it cannot run is a green over nothing. The values
+  # are the test-mode pair testnet already holds — KMS env testnet, org hanzo,
+  # path /cloud — never a live key, and the gate's job must export them from KMS
+  # with the repo's KMS identity before this step (names only, here and in KMS).
+  # Each test creates a webhook endpoint with the test key and deletes it again.
+  - name: stripe-test-mode
+    run: |
+      set -e
+      : "${STRIPE_TEST_SECRET_KEY:?STRIPE_TEST_SECRET_KEY is not exported: read it from KMS env testnet /cloud}"
+      : "${STRIPE_TEST_PUBLISHABLE_KEY:?STRIPE_TEST_PUBLISHABLE_KEY is not exported: read it from KMS env testnet /cloud}"
+      export GOWORK=off CGO_ENABLED=1 GOFLAGS=-tags=sqlite_math_functions
+      sh scripts/fetch-plans.sh
+      go test -count=1 -timeout=10m -run 'TestLiveStripe_|TestExistingSquareCard' ./api/billing/
   # API suites (test/), the gate .github/workflows/test.yml used to own alone.
   # All 49 green. It was red on arrival for two unrelated reasons, both since
   # fixed at the cause rather than skipped: four suites got 402

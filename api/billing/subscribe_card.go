@@ -26,6 +26,7 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
 	"github.com/hanzoai/commerce/models/paymentorg"
+	"github.com/hanzoai/commerce/models/pendingintent"
 	"github.com/hanzoai/commerce/models/plan"
 	storemodel "github.com/hanzoai/commerce/models/store"
 	"github.com/hanzoai/commerce/models/subscription"
@@ -775,7 +776,18 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	}
 	var pm *paymentmethod.PaymentMethod
 	fresh := false // whether THIS request vaulted a new card (decline cleanup)
-	if methodID != "" {
+	// A PaymentIntent the buyer authenticated in the browser is the source of the
+	// retry that finishes a sale whose card needed its bank ("pi_…"): the card it
+	// was charged on is the one already saved.
+	finished := ""
+	if strings.HasPrefix(sourceID, "pi_") && methodID == "" {
+		finished = sourceID
+		var ierr error
+		if pm, ierr = cardOfIntent(ctx, db, reg, in.Subject, finished); ierr != nil {
+			abandon()
+			return nil, saleRefusal{saleDeclined, "this payment was not made for this account"}
+		}
+	} else if methodID != "" {
 		pm = paymentmethod.New(db)
 		if err := pm.GetById(methodID); err != nil {
 			abandon()
@@ -799,6 +811,9 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			abandon()
 			return nil, saleRefusal{saleDeclined, parseCardDeclineReason(&processor.PaymentResult{ErrorMessage: err.Error()}, err)}
 		}
+	}
+	if finished != "" {
+		methodID = pm.Id() // the card is a saved one from here on
 	}
 	// unvault removes a card vaulted BY THIS REQUEST when the sale ends without
 	// taking money, so the attempt leaves no orphan — but a card the customer
@@ -951,7 +966,37 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	if bal > 0 {
 		desc = fmt.Sprintf("Subscription %s — first period and starting usage balance", p.Name)
 	}
-	res, err := chargeSavedCard(ctx, reg, pm, chargeCents+bal, cur, squareKey, desc)
+	// A finished intent is spent for good: the card is charged by naming it, once.
+	var spent *idempotencykey.IdempotencyKey
+	if finished != "" {
+		g, replayed, gerr := idemBegin(db, "billing-intent", finished)
+		switch {
+		case gerr != nil:
+			hold.Release()
+			abandon()
+			return nil, saleRefusal{saleUnavailable, "billing is temporarily unavailable; please retry"}
+		case replayed:
+			hold.Release()
+			abandon()
+			return nil, saleRefusal{saleHeld, "this payment was already applied"}
+		}
+		spent = g
+	}
+	var res *processor.PaymentResult
+	if finished != "" {
+		res, err = chargeFinished(ctx, reg, pm, finished, chargeCents+bal, cur, desc)
+	} else {
+		res, err = chargeSavedCard(ctx, reg, pm, chargeCents+bal, cur, squareKey, desc, true)
+	}
+	// The card needs its bank: the intent is recorded for its buyer (the sale is
+	// finished by the retry, or the intent refunded if it never is), the card
+	// stays saved, and the answer is the step, not a decline.
+	if actionOf(res, err) != nil {
+		registerAction(res, err, org, in.Subject, pendingintent.Sale, chargeCents+bal, cur)
+		hold.Release()
+		abandon()
+		return nil, saleRefusal{saleDeclined, authRequiredIn(res, err)}
+	}
 	// A Stripe call that got NO answer may have charged the card: the attempt, its
 	// card and its coupon use stay as they are, and the buyer is told to wait.
 	if err != nil && providerOf(pm) == processor.Stripe && !answered(err) {
@@ -959,6 +1004,9 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		return nil, saleRefusal{saleUnavailable, "the payment could not be confirmed and may have gone through; check your plan before trying again"}
 	}
 	if err != nil || res == nil || !res.Success {
+		if spent != nil && err == nil {
+			_ = spent.Delete()
+		}
 		hold.Release()
 		unvault()
 		abandon()
@@ -1007,6 +1055,12 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	if err := enter(org, in, rec, d); err != nil {
 		uncredited(ctx, in.Events, org.Name, in.Subject, d.Payment, "the charge settled and the sale could not record it: "+err.Error(), chargeCents+bal, false)
 		return nil, unfinished
+	}
+	if finished != "" {
+		if spent != nil {
+			_ = idempotencykey.Complete(spent, d.Payment)
+		}
+		_, _ = pendingintent.Settle(finished)
 	}
 	// No trial: the customer is paying now, so the first period is Active
 	// immediately.
@@ -1820,8 +1874,9 @@ var errNoProcessorFor = errors.New("no payment processor for saved-card charge")
 // being charged. So a subscription bought with a Square card renews on Square
 // until its owner saves a card with a processor the policy allows.
 //
-// The charge is off-session: the buyer is not present for a renewal or a reload.
-func chargeSavedCard(ctx context.Context, reg *processor.Registry, pm *paymentmethod.PaymentMethod, amountCents int64, cur currency.Type, idempotencyKey, desc string) (*processor.PaymentResult, error) {
+// buyerPresent says the buyer is here (a sale, a top-up): their bank may then ask
+// them to authenticate. A renewal or a reload is off-session.
+func chargeSavedCard(ctx context.Context, reg *processor.Registry, pm *paymentmethod.PaymentMethod, amountCents int64, cur currency.Type, idempotencyKey, desc string, buyerPresent bool) (*processor.PaymentResult, error) {
 	req := processor.PaymentRequest{
 		Token:      strings.TrimSpace(pm.ProviderRef), // the card-on-file token
 		CustomerID: customerIDOf(pm),                  // the customer that owns it
@@ -1834,7 +1889,9 @@ func chargeSavedCard(ctx context.Context, reg *processor.Registry, pm *paymentme
 		IdempotencyKey: idempotencyKey + ":" + pm.Id(),
 		Description:    desc,
 		Metadata:       map[string]interface{}{"hanzo_subject": pm.CustomerId},
-		Options:        map[string]interface{}{"offSession": true},
+		// Off-session for a renewal or a reload; on-session when the buyer is here to
+		// answer their bank's authentication step.
+		Options: map[string]interface{}{"offSession": !buyerPresent},
 	}
 	proc, err := reg.Existing(ctx, providerOf(pm))
 	if err != nil {
@@ -1888,7 +1945,7 @@ func chargeProviderForOrg(org *organization.Organization) engine.ProviderCharger
 			":attempt:" + strconv.Itoa(inv.AttemptCount)
 		reg := processorsForOrg(org)
 		res, err := chargeSavedCard(ctx, reg, pm, amountCents, cur, squareKey,
-			fmt.Sprintf("Subscription renewal invoice %s", inv.NumberStr))
+			fmt.Sprintf("Subscription renewal invoice %s", inv.NumberStr), false)
 		if err != nil || res == nil || !res.Success {
 			return "", fmt.Errorf("%s", parseCardDeclineReason(res, err))
 		}
@@ -1911,4 +1968,47 @@ func holdSale(db *datastore.Datastore, subject string) (*idempotencykey.Lease, e
 		return nil, coded(saleHeld, "order_placing", "a sale for this account is already in progress")
 	}
 	return lease, nil
+}
+
+// cardOfIntent is the card of subject's that a PaymentIntent was charged on: the
+// intent must be for subject (its metadata names the account it was made for) and
+// the card one subject has saved.
+func cardOfIntent(ctx context.Context, db *datastore.Datastore, reg *processor.Registry, subject, intent string) (*paymentmethod.PaymentMethod, error) {
+	sp, err := reg.Existing(ctx, processor.Stripe)
+	if err != nil {
+		return nil, err
+	}
+	tx, err := sp.GetTransaction(ctx, intent)
+	if err != nil {
+		return nil, err
+	}
+	if fmt.Sprint(tx.Metadata["hanzo_subject"]) != subject {
+		return nil, errNoMethod
+	}
+	ref, _ := tx.Metadata["payment_method"].(string)
+	rootKey := db.NewKey("synckey", "", 1, nil)
+	iter := paymentmethod.Query(db).Ancestor(rootKey).Filter("CustomerId=", subject).Run()
+	for {
+		pm := paymentmethod.New(db)
+		if _, err := iter.Next(pm); err != nil {
+			break
+		}
+		if ref != "" && pm.ProviderRef == ref && providerOf(pm) == processor.Stripe {
+			return pm, nil
+		}
+	}
+	return nil, errNoMethod
+}
+
+// chargeFinished charges a card by naming the PaymentIntent its buyer finished:
+// for its own amount and account, which the processor checks.
+func chargeFinished(ctx context.Context, reg *processor.Registry, pm *paymentmethod.PaymentMethod, intent string, amountCents int64, cur currency.Type, desc string) (*processor.PaymentResult, error) {
+	proc, err := reg.Existing(ctx, processor.Stripe)
+	if err != nil {
+		return nil, fmt.Errorf("%w: stripe: %v", errNoProcessorFor, err)
+	}
+	return proc.Charge(ctx, processor.PaymentRequest{
+		Token: intent, Amount: currency.Cents(amountCents), Currency: cur, Description: desc,
+		Metadata: map[string]interface{}{"hanzo_subject": pm.CustomerId},
+	})
 }

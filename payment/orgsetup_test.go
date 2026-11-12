@@ -180,3 +180,42 @@ func TestStripeKeys_EnvFallbackByKind(t *testing.T) {
 		t.Fatalf("own keys = %+v owned=%v", k, StripeOwned(own))
 	}
 }
+
+// An org's OWN Stripe keys are held to the deployment's rule: a secret key of the
+// org's mode, a publishable key of that mode. A key of the other mode, or of the
+// wrong kind, is no key at all.
+func TestStripeKeys_OwnKeysAreCheckedByMode(t *testing.T) {
+	t.Setenv("STRIPE_SECRET_KEY", "")
+	t.Setenv("STRIPE_TEST_SECRET_KEY", "")
+	t.Setenv("STRIPE_PUBLISHABLE_KEY", "")
+	t.Setenv("STRIPE_TEST_PUBLISHABLE_KEY", "")
+	cases := []struct {
+		name           string
+		live           bool
+		sk, pk         string
+		wantSK, wantPK string
+	}{
+		{"live org, live keys", true, "sk_live_a", "pk_live_a", "sk_live_a", "pk_live_a"},
+		{"restricted key", true, "rk_live_a", "pk_live_a", "rk_live_a", "pk_live_a"},
+		{"live org, a test secret key", true, "sk_test_a", "pk_live_a", "", ""},
+		{"test org, a live secret key", false, "sk_live_a", "pk_test_a", "", ""},
+		{"a publishable key in the secret slot", true, "pk_live_a", "pk_live_a", "", ""},
+		{"a secret key in the publishable slot", true, "sk_live_a", "sk_live_b", "sk_live_a", ""},
+		{"live org, a test publishable key", true, "sk_live_a", "pk_test_a", "sk_live_a", ""},
+	}
+	for _, c := range cases {
+		org := &organization.Organization{Live: c.live}
+		if c.live {
+			org.Stripe.Live.AccessToken, org.Stripe.Live.PublishableKey = c.sk, c.pk
+		} else {
+			org.Stripe.Test.AccessToken, org.Stripe.Test.PublishableKey = c.sk, c.pk
+		}
+		k := StripeKeys(org)
+		if c.live && organization.Ceiling != organization.Live {
+			continue
+		}
+		if k.SecretKey != c.wantSK || k.PublishableKey != c.wantPK || OwnStripeSecret(org) != c.wantSK {
+			t.Errorf("%s: keys = %+v own = %q; want %q / %q", c.name, k, OwnStripeSecret(org), c.wantSK, c.wantPK)
+		}
+	}
+}

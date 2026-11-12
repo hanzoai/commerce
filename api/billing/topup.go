@@ -19,6 +19,7 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
 	"github.com/hanzoai/commerce/models/paymentorg"
+	"github.com/hanzoai/commerce/models/pendingintent"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -127,7 +128,7 @@ type topupRequest struct {
 // It takes a context and the collector rather than a request: the cron reaching
 // it has neither, and a primitive that needed one could only ever move money for
 // somebody holding a browser.
-func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, pm *paymentmethod.PaymentMethod, amountCents int64, cur currency.Type, userId, idemKey, description string) (receipt, error) {
+func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, pm *paymentmethod.PaymentMethod, amountCents int64, cur currency.Type, userId, idemKey, description string, buyerPresent bool) (receipt, error) {
 	// Server-authoritative amount bounds, enforced HERE so both callers inherit
 	// them: the HTTP top-up (where a scripted request bypasses the browser cap)
 	// and the auto-recharge cron (where a mis-set config would otherwise charge a
@@ -177,7 +178,14 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 	// The gateway de-dups on this key, derived from the SAME stable guard key. It
 	// is the backstop that survives a guard-store outage or two racing submits,
 	// because it is enforced where the money actually moves.
-	result, err := chargeSavedCard(ctx, reg, pm, amountCents, cur, gatewayKey("charge", userId, idemKey), description)
+	result, err := chargeSavedCard(ctx, reg, pm, amountCents, cur, gatewayKey("charge", userId, idemKey), description, buyerPresent)
+	// A card sent to its bank is recorded for its buyer first: whoever finishes the
+	// step — in this request's browser or later — the webhook credits it.
+	purpose := pendingintent.Topup
+	if !buyerPresent {
+		purpose = pendingintent.Reload
+	}
+	registerAction(result, err, org, userId, purpose, amountCents, cur)
 	if err != nil && errors.Is(err, errNoProcessorFor) {
 		abandon()
 		return receipt{}, fmt.Errorf("%w: %v", errNoProcessor, err)
@@ -442,7 +450,7 @@ func TopupCard(ctx context.Context, org *organization.Organization, in TopupCard
 		desc = fmt.Sprintf("Top-up %d %s for %s", in.AmountCents, cur, in.Subject)
 	}
 
-	r, err := chargeAndCredit(ctx, in.Events, org, db, pm, in.AmountCents, cur, in.Subject, idemKey, desc)
+	r, err := chargeAndCredit(ctx, in.Events, org, db, pm, in.AmountCents, cur, in.Subject, idemKey, desc, true)
 	if err != nil {
 		return nil, err
 	}

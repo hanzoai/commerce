@@ -32,7 +32,18 @@ func StripeKeys(org *organization.Organization) stripe.Credentials {
 		own = org.Stripe.Test
 	}
 	if sk := strings.TrimSpace(own.AccessToken); sk != "" {
-		return stripe.Credentials{SecretKey: sk, PublishableKey: strings.TrimSpace(own.PublishableKey)}
+		// The org's own keys are held to the same rule as the deployment's: a secret
+		// key of the org's mode (sk_/rk_ + _test_ or _live_), and a publishable key
+		// (pk_) of the same mode. A key of the other mode, or of another kind, is no
+		// key — the org has none, rather than one that charges the wrong money.
+		want := "_live_"
+		if test {
+			want = "_test_"
+		}
+		if kind(sk, want, "sk", "rk") == "" {
+			return stripe.Credentials{}
+		}
+		return stripe.Credentials{SecretKey: sk, PublishableKey: kind(strings.TrimSpace(own.PublishableKey), want, "pk")}
 	}
 	return stripe.FromEnv(test)
 }
@@ -66,4 +77,28 @@ func StripeOwned(org *organization.Organization) bool {
 		own = org.Stripe.Test
 	}
 	return strings.TrimSpace(own.AccessToken) != ""
+}
+
+// kind returns key when it is one of prefixes followed by the wanted mode.
+func kind(key, want string, prefixes ...string) string {
+	for _, p := range prefixes {
+		if strings.HasPrefix(key, p+want) {
+			return key
+		}
+	}
+	return ""
+}
+
+// OwnStripeSecret is the org's OWN secret key for its mode, checked as StripeKeys
+// checks it, and never the deployment's: a merchant's hosted checkout charges the
+// merchant's account only. "" when it holds none, or one of the wrong mode.
+func OwnStripeSecret(org *organization.Organization) string {
+	if org == nil {
+		return ""
+	}
+	own, want := org.Stripe.Live, "_live_"
+	if org.TestMode() {
+		own, want = org.Stripe.Test, "_test_"
+	}
+	return kind(strings.TrimSpace(own.AccessToken), want, "sk", "rk")
 }

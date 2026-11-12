@@ -265,12 +265,7 @@ func CreateMethod(ctx context.Context, org *organization.Organization, email str
 			if in.BillingAddress != nil {
 				pm.BillingAddress = in.BillingAddress
 			}
-			for k, v := range meta {
-				if pm.Metadata == nil {
-					pm.Metadata = map[string]interface{}{}
-				}
-				pm.Metadata[k] = v
-			}
+			pm.Metadata = mergeExtras(pm.Metadata, meta)
 			if err := pm.Update(); err != nil {
 				log.Error("Failed to update payment method extras: %v", err)
 			}
@@ -510,6 +505,31 @@ func ListPaymentMethods(c *zip.Ctx) error {
 	return c.JSON(200, methods)
 }
 
+// vaulted are the facts a saved card's row holds about the processor's vault:
+// which customer owns the card, its token, its fingerprint (which the per-card
+// trial and coupon limits count) and what was verified. They are written by the
+// vault and never by a caller: a charge is routed by them, and a limit is counted
+// by them.
+var vaulted = map[string]bool{
+	"customerId": true, "cardId": true, "verified": true, "fingerprint": true, "country": true,
+	"squareCustomerId": true, "squareCardId": true, "squareVerified": true,
+}
+
+// mergeExtras puts a caller's free-form extras onto a row's metadata: the caller's
+// own keys are replaced or added, and what the vault wrote stays as it is.
+func mergeExtras(held, extras map[string]interface{}) map[string]interface{} {
+	out := map[string]interface{}{}
+	for k, v := range held {
+		out[k] = v
+	}
+	for k, v := range extras {
+		if !vaulted[k] {
+			out[k] = v
+		}
+	}
+	return out
+}
+
 type updatePaymentMethodRequest struct {
 	BillingAddress *types.Address         `json:"billingAddress,omitempty"`
 	Metadata       map[string]interface{} `json:"metadata,omitempty"`
@@ -548,7 +568,7 @@ func UpdatePaymentMethod(c *zip.Ctx) error {
 		pm.BillingAddress = req.BillingAddress
 	}
 	if req.Metadata != nil {
-		pm.Metadata = req.Metadata
+		pm.Metadata = mergeExtras(pm.Metadata, req.Metadata)
 	}
 
 	if err := pm.Update(); err != nil {

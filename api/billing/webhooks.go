@@ -25,6 +25,7 @@ import (
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentorg"
+	"github.com/hanzoai/commerce/models/pendingintent"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -337,6 +338,11 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 		}
 	}
 
+	// The receipt is written in the books of the org the money was credited in.
+	if who.org != strings.ToLower(strings.TrimSpace(org.Name)) {
+		db = datastore.New(nscontext.WithNamespace(ctx, who.org))
+	}
+
 	// The local receipt: commerce's own record of the same payment, at the SAME
 	// address the seam credit went to, stamped with the payment id so the next
 	// delivery recognises it ([settlementDestination]). Standalone — no host ledger — this
@@ -364,8 +370,13 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 	if err := trans.Create(); err != nil {
 		log.Warn("settlement %s: failed to write the local receipt: %v", paymentID, err)
 	}
-	if err := paymentorg.Put(paymentID, org.Name, who.subject, "", 0, who.test); err != nil {
+	if err := paymentorg.Put(paymentID, who.org, who.subject, "", 0, who.test); err != nil {
 		log.Warn("settlement %s: the org index was not written: %v", paymentID, err)
+	}
+	if pi := stringField(pay, "payment_intent"); pi != "" {
+		if _, err := pendingintent.Settle(pi); err != nil {
+			log.Warn("settlement %s: pending intent %s was not marked settled: %v", paymentID, pi, err)
+		}
 	}
 	return nil
 }
@@ -458,6 +469,29 @@ func settlementDestination(db *datastore.Datastore, org *organization.Organizati
 		return nil, "", fmt.Errorf("the invoices could not be read: %w", err)
 	} else if found {
 		return nil, "", nil
+	}
+
+	// A PaymentIntent pre-registered for its buyer before their bank's step
+	// (pendingintent) says whose it is and what for, whether or not the buyer's
+	// browser ever came back. A sale's intent is finished by its sale, and a
+	// reconciler refunds one that never is; a wallet's is credited here.
+	if event.Processor == processor.Stripe {
+		if pi := stringField(pay, "payment_intent"); pi != "" {
+			p, found, err := pendingintent.Get(pi)
+			if err != nil {
+				return nil, "", fmt.Errorf("the pending intents could not be read: %w", err)
+			}
+			if found {
+				amount, cur := settlementAmount(pay)
+				switch {
+				case p.Purpose == pendingintent.Sale:
+					return nil, "", nil
+				case int64(amount) != p.Cents || !strings.EqualFold(string(cur), p.Currency):
+					return nil, fmt.Sprintf("intent %s was registered for %d %s and settled %d %s", pi, p.Cents, p.Currency, amount, cur), nil
+				}
+				return &destination{org: strings.ToLower(strings.TrimSpace(p.Org)), subject: strings.ToLower(strings.TrimSpace(p.Subject)), test: p.Test}, "", nil
+			}
+		}
 	}
 
 	// Only a subscription lifecycle delivery carries a subscription to resolve. A

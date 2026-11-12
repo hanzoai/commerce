@@ -155,6 +155,7 @@ func RenewDue(ctx context.Context) (*RenewalRun, error) {
 		}
 	}
 	stranded(ctx)
+	reconcileIntents(ctx)
 	return run, nil
 }
 

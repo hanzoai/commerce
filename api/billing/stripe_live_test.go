@@ -23,6 +23,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -41,6 +42,7 @@ import (
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
+	"github.com/hanzoai/commerce/models/pendingintent"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
@@ -543,4 +545,213 @@ func mustVault(t *testing.T, l *liveStripe) cardVault {
 		t.Fatalf("the default policy vaults cards with %s; want stripe", cp.Type())
 	}
 	return cp
+}
+
+// paid is a PaymentIntent that SUCCEEDED for this run's buyer, as one the buyer
+// finished in their browser is: its id and its charge.
+func (l *liveStripe) paid(cents int64) (id, charge string) {
+	pi := l.call("POST", "/payment_intents", url.Values{
+		"amount": {strconv.FormatInt(cents, 10)}, "currency": {"usd"}, "payment_method": {"pm_card_visa"},
+		"confirm": {"true"}, "automatic_payment_methods[enabled]": {"true"},
+		"automatic_payment_methods[allow_redirects]": {"never"}, "metadata[hanzo_subject]": {l.subject},
+	})
+	return str(pi["id"]), str(pi["latest_charge"])
+}
+
+func (l *liveStripe) register(pi, purpose string, cents int64) {
+	if err := pendingintent.Put(pi, l.org.Name, l.subject, purpose, cents, "usd", true); err != nil {
+		l.t.Fatal(err)
+	}
+}
+
+// A card sent to its bank is recorded for its buyer before the answer that sends
+// them: the amount and the buyer are on file the moment the browser has the secret.
+func TestLiveStripe_AuthenticationStepIsRecordedForItsBuyer(t *testing.T) {
+	l := liveSetup(t)
+	_, f := l.topup("pm_card_authenticationRequired", 2500, "usd", "live-pending-1")
+	var ar authRequired
+	if f == nil || json.Unmarshal([]byte(f.Message), &ar) != nil || !strings.HasPrefix(ar.ID, "pi_") {
+		t.Fatalf("answer = %+v; want the authentication step", f)
+	}
+	p, found, err := pendingintent.Get(ar.ID)
+	if err != nil || !found || p.Subject != l.subject || p.Cents != 2500 || p.Purpose != pendingintent.Topup || p.Done {
+		t.Fatalf("pending intent = %+v found %v err %v; want 2500 for %s, open", p, found, err, l.subject)
+	}
+}
+
+// The buyer finishes their bank's step and closes the tab: the intent's webhook
+// credits them, and the browser's own request — if it ever comes — credits nothing more.
+func TestLiveStripe_ClosedTabIsCreditedByTheWebhook(t *testing.T) {
+	l := liveSetup(t)
+	id, charge := l.paid(2500)
+	l.register(id, pendingintent.Topup, 2500)
+	body := l.event("payment_intent.succeeded", func(o map[string]any) bool { return str(o["id"]) == id })
+	if status, resp := l.deliver(body, l.hook); status != 200 || l.balance() != 2500 {
+		t.Fatalf("delivery = %d %v; balance %d; want 200 and 2500", status, resp, l.balance())
+	}
+	if p, _, _ := pendingintent.Get(id); p == nil || !p.Done {
+		t.Fatalf("pending intent after its webhook = %+v; want settled", p)
+	}
+	if len(l.ledger.credits()) != 1 || l.ledger.credits()[0].IdempotencyKey != charge {
+		t.Fatalf("host credits = %+v; want one, keyed on the charge", l.ledger.credits())
+	}
+	// The browser comes back after all.
+	if out, f := l.topup(id, 2500, "usd", "live-closed-tab"); f != nil || out.BalanceCents != 2500 {
+		t.Fatalf("the late request = %+v (%v); want the credit that is there, not another", out, f)
+	}
+	if l.balance() != 2500 {
+		t.Fatalf("balance %d; credited twice", l.balance())
+	}
+}
+
+// An intent that succeeded and that no webhook and no sale settled is settled by
+// the reconciler: a wallet's is credited, a plan's that never finished is refunded.
+func TestLiveStripe_ReconcilerCreditsAndRefunds(t *testing.T) {
+	l := liveSetup(t)
+	top, _ := l.paid(2500)
+	l.register(top, pendingintent.Topup, 2500)
+	reconcileIntent(*l.ctx, mustIntent(t, top))
+	if l.balance() != 2500 {
+		t.Fatalf("balance %d after the reconciler; want 2500", l.balance())
+	}
+	reconcileIntent(*l.ctx, mustIntent(t, top))
+	if l.balance() != 2500 {
+		t.Fatalf("balance %d after reconciling twice; credited again", l.balance())
+	}
+
+	sale, charge := l.paid(1500)
+	l.register(sale, pendingintent.Sale, 1500)
+	reconcileIntent(*l.ctx, mustIntent(t, sale))
+	ch := l.call("GET", "/charges/"+charge, nil)
+	if ch["refunded"] != true {
+		t.Fatalf("charge %s for a plan never bought: refunded=%v; want refunded", charge, ch["refunded"])
+	}
+	if p, _, _ := pendingintent.Get(sale); p == nil || !p.Done {
+		t.Fatalf("the sale's intent = %+v; want settled", p)
+	}
+}
+
+func mustIntent(t *testing.T, id string) *pendingintent.Intent {
+	t.Helper()
+	p, found, err := pendingintent.Get(id)
+	if err != nil || !found {
+		t.Fatalf("pending intent %s: %v %v", id, found, err)
+	}
+	return p
+}
+
+// A card whose bank wants authentication to be SAVED is answered as the step, with
+// nothing saved; the SetupIntent the buyer then finishes saves it, for that customer only.
+func TestLiveStripe_CardSaveNeedingAuthenticationFinishes(t *testing.T) {
+	l := liveSetup(t)
+	db := datastore.New(l.org.Namespaced(*l.ctx))
+	cp := mustVault(t, l)
+
+	_, _, err := saveCard(context.Background(), db, cp, l.subject, "buyer@example.com", "pm_card_authenticationRequiredSetupForOffSession")
+	var ar *processor.ActionRequired
+	if !errors.As(err, &ar) || !strings.HasPrefix(ar.ID, "seti_") || ar.ClientSecret == "" {
+		t.Fatalf("saving a card that needs authentication = %v; want the step for a SetupIntent", err)
+	}
+	if rows := methodsOf(t, db, l.subject); len(rows) != 0 {
+		t.Fatalf("%d cards saved before the buyer authenticated", len(rows))
+	}
+
+	// What the browser's step leaves behind: a SetupIntent that SUCCEEDED for the customer.
+	cust, err := vaultCustomer(context.Background(), db, cp, l.subject, "buyer@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	si := l.call("POST", "/setup_intents", url.Values{
+		"customer": {cust}, "payment_method": {"pm_card_visa"}, "confirm": {"true"}, "usage": {"off_session"},
+		"automatic_payment_methods[enabled]": {"true"}, "automatic_payment_methods[allow_redirects]": {"never"},
+	})
+	pm, created, err := saveCard(context.Background(), db, cp, l.subject, "buyer@example.com", str(si["id"]))
+	if err != nil || !created || pm.Card == nil || pm.Card.Last4 != "4242" || metaStr(pm, "country") != "US" {
+		t.Fatalf("finishing the setup = %+v created %v err %v; want the visa saved with its country", pm, created, err)
+	}
+	// Another customer cannot claim it.
+	if _, err := cp.(vaulter).Vault(context.Background(), "cus_someone_else", str(si["id"])); err == nil {
+		t.Fatal("a SetupIntent finished for one customer saved a card for another")
+	}
+}
+
+func methodsOf(t *testing.T, db *datastore.Datastore, subject string) []*paymentmethod.PaymentMethod {
+	t.Helper()
+	var out []*paymentmethod.PaymentMethod
+	iter := paymentmethod.Query(db).Ancestor(db.NewKey("synckey", "", 1, nil)).Filter("CustomerId=", subject).Run()
+	for {
+		pm := paymentmethod.New(db)
+		if _, err := iter.Next(pm); err != nil {
+			return out
+		}
+		out = append(out, pm)
+	}
+}
+
+// A plan is bought with a card whose bank was asked: the sale is finished from the
+// PaymentIntent the buyer finished, on the card already saved — for its own amount
+// and account, once.
+func TestLiveStripe_PlanFinishedFromTheBuyersIntent(t *testing.T) {
+	l := liveSetup(t)
+	db := datastore.New(l.org.Namespaced(*l.ctx))
+	cp := mustVault(t, l)
+	pm, _, err := saveCard(context.Background(), db, cp, l.subject, "buyer@example.com", "pm_card_visa")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The buyer's browser finished a charge of the plan's price on that saved card.
+	pi := l.call("POST", "/payment_intents", url.Values{
+		"amount": {"1500"}, "currency": {"usd"}, "payment_method": {pm.ProviderRef}, "customer": {customerIDOf(pm)},
+		"confirm": {"true"}, "automatic_payment_methods[enabled]": {"true"},
+		"automatic_payment_methods[allow_redirects]": {"never"}, "metadata[hanzo_subject]": {l.subject},
+	})
+	id := str(pi["id"])
+	l.register(id, pendingintent.Sale, 1500)
+
+	in := SubscribeIn{SourceID: id, PlanID: "pro-3x", Subject: l.subject, Email: "buyer@example.com", Interval: types.Monthly, IdempotencyKey: l.run + "-finish-1"}
+	sale, err := Subscribe(*l.ctx, l.org, in)
+	if err != nil || sale.SubscriptionID == "" || sale.AmountCents != 1500 || sale.PaymentMethodID != pm.Id() {
+		t.Fatalf("sale from the finished intent = %+v (%v); want a subscription paid 1500 on the saved card", sale, err)
+	}
+	if p, _, _ := pendingintent.Get(id); p == nil || !p.Done {
+		t.Fatalf("the sale's intent = %+v; want settled", p)
+	}
+	in.IdempotencyKey = l.run + "-finish-2"
+	if _, err := Subscribe(*l.ctx, l.org, in); err == nil {
+		t.Fatal("the same finished intent bought a plan twice")
+	}
+	// An intent for another buyer is not this one's.
+	other := l.call("POST", "/payment_intents", url.Values{
+		"amount": {"1500"}, "currency": {"usd"}, "payment_method": {"pm_card_visa"}, "confirm": {"true"},
+		"automatic_payment_methods[enabled]": {"true"}, "automatic_payment_methods[allow_redirects]": {"never"},
+		"metadata[hanzo_subject]": {"hanzo/someone-else"},
+	})
+	if _, err := Subscribe(*l.ctx, l.org, SubscribeIn{SourceID: str(other["id"]), PlanID: "pro-3x", Subject: l.subject, Interval: types.Monthly, IdempotencyKey: l.run + "-finish-3"}); err == nil {
+		t.Fatal("another buyer's intent bought this buyer a plan")
+	}
+}
+
+// A card's country is read from the card, and a sanctioned one is refused by the
+// processor itself: Stripe's test cards are issued in no sanctioned country, so
+// what is proved is that the country is read and that the rule is the one the
+// selection uses.
+func TestLiveStripe_CardCountryIsReadFromTheCard(t *testing.T) {
+	l := liveSetup(t)
+	cp := mustVault(t, l)
+	_ = cp
+	for pm, want := range map[string]string{"pm_card_visa": "US", "pm_card_br": "BR"} {
+		pi := l.call("POST", "/payment_intents", url.Values{
+			"amount": {"500"}, "currency": {"usd"}, "payment_method": {pm}, "confirm": {"true"},
+			"automatic_payment_methods[enabled]": {"true"}, "automatic_payment_methods[allow_redirects]": {"never"},
+		})
+		got := l.call("GET", "/payment_methods/"+str(pi["payment_method"]), nil)["card"].(map[string]any)["country"]
+		if got != want || processor.Sanctioned(want) {
+			t.Fatalf("%s: Stripe reports country %v; want %s, not sanctioned", pm, got, want)
+		}
+	}
+	for _, c := range []string{"IR", "KP", "CU", "SY", "RU", "BY"} {
+		if !processor.Sanctioned(c) {
+			t.Fatalf("%s is not refused", c)
+		}
+	}
 }
