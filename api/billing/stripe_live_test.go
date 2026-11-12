@@ -38,6 +38,7 @@ import (
 
 	"github.com/hanzoai/commerce/billing/creditledger"
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
 	"github.com/hanzoai/commerce/models/plan"
@@ -322,6 +323,52 @@ func TestLiveStripe_FinishedIntentIsCreditedOnceAndOnlyToItsBuyer(t *testing.T) 
 	}
 	if l.balance() != 2500 {
 		t.Fatalf("balance %d; the intent was credited more than once", l.balance())
+	}
+	// The intent's guard is COMPLETED, so it is never re-claimed as a crashed
+	// attempt once the in-flight window passes.
+	db := datastore.New(l.org.Namespaced(*l.ctx))
+	g, replayed, err := idemBegin(db, "billing-intent", id)
+	if err != nil || !replayed || g.Status != idempotencykey.StatusCompleted {
+		t.Fatalf("the spent intent's guard = replayed %v status %v (%v); want a completed one", replayed, g.Status, err)
+	}
+}
+
+// lostAnswers performs every PaymentIntent create at Stripe and then drops the
+// answer, as a connection that dies after the request was received does.
+type lostAnswers struct{ next http.RoundTripper }
+
+func (l lostAnswers) RoundTrip(r *http.Request) (*http.Response, error) {
+	resp, err := l.next.RoundTrip(r)
+	if err == nil && r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/v1/payment_intents") {
+		resp.Body.Close()
+		return nil, fmt.Errorf("connection reset by peer")
+	}
+	return resp, err
+}
+
+// A charge whose answer was lost may have gone through: the buyer is not told the
+// card was declined, and a retry — re-tokenized, so a new card token — is refused
+// rather than charged again.
+func TestLiveStripe_LostAnswerIsNeverChargedTwice(t *testing.T) {
+	l := liveSetup(t)
+	real := http.DefaultTransport
+	http.DefaultTransport = lostAnswers{real}
+	_, f := l.topup("pm_card_visa", 2500, "usd", "live-lost-1")
+	http.DefaultTransport = real
+	if f == nil || f.Status != 503 || strings.Contains(strings.ToLower(f.Message), "declined") {
+		t.Fatalf("a lost answer = %+v; want 503 and not a decline", f)
+	}
+	if _, f = l.topup("pm_card_mastercard", 2500, "usd", "live-lost-1"); f == nil {
+		t.Fatal("the retry under the same key was charged")
+	}
+	n := 0
+	for _, it := range l.call("GET", "/payment_intents", url.Values{"limit": {"30"}})["data"].([]any) {
+		if m, _ := it.(map[string]any)["metadata"].(map[string]any); fmt.Sprint(m["hanzo_subject"]) == l.subject {
+			n++
+		}
+	}
+	if n != 1 || l.balance() != 0 {
+		t.Fatalf("Stripe holds %d PaymentIntents for the buyer and %d is credited; want one charge, uncredited until reconciled", n, l.balance())
 	}
 }
 

@@ -14,6 +14,7 @@ import (
 // not or where the caller names it, and nothing on an account the merchant
 // does not hold.
 func TestCheckoutProcessors_Rule(t *testing.T) {
+	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
 	org := &organization.Organization{Live: true}
 	org.Name = "merchant"
 	org.Square.Production.AccessToken = "sq-own"
@@ -60,6 +61,7 @@ func TestCheckoutProcessors_Rule(t *testing.T) {
 // Hosted checkout does not gate Square on the buyer's country (Square's countries
 // are where a SELLER can be), but a sanctioned buyer is refused.
 func TestSanctionedOnly(t *testing.T) {
+	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
 	for in, want := range map[string]string{"DE": "", "BR": "", "": "", "US": "", "IR": "IR", "ru": "ru"} {
 		if got := sanctionedOnly(in); got != want {
 			t.Errorf("sanctionedOnly(%q) = %q; want %q", in, got, want)

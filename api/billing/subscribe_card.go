@@ -952,6 +952,12 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		desc = fmt.Sprintf("Subscription %s — first period and starting usage balance", p.Name)
 	}
 	res, err := chargeSavedCard(ctx, reg, pm, chargeCents+bal, cur, squareKey, desc)
+	// A Stripe call that got NO answer may have charged the card: the attempt, its
+	// card and its coupon use stay as they are, and the buyer is told to wait.
+	if err != nil && providerOf(pm) == processor.Stripe && !answered(err) {
+		log.Error("RECONCILE: Stripe sale for %s got no answer; the attempt stays held: %v", in.Subject, err)
+		return nil, saleRefusal{saleUnavailable, "the payment could not be confirmed and may have gone through; check your plan before trying again"}
+	}
 	if err != nil || res == nil || !res.Success {
 		hold.Release()
 		unvault()

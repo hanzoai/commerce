@@ -253,8 +253,10 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 	// credited once, whatever key the request carries. The guard is permanent for
 	// a payment that settles and released when it does not.
 	releaseIntent := func() {}
+	var intentGuard *idempotencykey.IdempotencyKey
 	if strings.HasPrefix(in.SourceID, "pi_") {
 		ig, replayed, ierr := idemBegin(db, "billing-intent", in.SourceID)
+		intentGuard = ig
 		switch {
 		case ierr != nil:
 			abandon()
@@ -270,7 +272,23 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		}
 	}
 
+	// Currencies: the host credits USD balances only; a charge in another currency
+	// would be taken and stranded.
+	if proc.Type() == processor.Stripe && cur != currency.USD {
+		releaseIntent()
+		abandon()
+		return nil, fault(422, "top-ups are in US dollars", nil)
+	}
+
 	result, err := proc.Charge(ctx, chargeReq)
+	// A Stripe call that got NO answer (a dropped connection, a timeout) may have
+	// charged the card. The attempt's guard stays held, so a retry — whose new card
+	// token would be a new Stripe key — is refused rather than charged twice, and
+	// the buyer is told the payment is unconfirmed, never that the card was declined.
+	if err != nil && proc.Type() == processor.Stripe && !answered(err) {
+		log.Error("RECONCILE: Stripe top-up for %s got no answer; the guard stays held: %v", in.Subject, err)
+		return nil, fault(503, "the payment could not be confirmed and may have gone through; check your balance before trying again", err)
+	}
 	if err != nil || (result != nil && !result.Success) {
 		releaseIntent()
 		abandon()
@@ -349,6 +367,11 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		if body, mErr := encodeTakePaymentOut(out); mErr == nil {
 			_ = idempotencykey.Complete(rec, body)
 		}
+	}
+	// The intent is spent for good: completed, so it is never claimed again as a
+	// crashed attempt.
+	if intentGuard != nil {
+		_ = idempotencykey.Complete(intentGuard, trans.Id())
 	}
 	return out, nil
 }

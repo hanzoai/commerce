@@ -70,6 +70,8 @@ func TestBrandForHost(t *testing.T) {
 // tokenizing against a production Square application.
 func TestOrgResolver_ResolvesOrgAsTenant(t *testing.T) {
 	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
+	t.Setenv("STRIPE_TEST_SECRET_KEY", "")
+	t.Setenv("STRIPE_TEST_PUBLISHABLE_KEY", "")
 	t.Setenv("SQUARE_ENVIRONMENT", "production")     // hostile: ignored
 	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-PROD") // hostile: a sandbox org never reads it
 	t.Setenv("SQUARE_LOCATION_ID", "PRODLOC")        // hostile

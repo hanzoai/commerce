@@ -204,7 +204,8 @@ func resultOf(pi *paymentIntent) (*processor.PaymentResult, error) {
 		return actionRequired(pi)
 	default:
 		// processing, requires_payment_method, canceled…: not money in hand. A
-		// "processing" intent may settle later; its webhook credits it then.
+		// "processing" intent that settles later is reconciled by hand: its webhook
+		// finds no receipt, so it credits nothing and raises the alarm.
 		return failed(pi, "the payment did not complete: "+pi.Status)
 	}
 }
@@ -359,9 +360,7 @@ func (p *Provider) ValidateWebhook(ctx context.Context, payload []byte, signatur
 	// Parse Stripe-Signature header: t=...,v1=...
 	parts := parseSignatureHeader(signature)
 	timestamp := parts["t"]
-	v1Sig := parts["v1"]
-
-	if timestamp == "" || v1Sig == "" {
+	if timestamp == "" || len(v1Sigs(signature)) == 0 {
 		return nil, processor.ErrWebhookValidationFailed
 	}
 
@@ -371,7 +370,15 @@ func (p *Provider) ValidateWebhook(ctx context.Context, payload []byte, signatur
 	mac.Write([]byte(signedPayload))
 	expectedSig := hex.EncodeToString(mac.Sum(nil))
 
-	if !hmac.Equal([]byte(v1Sig), []byte(expectedSig)) {
+	// Stripe signs with every secret it holds for the endpoint while one is being
+	// rolled: any v1 that matches admits the delivery.
+	matched := false
+	for _, v1Sig := range v1Sigs(signature) {
+		if hmac.Equal([]byte(v1Sig), []byte(expectedSig)) {
+			matched = true
+		}
+	}
+	if !matched {
 		return nil, processor.ErrWebhookValidationFailed
 	}
 
@@ -794,6 +801,17 @@ func mapSubscription(sub *stripeSub) *processor.Subscription {
 		CancelAtPeriodEnd:  sub.CancelAtPeriodEnd,
 		Metadata:           sub.Metadata,
 	}
+}
+
+// v1Sigs is every v1 signature a Stripe-Signature header carries.
+func v1Sigs(header string) []string {
+	var out []string
+	for _, part := range strings.Split(header, ",") {
+		if k, v, ok := strings.Cut(strings.TrimSpace(part), "="); ok && k == "v1" {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 func parseSignatureHeader(header string) map[string]string {
