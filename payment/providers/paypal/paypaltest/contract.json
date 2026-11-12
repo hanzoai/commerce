@@ -1,0 +1,308 @@
+{
+ "_source": {
+  "spec": "github.com/paypal/paypal-rest-api-specifications@90e8041ffe02d80c452d2b476bedd59a8d219bdc openapi/checkout_orders_v2.json and openapi/payments_payment_v2.json",
+  "recorded": "api-m.paypal.com (live), 2026-11-12, with a client-credentials token for the public client id; requests that create nothing (empty body, wrong secret)",
+  "note": "examples.* are PayPal's published response examples; the server substitutes the order's own id, status and amount. examples.order_not_approved has no example in the spec and follows PayPal's documented error format and issue name (developer.paypal.com/api/rest/reference/orders/v2/errors/#ORDER_NOT_APPROVED). recorded.* are live PayPal bodies, debug_id elided. Live PayPal refused a PayPal-Request-Id of 128 characters and accepted 127 on 2026-11-12; the spec's 108 is the limit this server holds a caller to."
+ },
+ "limits": {
+  "PayPal-Request-Id": 108,
+  "custom_id": 255,
+  "invoice_id": 127,
+  "reference_id": 256,
+  "description": 3000
+ },
+ "recorded": {
+  "oauth_invalid_client": {
+   "status": 401,
+   "body": {
+    "error": "invalid_client",
+    "error_description": "Client Authentication failed"
+   }
+  },
+  "orders_missing_required": {
+   "status": 400,
+   "body": {
+    "name": "INVALID_REQUEST",
+    "message": "Request is not well-formed, syntactically incorrect, or violates schema.",
+    "debug_id": "",
+    "details": [
+     {
+      "field": "/intent",
+      "location": "body",
+      "issue": "MISSING_REQUIRED_PARAMETER",
+      "description": "A required field / parameter is missing."
+     },
+     {
+      "field": "/purchase_units",
+      "location": "body",
+      "issue": "MISSING_REQUIRED_PARAMETER",
+      "description": "A required field / parameter is missing."
+     }
+    ],
+    "links": [
+     {
+      "href": "https://developer.paypal.com/docs/api/orders/v2/#error-MISSING_REQUIRED_PARAMETER",
+      "rel": "information_link",
+      "encType": "application/json"
+     }
+    ]
+   }
+  },
+  "request_id_too_long": {
+   "status": 422,
+   "body": {
+    "name": "UNPROCESSABLE_ENTITY",
+    "details": [
+     {
+      "field": "PayPal-Request-Id",
+      "value": "",
+      "issue": "INVALID_STRING_LENGTH",
+      "description": "The value of a field is either too short or too long."
+     }
+    ],
+    "message": "The requested action could not be performed, semantically incorrect, or failed business validation.",
+    "debug_id": "",
+    "links": [
+     {
+      "href": "https://developer.paypal.com/api/rest/reference/orders/v2/errors/#INVALID_STRING_LENGTH",
+      "rel": "information_link",
+      "method": "GET"
+     }
+    ]
+   }
+  },
+  "oauth_token_scope": "https://uri.paypal.com/services/billing-agreements https://api.paypal.com/v1/payments/.* https://uri.paypal.com/services/vault/payment-tokens/read openid Braintree:Vault https://uri.paypal.com/services/payments/client-payments-eligibility https://uri.paypal.com/services/subscriptions https://uri.paypal.com/services/credit/client-offer-presentment/read"
+ },
+ "examples": {
+  "orders_create": {
+   "id": "5O190127TN364715T",
+   "links": [
+    {
+     "href": "https://api-m.paypal.com/v2/checkout/orders/5O190127TN364715T",
+     "rel": "self",
+     "method": "GET"
+    },
+    {
+     "href": "https://www.paypal.com/checkoutnow?token=5O190127TN364715T",
+     "rel": "approve",
+     "method": "GET"
+    },
+    {
+     "href": "https://api-m.paypal.com/v2/checkout/orders/5O190127TN364715T",
+     "rel": "edit",
+     "method": "PATCH"
+    },
+    {
+     "href": "https://api-m.paypal.com/v2/checkout/orders/5O190127TN364715T/capture",
+     "rel": "capture",
+     "method": "POST"
+    }
+   ]
+  },
+  "orders_capture": {
+   "id": "5O190127TN364715T",
+   "payment_source": {
+    "paypal": {
+     "name": {
+      "given_name": "John",
+      "surname": "Doe"
+     },
+     "email_address": "customer@example.com",
+     "account_id": "QYR5Z8XDVJNXQ"
+    }
+   },
+   "purchase_units": [
+    {
+     "reference_id": "d9f80740-38f0-11e8-b467-0ed5f89f718b",
+     "shipping": {
+      "address": {
+       "address_line_1": "2211 N First Street",
+       "address_line_2": "Building 17",
+       "admin_area_2": "San Jose",
+       "admin_area_1": "CA",
+       "postal_code": "95131",
+       "country_code": "US"
+      }
+     },
+     "payments": {
+      "captures": [
+       {
+        "id": "3C679366HH908993F",
+        "status": "COMPLETED",
+        "amount": {
+         "currency_code": "USD",
+         "value": "100.00"
+        },
+        "seller_protection": {
+         "status": "ELIGIBLE",
+         "dispute_categories": [
+          "ITEM_NOT_RECEIVED",
+          "UNAUTHORIZED_TRANSACTION"
+         ]
+        },
+        "final_capture": true,
+        "seller_receivable_breakdown": {
+         "gross_amount": {
+          "currency_code": "USD",
+          "value": "100.00"
+         },
+         "paypal_fee": {
+          "currency_code": "USD",
+          "value": "3.00"
+         },
+         "net_amount": {
+          "currency_code": "USD",
+          "value": "97.00"
+         }
+        },
+        "create_time": "2018-04-01T21:20:49Z",
+        "update_time": "2018-04-01T21:20:49Z",
+        "links": [
+         {
+          "href": "https://api-m.paypal.com/v2/payments/captures/3C679366HH908993F",
+          "rel": "self",
+          "method": "GET"
+         },
+         {
+          "href": "https://api-m.paypal.com/v2/payments/captures/3C679366HH908993F/refund",
+          "rel": "refund",
+          "method": "POST"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "payer": {
+    "name": {
+     "given_name": "John",
+     "surname": "Doe"
+    },
+    "email_address": "customer@example.com",
+    "payer_id": "QYR5Z8XDVJNXQ"
+   },
+   "links": [
+    {
+     "href": "https://api-m.paypal.com/v2/checkout/orders/5O190127TN364715T",
+     "rel": "self",
+     "method": "GET"
+    }
+   ]
+  },
+  "orders_authorize": {
+   "id": "5O190127TN364715T",
+   "payment_source": {
+    "paypal": {
+     "name": {
+      "given_name": "John",
+      "surname": "Doe"
+     },
+     "email_address": "customer@example.com",
+     "account_id": "QYR5Z8XDVJNXQ"
+    }
+   },
+   "purchase_units": [
+    {
+     "reference_id": "d9f80740-38f0-11e8-b467-0ed5f89f718b",
+     "payments": {
+      "authorizations": [
+       {
+        "id": "3C679366HH908993F",
+        "status": "CREATED",
+        "amount": {
+         "currency_code": "USD",
+         "value": "100.00"
+        },
+        "seller_protection": {
+         "status": "ELIGIBLE",
+         "dispute_categories": [
+          "ITEM_NOT_RECEIVED",
+          "UNAUTHORIZED_TRANSACTION"
+         ]
+        },
+        "expiration_time": "2021-10-08T23:37:39Z",
+        "links": [
+         {
+          "href": "https://api-m.paypal.com/v2/payments/authorizations/5O190127TN364715T",
+          "rel": "self",
+          "method": "GET"
+         },
+         {
+          "href": "https://api-m.paypal.com/v2/payments/authorizations/5O190127TN364715T/capture",
+          "rel": "capture",
+          "method": "POST"
+         },
+         {
+          "href": "https://api-m.paypal.com/v2/payments/authorizations/5O190127TN364715T/void",
+          "rel": "void",
+          "method": "POST"
+         },
+         {
+          "href": "https://api-m.paypal.com/v2/checkout/orders/5O190127TN364715T",
+          "rel": "up",
+          "method": "GET"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "payer": {
+    "name": {
+     "given_name": "John",
+     "surname": "Doe"
+    },
+    "email_address": "customer@example.com",
+    "payer_id": "QYR5Z8XDVJNXQ"
+   },
+   "links": [
+    {
+     "href": "https://api-m.paypal.com/v2/checkout/orders/5O190127TN364715T",
+     "rel": "self",
+     "method": "GET"
+    }
+   ]
+  },
+  "authorizations_capture": {
+   "id": "2GG279541U471931P",
+   "status": "COMPLETED",
+   "links": [
+    {
+     "rel": "self",
+     "method": "GET",
+     "href": "https://api-m.paypal.com/v2/payments/captures/2GG279541U471931P"
+    },
+    {
+     "rel": "refund",
+     "method": "POST",
+     "href": "https://api-m.paypal.com/v2/payments/captures/2GG279541U471931P/refund"
+    },
+    {
+     "rel": "up",
+     "method": "GET",
+     "href": "https://api-m.paypal.com/v2/payments/authorizations/0VF52814937998046"
+    }
+   ]
+  },
+  "order_not_approved": {
+   "name": "UNPROCESSABLE_ENTITY",
+   "details": [
+    {
+     "issue": "ORDER_NOT_APPROVED",
+     "description": "Payer has not yet approved the Order for payment."
+    }
+   ],
+   "message": "The requested action could not be performed, semantically incorrect, or failed business validation.",
+   "debug_id": "",
+   "links": [
+    {
+     "href": "https://developer.paypal.com/api/rest/reference/orders/v2/errors/#ORDER_NOT_APPROVED",
+     "rel": "information_link",
+     "method": "GET"
+    }
+   ]
+  }
+ }
+}

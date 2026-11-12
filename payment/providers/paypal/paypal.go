@@ -871,7 +871,7 @@ func (p *Provider) doRequestDetailed(ctx context.Context, method, path string, b
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	if idempotencyKey = strings.TrimSpace(idempotencyKey); idempotencyKey != "" && method == http.MethodPost {
-		req.Header.Set("PayPal-Request-Id", idempotencyKey)
+		req.Header.Set("PayPal-Request-Id", fitKey(idempotencyKey))
 	}
 
 	resp, err := p.httpClient.Do(req)
