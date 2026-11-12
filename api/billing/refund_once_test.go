@@ -83,7 +83,7 @@ func TestRefundsAPI_POSTIsNotRoutedAndWritesNothing(t *testing.T) {
 	} {
 		req := httptest.NewRequest(http.MethodPost, path, bytes.NewBufferString(body))
 		req.Header.Set("Content-Type", "application/json")
-		resp, err := app.Test(req)
+		resp, err := app.Test(req, patient)
 		if err != nil {
 			t.Fatalf("POST %s: %v", path, err)
 		}

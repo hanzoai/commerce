@@ -8,12 +8,21 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/mintauth"
 	"github.com/hanzoai/commerce/models/organization"
 )
+
+// patient is how long one in-process request may take before the harness calls it
+// hung. app.Test without a config waits fiber's 1s, which is a guess about the
+// machine, not about the code: 40 concurrent usage calls for one wallet queue on
+// its one writer, the slowest took 65-225ms here and passed 1s on a loaded CI
+// runner (TestConcurrentSubCentCallsAccumulateExactly panicked "test: timeout").
+// FailOnTimeout keeps a real hang a failure.
+var patient = zip.TestConfig{Timeout: 30 * time.Second, FailOnTimeout: true}
 
 // invokeMoneyHandler drives a single billing handler directly with a real
 // org + datastore context and an optional header set — the harness for the H1
@@ -38,7 +47,7 @@ func invokeMoneyHandler(org *organization.Organization, ctx context.Context, h z
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
-	resp, err := app.Test(req)
+	resp, err := app.Test(req, patient)
 	if err != nil {
 		panic(err)
 	}
@@ -59,7 +68,7 @@ func driveSeeded(seed func(*zip.Ctx), routePattern string, req *http.Request, ha
 		}
 		return c.Next()
 	}, handler)
-	resp, err := app.Test(req)
+	resp, err := app.Test(req, patient)
 	if err != nil {
 		panic(err)
 	}
