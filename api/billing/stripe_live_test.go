@@ -840,3 +840,59 @@ func TestLiveStripe_UnfinishedStepsAreCapped(t *testing.T) {
 		t.Fatalf("the step past the cap = %+v; want 429", last)
 	}
 }
+
+// A top-up finished in the browser closes its pending row, so the buyer's cap and
+// the reconciler's sweep are not held by money already credited.
+func TestLiveStripe_FinishedTopupClosesItsRow(t *testing.T) {
+	l := liveSetup(t)
+	id, _ := l.paid(2500)
+	l.register(id, pendingintent.Topup, 2500)
+	if out, f := l.topup(id, 2500, "usd", "live-close-1"); f != nil || out.TransactionID == "" {
+		t.Fatalf("top-up = %+v (%v); want a receipt id", out, f)
+	}
+	if p, _, _ := pendingintent.Get(id); p == nil || !p.Done {
+		t.Fatalf("pending row after the browser's top-up = %+v; want settled", p)
+	}
+	// A replay under another key answers the receipt that is there.
+	if out, f := l.topup(id, 2500, "usd", "live-close-2"); f != nil || out.TransactionID == "" || l.balance() != 2500 {
+		t.Fatalf("replay = %+v (%v) balance %d; want the same receipt, 2500", out, f, l.balance())
+	}
+}
+
+// A charge refunded before anything credited it is not credited by the webhook or
+// the reconciler either.
+func TestLiveStripe_RefundedBeforeCreditIsNotCredited(t *testing.T) {
+	l := liveSetup(t)
+	id, charge := l.paid(2500)
+	l.register(id, pendingintent.Topup, 2500)
+	l.call("POST", "/refunds", url.Values{"charge": {charge}})
+	reconcileIntent(*l.ctx, mustIntent(t, id))
+	if l.balance() != 0 {
+		t.Fatalf("balance %d after reconciling a refunded charge", l.balance())
+	}
+	body := l.event("payment_intent.succeeded", func(o map[string]any) bool { return str(o["id"]) == id })
+	if status, _ := l.deliver(body, l.hook); status != 200 || l.balance() != 0 {
+		t.Fatalf("webhook for a refunded charge: balance %d", l.balance())
+	}
+}
+
+// A saved card's plan purchase finishes from the buyer's intent with the card named.
+func TestLiveStripe_SavedCardPlanFinishesFromIntentWithTheCardNamed(t *testing.T) {
+	l := liveSetup(t)
+	db := datastore.New(l.org.Namespaced(*l.ctx))
+	cp := mustVault(t, l)
+	pm, _, err := saveCard(context.Background(), db, cp, l.subject, "buyer@example.com", "pm_card_visa")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pi := l.call("POST", "/payment_intents", url.Values{
+		"amount": {"1500"}, "currency": {"usd"}, "payment_method": {pm.ProviderRef}, "customer": {customerIDOf(pm)},
+		"confirm": {"true"}, "automatic_payment_methods[enabled]": {"true"},
+		"automatic_payment_methods[allow_redirects]": {"never"}, "metadata[hanzo_subject]": {l.subject},
+	})
+	l.register(str(pi["id"]), pendingintent.Sale, 1500)
+	sale, serr := Subscribe(*l.ctx, l.org, SubscribeIn{SourceID: str(pi["id"]), MethodID: pm.Id(), PlanID: "pro-3x", Subject: l.subject, Interval: types.Monthly, IdempotencyKey: l.run + "-saved-finish"})
+	if serr != nil || sale.SubscriptionID == "" || sale.AmountCents != 1500 {
+		t.Fatalf("saved-card plan from its intent = %+v (%v)", sale, serr)
+	}
+}

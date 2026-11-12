@@ -202,16 +202,12 @@ func (p *Provider) completeIntent(ctx context.Context, req processor.PaymentRequ
 	}
 	// A payment already refunded, in whole or part, is not money in hand.
 	if pi.LatestCharge != "" {
-		var ch struct {
-			Refunded       bool  `json:"refunded"`
-			AmountRefunded int64 `json:"amount_refunded"`
-			AmountCaptured int64 `json:"amount_captured"`
-		}
-		if err := p.get(ctx, "/charges/"+url.PathEscape(pi.LatestCharge), nil, &ch); err != nil {
+		ok, err := p.ChargeSound(ctx, pi.LatestCharge, pi.Amount)
+		if err != nil {
 			return &processor.PaymentResult{Success: false, ErrorMessage: err.Error(), Error: err}, err
 		}
-		if ch.Refunded || ch.AmountRefunded > 0 || (ch.AmountCaptured > 0 && ch.AmountCaptured < pi.Amount) {
-			return failed(&pi, "this payment was refunded or not received in full")
+		if !ok {
+			return failed(&pi, "this payment was refunded, disputed or not received in full")
 		}
 	}
 	switch {
@@ -946,4 +942,23 @@ func withPaymentMethod(meta map[string]interface{}, pm string) map[string]interf
 		out["payment_method"] = pm
 	}
 	return out
+}
+
+// ChargeSound says whether a charge is money in hand for amount: captured in full,
+// not refunded in whole or part, and not disputed. A caller that is about to
+// credit one asks first.
+func (p *Provider) ChargeSound(ctx context.Context, chargeID string, amount int64) (bool, error) {
+	var ch struct {
+		Refunded       bool  `json:"refunded"`
+		Disputed       bool  `json:"disputed"`
+		AmountRefunded int64 `json:"amount_refunded"`
+		AmountCaptured int64 `json:"amount_captured"`
+	}
+	if err := p.get(ctx, "/charges/"+url.PathEscape(chargeID), nil, &ch); err != nil {
+		return false, err
+	}
+	if ch.Refunded || ch.Disputed || ch.AmountRefunded > 0 || (amount > 0 && ch.AmountCaptured < amount) {
+		return false, nil
+	}
+	return true, nil
 }

@@ -11,6 +11,7 @@ package pendingintent
 
 import (
 	"context"
+	"sort"
 	"strings"
 	"time"
 
@@ -117,6 +118,8 @@ func Open(cutoff time.Time) ([]*Intent, error) {
 			out = append(out, r)
 		}
 	}
+	// Oldest first, so a sweep that reads only some of them reads the oldest.
+	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.Before(out[j].CreatedAt) })
 	return out, nil
 }
 

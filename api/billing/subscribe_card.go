@@ -480,7 +480,9 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		// usage, and a plan is billed to a card every period.
 		return nil, coded(saleRefused, "plan_needs_card", "a plan is bought with a card: prepaid credit and the balance pay for usage only")
 	}
-	if (sourceID == "") == (methodID == "") {
+	// One of a new card or a saved one — except that a PaymentIntent the buyer
+	// finished ("pi_…") may name the saved card it was charged on.
+	if (sourceID == "") == (methodID == "") && !(sourceID != "" && strings.HasPrefix(sourceID, "pi_")) {
 		return nil, saleRefusal{saleRefused, "send exactly one of sourceId (a new card) or paymentMethodId (a saved card)"}
 	}
 	if in.Wallet && sourceID == "" {

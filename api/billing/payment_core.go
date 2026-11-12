@@ -331,10 +331,18 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 					bal = data.Balance
 				}
 			}
+			// The credit's own receipt: the row stamped with the charge. None yet means
+			// the claim holder is mid-credit.
+			stamped := transaction.New(db)
+			if sfound, serr := stamped.Query().Filter("SourceKind=", chargeSourceKind(proc.Type())).Filter("SourceId=", result.ProcessorRef).Get(); serr != nil || !sfound {
+				abandon()
+				return nil, fault(409, "this payment is being applied; check your balance in a moment", nil)
+			}
 			if ownedHere && intentGuard != nil {
 				_ = idempotencykey.Complete(intentGuard, result.ProcessorRef)
 			}
-			return &TakePaymentOut{BalanceCents: int64(bal), Status: "ok", ProcessorRef: result.ProcessorRef, Test: org.TestMode()}, nil
+			_, _ = pendingintent.Settle(in.SourceID)
+			return &TakePaymentOut{TransactionID: stamped.Id(), BalanceCents: int64(bal), Status: "ok", ProcessorRef: result.ProcessorRef, Test: org.TestMode()}, nil
 		}
 		// Credited by nobody yet, and the claim is another's: that holder is
 		// crediting it now. Not ours to credit a second time.
@@ -416,6 +424,9 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 	// crashed attempt.
 	if intentGuard != nil && ownsIntent {
 		_ = idempotencykey.Complete(intentGuard, trans.Id())
+	}
+	if intentGuard != nil {
+		_, _ = pendingintent.Settle(in.SourceID)
 	}
 	return out, nil
 }

@@ -136,6 +136,10 @@ func reconcileIntent(ctx context.Context, p *pendingintent.Intent) {
 		_, _ = pendingintent.Settle(p.Id())
 		return
 	}
+	if _, found, _ := paymentorg.Get(tx.ProcessorRef); found {
+		_, _ = pendingintent.Settle(p.Id()) // credited by the browser or the webhook
+		return
+	}
 	ev := &processor.WebhookEvent{
 		ID: "reconcile:" + p.Id(), Type: "payment.completed", Processor: processor.Stripe,
 		Data: map[string]interface{}{

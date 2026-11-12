@@ -29,6 +29,7 @@ import (
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/util/nscontext"
 
@@ -304,7 +305,12 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 	}
 	if who == nil {
 		if why == "" {
-			return nil // already accounted for by an endpoint that owns the credit
+			// Already accounted for by an endpoint that owns the credit: a registered
+			// intent's row is closed with it.
+			if pi := stringField(pay, "payment_intent"); event.Processor == processor.Stripe && pi != "" {
+				_, _ = pendingintent.Settle(pi)
+			}
+			return nil
 		}
 		reconcileSettlement(org, event, paymentID, why)
 		return nil
@@ -321,9 +327,33 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 			return fmt.Errorf("settlement %s: the intent's claim could not be taken: %w", paymentID, cerr)
 		}
 		if taken {
+			// Another holder is crediting it, or has. One still at it may yet give
+			// the claim back, and then nothing else would credit: answer a retry.
+			if g.Status != idempotencykey.StatusCompleted {
+				return fmt.Errorf("settlement %s: another path holds the intent's claim; redeliver", paymentID)
+			}
+			_, _ = pendingintent.Settle(pi)
 			return nil
 		}
 		claim = g
+		// Money in hand only: a charge already refunded or disputed is not credited.
+		if sp, serr := payment.ProcessorsForOrg(org).Existing(ctx, processor.Stripe); serr == nil {
+			if cs, ok := sp.(interface {
+				ChargeSound(context.Context, string, int64) (bool, error)
+			}); ok {
+				sound, cerr := cs.ChargeSound(ctx, paymentID, int64(amount))
+				if cerr != nil {
+					_ = g.Delete()
+					return fmt.Errorf("settlement %s: the charge could not be read: %w", paymentID, cerr)
+				}
+				if !sound {
+					_ = idempotencykey.Complete(g, "unsound")
+					_, _ = pendingintent.Settle(pi)
+					log.Warn("settlement %s: charge refunded, disputed or short; nothing credited", paymentID)
+					return nil
+				}
+			}
+		}
 	}
 	release := func() {
 		if claim != nil {
