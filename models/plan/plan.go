@@ -240,7 +240,13 @@ const (
 // no value for it, and treating that as unlisted would blank the catalog the
 // moment this ships. Only an explicit draft, private or archived hides a row.
 func (p *Plan) Listed() bool {
-	return p.Status == "" || p.Status == StatusActive
+	return ListedStatus(p.Status)
+}
+
+// ListedStatus is Listed for a status alone: the question the embedded catalog
+// asks of its entries, which carry the catalog's status and are not rows.
+func ListedStatus(status string) bool {
+	return status == "" || status == StatusActive
 }
 
 // Assignable reports whether STAFF may put a customer on this plan: everything
