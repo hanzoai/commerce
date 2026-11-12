@@ -127,7 +127,11 @@ type topupRequest struct {
 // It takes a context and the collector rather than a request: the cron reaching
 // it has neither, and a primitive that needed one could only ever move money for
 // somebody holding a browser.
-func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, pm *paymentmethod.PaymentMethod, amountCents int64, cur currency.Type, userId, idemKey, description string) (receipt, error) {
+//
+// how says whether the payer is there: the on-session top-up may answer a
+// *processor.ActionRequired for the page to finish, the off-session reload never
+// does — its bank's demand is a decline.
+func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, pm *paymentmethod.PaymentMethod, amountCents int64, cur currency.Type, userId, idemKey, description string, how cardCharge) (receipt, error) {
 	// Server-authoritative amount bounds, enforced HERE so both callers inherit
 	// them: the HTTP top-up (where a scripted request bypasses the browser cap)
 	// and the auto-recharge cron (where a mis-set config would otherwise charge a
@@ -169,43 +173,22 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 		}
 	}
 
-	squareCustomerID := pm.CustomerId
-	if pm.Metadata != nil {
-		if v, ok := pm.Metadata["squareCustomerId"].(string); ok && v != "" {
-			squareCustomerID = v
-		}
-	}
-
-	chargeReq := processor.PaymentRequest{
-		Token:      pm.ProviderRef,
-		Amount:     currency.Cents(amountCents),
-		Currency:   cur,
-		CustomerID: squareCustomerID,
-		// The gateway de-dups on this key, derived from the SAME stable guard key.
-		// It is the backstop that survives a guard-store outage or two racing
-		// submits, because it is enforced where the money actually moves.
-		IdempotencyKey: gatewayKey("charge", userId, idemKey),
-		Description:    description,
-	}
-
-	// The global registry holds empty singletons (Square is registered
-	// unconfigured at init), so charges must go through the org-scoped registry.
-	//
-	// Via the shared processorsForOrg seam (production: payment.ProcessorsForOrg)
-	// — the SAME one SubscribeWithCard and TopupWithToken use. Reaching for
-	// payment.ProcessorsForOrg directly is what made this primitive untestable:
-	// no test could substitute a processor, so the saved-card top-up AND the
-	// off-session auto-recharge cron both ran with zero coverage.
+	// The card is charged by the processor that holds it (chargeSavedCard), via
+	// the shared processorsForOrg seam (production: payment.ProcessorsForOrg) —
+	// the SAME one SubscribeWithCard and TopupWithToken use, so a test can
+	// substitute the processor for both the saved-card top-up and the cron. The
+	// gateway de-dups on a key derived from the SAME stable guard key: the
+	// backstop that survives a guard-store outage or two racing submits.
 	reg := processorsForOrg(org)
-	proc, err := reg.SelectProcessor(ctx, chargeReq)
+	result, err := chargeSavedCard(ctx, reg, pm, amountCents, cur, gatewayKey("charge", userId, idemKey), description, how)
 	if err != nil {
 		abandon()
-		return receipt{}, fmt.Errorf("%w: %v", errNoProcessor, err)
-	}
-
-	result, err := proc.Charge(ctx, chargeReq)
-	if err != nil {
-		abandon()
+		if _, ok := errors.AsType[*processor.ActionRequired](err); ok {
+			return receipt{}, err
+		}
+		if errors.Is(err, processor.ErrProcessorNotFound) || errors.Is(err, processor.ErrProcessorNotAvailable) || strings.HasPrefix(err.Error(), "no payment processor") {
+			return receipt{}, fmt.Errorf("%w: %v", errNoProcessor, err)
+		}
 		return receipt{}, fmt.Errorf("charge failed: %w", err)
 	}
 	if !result.Success {
@@ -217,7 +200,7 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 		return receipt{}, errors.New(msg)
 	}
 
-	id, balanceCents, err := fund(ctx, ev, org, db, userId, amountCents, cur, proc.Type(), result.ProcessorRef)
+	id, balanceCents, err := fund(ctx, ev, org, db, userId, amountCents, cur, kindOf(pm), result.ProcessorRef)
 	if err != nil {
 		return receipt{}, err
 	}
@@ -381,6 +364,10 @@ type TopupCardIn struct {
 	// customer reads it. The two callers say different true things there ("Top-up"
 	// versus "Auto-recharge"), so it is a value rather than a sentence invented here.
 	Description string
+	// PaymentIntent is the Stripe PaymentIntent (pi_…) a requires_action answer
+	// to this same top-up named, which the buyer has since authenticated. The
+	// request is sent again whole, with the same key.
+	PaymentIntent string
 	// Events is the analytics collector the money alarm fires on when a settled
 	// charge fails to move the ledger. Nil is a no-op.
 	Events *events.Client
@@ -463,7 +450,13 @@ func TopupCard(ctx context.Context, org *organization.Organization, in TopupCard
 		desc = fmt.Sprintf("Top-up %d %s for %s", in.AmountCents, cur, in.Subject)
 	}
 
-	r, err := chargeAndCredit(ctx, in.Events, org, db, pm, in.AmountCents, cur, in.Subject, idemKey, desc)
+	// A top-up is a new payment: only a card of the card rail makes one. A card
+	// saved at a rail that closed keeps paying what it already pays.
+	if !spends(ctx, pm) {
+		return nil, errCardReadd
+	}
+	r, err := chargeAndCredit(ctx, in.Events, org, db, pm, in.AmountCents, cur, in.Subject, idemKey, desc,
+		cardCharge{resume: strings.TrimSpace(in.PaymentIntent)})
 	if err != nil {
 		return nil, err
 	}

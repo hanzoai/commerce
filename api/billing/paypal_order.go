@@ -78,6 +78,11 @@ func CreatePayPalOrder(ctx context.Context, org *organization.Organization, in P
 		return nil, fault(http.StatusUnauthorized, "missing identity headers", nil)
 	}
 
+	if !opens(ctx, processor.PayPal) {
+		f := fault(http.StatusBadRequest, errRailMoved.Error(), nil)
+		f.Code = codeRailMoved
+		return nil, f
+	}
 	reg := processorsForOrg(org)
 	p, err := reg.Get(processor.PayPal)
 	if err != nil || p == nil || !p.IsAvailable(ctx) {

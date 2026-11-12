@@ -140,6 +140,13 @@ func (s *Server) Customers() int {
 	return len(s.customers)
 }
 
+// Setups is how many SetupIntents the account holds.
+func (s *Server) Setups() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.setups)
+}
+
 // Method returns the PaymentMethod as the server holds it, or nil.
 func (s *Server) Method(id string) *Method {
 	s.mu.Lock()

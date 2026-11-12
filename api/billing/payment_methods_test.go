@@ -109,7 +109,7 @@ func TestAttachSquareCardOnFile_VaultsUnderTheCustomer(t *testing.T) {
 	m := newMockSquare(nil, "", nil)
 	m.addedCardID = "ccof_second"
 
-	cof, err := attachSquareCardOnFile(context.Background(), m, "cust_existing", "cnon:second-card")
+	cof, err := attachCardOnFile(context.Background(), m, "cust_existing", "cnon:second-card")
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestAttachSquareCardOnFile_DeclinedCard(t *testing.T) {
 	m := newMockSquare(nil, "", nil)
 	m.addCardErr = errors.New("CARD_DECLINED")
 
-	if _, err := attachSquareCardOnFile(context.Background(), m, "cust_decline", "cnon:bad"); err == nil {
+	if _, err := attachCardOnFile(context.Background(), m, "cust_decline", "cnon:bad"); err == nil {
 		t.Fatal("expected an error when the card is declined, got nil")
 	}
 }

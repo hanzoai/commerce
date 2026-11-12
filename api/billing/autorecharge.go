@@ -831,7 +831,7 @@ func askReload(ctx context.Context, ev *events.Client, org *organization.Organiz
 	}
 
 	desc := fmt.Sprintf("Auto-recharge %d %s for %s", cfg.Amount, cur, payer)
-	r, err := chargeAndCredit(ctx, ev, org, db, pm, cfg.Amount, cur, payer, reloadKey(cfg, payer), desc)
+	r, err := chargeAndCredit(ctx, ev, org, db, pm, cfg.Amount, cur, payer, reloadKey(cfg, payer), desc, cardCharge{off: true})
 	if err != nil {
 		// Refused before the processor was asked: the reservation is given back by
 		// the sweep that made it. Refused by the processor (processor.Answer): it

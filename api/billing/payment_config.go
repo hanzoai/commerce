@@ -48,6 +48,11 @@ type PaymentConfig struct {
 	// Cards maps a currency ("usd") to the processor whose card form takes it
 	// ("square" or "stripe"). A currency no card processor takes is absent.
 	Cards map[string]string `json:"cards"`
+	// Rail is the processor every NEW card payment goes through ("square" or
+	// "stripe", rail.go). With the rail at stripe the page mounts Stripe for
+	// every new card and offers no other rail; cards saved at Square still show,
+	// and still renew what they pay for, but buy nothing new.
+	Rail string `json:"rail"`
 }
 
 // ReadPaymentConfig resolves an org's public payment configuration.
@@ -77,14 +82,27 @@ func ReadPaymentConfig(ctx context.Context, org *organization.Organization) *Pay
 	for cur, t := range processorsForOrg(orgOrZero(org)).Cards(ctx, "") {
 		cards[string(cur)] = string(t)
 	}
+	rail := Rail(ctx)
+	if rail == processor.Stripe {
+		// One rail: every currency Stripe takes is Stripe's, and only Stripe's.
+		cards = map[string]string{}
+		if st.PublishableKey != "" {
+			if p, err := processorsForOrg(orgOrZero(org)).Get(processor.Stripe); err == nil && p != nil {
+				for _, cur := range p.SupportedCurrencies() {
+					cards[string(cur)] = string(processor.Stripe)
+				}
+			}
+		}
+	}
 	return &PaymentConfig{
+		Rail: string(rail),
 		Stripe: StripePublicConfig{
 			PublishableKey: st.PublishableKey,
 			Environment:    st.Environment,
 			Enabled:        st.PublishableKey != "" && served(cards, processor.Stripe),
 		},
 		Cards:         cards,
-		Provider:      "square",
+		Provider:      string(rail),
 		ApplicationId: sq.ApplicationID,
 		LocationId:    sq.LocationID,
 		Environment:   sq.Environment,
@@ -92,7 +110,7 @@ func ReadPaymentConfig(ctx context.Context, org *organization.Organization) *Pay
 		PayPal: PayPalPublicConfig{
 			ClientId:    pp.ClientID,
 			Environment: pp.Environment,
-			Enabled:     pp.ClientID != "" && !processor.DisabledByPolicy(processor.PayPal),
+			Enabled:     pp.ClientID != "" && !processor.DisabledByPolicy(processor.PayPal) && opens(ctx, processor.PayPal),
 		},
 	}
 }

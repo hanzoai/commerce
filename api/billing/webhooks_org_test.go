@@ -224,7 +224,8 @@ func TestTheWebhookReceiversAreTheSecretHolders(t *testing.T) {
 		}
 	}
 	sort.Strings(got)
-	if strings.Join(got, ",") != "mpc,paypal,square" {
-		t.Fatalf("webhook receivers = %v, want exactly [mpc paypal square]", got)
+	// Stripe brings STRIPE_WEBHOOK_SECRET, its endpoint's signing secret.
+	if strings.Join(got, ",") != "mpc,paypal,square,stripe" {
+		t.Fatalf("webhook receivers = %v, want exactly [mpc paypal square stripe]", got)
 	}
 }

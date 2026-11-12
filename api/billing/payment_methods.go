@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -183,6 +184,9 @@ type CreateMethodIn struct {
 	BillingAddress *types.Address                    `json:"billingAddress,omitempty"`
 	ProviderRef    string                            `json:"providerRef,omitempty"`
 	ProviderType   string                            `json:"providerType,omitempty"`
+	// SetupIntent names the Stripe SetupIntent (seti_…) a requires_action answer
+	// to this same card named, once the buyer has authenticated it.
+	SetupIntent string `json:"setupIntent,omitempty"`
 	// Metadata is the caller's free-form extras, carried raw so the input crosses
 	// the typed plane the same way the answer does.
 	Metadata json.RawMessage `json:"metadata,omitempty"`
@@ -227,11 +231,35 @@ func CreateMethod(ctx context.Context, org *organization.Organization, email str
 	// EXISTING row instead of stacking a duplicate when the same card is saved
 	// again. Use the per-org registry so Square carries the org's credentials.
 	if in.ProviderRef != "" {
+		// A new card is saved at the card rail (rail.go), and only there.
+		named := processor.ProcessorType(strings.ToLower(strings.TrimSpace(in.ProviderType)))
+		if named != "" && named != processor.PayPal && named != Rail(ctx) {
+			return nil, false, methodValidationError{errRailMoved.Error()}
+		}
 		reg := processorsForOrg(org)
-		if cp, ok := squareCustomerProcessorFrom(reg); ok {
+		if cp, ok := vaultFrom(reg, Rail(ctx)); ok {
 			pm, created, err := saveCard(ctx, db, cp, in.CustomerId, strings.TrimSpace(email), in.ProviderRef)
 			if err != nil {
 				return nil, false, declineError{parseCardDeclineReason(&processor.PaymentResult{ErrorMessage: err.Error()}, err)}
+			}
+			// A Stripe card saved with no payment is set up for the off-session
+			// charges it is saved for (renewals, reloads). The bank may want the
+			// buyer first: the row waits for that, and the same card sent again
+			// naming the SetupIntent finishes it.
+			if su, ok := cp.(setterUp); ok {
+				key := "card:" + in.CustomerId + ":" + pm.ProviderRef
+				if err := su.SetUp(ctx, customerIDOf(pm), pm.ProviderRef, key, in.SetupIntent); err != nil {
+					if created {
+						_ = pm.Delete() // the card stays attached at Stripe; the row is made again
+					}
+					if act, ok := errors.AsType[*processor.ActionRequired](err); ok {
+						return nil, false, act
+					}
+					if created {
+						_ = cp.RemovePaymentMethod(ctx, customerIDOf(pm), pm.ProviderRef)
+					}
+					return nil, false, declineError{parseCardDeclineReason(&processor.PaymentResult{ErrorMessage: err.Error()}, err)}
+				}
 			}
 			// Caller-supplied extras land on whichever row answered.
 			if in.BillingAddress != nil {
@@ -353,6 +381,9 @@ func CreatePaymentMethod(c *zip.Ctx) error {
 	email, _ := c.Locals("iam_email").(string)
 
 	method, created, err := CreateMethod(c.Context(), org, email, in)
+	if act := ActionOf(err); act != nil {
+		return c.JSON(402, ActionBody(act))
+	}
 	if err != nil {
 		switch {
 		case IsMethodRefused(err):
@@ -571,17 +602,17 @@ func DetachMethod(ctx context.Context, org *organization.Organization, id, subje
 		return nil, errNoMethod
 	}
 
-	// Best-effort: detach the card-on-file from Square so its vault stays in
-	// sync. Non-fatal — the local record is still soft-deleted on failure.
-	if pm.Metadata != nil {
-		custID, _ := pm.Metadata["squareCustomerId"].(string)
-		cardID, _ := pm.Metadata["squareCardId"].(string)
-		if custID != "" && cardID != "" {
-			reg := payment.ProcessorsForOrg(org)
-			if cp, ok := squareCustomerProcessorFrom(reg); ok {
-				if err := cp.RemovePaymentMethod(ctx, custID, cardID); err != nil {
-					log.Warn("Failed to remove Square card %s for customer %s: %v", cardID, custID, err)
-				}
+	// Best-effort: detach the card on file at the processor that holds it so its
+	// vault stays in sync. Non-fatal — the local record is still soft-deleted on
+	// failure.
+	if custID, cardID := customerIDOf(pm), strings.TrimSpace(pm.ProviderRef); custID != "" && cardID != "" {
+		if kindOf(pm) == processor.Square {
+			cardID = cmp.Or(metaStr(pm, "squareCardId"), cardID)
+		}
+		reg := payment.ProcessorsForOrg(org)
+		if cp, ok := vaultFrom(reg, kindOf(pm)); ok {
+			if err := cp.RemovePaymentMethod(ctx, custID, cardID); err != nil {
+				log.Warn("Failed to remove %s card %s for customer %s: %v", kindOf(pm), cardID, custID, err)
 			}
 		}
 	}

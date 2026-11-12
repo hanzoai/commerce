@@ -18,10 +18,13 @@ import (
 // subject already saved goes through POST /v1/billing/topup (paymentMethodId), the
 // one saved-card endpoint.
 type topupTokenRequest struct {
-	SourceID    string `json:"sourceId"` // Square Web Payments SDK nonce or approved PayPal Order ID
+	SourceID    string `json:"sourceId"` // a Square Web Payments nonce, a Stripe.js PaymentMethod (pm_…) or an approved PayPal Order ID
 	AmountCents int64  `json:"amountCents"`
 	Currency    string `json:"currency,omitempty"`
-	Provider    string `json:"provider,omitempty"` // "square" | "paypal"
+	Provider    string `json:"provider,omitempty"` // "square" | "stripe" | "paypal"
+	// PaymentIntent names the Stripe intent a requires_action answer handed the
+	// page, once the buyer has authenticated it.
+	PaymentIntent string `json:"paymentIntent,omitempty"`
 }
 
 // The default top-up floor and ceiling, in cents. They are named constants and
@@ -112,7 +115,11 @@ func TopupWithToken(c *zip.Ctx) error {
 		Subject:        userBillingKey(c),
 		IdempotencyKey: strings.TrimSpace(c.Header("X-Idempotency-Key")),
 		Provider:       req.Provider,
+		PaymentIntent:  req.PaymentIntent,
 	})
+	if f != nil && f.Action != nil {
+		return c.JSON(402, ActionBody(f.Action))
+	}
 	if f != nil {
 		return jsonhttp.Fail(c, f.Status, f.Message, f.Err)
 	}
