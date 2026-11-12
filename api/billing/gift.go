@@ -4,11 +4,9 @@ package billing
 // subject's money before one is given.
 //
 // A referral earns its referrer a free week. Commerce owns the plan, so commerce
-// gives it. A subject on a paid plan has the period it holds run that many days
+// gives it: a subject on a paid plan has the period it holds run that many days
 // longer, so its next renewal comes that much later. A subject on no paid plan is
-// given the entry plan (Pro) for that many days, on a row canceled at the end of
-// them: it lapses back to Free on its own (engine.Over), with no card on file and
-// nothing to collect, whether or not a renewal sweep ever runs.
+// given nothing: commerce opens no plan for free, and sells no trials.
 //
 // No money moves, no credit is minted and no invoice is raised. Each gift names a
 // key and a key gives once: the platform retrying a gift whose answer it lost
@@ -24,8 +22,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hanzoai/commerce/billing/engine"
-	"github.com/hanzoai/commerce/billing/trial"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/idempotencykey"
@@ -35,17 +31,15 @@ import (
 )
 
 // giftProvider marks a row nobody paid for: the provider billing/grant stamps
-// on a comp, and the one a gift opens.
+// on a comp, and the one a gift opened before gifts opened no plan.
 const giftProvider = "manual_gift"
 
 // giftMost is the most days one gift may give.
 const giftMost = 31
 
-// The two things a gift can do.
-const (
-	GiftExtended = "extended" // the plan the subject holds runs the days longer
-	GiftOpened   = "opened"   // the subject held none, and was given Pro for the days
-)
+// GiftExtended is what a gift does: the paid plan the subject holds runs the
+// days longer.
+const GiftExtended = "extended"
 
 // GiftIn is days of a plan to give one subject.
 type GiftIn struct {
@@ -65,14 +59,14 @@ type GiftIn struct {
 
 // Gifted is what a gift did.
 type Gifted struct {
-	// Outcome is GiftExtended or GiftOpened.
+	// Outcome is GiftExtended.
 	Outcome string `json:"outcome"`
 	// Subscription is the row that received the days, as it now stands.
 	Subscription Subscription `json:"subscription"`
 }
 
 // Gift gives in.Days of a plan to in.Subject: the period of the paid plan it
-// holds runs longer, or, holding none, it is given Pro for those days.
+// holds runs longer. A subject holding none is refused.
 func Gift(ctx context.Context, org *organization.Organization, in GiftIn) (*Gifted, error) {
 	if org == nil {
 		return nil, errors.New("gift: no organization")
@@ -126,11 +120,7 @@ func give(ctx context.Context, org *organization.Organization, db *datastore.Dat
 	}
 	for _, s := range subs {
 		if gave(s, key) {
-			outcome := GiftExtended
-			if s.ProviderType == giftProvider {
-				outcome = GiftOpened
-			}
-			return &Gifted{Outcome: outcome, Subscription: *viewSubscription(s)}, nil
+			return &Gifted{Outcome: GiftExtended, Subscription: *viewSubscription(s)}, nil
 		}
 	}
 
@@ -138,12 +128,11 @@ func give(ctx context.Context, org *organization.Organization, db *datastore.Dat
 	days := time.Duration(in.Days) * 24 * time.Hour
 	note := map[string]interface{}{"key": key, "days": in.Days, "reason": in.Reason, "at": now.Format(time.RFC3339)}
 
-	// The paid plan the subject holds, or else a gift still running, receives
-	// the days, in the books the gift was earned in: sandbox time never lands on
-	// a live row. A row read by query is not bound to the store, so the write goes
-	// through a fresh read of the same id.
+	// The paid plan the subject holds receives the days, in the books the gift
+	// was earned in: sandbox time never lands on a live row. A row read by query
+	// is not bound to the store, so the write goes through a fresh read of the
+	// same id.
 	var held *subscription.Subscription
-	outcome := GiftExtended
 	for _, s := range subs {
 		if s.Test == test && s.Status == subscription.Active && holdsPlan(s) {
 			held = s
@@ -151,56 +140,18 @@ func give(ctx context.Context, org *organization.Organization, db *datastore.Dat
 		}
 	}
 	if held == nil {
-		held, outcome = running(subs, now, test), GiftOpened
+		return nil, saleRefusal{saleRefused, "this account holds no paid plan to give days of: a gift extends a paid plan and opens none"}
 	}
-	if held != nil {
-		sub, err := loadSubscription(ctx, org, held.Id())
-		if err != nil {
-			return nil, err
-		}
-		sub.PeriodEnd = later(sub.PeriodEnd, now).Add(days)
-		remember(sub, note)
-		if err := sub.Update(); err != nil {
-			return nil, fmt.Errorf("gift: extend subscription %s: %w", sub.Id(), err)
-		}
-		return &Gifted{Outcome: outcome, Subscription: *viewSubscription(sub)}, nil
-	}
-
-	p, err := resolveSubscriptionPlan(db, trial.PlanSlug)
+	sub, err := loadSubscription(ctx, org, held.Id())
 	if err != nil {
-		return nil, saleRefusal{saleMissing, fmt.Sprintf("plan %q not found", trial.PlanSlug)}
+		return nil, err
 	}
-	if p, err = planAtInterval(p, ""); err != nil {
-		return nil, saleRefusal{saleRefused, err.Error()}
-	}
-	q := *p
-	q.TrialPeriodDays = 0
-	sub := subscription.New(db)
-	sub.UserId = subject
-	sub.ProviderType = giftProvider
-	sub.Quantity = 1
-	sub.Test = test
-	engine.StartSubscription(sub, &q)
-	sub.Start, sub.PeriodStart, sub.PeriodEnd = now, now, now.Add(days)
-	// Canceled at the end of its days from the first one: it lapses on its own,
-	// and nothing ever renews or charges it.
-	sub.EndCancel, sub.CanceledAt = true, now
-	sub.Metadata = map[string]interface{}{"billing_reason": "gift"}
+	sub.PeriodEnd = later(sub.PeriodEnd, now).Add(days)
 	remember(sub, note)
-	if err := sub.Create(); err != nil {
-		return nil, fmt.Errorf("gift: open subscription: %w", err)
+	if err := sub.Update(); err != nil {
+		return nil, fmt.Errorf("gift: extend subscription %s: %w", sub.Id(), err)
 	}
-	return &Gifted{Outcome: GiftOpened, Subscription: *viewSubscription(sub)}, nil
-}
-
-// running is the subject's gift row in these books still serving at now, or nil.
-func running(subs []*subscription.Subscription, now time.Time, test bool) *subscription.Subscription {
-	for _, s := range subs {
-		if s.Test == test && s.ProviderType == giftProvider && s.Status == subscription.Active && s.EndCancel && !engine.Over(s, now) {
-			return s
-		}
-	}
-	return nil
+	return &Gifted{Outcome: GiftExtended, Subscription: *viewSubscription(sub)}, nil
 }
 
 // later is the later of a and b.

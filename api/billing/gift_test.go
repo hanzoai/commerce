@@ -18,17 +18,6 @@ import (
 
 const week = 7
 
-func giftRows(t *testing.T, db *datastore.Datastore, subject string) []*subscription.Subscription {
-	t.Helper()
-	var out []*subscription.Subscription
-	for _, s := range subsOf(t, db, subject) {
-		if s.ProviderType == giftProvider {
-			out = append(out, s)
-		}
-	}
-	return out
-}
-
 // buyGo subscribes subject to Go with a card, as checkout does, and answers the
 // row.
 func buyGo(t *testing.T, org *organization.Organization, ctx ae.Context, subject string) *subscription.Subscription {
@@ -45,55 +34,23 @@ func buyGo(t *testing.T, org *organization.Organization, ctx ae.Context, subject
 	return sub
 }
 
-func TestGift_FreeSubjectGetsProForTheDaysThenFree(t *testing.T) {
+// A gift extends a paid plan and opens none: a subject on no paid plan is
+// refused, and nothing is opened for it — commerce gives no plan away and sells
+// no trials.
+func TestGift_AFreeSubjectIsGivenNothing(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	org := moneyOrg("gift-free")
 	db := datastore.New(org.Namespaced(ctx))
 
-	got, err := Gift(ctx, org, GiftIn{Subject: "hanzo/ann", Days: week, Key: "referral:bob", Reason: "referral"})
-	if err != nil {
-		t.Fatalf("gift: %v", err)
+	if _, err := Gift(ctx, org, GiftIn{Subject: "hanzo/ann", Days: week, Key: "referral:bob", Reason: "referral"}); err == nil || !IsSaleRefused(err) {
+		t.Fatalf("a gift to a subject on no paid plan answered %v, want a refusal", err)
 	}
-	if got.Outcome != GiftOpened {
-		t.Fatalf("outcome=%q, want %q", got.Outcome, GiftOpened)
-	}
-	rows := giftRows(t, db, "hanzo/ann")
-	if len(rows) != 1 {
-		t.Fatalf("gift rows=%d, want 1", len(rows))
-	}
-	s := rows[0]
-	if s.Plan.Slug != "dev" && s.PlanId != "dev" {
-		t.Fatalf("gift plan=%q/%q, want dev (Pro)", s.Plan.Slug, s.PlanId)
-	}
-	if !s.EndCancel || s.Status != subscription.Active {
-		t.Fatalf("status=%q endCancel=%v, want active and canceled at the end of its days", s.Status, s.EndCancel)
-	}
-	if d := s.PeriodEnd.Sub(s.PeriodStart); d != week*24*time.Hour {
-		t.Fatalf("period=%v, want exactly %d days", d, week)
-	}
-	if tr, _ := deriveTier(db, "hanzo/ann", false); tr != tier.Pro {
-		t.Fatalf("tier during the gift=%q, want pro", tr)
-	}
-	if billingSubscription(db, "hanzo/ann", false) != nil {
-		t.Fatal("a gift is not a paid plan: it must never block buying one")
-	}
-
-	// The days pass. No sweep runs: the row is still Active in the store, and it
-	// confers nothing.
-	row := subscription.New(db)
-	if err := row.GetById(s.Id()); err != nil {
-		t.Fatal(err)
-	}
-	row.PeriodStart, row.PeriodEnd = row.PeriodStart.Add(-8*24*time.Hour), row.PeriodEnd.Add(-8*24*time.Hour)
-	if err := row.Update(); err != nil {
-		t.Fatal(err)
+	if n := len(subsOf(t, db, "hanzo/ann")); n != 0 {
+		t.Fatalf("a refused gift opened %d subscription(s)", n)
 	}
 	if tr, _ := deriveTier(db, "hanzo/ann", false); tr != tier.Free {
-		t.Fatalf("tier after the gift=%q, want free", tr)
-	}
-	if _, err := ReactivateSubscription(ctx, org, AnyHolder, s.Id()); err == nil || !IsSubscriptionRefused(err) {
-		t.Fatalf("reactivating a gift answered %v, want a refusal", err)
+		t.Fatalf("tier after a refused gift=%q, want free", tr)
 	}
 }
 
@@ -120,8 +77,8 @@ func TestGift_PaidSubjectsPeriodRunsTheDaysLonger(t *testing.T) {
 	if want := end.Add(week * 24 * time.Hour); !after.PeriodEnd.Equal(want) {
 		t.Fatalf("period end=%v, want %v", after.PeriodEnd, want)
 	}
-	if len(giftRows(t, db, "gift-paid")) != 0 {
-		t.Fatal("a paid subject's gift opened a second row")
+	if n := len(subsOf(t, db, "gift-paid")); n != 1 {
+		t.Fatalf("a paid subject's gift left %d rows, want the one it extended", n)
 	}
 	if n := len(invoicesForSub(t, db, sub.Id())); n != 1 {
 		t.Fatalf("invoices=%d, want the one the sale paid: a gift raises none", n)
@@ -132,32 +89,35 @@ func TestGift_AKeyGivesOnceAndTwoKeysStack(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	org := moneyOrg("gift-once")
+	withFakeSquare(t, squareMock("cust_o", "ccof_o", "sqpay_o"))
 	db := datastore.New(org.Namespaced(ctx))
+	sub := buyGo(t, org, ctx, "gift-once")
+	end := sub.PeriodEnd
 
 	for range 3 {
-		if _, err := Gift(ctx, org, GiftIn{Subject: "hanzo/cat", Days: week, Key: "referral:one"}); err != nil {
+		if _, err := Gift(ctx, org, GiftIn{Subject: "gift-once", Days: week, Key: "referral:one"}); err != nil {
 			t.Fatalf("gift: %v", err)
 		}
 	}
-	rows := giftRows(t, db, "hanzo/cat")
-	if len(rows) != 1 || rows[0].PeriodEnd.Sub(rows[0].PeriodStart) != week*24*time.Hour {
-		t.Fatalf("one key given three times: rows=%d; want one row of %d days", len(rows), week)
+	row := reload(t, db, sub.Id())
+	if !row.PeriodEnd.Equal(end.Add(week * 24 * time.Hour)) {
+		t.Fatalf("one key given three times: period ends %v; want %d days past %v", row.PeriodEnd, week, end)
 	}
 
 	// The same key again after its guard is gone still gives nothing: the row
 	// that received it remembers.
-	if _, err := Gift(ctx, org, GiftIn{Subject: "hanzo/cat", Days: week, Key: "referral:two"}); err != nil {
+	if _, err := Gift(ctx, org, GiftIn{Subject: "gift-once", Days: week, Key: "referral:two"}); err != nil {
 		t.Fatalf("second gift: %v", err)
 	}
-	rows = giftRows(t, db, "hanzo/cat")
-	if len(rows) != 1 || rows[0].PeriodEnd.Sub(rows[0].PeriodStart) != 2*week*24*time.Hour {
-		t.Fatalf("two keys: rows=%d; want one row of %d days", len(rows), 2*week)
+	row = reload(t, db, sub.Id())
+	if !row.PeriodEnd.Equal(end.Add(2 * week * 24 * time.Hour)) {
+		t.Fatalf("two keys: period ends %v; want %d days past %v", row.PeriodEnd, 2*week, end)
 	}
-	if !gave(rows[0], "referral:one") || !gave(rows[0], "referral:two") {
+	if !gave(row, "referral:one") || !gave(row, "referral:two") {
 		t.Fatal("the row does not remember both gifts")
 	}
-	before := rows[0].PeriodEnd
-	out, err := give(ctx, org, db, "hanzo/cat", "referral:one", GiftIn{Subject: "hanzo/cat", Days: week}, false)
+	before := row.PeriodEnd
+	out, err := give(ctx, org, db, "gift-once", "referral:one", GiftIn{Subject: "gift-once", Days: week}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,8 +134,8 @@ func TestGift_SandboxTimeNeverLandsOnALiveRow(t *testing.T) {
 	db := datastore.New(org.Namespaced(ctx))
 	sub := buyGo(t, org, ctx, "gift-test")
 
-	if _, err := Gift(ctx, org, GiftIn{Subject: "gift-test", Days: week, Key: "referral:sandbox", Test: true}); err != nil {
-		t.Fatalf("gift: %v", err)
+	if _, err := Gift(ctx, org, GiftIn{Subject: "gift-test", Days: week, Key: "referral:sandbox", Test: true}); err == nil || !IsSaleRefused(err) {
+		t.Fatalf("a sandbox gift to a subject with no sandbox plan answered %v, want a refusal", err)
 	}
 	live := subscription.New(db)
 	if err := live.GetById(sub.Id()); err != nil {
@@ -184,9 +144,8 @@ func TestGift_SandboxTimeNeverLandsOnALiveRow(t *testing.T) {
 	if !live.PeriodEnd.Equal(sub.PeriodEnd) {
 		t.Fatal("a sandbox gift moved the live plan")
 	}
-	rows := giftRows(t, db, "gift-test")
-	if len(rows) != 1 || !rows[0].Test {
-		t.Fatalf("sandbox gift rows=%d, want one test row", len(rows))
+	if n := len(subsOf(t, db, "gift-test")); n != 1 {
+		t.Fatalf("subscriptions=%d, want the live one alone", n)
 	}
 }
 

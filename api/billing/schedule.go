@@ -109,7 +109,6 @@ func scheduleSale(ctx context.Context, db *datastore.Datastore, org *organizatio
 			log.Error("subscribe: failed to mark method %s default (subject=%s): %v", pm.Id(), in.Subject, err)
 		}
 	}
-	p.TrialPeriodDays = 0
 	sub, err := createSubscription(db, p, &createSubscriptionRequest{
 		UserId:               in.Subject,
 		PlanId:               t.planID,

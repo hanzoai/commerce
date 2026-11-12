@@ -298,7 +298,6 @@ func resolveSubscriptionPlan(db *datastore.Datastore, planId string) (*plan.Plan
 		p.Currency = currency.Type(staticP.Currency)
 		p.Interval = types.Interval(staticP.Interval)
 		p.IntervalCount = staticP.IntervalCount
-		p.TrialPeriodDays = staticP.TrialPeriodDays
 		p.Status = staticP.Status // a draft stays unlisted when the embed materializes it
 		_ = p.Create()            // best-effort; ignore dup-key errors
 	}
@@ -686,6 +685,20 @@ func billingSubscription(db *datastore.Datastore, subject string, test bool) *su
 		}
 	}
 	return nil
+}
+
+// Unlocks reports whether s opens the commerce admin and a store at at: a paid
+// plan its subject holds (holdsPlan) on a period that covers at, whether the plan
+// is on sale or retired, or a trial opened before commerce stopped selling trials,
+// until that trial's end. Nothing opens a trial now.
+func Unlocks(s *subscription.Subscription, at time.Time) bool {
+	switch s.Status {
+	case subscription.Trialing:
+		return s.TrialEnd.After(at)
+	case subscription.Active:
+		return s.PeriodEnd.After(at) && holdsPlan(s)
+	}
+	return false
 }
 
 // holdsPlan reports whether s is a subject's one paid plan, the row a second

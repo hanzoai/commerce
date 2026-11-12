@@ -9,7 +9,6 @@ import (
 
 	"github.com/zap-proto/zip"
 
-	"github.com/hanzoai/commerce/billing/trial"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/organization"
 	storemodel "github.com/hanzoai/commerce/models/store"
@@ -62,7 +61,9 @@ func seedProSub(t *testing.T, ns, storeID string, status subscription.Status, pe
 	db := datastore.New(nscontext.WithNamespace(context.Background(), ns))
 	sub := subscription.New(db)
 	sub.StoreId = storeID
-	sub.PlanId = trial.PlanSlug
+	sub.PlanId = "go"
+	sub.Plan.Slug, sub.Plan.Category, sub.Plan.Price = "go", "personal", 800
+	sub.ProviderType = "square"
 	sub.Status = status
 	sub.PeriodStart = time.Now().Add(-time.Hour)
 	sub.PeriodEnd = periodEnd
@@ -124,7 +125,8 @@ func TestRequireAccess_ExpiredActiveBlocked(t *testing.T) {
 	}
 }
 
-// TestRequireAccess_TrialingAllows proves a live trial unlocks the gate.
+// TestRequireAccess_TrialingAllows proves a trial opened before commerce stopped
+// selling them unlocks the gate until its end.
 func TestRequireAccess_TrialingAllows(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()

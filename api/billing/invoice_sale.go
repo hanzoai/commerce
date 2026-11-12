@@ -560,7 +560,6 @@ func openPlan(ctx context.Context, db *datastore.Datastore, org *organization.Or
 		if err != nil {
 			return nil, saleRefusal{saleRefused, err.Error()}
 		}
-		p.TrialPeriodDays = 0
 		if sub, err = createSubscription(db, p, &createSubscriptionRequest{
 			UserId: inv.UserId, PlanId: o.Plan, DefaultPaymentMethod: string(processor.Wire),
 			Quantity: o.Quantity, Metadata: map[string]interface{}{"source": "subscribe/invoice", "payment": key},

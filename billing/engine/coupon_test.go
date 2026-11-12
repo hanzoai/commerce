@@ -259,47 +259,6 @@ func TestPlanCoupon_OnlyThePlansItNames(t *testing.T) {
 	}
 }
 
-// TestPlanCoupon_ATrialComesFirst: bought into a trial, the coupon's first month
-// is the first paid period, the one the trial's end bills.
-func TestPlanCoupon_ATrialComesFirst(t *testing.T) {
-	c := ae.NewContext()
-	defer c.Close()
-	db := datastore.New(c)
-	db.SetNamespace("coupon-trial")
-
-	trial := row(db, pro)
-	trial.TrialPeriodDays = 14
-	sub := subscription.New(db)
-	sub.UserId = "coupon-trial/fay"
-	sub.DefaultPaymentMethod = "pm_fay"
-	StartSubscription(sub, trial)
-	Grant(sub, beta, []string{"dev"}, sub.PeriodStart)
-	if err := sub.Create(); err != nil {
-		t.Fatalf("create: %v", err)
-	}
-	if sub.Status != subscription.Trialing || !sub.CouponFrom.Equal(sub.TrialEnd) {
-		t.Fatalf("status %s, window from %v; want a trial and the window from its end %v", sub.Status, sub.CouponFrom, sub.TrialEnd)
-	}
-	pre := &card{}
-	inv, res, err := renewAt(context.Background(), db, sub, nil, pre.charge, sub.TrialEnd.Add(time.Hour))
-	if err != nil || !res.Success {
-		t.Fatalf("the trial's end: %+v %v", res, err)
-	}
-	if err := sub.Update(); err != nil {
-		t.Fatalf("store: %v", err)
-	}
-	if !inv.PeriodStart.Equal(sub.TrialEnd) || inv.AmountDue != 1000 || inv.DiscountName != "50OFFBETA — 50% off, month 1 of 3" {
-		t.Fatalf("first paid period %v due %d %q, want the trial's end at 1000, month 1 of 3", inv.PeriodStart, inv.AmountDue, inv.DiscountName)
-	}
-	dues := []int64{inv.AmountDue}
-	for range 3 {
-		dues = append(dues, renewNext(t, db, sub, pre).AmountDue)
-	}
-	if dues[1] != 1000 || dues[2] != 1000 || dues[3] != 2000 {
-		t.Fatalf("after the trial: %v, want [1000 1000 1000 2000]", dues)
-	}
-}
-
 // TestPlanCoupon_StacksWithTheRenewalCoupon: a win-back staff put on a row inside
 // its sale's months comes off what the plan coupon left, both named and recorded
 // apart; the renewal after it is the plan coupon's month alone.

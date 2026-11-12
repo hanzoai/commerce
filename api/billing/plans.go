@@ -66,17 +66,11 @@ type canonicalPlan struct {
 	// (retired) are listed nowhere and refused by every purchase entrypoint (see
 	// plan.Listed). A deploy that carries such a row creates it unlisted, so no
 	// checkout charges its list price until the catalog makes it active.
-	Status string `json:"status,omitempty"`
-	// TrialPeriodDays is the plan's free-trial length. A card sale of the plan
-	// (POST /v1/billing/subscribe/card) opens in a trial this long for a buyer
-	// and a card that have not had one, and charges the card when it ends. The
-	// entry plan's signup on-ramp is billing/trial's own (7 days without a card,
-	// 30 with one).
-	TrialPeriodDays *int        `json:"trialPeriodDays,omitempty"`
-	Features        []string    `json:"features"`
-	Bundles         []string    `json:"bundles,omitempty"`    // slugs of plans whose entitlement this plan also grants
-	IncludedIn      []string    `json:"includedIn,omitempty"` // slugs of plans that include this plan as a bundle
-	Limits          *planLimits `json:"limits,omitempty"`
+	Status     string      `json:"status,omitempty"`
+	Features   []string    `json:"features"`
+	Bundles    []string    `json:"bundles,omitempty"`    // slugs of plans whose entitlement this plan also grants
+	IncludedIn []string    `json:"includedIn,omitempty"` // slugs of plans that include this plan as a bundle
+	Limits     *planLimits `json:"limits,omitempty"`
 	// PriceRef carries the catalog's billing reference; recurring.per_seat marks
 	// the plan as billed per seat (price × quantity, floored at limits.minSeats).
 	PriceRef *struct {
@@ -145,13 +139,12 @@ type staticPlan struct {
 	// back the INDEX it landed on (subscribe/card's `level`) — never a price. It
 	// is absent for a plan sold at a single price, so a client that ignores it
 	// keeps working and a plan that gains a ladder needs no client release.
-	Prices          []int64 `json:"prices,omitempty"`
-	Currency        string  `json:"currency"`
-	Interval        string  `json:"interval"`
-	IntervalCount   int     `json:"intervalCount"`
-	TrialPeriodDays int     `json:"trialPeriodDays"`
-	ContactSales    bool    `json:"contactSales,omitempty"`
-	Popular         bool    `json:"popular,omitempty"`
+	Prices        []int64 `json:"prices,omitempty"`
+	Currency      string  `json:"currency"`
+	Interval      string  `json:"interval"`
+	IntervalCount int     `json:"intervalCount"`
+	ContactSales  bool    `json:"contactSales,omitempty"`
+	Popular       bool    `json:"popular,omitempty"`
 	// Status is plan.Plan.Status as the catalog states it: "" and "active" are on
 	// sale; "draft", "private" and "archived" are not, and the public answer never
 	// carries one of those.
@@ -401,9 +394,6 @@ func parsePlans(data []byte) ([]staticPlan, error) {
 		}
 		for _, d := range cp.Prices {
 			sp.Prices = append(sp.Prices, int64(math.Round(d*100)))
-		}
-		if cp.TrialPeriodDays != nil {
-			sp.TrialPeriodDays = *cp.TrialPeriodDays
 		}
 		if cp.PriceRef != nil && cp.PriceRef.Recurring != nil {
 			sp.PerSeat = cp.PriceRef.Recurring.PerSeat

@@ -219,25 +219,24 @@ func TestIsDue_ExternalIsNeverDue(t *testing.T) {
 	}
 }
 
-// TestIsDue_TrialOnACardIsDueAtItsEnd: a trial opened against a card is due once
-// the trial is over, whatever its first paid period says; a trial with no card on
-// it — the signup on-ramp — is never due, so it lapses unbilled as it always has.
-func TestIsDue_TrialOnACardIsDueAtItsEnd(t *testing.T) {
+// TestIsDue_ATrialIsNeverDue: commerce sells no trials, so a trial opened before
+// that converts to nothing: with a card on it or without, it is never due, before
+// its end or after it. It is over at its end (Over) and ends there, unbilled.
+func TestIsDue_ATrialIsNeverDue(t *testing.T) {
 	trialEnd := time.Date(2026, 10, 21, 0, 0, 0, 0, time.UTC)
 	card := &subscription.Subscription{
 		Status: subscription.Trialing, DefaultPaymentMethod: "pm_1",
 		TrialEnd: trialEnd, PeriodStart: trialEnd, PeriodEnd: trialEnd.AddDate(0, 1, 0),
 	}
-	if IsDue(card, trialEnd.Add(-time.Minute)) {
-		t.Fatal("a card trial answered due before it ended")
-	}
-	if !IsDue(card, trialEnd.Add(time.Minute)) {
-		t.Fatal("a card trial past its end: want due")
-	}
 	noCard := *card
 	noCard.DefaultPaymentMethod = ""
-	if IsDue(&noCard, trialEnd.AddDate(1, 0, 0)) {
-		t.Fatal("a trial with no card answered due")
+	for _, at := range []time.Time{trialEnd.Add(-time.Minute), trialEnd.Add(time.Minute), trialEnd.AddDate(1, 0, 0)} {
+		if IsDue(card, at) || IsDue(&noCard, at) {
+			t.Fatalf("a trial answered due at %v (card %v, no card %v)", at, IsDue(card, at), IsDue(&noCard, at))
+		}
+	}
+	if Over(card, trialEnd.Add(-time.Minute)) || !Over(card, trialEnd) {
+		t.Fatalf("a card trial over before its end %v, at its end %v; want only at its end", Over(card, trialEnd.Add(-time.Minute)), Over(card, trialEnd))
 	}
 }
 

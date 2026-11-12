@@ -323,7 +323,6 @@ func creditsAvailable(db *datastore.Datastore, subject string) (int64, error) {
 // record the invoice after the row exists is logged for reconciliation and the
 // row stands, the same answer a card sale gives.
 func openPaid(db *datastore.Datastore, p *plan.Plan, req *createSubscriptionRequest, promoPercent int, promoName string, drawn engine.Drawn) (*subscription.Subscription, *billinginvoice.BillingInvoice, error) {
-	p.TrialPeriodDays = 0
 	sub, err := createSubscription(db, p, req)
 	if err != nil {
 		return nil, nil, err

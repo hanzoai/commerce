@@ -140,11 +140,6 @@ func CreatePayPalOrder(ctx context.Context, org *organization.Organization, in P
 		if perr != nil {
 			return nil, saleErrToFault(perr)
 		}
-		if q.plan.TrialPeriodDays > 0 {
-			return nil, fault(http.StatusBadRequest, fmt.Sprintf(
-				"plan %q starts with a %d-day free trial, which begins on a card kept on file; pay by card to start it",
-				q.slug, q.plan.TrialPeriodDays), nil)
-		}
 
 		held := billingSubscription(db, in.Subject, org.TestMode())
 		if held != nil {

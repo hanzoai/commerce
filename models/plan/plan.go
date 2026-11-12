@@ -99,11 +99,10 @@ type Plan struct {
 	// months and rounded to the cent, so it is a price tag and never a figure to
 	// bill from — $199 / 12 is $16.5833…, and twelve rounded months is $198.96.
 	// Zero means the plan is not sold by the year.
-	AnnualTotal     currency.Cents `json:"annualTotal"`
-	Currency        currency.Type  `json:"currency"`
-	Interval        Interval       `json:"interval"`
-	IntervalCount   int            `json:"intervalCount"`
-	TrialPeriodDays int            `json:"trialPeriodDays"`
+	AnnualTotal   currency.Cents `json:"annualTotal"`
+	Currency      currency.Type  `json:"currency"`
+	Interval      Interval       `json:"interval"`
+	IntervalCount int            `json:"intervalCount"`
 
 	// PerSeat marks a plan billed per seat (catalog price_ref.recurring.per_seat):
 	// invoices charge Price × subscription quantity, floored at 1.
@@ -680,7 +679,7 @@ func planEqual(a, b *Plan) bool {
 	if a.Name != b.Name || a.Description != b.Description || a.Category != b.Category ||
 		a.Price != b.Price || a.PriceAnnual != b.PriceAnnual || a.AnnualTotal != b.AnnualTotal || a.Currency != b.Currency ||
 		a.Interval != b.Interval || a.IntervalCount != b.IntervalCount ||
-		a.TrialPeriodDays != b.TrialPeriodDays || a.PerSeat != b.PerSeat ||
+		a.PerSeat != b.PerSeat ||
 		a.ContactSales != b.ContactSales || a.Popular != b.Popular {
 		return false
 	}
@@ -771,7 +770,6 @@ func copyInto(dst, src *Plan) {
 	dst.Currency = src.Currency
 	dst.Interval = src.Interval
 	dst.IntervalCount = src.IntervalCount
-	dst.TrialPeriodDays = src.TrialPeriodDays
 	dst.PerSeat = src.PerSeat
 	dst.ContactSales = src.ContactSales
 	dst.Popular = src.Popular
