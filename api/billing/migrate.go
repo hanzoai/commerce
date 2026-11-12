@@ -3,15 +3,20 @@ package billing
 // migrate.go — moving every holder of a retired personal rung onto the ladder the
 // catalog sells (owner, 2026-11-12: "just migrate them all to the new plans").
 //
-// A holder of a personal plan that is no longer on sale — a rung the catalog
-// archived (dev, max-5x, max-20x, max-50x), a slug it renamed (pro-2x, max-10x),
-// one it retired long ago (max), or the $9 Go the $8 Go reuses the slug of — is
-// moved onto a rung of the ladder:
+// A holder of a Hanzo plan (its row is the plan authority's, never a merchant's
+// own plan in its namespace) on a personal rung the catalog retired — one it
+// archived (dev, max-5x, max-20x, max-50x), a slug it renamed (pro-2x, max-10x,
+// max), or the $9 Go the $8 Go reuses the slug of — is moved onto a rung of the
+// ladder:
 //
 //   - where the catalog names the rung that replaces theirs (`replaces`), onto it,
 //     when it is on sale and lists at or below what they pay;
 //   - otherwise onto the dearest rung on sale whose monthly list price is at or
-//     below what they pay a month now.
+//     below the monthly price of the rung they hold. A yearly holder is placed by
+//     the monthly list price of its rung, so it keeps the multiple it bought.
+//
+// A plan an admin made or archived, the catalog's other plans, and a retired rung
+// an admin has put back on sale are not the catalog's to move, and are left.
 //
 // A rung is a plan the catalog states a usage multiple for (staticPlan.Multiple),
 // so the ladder runs Go to Ultimate; Unlimited states no caps and no multiple, and
@@ -21,7 +26,8 @@ package billing
 // The plan and what it entitles switch when the move runs; the price moved onto
 // is charged from the next renewal, because the period in hand was paid. A yearly
 // holder keeps the year paid for and then renews monthly on the new rung. A holder
-// paying less than the cheapest rung, or nothing, is left as they are.
+// paying less than the cheapest rung, or nothing, is left as they are. A coupon
+// the holder was granted keeps applying on the rung moved onto.
 //
 // It runs on every boot, with the seed (SeedPlans), and is idempotent: a holder
 // moved is on a rung on sale and is not moved again. Each move is written under
@@ -33,6 +39,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"time"
 
@@ -101,18 +108,41 @@ func ladderOnSale(ctx context.Context) []rung {
 	return out
 }
 
-// monthlyCents is what s pays a month for its plan: its period's price — the
-// listed price for a comp, which pays nothing — over the months the period runs.
-func monthlyCents(s *subscription.Subscription) int64 {
-	cents := int64(s.Plan.Price)
-	if comped(s) {
-		cents = metaInt64(s.Metadata, "listCents", 0)
-	}
-	months := int64(max(s.Plan.IntervalCount, 1))
+// months is how many months one period of s runs.
+func months(s *subscription.Subscription) int64 {
+	n := int64(max(s.Plan.IntervalCount, 1))
 	if s.Plan.Interval == types.Yearly || string(s.Plan.Interval) == "year" {
-		months *= 12
+		n *= 12
 	}
-	return cents / months
+	return n
+}
+
+// monthlyCents is the monthly price a holder is placed by: the price of a month
+// of the rung it holds — the snapshot's for a monthly row (a level or an old price
+// included), the listed price for a comp, which pays nothing — and for a yearly
+// row the monthly list price the catalog states for its rung, so a year's
+// discount never drops a holder a rung below the one it bought.
+func monthlyCents(s *subscription.Subscription) int64 {
+	if comped(s) {
+		return metaInt64(s.Metadata, "listCents", 0)
+	}
+	if months(s) > 1 {
+		if sp := catalogEntry(subscriptionSlug(s)); sp != nil && sp.Price > 0 {
+			return sp.Price
+		}
+	}
+	return int64(s.Plan.Price) / months(s)
+}
+
+// catalogEntry is the catalog's own entry for slug, never the one that replaces
+// it (lookupPlan follows `replaces`), or nil.
+func catalogEntry(slug string) *staticPlan {
+	for i := range catalog {
+		if catalog[i].Slug == slug {
+			return &catalog[i]
+		}
+	}
+	return nil
 }
 
 // comped reports whether s is a comp: recorded, paid by nobody.
@@ -146,42 +176,80 @@ func target(slug string, pay int64, ladder []rung) *rung {
 	return nil
 }
 
-// retired reports whether s holds a personal rung the ladder no longer sells as s
-// holds it:
+// rows answers, once per run, whether a plan id is a row of the plan authority and
+// which row a slug names there.
+type rows struct {
+	ctx    context.Context
+	byID   map[string]bool
+	bySlug map[string]*plan.Plan
+}
+
+func newRows(ctx context.Context) *rows {
+	return &rows{ctx: ctx, byID: map[string]bool{}, bySlug: map[string]*plan.Plan{}}
+}
+
+// hanzo reports whether id names a Hanzo plan (hanzoPlan),
+// never a merchant's own plan in its namespace.
+func (r *rows) hanzo(id string) bool {
+	if id == "" {
+		return false
+	}
+	if ok, seen := r.byID[id]; seen {
+		return ok
+	}
+	ok := hanzoPlan(r.ctx, id)
+	r.byID[id] = ok
+	return ok
+}
+
+// slug is the plan authority's row for slug, nil when there is none.
+func (r *rows) slug(slug string) *plan.Plan {
+	if row, seen := r.bySlug[slug]; seen {
+		return row
+	}
+	row := rowOf(r.ctx, slug)
+	r.bySlug[slug] = row
+	return row
+}
+
+// retired reports whether s holds a Hanzo personal rung the catalog retired:
 //
 //   - a rung on sale held at a price above the one it lists at (the $9 Go, whose
 //     slug the $8 Go reuses);
 //   - a slug the catalog names a replacement for (pro-2x, max-10x, max);
-//   - a plan whose authority row is archived, or that has no row and that the
-//     catalog still resolves.
+//   - a rung the catalog archives (dev, max-5x, max-20x, max-50x), unless an
+//     admin has put its row back on sale.
 //
-// A plan on sale that is no rung, a private plan made for one customer, or a
-// draft is not retired: it is not the catalog's to move.
-func retired(ctx context.Context, s *subscription.Subscription, ladder []rung) bool {
-	slug := subscriptionSlug(s)
-	for _, r := range ladder {
-		if r.slug == slug {
-			return !comped(s) && len(r.row.Prices) == 0 && s.Plan.Interval == r.row.Interval && s.Plan.Price > r.row.Price
-		}
-	}
-	category := s.Plan.Category
-	_, renamed := successor[slug]
-	row := rowOf(ctx, slug)
-	switch {
-	case renamed:
-	case row != nil:
-		if row.Status != plan.StatusArchived {
-			return false
-		}
-	case lookupPlan(slug) == nil:
+// A plan the catalog does not retire — one an admin made or archived, a private
+// plan, a team — is not the catalog's to move.
+func retired(s *subscription.Subscription, ladder []rung, r *rows) bool {
+	if !r.hanzo(s.PlanId) {
 		return false
 	}
-	if category == "" && row != nil {
-		category = row.Category
+	slug := subscriptionSlug(s)
+	for _, rg := range ladder {
+		if rg.slug == slug {
+			return !comped(s) && len(rg.row.Prices) == 0 && s.Plan.Interval == rg.row.Interval && s.Plan.Price > rg.row.Price
+		}
+	}
+	sp := catalogEntry(slug)
+	_, renamed := successor[slug]
+	switch {
+	case renamed:
+	case sp != nil && sp.Status == plan.StatusArchived:
+		if row := r.slug(slug); row != nil && row.Listed() {
+			return false
+		}
+	default:
+		return false
+	}
+	category := s.Plan.Category
+	if category == "" && sp != nil {
+		category = sp.Category
 	}
 	if category == "" {
-		if sp := lookupPlan(slug); sp != nil {
-			category = sp.Category
+		if next := lookupPlan(slug); next != nil {
+			category = next.Category
 		}
 	}
 	return category == categoryPersonal
@@ -213,14 +281,25 @@ func MigrateRetired(ctx context.Context) (*Migration, error) {
 		return out, nil
 	}
 	now := time.Now()
+	r := newRows(ctx)
 	for _, org := range orgs {
-		subs, err := ListSubscriptions(ctx, org, "", "")
-		if err != nil {
-			out.Errors = append(out.Errors, fmt.Sprintf("%s: subscriptions could not be read: %v", org.Name, err))
+		// Only the live rows: the statuses a move applies to, read one at a time.
+		subs := make([]*subscription.Subscription, 0)
+		failed := false
+		for _, status := range []subscription.Status{subscription.Active, subscription.PastDue, subscription.Scheduled} {
+			got, err := ListSubscriptions(ctx, org, "", string(status))
+			if err != nil {
+				out.Errors = append(out.Errors, fmt.Sprintf("%s: %s subscriptions could not be read: %v", org.Name, status, err))
+				failed = true
+				break
+			}
+			subs = append(subs, got...)
+		}
+		if failed {
 			continue
 		}
 		for _, s := range subs {
-			if !movable(s, now) || !retired(ctx, s, ladder) {
+			if !movable(s, now) || !retired(s, ladder, r) {
 				continue
 			}
 			to := target(subscriptionSlug(s), monthlyCents(s), ladder)
@@ -228,7 +307,7 @@ func MigrateRetired(ctx context.Context) (*Migration, error) {
 				out.Left++
 				continue
 			}
-			m, err := migrateOne(ctx, org, s.Id(), to, ladder, now)
+			m, err := migrateOne(ctx, org, s.Id(), to, ladder, r, now)
 			switch {
 			case errors.Is(err, errBusy):
 				out.Busy++
@@ -248,7 +327,7 @@ var errBusy = errors.New("migrate: the subject's sale is in progress")
 // migrateOne moves subscription id onto to under its subject's sale lease, read
 // again under it: a row a sale or another run moved meanwhile is left as it now
 // stands.
-func migrateOne(ctx context.Context, org *organization.Organization, id string, to *rung, ladder []rung, now time.Time) (*Migrated, error) {
+func migrateOne(ctx context.Context, org *organization.Organization, id string, to *rung, ladder []rung, r *rows, now time.Time) (*Migrated, error) {
 	db := datastore.New(org.Namespaced(ctx))
 	s := subscription.New(db)
 	if err := s.GetById(id); err != nil {
@@ -265,7 +344,7 @@ func migrateOne(ctx context.Context, org *organization.Organization, id string, 
 	if err := s.GetById(id); err != nil {
 		return nil, err
 	}
-	if !movable(s, now) || !retired(ctx, s, ladder) {
+	if !movable(s, now) || !retired(s, ladder, r) {
 		return nil, nil
 	}
 
@@ -274,9 +353,12 @@ func migrateOne(ctx context.Context, org *organization.Organization, id string, 
 	if c := s.CustomerCents; c > 0 && c < fromCents {
 		fromCents = c
 	}
+	// A price staff agreed is for one period of the rung held; the rung moved onto
+	// bills by the month, so it is kept as its month — a year's agreed price over
+	// twelve — while that is below the new list price.
 	list := int64(to.row.Price)
 	agreed := int64(0)
-	if c := s.CustomerCents; c > 0 && c < list {
+	if c := s.CustomerCents / months(s); c > 0 && c < list {
 		agreed = c
 	}
 
@@ -288,6 +370,10 @@ func migrateOne(ctx context.Context, org *organization.Organization, id string, 
 		s.Metadata = mapOrNew(s.Metadata)
 		s.Metadata["listCents"] = list
 		fromCents, list, agreed = 0, 0, 0
+	}
+	// A coupon granted for the rung held keeps applying on the rung moved onto.
+	if slices.Contains(s.CouponPlans, from) && !slices.Contains(s.CouponPlans, to.slug) {
+		s.CouponPlans = append(s.CouponPlans, to.slug)
 	}
 	if _, err := engine.ChangePlan(s, &next, false); err != nil {
 		return nil, err

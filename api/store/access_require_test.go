@@ -71,6 +71,9 @@ func seedProSub(t *testing.T, ns, storeID string, status subscription.Status, pe
 	sub.PeriodStart = time.Now().Add(-time.Hour)
 	sub.PeriodEnd = periodEnd
 	sub.TrialEnd = trialEnd
+	if !trialEnd.IsZero() {
+		sub.TrialStart = time.Now().Add(-time.Hour)
+	}
 	if err := sub.Create(); err != nil {
 		t.Fatalf("create sub: %v", err)
 	}
@@ -81,6 +84,9 @@ func seedProSub(t *testing.T, ns, storeID string, status subscription.Status, pe
 func TestRequireAccess_NoStore402(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
+	if _, _, err := billing.SeedPlans(tc); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
 
 	if code := callRequireAccess(t, "acme", "no-such-store"); code != http.StatusPaymentRequired {
 		t.Fatalf("no-store access = %d, want 402", code)
@@ -92,6 +98,9 @@ func TestRequireAccess_NoStore402(t *testing.T) {
 func TestRequireAccess_UnpaidStore402(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
+	if _, _, err := billing.SeedPlans(tc); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
 
 	s := seedStore(t, "acme")
 	if code := callRequireAccess(t, "acme", s.Id()); code != http.StatusPaymentRequired {
@@ -104,6 +113,9 @@ func TestRequireAccess_UnpaidStore402(t *testing.T) {
 func TestRequireAccess_ActivePlanAllows(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
+	if _, _, err := billing.SeedPlans(tc); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
 
 	s := seedStore(t, "acme")
 	seedProSub(t, "acme", s.Id(), subscription.Active, time.Now().Add(time.Hour), time.Time{})
@@ -119,6 +131,9 @@ func TestRequireAccess_ActivePlanAllows(t *testing.T) {
 func TestRequireAccess_ExpiredActiveBlocked(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
+	if _, _, err := billing.SeedPlans(tc); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
 
 	s := seedStore(t, "acme")
 	seedProSub(t, "acme", s.Id(), subscription.Active, time.Now().Add(-time.Hour), time.Time{})
@@ -133,6 +148,9 @@ func TestRequireAccess_ExpiredActiveBlocked(t *testing.T) {
 func TestRequireAccess_TrialingAllows(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
+	if _, _, err := billing.SeedPlans(tc); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
 
 	s := seedStore(t, "acme")
 	seedProSub(t, "acme", s.Id(), subscription.Trialing, time.Time{}, time.Now().Add(48*time.Hour))
@@ -147,6 +165,9 @@ func TestRequireAccess_TrialingAllows(t *testing.T) {
 func TestRequireAccess_StoreBound(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
+	if _, _, err := billing.SeedPlans(tc); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
 
 	a := seedStore(t, "acme")
 	b := seedStore(t, "acme")

@@ -76,6 +76,8 @@ test:
       export GOWORK=off CGO_ENABLED=1 GOFLAGS=-tags=sqlite_math_functions
       go test -count=1 -timeout=10m \
         ./api/billing/... \
+        ./api/store/... \
+        ./api/subscription/... \
         ./billing/... \
         ./delay/... \
         ./models/creditgrant/... \

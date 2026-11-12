@@ -1,10 +1,13 @@
 package store
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	billing "github.com/hanzoai/commerce/api/billing"
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/test/ae"
@@ -29,9 +32,19 @@ func storeSub(t *testing.T, db *datastore.Datastore, storeID, slug string, cents
 	return sub
 }
 
+// seeded seeds the catalog into the plan authority, as a boot does: a store opens
+// only on a Hanzo plan, a row of the authority.
+func seeded(t *testing.T, ctx context.Context) {
+	t.Helper()
+	if _, _, err := billing.SeedPlans(ctx); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+}
+
 func TestHasAccessIsStoreBound(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
+	seeded(t, ctx)
 	db := datastore.New(ctx)
 	now := time.Now()
 	storeSub(t, db, "store-a", "go", 800, "square", subscription.Active, now)
@@ -60,8 +73,10 @@ func TestHasAccessOpensOnAnyPaidPlan(t *testing.T) {
 		{"a retired rung still held", "dev", "square", 2000, true},
 		{"the free plan", "free", "square", 0, false},
 		{"a paid rung no payment backs", "go", "internal", 800, false},
+		{"a merchant's own plan its customer pays for", "merchant-box", "square", 2900, false},
 	} {
 		ctx := ae.NewContext()
+		seeded(t, ctx)
 		db := datastore.New(ctx)
 		storeSub(t, db, "store-a", tc.slug, tc.cents, tc.provider, subscription.Active, now)
 		allowed, _, err := HasAccess([]*datastore.Datastore{db}, "store-a", now)
@@ -72,11 +87,35 @@ func TestHasAccessOpensOnAnyPaidPlan(t *testing.T) {
 	}
 }
 
+// A merchant's own plan, in its namespace, is not a Hanzo plan even when it wears a
+// Hanzo slug: a customer of the merchant paying for it opens nothing.
+func TestHasAccessIgnoresAMerchantsOwnPlan(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	seeded(t, ctx)
+	db := datastore.New(ctx)
+	own := plan.New(db)
+	own.Slug, own.Name, own.Category, own.Price = "go", "Merchant's Go box", "personal", 800
+	if err := own.Create(); err != nil {
+		t.Fatalf("merchant plan: %v", err)
+	}
+	now := time.Now()
+	sub := storeSub(t, db, "store-m", "go", 800, "square", subscription.Active, now)
+	sub.PlanId = own.Id()
+	if err := sub.Update(); err != nil {
+		t.Fatal(err)
+	}
+	if allowed, _, err := HasAccess([]*datastore.Datastore{db}, "store-m", now); err != nil || allowed {
+		t.Fatalf("a merchant's own go plan: allowed=%v err=%v, want refused", allowed, err)
+	}
+}
+
 // A trial opened before commerce stopped selling them runs to its end and opens
 // the store until then, and not after.
 func TestHasAccessRunsAnOpenTrialToItsEnd(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
+	seeded(t, ctx)
 	db := datastore.New(ctx)
 	now := time.Now()
 	for store, end := range map[string]time.Time{"store-open": now.Add(24 * time.Hour), "store-over": now.Add(-24 * time.Hour)} {

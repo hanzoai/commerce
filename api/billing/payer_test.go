@@ -381,3 +381,32 @@ func TestAnOpenTrialEndsUnchargedAndArmsNothing(t *testing.T) {
 		t.Fatal("a trial's end switched the reload on")
 	}
 }
+
+// A holder still inside a card trial opened before commerce stopped selling them
+// buys the plan like anyone else: the sale charges now, and the trial it replaces
+// ends once the payment settles.
+func TestATrialHolderBuysThePlan(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	if _, _, err := SeedPlans(ctx); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	org := moneyOrg("trial-buyer")
+	m := squareMock("cust_tb", "ccof_tb", "sqpay_tb")
+	withFakeSquare(t, m)
+	db := datastore.New(org.Namespaced(ctx))
+	sub := seedCardBackedSub(t, db, org.Name, "go", "ccof_tb", "cust_tb")
+	row := reload(t, db, sub.Id())
+	row.Status = subscription.Trialing
+	row.TrialStart, row.TrialEnd = time.Now().AddDate(0, 0, -2), time.Now().AddDate(0, 0, 5)
+	if err := row.Update(); err != nil {
+		t.Fatal(err)
+	}
+	r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"go"}`, nil)
+	if r.StatusCode != http.StatusCreated || m.chargeCalls != 1 || m.lastChargeAmount != 800 {
+		t.Fatalf("a trial holder buying go: %d %s, charged %d time(s) at %d; want 201 at 800", r.StatusCode, bodyOf(r), m.chargeCalls, m.lastChargeAmount)
+	}
+	if got := reload(t, db, sub.Id()); got.Status != subscription.Canceled {
+		t.Fatalf("the trial the sale replaced is %s, want canceled", got.Status)
+	}
+}

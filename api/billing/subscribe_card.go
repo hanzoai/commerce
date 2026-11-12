@@ -707,7 +707,10 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		samePlan := (heldSlug == planID || held.PlanId == planID) && held.Plan.Price == p.Price
 		sameInterval := (isYear == heldYear)
 		sameQty := in.Quantity <= 1 || held.Quantity == in.Quantity
-		if held.Status == subscription.Trialing || (samePlan && sameInterval && sameQty) {
+		// A trial opened before commerce stopped selling them converts to nothing, so
+		// its holder buys the plan like anyone else: the sale replaces the trial once
+		// its payment settles.
+		if held.Status != subscription.Trialing && samePlan && sameInterval && sameQty {
 			abandon()
 			return nil, saleRefusal{saleHeld, fmt.Sprintf(
 				"this account already pays for the %q plan (subscription %s); change that subscription instead of buying a second one",

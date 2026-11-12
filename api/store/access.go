@@ -26,7 +26,7 @@ type accessState struct {
 // unlock it. A subscription may live in either money store (see paywall.Allowed),
 // so dbs names both.
 func HasAccess(dbs []*datastore.Datastore, storeID string, at time.Time) (bool, string, error) {
-	if strings.TrimSpace(storeID) == "" {
+	if strings.TrimSpace(storeID) == "" || len(dbs) == 0 {
 		return false, "store_required", nil
 	}
 
@@ -39,7 +39,7 @@ func HasAccess(dbs []*datastore.Datastore, storeID string, at time.Time) (bool, 
 		subs = append(subs, found...)
 	}
 	for _, sub := range subs {
-		if !billing.Unlocks(sub, at) {
+		if !billing.Unlocks(dbs[0].Context, sub, at) {
 			continue
 		}
 		if sub.Status == subscription.Trialing {

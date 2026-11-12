@@ -9,6 +9,7 @@ import (
 
 	"github.com/zap-proto/zip"
 
+	billing "github.com/hanzoai/commerce/api/billing"
 	"github.com/hanzoai/commerce/billing/invite"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/organization"
@@ -20,17 +21,22 @@ import (
 
 const org = "acme"
 
+// newDB opens a store with the catalog seeded into the plan authority, as a boot
+// does: the admin opens only on a Hanzo plan, a row of the authority.
 func newDB(t *testing.T) (*datastore.Datastore, func()) {
 	t.Helper()
 	ctx := ae.NewContext()
+	if _, _, err := billing.SeedPlans(ctx); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
 	return datastore.New(ctx), func() { ctx.Close() }
 }
 
-// allow drives the decision over ONE store (subscriptions and invites share the
-// test db), mirroring how api/store's access_test creates and reads through the
-// same handle.
+// allow drives the decision over ONE store (subscriptions, trial credit and
+// invites share the test db), mirroring how api/store's access_test creates and
+// reads through the same handle.
 func allow(db *datastore.Datastore, at time.Time) (bool, string, error) {
-	return Allowed([]*datastore.Datastore{db}, db, org, at)
+	return Allowed([]*datastore.Datastore{db}, db, db, org, at)
 }
 
 func seedSubscription(t *testing.T, db *datastore.Datastore, status subscription.Status, at time.Time) {
@@ -84,13 +90,10 @@ func TestAllowed_Trialing(t *testing.T) {
 	}
 }
 
-// A trial credit is spendable balance, not access: an org holding one and no
-// plan is denied.
-func TestAllowed_TrialCreditIsNoAccess(t *testing.T) {
-	db, done := newDB(t)
-	defer done()
-	now := time.Now()
-
+// trialCredit writes a store trial's credit as billing/trial wrote it, expiring at
+// expires (zero: no expiry).
+func trialCredit(t *testing.T, db *datastore.Datastore, expires time.Time) {
+	t.Helper()
 	tx := transaction.New(db)
 	tx.Type = transaction.Deposit
 	tx.DestinationId = org + "/alice"
@@ -98,14 +101,37 @@ func TestAllowed_TrialCreditIsNoAccess(t *testing.T) {
 	tx.Currency = "usd"
 	tx.Amount = currency.Cents(2000)
 	tx.Tags = "trial-credit"
-	tx.ExpiresAt = now.Add(7 * 24 * time.Hour)
+	tx.ExpiresAt = expires
 	if err := tx.Create(); err != nil {
 		t.Fatalf("create trial credit: %v", err)
 	}
+}
 
-	ok, reason, err := allow(db, now)
-	if err != nil || ok || reason != DeniedCode {
-		t.Fatalf("trial-credit access = %v %q err=%v, want deny/subscription_required", ok, reason, err)
+// A trial opened before commerce stopped selling them runs to its end: its credit
+// opens the admin until it expires, and not after; a credit that names no end
+// opens nothing.
+func TestAllowed_AnOpenTrialCreditRunsToItsEnd(t *testing.T) {
+	now := time.Now()
+	for name, c := range map[string]struct {
+		expires time.Time
+		allowed bool
+	}{
+		"open":      {now.Add(7 * 24 * time.Hour), true},
+		"expired":   {now.Add(-24 * time.Hour), false},
+		"no expiry": {time.Time{}, false},
+	} {
+		db, done := newDB(t)
+		trialCredit(t, db, c.expires)
+		ok, reason, err := allow(db, now)
+		switch {
+		case err != nil:
+			t.Errorf("%s: %v", name, err)
+		case c.allowed && (!ok || reason != reasonTrialCredit):
+			t.Errorf("%s trial credit: %v %q, want allowed by its trial credit", name, ok, reason)
+		case !c.allowed && (ok || reason != DeniedCode):
+			t.Errorf("%s trial credit: %v %q, want deny/subscription_required", name, ok, reason)
+		}
+		done()
 	}
 }
 
@@ -122,6 +148,7 @@ func TestAllowed_AnyPaidPlan(t *testing.T) {
 		{"max-20x", "square", 20000, true},
 		{"free", "square", 0, false},
 		{"pro-3x", "internal", 1500, false},
+		{"merchant-box", "square", 2900, false},
 	} {
 		db, done := newDB(t)
 		sub := subscription.New(db)

@@ -687,16 +687,43 @@ func billingSubscription(db *datastore.Datastore, subject string, test bool) *su
 	return nil
 }
 
-// Unlocks reports whether s opens the commerce admin and a store at at: a paid
-// plan its subject holds (holdsPlan) on a period that covers at, whether the plan
-// is on sale or retired, or a trial opened before commerce stopped selling trials,
-// until that trial's end. Nothing opens a trial now.
-func Unlocks(s *subscription.Subscription, at time.Time) bool {
+// trialMost is the longest trial commerce ever opened: 30 days.
+const trialMost = 31 * 24 * time.Hour
+
+// storeTrial is the provider a store trial's row carried; its plan was a copy in
+// the store's own namespace.
+const storeTrial = "trial"
+
+// hanzoPlan reports whether id names a Hanzo plan: a row of the plan authority (by
+// id or slug) or a slug the catalog resolves. A merchant's own plan, a row in its
+// namespace, is named by that row's id, which is neither.
+func hanzoPlan(ctx context.Context, id string) bool {
+	if id == "" {
+		return false
+	}
+	return lookupPlan(id) != nil || plan.New(plan.AuthorityDB(ctx)).GetById(id) == nil
+}
+
+// Unlocks reports whether s opens the commerce admin and a store at at. It does
+// when s is on a Hanzo plan — a row of the plan authority, never a merchant's own
+// plan in its namespace, which its customers' subscriptions name — that charges
+// (paidRow), not a bundle row, and:
+//
+//   - active on a period that covers at, paid for (payment-backed) or given by
+//     staff (a grant), whether the plan is on sale or retired; or
+//   - a trial opened before commerce stopped selling trials (a store trial's plan
+//     was a copy in the store's namespace), no longer than any trial commerce
+//     sold, until its end. Nothing opens a trial now.
+func Unlocks(ctx context.Context, s *subscription.Subscription, at time.Time) bool {
+	legacyTrial := s.Status == subscription.Trialing && s.ProviderType == storeTrial
+	if s.ProviderType == "bundle" || !paidRow(s) || (!legacyTrial && !hanzoPlan(ctx, s.PlanId)) {
+		return false
+	}
 	switch s.Status {
 	case subscription.Trialing:
-		return s.TrialEnd.After(at)
+		return s.TrialEnd.After(at) && !s.TrialStart.IsZero() && s.TrialEnd.Sub(s.TrialStart) <= trialMost
 	case subscription.Active:
-		return s.PeriodEnd.After(at) && holdsPlan(s)
+		return s.PeriodEnd.After(at) && !engine.Over(s, at) && (subscriptionPaymentBacked(s) || s.ProviderType == giftProvider)
 	}
 	return false
 }

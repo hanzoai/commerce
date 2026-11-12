@@ -1,6 +1,7 @@
 // Package paywall is the commerce admin subscription gate. Org == store ==
-// namespace: an org may use the commerce admin only when it holds a paid plan
-// (billing.Unlocks: any plan on sale, or a retired one it still pays for) or a
+// namespace: an org may use the commerce admin only when it holds a paid Hanzo
+// plan (billing.Unlocks: any plan on sale, or a retired one it still pays for), is
+// inside a trial opened before commerce stopped selling trials, or holds a
 // redeemed invite code. Otherwise the gate returns 402 subscription_required.
 //
 // It reuses the existing money primitives — it does NOT invent a parallel billing
@@ -8,6 +9,9 @@
 //
 //   - subscription: models/subscription, the same records SubscribeWithCard
 //     writes, asked by billing.Unlocks.
+//   - trial credit: the expiring trial-credit deposit a store trial was funded
+//     with, before trials ended; it opens the admin until it expires, and
+//     nothing grants one now.
 //   - invite: billing/invite (the referrals code→org primitive, reimplemented
 //     natively — commerce never imports cloud).
 //
@@ -20,6 +24,7 @@
 package paywall
 
 import (
+	"strings"
 	"time"
 
 	"github.com/zap-proto/zip"
@@ -30,6 +35,7 @@ import (
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/models/subscription"
+	"github.com/hanzoai/commerce/models/transaction"
 )
 
 // DeniedCode is the machine-readable denial code the console routes to an
@@ -38,15 +44,17 @@ const DeniedCode = "subscription_required"
 
 // Allow reasons (also the machine-readable status returned to the caller).
 const (
-	reasonActive   = "active"
-	reasonTrialing = "trialing"
-	reasonInvite   = "invite"
+	reasonActive      = "active"
+	reasonTrialing    = "trialing"
+	reasonTrialCredit = "trial_credit"
+	reasonInvite      = "invite"
 )
 
 // Allowed is the single access decision. It ALLOWS when the org has, in order:
 //
 //  1. a paid plan in ANY of subDBs (billing.Unlocks), OR
-//  2. a redeemed invite (invDB, the system-namespace invite directory).
+//  2. a trial credit still running (txDB, org namespace), OR
+//  3. a redeemed invite (invDB, the system-namespace invite directory).
 //
 // Otherwise it returns (false, DeniedCode, nil). A backing-store error is
 // surfaced so the gate can fail closed with 503 rather than silently allow.
@@ -54,9 +62,9 @@ const (
 // subDBs is a slice because in production a subscription may live in EITHER the
 // per-org file store (rows written through NewNamespaced) OR the shared
 // namespace-scoped store (SubscribeWithCard via New) — the gate must be a strict
-// superset of both money paths and never block a paying customer. invDB is the
-// global "system" invite directory.
-func Allowed(subDBs []*datastore.Datastore, invDB *datastore.Datastore, org string, at time.Time) (bool, string, error) {
+// superset of both money paths and never block a paying customer. txDB carries
+// the trial-credit ledger; invDB is the global "system" invite directory.
+func Allowed(subDBs []*datastore.Datastore, txDB, invDB *datastore.Datastore, org string, at time.Time) (bool, string, error) {
 	for _, subDB := range subDBs {
 		if subDB == nil {
 			continue
@@ -66,6 +74,12 @@ func Allowed(subDBs []*datastore.Datastore, invDB *datastore.Datastore, org stri
 		} else if ok {
 			return true, reason, nil
 		}
+	}
+
+	if ok, err := hasTrialCredit(txDB, at); err != nil {
+		return false, "", err
+	} else if ok {
+		return true, reasonTrialCredit, nil
 	}
 
 	if ok, err := invite.OrgRedeemed(invDB, org); err != nil {
@@ -78,14 +92,14 @@ func Allowed(subDBs []*datastore.Datastore, invDB *datastore.Datastore, org stri
 }
 
 // hasSubscription reports whether the org holds a plan that unlocks it at `at`
-// (billing.Unlocks): any paid plan in the org namespace, on sale or retired.
+// (billing.Unlocks): any paid Hanzo plan in the org namespace, on sale or retired.
 func hasSubscription(db *datastore.Datastore, at time.Time) (bool, string, error) {
 	subs := make([]*subscription.Subscription, 0)
 	if _, err := subscription.Query(db).GetAll(&subs); err != nil {
 		return false, "", err
 	}
 	for _, sub := range subs {
-		if !billing.Unlocks(sub, at) {
+		if !billing.Unlocks(db.Context, sub, at) {
 			continue
 		}
 		if sub.Status == subscription.Trialing {
@@ -94,6 +108,35 @@ func hasSubscription(db *datastore.Datastore, at time.Time) (bool, string, error
 		return true, reasonActive, nil
 	}
 	return false, "", nil
+}
+
+// trialCreditTag is the tag a store trial's credit carried: "trial-credit", or
+// "trial-credit:<storeID>" for one store's.
+const trialCreditTag = "trial-credit"
+
+// hasTrialCredit reports whether the org is inside a trial opened before commerce
+// stopped selling trials: an unexpired, positive trial-credit deposit in its
+// ledger. Every such credit carried the end of its trial; one with no expiry
+// opens nothing.
+func hasTrialCredit(db *datastore.Datastore, at time.Time) (bool, error) {
+	root := db.NewKey("synckey", "", 1, nil)
+	deps := make([]*transaction.Transaction, 0, 8)
+	if _, err := transaction.Query(db).Ancestor(root).
+		Filter("DestinationKind=", "iam-user").GetAll(&deps); err != nil {
+		return false, err
+	}
+	for _, t := range deps {
+		if t.Type != transaction.Deposit || t.Amount <= 0 {
+			continue
+		}
+		if t.Tags != trialCreditTag && !strings.HasPrefix(t.Tags, trialCreditTag+":") {
+			continue
+		}
+		if !t.ExpiresAt.IsZero() && t.ExpiresAt.After(at) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // Require is the per-request access gate. Mount it as a sibling to
@@ -112,12 +155,13 @@ func Require(c *zip.Ctx) error {
 	}
 
 	ctx := org.Namespaced(c.Context())
-	// Subscriptions may live in EITHER money store (see Allowed).
+	// Subscriptions may live in EITHER money store (see Allowed); trial credit is
+	// read from the shared namespace-scoped store the balance gate uses.
 	shared := datastore.New(ctx)
 	perOrg := datastore.NewNamespaced(ctx)
 	invDB := invite.SystemDB(c.Context()) // invites — global system namespace
 
-	allowed, reason, err := Allowed([]*datastore.Datastore{shared, perOrg}, invDB, org.Name, time.Now())
+	allowed, reason, err := Allowed([]*datastore.Datastore{shared, perOrg}, shared, invDB, org.Name, time.Now())
 	if err != nil {
 		return unavailable(c)
 	}

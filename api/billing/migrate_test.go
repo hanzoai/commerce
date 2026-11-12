@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/billingevent"
 	"github.com/hanzoai/commerce/models/customerprice"
@@ -73,27 +74,33 @@ func TestMigrateMovesEveryRetiredRungOntoTheLadder(t *testing.T) {
 	hold("acme/max-20x", "max-20x", types.Monthly, want{"ultra", 20000, 19500, 0}, nil)
 	hold("acme/max-50x", "max-50x", types.Monthly, want{"ultimate", 50000, 49500, 0}, nil)
 	hold("acme/old-go", "go", types.Monthly, want{"go", 900, 800, 0}, func(s *subscription.Subscription) { s.Plan.Price = 900 })
-	hold("acme/pro-2x", "pro-3x", types.Monthly, want{"pro-3x", 1500, 1500, 0}, func(s *subscription.Subscription) {
-		s.Plan.Slug, s.PlanId = "pro-2x", "pro-2x"
-	})
-	hold("acme/max-10x", "max-15x", types.Monthly, want{"max-15x", 9500, 9500, 0}, func(s *subscription.Subscription) {
-		s.Plan.Slug, s.PlanId = "max-10x", "max-10x"
-	})
-	hold("acme/max", "max-5x", types.Monthly, want{"max-15x", 9900, 9500, 0}, func(s *subscription.Subscription) {
-		s.Plan.Slug, s.PlanId, s.Plan.Price = "max", "max", 9900
-	})
-	hold("acme/max-999", "max-5x", types.Monthly, want{"ultimate", 99900, 49500, 0}, func(s *subscription.Subscription) {
-		s.Plan.Slug, s.PlanId, s.Plan.Price = "max", "max", 99900
-	})
+	// The renamed and long-retired slugs as production holds them: archived rows of
+	// the plan authority (scripts/ladder-writes.sh archives pro-2x and max-10x; the
+	// seed archived max when the catalog dropped it).
+	for slug, cents := range map[string]int64{"pro-2x": 1500, "max-10x": 9500, "max": 9900} {
+		authorityPlan(t, ctx, slug, "personal", plan.StatusArchived, cents)
+	}
+	hold("acme/pro-2x", "pro-2x", types.Monthly, want{"pro-3x", 1500, 1500, 0}, nil)
+	hold("acme/max-10x", "max-10x", types.Monthly, want{"max-15x", 9500, 9500, 0}, nil)
+	hold("acme/max", "max", types.Monthly, want{"max-15x", 9900, 9500, 0}, nil)
+	hold("acme/max-999", "max", types.Monthly, want{"ultimate", 99900, 49500, 0}, func(s *subscription.Subscription) { s.Plan.Price = 99900 })
 	hold("acme/agreed-low", "max-20x", types.Monthly, want{"ultra", 15000, 15000, 15000}, func(s *subscription.Subscription) { s.CustomerCents = 15000 })
 	hold("acme/agreed-high", "max-20x", types.Monthly, want{"ultra", 19900, 19500, 0}, func(s *subscription.Subscription) { s.CustomerCents = 19900 })
+	// A yearly holder is placed by its rung's monthly list price, so it keeps the
+	// multiple it bought; a year's agreed price is kept as its month.
 	hold("acme/dev-year", "dev", types.Yearly, want{"pro-3x", 20000, 1500, 0}, nil)
-	hold("acme/max-5x-year", "max-5x", types.Yearly, want{"dev-5x", 100000, 4500, 0}, nil)
+	hold("acme/max-5x-year", "max-5x", types.Yearly, want{"max-15x", 100000, 9500, 0}, nil)
+	hold("acme/max-50x-year", "max-50x", types.Yearly, want{"ultimate", 500000, 49500, 0}, nil)
+	hold("acme/max-50x-agreed", "max-50x", types.Yearly, want{"ultimate", 200000, 16666, 16666}, func(s *subscription.Subscription) { s.CustomerCents = 200000 })
 
 	// Left as they are: a rung on sale at its price, a private plan made for one
-	// customer, a team, the free plan, a cancelled row, and a trial.
+	// customer, a personal plan an admin made and then archived, a team, the free
+	// plan, a cancelled row, a trial, and a merchant's customer on the merchant's own
+	// plan that wears a retired Hanzo slug.
 	authorityPlan(t, ctx, "patron", "personal", plan.StatusPrivate, 99500)
-	stays := map[string]string{"acme/on-go": "go", "acme/patron": "patron", "acme/team": "team", "acme/free": "free", "acme/gone": "dev", "acme/trial": "dev"}
+	authorityPlan(t, ctx, "bespoke", "personal", plan.StatusArchived, 150000)
+	stays := map[string]string{"acme/on-go": "go", "acme/patron": "patron", "acme/bespoke": "bespoke", "acme/team": "team",
+		"acme/free": "free", "acme/gone": "dev", "acme/trial": "dev"}
 	for subject, slug := range stays {
 		heldOn(t, db, subject, slug, types.Monthly, func(s *subscription.Subscription) {
 			switch subject {
@@ -104,6 +111,13 @@ func TestMigrateMovesEveryRetiredRungOntoTheLadder(t *testing.T) {
 			}
 		})
 	}
+	merchant := plan.New(db)
+	merchant.Slug, merchant.Name, merchant.Category, merchant.Price = "dev", "Merchant's dev kit", "personal", 2000
+	if err := merchant.Create(); err != nil {
+		t.Fatalf("merchant plan: %v", err)
+	}
+	heldOn(t, db, "acme/merchant-customer", "dev", types.Monthly, func(s *subscription.Subscription) { s.PlanId = merchant.Id() })
+	stays["acme/merchant-customer"] = "dev"
 	before := map[string]time.Time{}
 	for _, s := range subsOf(t, db, "acme/dev-year") {
 		before["acme/dev-year"] = s.PeriodEnd
@@ -129,8 +143,11 @@ func TestMigrateMovesEveryRetiredRungOntoTheLadder(t *testing.T) {
 		if subscriptionSlug(s) != w.to || s.Plan.Interval != types.Monthly || s.CustomerCents != w.agreed {
 			t.Errorf("%s holds %s by the %s at an agreed %d, want %s monthly at %d", mv.Subject, subscriptionSlug(s), s.Plan.Interval, s.CustomerCents, w.to, w.agreed)
 		}
-		if mv.ToCents > mv.FromCents && mv.FromInterval == "month" {
-			t.Errorf("%s pays more after the move: %d -> %d", mv.Subject, mv.FromCents, mv.ToCents)
+		if mv.FromInterval == "month" && mv.ToCents > mv.FromCents {
+			t.Errorf("%s pays more a month after the move: %d -> %d", mv.Subject, mv.FromCents, mv.ToCents)
+		}
+		if loadAutoRecharge(db, mv.Subject) != nil {
+			t.Errorf("the move wrote %s a reload rule", mv.Subject)
 		}
 	}
 	for subject, slug := range stays {
@@ -219,5 +236,31 @@ func TestAMigratedCompStaysAComp(t *testing.T) {
 	s := subsOf(t, db, "mig-comp")[0]
 	if s.Plan.Price != 0 || metaInt64(s.Metadata, "listCents", 0) != 1500 || s.ProviderType != processorComp {
 		t.Fatalf("the comp holds %d, lists %d, by %s; want 0, 1500, comp", s.Plan.Price, metaInt64(s.Metadata, "listCents", 0), s.ProviderType)
+	}
+}
+
+// A coupon the holder was granted for the rung it held keeps applying on the rung
+// it is moved onto: a max-5x holder at 50% off for six months renews on max-15x at
+// half of $95, not at $95.
+func TestAMigratedHolderKeepsItsCoupon(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	if _, _, err := SeedPlans(ctx); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	org := payerOrg(t, ctx, "mig-coupon")
+	withFakeSquare(t, squareMock("cust_mc", "ccof_mc", "sqpay_mc"))
+	db := datastore.New(org.Namespaced(ctx))
+	sub := seedCardBackedSub(t, db, org.Name, "max-5x", "ccof_mc", "cust_mc")
+	row := reload(t, db, sub.Id())
+	engine.Grant(row, engine.Coupon{Code: "HALF6", Percent: 50, Months: 6}, []string{"max-5x"}, row.PeriodStart)
+	if err := row.Update(); err != nil {
+		t.Fatal(err)
+	}
+	if mv, err := MigrateRetired(ctx); err != nil || len(mv.Moved) != 1 || mv.Moved[0].To != "max-15x" {
+		t.Fatalf("migrate: %+v %v, want max-5x moved onto max-15x", mv, err)
+	}
+	if out := renewDue(ctx, org, ""); len(out) != 1 || !out[0].Success || out[0].AmountCents != 4750 {
+		t.Fatalf("the renewal after the move: %+v, want half of max-15x's 9500", out)
 	}
 }
