@@ -190,6 +190,50 @@ func TestRecordSubscription_RetryIsUnchangedAndTheNextPaymentExtends(t *testing.
 	}
 }
 
+// A plan the catalog retires while a subject pays for it by wire still takes its
+// next payment: the record extends the row it holds, priced from the row's own
+// snapshot, as a card renewal of an archived plan bills. Opening the retired plan
+// for anyone else, or moving onto it, is refused as a plan that is not there.
+// Mutation: gate the extension on Assignable and the next period is refused.
+func TestRecordSubscription_ARetiredPlanHeldTakesItsNextPayment(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	if _, _, err := SeedPlans(ctx); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	org := moneyOrg("rec-retired")
+	db := datastore.New(org.Namespaced(ctx))
+	in := recordGo(t, db)
+	in.Processor = "wire"
+	if _, err := RecordSubscription(ctx, org, in); err != nil {
+		t.Fatalf("record: %v", err)
+	}
+	archivePlan(t, ctx, "go")
+
+	next := in
+	next.PeriodStart, next.PeriodEnd = recEnd, recEnd.AddDate(0, 1, 0)
+	next.Reference = map[string]string{"invoice": "inv:0-retired"}
+	got, err := RecordSubscription(ctx, org, next)
+	if err != nil || got.Outcome != RecordExtended {
+		t.Fatalf("the next period of a retired plan held: outcome=%v err=%v, want extended", got, err)
+	}
+	short := next
+	short.PeriodStart, short.PeriodEnd = next.PeriodEnd, next.PeriodEnd.AddDate(0, 1, 0)
+	short.PriceCents--
+	if _, err := RecordSubscription(ctx, org, short); !IsSaleRefused(err) {
+		t.Fatalf("a short payment for the retired plan held: err=%v, want refused against its price", err)
+	}
+
+	other := in
+	other.Subject = "acme/new"
+	if _, err := RecordSubscription(ctx, org, other); !IsSaleNotFound(err) {
+		t.Fatalf("opening a retired plan for another subject: err=%v, want not found", err)
+	}
+	if n := len(subsOf(t, db, "acme/new")); n != 0 {
+		t.Fatalf("the refused record opened %d subscription(s)", n)
+	}
+}
+
 func TestRecordSubscription_Refusals(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
