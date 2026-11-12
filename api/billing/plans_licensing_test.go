@@ -65,10 +65,10 @@ func TestEarlyAccessIsMaxs(t *testing.T) {
 			t.Errorf("plan %q early access = %v, want %v", r.Slug, got, max[r.Slug])
 		}
 	}
-	// A row that lost it is corrected by the next boot, and a converged one is not
-	// rewritten: early access is compared, not only copied.
+	// The row is the statement from here on: a boot rewrites nothing, and a row a
+	// SuperAdmin took early access off keeps it off.
 	if _, corrected, err := SeedPlans(c); err != nil || corrected != 0 {
-		t.Fatalf("re-seed = corrected %d, err %v; want 0 — a converged catalog rewrites nothing", corrected, err)
+		t.Fatalf("re-seed = corrected %d, err %v; want 0", corrected, err)
 	}
 	p := plan.New(plan.AuthorityDB(c))
 	if ok, err := p.Query().Filter("Slug=", "max-20x").Get(); err != nil || !ok {
@@ -78,12 +78,12 @@ func TestEarlyAccessIsMaxs(t *testing.T) {
 	if err := p.Update(); err != nil {
 		t.Fatalf("update: %v", err)
 	}
-	if _, corrected, err := SeedPlans(c); err != nil || corrected != 1 {
-		t.Fatalf("re-seed = corrected %d, err %v; want 1", corrected, err)
+	if _, corrected, err := SeedPlans(c); err != nil || corrected != 0 {
+		t.Fatalf("re-seed = corrected %d, err %v; want 0", corrected, err)
 	}
 	p = plan.New(plan.AuthorityDB(c))
-	if ok, err := p.Query().Filter("Slug=", "max-20x").Get(); err != nil || !ok || !p.Licensing.EarlyAccess {
-		t.Fatalf("max-20x after re-seed: early access %v, want true", p.Licensing)
+	if ok, err := p.Query().Filter("Slug=", "max-20x").Get(); err != nil || !ok || p.Licensing.EarlyAccess {
+		t.Fatalf("max-20x after re-seed: early access %v, want it left off", p.Licensing)
 	}
 }
 

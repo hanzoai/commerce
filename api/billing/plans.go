@@ -169,6 +169,11 @@ type staticPlan struct {
 	// Licensing is what the tier licenses — carried so the seed can persist it onto
 	// the row, where it survives the tier's retirement.
 	Licensing *plan.Licensing `json:"licensing,omitempty"`
+	// Entitlements and Replaces are the vendored catalog's entitlement block and
+	// renamed slugs, carried so the one import writes them onto the row. Neither
+	// is served here: what a plan grants is read off its row.
+	Entitlements map[string]any `json:"-"`
+	Replaces     []string       `json:"-"`
 }
 
 // PlanView is a plan as this service SELLS it — the wire type GET /billing/plans
@@ -416,8 +421,24 @@ func parsePlans(data []byte) ([]staticPlan, error) {
 		}
 		sp.Limits = cp.Limits
 		sp.Licensing = licensingOf(&canonical[i])
+		sp.Replaces = cp.Replaces
 
 		plans[i] = sp
+	}
+
+	// The whole entitlement block, as the catalog wrote it. canonicalPlan reads
+	// only its licensing.* keys, typed; the row carries all of it.
+	var blocks []struct {
+		Entitlements map[string]any `json:"entitlements"`
+	}
+	if err := json.Unmarshal(data, &blocks); err != nil {
+		return nil, err
+	}
+	for i := range plans {
+		plans[i].Entitlements = blocks[i].Entitlements
+		if plans[i].Entitlements == nil {
+			plans[i].Entitlements = map[string]any{}
+		}
 	}
 
 	return plans, nil
