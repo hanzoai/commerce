@@ -76,20 +76,20 @@ func TestSubscribeWithCard_SamePaidTierRefusedBeforeCharge(t *testing.T) {
 	withFakeSquare(t, m)
 
 	// A real first purchase, through the real endpoint.
-	if resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev"}`, map[string]string{"X-Idempotency-Key": "attempt-1"}); resp.StatusCode != http.StatusCreated {
+	if resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"go"}`, map[string]string{"X-Idempotency-Key": "attempt-1"}); resp.StatusCode != http.StatusCreated {
 		t.Fatalf("first subscribe status=%d, want 201", resp.StatusCode)
 	}
 	chargesAfterFirst := m.chargeCalls
 
 	// Attempt to buy the SAME plan again with a new idempotency key so it tests the held check rather than replaying.
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok2","planId":"dev"}`, map[string]string{"X-Idempotency-Key": "attempt-2"})
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok2","planId":"go"}`, map[string]string{"X-Idempotency-Key": "attempt-2"})
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusConflict {
 		t.Fatalf("second subscribe status=%d body=%s, want 409 — buying the same paid tier again must be refused",
 			resp.StatusCode, string(body))
 	}
 	// The refusal has to name what the customer already has, or they cannot act on it.
-	if !strings.Contains(string(body), "dev") {
+	if !strings.Contains(string(body), `\"go\" plan`) {
 		t.Errorf("409 body %s does not name the existing plan", string(body))
 	}
 
@@ -105,8 +105,8 @@ func TestSubscribeWithCard_SamePaidTierRefusedBeforeCharge(t *testing.T) {
 }
 
 // TestSubscribeWithCard_UpgradePaidTierCancelsOldAndChargesNew tests upgrading
-// an existing paid subscription: customer holding 'dev' upgrades to 'max-5x',
-// charges the new tier, cancels the old 'dev' subscription, and leaves 1 active subscription.
+// an existing paid subscription: customer holding 'go' upgrades to 'pro-3x',
+// charges the new tier, cancels the old 'go' subscription, and leaves 1 active subscription.
 func TestSubscribeWithCard_UpgradePaidTierCancelsOldAndChargesNew(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -114,13 +114,13 @@ func TestSubscribeWithCard_UpgradePaidTierCancelsOldAndChargesNew(t *testing.T) 
 	m := squareMock("cust_up", "ccof_up", "sqpay_up")
 	withFakeSquare(t, m)
 
-	if resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev"}`, nil); resp.StatusCode != http.StatusCreated {
+	if resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"go"}`, nil); resp.StatusCode != http.StatusCreated {
 		t.Fatalf("first subscribe status=%d, want 201", resp.StatusCode)
 	}
 	chargesAfterFirst := m.chargeCalls
 
-	// Upgrade to 'max-5x'
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok2","planId":"max-5x"}`, nil)
+	// Upgrade to 'pro-3x'
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok2","planId":"pro-3x"}`, nil)
 	if resp.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(resp.Body)
 		t.Fatalf("upgrade status=%d body=%s, want 201", resp.StatusCode, string(body))
@@ -134,8 +134,8 @@ func TestSubscribeWithCard_UpgradePaidTierCancelsOldAndChargesNew(t *testing.T) 
 	if len(live) != 1 {
 		t.Fatalf("live subscriptions=%d, want 1 after upgrade", len(live))
 	}
-	if live[0].PlanId != "max-5x" && live[0].Plan.Slug != "max-5x" {
-		t.Errorf("active subscription plan=%q, want 'max-5x'", live[0].PlanId)
+	if live[0].PlanId != "pro-3x" && live[0].Plan.Slug != "pro-3x" {
+		t.Errorf("active subscription plan=%q, want 'pro-3x'", live[0].PlanId)
 	}
 }
 
@@ -154,13 +154,13 @@ func TestSubscribeWithCard_FreeTierDoesNotBlockPaying(t *testing.T) {
 	// of a provider.
 	liveSub(t, db, "subfree", "dns-free", string(processor.Square))
 
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev"}`, nil)
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"go"}`, nil)
 	if resp.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(resp.Body)
 		t.Fatalf("status=%d body=%s, want 201 — a free tier must not block the customer who is finally paying",
 			resp.StatusCode, string(body))
 	}
-	if parentSub(t, db, "subfree", "dev") == nil {
+	if parentSub(t, db, "subfree", "go") == nil {
 		t.Error("no 'pro' subscription created")
 	}
 }
@@ -178,12 +178,12 @@ func TestSubscribeWithCard_UnpaidInternalRowDoesNotBlockPaying(t *testing.T) {
 
 	db := datastore.New(org.Namespaced(ctx))
 	// A PAID slug with no provider and no invoice — not payment-backed.
-	held := liveSub(t, db, "subunpaid", "dev", "internal")
+	held := liveSub(t, db, "subunpaid", "go", "internal")
 	if subscriptionPaymentBacked(held) {
 		t.Fatal("seeded row must not be payment-backed, or this test asserts nothing")
 	}
 
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev"}`, nil)
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"go"}`, nil)
 	if resp.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(resp.Body)
 		t.Fatalf("status=%d body=%s, want 201 — an unpaid internal row must not block paying",
@@ -234,12 +234,12 @@ func TestSubscribeWithCard_APersonalPlanIsNotSwitchedToYearly(t *testing.T) {
 	m := squareMock("cust_sw", "ccof_sw", "sqpay_sw")
 	withFakeSquare(t, m)
 
-	if resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev"}`, map[string]string{"X-Idempotency-Key": "m-1"}); resp.StatusCode != http.StatusCreated {
+	if resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"go"}`, map[string]string{"X-Idempotency-Key": "m-1"}); resp.StatusCode != http.StatusCreated {
 		t.Fatalf("monthly subscribe status=%d, want 201", resp.StatusCode)
 	}
 	calls := m.chargeCalls
 
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok2","planId":"dev","interval":"year"}`, map[string]string{"X-Idempotency-Key": "y-1"})
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok2","planId":"go","interval":"year"}`, map[string]string{"X-Idempotency-Key": "y-1"})
 	if resp.StatusCode != http.StatusBadRequest {
 		body, _ := io.ReadAll(resp.Body)
 		t.Fatalf("annual switch status=%d body=%s, want 400", resp.StatusCode, string(body))

@@ -219,10 +219,10 @@ func TestPrivatePlan_MoveOntoAnUncataloguedPlanIsStaffs(t *testing.T) {
 	org := moneyOrg("acme")
 	db := datastore.New(org.Namespaced(ctx))
 
-	dev, _ := resolveSubscriptionPlan(db, "dev")
+	entry, _ := resolveSubscriptionPlan(db, "go")
 	start := time.Now().UTC().Truncate(24 * time.Hour)
 	recorded, err := RecordSubscription(ctx, org, RecordIn{
-		Subject: "acme/wired", PlanID: "dev", PriceCents: int64(dev.Price),
+		Subject: "acme/wired", PlanID: "go", PriceCents: int64(entry.Price),
 		PeriodStart: start, PeriodEnd: start.AddDate(0, 1, 0),
 		Processor: "wire", Reference: map[string]string{"payment": "FED2026B"},
 	})
@@ -230,7 +230,7 @@ func TestPrivatePlan_MoveOntoAnUncataloguedPlanIsStaffs(t *testing.T) {
 		t.Fatalf("record: %v", err)
 	}
 	rows := map[string]string{
-		"acme/card":  liveSub(t, db, "acme/card", "dev", "square").Id(),
+		"acme/card":  liveSub(t, db, "acme/card", "go", "square").Id(),
 		"acme/wired": recorded.Subscription.ID,
 		"acme/free":  renewedFree(t, ctx, org, "acme/free").Id(),
 	}

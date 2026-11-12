@@ -103,7 +103,7 @@ func TestPrivilegedMoneyActsRecordWhoTookThem(t *testing.T) {
 		t.Errorf("adjustment metadata %v; want by %s", bt.Metadata, who)
 	}
 
-	sub := post("/v1/billing/subscriptions", `{"userId":"acme-audit","planId":"max-5x","metadata":{"compedBy":"forged"}}`)
+	sub := post("/v1/billing/subscriptions", `{"userId":"acme-audit","planId":"pro-3x","metadata":{"compedBy":"forged"}}`)
 	row := subscription.New(db)
 	if err := row.GetById(sub["id"].(string)); err != nil {
 		t.Fatal(err)

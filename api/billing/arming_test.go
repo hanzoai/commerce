@@ -10,7 +10,6 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
-	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
@@ -245,15 +244,15 @@ func TestAPersonalPlanServesItsReloadAndNoAnnualPrice(t *testing.T) {
 	if _, _, err := SeedPlans(ctx); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	p := plan.New(plan.AuthorityDB(ctx))
-	p.Slug, p.Name, p.Category, p.Currency = "ultra", "Ultra", "personal", currency.USD
-	p.Price, p.PriceAnnual, p.AnnualTotal = 19500, 16250, 195000
+	// The row as an admin restates the seeded Ultra: an annual price it carries
+	// and is not served, and the reload it switches on.
 	zero := 0
-	p.Limits = &plan.Limits{ReloadsPerDay: &zero, Reload: ultraReload}
-	p.AdminEdited, p.Managed = true, true
-	if err := p.Create(); err != nil {
-		t.Fatal(err)
-	}
+	restate(t, ctx, "ultra", func(p *plan.Plan) {
+		p.PriceAnnual, p.AnnualTotal = 16250, 195000
+		limits := *p.Limits
+		limits.ReloadsPerDay, limits.Reload = &zero, ultraReload
+		p.Limits = &limits
+	})
 	plans, err := ReadPlans(ctx, "", "", nil)
 	if err != nil {
 		t.Fatalf("read plans: %v", err)

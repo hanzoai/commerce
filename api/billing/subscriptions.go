@@ -1077,9 +1077,28 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 				"moving a subscription to a pricier plan requires platform-administrator or internal-service credentials", nil)
 		}
 
+		// A price staff agreed with a customer is for one plan (customerprice is
+		// keyed by subject, slug and period), so the plan moved onto bills the price
+		// agreed for it, or its list price. Read before the move, so a read that
+		// fails changes nothing, and under the subject's sale lease, which
+		// SetCustomerPrice holds while it sets a price and sweeps that plan's rows:
+		// a price set or removed beside the move reaches the row either way.
+		lease, err := holdSale(db, sub.UserId)
+		if err != nil {
+			if IsSaleConflict(err) {
+				return http.Fail(c, 409, err.Error(), nil)
+			}
+			return http.Fail(c, 503, err.Error(), nil)
+		}
+		defer lease.Release()
+		customer, err := agreedPrice(db, sub.UserId, newPlan.Slug, newPlan)
+		if err != nil {
+			return http.Fail(c, 503, "the price agreed for this account could not be read; the plan was not changed", nil)
+		}
 		if _, err := engine.ChangePlan(sub, newPlan, req.Prorate); err != nil {
 			return http.Fail(c, 400, err.Error(), nil)
 		}
+		sub.CustomerCents = customer
 		// A move onto a plan whose row states no reload stops the reload the plan
 		// it leaves switched on, once the move is saved (disarm).
 		if newPlan.Limits == nil || newPlan.Limits.Reload == nil {

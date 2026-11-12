@@ -15,7 +15,7 @@ func TestSetNextCoupon_SetsAndClearsTheLiveRow(t *testing.T) {
 	defer ctx.Close()
 	org := moneyOrg("next-coupon-set")
 	withFakeSquare(t, squareMock("cust_nc", "ccof_nc", "sqpay_nc"))
-	sub := subscribed(t, ctx, org, "next-coupon-set/ada", "dev", 1, nil)
+	sub := subscribed(t, ctx, org, "next-coupon-set/ada", "go", 1, nil)
 
 	got, err := SetNextCoupon(ctx, org, "next-coupon-set/ada", " winback ", 30)
 	if err != nil {
@@ -45,7 +45,7 @@ func TestSetNextCoupon_Refusals(t *testing.T) {
 	defer ctx.Close()
 	org := moneyOrg("next-coupon-refused")
 	withFakeSquare(t, squareMock("cust_nr", "ccof_nr", "sqpay_nr"))
-	subscribed(t, ctx, org, "next-coupon-refused/ada", "dev", 1, nil)
+	subscribed(t, ctx, org, "next-coupon-refused/ada", "go", 1, nil)
 
 	for name, tc := range map[string]struct {
 		subject, code string
@@ -71,7 +71,7 @@ func TestSetNextCoupon_Refusals(t *testing.T) {
 	// A plan collected outside commerce is never renewed here, so nothing would
 	// take the coupon off an invoice; one waiting can still be taken off.
 	db := datastore.New(org.Namespaced(ctx))
-	if _, err := RecordSubscription(ctx, org, recordDev(t, db)); err != nil {
+	if _, err := RecordSubscription(ctx, org, recordGo(t, db)); err != nil {
 		t.Fatalf("record: %v", err)
 	}
 	if _, err := SetNextCoupon(ctx, org, "acme", "WINBACK", 30); !IsSubscriptionRefused(err) {

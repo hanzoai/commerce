@@ -18,7 +18,7 @@ import (
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
-// End-to-end at the API layer: a SuperAdmin PUTs a 50%-off promo on "dev", and
+// End-to-end at the API layer: a SuperAdmin PUTs a 50%-off promo on "go", and
 // GET /v1/billing/plans then surfaces promoPercent ONLY on the covered PAID plan —
 // not on a free plan, not on an uncovered paid plan. This is the "50% is
 // admin-controlled, not hardcoded" proof: the catalog JSON carries no promo.
@@ -39,9 +39,9 @@ func TestPlans_SurfaceActivePromo(t *testing.T) {
 	a.Raw(http.MethodPut, "/v1/platform/promo", promo.PutPromo)
 	a.Raw(http.MethodGet, "/v1/billing/plans", ListPlans)
 
-	// Admin configures a live 50% promo scoped to the "dev" plan.
+	// Admin configures a live 50% promo scoped to the "go" plan.
 	putReq := httptest.NewRequest(http.MethodPut, "/v1/platform/promo",
-		bytes.NewReader([]byte(`{"percentOff":50,"plans":["dev"],"active":true}`)))
+		bytes.NewReader([]byte(`{"percentOff":50,"plans":["go"],"active":true}`)))
 	putReq.Header.Set("Content-Type", "application/json")
 	if resp, err := a.Test(putReq); err != nil || resp.StatusCode != 200 {
 		t.Fatalf("PUT promo: err=%v status=%v", err, statusOf(resp))
@@ -64,17 +64,21 @@ func TestPlans_SurfaceActivePromo(t *testing.T) {
 		}
 	}
 
-	// "dev" is a covered PAID plan → promoPercent 50.
-	if pct := intField(bySlug["dev"], "promoPercent"); pct != 50 {
-		t.Fatalf("dev promoPercent = %d, want 50 (admin promo must surface on the covered paid plan)", pct)
+	// "go" is a covered PAID plan → promoPercent 50.
+	if pct := intField(bySlug["go"], "promoPercent"); pct != 50 {
+		t.Fatalf("go promoPercent = %d, want 50 (admin promo must surface on the covered paid plan)", pct)
 	}
 	// "developer" is FREE ($0) → no promo (nothing to discount).
 	if pct := intField(bySlug["developer"], "promoPercent"); pct != 0 {
 		t.Fatalf("developer promoPercent = %d, want 0 (free plan carries no promo)", pct)
 	}
-	// "max" is paid but NOT in the promo's plan set → no promo.
-	if pct := intField(bySlug["max"], "promoPercent"); pct != 0 {
-		t.Fatalf("max promoPercent = %d, want 0 (uncovered plan carries no promo)", pct)
+	// "pro-3x" is paid but NOT in the promo's plan set → no promo. It is read off
+	// the list, so a plan missing from it cannot pass as uncovered.
+	if _, listed := bySlug["pro-3x"]; !listed {
+		t.Fatal("pro-3x is missing from GET /v1/billing/plans")
+	}
+	if pct := intField(bySlug["pro-3x"], "promoPercent"); pct != 0 {
+		t.Fatalf("pro-3x promoPercent = %d, want 0 (uncovered plan carries no promo)", pct)
 	}
 }
 

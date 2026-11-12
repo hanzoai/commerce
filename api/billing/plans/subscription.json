@@ -33,12 +33,12 @@
     }
   },
   {
-    "id": "dev",
-    "name": "Pro",
+    "id": "go",
+    "name": "Go",
     "category": "personal",
-    "description": "For one person: every model, more usage and priority inference.",
-    "priceMonthly": 20,
-    "priceAnnual": 16.67,
+    "description": "Your everyday AI development toolkit, with access to every model and more included usage.",
+    "priceMonthly": 8,
+    "priceAnnual": null,
     "features": [
       "Everything in Free, plus:",
       "Build apps with Hanzo Dev",
@@ -77,11 +77,8 @@
     "price_ref": {
       "currency": "USD",
       "recurring": {
-        "monthly_usd": 20,
-        "annual_total_usd": 200,
-        "annual_usd": 16.67,
-        "per_seat": false,
-        "stripe_lookup_key": "hanzo_dev_20"
+        "monthly_usd": 8,
+        "per_seat": false
       },
       "metered": [
         {
@@ -94,19 +91,20 @@
     }
   },
   {
-    "id": "max-5x",
+    "id": "pro-3x",
     "replaces": [
-      "max"
+      "pro-2x"
     ],
-    "name": "Max 5x",
+    "name": "Pro",
     "category": "personal",
-    "description": "For all-day work: 5x the usage of Pro.",
-    "priceMonthly": 100,
-    "priceAnnual": 83.33,
+    "description": "For serious builders running agents, shipping code, and needing substantially higher limits.",
+    "priceMonthly": 15,
+    "priceAnnual": null,
+    "popular": true,
     "features": [
-      "Everything in Pro, plus:",
-      "5x more usage than Pro",
-      "5x higher limits every 5 hours and every day",
+      "Everything in Go, plus:",
+      "3x more usage than Go",
+      "3x higher limits every 5 hours and every day",
       "Hanzo Bot: 1 bot of your own",
       "Early access to new models and features",
       "Train custom models on your data",
@@ -154,11 +152,8 @@
     "price_ref": {
       "currency": "USD",
       "recurring": {
-        "monthly_usd": 100,
-        "annual_total_usd": 1000,
-        "annual_usd": 83.33,
-        "per_seat": false,
-        "stripe_lookup_key": "hanzo_max_5x_100"
+        "monthly_usd": 15,
+        "per_seat": false
       },
       "metered": [
         {
@@ -171,17 +166,17 @@
     }
   },
   {
-    "id": "max-20x",
-    "name": "Max 20x",
+    "id": "dev-5x",
+    "name": "Dev",
     "category": "personal",
-    "description": "For the heaviest work: 20x the usage of Pro.",
-    "priceMonthly": 200,
-    "priceAnnual": 166.67,
+    "description": "For serious builders running agents, shipping code, and needing substantially higher limits.",
+    "priceMonthly": 45,
+    "priceAnnual": null,
     "features": [
       "Everything in Pro, plus:",
-      "20x more usage than Pro",
-      "20x higher limits every 5 hours and every day",
-      "Hanzo Bot: 3 bots of your own",
+      "5x more usage than Go",
+      "5x higher limits every 5 hours and every day",
+      "Hanzo Bot: 2 bots of your own",
       "Early access to new models and features",
       "Train custom models on your data",
       "Hanzo Engine to run models on your own hardware",
@@ -218,21 +213,18 @@
       "commerce.idle_resale_percent": 20,
       "team.guests": 3,
       "ai.agents": 10,
-      "ai.bots": 3
+      "ai.bots": 2
     },
     "limits": {
       "teamGuests": 3,
       "agents": 10,
-      "bots": 3
+      "bots": 2
     },
     "price_ref": {
       "currency": "USD",
       "recurring": {
-        "monthly_usd": 200,
-        "annual_total_usd": 2000,
-        "annual_usd": 166.67,
-        "per_seat": false,
-        "stripe_lookup_key": "hanzo_max_20x_200"
+        "monthly_usd": 45,
+        "per_seat": false
       },
       "metered": [
         {
@@ -245,16 +237,19 @@
     }
   },
   {
-    "id": "max-50x",
-    "name": "Max 50x",
+    "id": "max-15x",
+    "replaces": [
+      "max-10x"
+    ],
+    "name": "Max",
     "category": "personal",
-    "description": "For the biggest workloads: 50x the usage of Pro.",
-    "priceMonthly": 500,
-    "priceAnnual": 416.67,
+    "description": "For serious builders running agents, shipping code, and needing substantially higher limits.",
+    "priceMonthly": 95,
+    "priceAnnual": null,
     "features": [
-      "Everything in Pro, plus:",
-      "50x more usage than Pro",
-      "50x higher limits every 5 hours and every day",
+      "Everything in Dev, plus:",
+      "15x more usage than Go",
+      "15x higher limits every 5 hours and every day",
       "Hanzo Bot: 5 bots of your own",
       "Early access to new models and features",
       "Train custom models on your data",
@@ -302,11 +297,8 @@
     "price_ref": {
       "currency": "USD",
       "recurring": {
-        "monthly_usd": 500,
-        "annual_total_usd": 5000,
-        "annual_usd": 416.67,
-        "per_seat": false,
-        "stripe_lookup_key": "hanzo_max_50x_500"
+        "monthly_usd": 95,
+        "per_seat": false
       },
       "metered": [
         {
@@ -319,17 +311,17 @@
     }
   },
   {
-    "id": "max-100x",
-    "status": "draft",
-    "name": "Max 100x",
+    "id": "ultra",
+    "name": "Ultra",
     "category": "personal",
-    "description": "For the very largest workloads: 100x the usage of Pro.",
-    "priceMonthly": 1000,
-    "priceAnnual": 833.33,
+    "description": "For the biggest workloads. Usage beyond what is included is paid from your prepaid balance at list price",
+    "priceMonthly": 195,
+    "priceAnnual": null,
     "features": [
-      "Everything in Pro, plus:",
-      "100x more usage than Pro",
-      "100x higher limits every 5 hours and every day",
+      "Everything in Max, plus:",
+      "25x more usage than Go",
+      "25x higher limits every 5 hours and every day",
+      "Usage beyond what is included is paid from your prepaid balance at list price",
       "Hanzo Bot: 10 bots of your own",
       "Early access to new models and features",
       "Train custom models on your data",
@@ -377,11 +369,80 @@
     "price_ref": {
       "currency": "USD",
       "recurring": {
-        "monthly_usd": 1000,
-        "annual_total_usd": 10000,
-        "annual_usd": 833.33,
-        "per_seat": false,
-        "stripe_lookup_key": "hanzo_max_100x_1000"
+        "monthly_usd": 195,
+        "per_seat": false
+      },
+      "metered": [
+        {
+          "entitlement": "ai.tokens_per_min",
+          "unit": "per_mtok",
+          "source": "zen-gateway",
+          "included": -1
+        }
+      ]
+    }
+  },
+  {
+    "id": "unlimited",
+    "status": "private",
+    "name": "Unlimited",
+    "category": "personal",
+    "description": "Everything in Ultra, with no usage caps.",
+    "priceMonthly": 995,
+    "priceAnnual": null,
+    "features": [
+      "Everything in Ultra, plus:",
+      "No usage caps on any model",
+      "No limits every 5 hours or every day",
+      "Hanzo Bot: 10 bots of your own",
+      "Early access to new models and features",
+      "Train custom models on your data",
+      "Hanzo Engine to run models on your own hardware",
+      "Dedicated support"
+    ],
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    },
+    "entitlements": {
+      "ai.premium_models": true,
+      "ai.priority_inference": true,
+      "ai.custom_training": true,
+      "ai.models": [
+        "*"
+      ],
+      "licensing.app_ids": [
+        "hanzo"
+      ],
+      "licensing.product_ids": [
+        "crm",
+        "engine",
+        "team"
+      ],
+      "licensing.seats": 1,
+      "licensing.engine_features": [
+        "inference",
+        "embeddings",
+        "vision",
+        "audio"
+      ],
+      "licensing.early_access": true,
+      "commerce.support_tier": "dedicated",
+      "commerce.idle_resale_percent": 20,
+      "team.guests": 3,
+      "ai.agents": 10,
+      "ai.bots": 10
+    },
+    "limits": {
+      "teamGuests": 3,
+      "agents": 10,
+      "bots": 10
+    },
+    "price_ref": {
+      "currency": "USD",
+      "recurring": {
+        "monthly_usd": 995,
+        "per_seat": false
       },
       "metered": [
         {
@@ -727,6 +788,296 @@
       "maxMembers": -1,
       "agents": -1,
       "bots": -1
+    }
+  },
+  {
+    "id": "dev",
+    "status": "archived",
+    "name": "Pro",
+    "category": "personal",
+    "description": "For one person: every model, more usage and priority inference.",
+    "priceMonthly": 20,
+    "priceAnnual": 16.67,
+    "features": [
+      "Everything in Free, plus:",
+      "Build apps with Hanzo Dev",
+      "Connect any MCP server in Hanzo Dev",
+      "The Hanzo CLI for macOS, Windows and Linux",
+      "Every model, including Enso Auto, Flash, Pro, Max and Ultra, and Kai",
+      "Usage included on every model",
+      "Priority inference and priority support",
+      "Your own agents, working in the background",
+      "Automations, with daily runs included"
+    ],
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    },
+    "entitlements": {
+      "ai.priority_inference": true,
+      "ai.models": [
+        "tier:max"
+      ],
+      "licensing.product_ids": [
+        "crm",
+        "team"
+      ],
+      "commerce.support_tier": "priority",
+      "commerce.idle_resale_percent": 20,
+      "team.guests": 3,
+      "ai.agents": 10,
+      "ai.bots": 0
+    },
+    "limits": {
+      "teamGuests": 3,
+      "agents": 10,
+      "bots": 0
+    },
+    "price_ref": {
+      "currency": "USD",
+      "recurring": {
+        "monthly_usd": 20,
+        "annual_total_usd": 200,
+        "annual_usd": 16.67,
+        "per_seat": false,
+        "stripe_lookup_key": "hanzo_dev_20"
+      },
+      "metered": [
+        {
+          "entitlement": "ai.tokens_per_min",
+          "unit": "per_mtok",
+          "source": "zen-gateway",
+          "included": -1
+        }
+      ]
+    }
+  },
+  {
+    "id": "max-5x",
+    "replaces": [
+      "max"
+    ],
+    "status": "archived",
+    "name": "Max 5x",
+    "category": "personal",
+    "description": "For all-day work: 5x the usage of Pro.",
+    "priceMonthly": 100,
+    "priceAnnual": 83.33,
+    "features": [
+      "Everything in Pro, plus:",
+      "5x more usage than Pro",
+      "5x higher limits every 5 hours and every day",
+      "Hanzo Bot: 1 bot of your own",
+      "Early access to new models and features",
+      "Train custom models on your data",
+      "Hanzo Engine to run models on your own hardware",
+      "Dedicated support"
+    ],
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    },
+    "entitlements": {
+      "ai.premium_models": true,
+      "ai.priority_inference": true,
+      "ai.custom_training": true,
+      "ai.models": [
+        "*"
+      ],
+      "licensing.app_ids": [
+        "hanzo"
+      ],
+      "licensing.product_ids": [
+        "crm",
+        "engine",
+        "team"
+      ],
+      "licensing.seats": 1,
+      "licensing.engine_features": [
+        "inference",
+        "embeddings",
+        "vision",
+        "audio"
+      ],
+      "licensing.early_access": true,
+      "commerce.support_tier": "dedicated",
+      "commerce.idle_resale_percent": 20,
+      "team.guests": 3,
+      "ai.agents": 10,
+      "ai.bots": 1
+    },
+    "limits": {
+      "teamGuests": 3,
+      "agents": 10,
+      "bots": 1
+    },
+    "price_ref": {
+      "currency": "USD",
+      "recurring": {
+        "monthly_usd": 100,
+        "annual_total_usd": 1000,
+        "annual_usd": 83.33,
+        "per_seat": false,
+        "stripe_lookup_key": "hanzo_max_5x_100"
+      },
+      "metered": [
+        {
+          "entitlement": "ai.tokens_per_min",
+          "unit": "per_mtok",
+          "source": "zen-gateway",
+          "included": -1
+        }
+      ]
+    }
+  },
+  {
+    "id": "max-20x",
+    "status": "archived",
+    "name": "Max 20x",
+    "category": "personal",
+    "description": "For the heaviest work: 20x the usage of Pro.",
+    "priceMonthly": 200,
+    "priceAnnual": 166.67,
+    "features": [
+      "Everything in Pro, plus:",
+      "20x more usage than Pro",
+      "20x higher limits every 5 hours and every day",
+      "Hanzo Bot: 3 bots of your own",
+      "Early access to new models and features",
+      "Train custom models on your data",
+      "Hanzo Engine to run models on your own hardware",
+      "Dedicated support"
+    ],
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    },
+    "entitlements": {
+      "ai.premium_models": true,
+      "ai.priority_inference": true,
+      "ai.custom_training": true,
+      "ai.models": [
+        "*"
+      ],
+      "licensing.app_ids": [
+        "hanzo"
+      ],
+      "licensing.product_ids": [
+        "crm",
+        "engine",
+        "team"
+      ],
+      "licensing.seats": 1,
+      "licensing.engine_features": [
+        "inference",
+        "embeddings",
+        "vision",
+        "audio"
+      ],
+      "licensing.early_access": true,
+      "commerce.support_tier": "dedicated",
+      "commerce.idle_resale_percent": 20,
+      "team.guests": 3,
+      "ai.agents": 10,
+      "ai.bots": 3
+    },
+    "limits": {
+      "teamGuests": 3,
+      "agents": 10,
+      "bots": 3
+    },
+    "price_ref": {
+      "currency": "USD",
+      "recurring": {
+        "monthly_usd": 200,
+        "annual_total_usd": 2000,
+        "annual_usd": 166.67,
+        "per_seat": false,
+        "stripe_lookup_key": "hanzo_max_20x_200"
+      },
+      "metered": [
+        {
+          "entitlement": "ai.tokens_per_min",
+          "unit": "per_mtok",
+          "source": "zen-gateway",
+          "included": -1
+        }
+      ]
+    }
+  },
+  {
+    "id": "max-50x",
+    "status": "archived",
+    "name": "Max 50x",
+    "category": "personal",
+    "description": "For the biggest workloads: 50x the usage of Pro.",
+    "priceMonthly": 500,
+    "priceAnnual": 416.67,
+    "features": [
+      "Everything in Pro, plus:",
+      "50x more usage than Pro",
+      "50x higher limits every 5 hours and every day",
+      "Hanzo Bot: 5 bots of your own",
+      "Early access to new models and features",
+      "Train custom models on your data",
+      "Hanzo Engine to run models on your own hardware",
+      "Dedicated support"
+    ],
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    },
+    "entitlements": {
+      "ai.premium_models": true,
+      "ai.priority_inference": true,
+      "ai.custom_training": true,
+      "ai.models": [
+        "*"
+      ],
+      "licensing.app_ids": [
+        "hanzo"
+      ],
+      "licensing.product_ids": [
+        "crm",
+        "engine",
+        "team"
+      ],
+      "licensing.seats": 1,
+      "licensing.engine_features": [
+        "inference",
+        "embeddings",
+        "vision",
+        "audio"
+      ],
+      "licensing.early_access": true,
+      "commerce.support_tier": "dedicated",
+      "commerce.idle_resale_percent": 20,
+      "team.guests": 3,
+      "ai.agents": 10,
+      "ai.bots": 5
+    },
+    "limits": {
+      "teamGuests": 3,
+      "agents": 10,
+      "bots": 5
+    },
+    "price_ref": {
+      "currency": "USD",
+      "recurring": {
+        "monthly_usd": 500,
+        "annual_total_usd": 5000,
+        "annual_usd": 416.67,
+        "per_seat": false,
+        "stripe_lookup_key": "hanzo_max_50x_500"
+      },
+      "metered": [
+        {
+          "entitlement": "ai.tokens_per_min",
+          "unit": "per_mtok",
+          "source": "zen-gateway",
+          "included": -1
+        }
+      ]
     }
   }
 ]

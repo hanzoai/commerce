@@ -102,7 +102,7 @@ func TestChangeSeatsMovesATeamsSeatsAndNothingElse(t *testing.T) {
 		quantity int
 		lines    []LineIn
 	}{
-		"a plan outside the team":     {0, []LineIn{{PlanID: "max-5x", Quantity: 1}}},
+		"a plan outside the team":     {0, []LineIn{{PlanID: "pro-3x", Quantity: 1}}},
 		"the team's own plan as line": {0, []LineIn{{PlanID: "team", Quantity: 1}}},
 		"no seats of a seat type":     {0, []LineIn{{PlanID: "team-premium", Quantity: 0}}},
 		"one seat in all":             {1, []LineIn{{PlanID: "team-premium", Quantity: 0}}},
@@ -117,7 +117,7 @@ func TestChangeSeatsMovesATeamsSeatsAndNothingElse(t *testing.T) {
 	}
 
 	solo := moneyOrg("solo-resize")
-	one, err := SubscribeCard(ctx, solo, SubscribeIn{SourceID: "cnon:ok", PlanID: "dev", Subject: solo.Name})
+	one, err := SubscribeCard(ctx, solo, SubscribeIn{SourceID: "cnon:ok", PlanID: "go", Subject: solo.Name})
 	if err != nil {
 		t.Fatalf("subscribe dev: %v", err)
 	}

@@ -49,9 +49,19 @@ func TestProdPath_SeedReadbackAllFields(t *testing.T) {
 	for i := range catalog {
 		e := catalog[i]
 		g, present := list[e.Slug]
-		if e.Status == plan.StatusDraft {
+		if !plan.ListedStatus(e.Status) {
+			// Draft, private and archived rows are not on sale, and still charge
+			// their price to the renewals and invoices that recorded them.
 			if present {
-				t.Errorf("%s: a draft is on sale in ListPlans", e.Slug)
+				t.Errorf("%s: a %s plan is on sale in ListPlans", e.Slug, e.Status)
+			}
+			rp, rerr := resolveSubscriptionPlan(orgDB, e.Slug)
+			if rerr != nil {
+				t.Errorf("%s: resolve err %v", e.Slug, rerr)
+				continue
+			}
+			if int64(rp.Price) != e.Price || int64(rp.PriceAnnual) != e.annual() || rp.Status != e.Status {
+				t.Errorf("%s: RESOLVE price=%d/%d status=%q want %d/%d %q (CHARGE)", e.Slug, rp.Price, rp.PriceAnnual, rp.Status, e.Price, e.annual(), e.Status)
 			}
 			continue
 		}
@@ -109,8 +119,8 @@ func TestProdPath_CorrectsPreexistingBadRows(t *testing.T) {
 	}
 	// The prod corruption, re-planted on CURRENT slugs: a subscription-flow path
 	// wrote a $0 or category-less row where the catalog has a real one.
-	plant("dev", 0, "")     // wrote $0 (the under-charge)
-	plant("max-5x", 0, "")  // wrote $0
+	plant("go", 0, "")      // wrote $0 (the under-charge)
+	plant("pro-3x", 0, "")  // wrote $0
 	plant("team", 2500, "") // a stale $25 seat price, no Category/PriceAnnual/envelope
 	plant("free", 900, "")  // wrote a charge over a rung that is genuinely free
 
@@ -124,7 +134,7 @@ func TestProdPath_CorrectsPreexistingBadRows(t *testing.T) {
 	// The charge path resolves the CATALOG price — never the $0 under-charge,
 	// never the stale 2500 planted over team, and never the 900 planted over a
 	// free rung.
-	for _, slug := range []string{"free", "dev", "max-5x", "team"} {
+	for _, slug := range []string{"free", "go", "pro-3x", "team"} {
 		want := lookupPlan(slug).Price
 		rp, err := resolveSubscriptionPlan(orgDB, slug)
 		if err != nil {
@@ -143,8 +153,8 @@ func TestProdPath_CorrectsPreexistingBadRows(t *testing.T) {
 	for _, r := range rows {
 		byslug[r.Slug] = r
 	}
-	if byslug["dev"].Category != "personal" {
-		t.Fatalf("dev category=%q, want personal (not corrected)", byslug["dev"].Category)
+	if byslug["go"].Category != "personal" {
+		t.Fatalf("go category=%q, want personal (not corrected)", byslug["go"].Category)
 	}
 	if ms := minSeatsOf(ptr(byslug["team"])); ms != 2 {
 		t.Fatalf("team minSeats=%d, want 2 (not corrected)", ms)

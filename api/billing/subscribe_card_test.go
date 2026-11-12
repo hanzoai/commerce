@@ -139,8 +139,8 @@ func TestSubscribeWithCard_VaultChargeCreateInvoice(t *testing.T) {
 
 	// Flat plan, no amount in the body — the price is the catalog's, always. Read
 	// rather than restated, so a reprice does not fail a test about authority.
-	devCents := float64(lookupPlan("dev").Price)
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev"}`, nil)
+	devCents := float64(lookupPlan("go").Price)
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"go"}`, nil)
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("status=%d body=%s, want 201", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
@@ -192,7 +192,7 @@ func TestSubscribeWithCard_VaultChargeCreateInvoice(t *testing.T) {
 	}
 
 	// The subscription: active, Square-backed, pointing at the vaulted card.
-	sub := parentSub(t, db, "subcard", "dev")
+	sub := parentSub(t, db, "subcard", "go")
 	if sub == nil {
 		t.Fatal("no 'pro' subscription created for subject")
 	}
@@ -302,12 +302,12 @@ func TestSubscribeWithCardBindsStore(t *testing.T) {
 
 	m := squareMock("cust_store", "ccof_store", "sqpay_store")
 	withFakeSquare(t, m)
-	body := fmt.Sprintf(`{"sourceId":"cnon:store","planId":"dev","storeId":%q}`, store.Id())
+	body := fmt.Sprintf(`{"sourceId":"cnon:store","planId":"go","storeId":%q}`, store.Id())
 	resp := invokeSubscribeCard(org, ctx, body, map[string]string{"X-Idempotency-Key": "store-a-first-period"})
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("status=%d body=%s", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
-	sub := parentSub(t, db, "substore", "dev")
+	sub := parentSub(t, db, "substore", "go")
 	if sub == nil || sub.StoreId != store.Id() {
 		t.Fatalf("subscription store = %v, want %q", sub, store.Id())
 	}
@@ -323,10 +323,10 @@ func TestSubscribeWithCard_ServerAuthoritativePrice(t *testing.T) {
 	m := squareMock("cust_p", "ccof_p", "sqpay_p")
 	withFakeSquare(t, m)
 
-	// A hostile client tries to pay 1 cent for the top "max-20x" plan. The amount is
+	// A hostile client tries to pay 1 cent for the top "ultra" plan. The amount is
 	// dropped (unknown field) and the server charges the catalog price.
-	maxCents := float64(lookupPlan("max-20x").Price)
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"max-20x","amountCents":1,"amount":"0.01","price":1}`, nil)
+	maxCents := float64(lookupPlan("ultra").Price)
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"ultra","amountCents":1,"amount":"0.01","price":1}`, nil)
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("status=%d body=%s, want 201", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
@@ -341,8 +341,8 @@ func TestSubscribeWithCard_ServerAuthoritativePrice(t *testing.T) {
 
 // TestSubscribeWithCard_ForeignCurrencyRejected proves the currency is
 // SERVER-authoritative: a client that swaps the currency to a weaker unit
-// ("jpy" for the USD-priced $20 pro plan) is rejected 400 with NO charge and NO
-// subscription — otherwise 2000 JPY (~$13) would settle the $20 plan (underpay).
+// ("jpy" for the USD-priced $8 Go plan) is rejected 400 with NO charge and NO
+// subscription — otherwise 800 JPY (~$5) would settle the $8 plan (underpay).
 func TestSubscribeWithCard_ForeignCurrencyRejected(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -350,7 +350,7 @@ func TestSubscribeWithCard_ForeignCurrencyRejected(t *testing.T) {
 	m := squareMock("cust_j", "ccof_j", "sqpay_j")
 	withFakeSquare(t, m)
 
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"dev","currency":"jpy"}`, nil)
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"go","currency":"jpy"}`, nil)
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s, want 400 (foreign currency rejected)", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
@@ -361,7 +361,7 @@ func TestSubscribeWithCard_ForeignCurrencyRejected(t *testing.T) {
 		t.Fatalf("CreateCustomer calls=%d for a rejected currency, want 0 (reject BEFORE vaulting)", m.createCustomerCalls)
 	}
 	db := datastore.New(org.Namespaced(ctx))
-	if sub := parentSub(t, db, "sc-jpy", "dev"); sub != nil {
+	if sub := parentSub(t, db, "sc-jpy", "go"); sub != nil {
 		t.Fatal("a rejected-currency request must NOT create a subscription")
 	}
 }
@@ -377,7 +377,7 @@ func TestSubscribeWithCard_Idempotent(t *testing.T) {
 	withFakeSquare(t, m)
 
 	hdr := map[string]string{"X-Idempotency-Key": "sub-key-1"}
-	body := `{"sourceId":"cnon:ok","planId":"dev"}`
+	body := `{"sourceId":"cnon:ok","planId":"go"}`
 
 	r1 := invokeSubscribeCard(org, ctx, body, hdr)
 	if r1.StatusCode != http.StatusCreated {
@@ -404,7 +404,7 @@ func TestSubscribeWithCard_Idempotent(t *testing.T) {
 
 	// Exactly one paid invoice for the subject's subscription (no duplicate).
 	db := datastore.New(org.Namespaced(ctx))
-	sub := parentSub(t, db, "sc-idem", "dev")
+	sub := parentSub(t, db, "sc-idem", "go")
 	if sub == nil {
 		t.Fatal("subscription not created")
 	}
@@ -423,7 +423,7 @@ func TestSubscribeWithCard_DeclinedNoSubscription(t *testing.T) {
 	m.chargeErr = errors.New("CARD_DECLINED")
 	withFakeSquare(t, m)
 
-	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:bad","planId":"dev"}`, nil)
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:bad","planId":"go"}`, nil)
 	if resp.StatusCode != http.StatusPaymentRequired {
 		t.Fatalf("status=%d, want 402 (declined)", resp.StatusCode)
 	}
@@ -432,7 +432,7 @@ func TestSubscribeWithCard_DeclinedNoSubscription(t *testing.T) {
 	}
 
 	db := datastore.New(org.Namespaced(ctx))
-	if sub := parentSub(t, db, "sc-decline", "dev"); sub != nil {
+	if sub := parentSub(t, db, "sc-decline", "go"); sub != nil {
 		t.Fatal("a declined card must NOT create a subscription")
 	}
 	if pms := pmsFor(t, db, "sc-decline"); len(pms) != 0 {
@@ -767,12 +767,12 @@ func TestSubscribeWithCard_NewNonceRetry_OneCharge(t *testing.T) {
 	withFakeSquare(t, m)
 
 	// First attempt (nonce A), no X-Idempotency-Key → guard falls back to (subject, plan).
-	r1 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:A","planId":"dev"}`, nil)
+	r1 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:A","planId":"go"}`, nil)
 	if r1.StatusCode != http.StatusCreated {
 		t.Fatalf("first status=%d, want 201", r1.StatusCode)
 	}
 	// Retry with a FRESH nonce B (re-tokenized), still no header.
-	r2 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:B","planId":"dev"}`, nil)
+	r2 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:B","planId":"go"}`, nil)
 	if r2.StatusCode != http.StatusOK {
 		t.Fatalf("new-nonce retry status=%d, want 200 (idempotent replay on (subject,planId))", r2.StatusCode)
 	}
@@ -903,14 +903,14 @@ func TestSubscribeWithCard_DistinctKeyRetriesAFailedAttempt(t *testing.T) {
 	m.chargeErr = errors.New("CARD_DECLINED")
 	withFakeSquare(t, m)
 
-	r1 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:A","planId":"dev"}`, map[string]string{"X-Idempotency-Key": "attempt-1"})
+	r1 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:A","planId":"go"}`, map[string]string{"X-Idempotency-Key": "attempt-1"})
 	if r1.StatusCode != http.StatusPaymentRequired {
 		t.Fatalf("first subscribe status=%d, want 402 (declined)", r1.StatusCode)
 	}
 
 	// A real card, a new checkout attempt (fresh key) → this one must go through.
 	m.chargeErr = nil
-	r2 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:B","planId":"dev"}`, map[string]string{"X-Idempotency-Key": "attempt-2"})
+	r2 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:B","planId":"go"}`, map[string]string{"X-Idempotency-Key": "attempt-2"})
 	if r2.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(r2.Body)
 		t.Fatalf("re-subscribe status=%d body=%s, want 201 (a spent key must not brick the plan)", r2.StatusCode, string(body))

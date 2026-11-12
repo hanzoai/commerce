@@ -61,9 +61,11 @@ type canonicalPlan struct {
 	Popular      bool   `json:"popular,omitempty"`
 	ContactSales bool   `json:"contactSales,omitempty"`
 	// Status is the catalog's word on whether the plan is sold: absent or "active"
-	// is on sale, "draft" is published for review and sold by nothing (see
-	// plan.Listed). A deploy that carries a draft row creates it unlisted, so no
-	// price in it is chargeable until the catalog makes it active.
+	// is on sale; "draft" (published for review), "private" (staff assign it, and a
+	// card buys it only at a price agreed with that customer) and "archived"
+	// (retired) are listed nowhere and refused by every purchase entrypoint (see
+	// plan.Listed). A deploy that carries such a row creates it unlisted, so no
+	// checkout charges its list price until the catalog makes it active.
 	Status string `json:"status,omitempty"`
 	// TrialPeriodDays is the plan's free-trial length. A card sale of the plan
 	// (POST /v1/billing/subscribe/card) opens in a trial this long for a buyer
@@ -151,7 +153,8 @@ type staticPlan struct {
 	ContactSales    bool    `json:"contactSales,omitempty"`
 	Popular         bool    `json:"popular,omitempty"`
 	// Status is plan.Plan.Status as the catalog states it: "" and "active" are on
-	// sale, "draft" is not. The public answer never carries a draft row.
+	// sale; "draft", "private" and "archived" are not, and the public answer never
+	// carries one of those.
 	Status string `json:"status,omitempty"`
 	// PromoPercent / PromoUntil surface the ACTIVE, admin-configured platform plan
 	// promo for this plan (percent off + when it ends) — sourced from the promo
@@ -937,13 +940,15 @@ func StaticPlans() []Plan {
 	return out
 }
 
-// listedCatalog is the embedded catalog less its drafts: what the embed may SELL
-// when the plan authority cannot answer. A draft row resolves (lookupPlan) and is
-// never listed here, so the fallback cannot offer a price the seed holds unlisted.
+// listedCatalog is the embedded catalog less every entry that is not on sale —
+// draft, private and archived, by the predicate the authority rows answer
+// (plan.ListedStatus): what the embed may SELL when the plan authority cannot
+// answer. Such an entry still resolves (lookupPlan); it is never listed here, so
+// the fallback cannot offer a price the seed holds unlisted.
 func listedCatalog() []staticPlan {
 	out := make([]staticPlan, 0, len(catalog))
 	for _, p := range catalog {
-		if p.Status != plan.StatusDraft {
+		if plan.ListedStatus(p.Status) {
 			out = append(out, p)
 		}
 	}

@@ -242,11 +242,11 @@ func TestARecordWaitsForTheSubjectsSale(t *testing.T) {
 	if err != nil || !held {
 		t.Fatalf("hold: %v %v", held, err)
 	}
-	if _, err := RecordSubscription(ctx, org, recordDev(t, db)); !IsSaleConflict(err) {
+	if _, err := RecordSubscription(ctx, org, recordGo(t, db)); !IsSaleConflict(err) {
 		t.Fatalf("FINDING: a record beside a sale of the same subject answered %v, want held", err)
 	}
 	lease.Release()
-	if _, err := RecordSubscription(ctx, org, recordDev(t, db)); err != nil {
+	if _, err := RecordSubscription(ctx, org, recordGo(t, db)); err != nil {
 		t.Fatalf("the record after the sale: %v", err)
 	}
 }

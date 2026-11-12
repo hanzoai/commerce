@@ -53,8 +53,8 @@ func TestWebhook_DisputeStateUpdatedReachesThePeriod(t *testing.T) {
 	defer ctx.Close()
 	org := webhookOrg(t, ctx, "dp-updated", true)
 	withFakeSquare(t, squareMock("cust_du", "ccof_du", "sqpay_du"))
-	subscribed(t, ctx, org, "dp-updated", "dev", 1, nil)
-	price := lookupPlan("dev").Price
+	subscribed(t, ctx, org, "dp-updated", "go", 1, nil)
+	price := lookupPlan("go").Price
 
 	deliver(t, ctx, secret, disputeAt("evt_du_0", "dispute.created", "dp_du", "sqpay_du", "EVIDENCE_REQUIRED", price, 1, ""))
 	paidAs(t, viewOf(t, ctx, org, "dp-updated"), "", 0, 0)
@@ -71,8 +71,8 @@ func TestWebhook_AnInquiryLeavesItsPeriodPaid(t *testing.T) {
 	defer ctx.Close()
 	org := webhookOrg(t, ctx, "dp-inquiry", true)
 	withFakeSquare(t, squareMock("cust_di", "ccof_di", "sqpay_di"))
-	subscribed(t, ctx, org, "dp-inquiry", "dev", 1, nil)
-	price := lookupPlan("dev").Price
+	subscribed(t, ctx, org, "dp-inquiry", "go", 1, nil)
+	price := lookupPlan("go").Price
 
 	deliver(t, ctx, secret, disputeAt("evt_di_0", "dispute.created", "dp_di", "sqpay_di", "INQUIRY_EVIDENCE_REQUIRED", price, 1, ""))
 	paidAs(t, viewOf(t, ctx, org, "dp-inquiry"), "card", 1, price)
@@ -92,10 +92,10 @@ func TestWebhook_ALateDisputeReportChangesNothing(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	org := webhookOrg(t, ctx, "dp-late", true)
-	price := lookupPlan("dev").Price
+	price := lookupPlan("go").Price
 
 	withFakeSquare(t, squareMock("cust_dv", "ccof_dv", "sqpay_dv"))
-	subscribed(t, ctx, org, "dp-late-version", "dev", 1, nil)
+	subscribed(t, ctx, org, "dp-late-version", "go", 1, nil)
 	deliver(t, ctx, secret,
 		disputeAt("evt_dv_0", "dispute.created", "dp_dv", "sqpay_dv", "INQUIRY_EVIDENCE_REQUIRED", price, 1, ""),
 		disputeAt("evt_dv_2", "dispute.state.updated", "dp_dv", "sqpay_dv", "EVIDENCE_REQUIRED", price, 3, ""),
@@ -103,7 +103,7 @@ func TestWebhook_ALateDisputeReportChangesNothing(t *testing.T) {
 	paidAs(t, viewOf(t, ctx, org, "dp-late-version"), "", 0, 0)
 
 	withFakeSquare(t, squareMock("cust_dt", "ccof_dt", "sqpay_dt"))
-	subscribed(t, ctx, org, "dp-late-time", "dev", 1, nil)
+	subscribed(t, ctx, org, "dp-late-time", "go", 1, nil)
 	deliver(t, ctx, secret,
 		disputeAt("evt_dt_0", "dispute.created", "dp_dt", "sqpay_dt", "INQUIRY_EVIDENCE_REQUIRED", price, 0, "2026-09-01T10:00:00Z"),
 		disputeAt("evt_dt_2", "dispute.state.updated", "dp_dt", "sqpay_dt", "EVIDENCE_REQUIRED", price, 0, "2026-09-03T10:00:00.250Z"),

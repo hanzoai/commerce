@@ -196,7 +196,7 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 	}
 	defer lease.Release()
 	p, err := resolveSubscriptionPlan(db, planID)
-	if err != nil || !p.Assignable() {
+	if err != nil {
 		return nil, saleRefusal{saleMissing, fmt.Sprintf("plan %q not found", planID)}
 	}
 	if p, err = planAtInterval(p, in.Interval); err != nil {
@@ -214,8 +214,15 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 	sameKind := held != nil && (held.ProviderType == processorComp) == comp
 	if held != nil && (in.Replaces == "" || (sameRung(held, planID, p.Interval) && sameKind)) {
 		// The next period of a plan the subject already holds: a renewal, which
-		// keeps the period the subscription was bought over.
+		// keeps the period the subscription was bought over. It extends only the
+		// plan held, priced from the row's own snapshot, so a plan retired while
+		// the subject pays for it by wire still takes its next payment.
 		return extendRecorded(ctx, org, held, in, planID, p.Interval, reference, start, end)
+	}
+	// Opening a plan, or moving onto one, is for a plan staff may put a customer
+	// on: listed or private, never draft or archived.
+	if !p.Assignable() {
+		return nil, saleRefusal{saleMissing, fmt.Sprintf("plan %q not found", planID)}
 	}
 	if err := monthlyOnly(p, in.Interval); err != nil {
 		return nil, saleRefusal{saleRefused, err.Error()}

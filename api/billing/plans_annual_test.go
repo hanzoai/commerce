@@ -48,8 +48,8 @@ func TestAnnualPriceIsTheCatalogs(t *testing.T) {
 			t.Fatalf("decode %s: %v", f.path, err)
 		}
 		for _, r := range rows {
-			if r.Status == plan.StatusDraft {
-				continue // a draft is on sale nowhere, so nothing serves its annual price
+			if !plan.ListedStatus(r.Status) {
+				continue // a draft, private or archived plan is on sale nowhere, so nothing serves its annual price
 			}
 			want[r.ID] = "null"
 			if r.PriceAnnual != nil && r.Category != categoryPersonal {

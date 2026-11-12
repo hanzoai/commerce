@@ -72,3 +72,37 @@ func TestRetiredMaxCannotBeBought(t *testing.T) {
 		t.Fatalf("charge calls=%d, want 0", m.chargeCalls)
 	}
 }
+
+// @hanzo/plans 1.10.0 publishes `go` again, as the $8 entry rung, over a slug a $9
+// rung once sold under. A subscription that recorded the old rung renews at the
+// price it was bought at, never the catalog's: the renewal bills the snapshot the
+// subscription carries.
+func TestTheOldGoRenewsAtItsOwnPrice(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	if _, _, err := SeedPlans(ctx); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	org := moneyOrg("old-go")
+	m := squareMock("", "", "sqpay_oldgo")
+	withFakeSquare(t, m)
+	db := datastore.New(org.Namespaced(ctx))
+	sub := seedCardBackedSub(t, db, "old-go", "go", "ccof_og", "cust_og")
+	old := subscription.New(db)
+	if err := old.GetById(sub.Id()); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	old.Plan.Price = 900
+	if err := old.Update(); err != nil {
+		t.Fatalf("save the $9 snapshot: %v", err)
+	}
+	if lookupPlan("go").Price != 800 {
+		t.Fatalf("the catalog sells go at %d, want 800", lookupPlan("go").Price)
+	}
+	if r := invokeRenew(org, ctx, sub.Id()); r.StatusCode != http.StatusOK {
+		t.Fatalf("renew: %d %s", r.StatusCode, bodyOf(r))
+	}
+	if m.chargeCalls != 1 || m.lastChargeAmount != 900 {
+		t.Fatalf("the old go renewed %d time(s) at %d, want once at its own 900", m.chargeCalls, m.lastChargeAmount)
+	}
+}

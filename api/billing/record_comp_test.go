@@ -112,21 +112,21 @@ func TestACompIsRefusedUnlessItIsAComp(t *testing.T) {
 	// naming it.
 	paid := moneyOrg("comp-paid")
 	pdb := datastore.New(paid.Namespaced(ctx))
-	dev := recordDev(t, pdb)
-	if _, err := RecordSubscription(ctx, paid, dev); err != nil {
-		t.Fatalf("record dev: %v", err)
+	entry := recordGo(t, pdb)
+	if _, err := RecordSubscription(ctx, paid, entry); err != nil {
+		t.Fatalf("record go: %v", err)
 	}
-	devComp := compEnterprise("acme")
-	devComp.PlanID = "dev"
-	if _, err := RecordSubscription(ctx, paid, devComp); !IsSaleConflict(err) {
+	entryComp := compEnterprise("acme")
+	entryComp.PlanID = "go"
+	if _, err := RecordSubscription(ctx, paid, entryComp); !IsSaleConflict(err) {
 		t.Fatalf("a comp over a paid plan: err=%v, want conflict", err)
 	}
 	held := subsOf(t, pdb, "acme")[0]
-	devComp.Replaces = held.Id()
-	if got, err := RecordSubscription(ctx, paid, devComp); err != nil || got.Outcome != RecordCreated || got.Replaced == nil {
+	entryComp.Replaces = held.Id()
+	if got, err := RecordSubscription(ctx, paid, entryComp); err != nil || got.Outcome != RecordCreated || got.Replaced == nil {
 		t.Fatalf("a comp naming the paid plan: %+v %v, want it to take it over", got, err)
 	}
-	payAgain := recordDev(t, pdb)
+	payAgain := recordGo(t, pdb)
 	payAgain.PeriodStart, payAgain.PeriodEnd = recEnd, recEnd.AddDate(0, 1, 0)
 	if _, err := RecordSubscription(ctx, paid, payAgain); !IsSaleConflict(err) {
 		t.Fatalf("a payment over a comp: err=%v, want conflict", err)
