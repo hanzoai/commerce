@@ -63,7 +63,7 @@ func readPreview(t *testing.T, org *organization.Organization, ctx context.Conte
 	}, h)
 	req := httptest.NewRequest(method, path, bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := app.Test(req)
+	resp, err := app.Test(req, patient)
 	if err != nil {
 		t.Fatal(err)
 	}

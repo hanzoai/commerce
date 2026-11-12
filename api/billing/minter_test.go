@@ -44,7 +44,7 @@ func TestPrivilegedMoneyActsRecordWhoTookThem(t *testing.T) {
 		for i := 0; i+1 < len(hdr); i += 2 {
 			req.Header.Set(hdr[i], hdr[i+1])
 		}
-		resp, err := app.Test(req)
+		resp, err := app.Test(req, patient)
 		if err != nil {
 			t.Fatal(err)
 		}
