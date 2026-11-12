@@ -18,6 +18,7 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
+	"github.com/hanzoai/commerce/models/types/currency"
 	types "github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/util/json/http"
 )
@@ -178,9 +179,10 @@ type staticPlan struct {
 type PlanView struct {
 	staticPlan
 	Limits *Capacity `json:"limits,omitempty"`
-	// Reload is the automatic reload buying the plan switches on, present only for
-	// a plan whose row states one (plan.Limits.Reload): the terms a checkout shows
-	// the buyer before they pay.
+	// Reload is the automatic reload buying the plan switches on (planReload): the
+	// row's own, or DefaultReload for a paid plan whose row states none, absent for
+	// a plan that charges nothing or whose row switches it off. These are the terms
+	// a checkout shows the buyer before they pay, and the buyer may decline them.
 	Reload *Recharge `json:"reload,omitempty"`
 	// The coupon quote, present only when the catalog was read with a coupon
 	// code (QuoteCoupon). A paid plan the coupon covers carries its code, its
@@ -236,14 +238,16 @@ type Recharge struct {
 	PerDay         int   `json:"perDay"`
 }
 
-// rechargeOf reads a plan's reload terms off its limits, nil when it states none.
-// PerDay is the row's ReloadsPerDay, ReloadsPerDay when the row states no bound.
-func rechargeOf(l *planLimits) *Recharge {
-	if l == nil || l.Reload == nil {
+// rechargeOf is the reload terms buying a plan priced at price switches on
+// (planReload), nil when it switches none. PerDay is the row's ReloadsPerDay, and
+// the package's ReloadsPerDay when the row states no bound.
+func rechargeOf(price int64, l *planLimits) *Recharge {
+	reload := planReload(currency.Cents(price), l)
+	if reload == nil {
 		return nil
 	}
-	r := Recharge{ThresholdCents: l.Reload.ThresholdCents, AmountCents: l.Reload.AmountCents, PerDay: ReloadsPerDay}
-	if l.ReloadsPerDay != nil && *l.ReloadsPerDay >= 0 {
+	r := Recharge{ThresholdCents: reload.ThresholdCents, AmountCents: reload.AmountCents, PerDay: ReloadsPerDay}
+	if l != nil && l.ReloadsPerDay != nil && *l.ReloadsPerDay >= 0 {
 		r.PerDay = *l.ReloadsPerDay
 	}
 	return &r
@@ -285,7 +289,7 @@ func (p staticPlan) view() PlanView {
 	if p.Category == categoryPersonal {
 		p.PriceAnnual, p.AnnualTotal = nil, 0
 	}
-	return PlanView{staticPlan: p, Limits: capacityOf(p.Limits), Reload: rechargeOf(p.Limits)}
+	return PlanView{staticPlan: p, Limits: capacityOf(p.Limits), Reload: rechargeOf(p.Price, p.Limits)}
 }
 
 // views serves a list of plans, in order.

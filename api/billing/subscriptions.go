@@ -1037,7 +1037,8 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 		}
 	}
 
-	left := "" // the plan a move leaves, when it leaves its reload behind
+	left := ""          // the plan a move leaves, when it leaves its reload behind
+	var moved [2]string // the plan a move leaves and the one it moves onto, when the reload follows
 	if planChanged {
 		// Resolve the target plan FIRST so the gate scores its canonical SLUG. A
 		// client may pass a plan's DB HASHID (resolveSubscriptionPlan→GetById accepts
@@ -1112,10 +1113,14 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 			return http.Fail(c, 400, err.Error(), nil)
 		}
 		sub.CustomerCents = customer
-		// A move onto a plan whose row states no reload stops the reload the plan
-		// it leaves switched on, once the move is saved (disarm).
-		if newPlan.Limits == nil || newPlan.Limits.Reload == nil {
+		// A move onto a plan that switches no reload on stops the reload the plan
+		// it leaves switched on, once the move is saved (disarm). A move onto one
+		// that does keeps that rule as it stands, now named for the plan moved onto
+		// (follow): a move shows no terms, so it switches nothing on.
+		if planReload(newPlan.Price, newPlan.Limits) == nil {
 			left = curSlug
+		} else {
+			moved = [2]string{curSlug, newPlan.Slug}
 		}
 	}
 
@@ -1138,6 +1143,7 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 		emitSubscriptionPlanChanged(c, org.Name, sub)
 	}
 	disarm(c.Context(), org, sub.UserId, left)
+	follow(c.Context(), org, sub.UserId, moved[0], moved[1])
 
 	return c.JSON(200, subscriptionResponse(sub))
 }

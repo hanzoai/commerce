@@ -120,6 +120,9 @@ type subscribeCardRequest struct {
 	// BalanceCents is the starting usage balance an organization's order adds to
 	// its prepaid balance in the same payment (see SubscribeIn.BalanceCents).
 	BalanceCents int64 `json:"balanceCents,omitempty"`
+	// DeclineReload turns off, for this purchase, the automatic reload the plan
+	// switches on (see SubscribeIn.DeclineReload).
+	DeclineReload bool `json:"declineReload,omitempty"`
 }
 
 // SubscribeIn is the whole input of a card subscription. Every field is a VALUE
@@ -196,13 +199,25 @@ type SubscribeIn struct {
 	// limits.balanceCeiling, and none on a plan whose row states no ceiling.
 	// Zero buys the plan alone.
 	BalanceCents int64
+	// DeclineReload is the buyer turning off, at checkout, the automatic reload the
+	// plan's terms show (PlanView.Reload, planReload): the sale switches nothing on
+	// and answers Reload state "declined". A rule the buyer already has is left as
+	// it stands.
+	DeclineReload bool
 }
 
 // armSale is what a paid sale of slug does to the buying payer's auto-recharge
-// (armForPlan): nothing for a delegated sale.
+// (armForPlan): nothing for a delegated sale, and nothing but the answer
+// "declined" when the buyer turned the plan's reload off at checkout.
 func armSale(ctx context.Context, org *organization.Organization, in SubscribeIn, slug string, cur currency.Type) *Arming {
 	if in.Delegated {
 		return nil
+	}
+	if in.DeclineReload {
+		if row := rowOf(ctx, slug); row == nil || planReload(row.Price, row.Limits) == nil {
+			return nil
+		}
+		return &Arming{State: declined}
 	}
 	return armForPlan(ctx, org, in.Subject, slug, cur)
 }
@@ -1609,6 +1624,7 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		Events:         eventsOf(c),
 		Delegated:      subject != userBillingKey(c),
 		BalanceCents:   req.BalanceCents,
+		DeclineReload:  req.DeclineReload,
 	})
 	if err != nil {
 		switch {

@@ -11,10 +11,9 @@ import (
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
-// An organization's order switches on no automatic reload of its own: a seat plan
-// whose row carries no reload leaves the organization's rule as it was, and only a
-// row that carries one switches it on, at the row's figures, as every purchase of
-// such a plan does.
+// An organization's order switches on the reload its plan switches on, as every
+// paid purchase does (planReload): the row's own figures, the default for a row
+// that states none, and nothing for a row that switches it off.
 func TestAnOrderArmsNoReloadUnlessItsPlanCarriesOne(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -23,13 +22,16 @@ func TestAnOrderArmsNoReloadUnlessItsPlanCarriesOne(t *testing.T) {
 		org, slug string
 		reload    *plan.Reload
 	}{
-		{"so-plain", "so-ent-plain", nil},
-		{"so-reload", "so-ent-reload", &plan.Reload{ThresholdCents: 1000, AmountCents: 5000}},
+		{"so-plain", "so-ent-plain", &plan.Reload{}},
+		{"so-reload", "so-ent-reload", &plan.Reload{ThresholdCents: 2000, AmountCents: 7000}},
+		{"so-default", "so-ent-default", nil},
 	} {
 		org := moneyOrg(c.org)
 		withFakeSquare(t, squareMock("cust_"+c.org, "ccof_"+c.org, "sqpay_"+c.org))
 		row := orderRow(t, ctx, c.slug, 20, 500)
+		want := DefaultReload
 		if c.reload != nil {
+			want = *c.reload
 			row.Limits.Reload = c.reload
 			if err := row.Update(); err != nil {
 				t.Fatalf("give %s a reload: %v", c.slug, err)
@@ -50,15 +52,15 @@ func TestAnOrderArmsNoReloadUnlessItsPlanCarriesOne(t *testing.T) {
 		}
 		rule := loadAutoRecharge(datastore.New(org.Namespaced(ctx)), org.Name)
 
-		if c.reload == nil {
+		if want.AmountCents == 0 {
 			if sale.Reload != nil || (rule != nil && rule.Enabled) {
 				t.Fatalf("%s: an order of a plan with no reload answered %+v and left the rule %+v, want none switched on", c.slug, sale.Reload, rule)
 			}
 			continue
 		}
 		if sale.Reload == nil || sale.Reload.State != "armed" || rule == nil || !rule.Enabled ||
-			rule.ThresholdCents != 1000 || rule.AmountCents != 5000 {
-			t.Fatalf("%s: an order of a plan with a reload answered %+v and left the rule %+v, want it on at $50 below $10", c.slug, sale.Reload, rule)
+			rule.ThresholdCents != want.ThresholdCents || rule.AmountCents != want.AmountCents {
+			t.Fatalf("%s: an order of a plan with a reload answered %+v and left the rule %+v, want it on at %+v", c.slug, sale.Reload, rule, want)
 		}
 	}
 }
