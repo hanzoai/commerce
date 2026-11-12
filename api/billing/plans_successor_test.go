@@ -74,8 +74,9 @@ func TestRetiredMaxCannotBeBought(t *testing.T) {
 }
 
 // @hanzo/plans 1.10.0 publishes `go` again, as the $8 entry rung, over a slug a $9
-// rung once sold under. A subscription that recorded the old rung renews at the
-// price it was bought at, never the catalog's: the renewal bills the snapshot the
+// rung once sold under. Until the boot's migration moves it onto the $8 rung
+// (MigrateRetired), a subscription that recorded the old rung renews at the price
+// it was bought at, never the catalog's: the renewal bills the snapshot the
 // subscription carries.
 func TestTheOldGoRenewsAtItsOwnPrice(t *testing.T) {
 	ctx := ae.NewContext()

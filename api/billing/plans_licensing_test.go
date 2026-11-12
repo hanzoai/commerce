@@ -214,14 +214,14 @@ func TestBackfillIsIdempotent(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 
-	first, err := plan.Backfill(db, retired)
+	first, err := plan.Backfill(db, retiredLicensing)
 	if err != nil {
 		t.Fatalf("backfill: %v", err)
 	}
 	if first != 1 {
 		t.Fatalf("first backfill filled %d rows, want 1", first)
 	}
-	second, err := plan.Backfill(db, retired)
+	second, err := plan.Backfill(db, retiredLicensing)
 	if err != nil {
 		t.Fatalf("re-backfill: %v", err)
 	}
@@ -242,7 +242,7 @@ func TestBackfillIsIdempotent(t *testing.T) {
 	if err := q.Create(); err != nil {
 		t.Fatalf("create team-max: %v", err)
 	}
-	if _, err := plan.Backfill(db, retired); err != nil {
+	if _, err := plan.Backfill(db, retiredLicensing); err != nil {
 		t.Fatalf("backfill over existing: %v", err)
 	}
 	r := plan.New(db)
@@ -275,7 +275,7 @@ func TestBackfillSkipsARevivedSlug(t *testing.T) {
 	db := plan.AuthorityDB(c)
 
 	// `plus` is in the retired map, carrying licensing.product_ids ["team"].
-	if retired["plus"] == nil {
+	if retiredLicensing["plus"] == nil {
 		t.Fatal("fixture assumes `plus` is in the retired map; it is not, so this test proves nothing")
 	}
 
@@ -291,7 +291,7 @@ func TestBackfillSkipsARevivedSlug(t *testing.T) {
 		t.Fatal("fixture row is not listed, so it does not exercise the guard")
 	}
 
-	filled, err := plan.Backfill(db, retired)
+	filled, err := plan.Backfill(db, retiredLicensing)
 	if err != nil {
 		t.Fatalf("backfill: %v", err)
 	}

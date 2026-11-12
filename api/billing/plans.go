@@ -67,8 +67,15 @@ type canonicalPlan struct {
 	// (retired) are listed nowhere and refused by every purchase entrypoint (see
 	// plan.Listed). A deploy that carries such a row creates it unlisted, so no
 	// checkout charges its list price until the catalog makes it active.
-	Status     string      `json:"status,omitempty"`
-	Features   []string    `json:"features"`
+	Status   string   `json:"status,omitempty"`
+	Features []string `json:"features"`
+	// Usage is the catalog's display block for a rung of the personal ladder.
+	// Commerce reads only its multiple, which says the plan is a rung a retired
+	// holder may be moved onto (migrateRetired); the figures are cloud's usage
+	// policy, not commerce's. A rung with no caps states no multiple.
+	Usage *struct {
+		Multiple *int `json:"multiple"`
+	} `json:"usage,omitempty"`
 	Bundles    []string    `json:"bundles,omitempty"`    // slugs of plans whose entitlement this plan also grants
 	IncludedIn []string    `json:"includedIn,omitempty"` // slugs of plans that include this plan as a bundle
 	Limits     *planLimits `json:"limits,omitempty"`
@@ -166,6 +173,9 @@ type staticPlan struct {
 	// Licensing is what the tier licenses — carried so the seed can persist it onto
 	// the row, where it survives the tier's retirement.
 	Licensing *plan.Licensing `json:"licensing,omitempty"`
+	// Multiple is the rung's usage multiple of Go as the catalog states it, 0 for a
+	// plan that is no rung of the ladder or has no caps. It is never served.
+	Multiple int `json:"-"`
 }
 
 // PlanView is a plan as this service SELLS it — the wire type GET /billing/plans
@@ -413,6 +423,9 @@ func parsePlans(data []byte) ([]staticPlan, error) {
 		}
 		sp.Limits = cp.Limits
 		sp.Licensing = licensingOf(&canonical[i])
+		if cp.Usage != nil && cp.Usage.Multiple != nil {
+			sp.Multiple = *cp.Usage.Multiple
+		}
 
 		plans[i] = sp
 	}

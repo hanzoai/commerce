@@ -102,7 +102,7 @@ func plainOf(in []currency.Cents) []int64 {
 	return out
 }
 
-// retired records what a tier licensed WHEN IT WAS LAST ON SALE, for the rows that
+// retiredLicensing records what a tier licensed WHEN IT WAS LAST ON SALE, for the rows that
 // were archived before the plan row carried a licensing block at all.
 //
 // Provenance: @hanzo/plans@1.4.4 subscription.json — the last published version
@@ -119,7 +119,7 @@ func plainOf(in []currency.Cents) []int64 {
 //
 // This map is closed. A tier retired from here on carries its licensing on the row
 // before it is archived, so nothing will ever need to be added.
-var retired = map[string]*plan.Licensing{
+var retiredLicensing = map[string]*plan.Licensing{
 	"plus":     {Products: []string{"team"}},
 	"team-max": {Products: []string{"team"}},
 }
@@ -175,14 +175,30 @@ func annualOf(p *plan.Plan) *int64 {
 // Returns (created, corrected); corrected counts reconciles, archives, releases
 // of admin-edited rows the embed caught up with, and the
 // licensing backfilled onto rows retired before the row carried a licensing block.
+//
+// Once the plans are reconciled it moves every holder of a retired personal rung
+// onto the ladder the catalog sells (MigrateRetired). A migration that cannot run
+// is logged, never fatal: the plans are seeded either way, and the next boot moves
+// whoever this one did not.
 func SeedPlans(ctx context.Context) (created, corrected int, err error) {
 	db := plan.AuthorityDB(ctx)
 	created, corrected, err = plan.Seed(db, SeedRows())
 	if err != nil {
 		return created, corrected, err
 	}
-	filled, err := plan.Backfill(db, retired)
-	return created, corrected + filled, err
+	filled, err := plan.Backfill(db, retiredLicensing)
+	if err != nil {
+		return created, corrected + filled, err
+	}
+	m, merr := MigrateRetired(ctx)
+	switch {
+	case merr != nil:
+		log.Error("plan migration did not run: %v", merr)
+	case len(m.Moved) > 0 || m.Left > 0 || m.Busy > 0 || len(m.Errors) > 0:
+		log.Info("plan migration: %d moved onto the ladder, %d left (no rung fits), %d busy, %d failed: %v",
+			len(m.Moved), m.Left, m.Busy, len(m.Errors), m.Errors)
+	}
+	return created, corrected + filled, nil
 }
 
 // planAuthorityRows reads the plan authority for the read edge (ListPlans/

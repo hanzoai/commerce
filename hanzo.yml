@@ -76,6 +76,7 @@ test:
       export GOWORK=off CGO_ENABLED=1 GOFLAGS=-tags=sqlite_math_functions
       sh scripts/fetch-plans.sh
       go test -count=1 -timeout=10m \
+        ./api/billing/... \
         ./billing/... \
         ./delay/... \
         ./models/creditgrant/... \
