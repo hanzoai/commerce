@@ -1,6 +1,7 @@
 package subscription
 
 import (
+	"errors"
 	nethttp "net/http"
 
 	"github.com/zap-proto/zip"
@@ -49,6 +50,9 @@ func Subscribe(c *zip.Ctx) error {
 	hydrateOrg(c, org)
 
 	sub, _, err := subscribe(c, org)
+	if refused(err) {
+		return http.Fail(c, 403, err.Error(), err)
+	}
 	if err != nil {
 		return http.Fail(c, 500, "Error during subscribe", err)
 	}
@@ -86,6 +90,9 @@ func UpdateSubscribe(c *zip.Ctx) error {
 	}
 
 	_, err = updateSubscribe(c, org, sub)
+	if refused(err) {
+		return http.Fail(c, 403, err.Error(), err)
+	}
 	if err != nil {
 		return http.Fail(c, 500, "Error during subscribe", err)
 	}
@@ -135,4 +142,10 @@ func Route(router *zip.Group, args ...zip.Handler) {
 	api.Raw(nethttp.MethodGet, "/subscribe/:subscriptionid", publishedRequired, GetSubscribe)
 	api.Raw(nethttp.MethodPatch, "/subscribe/:subscriptionid", publishedRequired, UpdateSubscribe)
 	api.Raw(nethttp.MethodDelete, "/subscribe/:subscriptionid", publishedRequired, Unsubscribe)
+}
+
+// refused reports whether err is a write this API never makes: a provider only
+// Hanzo billing writes, or a Hanzo subscription row.
+func refused(err error) bool {
+	return errors.Is(err, ReservedProvider) || errors.Is(err, HanzoSubscription)
 }

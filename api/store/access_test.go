@@ -133,3 +133,28 @@ func TestHasAccessRunsAnOpenTrialToItsEnd(t *testing.T) {
 		t.Fatalf("an expired trial: %v %q err=%v, want payment_required", allowed, status, err)
 	}
 }
+
+// A staff gift is written as billing/grant writes it: the Hanzo plan copied into
+// the org's namespace, the row naming that copy's id. It opens the store for its
+// period, as the plan it was copied from would.
+func TestHasAccessOpensOnAStaffGiftOfAPlanCopy(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	seeded(t, ctx)
+	db := datastore.New(ctx)
+	copied := plan.New(db)
+	copied.Slug, copied.Name, copied.Price = "dev", "Pro", 2000
+	if err := copied.Create(); err != nil {
+		t.Fatalf("plan copy: %v", err)
+	}
+	now := time.Now()
+	sub := storeSub(t, db, "store-g", "dev", 2000, "manual_gift", subscription.Active, now)
+	sub.PlanId = copied.Id()
+	sub.PeriodEnd = now.AddDate(0, 6, 0)
+	if err := sub.Update(); err != nil {
+		t.Fatal(err)
+	}
+	if allowed, _, err := HasAccess([]*datastore.Datastore{db}, "store-g", now); err != nil || !allowed {
+		t.Fatalf("a staff gift on a plan copy: allowed=%v err=%v, want open", allowed, err)
+	}
+}

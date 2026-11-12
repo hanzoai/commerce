@@ -87,10 +87,11 @@ func TestMigrateMovesEveryRetiredRungOntoTheLadder(t *testing.T) {
 	hold("acme/agreed-low", "max-20x", types.Monthly, want{"ultra", 15000, 15000, 15000}, func(s *subscription.Subscription) { s.CustomerCents = 15000 })
 	hold("acme/agreed-high", "max-20x", types.Monthly, want{"ultra", 19900, 19500, 0}, func(s *subscription.Subscription) { s.CustomerCents = 19900 })
 	// A yearly holder is placed by its rung's monthly list price, so it keeps the
-	// multiple it bought; a year's agreed price is kept as its month.
+	// multiple it bought, and keeps paying its year's price by the month while that
+	// is below the new list; a year's agreed price is kept as its month.
 	hold("acme/dev-year", "dev", types.Yearly, want{"pro-3x", 20000, 1500, 0}, nil)
-	hold("acme/max-5x-year", "max-5x", types.Yearly, want{"max-15x", 100000, 9500, 0}, nil)
-	hold("acme/max-50x-year", "max-50x", types.Yearly, want{"ultimate", 500000, 49500, 0}, nil)
+	hold("acme/max-5x-year", "max-5x", types.Yearly, want{"max-15x", 100000, 8333, 8333}, nil)
+	hold("acme/max-50x-year", "max-50x", types.Yearly, want{"ultimate", 500000, 41666, 41666}, nil)
 	hold("acme/max-50x-agreed", "max-50x", types.Yearly, want{"ultimate", 200000, 16666, 16666}, func(s *subscription.Subscription) { s.CustomerCents = 200000 })
 
 	// Left as they are: a rung on sale at its price, a private plan made for one
@@ -145,6 +146,9 @@ func TestMigrateMovesEveryRetiredRungOntoTheLadder(t *testing.T) {
 		}
 		if mv.FromInterval == "month" && mv.ToCents > mv.FromCents {
 			t.Errorf("%s pays more a month after the move: %d -> %d", mv.Subject, mv.FromCents, mv.ToCents)
+		}
+		if mv.FromInterval == "year" && mv.ToCents*12 > mv.FromCents {
+			t.Errorf("%s pays more a year after the move: %d -> 12 x %d", mv.Subject, mv.FromCents, mv.ToCents)
 		}
 		if loadAutoRecharge(db, mv.Subject) != nil {
 			t.Errorf("the move wrote %s a reload rule", mv.Subject)

@@ -704,6 +704,25 @@ func hanzoPlan(ctx context.Context, id string) bool {
 	return lookupPlan(id) != nil || plan.New(plan.AuthorityDB(ctx)).GetById(id) == nil
 }
 
+// Owns reports whether s is a Hanzo subscription row — one commerce's billing
+// writes for a Hanzo plan — and not a merchant's subscription for its customer,
+// which shares the org's namespace. A row on a Hanzo plan (hanzoPlan) is; so is a
+// staff gift or a store trial, whose plan is a copy in the org's namespace named
+// for a Hanzo plan's slug. The merchant subscription API writes neither provider
+// and never edits a row Owns answers for.
+func Owns(ctx context.Context, s *subscription.Subscription) bool {
+	switch s.ProviderType {
+	case giftProvider, storeTrial:
+		return hanzoPlan(ctx, s.Plan.Slug)
+	}
+	return hanzoPlan(ctx, s.PlanId)
+}
+
+// Reserved reports whether provider is one only commerce's billing writes.
+func Reserved(provider string) bool {
+	return provider == giftProvider || provider == storeTrial
+}
+
 // Unlocks reports whether s opens the commerce admin and a store at at. It does
 // when s is on a Hanzo plan — a row of the plan authority, never a merchant's own
 // plan in its namespace, which its customers' subscriptions name — that charges
@@ -715,8 +734,7 @@ func hanzoPlan(ctx context.Context, id string) bool {
 //     was a copy in the store's namespace), no longer than any trial commerce
 //     sold, until its end. Nothing opens a trial now.
 func Unlocks(ctx context.Context, s *subscription.Subscription, at time.Time) bool {
-	legacyTrial := s.Status == subscription.Trialing && s.ProviderType == storeTrial
-	if s.ProviderType == "bundle" || !paidRow(s) || (!legacyTrial && !hanzoPlan(ctx, s.PlanId)) {
+	if s.ProviderType == "bundle" || !paidRow(s) || !Owns(ctx, s) {
 		return false
 	}
 	switch s.Status {

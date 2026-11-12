@@ -8,9 +8,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/zap-proto/zip"
 
+	billing "github.com/hanzoai/commerce/api/billing"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/plan"
@@ -180,5 +182,63 @@ func TestGetSubscribe_NotFound(t *testing.T) {
 	code, _ := api.do(t, http.MethodGet, "/subscribe/nope", nil)
 	if code != http.StatusNotFound {
 		t.Fatalf("get missing status = %d, want 404", code)
+	}
+}
+
+// The merchant subscription API writes the merchant's customers' rows, which
+// share the org's namespace with the org's own Hanzo plan. It never makes a row
+// that opens the store or admin: a body naming a Hanzo slug is stored under the
+// merchant plan's id, the providers only Hanzo billing writes are refused, and a
+// Hanzo subscription row is not its to edit.
+func TestTheMerchantAPINeverWritesAHanzoSubscription(t *testing.T) {
+	tc := ae.NewContext()
+	defer tc.Close()
+	if _, _, err := billing.SeedPlans(tc); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	api := newSubAPI("acme")
+	own := api.seedPlan(t, 2000)
+	own.Slug = "dev"
+	if err := own.Update(); err != nil {
+		t.Fatal(err)
+	}
+	code, body := api.do(t, http.MethodPost, "/subscribe", map[string]any{
+		"user":         map[string]any{"email": "bob@acme.test", "username": "bob"},
+		"subscription": map[string]any{"planId": own.Id(), "quantity": 1},
+	})
+	if code != http.StatusOK {
+		t.Fatalf("subscribe: %d %s", code, body)
+	}
+	id := api.onlySub(t).Id()
+	later := time.Now().AddDate(70, 0, 0).UTC().Format(time.RFC3339)
+
+	code, body = api.do(t, http.MethodPatch, "/subscribe/"+id, map[string]any{
+		"planId": "dev", "status": "active", "providerType": "square", "quantity": 1, "current_period_end": later, "periodEnd": later,
+	})
+	if code != http.StatusOK {
+		t.Fatalf("patch: %d %s", code, body)
+	}
+	got := submodel.New(api.db)
+	if err := got.GetById(id); err != nil {
+		t.Fatal(err)
+	}
+	if got.PlanId != own.Id() || billing.Unlocks(api.db.Context, got, time.Now()) {
+		t.Fatalf("a merchant row naming the Hanzo slug dev: planId %q, unlocks %v; want the merchant plan's id and nothing opened",
+			got.PlanId, billing.Unlocks(api.db.Context, got, time.Now()))
+	}
+
+	if code, body = api.do(t, http.MethodPatch, "/subscribe/"+id, map[string]any{"providerType": "manual_gift", "quantity": 1}); code != http.StatusForbidden {
+		t.Fatalf("a merchant row made a staff gift: %d %s, want 403", code, body)
+	}
+
+	hanzo := submodel.New(api.db)
+	hanzo.UserId, hanzo.PlanId, hanzo.ProviderType, hanzo.Status = got.UserId, "go", "square", submodel.Active
+	hanzo.Plan.Slug, hanzo.Plan.Price = "go", 800
+	hanzo.PeriodStart, hanzo.PeriodEnd = time.Now(), time.Now().AddDate(0, 1, 0)
+	if err := hanzo.Create(); err != nil {
+		t.Fatal(err)
+	}
+	if code, body = api.do(t, http.MethodPatch, "/subscribe/"+hanzo.Id(), map[string]any{"quantity": 1, "periodEnd": later}); code != http.StatusForbidden {
+		t.Fatalf("the merchant API edited the org's Hanzo plan: %d %s, want 403", code, body)
 	}
 }

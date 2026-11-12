@@ -114,10 +114,13 @@ func hasSubscription(db *datastore.Datastore, at time.Time) (bool, string, error
 // "trial-credit:<storeID>" for one store's.
 const trialCreditTag = "trial-credit"
 
+// trialCreditMost is the longest a trial credit ran: 30 days, and a day's grace.
+const trialCreditMost = 31 * 24 * time.Hour
+
 // hasTrialCredit reports whether the org is inside a trial opened before commerce
 // stopped selling trials: an unexpired, positive trial-credit deposit in its
-// ledger. Every such credit carried the end of its trial; one with no expiry
-// opens nothing.
+// ledger. Every such credit carried the end of its trial; one with no expiry, or
+// one longer than any trial commerce sold, opens nothing.
 func hasTrialCredit(db *datastore.Datastore, at time.Time) (bool, error) {
 	root := db.NewKey("synckey", "", 1, nil)
 	deps := make([]*transaction.Transaction, 0, 8)
@@ -132,7 +135,8 @@ func hasTrialCredit(db *datastore.Datastore, at time.Time) (bool, error) {
 		if t.Tags != trialCreditTag && !strings.HasPrefix(t.Tags, trialCreditTag+":") {
 			continue
 		}
-		if !t.ExpiresAt.IsZero() && t.ExpiresAt.After(at) {
+		// A trial credit ran no longer than any trial commerce sold.
+		if !t.ExpiresAt.IsZero() && t.ExpiresAt.After(at) && t.ExpiresAt.Sub(t.CreatedAt) <= trialCreditMost {
 			return true, nil
 		}
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/organization"
 	storemodel "github.com/hanzoai/commerce/models/store"
+	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 	types "github.com/hanzoai/commerce/types"
@@ -152,7 +153,7 @@ func CreatePayPalOrder(ctx context.Context, org *organization.Organization, in P
 			samePlan := (heldSlug == q.slug || held.PlanId == q.slug) && held.Plan.Price == q.plan.Price
 			sameInterval := (isYear == heldYear)
 			sameQty := in.Quantity <= 1 || held.Quantity == in.Quantity
-			if samePlan && sameInterval && sameQty {
+			if held.Status != subscription.Trialing && samePlan && sameInterval && sameQty {
 				return nil, fault(http.StatusConflict, fmt.Sprintf(
 					"this account already pays for the %q plan (subscription %s); change that subscription instead of buying a second one",
 					heldSlug, held.Id()), nil)

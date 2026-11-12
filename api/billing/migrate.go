@@ -36,6 +36,7 @@ package billing
 // reload on and sends nobody anything.
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -188,17 +189,14 @@ func newRows(ctx context.Context) *rows {
 	return &rows{ctx: ctx, byID: map[string]bool{}, bySlug: map[string]*plan.Plan{}}
 }
 
-// hanzo reports whether id names a Hanzo plan (hanzoPlan),
-// never a merchant's own plan in its namespace.
-func (r *rows) hanzo(id string) bool {
-	if id == "" {
-		return false
-	}
-	if ok, seen := r.byID[id]; seen {
+// owns is Owns, its plan lookups made once per run.
+func (r *rows) owns(s *subscription.Subscription) bool {
+	key := s.ProviderType + "\x00" + s.PlanId + "\x00" + s.Plan.Slug
+	if ok, seen := r.byID[key]; seen {
 		return ok
 	}
-	ok := hanzoPlan(r.ctx, id)
-	r.byID[id] = ok
+	ok := Owns(r.ctx, s)
+	r.byID[key] = ok
 	return ok
 }
 
@@ -223,7 +221,7 @@ func (r *rows) slug(slug string) *plan.Plan {
 // A plan the catalog does not retire — one an admin made or archived, a private
 // plan, a team — is not the catalog's to move.
 func retired(s *subscription.Subscription, ladder []rung, r *rows) bool {
-	if !r.hanzo(s.PlanId) {
+	if !r.owns(s) {
 		return false
 	}
 	slug := subscriptionSlug(s)
@@ -353,12 +351,13 @@ func migrateOne(ctx context.Context, org *organization.Organization, id string, 
 	if c := s.CustomerCents; c > 0 && c < fromCents {
 		fromCents = c
 	}
-	// A price staff agreed is for one period of the rung held; the rung moved onto
-	// bills by the month, so it is kept as its month — a year's agreed price over
-	// twelve — while that is below the new list price.
+	// What the holder pays a month now — the price staff agreed, else the plan's,
+	// over the months its period runs — is kept as an agreed price while it is
+	// below the new list price, so nobody pays more: a yearly holder placed on its
+	// rung's monthly equal keeps paying its year's price by the month.
 	list := int64(to.row.Price)
 	agreed := int64(0)
-	if c := s.CustomerCents / months(s); c > 0 && c < list {
+	if c := cmp.Or(s.CustomerCents, int64(s.Plan.Price)) / months(s); c > 0 && c < list {
 		agreed = c
 	}
 

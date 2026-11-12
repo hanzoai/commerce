@@ -119,6 +119,7 @@ func TestAllowed_AnOpenTrialCreditRunsToItsEnd(t *testing.T) {
 		"open":      {now.Add(7 * 24 * time.Hour), true},
 		"expired":   {now.Add(-24 * time.Hour), false},
 		"no expiry": {time.Time{}, false},
+		"a year":    {now.AddDate(1, 0, 0), false},
 	} {
 		db, done := newDB(t)
 		trialCredit(t, db, c.expires)
