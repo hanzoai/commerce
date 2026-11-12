@@ -576,9 +576,12 @@ func (p *Provider) CreateCustomer(ctx context.Context, email, name string, metad
 
 	// A customer made for a reference is made once: retried under the same
 	// reference within Stripe's idempotency window it is the same customer.
+	// The email is part of the key: Stripe refuses a key reused with other
+	// parameters, and a second customer for a changed address is harmless where a
+	// refused create would stop the checkout.
 	key := ""
 	if ref, _ := metadata["reference"].(string); ref != "" {
-		key = "customer:" + ref
+		key = "customer:" + ref + ":" + strings.ToLower(strings.TrimSpace(email))
 	}
 	var cust stripeCustomer
 	if err := p.postKey(ctx, "/customers", params, key, &cust); err != nil {
