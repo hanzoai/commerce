@@ -2,11 +2,8 @@ package checkout
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	nethttp "net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -29,10 +26,8 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/store"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
 	squareprovider "github.com/hanzoai/commerce/payment/providers/square"
-	stripeprovider "github.com/hanzoai/commerce/payment/providers/stripe"
 	sqenv "github.com/hanzoai/commerce/thirdparty/square"
 	"github.com/hanzoai/commerce/util/json/http"
 )
@@ -301,8 +296,9 @@ func websiteURLs(org *organization.Organization) []string {
 }
 
 // checkoutProcessors is the merchant's own processors a hosted checkout may
-// charge: Square on the account squareCheckoutCredentials resolves, Stripe on
-// the org's own Stripe key. Neither falls back to the deployment's live account.
+// charge: Square on the account squareCheckoutCredentials resolves, never the
+// deployment's live account. Stripe is a processor of PaymentIntents only (the
+// native intent flow, api/billing); it hosts no checkout page here.
 func checkoutProcessors(org *organization.Organization) *processor.Registry {
 	reg := processor.NewRegistry(processor.DefaultConfig())
 	if token, locationID, err := squareCheckoutCredentials(org); err == nil {
@@ -312,9 +308,6 @@ func checkoutProcessors(org *organization.Organization) *processor.Registry {
 			Environment: org.SquareEnvironment(),
 			Org:         org.Name,
 		}))
-	}
-	if sk := payment.OwnStripeSecret(org); sk != "" {
-		reg.Register(stripeprovider.NewProvider(stripeprovider.Config{SecretKey: sk}))
 	}
 	return reg
 }
@@ -487,37 +480,25 @@ func Sessions(c *zip.Ctx) error {
 	discountCents := applyDiscount(subtotalCents, cpn)
 	finalCents := subtotalCents - discountCents
 
-	// Select the payment provider by THE rule (processor.Registry.Fiat) over
-	// this merchant's own accounts: Square wherever Square takes the payment,
-	// Stripe where it does not, and the processor the caller named when it names
-	// one ("square" or "stripe"). A hosted checkout charges the merchant's own
-	// account only, so the registry holds exactly those (checkoutProcessors).
-	var want processor.ProcessorType
+	// A hosted checkout is a Square Payment Link on the merchant's own Square
+	// account. A providerHint other than square or card is refused: Stripe takes
+	// payments through the intent flow, not through a page it hosts.
 	switch hint := strings.ToLower(strings.TrimSpace(req.ProviderHint)); hint {
-	case "", "card":
-	case string(processor.Square), string(processor.Stripe):
-		want = processor.ProcessorType(hint)
+	case "", "card", string(processor.Square):
 	default:
-		return http.Fail(c, 400, "Invalid providerHint", fmt.Errorf("providerHint %q is not square or stripe", hint))
+		return http.Fail(c, 400, "Invalid providerHint", fmt.Errorf("providerHint %q is not square", hint))
 	}
-	chosen, err := checkoutProcessors(org).Fiat(c.Context(), processor.Need{
+	if _, err := checkoutProcessors(org).Fiat(c.Context(), processor.Need{
 		Currency: currencyType(currency),
 		// Square's countries are where a Square SELLER can be; Payment Links take
 		// any buyer's card. Only sanctioned jurisdictions are refused.
 		Country: sanctionedOnly(hostedcheckout.RequestCountry(c)),
 		Method:  "card",
-		Want:    want,
-	})
-	if err != nil {
+		Want:    processor.Square,
+	}); err != nil {
 		return http.Fail(c, 422, "No payment processor takes this checkout", err)
 	}
-	var sessionResp checkoutSessionResponse
-	if chosen.Type() == processor.Stripe {
-		sessionResp, err = createStripeCheckout(c, org, items, subtotalCents, discountCents, finalCents, cpn, currency, req)
-	} else {
-		// Square Payment Links.
-		sessionResp, err = createSquareCheckout(c, org, items, subtotalCents, discountCents, finalCents, cpn, currency, req)
-	}
+	sessionResp, err := createSquareCheckout(c, org, items, subtotalCents, discountCents, finalCents, cpn, currency, req)
 
 	if err != nil {
 		return http.Fail(c, 500, "Failed to create checkout session", err)
@@ -560,130 +541,6 @@ func Sessions(c *zip.Ctx) error {
 
 	return http.Render(c, 200, sessionResp)
 }
-
-// createStripeCheckout creates a Stripe Checkout Session using the org's Stripe credentials.
-func createStripeCheckout(c *zip.Ctx, org *organization.Organization, items []checkoutLineItem, subtotalCents, discountCents, finalCents int64, cpn *coupon.Coupon, currency string, req checkoutSessionRequest) (checkoutSessionResponse, error) {
-	sk := payment.OwnStripeSecret(org)
-	if sk == "" {
-		return checkoutSessionResponse{}, errors.New("stripe is not configured for this organization")
-	}
-
-	// Build Stripe Checkout Session line_items
-	params := url.Values{}
-	params.Set("mode", "payment")
-	params.Set("success_url", req.SuccessURL)
-	if isValidRedirect(req.CancelURL) {
-		params.Set("cancel_url", req.CancelURL)
-	}
-	if req.Customer.Email != "" {
-		params.Set("customer_email", strings.TrimSpace(req.Customer.Email))
-	}
-
-	for i, it := range items {
-		prefix := fmt.Sprintf("line_items[%d]", i)
-		params.Set(prefix+"[price_data][currency]", strings.ToLower(currency))
-		params.Set(prefix+"[price_data][unit_amount]", fmt.Sprintf("%d", it.Amount))
-		params.Set(prefix+"[price_data][product_data][name]", it.Name)
-		params.Set(prefix+"[quantity]", fmt.Sprintf("%d", it.Quantity))
-	}
-
-	// The coupon's discount is applied BY STRIPE, as a one-time coupon of exactly
-	// the amount the buyer was quoted: Checkout cannot take a flat inline discount,
-	// but it takes a coupon, and the buyer pays what the response says they owe.
-	if discountCents > 0 && cpn != nil {
-		couponID, err := createStripeCoupon(c.Context(), sk, discountCents, currency, cpn.Code())
-		if err != nil {
-			return checkoutSessionResponse{}, fmt.Errorf("stripe coupon: %w", err)
-		}
-		params.Set("discounts[0][coupon]", couponID)
-		params.Set("metadata[coupon_code]", cpn.Code())
-		params.Set("metadata[discount_cents]", fmt.Sprintf("%d", discountCents))
-	}
-
-	params.Set("metadata[org]", org.Name)
-	if req.ReferrerId != "" {
-		params.Set("metadata[referrer_id]", req.ReferrerId)
-	}
-	if req.AffiliateId != "" {
-		params.Set("metadata[affiliate_id]", req.AffiliateId)
-	}
-
-	stripeReq, err := nethttp.NewRequestWithContext(c.Context(), nethttp.MethodPost,
-		stripeAPI+"/v1/checkout/sessions",
-		strings.NewReader(params.Encode()))
-	if err != nil {
-		return checkoutSessionResponse{}, fmt.Errorf("stripe request: %w", err)
-	}
-	stripeReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	stripeReq.SetBasicAuth(sk, "")
-
-	resp, err := nethttp.DefaultClient.Do(stripeReq)
-	if err != nil {
-		return checkoutSessionResponse{}, fmt.Errorf("stripe API: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return checkoutSessionResponse{}, fmt.Errorf("stripe read: %w", err)
-	}
-
-	if resp.StatusCode >= 400 {
-		return checkoutSessionResponse{}, fmt.Errorf("stripe error %d: %s", resp.StatusCode, string(body))
-	}
-
-	var stripeResp struct {
-		ID  string `json:"id"`
-		URL string `json:"url"`
-	}
-	if err := json.Unmarshal(body, &stripeResp); err != nil {
-		return checkoutSessionResponse{}, fmt.Errorf("stripe parse: %w", err)
-	}
-
-	return checkoutSessionResponse{
-		CheckoutURL: stripeResp.URL,
-		SessionID:   stripeResp.ID,
-	}, nil
-}
-
-// createStripeCoupon makes a one-time coupon of amountOff minor units, which a
-// Checkout Session applies once.
-func createStripeCoupon(ctx context.Context, sk string, amountOff int64, currency, code string) (string, error) {
-	params := url.Values{}
-	params.Set("amount_off", fmt.Sprintf("%d", amountOff))
-	params.Set("currency", strings.ToLower(currency))
-	params.Set("duration", "once")
-	params.Set("max_redemptions", "1")
-	params.Set("name", strings.ToUpper(code))
-	r, err := nethttp.NewRequestWithContext(ctx, nethttp.MethodPost, stripeAPI+"/v1/coupons", strings.NewReader(params.Encode()))
-	if err != nil {
-		return "", err
-	}
-	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	r.SetBasicAuth(sk, "")
-	resp, err := nethttp.DefaultClient.Do(r)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	var out struct {
-		ID    string `json:"id"`
-		Error struct {
-			Message string `json:"message"`
-		} `json:"error"`
-	}
-	if err := json.Unmarshal(body, &out); err != nil || resp.StatusCode >= 400 || out.ID == "" {
-		return "", fmt.Errorf("stripe error %d: %s", resp.StatusCode, out.Error.Message)
-	}
-	return out.ID, nil
-}
-
-// stripeAPI is Stripe's API origin.
-const stripeAPI = "https://api.stripe.com"
 
 // createSquareCheckout creates a Square Payment Link using the org's Square credentials.
 func createSquareCheckout(c *zip.Ctx, org *organization.Organization, items []checkoutLineItem, subtotalCents, discountCents, finalCents int64, cpn *coupon.Coupon, currency string, req checkoutSessionRequest) (checkoutSessionResponse, error) {

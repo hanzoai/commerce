@@ -19,42 +19,27 @@ func TestCheckoutProcessors_Rule(t *testing.T) {
 	org.Name = "merchant"
 	org.Square.Production.AccessToken = "sq-own"
 	org.Square.Production.LocationId = "LOC-OWN"
+	// A Stripe key on the merchant's record opens no hosted checkout: Stripe takes
+	// PaymentIntents, not pages.
 	org.Stripe.Live.AccessToken = "sk_live_own"
 	reg := checkoutProcessors(org)
 
-	pick := func(cur currency.Type, country string, want processor.ProcessorType) processor.ProcessorType {
+	pick := func(want processor.ProcessorType) processor.ProcessorType {
 		t.Helper()
-		p, err := reg.Fiat(context.Background(), processor.Need{Currency: cur, Country: country, Method: "card", Want: want})
+		p, err := reg.Fiat(context.Background(), processor.Need{Currency: currency.USD, Method: "card", Want: want})
 		if err != nil {
 			return ""
 		}
 		return p.Type()
 	}
-	for _, c := range []struct {
-		cur     currency.Type
-		country string
-		want    processor.ProcessorType
-		got     processor.ProcessorType
-	}{
-		{currency.USD, "US", "", processor.Square},
-		{currency.USD, "", "", processor.Square},
-		{currency.CHF, "US", "", processor.Stripe},
-		{currency.USD, "DE", "", processor.Stripe},
-		{currency.USD, "US", processor.Stripe, processor.Stripe},
-		{currency.CHF, "US", processor.Square, ""}, // named Square cannot take CHF: no substitute
-	} {
-		if got := pick(c.cur, c.country, c.want); got != c.got {
-			t.Errorf("%s from %q naming %q: got %q, want %q", c.cur, c.country, c.want, got, c.got)
-		}
+	if got := pick(processor.Square); got != processor.Square {
+		t.Errorf("Square: got %q", got)
 	}
-
-	// A live merchant with no Stripe key of its own has no Stripe here, and the
-	// deployment's never stands in for it.
-	t.Setenv("STRIPE_SECRET_KEY", "sk_live_deployment")
-	bare := &organization.Organization{Live: true}
-	bare.Square = org.Square
-	if p, err := checkoutProcessors(bare).Fiat(context.Background(), processor.Need{Currency: currency.CHF, Method: "card"}); err == nil {
-		t.Fatalf("CHF for a merchant with no Stripe account chose %q", p.Type())
+	if got := pick(processor.Stripe); got != "" {
+		t.Errorf("a hosted checkout offered Stripe (%q)", got)
+	}
+	if p, err := reg.Fiat(context.Background(), processor.Need{Currency: currency.CHF, Method: "card"}); err == nil {
+		t.Fatalf("CHF, which Square cannot take, chose %q", p.Type())
 	}
 }
 
