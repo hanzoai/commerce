@@ -103,7 +103,7 @@ test:
     run: |
       set -euo pipefail
       : "${HANZO_API_TOKEN:?the KMS login minted no HANZO_API_TOKEN, so the Stripe test keys cannot be read}"
-      KMS_ENDPOINT="${KMS_ENDPOINT:-https://kms.hanzo.ai}"
+      KMS_ENDPOINT="${KMS_ENDPOINT:-https://api.hanzo.ai}"
       ask() { # ask <url> -> body on 200; a lost answer or a 5xx/429 is asked again
         local code=""
         for wait in 0 5 15; do
@@ -111,6 +111,7 @@ test:
           code=$(curl -s -o /tmp/kms.body -w '%{http_code}' --max-time 30 "$1" -H "Authorization: Bearer $HANZO_API_TOKEN") || code=000
           case "$code" in 000|429|5*) continue ;; *) break ;; esac
         done
+        echo "kms $1 -> HTTP $code" >&2
         [ "$code" = 200 ] && cat /tmp/kms.body || true
       }
       get() { # get NAME -> the value, "" when KMS holds none
@@ -123,7 +124,7 @@ test:
       }
       for NAME in STRIPE_TEST_SECRET_KEY STRIPE_TEST_PUBLISHABLE_KEY; do
         v=$(get "$NAME")
-        [ -n "$v" ] || { echo "::error::$NAME is not in KMS org hanzo /deploy env prod (or KMS did not answer): the Stripe test-mode gate cannot run"; exit 1; }
+        [ -n "$v" ] || { echo "::error::$NAME is not in KMS org hanzo /deploy env prod, or KMS did not answer; the Stripe test-mode gate cannot run"; exit 1; }
         echo "::add-mask::$v"
         export "$NAME=$v"
       done
