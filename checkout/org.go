@@ -16,6 +16,7 @@
 package checkout
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -24,6 +25,7 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/payment"
+	"github.com/hanzoai/commerce/payment/processor"
 )
 
 // ErrUnknownOrg is returned when the incoming Host header does not map
@@ -77,9 +79,24 @@ type Org struct {
 	// is public — no client secret or webhook ID ever crosses this boundary.
 	PayPal PayPalPublic `json:"paypal"`
 
+	// Stripe carries the PUBLIC Stripe.js config (publishable key + environment)
+	// for the currencies whose card form is Stripe's (Cards). Every field is
+	// public — the secret key never crosses this boundary.
+	Stripe StripePublic `json:"stripe"`
+
+	// Cards maps a currency ("usd") to the processor whose card form takes it
+	// for this caller ("square" or "stripe"): Square wherever Square can, Stripe
+	// where it cannot. It is processor.Registry.Cards over the processors this
+	// brand may show, for the caller's country. A currency no card processor
+	// takes is absent.
+	Cards map[string]string `json:"cards"`
+
 	// Country is the caller's resolved ISO 3166-1 alpha-2 country code when
 	// present on the request (?country= or edge geo-IP headers).
 	Country string `json:"country,omitempty"`
+
+	// reg is the processors Cards is chosen from. It never serializes.
+	reg *processor.Registry
 
 	// Backend tells the checkout API how to proxy deposit intents. For
 	// the example org this resolves to BD; other orgs supply
@@ -101,6 +118,13 @@ type SquarePublic struct {
 type PayPalPublic struct {
 	ClientID    string `json:"clientId"`
 	Environment string `json:"environment"`
+}
+
+// StripePublic is the public Stripe.js config surfaced to the checkout SPA.
+// All fields are public.
+type StripePublic struct {
+	PublishableKey string `json:"publishableKey"`
+	Environment    string `json:"environment"`
 }
 
 // Brand controls visible white-label surface.
@@ -235,15 +259,17 @@ func normalizeHost(host string) string {
 // publicView is the JSON shape served at GET /v1/commerce/org. It's a
 // deliberate projection — anything not explicitly listed here cannot leak.
 type publicView struct {
-	Name               string           `json:"name"`
-	Brand              Brand            `json:"brand"`
-	IAM                publicIAM        `json:"iam"`
-	IDV                IDVConfig        `json:"idv"`
-	Providers          []publicProvider `json:"providers"`
-	ReturnURLAllowlist []string         `json:"returnUrlAllowlist"`
-	Square             SquarePublic     `json:"square"`
-	PayPal             PayPalPublic     `json:"paypal"`
-	Country            string           `json:"country,omitempty"`
+	Name               string            `json:"name"`
+	Brand              Brand             `json:"brand"`
+	IAM                publicIAM         `json:"iam"`
+	IDV                IDVConfig         `json:"idv"`
+	Providers          []publicProvider  `json:"providers"`
+	ReturnURLAllowlist []string          `json:"returnUrlAllowlist"`
+	Square             SquarePublic      `json:"square"`
+	PayPal             PayPalPublic      `json:"paypal"`
+	Stripe             StripePublic      `json:"stripe"`
+	Cards              map[string]string `json:"cards"`
+	Country            string            `json:"country,omitempty"`
 }
 
 type publicIAM struct {
@@ -280,6 +306,8 @@ func toPublicView(t Org) publicView {
 		ReturnURLAllowlist: append([]string{}, t.ReturnURLAllowlist...),
 		Square:             t.Square,
 		PayPal:             t.PayPal,
+		Stripe:             t.Stripe,
+		Cards:              cards(t.Cards),
 		Country:            t.Country,
 	}
 }
@@ -319,34 +347,48 @@ func normalizeCountryCode(raw string) string {
 	return s
 }
 
-// applyCountryPolicy enforces geographic payment rail availability: Square runs
-// alongside PayPal in the 8 Square-supported countries (US, CA, AU, JP, GB/UK,
-// IE, FR, ES), PayPal replaces Square in the ~190 other countries where PayPal
-// operates, and Crypto remains enabled when neither Square nor PayPal supports
-// the caller's country.
+// applyCountryPolicy decides which payment rails a caller in country (ISO
+// 3166-1 alpha-2, "" when unknown) is offered.
+//
+// Cards is the selection rule's answer (processor.Registry.Cards): per currency,
+// Square's card form wherever Square takes the payment, Stripe's wherever it
+// does not. Square and Stripe are each enabled only when they take some
+// currency here, and a disabled one's public config is dropped. PayPal runs in
+// every country PayPal operates in (payment.IsPayPalCountry); crypto and wire
+// stay enabled everywhere.
 func applyCountryPolicy(t Org, country string) Org {
 	t.Country = country
-	if country == "" {
-		return t
+	t.Cards = map[string]string{}
+	if t.reg != nil {
+		for cur, p := range t.reg.Cards(context.Background(), country) {
+			t.Cards[string(cur)] = string(p)
+		}
 	}
-	squareOK := payment.IsSquareCountry(country)
+	takes := func(name string) bool {
+		for _, v := range t.Cards {
+			if v == name {
+				return true
+			}
+		}
+		return false
+	}
 	paypalOK := payment.IsPayPalCountry(country)
-	if squareOK && paypalOK {
-		return t
-	}
 	filtered := make([]Provider, 0, len(t.Providers))
 	for _, p := range t.Providers {
-		if p.Name == "square" && !squareOK {
-			p.Enabled = false
-		}
-		if p.Name == "paypal" && !paypalOK {
-			p.Enabled = false
+		switch p.Name {
+		case "square", "stripe":
+			p.Enabled = p.Enabled && takes(p.Name)
+		case "paypal":
+			p.Enabled = p.Enabled && paypalOK
 		}
 		filtered = append(filtered, p)
 	}
 	t.Providers = filtered
-	if !squareOK {
+	if !takes("square") {
 		t.Square = SquarePublic{}
+	}
+	if !takes("stripe") {
+		t.Stripe = StripePublic{}
 	}
 	if !paypalOK {
 		t.PayPal = PayPalPublic{}
@@ -354,12 +396,21 @@ func applyCountryPolicy(t Org, country string) Org {
 	return t
 }
 
+// cards is m, or an empty map, so the JSON says `{}` rather than `null`.
+func cards(m map[string]string) map[string]string {
+	if m == nil {
+		return map[string]string{}
+	}
+	return m
+}
+
 // OrgJSON returns a zip.Handler for GET /v1/commerce/org. The
 // handler:
 //  1. Extracts and normalizes the Host header.
 //  2. Resolves to a Org (or 404 with no Host echo on failure).
-//  3. Applies country-based payment rail policy (Square in 8 countries + PayPal
-//     globally; PayPal replaces Square outside the 8 countries).
+//  3. Applies the payment rail policy for the caller's country (Square's card
+//     form wherever Square takes the currency there, Stripe's where it does
+//     not; PayPal wherever PayPal operates).
 //  4. Projects through toPublicView and JSON-encodes.
 //
 // Cache policy: private 60s browser cache (never shared CDN cache, because
@@ -374,9 +425,7 @@ func OrgJSON(r Resolver) zip.Handler {
 			c.SetHeader("Cache-Control", "no-store")
 			return c.Bytes(http.StatusNotFound, []byte(`{"error":"unknown org"}`))
 		}
-		if country := RequestCountry(c); country != "" {
-			t = applyCountryPolicy(t, country)
-		}
+		t = applyCountryPolicy(t, RequestCountry(c))
 		c.SetHeader("Content-Type", "application/json; charset=utf-8")
 		c.SetHeader("Vary", "Host, X-Forwarded-Host, X-Publishable-Key, CF-IPCountry, CloudFront-Viewer-Country, X-Vercel-IP-Country, X-Country-Code")
 		if strings.TrimSpace(c.Query("country")) != "" {

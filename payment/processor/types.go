@@ -67,6 +67,9 @@ type Card struct {
 	ExpYear     int    `json:"expYear,omitempty"`
 	Fingerprint string `json:"fingerprint,omitempty"`
 	CustomerID  string `json:"customerId,omitempty"`
+	// Country is the ISO 3166-1 alpha-2 code of the country that issued the card,
+	// when the processor reports it.
+	Country string `json:"country,omitempty"`
 }
 
 // PaymentResult represents the outcome of a payment

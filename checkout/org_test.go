@@ -9,6 +9,9 @@ import (
 	"testing"
 
 	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/payment/processor"
+	"github.com/hanzoai/commerce/payment/providers/square"
 )
 
 // serveOrg runs OrgJSON(r) against a synthetic request carrying the
@@ -289,6 +292,7 @@ func TestOrgJSON_MalformedHost(t *testing.T) {
 }
 
 func TestApplyCountryPolicy_SquarePayPalCryptoFallback(t *testing.T) {
+	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
 	base := Org{
 		Name: "hanzo",
 		Providers: []Provider{
@@ -298,6 +302,7 @@ func TestApplyCountryPolicy_SquarePayPalCryptoFallback(t *testing.T) {
 		},
 		Square: SquarePublic{ApplicationID: "sq-app", LocationID: "sq-loc", Environment: "production"},
 		PayPal: PayPalPublic{ClientID: "pp-client", Environment: "live"},
+		reg:    squareOnly(),
 	}
 
 	// US (one of the 8 Square countries): Square, PayPal, and Crypto all enabled.
@@ -319,4 +324,14 @@ func TestApplyCountryPolicy_SquarePayPalCryptoFallback(t *testing.T) {
 			t.Fatalf("%s: expected only crypto enabled, got %+v", code, c)
 		}
 	}
+}
+
+// squareOnly is a registry holding one configured Square account, the shape
+// the resolver builds for a brand with Square and no Stripe.
+func squareOnly() *processor.Registry {
+	reg := processor.NewRegistry(processor.DefaultConfig())
+	reg.Register(square.NewProvider(square.Config{
+		ApplicationID: "sq-app", AccessToken: "sq-token", LocationID: "sq-loc", Environment: "production",
+	}))
+	return reg
 }

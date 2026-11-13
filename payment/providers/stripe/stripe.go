@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -109,10 +110,33 @@ func (p *Provider) SupportedCurrencies() []currency.Type {
 // PaymentProcessor
 // ---------------------------------------------------------------------------
 
-// Charge creates a PaymentIntent and confirms it immediately.
+// Charge creates a PaymentIntent and confirms it immediately, with redirects off.
+//
+// req.Token is a PaymentMethod ("pm_…", a card the browser's Stripe.js minted or
+// one on file with req.CustomerID), or a PaymentIntent ("pi_…") the buyer already
+// authenticated in the browser: the intent is then COMPLETED, not created — see
+// completeIntent. req.Options["offSession"] marks a charge made without the buyer
+// present (a renewal, an auto-reload).
+//
+// A card that needs its bank's authentication moves no money and is not a paid
+// charge: the result is failed, with an *processor.ActionRequired carrying what
+// the browser needs to run the step.
 func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*processor.PaymentResult, error) {
 	if err := processor.ValidateRequest(req); err != nil {
 		return nil, err
+	}
+	if strings.HasPrefix(req.Token, "pi_") {
+		return p.completeIntent(ctx, req)
+	}
+	// The card's own country, read from the card: a buyer cannot choose it.
+	if strings.HasPrefix(req.Token, "pm_") {
+		card, err := p.card(ctx, req.Token)
+		if err != nil {
+			return &processor.PaymentResult{Success: false, ErrorMessage: err.Error(), Error: err}, err
+		}
+		if processor.Sanctioned(card.Country) {
+			return &processor.PaymentResult{Success: false, ErrorMessage: errSanctioned.Error(), Error: errSanctioned}, errSanctioned
+		}
 	}
 
 	params := url.Values{}
@@ -128,6 +152,9 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 	if req.CustomerID != "" {
 		params.Set("customer", req.CustomerID)
 	}
+	if off, _ := req.Options["offSession"].(bool); off {
+		params.Set("off_session", "true")
+	}
 	if req.Description != "" {
 		params.Set("description", req.Description)
 	}
@@ -139,33 +166,101 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 	}
 
 	var pi paymentIntent
-	if err := p.post(ctx, "/payment_intents", params, &pi); err != nil {
+	if err := p.postKey(ctx, "/payment_intents", params, req.IdempotencyKey, &pi); err != nil {
+		// A card Stripe refuses for authentication carries the intent that waits
+		// for it; that is the buyer's step, not a decline.
+		if pe := intentOf(err); pe != nil && pe.Status == "requires_action" {
+			return actionRequired(pe)
+		}
 		return &processor.PaymentResult{
 			Success:      false,
 			ErrorMessage: err.Error(),
 			Error:        err,
 		}, err
 	}
+	return resultOf(&pi)
+}
 
-	if pi.Status == "requires_action" {
+// completeIntent finishes a PaymentIntent the buyer authenticated in the browser
+// (Stripe.js handleNextAction / confirmCardPayment). It takes nothing: it reads
+// the intent and says whether it SUCCEEDED, for the amount, currency and buyer
+// this request names — an intent is a bearer token for its own payment, so one
+// made for another amount or another buyer is refused.
+func (p *Provider) completeIntent(ctx context.Context, req processor.PaymentRequest) (*processor.PaymentResult, error) {
+	var pi paymentIntent
+	if err := p.get(ctx, "/payment_intents/"+url.PathEscape(req.Token), nil, &pi); err != nil {
+		return &processor.PaymentResult{Success: false, ErrorMessage: err.Error(), Error: err}, err
+	}
+	if pi.PaymentMethod != "" {
+		card, err := p.card(ctx, pi.PaymentMethod)
+		if err != nil {
+			return &processor.PaymentResult{Success: false, ErrorMessage: err.Error(), Error: err}, err
+		}
+		if processor.Sanctioned(card.Country) {
+			return &processor.PaymentResult{Success: false, ErrorMessage: errSanctioned.Error(), Error: errSanctioned}, errSanctioned
+		}
+	}
+	// A payment already refunded, in whole or part, is not money in hand.
+	if pi.LatestCharge != "" {
+		ok, err := p.ChargeSound(ctx, pi.LatestCharge, pi.Amount)
+		if err != nil {
+			return &processor.PaymentResult{Success: false, ErrorMessage: err.Error(), Error: err}, err
+		}
+		if !ok {
+			return failed(&pi, "this payment was refunded, disputed or not received in full")
+		}
+	}
+	switch {
+	case pi.Amount != int64(req.Amount) || !strings.EqualFold(pi.Currency, string(req.Currency)):
+		return failed(&pi, "this payment was made for a different amount")
+	case req.Metadata != nil && fmt.Sprint(pi.Metadata["hanzo_subject"]) != fmt.Sprint(req.Metadata["hanzo_subject"]):
+		return failed(&pi, "this payment was made for a different account")
+	}
+	return resultOf(&pi)
+}
+
+// resultOf is a PaymentIntent as a charge result: paid only when it SUCCEEDED.
+func resultOf(pi *paymentIntent) (*processor.PaymentResult, error) {
+	switch pi.Status {
+	case "succeeded":
 		return &processor.PaymentResult{
 			Success:       true,
 			TransactionID: pi.ID,
-			ProcessorRef:  pi.ID,
-			Status:        "action_required",
-			Metadata: map[string]interface{}{
-				"client_secret": pi.ClientSecret,
-			},
+			ProcessorRef:  pi.LatestCharge,
+			Status:        pi.Status,
 		}, nil
+	case "requires_action":
+		return actionRequired(pi)
+	default:
+		// processing, requires_payment_method, canceled…: not money in hand. A
+		// "processing" intent that settles later is reconciled by hand: its webhook
+		// finds no receipt, so it credits nothing and raises the alarm.
+		return failed(pi, "the payment did not complete: "+pi.Status)
 	}
+}
 
+func actionRequired(pi *paymentIntent) (*processor.PaymentResult, error) {
+	err := &processor.ActionRequired{ID: pi.ID, ClientSecret: pi.ClientSecret}
 	return &processor.PaymentResult{
-		Success:       pi.Status == "succeeded",
+		Success:       false,
 		TransactionID: pi.ID,
-		ProcessorRef:  pi.LatestCharge,
-		Fee:           0, // Fee available via balance_transaction, not on PI
+		ProcessorRef:  pi.ID,
+		Status:        "requires_action",
+		ErrorMessage:  err.Error(),
+		Error:         err,
+	}, err
+}
+
+func failed(pi *paymentIntent, why string) (*processor.PaymentResult, error) {
+	err := processor.NewPaymentError(processor.Stripe, "payment_not_completed", why, nil)
+	return &processor.PaymentResult{
+		Success:       false,
+		TransactionID: pi.ID,
+		ProcessorRef:  pi.ID,
 		Status:        pi.Status,
-	}, nil
+		ErrorMessage:  why,
+		Error:         &processor.Answer{Err: err},
+	}, &processor.Answer{Err: err}
 }
 
 // Authorize creates a PaymentIntent with capture_method=manual.
@@ -196,7 +291,7 @@ func (p *Provider) Authorize(ctx context.Context, req processor.PaymentRequest) 
 	}
 
 	var pi paymentIntent
-	if err := p.post(ctx, "/payment_intents", params, &pi); err != nil {
+	if err := p.postKey(ctx, "/payment_intents", params, req.IdempotencyKey, &pi); err != nil {
 		return &processor.PaymentResult{
 			Success:      false,
 			ErrorMessage: err.Error(),
@@ -247,9 +342,12 @@ func (p *Provider) Refund(ctx context.Context, req processor.RefundRequest) (*pr
 	if req.Reason != "" {
 		params.Set("reason", mapRefundReason(req.Reason))
 	}
+	for k, v := range req.Metadata {
+		params.Set("metadata["+k+"]", fmt.Sprintf("%v", v))
+	}
 
 	var ref refund
-	if err := p.post(ctx, "/refunds", params, &ref); err != nil {
+	if err := p.postKey(ctx, "/refunds", params, req.IdempotencyKey, &ref); err != nil {
 		return &processor.RefundResult{
 			Success:      false,
 			ErrorMessage: err.Error(),
@@ -281,7 +379,7 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 		CustomerID:   pi.Customer,
 		CreatedAt:    pi.Created,
 		UpdatedAt:    pi.Created,
-		Metadata:     pi.Metadata,
+		Metadata:     withSecret(withPaymentMethod(pi.Metadata, pi.PaymentMethod), pi.ClientSecret),
 	}, nil
 }
 
@@ -294,9 +392,7 @@ func (p *Provider) ValidateWebhook(ctx context.Context, payload []byte, signatur
 	// Parse Stripe-Signature header: t=...,v1=...
 	parts := parseSignatureHeader(signature)
 	timestamp := parts["t"]
-	v1Sig := parts["v1"]
-
-	if timestamp == "" || v1Sig == "" {
+	if timestamp == "" || len(v1Sigs(signature)) == 0 {
 		return nil, processor.ErrWebhookValidationFailed
 	}
 
@@ -306,7 +402,15 @@ func (p *Provider) ValidateWebhook(ctx context.Context, payload []byte, signatur
 	mac.Write([]byte(signedPayload))
 	expectedSig := hex.EncodeToString(mac.Sum(nil))
 
-	if !hmac.Equal([]byte(v1Sig), []byte(expectedSig)) {
+	// Stripe signs with every secret it holds for the endpoint while one is being
+	// rolled: any v1 that matches admits the delivery.
+	matched := false
+	for _, v1Sig := range v1Sigs(signature) {
+		if hmac.Equal([]byte(v1Sig), []byte(expectedSig)) {
+			matched = true
+		}
+	}
+	if !matched {
 		return nil, processor.ErrWebhookValidationFailed
 	}
 
@@ -325,12 +429,23 @@ func (p *Provider) ValidateWebhook(ctx context.Context, payload []byte, signatur
 		return nil, fmt.Errorf("failed to parse webhook event: %w", err)
 	}
 
+	// The event's own time orders reports of one object; the signature's guards
+	// replay. The event says which kind of money it concerns, so a test-mode event
+	// is booked as test money whatever deployment it reaches.
+	at := evt.Created
+	if at <= 0 {
+		at = ts
+	}
+	if evt.Data.Object == nil {
+		evt.Data.Object = map[string]interface{}{}
+	}
+	evt.Data.Object["stripe_livemode"] = evt.Livemode
 	return &processor.WebhookEvent{
 		ID:        evt.ID,
 		Type:      mapEventType(evt.Type),
 		Processor: processor.Stripe,
 		Data:      evt.Data.Object,
-		Timestamp: ts,
+		Timestamp: at,
 	}, nil
 }
 
@@ -450,8 +565,14 @@ func (p *Provider) CreateCustomer(ctx context.Context, email, name string, metad
 		params.Set("metadata["+k+"]", fmt.Sprintf("%v", v))
 	}
 
+	// One customer per reference, whatever retries: Stripe answers a repeated
+	// create under the same key with the customer already made.
+	key := ""
+	if ref, _ := metadata["reference"].(string); ref != "" {
+		key = "customer:" + ref
+	}
 	var cust stripeCustomer
-	if err := p.post(ctx, "/customers", params, &cust); err != nil {
+	if err := p.postKey(ctx, "/customers", params, key, &cust); err != nil {
 		return "", err
 	}
 	return cust.ID, nil
@@ -522,9 +643,19 @@ func (p *Provider) RemovePaymentMethod(ctx context.Context, customerID, paymentM
 // ---------------------------------------------------------------------------
 
 func (p *Provider) post(ctx context.Context, path string, params url.Values, result interface{}) error {
+	return p.postKey(ctx, path, params, "", result)
+}
+
+// postKey is post carrying an Idempotency-Key, so Stripe de-dups a retried money
+// move at Stripe itself — the backstop every card money move in this service
+// relies on (processor.PaymentRequest.IdempotencyKey). An empty key sends none.
+func (p *Provider) postKey(ctx context.Context, path string, params url.Values, key string, result interface{}) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+path, strings.NewReader(params.Encode()))
 	if err != nil {
 		return err
+	}
+	if key = strings.TrimSpace(key); key != "" {
+		req.Header.Set("Idempotency-Key", fitKey(key))
 	}
 	return p.doRequest(req, result)
 }
@@ -572,15 +703,21 @@ func (p *Provider) doRequest(req *http.Request, result interface{}) error {
 
 	if resp.StatusCode >= 400 {
 		var apiErr stripeAPIError
+		var err error
 		if json.Unmarshal(body, &apiErr) == nil && apiErr.Error.Message != "" {
-			return processor.NewPaymentError(
-				processor.Stripe,
-				apiErr.Error.Code,
-				apiErr.Error.Message,
-				nil,
-			)
+			err = processor.NewPaymentError(processor.Stripe, apiErr.Error.Code, apiErr.Error.Message, nil)
+			if in := apiErr.Error.PaymentIntent; in != nil {
+				err = &intentError{error: err, intent: in}
+			}
+		} else {
+			err = fmt.Errorf("stripe API error (HTTP %d): %s", resp.StatusCode, string(body))
 		}
-		return fmt.Errorf("stripe API error (HTTP %d): %s", resp.StatusCode, string(body))
+		// A 4xx is Stripe's own refusal: the call reached it, it said no, and nothing
+		// was done. (409 is an idempotency race and 429 a rate limit: no answer yet.)
+		if resp.StatusCode < 500 && resp.StatusCode != http.StatusConflict && resp.StatusCode != http.StatusTooManyRequests {
+			return &processor.Answer{Err: err}
+		}
+		return err
 	}
 
 	if result != nil {
@@ -596,15 +733,16 @@ func (p *Provider) doRequest(req *http.Request, result interface{}) error {
 // ---------------------------------------------------------------------------
 
 type paymentIntent struct {
-	ID           string                 `json:"id"`
-	Status       string                 `json:"status"`
-	Amount       int64                  `json:"amount"`
-	Currency     string                 `json:"currency"`
-	Customer     string                 `json:"customer"`
-	LatestCharge string                 `json:"latest_charge"`
-	ClientSecret string                 `json:"client_secret"`
-	Created      int64                  `json:"created"`
-	Metadata     map[string]interface{} `json:"metadata"`
+	ID            string                 `json:"id"`
+	Status        string                 `json:"status"`
+	Amount        int64                  `json:"amount"`
+	Currency      string                 `json:"currency"`
+	Customer      string                 `json:"customer"`
+	LatestCharge  string                 `json:"latest_charge"`
+	ClientSecret  string                 `json:"client_secret"`
+	PaymentMethod string                 `json:"payment_method"`
+	Created       int64                  `json:"created"`
+	Metadata      map[string]interface{} `json:"metadata"`
 }
 
 type refund struct {
@@ -641,19 +779,39 @@ type stripeCustomer struct {
 }
 
 type stripeEvent struct {
-	ID   string `json:"id"`
-	Type string `json:"type"`
-	Data struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Created  int64  `json:"created"`
+	Livemode bool   `json:"livemode"`
+	Data     struct {
 		Object map[string]interface{} `json:"object"`
 	} `json:"data"`
 }
 
 type stripeAPIError struct {
 	Error struct {
-		Type    string `json:"type"`
-		Code    string `json:"code"`
-		Message string `json:"message"`
+		Type          string         `json:"type"`
+		Code          string         `json:"code"`
+		Message       string         `json:"message"`
+		PaymentIntent *paymentIntent `json:"payment_intent"`
 	} `json:"error"`
+}
+
+// intentError is a Stripe error that names the PaymentIntent it concerns.
+type intentError struct {
+	error
+	intent *paymentIntent
+}
+
+func (e *intentError) Unwrap() error { return e.error }
+
+// intentOf is the PaymentIntent a Stripe error names, or nil.
+func intentOf(err error) *paymentIntent {
+	var ie *intentError
+	if errors.As(err, &ie) {
+		return ie.intent
+	}
+	return nil
 }
 
 // ---------------------------------------------------------------------------
@@ -675,6 +833,17 @@ func mapSubscription(sub *stripeSub) *processor.Subscription {
 		CancelAtPeriodEnd:  sub.CancelAtPeriodEnd,
 		Metadata:           sub.Metadata,
 	}
+}
+
+// v1Sigs is every v1 signature a Stripe-Signature header carries.
+func v1Sigs(header string) []string {
+	var out []string
+	for _, part := range strings.Split(header, ",") {
+		if k, v, ok := strings.Cut(strings.TrimSpace(part), "="); ok && k == "v1" {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 func parseSignatureHeader(header string) map[string]string {
@@ -711,8 +880,8 @@ func mapEventType(stripeType string) string {
 		return "refund.updated"
 	case "charge.dispute.created":
 		return "dispute.created"
-	case "charge.dispute.closed":
-		return "dispute.resolved"
+	case "charge.dispute.updated", "charge.dispute.closed", "charge.dispute.funds_withdrawn", "charge.dispute.funds_reinstated":
+		return "dispute.updated"
 	case "customer.subscription.created":
 		return "subscription.created"
 	case "customer.subscription.updated":
@@ -740,3 +909,86 @@ var (
 	_ processor.SubscriptionProcessor = (*Provider)(nil)
 	_ processor.CustomerProcessor     = (*Provider)(nil)
 )
+
+// ReceivesWebhooks reports whether this provider holds the secret Stripe signs
+// its deliveries with (STRIPE_WEBHOOK_SECRET). Without it no delivery is admitted.
+func (p *Provider) ReceivesWebhooks() bool { return p.webhookSecret != "" }
+
+// Reaches reports whether Stripe takes a payment by method from a buyer in
+// country. Stripe's card form takes a typed card, Apple Pay and Google Pay;
+// Charge confirms with redirects off, so a redirect method (iDEAL, Bancontact,
+// ...) and a delayed one (ACH, SEPA debit) are not taken here. No country is
+// refused: nothing in this service records where Stripe declines a buyer, so
+// none is guessed at.
+func (p *Provider) Reaches(country, method string) bool {
+	switch method {
+	case "", "card", "apple_pay", "google_pay":
+		return true
+	default:
+		return false
+	}
+}
+
+var (
+	_ processor.Reach           = (*Provider)(nil)
+	_ processor.WebhookReceiver = (*Provider)(nil)
+)
+
+// withPaymentMethod is the intent's metadata with the card it names, so a caller
+// that holds only the intent's id can find the saved card it was charged on.
+func withPaymentMethod(meta map[string]interface{}, pm string) map[string]interface{} {
+	out := map[string]interface{}{}
+	for k, v := range meta {
+		out[k] = v
+	}
+	if pm != "" {
+		out["payment_method"] = pm
+	}
+	return out
+}
+
+// ChargeSound says whether a charge is money in hand for amount: captured in full,
+// not refunded in whole or part, and not disputed. A caller that is about to
+// credit one asks first.
+func (p *Provider) ChargeSound(ctx context.Context, chargeID string, amount int64) (bool, error) {
+	var ch struct {
+		Refunded       bool  `json:"refunded"`
+		Disputed       bool  `json:"disputed"`
+		AmountRefunded int64 `json:"amount_refunded"`
+		AmountCaptured int64 `json:"amount_captured"`
+	}
+	if err := p.get(ctx, "/charges/"+url.PathEscape(chargeID), nil, &ch); err != nil {
+		return false, err
+	}
+	if ch.Refunded || ch.Disputed || ch.AmountRefunded > 0 || (amount > 0 && ch.AmountCaptured < amount) {
+		return false, nil
+	}
+	return true, nil
+}
+
+// withSecret adds the intent's client secret, which only a caller that is about
+// to hand it to the buyer's own browser may use.
+func withSecret(meta map[string]interface{}, secret string) map[string]interface{} {
+	if secret != "" {
+		meta["client_secret"] = secret
+	}
+	return meta
+}
+
+// CancelIntent cancels a PaymentIntent that waits on its buyer, so it can never
+// succeed after commerce has stopped waiting for it.
+func (p *Provider) CancelIntent(ctx context.Context, id string) error {
+	var pi paymentIntent
+	return p.post(ctx, "/payment_intents/"+url.PathEscape(id)+"/cancel", url.Values{"cancellation_reason": {"abandoned"}}, &pi)
+}
+
+// ChargeRefunds lists the refunds made on a charge, newest first.
+func (p *Provider) ChargeRefunds(ctx context.Context, chargeID string) ([]map[string]interface{}, error) {
+	var list struct {
+		Data []map[string]interface{} `json:"data"`
+	}
+	if err := p.get(ctx, "/refunds", url.Values{"charge": {chargeID}, "limit": {"100"}}, &list); err != nil {
+		return nil, err
+	}
+	return list.Data, nil
+}

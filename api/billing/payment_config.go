@@ -22,11 +22,21 @@ type PayPalPublicConfig struct {
 	Enabled     bool   `json:"enabled"`
 }
 
+// StripePublicConfig is the PUBLIC Stripe.js configuration returned alongside
+// Square: the publishable key Stripe's card form mounts with. Enabled says some
+// currency is paid through Stripe's card form here (PaymentConfig.Cards).
+type StripePublicConfig struct {
+	PublishableKey string `json:"publishableKey"`
+	Environment    string `json:"environment"`
+	Enabled        bool   `json:"enabled"`
+}
+
 // PaymentConfig is the PUBLIC payment configuration a browser needs to tokenize a
 // card for an org: which provider, which application and location it tokenizes
 // against, which environment that account lives in, whether the money is real,
-// and the public PayPal JS SDK config when enabled. Every field is safe to hand
-// a client.
+// the public PayPal JS SDK config when enabled, and — per currency — whose card
+// form takes the card (Cards: Square wherever Square can, Stripe where it
+// cannot). Every field is safe to hand a client.
 type PaymentConfig struct {
 	Provider      string             `json:"provider"`
 	ApplicationId string             `json:"applicationId"`
@@ -34,6 +44,10 @@ type PaymentConfig struct {
 	Environment   string             `json:"environment"`
 	Live          bool               `json:"live"`
 	PayPal        PayPalPublicConfig `json:"paypal"`
+	Stripe        StripePublicConfig `json:"stripe"`
+	// Cards maps a currency ("usd") to the processor whose card form takes it
+	// ("square" or "stripe"). A currency no card processor takes is absent.
+	Cards map[string]string `json:"cards"`
 }
 
 // ReadPaymentConfig resolves an org's public payment configuration.
@@ -51,10 +65,25 @@ type PaymentConfig struct {
 // A nil org is not a failure — it is an org with no credentials of its own, which
 // resolves to the deployment's public config. Nothing here can fail, so the
 // answer is a value and no endpoint has an error to invent a status for.
+//
+// Cards is the selection rule's own answer (processor.Registry.Cards) for this
+// org's processors with no buyer country, which this read does not know; the
+// checkout's GET /v1/commerce/org answers the same rule for the caller's country.
 func ReadPaymentConfig(ctx context.Context, org *organization.Organization) *PaymentConfig {
 	sq := payment.SquarePublicConfig(org)
 	pp := payment.PayPalPublicConfig(org)
+	st := payment.StripePublicConfig(org)
+	cards := map[string]string{}
+	for cur, t := range processorsForOrg(orgOrZero(org)).Cards(ctx, "") {
+		cards[string(cur)] = string(t)
+	}
 	return &PaymentConfig{
+		Stripe: StripePublicConfig{
+			PublishableKey: st.PublishableKey,
+			Environment:    st.Environment,
+			Enabled:        st.PublishableKey != "" && served(cards, processor.Stripe),
+		},
+		Cards:         cards,
 		Provider:      "square",
 		ApplicationId: sq.ApplicationID,
 		LocationId:    sq.LocationID,
@@ -146,4 +175,23 @@ func SetOrgTestMode(c *zip.Ctx) error {
 	}
 
 	return c.JSON(200, mode)
+}
+
+// orgOrZero is org, or the zero org a nil caller stands for (the deployment's
+// env-fallback credentials).
+func orgOrZero(org *organization.Organization) *organization.Organization {
+	if org == nil {
+		return &organization.Organization{}
+	}
+	return org
+}
+
+// served reports whether any currency in cards is taken by processor t.
+func served(cards map[string]string, t processor.ProcessorType) bool {
+	for _, v := range cards {
+		if v == string(t) {
+			return true
+		}
+	}
+	return false
 }

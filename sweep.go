@@ -47,8 +47,10 @@ func Sweep(ctx context.Context, chain, token, to string) error {
 		return fmt.Errorf("nothing is configured for %s/%s; CRYPTO_DEPOSIT_* names %d asset(s)", chain, token, len(assets))
 	}
 
-	// The processor is the fleet's one client, so it is also its signer.
-	p, err := processor.Get(processor.MPC)
+	// The processor is the fleet's one client, so it is also its signer. Sweeping
+	// deposits already received is custody, not a new charge: the charge policy
+	// does not apply.
+	p, err := processor.Global().Registered(processor.MPC)
 	if err != nil {
 		return err
 	}

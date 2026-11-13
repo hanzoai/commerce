@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/types/currency"
 )
 
@@ -20,49 +21,42 @@ type Registry struct {
 // RegistryConfig holds configuration for processor selection.
 //
 // Fiat selection has exactly ONE mechanism: ProcessorPriority gives the
-// preference order and DisabledProcessors is the deny policy. There is no
-// separate "default fiat processor" knob — the old DefaultFiatProcessor field
-// was never consulted by SelectProcessor for fiat (only the priority list was),
-// so it was a dead, complected knob and has been removed. Crypto selection keeps
-// a single preferred processor (DefaultCryptoProcessor) plus a currency-driven
-// fallback order, because crypto routing is by currency, not preference order.
+// preference order, DisabledProcessors is the deny policy, and Fiat walks the
+// order for the first processor that can take the payment. Crypto selection
+// keeps a single preferred processor (DefaultCryptoProcessor) plus a
+// currency-driven fallback order, because crypto routing is by currency, not
+// preference order.
 type RegistryConfig struct {
 	// DefaultCryptoProcessor is the preferred processor for crypto currencies.
 	DefaultCryptoProcessor ProcessorType
 
-	// ProcessorPriority is the fiat preference order (first available wins).
+	// ProcessorPriority is the fiat preference order (first that can take the
+	// payment wins). Square heads it and Stripe follows it, which is the whole of
+	// "Stripe wherever Square does not work": see Fiat.
 	ProcessorPriority []ProcessorType
 
-	// DisabledProcessors is the deny policy: a processor in this set is NEVER
-	// returned by SelectProcessor from ANY branch (explicit preference, crypto,
-	// or fiat). This is how Stripe is held un-selectable for new charges.
+	// DisabledProcessors is the deny set: a processor in it is NEVER returned by
+	// SelectProcessor, Fiat or Get, from any branch. DefaultConfig fills it from
+	// the deployment's charge policy (ChargeProcessors): every type it does not
+	// name.
 	DisabledProcessors map[ProcessorType]bool
 }
 
 // DefaultConfig returns the default registry configuration.
 //
-// Fiat: Square is the first (preferred) processor and Stripe is DISABLED by
-// default — "we do NOT use Stripe" for new charges. The disable is deterministic
-// and cred-independent: SelectProcessor skips DisabledProcessors in every branch,
-// so a hydrated Stripe secret key can NEVER win a charge. Stripe stays REGISTERED
-// (its migrations, webhook ingestion and existing-order handlers are untouched) —
-// it is removed only from NEW-charge selection.
+// Fiat: Square first, Stripe second, then the rest, and Fiat takes the first
+// that can serve the payment. WHICH processors may take a NEW charge at all is
+// the deployment's policy (ChargeProcessors), which production sets to Stripe
+// alone explicitly.
 //
 // Crypto: DefaultCryptoProcessor (MPC) plus the crypto fallback order in
-// SelectProcessor; unchanged.
-//
-// Per-env override (ONE knob): COMMERCE_DISABLED_PROCESSORS, a comma-separated
-// list of processor types that REPLACES the default deny set. Unset OR empty keeps
-// the safe default (Stripe disabled) — an empty k8s placeholder must NOT silently
-// re-enable Stripe. To disable NOTHING, set the explicit sentinel
-// COMMERCE_DISABLED_PROCESSORS=none. Crypto stays overridable via
-// COMMERCE_DEFAULT_CRYPTO_PROCESSOR.
+// SelectProcessor.
 func DefaultConfig() *RegistryConfig {
 	return &RegistryConfig{
 		DefaultCryptoProcessor: envProcessor("COMMERCE_DEFAULT_CRYPTO_PROCESSOR", MPC),
 		ProcessorPriority: []ProcessorType{
-			Square, // fiat default — pay.hanzo.ai (Square + crypto)
-			Stripe, // historical; disabled for new charges by default (see disabledProcessors)
+			Square, // takes every payment it can, where a deployment allows it
+			Stripe, // takes what Square cannot, or everything when it is alone
 			Adyen,
 			PayPal,
 			Braintree,
@@ -83,40 +77,90 @@ func DefaultConfig() *RegistryConfig {
 	}
 }
 
-// disabledProcessors returns the deny set that gates processor selection.
+// ChargeProcessors is the deployment's policy for NEW charges, by name:
+// COMMERCE_CHARGE_PROCESSORS, a comma-separated list of processor types, or "*"
+// for every one. A deployment that wants Stripe alone SAYS SO ("stripe"): production
+// and the test networks do, in universe, so a Stripe key that never arrives fails
+// closed. Unset is only a convenience for a deployment that names nothing: Stripe
+// alone where a Stripe key is configured, and otherwise every configured processor,
+// with an alarm (see chargeAllowed). Another processor comes back by naming it
+// here, not by restoring code.
 //
-// Default: Stripe is OFF for new-charge selection ("we do NOT use Stripe"). Only
-// SELECTION is denied — Stripe's migrations, webhook ingestion and existing-order
-// handlers stay fully intact for already-charged historical data.
-//
-// Override per-deployment with COMMERCE_DISABLED_PROCESSORS (comma-separated
-// processor types), which REPLACES the default. UNSET or EMPTY/whitespace keeps
-// the safe default {Stripe} — an empty env placeholder (common in k8s) must never
-// silently re-enable Stripe. The explicit sentinel "none" disables nothing.
-func disabledProcessors() map[ProcessorType]bool {
-	raw, ok := os.LookupEnv("COMMERCE_DISABLED_PROCESSORS")
-	if !ok || strings.TrimSpace(raw) == "" {
+// It governs NEW charges and offers only. A customer's card already on file with
+// a processor keeps being charged by that processor (Registry.Existing), so a
+// subscription renews on the card it was bought with until its owner saves one
+// with a processor the policy allows.
+const ChargeProcessors = "COMMERCE_CHARGE_PROCESSORS"
+
+// every processor type that can be named by the policy.
+var allTypes = []ProcessorType{
+	Stripe, Square, PayPal, Adyen, Braintree, Recurly, LemonSqueezy, BitPay,
+	CoinbaseCommerce, OpenNode, Bitcoin, Ethereum, MPC, Wire, SolanaPay, MoonPay, Kraken,
+}
+
+// chargeAllowed is the set of processor types ChargeProcessors names.
+func chargeAllowed() map[ProcessorType]bool {
+	raw := strings.TrimSpace(os.Getenv(ChargeProcessors))
+	if raw == "" {
+		if !stripeKeyed() {
+			// THE DEFAULT IS STRIPE ALONE ONLY WHERE STRIPE CAN CHARGE. A deployment
+			// that names no policy and holds no Stripe key at all — a Secret not yet
+			// sealed, a projection that did not land — would otherwise have no way to
+			// take any payment, which is worse than the processors it did configure.
+			// Failing to boot is worse still: billing is embedded in the host, and a
+			// crash-looping pod takes everything else down with it. So the processors
+			// that ARE configured keep taking payments, and it is said loudly, once.
+			missingStripe.Do(func() {
+				log.Error("ALARM: COMMERCE_CHARGE_PROCESSORS is unset and no Stripe key is configured (STRIPE_SECRET_KEY / STRIPE_TEST_SECRET_KEY), so the Stripe-only default cannot hold: every configured processor may take a new charge until Stripe's keys are sealed")
+			})
+			allowed := map[ProcessorType]bool{}
+			for _, t := range allTypes {
+				allowed[t] = true
+			}
+			return allowed
+		}
 		return map[ProcessorType]bool{Stripe: true}
 	}
-	if strings.EqualFold(strings.TrimSpace(raw), "none") {
-		return map[ProcessorType]bool{}
-	}
-	disabled := make(map[ProcessorType]bool)
+	allowed := map[ProcessorType]bool{}
 	for _, name := range strings.Split(raw, ",") {
-		if name = strings.ToLower(strings.TrimSpace(name)); name != "" && name != "none" {
-			disabled[ProcessorType(name)] = true
+		switch name = strings.ToLower(strings.TrimSpace(name)); name {
+		case "":
+		case "*":
+			for _, t := range allTypes {
+				allowed[t] = true
+			}
+		default:
+			allowed[ProcessorType(name)] = true
+		}
+	}
+	return allowed
+}
+
+var missingStripe sync.Once
+
+// stripeKeyed reports whether the deployment holds a Stripe secret key of either mode.
+func stripeKeyed() bool {
+	return strings.TrimSpace(os.Getenv("STRIPE_SECRET_KEY")) != "" || strings.TrimSpace(os.Getenv("STRIPE_TEST_SECRET_KEY")) != ""
+}
+
+// disabledProcessors is every processor type the policy does not allow.
+func disabledProcessors() map[ProcessorType]bool {
+	allowed := chargeAllowed()
+	disabled := make(map[ProcessorType]bool)
+	for _, t := range allTypes {
+		if !allowed[t] {
+			disabled[t] = true
 		}
 	}
 	return disabled
 }
 
-// DisabledByPolicy reports whether processor t is denied by the deployment's
-// disabled-processor policy (COMMERCE_DISABLED_PROCESSORS; default: Stripe).
+// DisabledByPolicy reports whether the deployment's charge policy
+// (ChargeProcessors) keeps processor t from taking a NEW charge.
 //
 // It is the SINGLE source of truth for "is this processor off for new charges,"
-// shared by the registry (via DisabledProcessors) AND by out-of-registry
-// selectors such as the checkout-session resolver, so the policy lives in ONE
-// place across every new-charge modality (direct charge and hosted checkout).
+// shared by the registry (via DisabledProcessors) AND by surfaces that list
+// processors without a registry, so the policy lives in ONE place.
 func DisabledByPolicy(t ProcessorType) bool {
 	return disabledProcessors()[t]
 }
@@ -183,6 +227,21 @@ func (r *Registry) Get(t ProcessorType) (PaymentProcessor, error) {
 	return p, nil
 }
 
+// Existing returns the configured processor t for a customer already on it —
+// a card on file with t, a payment t took — IGNORING the new-charge policy: the
+// policy decides where NEW money goes, not whether a subscription renews on the
+// card it was bought with.
+func (r *Registry) Existing(ctx context.Context, t ProcessorType) (PaymentProcessor, error) {
+	p, err := r.Registered(t)
+	if err != nil {
+		return nil, err
+	}
+	if !p.IsAvailable(ctx) {
+		return nil, fmt.Errorf("processor %s is not available", t)
+	}
+	return p, nil
+}
+
 // Registered returns a processor by type IGNORING the disabled-processor policy.
 //
 // Use this only for INBOUND paths — webhook validation, admin/historical
@@ -243,28 +302,134 @@ func (r *Registry) GetCustomer(t ProcessorType) (CustomerProcessor, error) {
 	return cp, nil
 }
 
-// SelectProcessor chooses the best processor for the payment
+// Need is one fiat payment as the selection rule sees it.
+type Need struct {
+	// Currency is what the payment is made in.
+	Currency currency.Type
+	// Country is the buyer's ISO 3166-1 alpha-2 code; "" when it is not known,
+	// which no processor is refused for.
+	Country string
+	// Method is how the buyer pays: "card", "apple_pay", "google_pay",
+	// "cash_app", "ach", ...; "" when the token is already minted and its method
+	// is the minting processor's business.
+	Method string
+	// Want is the processor the caller named; "" for none.
+	Want ProcessorType
+}
+
+// Reach is implemented by a processor that takes payments from buyers in some
+// countries, or by some methods, only. A processor that is not one is matched
+// only by a Need that names neither (a token already minted), because nothing
+// says which countries or methods it takes.
+type Reach interface {
+	Reaches(country, method string) bool
+}
+
+// Fiat names the processor that takes a fiat payment.
+//
+// A payment the caller names a processor for goes to that processor or to none:
+// a token belongs to the processor that minted it, so substituting another one
+// is a charge that cannot succeed. Otherwise the first processor in priority
+// order that can take the payment takes it — Square wherever Square can, and
+// Stripe, next in the order, wherever Square cannot.
+//
+// "Can take it" is the same test for every processor (canTake): registered,
+// not denied, configured, in the currency, and, for a processor with a Reach,
+// in the buyer's country and by the buyer's method.
+func (r *Registry) Fiat(ctx context.Context, n Need) (PaymentProcessor, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.fiat(ctx, n)
+}
+
+func (r *Registry) fiat(ctx context.Context, n Need) (PaymentProcessor, error) {
+	if n.Want != "" {
+		if p := r.canTake(ctx, n.Want, n); p != nil {
+			return p, nil
+		}
+		return nil, fmt.Errorf("processor %s cannot take a %s payment here", n.Want, n.Currency)
+	}
+	for _, t := range r.config.ProcessorPriority {
+		if p := r.canTake(ctx, t, n); p != nil {
+			return p, nil
+		}
+	}
+	return nil, fmt.Errorf("no processor available for currency %s", n.Currency)
+}
+
+// Sanctioned reports whether code (ISO 3166-1 alpha-2) names a jurisdiction no
+// fiat processor here may take a payment from: the comprehensively sanctioned
+// countries (Cuba, Iran, North Korea, Syria) plus Russia and Belarus.
+func Sanctioned(code string) bool {
+	switch strings.ToUpper(strings.TrimSpace(code)) {
+	case "CU", "IR", "KP", "SY", "RU", "BY":
+		return true
+	}
+	return false
+}
+
+// canTake returns processor t when it can take the payment n, else nil.
+func (r *Registry) canTake(ctx context.Context, t ProcessorType, n Need) PaymentProcessor {
+	if r.config.DisabledProcessors[t] || Sanctioned(n.Country) {
+		return nil
+	}
+	p, ok := r.processors[t]
+	if !ok || !p.IsAvailable(ctx) || !supportssCurrency(p, n.Currency) {
+		return nil
+	}
+	if rp, ok := p.(Reach); ok {
+		if !rp.Reaches(n.Country, n.Method) {
+			return nil
+		}
+	} else if n.Country != "" || n.Method != "" {
+		return nil
+	}
+	return p
+}
+
+// Cards is the card form each currency is paid through for a buyer in country
+// (ISO 3166-1 alpha-2, "" when unknown): Fiat's answer for a card, for every
+// currency some card processor here takes. A currency no processor takes by
+// card is absent. It is what a checkout reads to mount Square's card form or
+// Stripe's, so the browser tokenizes with the processor the charge will use.
+func (r *Registry) Cards(ctx context.Context, country string) map[currency.Type]ProcessorType {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := map[currency.Type]ProcessorType{}
+	for _, t := range r.config.ProcessorPriority {
+		p, ok := r.processors[t]
+		if !ok {
+			continue
+		}
+		for _, c := range p.SupportedCurrencies() {
+			if _, done := out[c]; done {
+				continue
+			}
+			if chosen, err := r.fiat(ctx, Need{Currency: c, Country: country, Method: "card"}); err == nil {
+				out[c] = chosen.Type()
+			}
+		}
+	}
+	return out
+}
+
+// SelectProcessor chooses the processor for a payment whose token is already
+// minted: the one named in Options["processor"], a crypto processor for a
+// crypto currency, else Fiat.
 func (r *Registry) SelectProcessor(ctx context.Context, req PaymentRequest) (PaymentProcessor, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	// Check for explicit preference
-	if pref, ok := req.Options["processor"].(ProcessorType); ok {
-		if p, ok := r.processors[pref]; ok {
-			if !r.config.DisabledProcessors[pref] && p.IsAvailable(ctx) {
-				return p, nil
-			}
-		}
+	// An explicit preference is a Want: that processor or none.
+	var want ProcessorType
+	switch pref := req.Options["processor"].(type) {
+	case ProcessorType:
+		want = pref
+	case string:
+		want = ProcessorType(strings.ToLower(strings.TrimSpace(pref)))
 	}
-
-	// Check for string preference
-	if prefStr, ok := req.Options["processor"].(string); ok {
-		pref := ProcessorType(prefStr)
-		if p, ok := r.processors[pref]; ok {
-			if !r.config.DisabledProcessors[pref] && p.IsAvailable(ctx) {
-				return p, nil
-			}
-		}
+	if want != "" {
+		return r.fiat(ctx, Need{Currency: req.Currency, Want: want})
 	}
 
 	// For crypto currencies, use crypto processor
@@ -286,19 +451,7 @@ func (r *Registry) SelectProcessor(ctx context.Context, req PaymentRequest) (Pay
 		}
 	}
 
-	// For fiat, use priority order
-	for _, t := range r.config.ProcessorPriority {
-		if r.config.DisabledProcessors[t] {
-			continue
-		}
-		if p, ok := r.processors[t]; ok {
-			if p.IsAvailable(ctx) && supportssCurrency(p, req.Currency) {
-				return p, nil
-			}
-		}
-	}
-
-	return nil, fmt.Errorf("no processor available for currency %s", req.Currency)
+	return r.fiat(ctx, Need{Currency: req.Currency})
 }
 
 // SelectSubscriptionProcessor chooses a processor that supports subscriptions

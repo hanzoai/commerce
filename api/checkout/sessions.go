@@ -29,7 +29,10 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/store"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
+	squareprovider "github.com/hanzoai/commerce/payment/providers/square"
+	stripeprovider "github.com/hanzoai/commerce/payment/providers/stripe"
 	sqenv "github.com/hanzoai/commerce/thirdparty/square"
 	"github.com/hanzoai/commerce/util/json/http"
 )
@@ -297,15 +300,68 @@ func websiteURLs(org *organization.Organization) []string {
 	return out
 }
 
+// checkoutProcessors is the merchant's own processors a hosted checkout may
+// charge: Square on the account squareCheckoutCredentials resolves, Stripe on
+// the org's own Stripe key. Neither falls back to the deployment's live account.
+func checkoutProcessors(org *organization.Organization) *processor.Registry {
+	reg := processor.NewRegistry(processor.DefaultConfig())
+	if token, locationID, err := squareCheckoutCredentials(org); err == nil {
+		reg.Register(squareprovider.NewProvider(squareprovider.Config{
+			AccessToken: token,
+			LocationID:  locationID,
+			Environment: org.SquareEnvironment(),
+			Org:         org.Name,
+		}))
+	}
+	if sk := payment.OwnStripeSecret(org); sk != "" {
+		reg.Register(stripeprovider.NewProvider(stripeprovider.Config{SecretKey: sk}))
+	}
+	return reg
+}
+
+// sanctionedOnly passes a buyer's country through only when it is sanctioned, so
+// the rule refuses it, and otherwise says "unknown", which no processor refuses.
+func sanctionedOnly(country string) string {
+	if processor.Sanctioned(country) {
+		return country
+	}
+	return ""
+}
+
+// currencyType is an ISO 4217 code in the form the processors name currencies.
+func currencyType(code string) currency.Type {
+	return currency.Type(strings.ToLower(strings.TrimSpace(code)))
+}
+
 // squareCheckoutClientForOrg creates a Square Payment Links client using the
 // org's own credentials (payment.Hydrate). A sandbox org with none uses the
 // deployment's sandbox account; a live org with none is refused.
 func squareCheckoutClientForOrg(org *organization.Organization) (*sqpaymentlinks.Client, string, error) {
+	token, locationID, err := squareCheckoutCredentials(org)
+	if err != nil {
+		return nil, "", err
+	}
+
+	baseURL := "https://connect.squareup.com"
+	if org.TestMode() {
+		baseURL = "https://connect.squareupsandbox.com"
+	}
+
+	client := sqpaymentlinks.NewClient(core.NewRequestOptions(
+		option.WithToken(token),
+		option.WithBaseURL(baseURL),
+	))
+	return client, locationID, nil
+}
+
+// squareCheckoutCredentials is the Square account a hosted checkout charges:
+// the org's own, or — in sandbox only — the deployment's sandbox account.
+func squareCheckoutCredentials(org *organization.Organization) (token, locationID string, err error) {
 	isSandbox := org.TestMode()
 	sqCfg := org.SquareConfig(isSandbox)
 
-	token := sqCfg.AccessToken
-	locationID := sqCfg.LocationId
+	token = sqCfg.AccessToken
+	locationID = sqCfg.LocationId
 
 	// FAIL-CLOSED in production. An org that has not configured its OWN
 	// per-tenant Square credentials (KMS) can NEVER borrow the deployment's
@@ -317,26 +373,16 @@ func squareCheckoutClientForOrg(org *organization.Organization) (*sqpaymentlinks
 	// names only (sqenv.FromEnv).
 	if token == "" {
 		if !isSandbox {
-			return nil, "", errors.New("square is not configured for this organization")
+			return "", "", errors.New("square is not configured for this organization")
 		}
 		creds := sqenv.FromEnv(true)
 		token, locationID = creds.AccessToken, creds.LocationID
 	}
 
 	if token == "" || locationID == "" {
-		return nil, "", errors.New("square is not configured for this organization")
+		return "", "", errors.New("square is not configured for this organization")
 	}
-
-	baseURL := "https://connect.squareup.com"
-	if isSandbox {
-		baseURL = "https://connect.squareupsandbox.com"
-	}
-
-	client := sqpaymentlinks.NewClient(core.NewRequestOptions(
-		option.WithToken(token),
-		option.WithBaseURL(baseURL),
-	))
-	return client, locationID, nil
+	return token, locationID, nil
 }
 
 // Sessions creates a provider-agnostic hosted checkout session.
@@ -441,21 +487,35 @@ func Sessions(c *zip.Ctx) error {
 	discountCents := applyDiscount(subtotalCents, cpn)
 	finalCents := subtotalCents - discountCents
 
-	// Select payment provider, honoring the SAME disabled-processor policy
-	// SelectProcessor enforces (processor.DisabledByPolicy). Stripe is disabled
-	// by default — "we do NOT use Stripe" — so neither an explicit stripe hint
-	// nor a hydrated Stripe token routes a NEW checkout to Stripe; Square is
-	// used. Stripe checkout code stays for historical / existing-customer flows.
-	hint := strings.ToLower(strings.TrimSpace(req.ProviderHint))
-	stripeAllowed := !processor.DisabledByPolicy(processor.Stripe)
-	var sessionResp checkoutSessionResponse
-
-	switch {
-	case stripeAllowed && (hint == "stripe" || (hint == "" && org.StripeToken() != "")):
-		sessionResp, err = createStripeCheckout(c, org, items, subtotalCents, discountCents, finalCents, cpn, currency, req)
-
+	// Select the payment provider by THE rule (processor.Registry.Fiat) over
+	// this merchant's own accounts: Square wherever Square takes the payment,
+	// Stripe where it does not, and the processor the caller named when it names
+	// one ("square" or "stripe"). A hosted checkout charges the merchant's own
+	// account only, so the registry holds exactly those (checkoutProcessors).
+	var want processor.ProcessorType
+	switch hint := strings.ToLower(strings.TrimSpace(req.ProviderHint)); hint {
+	case "", "card":
+	case string(processor.Square), string(processor.Stripe):
+		want = processor.ProcessorType(hint)
 	default:
-		// Square Payment Links (default).
+		return http.Fail(c, 400, "Invalid providerHint", fmt.Errorf("providerHint %q is not square or stripe", hint))
+	}
+	chosen, err := checkoutProcessors(org).Fiat(c.Context(), processor.Need{
+		Currency: currencyType(currency),
+		// Square's countries are where a Square SELLER can be; Payment Links take
+		// any buyer's card. Only sanctioned jurisdictions are refused.
+		Country: sanctionedOnly(hostedcheckout.RequestCountry(c)),
+		Method:  "card",
+		Want:    want,
+	})
+	if err != nil {
+		return http.Fail(c, 422, "No payment processor takes this checkout", err)
+	}
+	var sessionResp checkoutSessionResponse
+	if chosen.Type() == processor.Stripe {
+		sessionResp, err = createStripeCheckout(c, org, items, subtotalCents, discountCents, finalCents, cpn, currency, req)
+	} else {
+		// Square Payment Links.
 		sessionResp, err = createSquareCheckout(c, org, items, subtotalCents, discountCents, finalCents, cpn, currency, req)
 	}
 
@@ -503,7 +563,7 @@ func Sessions(c *zip.Ctx) error {
 
 // createStripeCheckout creates a Stripe Checkout Session using the org's Stripe credentials.
 func createStripeCheckout(c *zip.Ctx, org *organization.Organization, items []checkoutLineItem, subtotalCents, discountCents, finalCents int64, cpn *coupon.Coupon, currency string, req checkoutSessionRequest) (checkoutSessionResponse, error) {
-	sk := org.StripeToken()
+	sk := payment.OwnStripeSecret(org)
 	if sk == "" {
 		return checkoutSessionResponse{}, errors.New("stripe is not configured for this organization")
 	}
@@ -527,17 +587,17 @@ func createStripeCheckout(c *zip.Ctx, org *organization.Organization, items []ch
 		params.Set(prefix+"[quantity]", fmt.Sprintf("%d", it.Quantity))
 	}
 
-	// Apply coupon as a discount if present
+	// The coupon's discount is applied BY STRIPE, as a one-time coupon of exactly
+	// the amount the buyer was quoted: Checkout cannot take a flat inline discount,
+	// but it takes a coupon, and the buyer pays what the response says they owe.
 	if discountCents > 0 && cpn != nil {
-		// Create an inline coupon via discounts parameter
-		params.Set("discounts[0][coupon]", "")
-		// Use a promotion code or just adjust — Stripe Checkout doesn't support inline flat discounts
-		// directly, so we add a negative line item or use automatic_tax. For simplicity, adjust via
-		// a coupon created on-the-fly is complex. Instead, we adjust the unit amounts proportionally
-		// or note the discount in metadata.
+		couponID, err := createStripeCoupon(c.Context(), sk, discountCents, currency, cpn.Code())
+		if err != nil {
+			return checkoutSessionResponse{}, fmt.Errorf("stripe coupon: %w", err)
+		}
+		params.Set("discounts[0][coupon]", couponID)
 		params.Set("metadata[coupon_code]", cpn.Code())
 		params.Set("metadata[discount_cents]", fmt.Sprintf("%d", discountCents))
-		params.Del("discounts[0][coupon]")
 	}
 
 	params.Set("metadata[org]", org.Name)
@@ -549,7 +609,7 @@ func createStripeCheckout(c *zip.Ctx, org *organization.Organization, items []ch
 	}
 
 	stripeReq, err := nethttp.NewRequestWithContext(c.Context(), nethttp.MethodPost,
-		"https://api.stripe.com/v1/checkout/sessions",
+		stripeAPI+"/v1/checkout/sessions",
 		strings.NewReader(params.Encode()))
 	if err != nil {
 		return checkoutSessionResponse{}, fmt.Errorf("stripe request: %w", err)
@@ -585,6 +645,45 @@ func createStripeCheckout(c *zip.Ctx, org *organization.Organization, items []ch
 		SessionID:   stripeResp.ID,
 	}, nil
 }
+
+// createStripeCoupon makes a one-time coupon of amountOff minor units, which a
+// Checkout Session applies once.
+func createStripeCoupon(ctx context.Context, sk string, amountOff int64, currency, code string) (string, error) {
+	params := url.Values{}
+	params.Set("amount_off", fmt.Sprintf("%d", amountOff))
+	params.Set("currency", strings.ToLower(currency))
+	params.Set("duration", "once")
+	params.Set("max_redemptions", "1")
+	params.Set("name", strings.ToUpper(code))
+	r, err := nethttp.NewRequestWithContext(ctx, nethttp.MethodPost, stripeAPI+"/v1/coupons", strings.NewReader(params.Encode()))
+	if err != nil {
+		return "", err
+	}
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.SetBasicAuth(sk, "")
+	resp, err := nethttp.DefaultClient.Do(r)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	var out struct {
+		ID    string `json:"id"`
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(body, &out); err != nil || resp.StatusCode >= 400 || out.ID == "" {
+		return "", fmt.Errorf("stripe error %d: %s", resp.StatusCode, out.Error.Message)
+	}
+	return out.ID, nil
+}
+
+// stripeAPI is Stripe's API origin.
+const stripeAPI = "https://api.stripe.com"
 
 // createSquareCheckout creates a Square Payment Link using the org's Square credentials.
 func createSquareCheckout(c *zip.Ctx, org *organization.Organization, items []checkoutLineItem, subtotalCents, discountCents, finalCents int64, cpn *coupon.Coupon, currency string, req checkoutSessionRequest) (checkoutSessionResponse, error) {

@@ -48,6 +48,12 @@ func (o Organization) PayPalEnvironment() string {
 	return o.kind().Word("paypal")
 }
 
+// StripeEnvironment returns "test" or "live" — Stripe's own words for the two
+// kinds of key — derived from TestMode (one authority).
+func (o Organization) StripeEnvironment() string {
+	return o.kind().Word("stripe")
+}
+
 // A Kind is what an environment transacts with. There are two of them, and
 // every payment processor has the same two under a different name — which is
 // the whole reason to state them once here. Stripe says live and test, Square

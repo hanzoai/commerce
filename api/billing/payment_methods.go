@@ -76,8 +76,36 @@ func verifyCardWithPreAuth(ctx context.Context, reg *processor.Registry, nonce, 
 	return nil
 }
 
+// authRequired is the answer for a card whose bank wants the buyer's
+// authentication (3-D Secure): not a decline. It is a JSON object in the
+// refusal's message — the one channel every layer between here and the browser
+// carries — naming the PaymentIntent or card setup that waits and the client
+// secret Stripe.js needs to run the step. The browser runs it, then asks again
+// naming the finished intent ("pi_…") as the source, which is charged without
+// being charged twice (stripe.Provider.completeIntent).
+type authRequired struct {
+	Code         string `json:"code"`
+	ID           string `json:"id"`
+	ClientSecret string `json:"clientSecret"`
+	Message      string `json:"message"`
+}
+
+// authRequiredIn is the authentication step an error or result asks of the
+// buyer, as the message to answer with, or "".
+func authRequiredIn(result *processor.PaymentResult, err error) string {
+	var ar *processor.ActionRequired
+	if !errors.As(err, &ar) && (result == nil || !errors.As(result.Error, &ar)) {
+		return ""
+	}
+	b, _ := json.Marshal(authRequired{Code: "authentication_required", ID: ar.ID, ClientSecret: ar.ClientSecret, Message: ar.Error()})
+	return string(b)
+}
+
 // parseCardDeclineReason returns a single clean sentence explaining why the card was declined.
 func parseCardDeclineReason(result *processor.PaymentResult, err error) string {
+	if m := authRequiredIn(result, err); m != "" {
+		return m
+	}
 	if result == nil && err != nil {
 		errLower := strings.ToLower(err.Error())
 		switch {
@@ -228,21 +256,20 @@ func CreateMethod(ctx context.Context, org *organization.Organization, email str
 	// again. Use the per-org registry so Square carries the org's credentials.
 	if in.ProviderRef != "" {
 		reg := processorsForOrg(org)
-		if cp, ok := squareCustomerProcessorFrom(reg); ok {
+		if cp, ok := cardVaultFrom(reg); ok {
 			pm, created, err := saveCard(ctx, db, cp, in.CustomerId, strings.TrimSpace(email), in.ProviderRef)
 			if err != nil {
 				return nil, false, declineError{parseCardDeclineReason(&processor.PaymentResult{ErrorMessage: err.Error()}, err)}
+			}
+			// A Stripe card saved is where a Square holder's renewals move to.
+			if providerOf(pm) == processor.Stripe {
+				repointRenewals(ctx, org, in.CustomerId, pm)
 			}
 			// Caller-supplied extras land on whichever row answered.
 			if in.BillingAddress != nil {
 				pm.BillingAddress = in.BillingAddress
 			}
-			for k, v := range meta {
-				if pm.Metadata == nil {
-					pm.Metadata = map[string]interface{}{}
-				}
-				pm.Metadata[k] = v
-			}
+			pm.Metadata = mergeExtras(pm.Metadata, meta)
 			if err := pm.Update(); err != nil {
 				log.Error("Failed to update payment method extras: %v", err)
 			}
@@ -482,6 +509,31 @@ func ListPaymentMethods(c *zip.Ctx) error {
 	return c.JSON(200, methods)
 }
 
+// vaulted are the facts a saved card's row holds about the processor's vault:
+// which customer owns the card, its token, its fingerprint (which the per-card
+// trial and coupon limits count) and what was verified. They are written by the
+// vault and never by a caller: a charge is routed by them, and a limit is counted
+// by them.
+var vaulted = map[string]bool{
+	"customerId": true, "cardId": true, "verified": true, "fingerprint": true, "country": true,
+	"squareCustomerId": true, "squareCardId": true, "squareVerified": true,
+}
+
+// mergeExtras puts a caller's free-form extras onto a row's metadata: the caller's
+// own keys are replaced or added, and what the vault wrote stays as it is.
+func mergeExtras(held, extras map[string]interface{}) map[string]interface{} {
+	out := map[string]interface{}{}
+	for k, v := range held {
+		out[k] = v
+	}
+	for k, v := range extras {
+		if !vaulted[k] {
+			out[k] = v
+		}
+	}
+	return out
+}
+
 type updatePaymentMethodRequest struct {
 	BillingAddress *types.Address         `json:"billingAddress,omitempty"`
 	Metadata       map[string]interface{} `json:"metadata,omitempty"`
@@ -520,7 +572,7 @@ func UpdatePaymentMethod(c *zip.Ctx) error {
 		pm.BillingAddress = req.BillingAddress
 	}
 	if req.Metadata != nil {
-		pm.Metadata = req.Metadata
+		pm.Metadata = mergeExtras(pm.Metadata, req.Metadata)
 	}
 
 	if err := pm.Update(); err != nil {
@@ -571,20 +623,24 @@ func DetachMethod(ctx context.Context, org *organization.Organization, id, subje
 		return nil, errNoMethod
 	}
 
-	// Best-effort: detach the card-on-file from Square so its vault stays in
-	// sync. Non-fatal — the local record is still soft-deleted on failure.
-	if pm.Metadata != nil {
-		custID, _ := pm.Metadata["squareCustomerId"].(string)
-		cardID, _ := pm.Metadata["squareCardId"].(string)
-		if custID != "" && cardID != "" {
-			reg := payment.ProcessorsForOrg(org)
-			if cp, ok := squareCustomerProcessorFrom(reg); ok {
-				if err := cp.RemovePaymentMethod(ctx, custID, cardID); err != nil {
-					log.Warn("Failed to remove Square card %s for customer %s: %v", cardID, custID, err)
-				}
+	// Best-effort: detach the card-on-file from the processor it was saved with
+	// so its vault stays in sync. Non-fatal — the local record is still
+	// soft-deleted on failure.
+	if custID, cardID := customerIDOf(pm), strings.TrimSpace(pm.ProviderRef); custID != "" && cardID != "" {
+		if cp, ok := cardVaultOf(ctx, payment.ProcessorsForOrg(org), pm); ok {
+			if err := cp.RemovePaymentMethod(ctx, custID, cardID); err != nil {
+				log.Warn("Failed to remove %s card %s for customer %s: %v", providerOf(pm), cardID, custID, err)
 			}
 		}
 	}
+
+	// The card's owner: the caller's own subject, or — for staff acting on any subject
+	// — the subject the card is filed under (a legacy row names only its user).
+	owner := strings.TrimSpace(subject)
+	if privileged || owner == "" {
+		owner = firstNonEmpty(pm.CustomerId, pm.UserId)
+	}
+	moveRenewalsOff(ctx, org, owner, pm)
 
 	if err := pm.Delete(); err != nil {
 		return nil, err
@@ -732,6 +788,9 @@ func SetDefaultMethod(ctx context.Context, org *organization.Organization, id, s
 		if err := rewrite(db, was); err != nil {
 			return nil, err
 		}
+	}
+	if providerOf(pm) == processor.Stripe {
+		repointRenewals(ctx, org, subject, pm)
 	}
 	return &DefaultChange{Method: methodOf(pm), Previous: previous}, nil
 }

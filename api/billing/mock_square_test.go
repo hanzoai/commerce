@@ -22,7 +22,7 @@ func SetProcessorsForOrg(fn func(*organization.Organization) *processor.Registry
 }
 
 // MockSquareProcessor provides an in-memory Square processor implementing
-// PaymentProcessor, squareCustomerProcessor, vaulter, and finder for tests and local simulation.
+// PaymentProcessor, cardVault, vaulter, and finder for tests and local simulation.
 type MockSquareProcessor struct {
 	processor.BaseProcessor
 

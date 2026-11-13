@@ -53,13 +53,13 @@ const defaultSquareWebhookURL = "https://pay.hanzo.ai/v1/commerce/webhooks/squar
 func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 	reg := processor.NewRegistry(processor.DefaultConfig())
 
-	// Stripe
-	sk := org.StripeToken()
-	if sk != "" {
+	// Stripe — the org's own keys, else the deployment's of the org's kind
+	// (StripeKeys), exactly as Square and PayPal fall back below. The webhook
+	// secret is the deployment's and lives on the global provider.
+	if keys := StripeKeys(org); keys.SecretKey != "" {
 		reg.Register(stripe.NewProvider(stripe.Config{
-			SecretKey:      sk,
-			PublishableKey: org.Stripe.Live.PublishableKey,
-			WebhookSecret:  "", // webhook secret is global, not per-org
+			SecretKey:      keys.SecretKey,
+			PublishableKey: keys.PublishableKey,
 		}))
 	}
 

@@ -2,7 +2,6 @@ package payment
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/hanzoai/commerce/models/organization"
@@ -11,14 +10,11 @@ import (
 	"github.com/hanzoai/commerce/payment/providers/square"
 )
 
-// ensureDefaultProcessorPolicy guarantees COMMERCE_DISABLED_PROCESSORS is UNSET
-// so the default (Stripe disabled) applies. t.Setenv cannot unset.
+// ensureDefaultProcessorPolicy lets every processor take a new charge for the
+// test (COMMERCE_CHARGE_PROCESSORS=*); the deployment default is Stripe alone.
 func ensureDefaultProcessorPolicy(t *testing.T) {
 	t.Helper()
-	if v, ok := os.LookupEnv("COMMERCE_DISABLED_PROCESSORS"); ok {
-		os.Unsetenv("COMMERCE_DISABLED_PROCESSORS")
-		t.Cleanup(func() { _ = os.Setenv("COMMERCE_DISABLED_PROCESSORS", v) })
-	}
+	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
 }
 
 func orgWithSquareCreds() *organization.Organization {
@@ -108,9 +104,10 @@ func TestProcessorsForOrg_SquareEnvVarFallback_FollowsOrgMode(t *testing.T) {
 	}
 }
 
-// A hydrated Stripe token leaves Stripe REGISTERED (inert, for historical data)
-// but a USD charge selects Square and Stripe is never selectable directly.
-func TestProcessorsForOrg_StripeHydratedButSquareSelected(t *testing.T) {
+// A hydrated Stripe token registers Stripe and leaves Square the default: a USD
+// charge selects Square, a currency Square does not take selects Stripe, and a
+// caller naming Stripe reaches it.
+func TestProcessorsForOrg_StripeHydratedSquareStillDefault(t *testing.T) {
 	ensureDefaultProcessorPolicy(t)
 	t.Setenv("SQUARE_ENVIRONMENT", "production")
 
@@ -120,26 +117,105 @@ func TestProcessorsForOrg_StripeHydratedButSquareSelected(t *testing.T) {
 
 	reg := ProcessorsForOrg(org)
 
-	// Stripe IS registered (inert historical provider) ...
-	registered := false
-	for _, tp := range reg.ListTypes() {
-		if tp == processor.Stripe {
-			registered = true
-		}
+	if _, err := reg.Get(processor.Stripe); err != nil {
+		t.Fatalf("Get(Stripe) with a hydrated Stripe token: %v", err)
 	}
-	if !registered {
-		t.Fatal("Stripe should be REGISTERED (inert) when the org has a Stripe token")
-	}
-	// ... but it is disabled for direct Get ...
-	if _, err := reg.Get(processor.Stripe); err == nil {
-		t.Fatal("Get(Stripe) must error (disabled) under the default policy")
-	}
-	// ... and a USD charge selects Square, never Stripe.
 	proc, err := reg.SelectProcessor(context.Background(), processor.PaymentRequest{Amount: 500, Currency: currency.USD})
 	if err != nil {
 		t.Fatalf("SelectProcessor(USD): %v", err)
 	}
 	if proc.Type() != processor.Square {
-		t.Fatalf("USD selected %q; want square (Stripe hydrated but must not be selected)", proc.Type())
+		t.Fatalf("USD selected %q; want square (Square takes every payment it can)", proc.Type())
+	}
+	proc, err = reg.SelectProcessor(context.Background(), processor.PaymentRequest{Amount: 500, Currency: currency.CHF})
+	if err != nil {
+		t.Fatalf("SelectProcessor(CHF): %v", err)
+	}
+	if proc.Type() != processor.Stripe {
+		t.Fatalf("CHF selected %q; want stripe (Square does not take CHF)", proc.Type())
+	}
+}
+
+// With no Stripe keys of its own, an org charges the deployment's Stripe
+// account of its own kind — and never a key of the other kind.
+func TestStripeKeys_EnvFallbackByKind(t *testing.T) {
+	t.Setenv("STRIPE_SECRET_KEY", "sk_live_DEPLOY")
+	t.Setenv("STRIPE_PUBLISHABLE_KEY", "pk_live_DEPLOY")
+	t.Setenv("STRIPE_TEST_SECRET_KEY", "sk_test_DEPLOY")
+	t.Setenv("STRIPE_TEST_PUBLISHABLE_KEY", "pk_test_DEPLOY")
+
+	live := &organization.Organization{Live: true}
+	if k := StripeKeys(live); k.SecretKey != "sk_live_DEPLOY" || k.PublishableKey != "pk_live_DEPLOY" {
+		t.Fatalf("live org keys = %+v; want the deployment's live keys", k)
+	}
+	test := &organization.Organization{}
+	if k := StripeKeys(test); k.SecretKey != "sk_test_DEPLOY" || k.PublishableKey != "pk_test_DEPLOY" {
+		t.Fatalf("test org keys = %+v; want the deployment's test keys", k)
+	}
+	if pub := StripePublicConfig(test); pub.PublishableKey != "pk_test_DEPLOY" || pub.Environment != "test" || pub.Live {
+		t.Fatalf("test org public = %+v", pub)
+	}
+
+	// A secret key misfiled as the publishable key is never published.
+	t.Setenv("STRIPE_TEST_PUBLISHABLE_KEY", "sk_test_MISFILED")
+	if k := StripeKeys(test); k.PublishableKey != "" {
+		t.Fatalf("a secret key reached the publishable slot: %+v", k)
+	}
+	t.Setenv("STRIPE_TEST_PUBLISHABLE_KEY", "pk_test_DEPLOY")
+
+	// A key of the wrong kind under a name is dropped, never used.
+	t.Setenv("STRIPE_SECRET_KEY", "sk_test_MISFILED")
+	if k := StripeKeys(live); k.SecretKey != "" {
+		t.Fatalf("live org took a test key: %+v", k)
+	}
+	if reg := ProcessorsForOrg(live); func() bool { _, err := reg.Get(processor.Stripe); return err == nil }() {
+		t.Fatal("Stripe registered for a live org from a test key")
+	}
+
+	// The org's own keys win over the deployment's.
+	own := &organization.Organization{Live: true}
+	own.Stripe.Live.AccessToken = "sk_live_OWN"
+	own.Stripe.Live.PublishableKey = "pk_live_OWN"
+	if k := StripeKeys(own); k.SecretKey != "sk_live_OWN" || k.PublishableKey != "pk_live_OWN" || !StripeOwned(own) {
+		t.Fatalf("own keys = %+v owned=%v", k, StripeOwned(own))
+	}
+}
+
+// An org's OWN Stripe keys are held to the deployment's rule: a secret key of the
+// org's mode, a publishable key of that mode. A key of the other mode, or of the
+// wrong kind, is no key at all.
+func TestStripeKeys_OwnKeysAreCheckedByMode(t *testing.T) {
+	t.Setenv("STRIPE_SECRET_KEY", "")
+	t.Setenv("STRIPE_TEST_SECRET_KEY", "")
+	t.Setenv("STRIPE_PUBLISHABLE_KEY", "")
+	t.Setenv("STRIPE_TEST_PUBLISHABLE_KEY", "")
+	cases := []struct {
+		name           string
+		live           bool
+		sk, pk         string
+		wantSK, wantPK string
+	}{
+		{"live org, live keys", true, "sk_live_a", "pk_live_a", "sk_live_a", "pk_live_a"},
+		{"restricted key", true, "rk_live_a", "pk_live_a", "rk_live_a", "pk_live_a"},
+		{"live org, a test secret key", true, "sk_test_a", "pk_live_a", "", ""},
+		{"test org, a live secret key", false, "sk_live_a", "pk_test_a", "", ""},
+		{"a publishable key in the secret slot", true, "pk_live_a", "pk_live_a", "", ""},
+		{"a secret key in the publishable slot", true, "sk_live_a", "sk_live_b", "sk_live_a", ""},
+		{"live org, a test publishable key", true, "sk_live_a", "pk_test_a", "sk_live_a", ""},
+	}
+	for _, c := range cases {
+		org := &organization.Organization{Live: c.live}
+		if c.live {
+			org.Stripe.Live.AccessToken, org.Stripe.Live.PublishableKey = c.sk, c.pk
+		} else {
+			org.Stripe.Test.AccessToken, org.Stripe.Test.PublishableKey = c.sk, c.pk
+		}
+		k := StripeKeys(org)
+		if c.live && organization.Ceiling != organization.Live {
+			continue
+		}
+		if k.SecretKey != c.wantSK || k.PublishableKey != c.wantPK || OwnStripeSecret(org) != c.wantSK {
+			t.Errorf("%s: keys = %+v own = %q; want %q / %q", c.name, k, OwnStripeSecret(org), c.wantSK, c.wantPK)
+		}
 	}
 }

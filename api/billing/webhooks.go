@@ -25,9 +25,11 @@ import (
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentorg"
+	"github.com/hanzoai/commerce/models/pendingintent"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/util/nscontext"
 
@@ -130,6 +132,17 @@ func HandleProviderWebhook(c *zip.Ctx) error {
 	if isClawbackEvent(event.Type) {
 		effects = append(effects, applyClawbackEvent(ctx, db, org, event))
 	}
+	// charge.refunded names the charge; the refunds on it are read from Stripe and
+	// each taken back once, by its own id.
+	if event.Processor == processor.Stripe && event.Type == "refund.succeeded" {
+		test, _ := event.Data["stripe_test"].(bool)
+		refunds, rerr := stripeRefunds(ctx, org, stringField(event.Data, "charge"), test)
+		effects = append(effects, rerr)
+		for _, r := range refunds {
+			r.ID = event.ID
+			effects = append(effects, applyClawbackEvent(ctx, db, org, r))
+		}
+	}
 	if err := errors.Join(effects...); err != nil {
 		log.Error("webhook %s %s: an effect did not land; the delivery stays open for the provider to redeliver: %v", event.Processor, event.ID, err)
 		return jsonhttp.Fail(c, nethttp.StatusServiceUnavailable, "webhook effect did not land; redeliver", err)
@@ -185,7 +198,11 @@ func bookedOrg(ctx context.Context, event *processor.WebhookEvent) *organization
 		return nil
 	}
 	if event != nil && event.Data != nil {
-		if sb, _ := event.Data["paypal_sandbox"].(bool); sb {
+		sb, _ := event.Data["paypal_sandbox"].(bool)
+		if st, _ := event.Data["stripe_test"].(bool); st {
+			sb = true
+		}
+		if sb {
 			cp := org.In(organization.Test)
 			return &cp
 		}
@@ -299,10 +316,76 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 	}
 	if who == nil {
 		if why == "" {
-			return nil // already accounted for by an endpoint that owns the credit
+			// Already accounted for by an endpoint that owns the credit: a registered
+			// intent's row is closed with it.
+			if pi := stringField(pay, "payment_intent"); event.Processor == processor.Stripe && pi != "" {
+				settleWallet(pi)
+			}
+			return nil
 		}
 		reconcileSettlement(org, event, paymentID, why)
 		return nil
+	}
+
+	// A Stripe intent is credited by ONE claimant across the webhook, the
+	// reconciler, the browser's top-up and a sale (the claim `billing-intent`). One
+	// that finds it taken has nothing to do; one that fails to credit gives it back
+	// so the redelivery can.
+	var claim *idempotencykey.IdempotencyKey
+	if pi := stringField(pay, "payment_intent"); event.Processor == processor.Stripe && pi != "" {
+		g, taken, cerr := idempotencykey.Begin(webhookGuardDB(ctx), "billing-intent", pi)
+		if cerr != nil {
+			return fmt.Errorf("settlement %s: the intent's claim could not be taken: %w", paymentID, cerr)
+		}
+		if taken {
+			// Another holder is crediting it, or has. One still at it may yet give
+			// the claim back, and then nothing else would credit: answer a retry.
+			if g.Status != idempotencykey.StatusCompleted {
+				return fmt.Errorf("settlement %s: another path holds the intent's claim; redeliver", paymentID)
+			}
+			settleWallet(pi)
+			return nil
+		}
+		claim = g
+		// Money in hand only: a charge already refunded or disputed is not credited.
+		// The check is never skipped: a processor that cannot be asked is a retry, and
+		// it is asked with the keys of the org the intent was recorded in, in the
+		// mode it was recorded in.
+		keysOrg := org
+		if pr, found, _ := pendingintent.Get(pi); found {
+			o, oerr := intentOrg(ctx, pr.Org, pr.Test)
+			if oerr != nil {
+				_ = g.Delete()
+				return fmt.Errorf("settlement %s: %w", paymentID, oerr)
+			}
+			keysOrg = o
+		}
+		sp, serr := payment.ProcessorsForOrg(keysOrg).Existing(ctx, processor.Stripe)
+		cs, ok := sp.(interface {
+			ChargeSound(context.Context, string, int64) (bool, error)
+		})
+		if serr != nil || !ok {
+			_ = g.Delete()
+			return fmt.Errorf("settlement %s: Stripe cannot be asked about the charge: %v", paymentID, serr)
+		}
+		sound, cerr := cs.ChargeSound(ctx, paymentID, int64(amount))
+		if cerr != nil {
+			_ = g.Delete()
+			return fmt.Errorf("settlement %s: the charge could not be read: %w", paymentID, cerr)
+		}
+		if !sound {
+			// Taken money that is refunded in part, disputed or short is not credited,
+			// and is said loudly: someone must place what is left of it.
+			_ = idempotencykey.Complete(g, "unsound")
+			settleWallet(pi)
+			log.Error("RECONCILE: charge %s (intent %s, %d %s) was taken and is refunded, disputed or short, so nothing was credited; place what remains of it by hand", paymentID, pi, amount, cur)
+			return nil
+		}
+	}
+	release := func() {
+		if claim != nil {
+			_ = claim.Delete()
+		}
 	}
 
 	// THE SPENDABLE LEDGER FIRST, the local receipt second, and that order is the
@@ -329,8 +412,14 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 			// them succeeds this is a payment that settled and a balance that did not.
 			log.Error("RECONCILE: settlement %s (%s %d %s) settled and the spendable balance was NOT credited: org=%s subject=%s test=%v: %v — retryable: the provider redelivers and the credit is keyed on the payment id",
 				paymentID, event.Type, amount, cur, who.org, who.subject, who.test, err)
+			release()
 			return fmt.Errorf("settlement %s: credit: %w", paymentID, err)
 		}
+	}
+
+	// The receipt is written in the books of the org the money was credited in.
+	if who.org != strings.ToLower(strings.TrimSpace(org.Name)) {
+		db = datastore.New(nscontext.WithNamespace(ctx, who.org))
 	}
 
 	// The local receipt: commerce's own record of the same payment, at the SAME
@@ -360,10 +449,30 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 	if err := trans.Create(); err != nil {
 		log.Warn("settlement %s: failed to write the local receipt: %v", paymentID, err)
 	}
-	if err := paymentorg.Put(paymentID, org.Name, who.subject, "", 0, who.test); err != nil {
+	if err := paymentorg.Put(paymentID, who.org, who.subject, "", 0, who.test); err != nil {
 		log.Warn("settlement %s: the org index was not written: %v", paymentID, err)
 	}
+	if claim != nil {
+		_ = idempotencykey.Complete(claim, paymentID)
+	}
+	if pi := stringField(pay, "payment_intent"); pi != "" {
+		settleWallet(pi)
+	}
 	return nil
+}
+
+// settleWallet closes a pending intent that credited a wallet. It NEVER closes a
+// plan's or an invoice's: those are finished by their own sale or payment, or
+// refunded by the reconciler, and a webhook that closed one would leave a charge
+// with no plan, no refund and no alarm.
+func settleWallet(pi string) {
+	p, found, err := pendingintent.Get(pi)
+	if err != nil || !found || p.Purpose == pendingintent.Sale || p.Purpose == pendingintent.Invoice {
+		return
+	}
+	if _, err := pendingintent.Settle(pi); err != nil {
+		log.Warn("pending intent %s was not marked settled: %v", pi, err)
+	}
 }
 
 // destination is WHERE a settled payment's money belongs: the ledger, the account
@@ -454,6 +563,38 @@ func settlementDestination(db *datastore.Datastore, org *organization.Organizati
 		return nil, "", fmt.Errorf("the invoices could not be read: %w", err)
 	} else if found {
 		return nil, "", nil
+	}
+
+	// A PaymentIntent pre-registered for its buyer before their bank's step
+	// (pendingintent) says whose it is and what for, whether or not the buyer's
+	// browser ever came back. A sale's intent is finished by its sale, and a
+	// reconciler refunds one that never is; a wallet's is credited here.
+	if event.Processor == processor.Stripe {
+		if pi := stringField(pay, "payment_intent"); pi != "" {
+			p, found, err := pendingintent.Get(pi)
+			if err != nil {
+				return nil, "", fmt.Errorf("the pending intents could not be read: %w", err)
+			}
+			if found {
+				amount, cur := settlementAmount(pay)
+				switch {
+				case p.Purpose == pendingintent.Sale || p.Purpose == pendingintent.Invoice:
+					return nil, "", nil
+				case int64(amount) != p.Cents || !strings.EqualFold(string(cur), p.Currency):
+					return nil, fmt.Sprintf("intent %s was registered for %d %s and settled %d %s", pi, p.Cents, p.Currency, amount, cur), nil
+				}
+				// The receipt may already be in the PAYER's org, whose books are not the
+				// event's org's: asked of both, or a payment the browser credited is
+				// credited again.
+				payer := transaction.New(datastore.New(nscontext.WithNamespace(db.Context, strings.ToLower(strings.TrimSpace(p.Org)))))
+				if dup, derr := payer.Query().Filter("SourceKind=", kind).Filter("SourceId=", paymentID).Get(); derr != nil {
+					return nil, "", fmt.Errorf("the payer's ledger could not be read: %w", derr)
+				} else if dup {
+					return nil, "", nil
+				}
+				return &destination{org: strings.ToLower(strings.TrimSpace(p.Org)), subject: strings.ToLower(strings.TrimSpace(p.Subject)), test: p.Test}, "", nil
+			}
+		}
 	}
 
 	// Only a subscription lifecycle delivery carries a subscription to resolve. A
@@ -722,6 +863,9 @@ func tryValidateWebhook(ctx context.Context, providerHint string, payload []byte
 	}
 	if evt != nil && evt.Processor == processor.PayPal {
 		normalizePayPalWebhookEvent(evt)
+	}
+	if evt != nil && evt.Processor == processor.Stripe {
+		normalizeStripeWebhookEvent(evt)
 	}
 	return evt, nil
 }
@@ -1055,6 +1199,9 @@ func isClawbackEvent(eventType string) bool {
 func applyClawbackEvent(ctx context.Context, booked *datastore.Datastore, org *organization.Organization, event *processor.WebhookEvent) error {
 	if event.Data == nil {
 		return nil
+	}
+	if excess, _ := event.Data[excessRefund].(bool); excess {
+		return nil // the invoice is paid in full: this only returned an overpayment
 	}
 	obj := unwrapObject(event.Data, "refund")
 	paymentID := stringField(obj, "payment_id")

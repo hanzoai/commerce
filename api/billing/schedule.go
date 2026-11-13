@@ -32,7 +32,6 @@ import (
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/payment/processor"
 )
 
 // prepaidSource reports whether a sale's source names prepaid money rather than a
@@ -119,7 +118,7 @@ func scheduleSale(ctx context.Context, db *datastore.Datastore, org *organizatio
 		Test:                 org.TestMode(),
 		priced:               t.lines,
 		starts:               starts,
-		provider:             string(processor.Square),
+		provider:             string(providerOf(pm)),
 		promoPercent:         t.promoPercent,
 		promoName:            t.promoName,
 		customerCents:        t.customer,

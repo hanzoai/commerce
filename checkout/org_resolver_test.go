@@ -2,6 +2,7 @@ package checkout
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/zap-proto/zip"
@@ -68,6 +69,9 @@ func TestBrandForHost(t *testing.T) {
 // we want here: a host with no org record behind it must never have the pay SPA
 // tokenizing against a production Square application.
 func TestOrgResolver_ResolvesOrgAsTenant(t *testing.T) {
+	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
+	t.Setenv("STRIPE_TEST_SECRET_KEY", "")
+	t.Setenv("STRIPE_TEST_PUBLISHABLE_KEY", "")
 	t.Setenv("SQUARE_ENVIRONMENT", "production")     // hostile: ignored
 	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-PROD") // hostile: a sandbox org never reads it
 	t.Setenv("SQUARE_LOCATION_ID", "PRODLOC")        // hostile
@@ -92,7 +96,8 @@ func TestOrgResolver_ResolvesOrgAsTenant(t *testing.T) {
 	if ten.Square.Environment != "sandbox" {
 		t.Errorf("org Square env = %q, want sandbox (synthetic org is not Live ⇒ fail closed)", ten.Square.Environment)
 	}
-	// Square must be an enabled provider so the card method surfaces; Stripe never.
+	// Square must be an enabled provider so the card method surfaces. The
+	// deployment holds no Stripe keys here, so Stripe is not offered at all.
 	var hasSquare, hasStripe bool
 	for _, p := range ten.Providers {
 		if p.Name == "square" && p.Enabled {
@@ -106,7 +111,7 @@ func TestOrgResolver_ResolvesOrgAsTenant(t *testing.T) {
 		t.Errorf("org providers %+v missing enabled square", ten.Providers)
 	}
 	if hasStripe {
-		t.Errorf("org providers %+v must not surface stripe", ten.Providers)
+		t.Errorf("org providers %+v surface stripe with no Stripe keys configured", ten.Providers)
 	}
 }
 
@@ -123,6 +128,7 @@ func TestOrgResolver_MalformedHostRejected(t *testing.T) {
 // The public org JSON built from an org resolution must carry the Square
 // block and enabled square provider, and never leak a secret.
 func TestOrgResolver_PublicViewCarriesSquare(t *testing.T) {
+	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
 	t.Setenv("SQUARE_ENVIRONMENT", "production")     // hostile: ignored, org decides
 	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-PROD") // hostile: a sandbox org never reads it
 	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "sandbox-sq0idb-PUBVIEW")
@@ -200,12 +206,12 @@ func TestOrgResolver_ReturnAllowlistCarriesLuxTel(t *testing.T) {
 }
 
 // enabledProviders honors the deploy-wide disabled policy: Square is off only
-// when explicitly disabled; crypto + wire are always present; Stripe never is.
+// when explicitly disabled; crypto + wire are always present.
 func TestEnabledProviders_SquareOffWhenDisabled(t *testing.T) {
-	t.Setenv("COMMERCE_DISABLED_PROCESSORS", "square")
-	for _, p := range enabledProviders(true) {
+	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "stripe")
+	for _, p := range enabledProviders(true, false, false) {
 		if p.Name == "square" {
-			t.Errorf("square surfaced despite COMMERCE_DISABLED_PROCESSORS=square")
+			t.Errorf("square surfaced despite COMMERCE_CHARGE_PROCESSORS=stripe")
 		}
 	}
 }
@@ -265,6 +271,7 @@ func TestTenantPayloadCarriesTheBrandLogo(t *testing.T) {
 // with no account of its own publishes no card: no Square block and no square
 // provider, so its pay host never tokenizes against another brand's merchant.
 func TestOrgResolver_SquareIsTheBrandsOwn(t *testing.T) {
+	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
 	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "sandbox-sq0idb-DEPLOY")
 	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "LOCDEPLOY")
 
@@ -357,8 +364,12 @@ func TestReturnHosts_EachConsoleIsItsBrands(t *testing.T) {
 }
 
 func TestOrgJSON_PayPalAlongsideSquareIn8CountriesAndReplacesElsewhere(t *testing.T) {
+	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
 	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "sandbox-sq0idb-TEST")
 	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "LOCTEST")
+	// Square's card form is offered only where commerce can charge Square, which
+	// takes its access token as well as the public ids.
+	t.Setenv("SQUARE_SANDBOX_ACCESS_TOKEN", "sandbox-sq-token")
 	t.Setenv("PAYPAL_SANDBOX_CLIENT_ID", "sb-paypal-client-id")
 
 	r := NewOrgResolver(nil)
@@ -422,5 +433,119 @@ func TestOrgJSON_PayPalAlongsideSquareIn8CountriesAndReplacesElsewhere(t *testin
 	pv := run("US", "DE")
 	if hasProvider(pv, "square") || !hasProvider(pv, "paypal") || pv.Country != "DE" {
 		t.Fatalf("query override failed: country=%q providers=%+v", pv.Country, pv.Providers)
+	}
+}
+
+// The checkout's public config is the selection rule's answer for the caller's
+// country: Square's card form wherever Square takes the currency, Stripe's where
+// it does not, each with its public config only when it is offered.
+func TestOrgJSON_StripeWhereSquareCannot(t *testing.T) {
+	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
+	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "sandbox-sq0idb-TEST")
+	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "LOCTEST")
+	t.Setenv("SQUARE_SANDBOX_ACCESS_TOKEN", "sandbox-sq-token")
+	t.Setenv("STRIPE_TEST_SECRET_KEY", "sk_test_checkout")
+	t.Setenv("STRIPE_TEST_PUBLISHABLE_KEY", "pk_test_checkout")
+	t.Setenv("PAYPAL_SANDBOX_CLIENT_ID", "sb-paypal-client-id")
+	t.Setenv("PAYPAL_SANDBOX_CLIENT_SECRET", "sb-paypal-secret")
+
+	r := NewOrgResolver(nil)
+	view := func(host, country string) (publicView, string) {
+		t.Helper()
+		app := zip.New(zip.Config{DisableStartupMessage: true})
+		c := app.TestCtx("GET", "/v1/commerce/org")
+		c.Fiber().Request().URI().SetHost(host)
+		if country != "" {
+			c.Fiber().Request().Header.Set("CF-IPCountry", country)
+		}
+		if err := OrgJSON(r)(c); err != nil {
+			t.Fatalf("OrgJSON: %v", err)
+		}
+		body := string(c.Fiber().Response().Body())
+		var pv publicView
+		if err := json.Unmarshal([]byte(body), &pv); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		return pv, body
+	}
+	on := func(pv publicView, name string) bool {
+		for _, p := range pv.Providers {
+			if p.Name == name && p.Enabled {
+				return true
+			}
+		}
+		return false
+	}
+
+	// US: USD on Square's form; Stripe offered only for what Square cannot take.
+	us, body := view("pay.hanzo.ai", "US")
+	if us.Cards["usd"] != "square" || us.Cards["chf"] != "stripe" || !on(us, "square") || !on(us, "stripe") || !on(us, "paypal") {
+		t.Fatalf("US: cards=%v providers=%+v", us.Cards, us.Providers)
+	}
+	if us.Square.ApplicationID == "" || us.Stripe.PublishableKey != "pk_test_checkout" || us.Stripe.Environment != "test" {
+		t.Fatalf("US: square=%+v stripe=%+v", us.Square, us.Stripe)
+	}
+	if strings.Contains(body, "sk_test_checkout") || strings.Contains(body, "sandbox-sq-token") || strings.Contains(body, "sb-paypal-secret") {
+		t.Fatalf("US: a secret reached the public config: %s", body)
+	}
+
+	// DE: Square does not take DE, so every card currency is Stripe's form, and
+	// Square and its config are gone. PayPal operates in DE.
+	de, _ := view("pay.hanzo.ai", "DE")
+	if de.Cards["usd"] != "stripe" || de.Cards["eur"] != "stripe" || on(de, "square") || !on(de, "stripe") || !on(de, "paypal") {
+		t.Fatalf("DE: cards=%v providers=%+v", de.Cards, de.Providers)
+	}
+	if de.Square.ApplicationID != "" || de.Stripe.PublishableKey != "pk_test_checkout" {
+		t.Fatalf("DE: square=%+v stripe=%+v", de.Square, de.Stripe)
+	}
+
+	// IR: sanctioned — no card form at all, and PayPal does not operate there.
+	ir, _ := view("pay.hanzo.ai", "IR")
+	if len(ir.Cards) != 0 || on(ir, "stripe") || on(ir, "square") || on(ir, "paypal") || ir.PayPal.ClientID != "" {
+		t.Fatalf("IR: cards=%v providers=%+v paypal=%+v", ir.Cards, ir.Providers, ir.PayPal)
+	}
+
+	// A brand with no Stripe account of its own is never offered the
+	// deployment's Stripe — nor its Square.
+	lux, _ := view("pay.lux.network", "DE")
+	if len(lux.Cards) != 0 || on(lux, "stripe") || lux.Stripe.PublishableKey != "" {
+		t.Fatalf("lux: cards=%v providers=%+v stripe=%+v", lux.Cards, lux.Providers, lux.Stripe)
+	}
+
+	// With Stripe denied by the operator, DE has no card form at all.
+	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "square")
+	denied, _ := view("pay.hanzo.ai", "DE")
+	if len(denied.Cards) != 0 || on(denied, "stripe") || on(denied, "square") {
+		t.Fatalf("stripe denied, DE: cards=%v providers=%+v", denied.Cards, denied.Providers)
+	}
+}
+
+// The deployment default offers Stripe alone: no Square, PayPal, crypto or wire,
+// however configured.
+func TestOrgJSON_DefaultPolicyIsStripeOnly(t *testing.T) {
+	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "")
+	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "sandbox-sq0idb-TEST")
+	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "LOCTEST")
+	t.Setenv("SQUARE_SANDBOX_ACCESS_TOKEN", "sandbox-sq-token")
+	t.Setenv("STRIPE_TEST_SECRET_KEY", "sk_test_checkout")
+	t.Setenv("STRIPE_TEST_PUBLISHABLE_KEY", "pk_test_checkout")
+	t.Setenv("PAYPAL_SANDBOX_CLIENT_ID", "sb-paypal-client-id")
+	t.Setenv("PAYPAL_SANDBOX_CLIENT_SECRET", "sb-paypal-secret")
+
+	ten, err := NewOrgResolver(nil).Resolve("pay.hanzo.ai")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, country := range []string{"US", "DE", ""} {
+		pv := toPublicView(applyCountryPolicy(ten, country))
+		names := []string{}
+		for _, p := range pv.Providers {
+			if p.Enabled {
+				names = append(names, p.Name)
+			}
+		}
+		if len(names) != 1 || names[0] != "stripe" || pv.Cards["usd"] != "stripe" || pv.Square.ApplicationID != "" || pv.PayPal.ClientID != "" {
+			t.Fatalf("%q: providers=%v cards=%v square=%+v paypal=%+v; want Stripe alone", country, names, pv.Cards, pv.Square, pv.PayPal)
+		}
 	}
 }

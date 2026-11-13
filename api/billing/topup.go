@@ -19,6 +19,7 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
 	"github.com/hanzoai/commerce/models/paymentorg"
+	"github.com/hanzoai/commerce/models/pendingintent"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -127,7 +128,7 @@ type topupRequest struct {
 // It takes a context and the collector rather than a request: the cron reaching
 // it has neither, and a primitive that needed one could only ever move money for
 // somebody holding a browser.
-func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, pm *paymentmethod.PaymentMethod, amountCents int64, cur currency.Type, userId, idemKey, description string) (receipt, error) {
+func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, pm *paymentmethod.PaymentMethod, amountCents int64, cur currency.Type, userId, idemKey, description string, buyerPresent bool) (receipt, error) {
 	// Server-authoritative amount bounds, enforced HERE so both callers inherit
 	// them: the HTTP top-up (where a scripted request bypasses the browser cap)
 	// and the auto-recharge cron (where a mis-set config would otherwise charge a
@@ -169,41 +170,29 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 		}
 	}
 
-	squareCustomerID := pm.CustomerId
-	if pm.Metadata != nil {
-		if v, ok := pm.Metadata["squareCustomerId"].(string); ok && v != "" {
-			squareCustomerID = v
-		}
-	}
-
-	chargeReq := processor.PaymentRequest{
-		Token:      pm.ProviderRef,
-		Amount:     currency.Cents(amountCents),
-		Currency:   cur,
-		CustomerID: squareCustomerID,
-		// The gateway de-dups on this key, derived from the SAME stable guard key.
-		// It is the backstop that survives a guard-store outage or two racing
-		// submits, because it is enforced where the money actually moves.
-		IdempotencyKey: gatewayKey("charge", userId, idemKey),
-		Description:    description,
-	}
-
-	// The global registry holds empty singletons (Square is registered
-	// unconfigured at init), so charges must go through the org-scoped registry.
-	//
-	// Via the shared processorsForOrg seam (production: payment.ProcessorsForOrg)
-	// — the SAME one SubscribeWithCard and TopupWithToken use. Reaching for
-	// payment.ProcessorsForOrg directly is what made this primitive untestable:
-	// no test could substitute a processor, so the saved-card top-up AND the
-	// off-session auto-recharge cron both ran with zero coverage.
+	// The org-scoped registry (processorsForOrg, the seam SubscribeWithCard and
+	// TopupWithToken share): the global one holds empty singletons. The charge is
+	// the card's own processor's (chargeSavedCard), whatever the deployment's
+	// policy for NEW cards.
 	reg := processorsForOrg(org)
-	proc, err := reg.SelectProcessor(ctx, chargeReq)
-	if err != nil {
+	// The gateway de-dups on this key, derived from the SAME stable guard key. It
+	// is the backstop that survives a guard-store outage or two racing submits,
+	// because it is enforced where the money actually moves.
+	result, err := chargeSavedCard(ctx, reg, pm, amountCents, cur, gatewayKey("charge", userId, idemKey), description, buyerPresent)
+	// A card sent to its bank is recorded for its buyer first: whoever finishes the
+	// step — in this request's browser or later — the webhook credits it.
+	purpose := pendingintent.Topup
+	if !buyerPresent {
+		purpose = pendingintent.Reload
+	}
+	if rerr := registerAction(result, err, org, userId, purpose, amountCents, cur); rerr != nil {
+		abandon()
+		return receipt{}, rerr
+	}
+	if err != nil && errors.Is(err, errNoProcessorFor) {
 		abandon()
 		return receipt{}, fmt.Errorf("%w: %v", errNoProcessor, err)
 	}
-
-	result, err := proc.Charge(ctx, chargeReq)
 	if err != nil {
 		abandon()
 		return receipt{}, fmt.Errorf("charge failed: %w", err)
@@ -216,8 +205,9 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 		}
 		return receipt{}, errors.New(msg)
 	}
+	via := providerOf(pm)
 
-	id, balanceCents, err := fund(ctx, ev, org, db, userId, amountCents, cur, proc.Type(), result.ProcessorRef)
+	id, balanceCents, err := fund(ctx, ev, org, db, userId, amountCents, cur, via, result.ProcessorRef)
 	if err != nil {
 		return receipt{}, err
 	}
@@ -463,7 +453,7 @@ func TopupCard(ctx context.Context, org *organization.Organization, in TopupCard
 		desc = fmt.Sprintf("Top-up %d %s for %s", in.AmountCents, cur, in.Subject)
 	}
 
-	r, err := chargeAndCredit(ctx, in.Events, org, db, pm, in.AmountCents, cur, in.Subject, idemKey, desc)
+	r, err := chargeAndCredit(ctx, in.Events, org, db, pm, in.AmountCents, cur, in.Subject, idemKey, desc, true)
 	if err != nil {
 		return nil, err
 	}

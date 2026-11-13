@@ -51,6 +51,7 @@ import (
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentorg"
+	"github.com/hanzoai/commerce/models/pendingintent"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -183,7 +184,12 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 	if idemKey == "" {
 		idemKey = windowKey("amount:" + fmt.Sprint(in.AmountCents) + ":cur:" + string(cur))
 	}
-	squareKey := gatewayKey("topup", in.Subject, idemKey)
+	// The gateway key names the attempt's source too. A processor saves the
+	// first answer under a key — a decline, a 3-D Secure step — and replays it to
+	// any later request under the same key; a buyer who retries with another card
+	// for the same amount would be told the first card was declined again. The
+	// guard above is what keeps one ATTEMPT from charging twice.
+	squareKey := gatewayKey("topup", in.Subject, idemKey+":"+tokenTag(in.SourceID))
 
 	rec, replay, gerr := idemBegin(db, "billing-topup:"+in.Subject, idemKey)
 	if gerr != nil {
@@ -219,6 +225,8 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		Currency:       cur,
 		IdempotencyKey: squareKey,
 		Description:    fmt.Sprintf("Top-up %d %s for org %s", in.AmountCents, cur, in.Subject),
+		// An intent the buyer authenticated is bound to the account it was made for.
+		Metadata: map[string]interface{}{"hanzo_subject": in.Subject},
 	}
 
 	// The per-org processor registry. The global registry holds the webhook
@@ -242,8 +250,68 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		return nil, fault(422, "no payment processor available", err)
 	}
 
+	// A PaymentIntent the buyer authenticated is a bearer token for ITS payment:
+	// credited once, whatever key the request carries. The guard is permanent for
+	// a payment that settles and released when it does not.
+	releaseIntent := func() {}
+	var intentGuard *idempotencykey.IdempotencyKey
+	ownsIntent := false
+	if strings.HasPrefix(in.SourceID, "pi_") {
+		// Only an intent commerce registered for a wallet — a top-up's or a reload's,
+		// for this buyer — is a top-up. A plan's pays for a plan; one commerce never
+		// sent to the buyer's bank is not ours to credit.
+		if reg, found, rerr := pendingintent.Get(in.SourceID); rerr != nil {
+			abandon()
+			return nil, fault(503, "billing is temporarily unavailable; please retry", rerr)
+		} else if !found || (reg.Purpose != pendingintent.Topup && reg.Purpose != pendingintent.Reload) || !strings.EqualFold(reg.Subject, in.Subject) {
+			abandon()
+			return nil, fault(422, "this payment was not made for a top-up of this account", nil)
+		}
+		// ONE claim per intent, in the system namespace, shared by the webhook, the
+		// reconciler, a top-up and a sale: whoever holds it credits. A claim that is
+		// not ours leaves us the READ-ONLY verification below and nothing else.
+		ig, replayed, ierr := idemBegin(webhookGuardDB(ctx), "billing-intent", in.SourceID)
+		if ierr != nil {
+			abandon()
+			return nil, fault(503, "billing is temporarily unavailable; please retry", ierr)
+		}
+		intentGuard, ownsIntent = ig, !replayed
+		if ownsIntent {
+			releaseIntent = func() {
+				if ig != nil {
+					_ = ig.Delete()
+				}
+			}
+		}
+	}
+
+	// Currencies: the host credits USD balances only; a charge in another currency
+	// would be taken and stranded.
+	if proc.Type() == processor.Stripe && cur != currency.USD {
+		releaseIntent()
+		abandon()
+		return nil, fault(422, "top-ups are in US dollars", nil)
+	}
+
 	result, err := proc.Charge(ctx, chargeReq)
+	// A Stripe call that got NO answer (a dropped connection, a timeout) may have
+	// charged the card. The attempt's guard stays held, so a retry — whose new card
+	// token would be a new Stripe key — is refused rather than charged twice, and
+	// the buyer is told the payment is unconfirmed, never that the card was declined.
+	if err != nil && proc.Type() == processor.Stripe && !answered(err) {
+		log.Error("RECONCILE: Stripe top-up for %s got no answer; the guard stays held: %v", in.Subject, err)
+		return nil, fault(503, "the payment could not be confirmed and may have gone through; check your balance before trying again", err)
+	}
+	// A card sent to its bank for authentication: the intent is recorded with its
+	// buyer and amount BEFORE the answer that sends them, so it is credited whether
+	// or not their browser comes back.
+	if rerr := registerAction(result, err, org, in.Subject, pendingintent.Topup, in.AmountCents, cur); rerr != nil {
+		releaseIntent()
+		abandon()
+		return nil, fault(429, rerr.Error(), rerr)
+	}
 	if err != nil || (result != nil && !result.Success) {
+		releaseIntent()
 		abandon()
 		log.Error("Charge failed for token topup (org=%s): %v", in.Subject, err)
 		declineMsg := parseCardDeclineReason(result, err)
@@ -251,6 +319,39 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 			declineMsg = "charge declined"
 		}
 		return nil, fault(402, declineMsg, err)
+	}
+
+	// An intent the buyer finished may already have been credited — by its webhook,
+	// which arrives as soon as their bank confirms, before this request. Credit
+	// once: answer the credit that is there.
+	if strings.HasPrefix(in.SourceID, "pi_") {
+		if _, found, perr := paymentorg.Get(result.ProcessorRef); perr == nil && found {
+			ownedHere := ownsIntent
+			var bal currency.Cents
+			if datas, derr := util.GetTransactionsByCurrency(org.Namespaced(ctx), in.Subject, "iam-user", cur, org.TestMode()); derr == nil {
+				if data, ok := datas.Data[cur]; ok {
+					bal = data.Balance
+				}
+			}
+			// The credit's own receipt: the row stamped with the charge. None yet means
+			// the claim holder is mid-credit.
+			stamped := transaction.New(db)
+			if sfound, serr := stamped.Query().Filter("SourceKind=", chargeSourceKind(proc.Type())).Filter("SourceId=", result.ProcessorRef).Get(); serr != nil || !sfound {
+				abandon()
+				return nil, fault(409, "this payment is being applied; check your balance in a moment", nil)
+			}
+			if ownedHere && intentGuard != nil {
+				_ = idempotencykey.Complete(intentGuard, result.ProcessorRef)
+			}
+			settleWallet(in.SourceID)
+			return &TakePaymentOut{TransactionID: stamped.Id(), BalanceCents: int64(bal), Status: "ok", ProcessorRef: result.ProcessorRef, Test: org.TestMode()}, nil
+		}
+		// Credited by nobody yet, and the claim is another's: that holder is
+		// crediting it now. Not ours to credit a second time.
+		if !ownsIntent {
+			abandon()
+			return nil, fault(409, "this payment is being applied; check your balance in a moment", nil)
+		}
 	}
 
 	// Credit the canonical balance for the subject the caller's endpoint bounded.
@@ -320,6 +421,14 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		if body, mErr := encodeTakePaymentOut(out); mErr == nil {
 			_ = idempotencykey.Complete(rec, body)
 		}
+	}
+	// The intent is spent for good: completed, so it is never claimed again as a
+	// crashed attempt.
+	if intentGuard != nil && ownsIntent {
+		_ = idempotencykey.Complete(intentGuard, trans.Id())
+	}
+	if intentGuard != nil {
+		settleWallet(in.SourceID)
 	}
 	return out, nil
 }

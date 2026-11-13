@@ -54,34 +54,10 @@ func PayPalOwned(org *organization.Organization) bool {
 	return strings.TrimSpace(pp.ClientId) != ""
 }
 
-// IsSquareCountry reports whether code (ISO 3166-1 alpha-2) is one of the 8
-// countries where Square card processing is enabled:
-//
-//   - US (United States)
-//   - CA (Canada)
-//   - AU (Australia)
-//   - JP (Japan)
-//   - GB / UK (United Kingdom)
-//   - IE (Republic of Ireland)
-//   - FR (France)
-//   - ES (Spain)
-//
-// Inside these 8 countries (or when no country code is present), PayPal runs
-// alongside Square. In all other countries, checkout replaces Square with
-// PayPal (PayPal Wallet + PayPal Debit/Credit Card funding).
-func IsSquareCountry(code string) bool {
-	switch strings.ToUpper(strings.TrimSpace(code)) {
-	case "US", "CA", "AU", "JP", "GB", "UK", "IE", "FR", "ES":
-		return true
-	default:
-		return false
-	}
-}
-
 // IsPayPalCountry reports whether PayPal operates in the given ISO 3166-1
 // alpha-2 country/region code. PayPal operates in ~200 countries/regions; in
 // the unsupported or OFAC-restricted jurisdictions listed below, checkout
-// disables PayPal as well as Square so customers fall back to Crypto (or Wire).
+// disables PayPal so customers fall back to a card form, Crypto (or Wire).
 func IsPayPalCountry(code string) bool {
 	c := strings.ToUpper(strings.TrimSpace(code))
 	if c == "" {
