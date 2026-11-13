@@ -396,7 +396,7 @@ func metaStr(pm *paymentmethod.PaymentMethod, key string) string {
 // from then on the Stripe card does. A subscription paid some other way (credit,
 // wire, an external record) is left alone.
 func repointRenewals(ctx context.Context, org *organization.Organization, subject string, to *paymentmethod.PaymentMethod) {
-	if org == nil || to == nil {
+	if org == nil || to == nil || strings.TrimSpace(subject) == "" {
 		return
 	}
 	subs, err := ListSubscriptions(ctx, org, subject, "")
@@ -431,6 +431,11 @@ func repointRenewals(ctx context.Context, org *organization.Organization, subjec
 // leaves them: the renewal fails and the subscription goes past due, as it would
 // for a card that declines.
 func moveRenewalsOff(ctx context.Context, org *organization.Organization, subject string, gone *paymentmethod.PaymentMethod) {
+	// No subject names no subscriptions: an empty one would list every subject's and
+	// could hand this card's renewals to a stranger's.
+	if strings.TrimSpace(subject) == "" {
+		return
+	}
 	subs, err := ListSubscriptions(ctx, org, subject, "")
 	if err != nil {
 		return
@@ -462,6 +467,9 @@ func moveRenewalsOff(ctx context.Context, org *organization.Organization, subjec
 // heirOf is the card a removed card's renewals move to: of subject's other saved
 // cards, a default Stripe card, else a default card, else a Stripe card, else any.
 func heirOf(db *datastore.Datastore, subject, gone string) *paymentmethod.PaymentMethod {
+	if strings.TrimSpace(subject) == "" {
+		return nil
+	}
 	var best *paymentmethod.PaymentMethod
 	bestScore := 0
 	iter := paymentmethod.Query(db).Ancestor(db.NewKey("synckey", "", 1, nil)).Filter("CustomerId=", subject).Run()

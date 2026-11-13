@@ -634,7 +634,13 @@ func DetachMethod(ctx context.Context, org *organization.Organization, id, subje
 		}
 	}
 
-	moveRenewalsOff(ctx, org, pm.CustomerId, pm)
+	// The card's owner: the caller's own subject, or — for staff acting on any subject
+	// — the subject the card is filed under (a legacy row names only its user).
+	owner := strings.TrimSpace(subject)
+	if privileged || owner == "" {
+		owner = firstNonEmpty(pm.CustomerId, pm.UserId)
+	}
+	moveRenewalsOff(ctx, org, owner, pm)
 
 	if err := pm.Delete(); err != nil {
 		return nil, err

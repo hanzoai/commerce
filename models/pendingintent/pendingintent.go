@@ -161,6 +161,26 @@ func Failed(id, why string) (int, error) {
 	return 0, nil
 }
 
+// Wait defers id's next look until `until`, without counting a failure: a row that
+// is only waiting on its buyer.
+func Wait(id string, until time.Time) error {
+	for range mixin.Swaps {
+		i, found, err := Get(id)
+		if err != nil || !found {
+			return err
+		}
+		i.Next = until
+		ok, err := i.Swap()
+		if err != nil {
+			return err
+		}
+		if ok {
+			return nil
+		}
+	}
+	return nil
+}
+
 // OpenFor is the unsettled intent that pays ref for subject, or nil.
 func OpenFor(subject, ref string) (*Intent, error) {
 	rows := make([]*Intent, 0)

@@ -38,7 +38,9 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/creditledger"
+	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
+	billinginvoice "github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
@@ -987,5 +989,180 @@ func TestLiveStripe_ReconcilerIsFairAndBacksOff(t *testing.T) {
 	reconcileAll(*l.ctx, []*pendingintent.Intent{mustIntent(t, ghosts[1].Id())})
 	if !mustIntent(t, ghosts[1].Id()).Done {
 		t.Fatal("a row that failed giveUp sweeps was not closed")
+	}
+}
+
+// pastDue is a plan bought with a good Stripe card, renewed onto a card that declines
+// off-session so the period's invoice stays open and the subscription goes past due,
+// with the buyer's bank step FINISHED for that invoice: a succeeded PaymentIntent on
+// the good card for the amount owed, recorded for the invoice.
+type pastDue struct {
+	sale     *Sale
+	invoice  *billinginvoice.BillingInvoice
+	good     *paymentmethod.PaymentMethod
+	customer string
+	intent   string
+	charge   string
+}
+
+func (l *liveStripe) pastDue() *pastDue {
+	t := l.t
+	t.Helper()
+	db := datastore.New(l.org.Namespaced(*l.ctx))
+	sale, err := Subscribe(*l.ctx, l.org, SubscribeIn{
+		SourceID: "pm_card_visa", PlanID: "pro-3x", Subject: l.subject, Email: "buyer@example.com",
+		Interval: types.Monthly, IdempotencyKey: l.run + "-pastdue-plan",
+	})
+	if err != nil {
+		t.Fatalf("plan purchase: %v", err)
+	}
+	good := paymentmethod.New(db)
+	if err := good.GetById(sale.PaymentMethodID); err != nil {
+		t.Fatal(err)
+	}
+	// A card that attaches and declines when charged, and the subscription renews on it.
+	bad, _, err := saveCard(context.Background(), db, mustVault(t, l), l.subject, "buyer@example.com", "pm_card_chargeCustomerFail")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pointAt := func(pm *paymentmethod.PaymentMethod) {
+		s := reload(t, db, sale.SubscriptionID)
+		s.DefaultPaymentMethod = pm.Id()
+		if err := s.Update(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pointAt(bad)
+	s := reload(t, db, sale.SubscriptionID)
+	shift := time.Until(s.PeriodEnd) + time.Hour
+	s.PeriodStart, s.PeriodEnd = s.PeriodStart.Add(-shift), s.PeriodEnd.Add(-shift)
+	if err := s.Update(); err != nil {
+		t.Fatal(err)
+	}
+	if out := renewDue(*l.ctx, l.org, ""); len(out) != 1 || out[0].Success {
+		t.Fatalf("the renewal on the declining card = %+v; want one failure", out)
+	}
+	inv := billinginvoice.New(db)
+	if found, err := inv.Query().Filter("SubscriptionId=", sale.SubscriptionID).Filter("Status=", billinginvoice.Open).Get(); err != nil || !found {
+		t.Fatalf("the past-due invoice: found %v err %v", found, err)
+	}
+
+	// The buyer's bank step for it, finished: a succeeded intent on the good card.
+	cust := customerIDOf(good)
+	pi := l.call("POST", "/payment_intents", url.Values{
+		"amount": {"1500"}, "currency": {"usd"}, "payment_method": {good.ProviderRef}, "customer": {cust},
+		"confirm": {"true"}, "automatic_payment_methods[enabled]": {"true"},
+		"automatic_payment_methods[allow_redirects]": {"never"}, "metadata[hanzo_subject]": {l.subject},
+	})
+	if err := pendingintent.PutRef(str(pi["id"]), l.org.Name, l.subject, pendingintent.Invoice, inv.Id(), 1500, "usd", true); err != nil {
+		t.Fatal(err)
+	}
+	pointAt(good)
+	return &pastDue{sale: sale, invoice: inv, good: good, customer: cust, intent: str(pi["id"]), charge: str(pi["latest_charge"])}
+}
+
+func (l *liveStripe) succeededFor(customer string) int {
+	n := 0
+	for _, it := range l.call("GET", "/payment_intents", url.Values{"customer": {customer}, "limit": {"30"}})["data"].([]any) {
+		if it.(map[string]any)["status"] == "succeeded" {
+			n++
+		}
+	}
+	return n
+}
+
+// The buyer finished their bank's step for a past-due invoice and never pressed pay
+// again: the cron settles the invoice from that payment, and charges nothing more.
+func TestLiveStripe_CronSettlesAPastDueInvoiceFromTheBuyersIntent(t *testing.T) {
+	l := liveSetup(t)
+	pd := l.pastDue()
+	// The dunning retry the cron runs (billing/workflows: engine.CollectInvoice with the
+	// off-session charger) — the buyer present is not.
+	db0 := datastore.New(l.org.Namespaced(*l.ctx))
+	inv := billinginvoice.New(db0)
+	if err := inv.GetById(pd.invoice.Id()); err != nil {
+		t.Fatal(err)
+	}
+	res, err := engine.CollectInvoice(*l.ctx, db0, inv, prepaidFor(*l.ctx, l.org), chargeProviderForOrg(l.org))
+	if err != nil || !res.Success {
+		t.Fatalf("the cron after the buyer paid = %+v (%v); want it settled", res, err)
+	}
+	if err := inv.Update(); err != nil { // the activity persists what the collection left
+		t.Fatal(err)
+	}
+	if n := l.succeededFor(pd.customer); n != 2 {
+		t.Fatalf("Stripe holds %d succeeded payments for the buyer; want 2 (the first period and the invoice's intent), not a third charge", n)
+	}
+	db := datastore.New(l.org.Namespaced(*l.ctx))
+	paid := billinginvoice.New(db)
+	if err := paid.GetById(pd.invoice.Id()); err != nil || paid.Status != billinginvoice.Paid {
+		t.Fatalf("the invoice = %v (%v); want paid", paid.Status, err)
+	}
+	if p := mustIntent(t, pd.intent); !p.Done {
+		t.Fatal("the invoice's intent row is still open")
+	}
+}
+
+// A buyer who has NOT finished their bank's step is not charged again by the cron.
+func TestLiveStripe_CronLeavesAnInvoiceWaitingOnItsBuyer(t *testing.T) {
+	l := liveSetup(t)
+	pd := l.pastDue()
+	// Replace the finished intent with one still waiting on the bank.
+	if _, err := pendingintent.Settle(pd.intent); err != nil {
+		t.Fatal(err)
+	}
+	waiting := l.call("POST", "/payment_intents", url.Values{
+		"amount": {"1500"}, "currency": {"usd"}, "payment_method": {"pm_card_authenticationRequired"}, "confirm": {"true"},
+		"automatic_payment_methods[enabled]": {"true"}, "automatic_payment_methods[allow_redirects]": {"never"},
+		"metadata[hanzo_subject]": {l.subject},
+	})
+	if err := pendingintent.PutRef(str(waiting["id"]), l.org.Name, l.subject, pendingintent.Invoice, pd.invoice.Id(), 1500, "usd", true); err != nil {
+		t.Fatal(err)
+	}
+	db := datastore.New(l.org.Namespaced(*l.ctx))
+	inv := billinginvoice.New(db)
+	if err := inv.GetById(pd.invoice.Id()); err != nil {
+		t.Fatal(err)
+	}
+	res, _ := engine.CollectInvoice(*l.ctx, db, inv, prepaidFor(*l.ctx, l.org), chargeProviderForOrg(l.org))
+	if res == nil || res.Success || !strings.Contains(res.Error, "waiting for its buyer") {
+		t.Fatalf("the cron = %+v; want it to leave the invoice waiting", res)
+	}
+	if n := l.succeededFor(pd.customer); n != 2 {
+		t.Fatalf("%d succeeded payments; the cron charged beside a waiting intent", n)
+	}
+	// The buyer pressing pay is answered the same step, not charged a second time.
+	got, f := CollectInvoice(*l.ctx, l.org, pd.invoice.Id(), nil)
+	if f != nil || got.Paid || !strings.Contains(got.Reason, "authentication_required") || !strings.Contains(got.Reason, str(waiting["id"])) {
+		t.Fatalf("pay while waiting = %+v (%v); want the step for %s again", got, f, str(waiting["id"]))
+	}
+}
+
+// A buyer who has NOT finished is not charged again by the cron, and is answered the
+// same step by the next press of "pay"; one who finished after a part-payment landed
+// is settled for what is owed and returned the rest.
+func TestLiveStripe_InvoiceIntentFinishesAfterTheAmountOwedMoves(t *testing.T) {
+	l := liveSetup(t)
+	pd := l.pastDue()
+	db := datastore.New(l.org.Namespaced(*l.ctx))
+	// A part-payment of $5 lands before the buyer presses pay.
+	inv := billinginvoice.New(db)
+	if err := inv.GetById(pd.invoice.Id()); err != nil {
+		t.Fatal(err)
+	}
+	inv.AmountPaid = 500
+	if err := inv.Update(); err != nil {
+		t.Fatal(err)
+	}
+	got, f := CollectInvoice(*l.ctx, l.org, inv.Id(), nil)
+	if f != nil || !got.Paid {
+		t.Fatalf("pay again = %+v (%v); want the invoice paid", got, f)
+	}
+	if n := l.succeededFor(pd.customer); n != 2 {
+		t.Fatalf("Stripe holds %d succeeded payments; want 2", n)
+	}
+	ch := l.call("GET", "/charges/"+pd.charge, nil)
+	if ch["amount_refunded"].(float64) != 500 {
+		t.Fatalf("the intent took 1500 for 1000 owed: refunded %v; want the 500 excess returned", ch["amount_refunded"])
 	}
 }

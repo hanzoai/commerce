@@ -95,6 +95,14 @@ func TestRenewalsMoveToAStripeCardAndOffARemovedOne(t *testing.T) {
 	if held() != first.Id() {
 		t.Fatalf("a second Stripe card took the renewals: %s", held())
 	}
+	// No subject names no subscriptions: nothing moves, and no stranger's card is an heir.
+	moveRenewalsOff(ctx, org, "", first)
+	if held() != first.Id() {
+		t.Fatal("an empty subject moved renewals")
+	}
+	if heirOf(db, "", first.Id()) != nil {
+		t.Fatal("an empty subject found an heir")
+	}
 	// The card is removed: its renewals go to the other.
 	moveRenewalsOff(ctx, org, "repoint", first)
 	if held() != second.Id() {

@@ -163,7 +163,12 @@ func reconcileIntent(ctx context.Context, p *pendingintent.Intent) error {
 	switch tx.Status {
 	case "succeeded":
 	case "requires_action", "requires_payment_method", "requires_confirmation", "processing":
-		if time.Since(p.CreatedAt) > abandonAfter {
+		if time.Since(p.CreatedAt) <= abandonAfter {
+			// Only waiting on the buyer: not looked at again before its 48 hours are up,
+			// so a few waiting rows never crowd out the ones that took money.
+			return pendingintent.Wait(p.Id(), p.CreatedAt.Add(abandonAfter))
+		}
+		{
 			// The buyer never finished: cancel it at Stripe so it cannot succeed after
 			// commerce stopped waiting, and close the row.
 			if c, ok := sp.(interface {
@@ -210,6 +215,12 @@ func reconcileIntent(ctx context.Context, p *pendingintent.Intent) error {
 	if _, found, _ := paymentorg.Get(tx.ProcessorRef); found {
 		_, _ = pendingintent.Settle(p.Id()) // credited by the browser or the webhook
 		return nil
+	}
+	// What Stripe took must be what was registered. A row that does not match is a
+	// failure like any other — backed off, and closed with an alarm after giveUp
+	// sweeps — rather than an alarm every sweep for good.
+	if int64(tx.Amount) != p.Cents || !strings.EqualFold(string(tx.Currency), p.Currency) {
+		return fmt.Errorf("intent %s took %d %s but was registered for %d %s", p.Id(), tx.Amount, tx.Currency, p.Cents, p.Currency)
 	}
 	ev := &processor.WebhookEvent{
 		ID: "reconcile:" + p.Id(), Type: "payment.completed", Processor: processor.Stripe,

@@ -16,6 +16,8 @@ import (
 
 	"github.com/hanzoai/commerce/api/promo"
 	"github.com/hanzoai/commerce/billing/creditledger"
+	"github.com/hanzoai/money"
+
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/events"
@@ -1970,9 +1972,18 @@ func chargeProvider(org *organization.Organization, buyerPresent bool) engine.Pr
 		desc := fmt.Sprintf("Subscription renewal invoice %s", inv.NumberStr)
 		var res *processor.PaymentResult
 		var err error
-		if open := finishedInvoiceIntent(ctx, reg, pm, inv, buyerPresent); open != nil {
-			// The buyer ran their bank's step for this invoice: charge the intent.
-			res, err = payInvoiceIntent(ctx, reg, pm, open, amountCents, cur, desc)
+		if open := finishedInvoiceIntent(inv); open != nil {
+			// The buyer was sent to their bank for this invoice: it is settled from that
+			// intent if they finished, and NEVER charged again beside it — by the cron
+			// or by another press of "pay" — while they have not.
+			var settled bool
+			res, err, settled = payInvoiceIntent(ctx, reg, pm, open, amountCents, cur, desc, buyerPresent)
+			if !settled {
+				if errors.Is(err, errWaitingOnBuyer) {
+					return "", err
+				}
+				return "", fmt.Errorf("%s", parseCardDeclineReason(res, err))
+			}
 		} else {
 			res, err = chargeSavedCard(ctx, reg, pm, amountCents, cur, squareKey, desc, buyerPresent)
 			if buyerPresent && actionOf(res, err) != nil {
@@ -2049,13 +2060,8 @@ func chargeFinished(ctx context.Context, reg *processor.Registry, pm *paymentmet
 }
 
 // finishedInvoiceIntent is the intent recorded for inv when its buyer was last sent
-// to their bank, when this is the buyer's own press of "pay": nil when there is
-// none. The intent may be finished (charge it) or still waiting (answer the step
-// again: the same secret, not a second charge).
-func finishedInvoiceIntent(ctx context.Context, reg *processor.Registry, pm *paymentmethod.PaymentMethod, inv *billinginvoice.BillingInvoice, buyerPresent bool) *pendingintent.Intent {
-	if !buyerPresent {
-		return nil
-	}
+// to their bank, or nil.
+func finishedInvoiceIntent(inv *billinginvoice.BillingInvoice) *pendingintent.Intent {
 	p, err := pendingintent.OpenFor(strings.ToLower(inv.UserId), inv.Id())
 	if err != nil || p == nil || p.Purpose != pendingintent.Invoice {
 		return nil
@@ -2063,32 +2069,65 @@ func finishedInvoiceIntent(ctx context.Context, reg *processor.Registry, pm *pay
 	return p
 }
 
-// payInvoiceIntent charges the invoice's recorded intent if the buyer finished it,
-// and says the step again if they have not.
-func payInvoiceIntent(ctx context.Context, reg *processor.Registry, pm *paymentmethod.PaymentMethod, p *pendingintent.Intent, amountCents int64, cur currency.Type, desc string) (*processor.PaymentResult, error) {
-	sp, err := reg.Existing(ctx, processor.Stripe)
-	if err != nil {
-		return nil, fmt.Errorf("%w: stripe: %v", errNoProcessorFor, err)
+// errWaitingOnBuyer is the off-session collector's answer for an invoice whose
+// buyer has been sent to their bank and has not finished: not a decline, and no
+// second charge.
+var errWaitingOnBuyer = errors.New("this invoice is waiting for its buyer to confirm the payment with their bank")
+
+// payInvoiceIntent settles an invoice from the intent its buyer was sent to their
+// bank for. settled says the invoice IS paid by it (res is the charge); when not,
+// err says why and nothing further may be charged for this invoice now:
+//   - waiting on the buyer: the buyer present is answered the step again (the same
+//     secret, not a second charge); the cron is answered errWaitingOnBuyer;
+//   - paid, but for more than is owed now (a part-payment landed since): the excess
+//     is refunded and the invoice settles from the rest;
+//   - paid, but for less than is owed now: the payment is refunded in full, and the
+//     buyer is asked again for the amount that is owed.
+func payInvoiceIntent(ctx context.Context, reg *processor.Registry, pm *paymentmethod.PaymentMethod, p *pendingintent.Intent, owedCents int64, cur currency.Type, desc string, buyerPresent bool) (res *processor.PaymentResult, err error, settled bool) {
+	sp, serr := reg.Existing(ctx, processor.Stripe)
+	if serr != nil {
+		return nil, fmt.Errorf("%w: stripe: %v", errNoProcessorFor, serr), false
 	}
-	tx, err := sp.GetTransaction(ctx, p.Id())
-	if err != nil {
-		return nil, err
+	tx, terr := sp.GetTransaction(ctx, p.Id())
+	if terr != nil {
+		return nil, terr, false
 	}
 	if tx.Status != "succeeded" {
+		if !buyerPresent {
+			return nil, errWaitingOnBuyer, false
+		}
 		secret, _ := tx.Metadata["client_secret"].(string)
 		ar := &processor.ActionRequired{ID: p.Id(), ClientSecret: secret}
-		return &processor.PaymentResult{Success: false, Error: ar, ErrorMessage: ar.Error()}, ar
+		return &processor.PaymentResult{Success: false, Error: ar, ErrorMessage: ar.Error()}, ar, false
 	}
 	claim, replayed, cerr := idemBegin(webhookGuardDB(ctx), "billing-intent", p.Id())
 	if cerr != nil || replayed {
-		return nil, fmt.Errorf("this payment is already being applied")
+		return nil, fmt.Errorf("this payment is already being applied"), false
 	}
-	res, err := chargeFinished(ctx, reg, pm, p.Id(), amountCents, cur, desc)
+	if p.Cents < owedCents {
+		// Not enough for what is owed now: give it back and ask again for the right amount.
+		if _, rerr := sp.Refund(ctx, processor.RefundRequest{TransactionID: p.Id(), Reason: "requested_by_customer", IdempotencyKey: "invoice-refund:" + p.Id()}); rerr != nil {
+			_ = claim.Delete()
+			return nil, rerr, false
+		}
+		_ = idempotencykey.Complete(claim, "refunded")
+		_, _ = pendingintent.Settle(p.Id())
+		return nil, errors.New("the amount due changed after you paid, so your payment was returned; pay again for the amount now due"), false
+	}
+	res, err = chargeFinished(ctx, reg, pm, p.Id(), p.Cents, cur, desc)
 	if err != nil || res == nil || !res.Success {
 		_ = claim.Delete()
-		return res, err
+		return res, err, false
+	}
+	// The invoice is settled by the intent's charge. What it took beyond what was
+	// owed is returned now (after the charge was verified: a refunded charge is not
+	// money in hand), and said loudly if that fails.
+	if excess := p.Cents - owedCents; excess > 0 {
+		if _, rerr := sp.Refund(ctx, processor.RefundRequest{TransactionID: p.Id(), Amount: money.FromMinor(excess, cur.Money()), Reason: "requested_by_customer", IdempotencyKey: "invoice-excess:" + p.Id()}); rerr != nil {
+			log.Error("RECONCILE: invoice paid from intent %s, which took %d more than was owed; returning the excess failed: %v", p.Id(), excess, rerr)
+		}
 	}
 	_ = idempotencykey.Complete(claim, res.ProcessorRef)
 	_, _ = pendingintent.Settle(p.Id())
-	return res, nil
+	return res, nil, true
 }
