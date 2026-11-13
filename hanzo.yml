@@ -102,7 +102,7 @@ test:
   - name: stripe-test-mode
     run: |
       set -euo pipefail
-      : "${HANZO_API_TOKEN:?the job's KMS login minted no HANZO_API_TOKEN, so the Stripe test keys cannot be read}"
+      : "${HANZO_API_TOKEN:?the KMS login minted no HANZO_API_TOKEN, so the Stripe test keys cannot be read}"
       KMS_ENDPOINT="${KMS_ENDPOINT:-https://kms.hanzo.ai}"
       ask() { # ask <url> -> body on 200; a lost answer or a 5xx/429 is asked again
         local code=""
