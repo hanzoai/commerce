@@ -48,8 +48,9 @@ images:
     repo: ghcr.io/hanzoai/commerce-store
 
 # CI gates run by the hanzoai/ci reusable workflow (`bash -c` per entry).
-# Mirrors the proven test.yml: @hanzo/plans is fetched first (api/billing embeds
-# plans/*.json via go:embed) and GOWORK=off builds the single root module.
+# The catalog is not fetched: api/billing embeds the vendored, digest-pinned
+# plans/*.json (PinnedPlansVersion), so the gates test the bytes that ship.
+# GOWORK=off builds the single root module.
 #
 # No GOPRIVATE here. The reusable already names exactly the modules the public
 # proxy cannot serve; a blanket github.com/hanzoai/* overrode that and sent
@@ -68,14 +69,15 @@ test:
       # "no such function: acos" into a compile error. Carried via GOFLAGS so it
       # reaches go vet, go test AND ginkgo identically.
       export GOWORK=off CGO_ENABLED=1 GOFLAGS=-tags=sqlite_math_functions
-      sh scripts/fetch-plans.sh
       go vet ./...
   - name: go-unit
     run: |
       set -e
       export GOWORK=off CGO_ENABLED=1 GOFLAGS=-tags=sqlite_math_functions
-      sh scripts/fetch-plans.sh
       go test -count=1 -timeout=10m \
+        ./api/billing/... \
+        ./api/store/... \
+        ./api/subscription/... \
         ./billing/... \
         ./delay/... \
         ./models/creditgrant/... \
@@ -113,7 +115,6 @@ test:
     run: |
       set -e
       export GOWORK=off CGO_ENABLED=1 GOFLAGS=-tags=sqlite_math_functions
-      sh scripts/fetch-plans.sh
       go run github.com/onsi/ginkgo/v2/ginkgo -r --randomize-all --fail-fast --trace \
         test/
 

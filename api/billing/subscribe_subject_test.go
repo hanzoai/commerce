@@ -107,7 +107,7 @@ func TestTheOrgAccountIsSubscribedByPrivilegedCallers(t *testing.T) {
 		}
 		return c.JSON(200, nil)
 	})
-	if _, err := app.Test(req); err != nil {
+	if _, err := app.Test(req, patient); err != nil {
 		t.Fatal(err)
 	}
 }

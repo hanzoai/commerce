@@ -44,8 +44,8 @@ func TestPublishedTiersCarryLicensing(t *testing.T) {
 }
 
 // TestEarlyAccessIsAboveGo: licensing.early_access lands on the row of every paid
-// rung above Go (Pro, Dev, Max, Ultra, Unlimited) and of the archived Max rungs,
-// and of nothing else (@hanzo/plans 1.10.0), because cloud's beta predicate reads
+// rung above Go (Pro, Dev, Max, Ultra, Ultimate, Unlimited) and of the archived Max
+// rungs, and of nothing else (@hanzo/plans 1.10.1), because cloud's beta predicate reads
 // the row, never the catalog: a plan that carried it only in the catalog would
 // open no beta, and one that carried it by accident would open the betas to every
 // subscriber of it.
@@ -56,7 +56,7 @@ func TestEarlyAccessIsAboveGo(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	early := map[string]bool{
-		"pro-3x": true, "dev-5x": true, "max-15x": true, "ultra": true, "unlimited": true,
+		"pro-3x": true, "dev-5x": true, "max-15x": true, "ultra": true, "ultimate": true, "unlimited": true,
 		"max-5x": true, "max-20x": true, "max-50x": true,
 	}
 	for _, r := range SeedRows() {
@@ -70,10 +70,10 @@ func TestEarlyAccessIsAboveGo(t *testing.T) {
 			t.Errorf("plan %q early access = %v, want %v", r.Slug, got, early[r.Slug])
 		}
 	}
-	// A row that lost it is corrected by the next boot, and a converged one is not
-	// rewritten: early access is compared, not only copied.
+	// The row is the statement from here on: a boot rewrites nothing, and a row a
+	// SuperAdmin took early access off keeps it off.
 	if _, corrected, err := SeedPlans(c); err != nil || corrected != 0 {
-		t.Fatalf("re-seed = corrected %d, err %v; want 0 — a converged catalog rewrites nothing", corrected, err)
+		t.Fatalf("re-seed = corrected %d, err %v; want 0", corrected, err)
 	}
 	p := plan.New(plan.AuthorityDB(c))
 	if ok, err := p.Query().Filter("Slug=", "max-15x").Get(); err != nil || !ok {
@@ -83,12 +83,12 @@ func TestEarlyAccessIsAboveGo(t *testing.T) {
 	if err := p.Update(); err != nil {
 		t.Fatalf("update: %v", err)
 	}
-	if _, corrected, err := SeedPlans(c); err != nil || corrected != 1 {
-		t.Fatalf("re-seed = corrected %d, err %v; want 1", corrected, err)
+	if _, corrected, err := SeedPlans(c); err != nil || corrected != 0 {
+		t.Fatalf("re-seed = corrected %d, err %v; want 0", corrected, err)
 	}
 	p = plan.New(plan.AuthorityDB(c))
-	if ok, err := p.Query().Filter("Slug=", "max-15x").Get(); err != nil || !ok || !p.Licensing.EarlyAccess {
-		t.Fatalf("max-15x after re-seed: early access %v, want true", p.Licensing)
+	if ok, err := p.Query().Filter("Slug=", "max-15x").Get(); err != nil || !ok || p.Licensing.EarlyAccess {
+		t.Fatalf("max-15x after re-seed: early access %v, want it left off", p.Licensing)
 	}
 }
 
@@ -214,14 +214,14 @@ func TestBackfillIsIdempotent(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 
-	first, err := plan.Backfill(db, retired)
+	first, err := plan.Backfill(db, retiredLicensing)
 	if err != nil {
 		t.Fatalf("backfill: %v", err)
 	}
 	if first != 1 {
 		t.Fatalf("first backfill filled %d rows, want 1", first)
 	}
-	second, err := plan.Backfill(db, retired)
+	second, err := plan.Backfill(db, retiredLicensing)
 	if err != nil {
 		t.Fatalf("re-backfill: %v", err)
 	}
@@ -242,7 +242,7 @@ func TestBackfillIsIdempotent(t *testing.T) {
 	if err := q.Create(); err != nil {
 		t.Fatalf("create team-max: %v", err)
 	}
-	if _, err := plan.Backfill(db, retired); err != nil {
+	if _, err := plan.Backfill(db, retiredLicensing); err != nil {
 		t.Fatalf("backfill over existing: %v", err)
 	}
 	r := plan.New(db)
@@ -275,7 +275,7 @@ func TestBackfillSkipsARevivedSlug(t *testing.T) {
 	db := plan.AuthorityDB(c)
 
 	// `plus` is in the retired map, carrying licensing.product_ids ["team"].
-	if retired["plus"] == nil {
+	if retiredLicensing["plus"] == nil {
 		t.Fatal("fixture assumes `plus` is in the retired map; it is not, so this test proves nothing")
 	}
 
@@ -291,7 +291,7 @@ func TestBackfillSkipsARevivedSlug(t *testing.T) {
 		t.Fatal("fixture row is not listed, so it does not exercise the guard")
 	}
 
-	filled, err := plan.Backfill(db, retired)
+	filled, err := plan.Backfill(db, retiredLicensing)
 	if err != nil {
 		t.Fatalf("backfill: %v", err)
 	}

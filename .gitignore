@@ -70,7 +70,7 @@ billing/ui/dist/*
 ui/dist/*
 !ui/dist/.gitkeep
 
-# hanzoai/plans is the SOT; scripts/fetch-plans.sh refreshes these at build.
+# hanzoai/plans is the SOT; PLANS_VERSION=<v> scripts/fetch-plans.sh re-vendors them.
 # BUT the two files below are go:embed'd (api/billing/plans.go), so they MUST be
 # committed: a Go module cannot embed a gitignored file, and cloud consumes
 # commerce AS A LIBRARY (the unified binary) where the module zip is all there is

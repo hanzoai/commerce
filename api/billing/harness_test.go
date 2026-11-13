@@ -16,6 +16,14 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 )
 
+// patient is how long one in-process request may take before the harness calls it
+// hung. app.Test without a config waits fiber's 1s, which is a guess about the
+// machine, not about the code: 40 concurrent usage calls for one wallet queue on
+// its one writer, the slowest took 65-225ms here and passed 1s on a loaded CI
+// runner (TestConcurrentSubCentCallsAccumulateExactly panicked "test: timeout").
+// FailOnTimeout keeps a real hang a failure.
+var patient = zip.TestConfig{Timeout: 30 * time.Second, FailOnTimeout: true}
+
 // invokeMoneyHandler drives a single billing handler directly with a real
 // org + datastore context and an optional header set — the harness for the H1
 // money-correctness tests (Deposit behavior, independent of the C1 gate, which is
@@ -39,7 +47,7 @@ func invokeMoneyHandler(org *organization.Organization, ctx context.Context, h z
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
-	resp, err := app.Test(req)
+	resp, err := app.Test(req, patient)
 	if err != nil {
 		panic(err)
 	}
@@ -60,9 +68,7 @@ func driveSeeded(seed func(*zip.Ctx), routePattern string, req *http.Request, ha
 		}
 		return c.Next()
 	}, handler)
-	// A webhook that asks Stripe whether a charge is sound makes network calls, so the
-	// request is given the time a delivery has (the handler's own bound is 15s).
-	resp, err := app.Test(req, zip.TestConfig{Timeout: 30 * time.Second, FailOnTimeout: true})
+	resp, err := app.Test(req, patient)
 	if err != nil {
 		panic(err)
 	}

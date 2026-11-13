@@ -3,6 +3,7 @@ package plan
 import (
 	"context"
 	"errors"
+	"reflect"
 	"slices"
 	"sync"
 
@@ -99,11 +100,10 @@ type Plan struct {
 	// months and rounded to the cent, so it is a price tag and never a figure to
 	// bill from — $199 / 12 is $16.5833…, and twelve rounded months is $198.96.
 	// Zero means the plan is not sold by the year.
-	AnnualTotal     currency.Cents `json:"annualTotal"`
-	Currency        currency.Type  `json:"currency"`
-	Interval        Interval       `json:"interval"`
-	IntervalCount   int            `json:"intervalCount"`
-	TrialPeriodDays int            `json:"trialPeriodDays"`
+	AnnualTotal   currency.Cents `json:"annualTotal"`
+	Currency      currency.Type  `json:"currency"`
+	Interval      Interval       `json:"interval"`
+	IntervalCount int            `json:"intervalCount"`
 
 	// PerSeat marks a plan billed per seat (catalog price_ref.recurring.per_seat):
 	// invoices charge Price × subscription quantity, floored at 1.
@@ -203,6 +203,17 @@ type Plan struct {
 	// subscriber may run a proprietary product, so it is money-adjacent in the same
 	// way Price is.
 	Licensing *Licensing `json:"licensing,omitempty" datastore:"-"`
+
+	// Entitlements is the canonical entitlement block this plan GRANTS: namespaced
+	// keys ("ai.priority_inference", "team.guests", "commerce.support_tier") to the
+	// value granted, -1 for unlimited. It is the row's own statement, edited at
+	// admin.hanzo.ai like the price beside it; nothing re-reads a catalog file to
+	// answer what a plan grants. nil means no one has recorded it (a row from
+	// before the field existed); an empty map means the plan grants nothing.
+	Entitlements map[string]any `json:"entitlements,omitempty" datastore:"-"`
+	// Replaces are the slugs this plan was sold under before it was renamed: a
+	// subscription that recorded one is served as this plan.
+	Replaces []string `json:"replaces,omitempty" datastore:"-"`
 
 	// Metadata carries anything else a plan needs to hold, plus the packed
 	// envelope above. Metadata_ MUST be datastore:",noindex" (persisted), NOT "-"
@@ -464,6 +475,10 @@ type envelope struct {
 	Limits     *Limits          `json:"limits,omitempty"`
 	Licensing  *Licensing       `json:"licensing,omitempty"`
 	Prices     []currency.Cents `json:"prices,omitempty"`
+	// Entitlements is written even when empty: null is "never recorded", {} is
+	// "grants nothing", and Fill tells them apart.
+	Entitlements map[string]any `json:"entitlements"`
+	Replaces     []string       `json:"replaces,omitempty"`
 }
 
 func (p *Plan) Load(ps []datastore.Property) (err error) {
@@ -486,6 +501,7 @@ func (p *Plan) Load(ps []datastore.Property) (err error) {
 		if err := json.DecodeBytes([]byte(s), &env); err == nil {
 			p.Features, p.Bundles, p.IncludedIn, p.Limits = env.Features, env.Bundles, env.IncludedIn, env.Limits
 			p.Licensing, p.Prices = env.Licensing, env.Prices
+			p.Entitlements, p.Replaces = env.Entitlements, env.Replaces
 		}
 	}
 
@@ -499,8 +515,10 @@ func (p *Plan) Save() (ps []datastore.Property, err error) {
 	// persists: the ORM stores a row as JSON of the struct, and Metadata_ is
 	// `json:"-"`. Metadata_ is the older datastore-property path, kept because
 	// Load still honors it, but a value written only there does not survive.
-	env := envelope{Features: p.Features, Bundles: p.Bundles, IncludedIn: p.IncludedIn, Limits: p.Limits, Licensing: p.Licensing, Prices: p.Prices}
-	if len(env.Features) > 0 || len(env.Bundles) > 0 || len(env.IncludedIn) > 0 || env.Limits != nil || env.Licensing != nil || len(env.Prices) > 0 {
+	env := envelope{Features: p.Features, Bundles: p.Bundles, IncludedIn: p.IncludedIn, Limits: p.Limits, Licensing: p.Licensing, Prices: p.Prices,
+		Entitlements: p.Entitlements, Replaces: p.Replaces}
+	if len(env.Features) > 0 || len(env.Bundles) > 0 || len(env.IncludedIn) > 0 || env.Limits != nil || env.Licensing != nil || len(env.Prices) > 0 ||
+		env.Entitlements != nil || len(env.Replaces) > 0 {
 		if p.Metadata == nil {
 			p.Metadata = Map{}
 		}
@@ -680,7 +698,7 @@ func planEqual(a, b *Plan) bool {
 	if a.Name != b.Name || a.Description != b.Description || a.Category != b.Category ||
 		a.Price != b.Price || a.PriceAnnual != b.PriceAnnual || a.AnnualTotal != b.AnnualTotal || a.Currency != b.Currency ||
 		a.Interval != b.Interval || a.IntervalCount != b.IntervalCount ||
-		a.TrialPeriodDays != b.TrialPeriodDays || a.PerSeat != b.PerSeat ||
+		a.PerSeat != b.PerSeat ||
 		a.ContactSales != b.ContactSales || a.Popular != b.Popular {
 		return false
 	}
@@ -688,6 +706,8 @@ func planEqual(a, b *Plan) bool {
 		slices.Equal(a.Bundles, b.Bundles) &&
 		slices.Equal(a.IncludedIn, b.IncludedIn) &&
 		slices.Equal(a.Prices, b.Prices) &&
+		slices.Equal(a.Replaces, b.Replaces) &&
+		reflect.DeepEqual(a.Entitlements, b.Entitlements) &&
 		limitsEqual(a.Limits, b.Limits) &&
 		licensingEqual(a.Licensing, b.Licensing)
 }
@@ -771,7 +791,6 @@ func copyInto(dst, src *Plan) {
 	dst.Currency = src.Currency
 	dst.Interval = src.Interval
 	dst.IntervalCount = src.IntervalCount
-	dst.TrialPeriodDays = src.TrialPeriodDays
 	dst.PerSeat = src.PerSeat
 	dst.ContactSales = src.ContactSales
 	dst.Popular = src.Popular
@@ -780,6 +799,58 @@ func copyInto(dst, src *Plan) {
 	dst.IncludedIn = src.IncludedIn
 	dst.Limits = src.Limits
 	dst.Licensing = src.Licensing
+	dst.Entitlements = src.Entitlements
+	dst.Replaces = src.Replaces
+}
+
+// Held reports whether the plan authority holds any row at all. The authority is
+// imported from the vendored catalog once, into a store that holds none; from
+// then on its rows are the only statement of what is sold and nothing but a
+// SuperAdmin's edit changes one.
+func Held(db *datastore.Datastore) (bool, error) {
+	var rows []*Plan
+	if _, err := Query(db).Limit(1).GetAll(&rows); err != nil {
+		return false, err
+	}
+	return len(rows) > 0, nil
+}
+
+// Fill records, once, what each row grants and which slugs it replaces, on rows
+// written before a row carried either: the entitlement block and the renamed
+// slugs of the same plan in rows, by slug. It returns how many rows it wrote.
+//
+// It is a migration of two new fields and not a reconcile: only a row whose
+// Entitlements were never recorded (nil) is touched, nothing else on it is read
+// or written, and a row it filled, or one a SuperAdmin stated (even as empty),
+// is never touched again. A slug rows does not name is left for an admin.
+func Fill(db *datastore.Datastore, rows []*Plan) (filled int, err error) {
+	seedMu.Lock()
+	defer seedMu.Unlock()
+	for _, r := range rows {
+		if r == nil || r.Slug == "" {
+			continue
+		}
+		existing := New(db)
+		ok, qerr := existing.Query().Filter("Slug=", r.Slug).Get()
+		if qerr != nil {
+			return filled, qerr
+		}
+		if !ok || existing.Entitlements != nil {
+			continue
+		}
+		existing.Entitlements = r.Entitlements
+		if existing.Entitlements == nil {
+			existing.Entitlements = map[string]any{}
+		}
+		if len(existing.Replaces) == 0 {
+			existing.Replaces = r.Replaces
+		}
+		if uerr := existing.Update(); uerr != nil {
+			return filled, uerr
+		}
+		filled++
+	}
+	return filled, nil
 }
 
 // Backfill writes licensing onto rows the catalog NO LONGER PUBLISHES, from the

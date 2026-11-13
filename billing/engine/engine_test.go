@@ -177,14 +177,13 @@ func TestTaxLine_Struct(t *testing.T) {
 // lifecycle.go — StartSubscription (pure in-memory)
 // ---------------------------------------------------------------------------
 
-func makePlan(id, name string, price int64, interval types.Interval, intervalCount, trialDays int) *plan.Plan {
+func makePlan(id, name string, price int64, interval types.Interval, intervalCount int) *plan.Plan {
 	p := &plan.Plan{
-		Name:            name,
-		Price:           currency.Cents(price),
-		Currency:        "usd",
-		Interval:        interval,
-		IntervalCount:   intervalCount,
-		TrialPeriodDays: trialDays,
+		Name:          name,
+		Price:         currency.Cents(price),
+		Currency:      "usd",
+		Interval:      interval,
+		IntervalCount: intervalCount,
 	}
 	// Pre-set Id_ so p.Id() returns without calling into datastore
 	p.Id_ = id
@@ -193,7 +192,7 @@ func makePlan(id, name string, price int64, interval types.Interval, intervalCou
 
 func TestStartSubscription_NoTrial(t *testing.T) {
 	sub := &subscription.Subscription{}
-	p := makePlan("plan_pro", "Pro", 2000, types.Monthly, 1, 0)
+	p := makePlan("plan_pro", "Pro", 2000, types.Monthly, 1)
 
 	StartSubscription(sub, p)
 
@@ -223,37 +222,27 @@ func TestStartSubscription_NoTrial(t *testing.T) {
 	}
 }
 
-func TestStartSubscription_WithTrial(t *testing.T) {
-	sub := &subscription.Subscription{}
-	p := makePlan("plan_ent", "Enterprise", 10000, types.Monthly, 1, 14)
-
-	StartSubscription(sub, p)
-
-	if sub.Status != subscription.Trialing {
-		t.Fatalf("expected Trialing, got %s", sub.Status)
-	}
-	if sub.TrialStart.IsZero() {
-		t.Fatal("TrialStart should be set")
-	}
-	if sub.TrialEnd.IsZero() {
-		t.Fatal("TrialEnd should be set")
-	}
-
-	// Trial should be 14 days (compare by calendar date, not hours, to avoid DST drift)
-	expectedTrialEnd := sub.TrialStart.AddDate(0, 0, 14)
-	if !sub.TrialEnd.Equal(expectedTrialEnd) {
-		t.Fatalf("trial end mismatch: got %v, want %v", sub.TrialEnd, expectedTrialEnd)
-	}
-
-	// Period should start at trial end
-	if !sub.PeriodStart.Equal(sub.TrialEnd) {
-		t.Fatalf("PeriodStart should equal TrialEnd")
+// No plan opens in a trial: whatever the plan, a subscription starts active, on
+// the period it bills from now.
+func TestStartSubscription_NeverOpensATrial(t *testing.T) {
+	for _, p := range []*plan.Plan{
+		makePlan("plan_m", "Monthly", 800, types.Monthly, 1),
+		makePlan("plan_y", "Yearly", 20000, types.Yearly, 1),
+	} {
+		sub := &subscription.Subscription{}
+		StartSubscription(sub, p)
+		if sub.Status != subscription.Active || !sub.TrialStart.IsZero() || !sub.TrialEnd.IsZero() {
+			t.Fatalf("%s: status %s trial %v..%v, want active with no trial", p.Name, sub.Status, sub.TrialStart, sub.TrialEnd)
+		}
+		if !sub.PeriodStart.Equal(sub.Start) {
+			t.Fatalf("%s: the first period starts %v, want at the start %v", p.Name, sub.PeriodStart, sub.Start)
+		}
 	}
 }
 
 func TestStartSubscription_YearlyInterval(t *testing.T) {
 	sub := &subscription.Subscription{}
-	p := makePlan("plan_annual", "Annual", 20000, types.Yearly, 1, 0)
+	p := makePlan("plan_annual", "Annual", 20000, types.Yearly, 1)
 
 	StartSubscription(sub, p)
 
@@ -265,49 +254,13 @@ func TestStartSubscription_YearlyInterval(t *testing.T) {
 
 func TestStartSubscription_MultiMonthInterval(t *testing.T) {
 	sub := &subscription.Subscription{}
-	p := makePlan("plan_q", "Quarterly", 5000, types.Monthly, 3, 0)
+	p := makePlan("plan_q", "Quarterly", 5000, types.Monthly, 3)
 
 	StartSubscription(sub, p)
 
 	expected := sub.PeriodStart.AddDate(0, 3, 0)
 	if !sub.PeriodEnd.Equal(expected) {
 		t.Fatalf("quarterly PeriodEnd mismatch: got %v, want %v", sub.PeriodEnd, expected)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// lifecycle.go — TransitionTrialToActive
-// ---------------------------------------------------------------------------
-
-func TestTransitionTrialToActive_Success(t *testing.T) {
-	sub := &subscription.Subscription{Status: subscription.Trialing}
-
-	if err := TransitionTrialToActive(sub); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if sub.Status != subscription.Active {
-		t.Fatalf("expected Active, got %s", sub.Status)
-	}
-}
-
-func TestTransitionTrialToActive_NotTrialing(t *testing.T) {
-	sub := &subscription.Subscription{Status: subscription.Active}
-
-	err := TransitionTrialToActive(sub)
-	if err == nil {
-		t.Fatal("expected error when not trialing")
-	}
-	if !strings.Contains(err.Error(), "not trialing") {
-		t.Fatalf("unexpected error: %s", err)
-	}
-}
-
-func TestTransitionTrialToActive_Canceled(t *testing.T) {
-	sub := &subscription.Subscription{Status: subscription.Canceled}
-
-	err := TransitionTrialToActive(sub)
-	if err == nil {
-		t.Fatal("expected error for canceled subscription")
 	}
 }
 
@@ -432,8 +385,8 @@ func TestReactivateSubscription_CanceledButNotEnded(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestChangePlan_NoProration(t *testing.T) {
-	oldPlan := makePlan("plan_basic", "Basic", 1000, types.Monthly, 1, 0)
-	newPlan := makePlan("plan_pro", "Pro", 2000, types.Monthly, 1, 0)
+	oldPlan := makePlan("plan_basic", "Basic", 1000, types.Monthly, 1)
+	newPlan := makePlan("plan_pro", "Pro", 2000, types.Monthly, 1)
 
 	sub := &subscription.Subscription{
 		Plan:   *oldPlan,
@@ -454,8 +407,8 @@ func TestChangePlan_NoProration(t *testing.T) {
 
 func TestChangePlan_WithProration(t *testing.T) {
 	now := time.Now()
-	oldPlan := makePlan("plan_basic", "Basic", 3000, types.Monthly, 1, 0)
-	newPlan := makePlan("plan_pro", "Pro", 6000, types.Monthly, 1, 0)
+	oldPlan := makePlan("plan_basic", "Basic", 3000, types.Monthly, 1)
+	newPlan := makePlan("plan_pro", "Pro", 6000, types.Monthly, 1)
 
 	sub := &subscription.Subscription{
 		Plan:        *oldPlan,
@@ -488,8 +441,8 @@ func TestChangePlan_WithProration(t *testing.T) {
 
 func TestChangePlan_Downgrade(t *testing.T) {
 	now := time.Now()
-	oldPlan := makePlan("plan_pro", "Pro", 6000, types.Monthly, 1, 0)
-	newPlan := makePlan("plan_basic", "Basic", 3000, types.Monthly, 1, 0)
+	oldPlan := makePlan("plan_pro", "Pro", 6000, types.Monthly, 1)
+	newPlan := makePlan("plan_basic", "Basic", 3000, types.Monthly, 1)
 
 	sub := &subscription.Subscription{
 		Plan:        *oldPlan,
@@ -517,7 +470,7 @@ func TestChangePlan_Downgrade(t *testing.T) {
 
 func TestAdvancePeriod_Monthly(t *testing.T) {
 	sub := &subscription.Subscription{}
-	p := makePlan("plan_m", "M", 100, types.Monthly, 1, 0)
+	p := makePlan("plan_m", "M", 100, types.Monthly, 1)
 	StartSubscription(sub, p)
 
 	// Verify by calendar date arithmetic (immune to DST / short months)
@@ -529,7 +482,7 @@ func TestAdvancePeriod_Monthly(t *testing.T) {
 
 func TestAdvancePeriod_Yearly(t *testing.T) {
 	sub := &subscription.Subscription{}
-	p := makePlan("plan_y", "Y", 100, types.Yearly, 1, 0)
+	p := makePlan("plan_y", "Y", 100, types.Yearly, 1)
 	StartSubscription(sub, p)
 
 	expected := sub.PeriodStart.AddDate(1, 0, 0)
@@ -541,7 +494,7 @@ func TestAdvancePeriod_Yearly(t *testing.T) {
 func TestAdvancePeriod_ZeroIntervalCount(t *testing.T) {
 	// IntervalCount=0 should default to 1
 	sub := &subscription.Subscription{}
-	p := makePlan("plan_z", "Z", 100, types.Monthly, 0, 0)
+	p := makePlan("plan_z", "Z", 100, types.Monthly, 0)
 	StartSubscription(sub, p)
 
 	expected := sub.PeriodStart.AddDate(0, 1, 0) // defaults to 1 month
@@ -809,7 +762,7 @@ func TestCancelSetupIntent_RequiresDatastore(t *testing.T) {
 func TestStartSubscription_DefaultInterval(t *testing.T) {
 	// Unknown interval should default to monthly
 	sub := &subscription.Subscription{}
-	p := makePlan("plan_custom", "Custom", 1500, "weekly", 2, 0)
+	p := makePlan("plan_custom", "Custom", 1500, "weekly", 2)
 
 	StartSubscription(sub, p)
 
@@ -822,7 +775,7 @@ func TestStartSubscription_DefaultInterval(t *testing.T) {
 
 func TestStartSubscription_SetsAllFields(t *testing.T) {
 	sub := &subscription.Subscription{}
-	p := makePlan("plan_full", "Full", 9900, types.Monthly, 1, 0)
+	p := makePlan("plan_full", "Full", 9900, types.Monthly, 1)
 
 	StartSubscription(sub, p)
 
@@ -840,48 +793,9 @@ func TestStartSubscription_SetsAllFields(t *testing.T) {
 	}
 }
 
-func TestStartSubscription_TrialDaysOne(t *testing.T) {
-	sub := &subscription.Subscription{}
-	p := makePlan("plan_trial1", "OneDayTrial", 500, types.Monthly, 1, 1)
-
-	StartSubscription(sub, p)
-
-	if sub.Status != subscription.Trialing {
-		t.Fatalf("expected Trialing, got %s", sub.Status)
-	}
-
-	expectedTrialEnd := sub.TrialStart.AddDate(0, 0, 1)
-	if !sub.TrialEnd.Equal(expectedTrialEnd) {
-		t.Fatalf("1-day trial end mismatch: got %v, want %v", sub.TrialEnd, expectedTrialEnd)
-	}
-}
-
-func TestStartSubscription_YearlyWithTrial(t *testing.T) {
-	sub := &subscription.Subscription{}
-	p := makePlan("plan_yearly_trial", "YearlyTrial", 12000, types.Yearly, 1, 30)
-
-	StartSubscription(sub, p)
-
-	if sub.Status != subscription.Trialing {
-		t.Fatalf("expected Trialing, got %s", sub.Status)
-	}
-
-	// Trial is 30 days
-	expectedTrialEnd := sub.TrialStart.AddDate(0, 0, 30)
-	if !sub.TrialEnd.Equal(expectedTrialEnd) {
-		t.Fatalf("trial end mismatch: got %v, want %v", sub.TrialEnd, expectedTrialEnd)
-	}
-
-	// Period after trial should be 1 year
-	expectedPeriodEnd := sub.PeriodStart.AddDate(1, 0, 0)
-	if !sub.PeriodEnd.Equal(expectedPeriodEnd) {
-		t.Fatalf("yearly period end mismatch: got %v, want %v", sub.PeriodEnd, expectedPeriodEnd)
-	}
-}
-
 func TestStartSubscription_MultiYearInterval(t *testing.T) {
 	sub := &subscription.Subscription{}
-	p := makePlan("plan_2y", "TwoYear", 50000, types.Yearly, 2, 0)
+	p := makePlan("plan_2y", "TwoYear", 50000, types.Yearly, 2)
 
 	StartSubscription(sub, p)
 
@@ -1034,36 +948,11 @@ func TestReactivateSubscription_ActiveNotCanceled(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// lifecycle.go — TransitionTrialToActive: all invalid states
-// ---------------------------------------------------------------------------
-
-func TestTransitionTrialToActive_PastDue(t *testing.T) {
-	sub := &subscription.Subscription{Status: subscription.PastDue}
-
-	err := TransitionTrialToActive(sub)
-	if err == nil {
-		t.Fatal("expected error for PastDue subscription")
-	}
-	if !strings.Contains(err.Error(), "not trialing") {
-		t.Fatalf("unexpected error: %s", err)
-	}
-}
-
-func TestTransitionTrialToActive_Unpaid(t *testing.T) {
-	sub := &subscription.Subscription{Status: subscription.Unpaid}
-
-	err := TransitionTrialToActive(sub)
-	if err == nil {
-		t.Fatal("expected error for Unpaid subscription")
-	}
-}
-
-// ---------------------------------------------------------------------------
 // lifecycle.go — ChangePlan: additional edge cases
 // ---------------------------------------------------------------------------
 
 func TestChangePlan_SamePlan_NoProration(t *testing.T) {
-	p := makePlan("plan_basic", "Basic", 1000, types.Monthly, 1, 0)
+	p := makePlan("plan_basic", "Basic", 1000, types.Monthly, 1)
 
 	sub := &subscription.Subscription{
 		Plan:   *p,
@@ -1084,7 +973,7 @@ func TestChangePlan_SamePlan_NoProration(t *testing.T) {
 
 func TestChangePlan_SamePlan_WithProration(t *testing.T) {
 	now := time.Now()
-	p := makePlan("plan_basic", "Basic", 3000, types.Monthly, 1, 0)
+	p := makePlan("plan_basic", "Basic", 3000, types.Monthly, 1)
 
 	sub := &subscription.Subscription{
 		Plan:        *p,
@@ -1104,8 +993,8 @@ func TestChangePlan_SamePlan_WithProration(t *testing.T) {
 }
 
 func TestChangePlan_UpdatesPlanFields(t *testing.T) {
-	oldPlan := makePlan("plan_old", "Old", 1000, types.Monthly, 1, 0)
-	newPlan := makePlan("plan_new", "New", 2000, types.Yearly, 1, 0)
+	oldPlan := makePlan("plan_old", "Old", 1000, types.Monthly, 1)
+	newPlan := makePlan("plan_new", "New", 2000, types.Yearly, 1)
 
 	sub := &subscription.Subscription{
 		Plan:   *oldPlan,
@@ -1131,8 +1020,8 @@ func TestChangePlan_UpdatesPlanFields(t *testing.T) {
 func TestChangePlan_ZeroPeriodDuration(t *testing.T) {
 	// PeriodStart == PeriodEnd → totalDays <= 0 → nil proration
 	now := time.Now()
-	old := makePlan("plan_a", "A", 1000, types.Monthly, 1, 0)
-	new_ := makePlan("plan_b", "B", 2000, types.Monthly, 1, 0)
+	old := makePlan("plan_a", "A", 1000, types.Monthly, 1)
+	new_ := makePlan("plan_b", "B", 2000, types.Monthly, 1)
 
 	sub := &subscription.Subscription{
 		Plan:        *old,
@@ -1157,8 +1046,8 @@ func TestChangePlan_ZeroPeriodDuration(t *testing.T) {
 func TestChangePlan_ExpiredPeriod(t *testing.T) {
 	// PeriodEnd < PeriodStart → totalDays negative → nil proration
 	now := time.Now()
-	old := makePlan("plan_old", "Old", 1000, types.Monthly, 1, 0)
-	new_ := makePlan("plan_new", "New", 2000, types.Monthly, 1, 0)
+	old := makePlan("plan_old", "Old", 1000, types.Monthly, 1)
+	new_ := makePlan("plan_new", "New", 2000, types.Monthly, 1)
 
 	sub := &subscription.Subscription{
 		Plan:        *old,
@@ -1178,8 +1067,8 @@ func TestChangePlan_ExpiredPeriod(t *testing.T) {
 
 func TestChangePlan_ProrationDescription(t *testing.T) {
 	now := time.Now()
-	old := makePlan("plan_a", "Alpha", 4000, types.Monthly, 1, 0)
-	new_ := makePlan("plan_b", "Beta", 8000, types.Monthly, 1, 0)
+	old := makePlan("plan_a", "Alpha", 4000, types.Monthly, 1)
+	new_ := makePlan("plan_b", "Beta", 8000, types.Monthly, 1)
 
 	sub := &subscription.Subscription{
 		Plan:        *old,
@@ -1208,8 +1097,8 @@ func TestChangePlan_ProrationDescription(t *testing.T) {
 
 func TestChangePlan_ProrationItemFields(t *testing.T) {
 	now := time.Now()
-	old := makePlan("plan_lo", "Lo", 2000, types.Monthly, 1, 0)
-	hi := makePlan("plan_hi", "Hi", 6000, types.Monthly, 1, 0)
+	old := makePlan("plan_lo", "Lo", 2000, types.Monthly, 1)
+	hi := makePlan("plan_hi", "Hi", 6000, types.Monthly, 1)
 
 	sub := &subscription.Subscription{
 		Plan:        *old,
@@ -1245,8 +1134,8 @@ func TestChangePlan_ProrationItemFields(t *testing.T) {
 
 func TestChangePlan_FreeToPaid(t *testing.T) {
 	now := time.Now()
-	free := makePlan("plan_free", "Free", 0, types.Monthly, 1, 0)
-	paid := makePlan("plan_paid", "Paid", 5000, types.Monthly, 1, 0)
+	free := makePlan("plan_free", "Free", 0, types.Monthly, 1)
+	paid := makePlan("plan_paid", "Paid", 5000, types.Monthly, 1)
 
 	sub := &subscription.Subscription{
 		Plan:        *free,
@@ -1270,8 +1159,8 @@ func TestChangePlan_FreeToPaid(t *testing.T) {
 
 func TestChangePlan_PaidToFree(t *testing.T) {
 	now := time.Now()
-	paid := makePlan("plan_paid", "Paid", 5000, types.Monthly, 1, 0)
-	free := makePlan("plan_free", "Free", 0, types.Monthly, 1, 0)
+	paid := makePlan("plan_paid", "Paid", 5000, types.Monthly, 1)
+	free := makePlan("plan_free", "Free", 0, types.Monthly, 1)
 
 	sub := &subscription.Subscription{
 		Plan:        *paid,
@@ -1300,7 +1189,7 @@ func TestChangePlan_PaidToFree(t *testing.T) {
 func TestAdvancePeriod_NegativeIntervalCount(t *testing.T) {
 	// Negative interval count should default to 1
 	sub := &subscription.Subscription{}
-	p := makePlan("plan_neg", "Neg", 100, types.Monthly, -1, 0)
+	p := makePlan("plan_neg", "Neg", 100, types.Monthly, -1)
 	StartSubscription(sub, p)
 
 	expected := sub.PeriodStart.AddDate(0, 1, 0) // defaults to 1
@@ -1311,7 +1200,7 @@ func TestAdvancePeriod_NegativeIntervalCount(t *testing.T) {
 
 func TestAdvancePeriod_LargeIntervalCount(t *testing.T) {
 	sub := &subscription.Subscription{}
-	p := makePlan("plan_12m", "12Month", 100, types.Monthly, 12, 0)
+	p := makePlan("plan_12m", "12Month", 100, types.Monthly, 12)
 	StartSubscription(sub, p)
 
 	expected := sub.PeriodStart.AddDate(0, 12, 0)
@@ -1650,7 +1539,7 @@ func TestCollectInvoice_RequiresDatastore(t *testing.T) {
 
 func TestLifecycle_FullFlow_NoTrial(t *testing.T) {
 	sub := &subscription.Subscription{}
-	p := makePlan("plan_flow", "Flow", 2000, types.Monthly, 1, 0)
+	p := makePlan("plan_flow", "Flow", 2000, types.Monthly, 1)
 
 	// 1. Start
 	StartSubscription(sub, p)
@@ -1675,7 +1564,7 @@ func TestLifecycle_FullFlow_NoTrial(t *testing.T) {
 	}
 
 	// 4. Change plan
-	newPlan := makePlan("plan_pro", "Pro", 5000, types.Monthly, 1, 0)
+	newPlan := makePlan("plan_pro", "Pro", 5000, types.Monthly, 1)
 	item, err := ChangePlan(sub, newPlan, true)
 	if err != nil {
 		t.Fatalf("step 4: %v", err)
@@ -1699,71 +1588,6 @@ func TestLifecycle_FullFlow_NoTrial(t *testing.T) {
 	err = CancelSubscription(sub, false)
 	if err == nil {
 		t.Fatal("step 6: should not be able to cancel again")
-	}
-}
-
-func TestLifecycle_FullFlow_WithTrial(t *testing.T) {
-	sub := &subscription.Subscription{}
-	p := makePlan("plan_trial_flow", "TrialFlow", 3000, types.Monthly, 1, 7)
-
-	// 1. Start with trial
-	StartSubscription(sub, p)
-	if sub.Status != subscription.Trialing {
-		t.Fatalf("step 1: expected Trialing, got %s", sub.Status)
-	}
-
-	// 2. Transition trial to active
-	if err := TransitionTrialToActive(sub); err != nil {
-		t.Fatalf("step 2: %v", err)
-	}
-	if sub.Status != subscription.Active {
-		t.Fatalf("step 2: expected Active, got %s", sub.Status)
-	}
-
-	// 3. Cannot transition again
-	err := TransitionTrialToActive(sub)
-	if err == nil {
-		t.Fatal("step 3: should not transition non-trialing to active")
-	}
-
-	// 4. Cancel at period end
-	if err := CancelSubscription(sub, true); err != nil {
-		t.Fatalf("step 4: %v", err)
-	}
-
-	// 5. Reactivate
-	if err := ReactivateSubscription(sub); err != nil {
-		t.Fatalf("step 5: %v", err)
-	}
-
-	// 6. Immediate cancel
-	if err := CancelSubscription(sub, false); err != nil {
-		t.Fatalf("step 6: %v", err)
-	}
-	if sub.Status != subscription.Canceled {
-		t.Fatalf("step 6: expected Canceled, got %s", sub.Status)
-	}
-}
-
-func TestLifecycle_CancelDuringTrial(t *testing.T) {
-	sub := &subscription.Subscription{}
-	p := makePlan("plan_trial_cancel", "TrialCancel", 3000, types.Monthly, 1, 14)
-
-	StartSubscription(sub, p)
-	if sub.Status != subscription.Trialing {
-		t.Fatalf("expected Trialing, got %s", sub.Status)
-	}
-
-	// Cancel immediately during trial
-	if err := CancelSubscription(sub, false); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if sub.Status != subscription.Canceled {
-		t.Fatalf("expected Canceled, got %s", sub.Status)
-	}
-	if !sub.Canceled {
-		t.Fatal("Canceled flag should be true")
 	}
 }
 
@@ -1798,7 +1622,7 @@ func TestLifecycle_ReactivateThenCancel(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestMakePlan_Fields(t *testing.T) {
-	p := makePlan("plan_test", "TestPlan", 4999, types.Yearly, 2, 30)
+	p := makePlan("plan_test", "TestPlan", 4999, types.Yearly, 2)
 
 	if p.Id() != "plan_test" {
 		t.Fatalf("Id mismatch: %s", p.Id())
@@ -1814,9 +1638,6 @@ func TestMakePlan_Fields(t *testing.T) {
 	}
 	if p.IntervalCount != 2 {
 		t.Fatalf("IntervalCount mismatch: %d", p.IntervalCount)
-	}
-	if p.TrialPeriodDays != 30 {
-		t.Fatalf("TrialPeriodDays mismatch: %d", p.TrialPeriodDays)
 	}
 	if string(p.Currency) != "usd" {
 		t.Fatalf("Currency mismatch: %s", p.Currency)
@@ -2302,7 +2123,7 @@ func TestGetOrCreateCustomerBalance_DefaultCurrency(t *testing.T) {
 
 func TestStartSubscription_CopiesPlanPrice(t *testing.T) {
 	sub := &subscription.Subscription{}
-	p := makePlan("plan_copy", "CopyTest", 7777, types.Monthly, 1, 0)
+	p := makePlan("plan_copy", "CopyTest", 7777, types.Monthly, 1)
 
 	StartSubscription(sub, p)
 
@@ -2320,30 +2141,13 @@ func TestStartSubscription_CopiesPlanPrice(t *testing.T) {
 	}
 }
 
-func TestStartSubscription_TrialPeriodEnd(t *testing.T) {
-	sub := &subscription.Subscription{}
-	p := makePlan("plan_tp", "TrialP", 1000, types.Monthly, 1, 7)
-
-	StartSubscription(sub, p)
-
-	// PeriodStart == TrialEnd
-	if !sub.PeriodStart.Equal(sub.TrialEnd) {
-		t.Fatalf("PeriodStart should equal TrialEnd: %v != %v", sub.PeriodStart, sub.TrialEnd)
-	}
-	// PeriodEnd = TrialEnd + 1 month
-	expected := sub.TrialEnd.AddDate(0, 1, 0)
-	if !sub.PeriodEnd.Equal(expected) {
-		t.Fatalf("PeriodEnd mismatch: %v != %v", sub.PeriodEnd, expected)
-	}
-}
-
 // ---------------------------------------------------------------------------
 // lifecycle.go — advancePeriod with different interval types
 // ---------------------------------------------------------------------------
 
 func TestAdvancePeriod_WeeklyDefault(t *testing.T) {
 	sub := &subscription.Subscription{}
-	p := makePlan("plan_w", "Weekly", 100, "weekly", 1, 0)
+	p := makePlan("plan_w", "Weekly", 100, "weekly", 1)
 	StartSubscription(sub, p)
 	// "weekly" hits default case -> treated as monthly
 	expected := sub.PeriodStart.AddDate(0, 1, 0)
@@ -2354,7 +2158,7 @@ func TestAdvancePeriod_WeeklyDefault(t *testing.T) {
 
 func TestAdvancePeriod_DailyDefault(t *testing.T) {
 	sub := &subscription.Subscription{}
-	p := makePlan("plan_d", "Daily", 100, "daily", 5, 0)
+	p := makePlan("plan_d", "Daily", 100, "daily", 5)
 	StartSubscription(sub, p)
 	// "daily" hits default case -> treated as monthly with count=5
 	expected := sub.PeriodStart.AddDate(0, 5, 0)
@@ -2369,8 +2173,8 @@ func TestAdvancePeriod_DailyDefault(t *testing.T) {
 
 func TestChangePlan_AlwaysUpdatesPlanEvenWithProration(t *testing.T) {
 	now := time.Now()
-	old := makePlan("plan_old2", "Old2", 1000, types.Monthly, 1, 0)
-	new_ := makePlan("plan_new2", "New2", 5000, types.Yearly, 1, 0)
+	old := makePlan("plan_old2", "Old2", 1000, types.Monthly, 1)
+	new_ := makePlan("plan_new2", "New2", 5000, types.Yearly, 1)
 
 	sub := &subscription.Subscription{
 		Plan:        *old,
@@ -2490,30 +2294,6 @@ func TestReactivateSubscription_ClearsAllCancelFields(t *testing.T) {
 	}
 	if !sub.CanceledAt.IsZero() {
 		t.Fatal("CanceledAt should be zeroed")
-	}
-}
-
-// ---------------------------------------------------------------------------
-// lifecycle.go — TransitionTrialToActive
-// ---------------------------------------------------------------------------
-
-func TestTransitionTrialToActive_AllNonTrialingStatuses(t *testing.T) {
-	statuses := []subscription.Status{
-		subscription.Active,
-		subscription.PastDue,
-		subscription.Canceled,
-		subscription.Unpaid,
-	}
-
-	for _, status := range statuses {
-		sub := &subscription.Subscription{Status: status}
-		err := TransitionTrialToActive(sub)
-		if err == nil {
-			t.Fatalf("expected error for status=%s", status)
-		}
-		if !strings.Contains(err.Error(), "not trialing") {
-			t.Fatalf("unexpected error for status=%s: %s", status, err)
-		}
 	}
 }
 

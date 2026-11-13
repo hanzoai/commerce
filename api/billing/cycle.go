@@ -214,11 +214,13 @@ func renewDue(ctx context.Context, org *organization.Organization, user string) 
 	return out
 }
 
-// lapse ends a plan collected outside commerce once its period is over with no
-// later payment recorded (engine.Over). Readers already serve it nothing from that
-// end; this is the mark, so its row says it ended. Any other row is left alone.
+// lapse ends, once it is over (engine.Over), a plan collected outside commerce
+// whose period ran out with no later payment recorded, and a trial, which
+// converts to nothing. Readers already serve it nothing from that end; this is the
+// mark, so its row says it ended. Any other row is left alone.
 func lapse(db *datastore.Datastore, org *organization.Organization, sub *subscription.Subscription, now time.Time) (Renewal, bool) {
-	if sub.Type != subscription.External || sub.Status != subscription.Active || !engine.Over(sub, now) {
+	external := sub.Type == subscription.External && sub.Status == subscription.Active
+	if !(external || sub.Status == subscription.Trialing) || !engine.Over(sub, now) {
 		return Renewal{}, false
 	}
 	r := Renewal{OrgName: org.Name, UserId: sub.UserId, SubscriptionId: sub.Id(), Test: sub.Test, Lapsed: true}
@@ -242,9 +244,7 @@ func lapse(db *datastore.Datastore, org *organization.Organization, sub *subscri
 }
 
 // renewOne invoices and collects one subscription's due period, then persists
-// the row as the collection left it. A trial whose first paid period this
-// collects switches the payer's auto-recharge on when its plan states a reload
-// (armForPlan), as a sale that charged today does.
+// the row as the collection left it.
 func renewOne(ctx context.Context, db *datastore.Datastore, org *organization.Organization, sub *subscription.Subscription, pre engine.Prepaid, charge engine.ProviderCharger) Renewal {
 	orgName := org.Name
 	// A row read by query is not bound to the store, so the write goes through a
@@ -254,7 +254,6 @@ func renewOne(ctx context.Context, db *datastore.Datastore, org *organization.Or
 		return Renewal{OrgName: orgName, UserId: sub.UserId, SubscriptionId: sub.Id(), Error: err.Error()}
 	}
 	r := Renewal{OrgName: orgName, UserId: row.UserId, SubscriptionId: row.Id(), Test: row.Test}
-	trial := row.Status == subscription.Trialing
 	inv, result, err := engine.RenewSubscription(ctx, db, row, pre, charge)
 	if inv != nil {
 		r.InvoiceId, r.Currency = inv.Id(), string(inv.Currency)
@@ -273,8 +272,5 @@ func renewOne(ctx context.Context, db *datastore.Datastore, org *organization.Or
 		return r
 	}
 	r.Success, r.Error = result.Success, result.Error
-	if trial && r.Success && row.Status == subscription.Active {
-		armForPlan(ctx, org, row.UserId, subscriptionSlug(row), row.Plan.Currency)
-	}
 	return r
 }

@@ -9,11 +9,13 @@ import (
 
 	"github.com/zap-proto/zip"
 
-	"github.com/hanzoai/commerce/billing/trial"
+	billing "github.com/hanzoai/commerce/api/billing"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/organization"
 	storemodel "github.com/hanzoai/commerce/models/store"
 	"github.com/hanzoai/commerce/models/subscription"
+	"github.com/hanzoai/commerce/models/transaction"
+	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
@@ -62,11 +64,16 @@ func seedProSub(t *testing.T, ns, storeID string, status subscription.Status, pe
 	db := datastore.New(nscontext.WithNamespace(context.Background(), ns))
 	sub := subscription.New(db)
 	sub.StoreId = storeID
-	sub.PlanId = trial.PlanSlug
+	sub.PlanId = "go"
+	sub.Plan.Slug, sub.Plan.Category, sub.Plan.Price = "go", "personal", 800
+	sub.ProviderType = "square"
 	sub.Status = status
 	sub.PeriodStart = time.Now().Add(-time.Hour)
 	sub.PeriodEnd = periodEnd
 	sub.TrialEnd = trialEnd
+	if !trialEnd.IsZero() {
+		sub.TrialStart = time.Now().Add(-time.Hour)
+	}
 	if err := sub.Create(); err != nil {
 		t.Fatalf("create sub: %v", err)
 	}
@@ -77,6 +84,9 @@ func seedProSub(t *testing.T, ns, storeID string, status subscription.Status, pe
 func TestRequireAccess_NoStore402(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
+	if _, _, err := billing.SeedPlans(tc); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
 
 	if code := callRequireAccess(t, "acme", "no-such-store"); code != http.StatusPaymentRequired {
 		t.Fatalf("no-store access = %d, want 402", code)
@@ -88,6 +98,9 @@ func TestRequireAccess_NoStore402(t *testing.T) {
 func TestRequireAccess_UnpaidStore402(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
+	if _, _, err := billing.SeedPlans(tc); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
 
 	s := seedStore(t, "acme")
 	if code := callRequireAccess(t, "acme", s.Id()); code != http.StatusPaymentRequired {
@@ -100,6 +113,9 @@ func TestRequireAccess_UnpaidStore402(t *testing.T) {
 func TestRequireAccess_ActivePlanAllows(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
+	if _, _, err := billing.SeedPlans(tc); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
 
 	s := seedStore(t, "acme")
 	seedProSub(t, "acme", s.Id(), subscription.Active, time.Now().Add(time.Hour), time.Time{})
@@ -115,6 +131,9 @@ func TestRequireAccess_ActivePlanAllows(t *testing.T) {
 func TestRequireAccess_ExpiredActiveBlocked(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
+	if _, _, err := billing.SeedPlans(tc); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
 
 	s := seedStore(t, "acme")
 	seedProSub(t, "acme", s.Id(), subscription.Active, time.Now().Add(-time.Hour), time.Time{})
@@ -124,10 +143,14 @@ func TestRequireAccess_ExpiredActiveBlocked(t *testing.T) {
 	}
 }
 
-// TestRequireAccess_TrialingAllows proves a live trial unlocks the gate.
+// TestRequireAccess_TrialingAllows proves a trial opened before commerce stopped
+// selling them unlocks the gate until its end.
 func TestRequireAccess_TrialingAllows(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
+	if _, _, err := billing.SeedPlans(tc); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
 
 	s := seedStore(t, "acme")
 	seedProSub(t, "acme", s.Id(), subscription.Trialing, time.Time{}, time.Now().Add(48*time.Hour))
@@ -142,6 +165,9 @@ func TestRequireAccess_TrialingAllows(t *testing.T) {
 func TestRequireAccess_StoreBound(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
+	if _, _, err := billing.SeedPlans(tc); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
 
 	a := seedStore(t, "acme")
 	b := seedStore(t, "acme")
@@ -152,5 +178,53 @@ func TestRequireAccess_StoreBound(t *testing.T) {
 	}
 	if code := callRequireAccess(t, "acme", b.Id()); code != http.StatusPaymentRequired {
 		t.Fatalf("store B (no plan) = %d, want 402 (A's plan must not unlock B)", code)
+	}
+}
+
+// Store access end to end on a real store, with no trial anywhere: the
+// @hanzo/plans catalog is seeded into the test database as a boot does; a new
+// store with no plan is refused (there is no trial to start, and a trial credit
+// opens nothing); a store whose plan its card pays for — a rung on sale, or a
+// retired rung a holder still pays for — passes the gate.
+func TestE2E_StoreAccessOpensOnAPaidPlanAndNoTrial(t *testing.T) {
+	tc := ae.NewContext()
+	defer tc.Close()
+	if _, _, err := billing.SeedPlans(tc); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	fresh := seedStore(t, "acme")
+	if code := callRequireAccess(t, "acme", fresh.Id()); code != http.StatusPaymentRequired {
+		t.Fatalf("a new store with no plan: %d, want 402", code)
+	}
+	db := datastore.New(nscontext.WithNamespace(context.Background(), "acme"))
+	credit := transaction.New(db)
+	credit.Type, credit.DestinationId, credit.DestinationKind = transaction.Deposit, "acme", "iam-user"
+	credit.Currency, credit.Amount, credit.Tags = "usd", currency.Cents(2000), "trial-credit:"+fresh.Id()
+	credit.ExpiresAt = time.Now().Add(7 * 24 * time.Hour)
+	if err := credit.Create(); err != nil {
+		t.Fatalf("trial credit: %v", err)
+	}
+	if code := callRequireAccess(t, "acme", fresh.Id()); code != http.StatusPaymentRequired {
+		t.Fatalf("a store with a trial credit and no plan: %d, want 402", code)
+	}
+
+	for _, slug := range []string{"go", "ultimate", "dev"} {
+		s := seedStore(t, "acme")
+		p := billing.LookupStaticPlan(slug)
+		if p == nil {
+			t.Fatalf("the catalog has no %s", slug)
+		}
+		sub := subscription.New(db)
+		sub.UserId, sub.StoreId, sub.PlanId = "acme", s.Id(), slug
+		sub.Plan.Slug, sub.Plan.Category, sub.Plan.Price = slug, p.Category, currency.Cents(p.PriceMonth)
+		sub.ProviderType, sub.Status = "square", subscription.Active
+		sub.PeriodStart, sub.PeriodEnd = time.Now().Add(-time.Hour), time.Now().AddDate(0, 1, 0)
+		if err := sub.Create(); err != nil {
+			t.Fatalf("%s subscription: %v", slug, err)
+		}
+		if code := callRequireAccess(t, "acme", s.Id()); code != http.StatusOK {
+			t.Fatalf("a store on %s paid by card: %d, want 200", slug, code)
+		}
 	}
 }

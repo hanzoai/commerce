@@ -255,7 +255,6 @@ func RecordSubscription(ctx context.Context, org *organization.Organization, in 
 		return nil, err
 	}
 
-	p.TrialPeriodDays = 0
 	meta := recordMetadata(nil, collectionExternal, processor, reference, in.Terms, start, end, seatMult+int64(lineSeats(lines)), in.PriceCents, lines)
 	if comp {
 		meta["listCents"] = list

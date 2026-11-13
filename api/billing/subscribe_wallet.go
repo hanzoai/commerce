@@ -185,13 +185,6 @@ func walletSale(ctx context.Context, db *datastore.Datastore, org *organization.
 		t.abandon()
 		return nil, saleRefusal{saleUnavailable, "the attempt could not be recorded, so the wallet was not charged; try again"}
 	}
-	// A free trial starts on a card kept on file, which a wallet is not.
-	if t.plan.TrialPeriodDays > 0 {
-		t.abandon()
-		return nil, saleRefusal{saleRefused, fmt.Sprintf(
-			"plan %q starts with a %d-day free trial, which begins on a card kept on file; pay by card to start it",
-			t.slug, t.plan.TrialPeriodDays)}
-	}
 	wr, ok := walletRailFrom(ctx, processorsForOrg(org), in.Provider)
 	if !ok {
 		t.abandon()
@@ -316,7 +309,6 @@ func walletSale(ctx context.Context, db *datastore.Datastore, org *organization.
 	// The subscription, opened as one paid from the balance is, because that is
 	// how it renews. The money moved, so a failure from here on leaves the guard
 	// held: a retry replays nothing and charges nothing.
-	t.plan.TrialPeriodDays = 0
 	meta := map[string]interface{}{"source": "subscribe/wallet"}
 	if t.coupon.Code != "" {
 		meta["coupon"] = t.coupon.Code

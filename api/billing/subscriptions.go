@@ -298,7 +298,6 @@ func resolveSubscriptionPlan(db *datastore.Datastore, planId string) (*plan.Plan
 		p.Currency = currency.Type(staticP.Currency)
 		p.Interval = types.Interval(staticP.Interval)
 		p.IntervalCount = staticP.IntervalCount
-		p.TrialPeriodDays = staticP.TrialPeriodDays
 		p.Status = staticP.Status // a draft stays unlisted when the embed materializes it
 		_ = p.Create()            // best-effort; ignore dup-key errors
 	}
@@ -688,6 +687,65 @@ func billingSubscription(db *datastore.Datastore, subject string, test bool) *su
 	return nil
 }
 
+// trialMost is the longest trial commerce ever opened: 30 days.
+const trialMost = 31 * 24 * time.Hour
+
+// storeTrial is the provider a store trial's row carried; its plan was a copy in
+// the store's own namespace.
+const storeTrial = "trial"
+
+// hanzoPlan reports whether id names a Hanzo plan: a row of the plan authority (by
+// id or slug) or a slug the catalog resolves. A merchant's own plan, a row in its
+// namespace, is named by that row's id, which is neither.
+func hanzoPlan(ctx context.Context, id string) bool {
+	if id == "" {
+		return false
+	}
+	return lookupPlan(id) != nil || plan.New(plan.AuthorityDB(ctx)).GetById(id) == nil
+}
+
+// Owns reports whether s is a Hanzo subscription row — one commerce's billing
+// writes for a Hanzo plan — and not a merchant's subscription for its customer,
+// which shares the org's namespace. A row on a Hanzo plan (hanzoPlan) is; so is a
+// staff gift or a store trial, whose plan is a copy in the org's namespace named
+// for a Hanzo plan's slug. The merchant subscription API writes neither provider
+// and never edits a row Owns answers for.
+func Owns(ctx context.Context, s *subscription.Subscription) bool {
+	switch s.ProviderType {
+	case giftProvider, storeTrial:
+		return hanzoPlan(ctx, s.Plan.Slug)
+	}
+	return hanzoPlan(ctx, s.PlanId)
+}
+
+// Reserved reports whether provider is one only commerce's billing writes.
+func Reserved(provider string) bool {
+	return provider == giftProvider || provider == storeTrial
+}
+
+// Unlocks reports whether s opens the commerce admin and a store at at. It does
+// when s is on a Hanzo plan — a row of the plan authority, never a merchant's own
+// plan in its namespace, which its customers' subscriptions name — that charges
+// (paidRow), not a bundle row, and:
+//
+//   - active on a period that covers at, paid for (payment-backed) or given by
+//     staff (a grant), whether the plan is on sale or retired; or
+//   - a trial opened before commerce stopped selling trials (a store trial's plan
+//     was a copy in the store's namespace), no longer than any trial commerce
+//     sold, until its end. Nothing opens a trial now.
+func Unlocks(ctx context.Context, s *subscription.Subscription, at time.Time) bool {
+	if s.ProviderType == "bundle" || !paidRow(s) || !Owns(ctx, s) {
+		return false
+	}
+	switch s.Status {
+	case subscription.Trialing:
+		return s.TrialEnd.After(at) && !s.TrialStart.IsZero() && s.TrialEnd.Sub(s.TrialStart) <= trialMost
+	case subscription.Active:
+		return s.PeriodEnd.After(at) && !engine.Over(s, at) && (subscriptionPaymentBacked(s) || s.ProviderType == giftProvider)
+	}
+	return false
+}
+
 // holdsPlan reports whether s is a subject's one paid plan, the row a second
 // paid sale is refused over (billingSubscription): active or trialing, not a
 // bundle child, a paid tier, and payment-backed. Every subscription view states
@@ -1024,7 +1082,8 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 		}
 	}
 
-	left := "" // the plan a move leaves, when it leaves its reload behind
+	left := ""          // the plan a move leaves, when it leaves its reload behind
+	var moved [2]string // the plan a move leaves and the one it moves onto, when the reload follows
 	if planChanged {
 		// Resolve the target plan FIRST so the gate scores its canonical SLUG. A
 		// client may pass a plan's DB HASHID (resolveSubscriptionPlan→GetById accepts
@@ -1099,10 +1158,14 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 			return http.Fail(c, 400, err.Error(), nil)
 		}
 		sub.CustomerCents = customer
-		// A move onto a plan whose row states no reload stops the reload the plan
-		// it leaves switched on, once the move is saved (disarm).
-		if newPlan.Limits == nil || newPlan.Limits.Reload == nil {
+		// A move onto a plan that switches no reload on stops the reload the plan
+		// it leaves switched on, once the move is saved (disarm). A move onto one
+		// that does keeps that rule as it stands, now named for the plan moved onto
+		// (follow): a move shows no terms, so it switches nothing on.
+		if planReload(newPlan.Price, newPlan.Limits) == nil {
 			left = curSlug
+		} else {
+			moved = [2]string{curSlug, newPlan.Slug}
 		}
 	}
 
@@ -1125,6 +1188,7 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 		emitSubscriptionPlanChanged(c, org.Name, sub)
 	}
 	disarm(c.Context(), org, sub.UserId, left)
+	follow(c.Context(), org, sub.UserId, moved[0], moved[1])
 
 	return c.JSON(200, subscriptionResponse(sub))
 }

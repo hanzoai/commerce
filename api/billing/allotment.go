@@ -23,7 +23,7 @@ import (
 
 // userSubscriptions loads every subscription keyed to `user` that speaks to a
 // reader in this mode. Subscriptions are registered ancestor-less and keyed by
-// UserId (the canonical create path, billing/grant.Grant + billing/trial), so they
+// UserId (the canonical create path, billing/grant.Grant), so they
 // are queried by a bare UserId filter — NOT under the synckey ancestor, which
 // matches nothing. Shared by the money-path plan resolver and the tier derivation;
 // each applies its own fail-safe policy to the returned error (the mint path
@@ -70,7 +70,7 @@ func subscriptionPlanSlug(db *datastore.Datastore, user string, test bool) strin
 //
 // Subscriptions are registered ancestor-less (orm.Register without WithParent)
 // and keyed by UserId, so they are queried the SAME way
-// billing/trial.findTrialSubscription queries them — a bare UserId filter, NOT
+// userSubscriptions queries them — a bare UserId filter, NOT
 // under the synckey ancestor. The prior Ancestor(synckey) filter (inherited by
 // the old resolvePlanSlug) matched NOTHING, which would make the grant clamp
 // reject even a legitimate self-service grant for the user's actual plan.

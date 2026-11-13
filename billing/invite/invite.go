@@ -192,7 +192,7 @@ func Redeem(db *datastore.Datastore, code, org string) (*Invite, bool, error) {
 // OrgRedeemed reports whether org holds a redeemed invite — the paywall's
 // invite allow-path. db must be the SystemDB. A single-field query (Org=) then an
 // in-memory Redeemed check avoids a two-equality-filter composite index (which is
-// not guaranteed across datastore backends — see the same rule in billing/trial).
+// not guaranteed across datastore backends).
 func OrgRedeemed(db *datastore.Datastore, org string) (bool, error) {
 	org = strings.TrimSpace(org)
 	if org == "" {

@@ -18,25 +18,16 @@ import (
 	"github.com/hanzoai/money"
 )
 
-// StartSubscription initializes a new subscription: sets the initial state,
-// computes period dates, and handles trial logic.
+// StartSubscription initializes a new subscription: active from now, on the
+// period the plan bills. No plan opens in a trial.
 func StartSubscription(sub *subscription.Subscription, p *plan.Plan) {
 	now := time.Now()
 	sub.Plan = *p
 	sub.PlanId = p.Id()
 	sub.Start = now
-
-	if p.TrialPeriodDays > 0 {
-		sub.Status = subscription.Trialing
-		sub.TrialStart = now
-		sub.TrialEnd = now.AddDate(0, 0, p.TrialPeriodDays)
-		sub.PeriodStart = sub.TrialEnd
-		sub.PeriodEnd = Advance(sub.TrialEnd, p)
-	} else {
-		sub.Status = subscription.Active
-		sub.PeriodStart = now
-		sub.PeriodEnd = Advance(now, p)
-	}
+	sub.Status = subscription.Active
+	sub.PeriodStart = now
+	sub.PeriodEnd = Advance(now, p)
 }
 
 // RenewSubscription bills the period a due subscription owes next — in advance:
@@ -45,10 +36,8 @@ func StartSubscription(sub *subscription.Subscription, p *plan.Plan) {
 // row is never served a period it has not paid for, and one canceled at the end of
 // its period ends with the last period it paid for.
 //
-// A trial is billed the same way. The trial is what a trialing row has been
-// served (servedTo), so when it ends the period after it — the first paid one —
-// is invoiced and collected, and the row becomes active once that is paid or past
-// due when it is not. A trial canceled at its end ends with the trial, unbilled.
+// A trialing row is never renewed: commerce sells no trials, and a trial opened
+// before that runs to its end and ends there, unbilled (IsDue, Over).
 //
 // It is idempotent per (subscription, period): a PastDue renewal re-runs the
 // SAME period (the row only moves on a successful collection), so this must NEVER
@@ -232,24 +221,23 @@ func owed(sub *subscription.Subscription, now time.Time) period {
 
 // IsDue reports whether a subscription has been served everything it holds and
 // is eligible to be (re)invoiced: Active or PastDue with a PeriodEnd in the past,
-// Trialing on a card with a TrialEnd in the past, or Scheduled on a card whose
-// start has come. The single definition of "due", shared by the billing-cycle
-// filter and RenewSubscription's new-period check.
+// or Scheduled on a card whose start has come. The single definition of "due",
+// shared by the billing-cycle filter and RenewSubscription's new-period check.
 //
 // An externally collected subscription is never due. Its customer pays the
 // processor directly, so an invoice built here would bill a period nobody owes us
 // for. Its next period is recorded when that payment arrives, not renewed, and
 // when none is it lapses at its end (Over).
 //
-// A trial with no card on it is never due either: nothing was agreed to pay for
-// the period after it, so it lapses at its end and is never invoiced.
+// A trial is never due, card or no card: commerce sells no trials, so one opened
+// before that converts to nothing and charges nobody. It ends at its end (Over).
 func IsDue(sub *subscription.Subscription, now time.Time) bool {
 	if sub.Type == subscription.External {
 		return false
 	}
 	switch sub.Status {
 	case subscription.Active, subscription.PastDue:
-	case subscription.Trialing, subscription.Scheduled:
+	case subscription.Scheduled:
 		if sub.DefaultPaymentMethod == "" {
 			return false
 		}
@@ -534,13 +522,15 @@ func assignInvoiceNumber(db *datastore.Datastore, inv *billinginvoice.BillingInv
 
 // Over reports whether a row that does not renew has reached the end of what it
 // has been served (servedTo: its period, or its trial): one canceled at the end of
-// it, or one collected outside commerce, whose next period arrives only when its
-// payment is recorded. Such a row confers nothing from then on, whether or not a
-// sweep has yet marked it ended ([ended] is that mark), so a reader never serves a
-// plan past its last day because the renewal sweep has not run.
+// it, one collected outside commerce, whose next period arrives only when its
+// payment is recorded, or a trial, which never renews. Such a row confers nothing
+// from then on, whether or not a sweep has yet marked it ended ([ended] is that
+// mark), so a reader never serves a plan past its last day because the renewal
+// sweep has not run.
 func Over(sub *subscription.Subscription, now time.Time) bool {
 	end := servedTo(sub)
-	return (sub.EndCancel || sub.Type == subscription.External) && !end.IsZero() && !now.Before(end)
+	stops := sub.EndCancel || sub.Type == subscription.External || sub.Status == subscription.Trialing
+	return stops && !end.IsZero() && !now.Before(end)
 }
 
 // ended ends a row canceled at the end of what it has been served once that is
@@ -668,15 +658,6 @@ func resultFromInvoice(inv *billinginvoice.BillingInvoice) *CollectionResult {
 		CreditUsed:    inv.CreditApplied,
 		AmountCharged: inv.AmountPaid,
 	}
-}
-
-// TransitionTrialToActive moves a trialing subscription to active.
-func TransitionTrialToActive(sub *subscription.Subscription) error {
-	if sub.Status != subscription.Trialing {
-		return fmt.Errorf("subscription is not trialing, current status: %s", sub.Status)
-	}
-	sub.Status = subscription.Active
-	return nil
 }
 
 // CancelSubscription cancels a subscription, either immediately or at period end.

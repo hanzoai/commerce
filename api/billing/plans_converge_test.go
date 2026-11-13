@@ -2,6 +2,7 @@ package billing
 
 import (
 	"net/http"
+	"slices"
 	"testing"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -12,86 +13,184 @@ import (
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
-// The production cutover, end to end: a store holding the OLD catalog boots
-// against the NEW one and converges — without a token, a script, or a human.
-//
-// This is the case the previous seed could not handle. Every stored row was
-// Managed (the seed set that flag itself), so the seed skipped all of them: it
-// would create `go` and `free`, leave `pro` at its old price, and leave `developer` and
-// `plus` on sale beside them. A catalog half-new and half-stale, which reads to a
-// customer as a pricing page that cannot make up its mind, and to billing as two
-// prices for one tier.
-func TestCatalogConverges_OldStoreToPublishedLadder(t *testing.T) {
+// A STORE THAT HOLDS PLAN ROWS IS NEVER RECONCILED TO THE VENDORED CATALOG. The
+// rows are what is sold and only a SuperAdmin's edit changes one: a boot against
+// a newer vendored catalog reprices nothing, retires nothing, relists nothing and
+// adds nothing, whether a row was written by an earlier import, by an admin or by
+// nobody anyone can name.
+func TestAHeldStoreIsNeverReconciled(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
 	db := datastore.New(nscontext.WithNamespace(c, plan.Namespace))
 
-	// Plant the catalog as production actually holds it: seeded rows, Managed,
-	// carrying the retired tiers and the old prices.
-	for _, old := range []struct {
-		slug, name, category string
-		cents                int64
+	planted := []struct {
+		slug, category, status string
+		cents                  int64
+		managed, edited        bool
 	}{
-		{"developer", "Developer", "personal", 0},
-		{"pro", "Pro", "personal", 2000},
-		{"plus", "Plus", "personal", 10000},
-		{"max", "Max", "personal", 20000},
-		{"world-pro", "World Pro", "world", 2900},
-	} {
+		{"developer", "personal", "", 0, true, false},                    // a tier the vendored catalog dropped
+		{"dev", "personal", "", 1700, true, false},                       // imported once, vendored price differs
+		{"max-5x", "personal", "", 9900, true, true},                     // a SuperAdmin's price
+		{"team", "", "", 0, false, false},                                // written by nobody anyone can name
+		{"max-20x", "personal", plan.StatusArchived, 20000, true, false}, // retired by an admin; the vendored copy sells it
+	}
+	for _, old := range planted {
 		p := plan.New(db)
-		p.Slug, p.Name, p.Category, p.Price, p.Managed = old.slug, old.name, old.category, currencyCents(old.cents), true
+		p.Slug, p.Name, p.Category, p.Price = old.slug, old.slug, old.category, currencyCents(old.cents)
+		p.Status, p.Managed, p.AdminEdited = old.status, old.managed, old.edited
 		if err := p.Create(); err != nil {
 			t.Fatalf("plant %s: %v", old.slug, err)
 		}
 	}
 
-	if _, _, err := SeedPlans(c); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-
-	rows, ok := planAuthorityRows(c)
-	if !ok {
-		t.Fatal("authority read failed")
-	}
-	got := map[string]int64{}
-	for _, r := range rows {
-		got[r.Slug] = r.Price
-	}
-
-	// The published ladder is what is offered, at the published prices.
-	for slug, want := range map[string]int64{
-		"free": 0, "go": 800, "pro-3x": 1500, "dev-5x": 4500, "max-15x": 9500, "ultra": 19500, "team": 2500,
-	} {
-		if v, ok := got[slug]; !ok || v != want {
-			t.Errorf("public %q = %d cents (listed %v), want %d", slug, v, ok, want)
+	for boot := 1; boot <= 2; boot++ {
+		created, _, err := SeedPlans(c)
+		if err != nil {
+			t.Fatalf("boot %d: %v", boot, err)
+		}
+		if created != 0 {
+			t.Fatalf("boot %d created %d rows in a store that holds rows; want 0", boot, created)
+		}
+		var all []*plan.Plan
+		if _, err := plan.Query(db).GetAll(&all); err != nil {
+			t.Fatalf("read: %v", err)
+		}
+		if len(all) != len(planted) {
+			t.Fatalf("boot %d: the store holds %d rows, want the %d planted", boot, len(all), len(planted))
+		}
+		for _, old := range planted {
+			p := plan.New(db)
+			if ok, err := p.Query().Filter("Slug=", old.slug).Get(); err != nil || !ok {
+				t.Fatalf("boot %d: %s: ok=%v err=%v", boot, old.slug, ok, err)
+			}
+			if int64(p.Price) != old.cents || p.Category != old.category || p.Status != old.status ||
+				p.Managed != old.managed || p.AdminEdited != old.edited || len(p.Features) != 0 {
+				t.Errorf("boot %d: %s was changed by the boot: price %d category %q status %q managed %v edited %v features %v",
+					boot, old.slug, p.Price, p.Category, p.Status, p.Managed, p.AdminEdited, p.Features)
+			}
 		}
 	}
-	// The retired tiers are gone from the offer, and so are the rungs the catalog
-	// archives and the one it keeps private.
-	for _, slug := range []string{"developer", "plus", "world-pro", "pro", "max", "dev", "max-5x", "max-20x", "max-50x", "unlimited"} {
-		if _, still := got[slug]; still {
-			t.Errorf("retired %q is still on sale", slug)
+}
+
+// What a held store's boot does write, once: the entitlement block and the
+// renamed slugs on a row that never recorded either. A row a SuperAdmin stated,
+// even as granting nothing, is left as stated, and a second boot writes nothing.
+func TestAHeldStoreRecordsEntitlementsOnce(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := datastore.New(nscontext.WithNamespace(c, plan.Namespace))
+
+	var vendored *plan.Plan
+	for _, r := range SeedRows() {
+		if len(r.Entitlements) > 0 && vendored == nil {
+			vendored = r
 		}
 	}
-	// But their ROWS survive, so anything that recorded the slug still resolves.
-	for _, slug := range []string{"developer", "plus", "world-pro", "pro", "max"} {
+	if vendored == nil {
+		t.Fatal("the vendored catalog states no entitlements")
+	}
+	for _, slug := range []string{vendored.Slug, "stated", "unknown"} {
 		p := plan.New(db)
-		if found, err := p.Query().Filter("Slug=", slug).Get(); err != nil || !found {
-			t.Errorf("retired %q was DESTROYED (found=%v err=%v); history cannot resolve it", slug, found, err)
+		p.Slug, p.Name, p.Category, p.Price, p.Managed = slug, slug, "personal", 1234, true
+		if slug == "stated" {
+			p.Entitlements = map[string]any{}
 		}
+		if err := p.Create(); err != nil {
+			t.Fatalf("plant %s: %v", slug, err)
+		}
+	}
+	// "stated" is a slug the vendored catalog does not publish, so plant a second
+	// stated row on one it does.
+	other := ""
+	for _, r := range SeedRows() {
+		if r.Slug != vendored.Slug && len(r.Entitlements) > 0 {
+			other = r.Slug
+			break
+		}
+	}
+	p := plan.New(db)
+	p.Slug, p.Name, p.Category, p.Managed, p.AdminEdited = other, other, "personal", true, true
+	p.Entitlements = map[string]any{"ai.agents": float64(1)}
+	if err := p.Create(); err != nil {
+		t.Fatalf("plant %s: %v", other, err)
+	}
+
+	if _, filled, err := SeedPlans(c); err != nil || filled != 1 {
+		t.Fatalf("first boot filled %d, err %v; want exactly the one row that never recorded what it grants", filled, err)
+	}
+	read := func(slug string) *plan.Plan {
+		t.Helper()
+		p := plan.New(db)
+		if ok, err := p.Query().Filter("Slug=", slug).Get(); err != nil || !ok {
+			t.Fatalf("%s: ok=%v err=%v", slug, ok, err)
+		}
+		return p
+	}
+	got := read(vendored.Slug)
+	if len(got.Entitlements) != len(vendored.Entitlements) || int64(got.Price) != 1234 {
+		t.Fatalf("%s: entitlements %v price %d; want the vendored block and the row's own price 1234", vendored.Slug, got.Entitlements, got.Price)
+	}
+	if e := read(other).Entitlements; len(e) != 1 || e["ai.agents"] != float64(1) {
+		t.Fatalf("%s: a SuperAdmin's entitlements were overwritten: %v", other, e)
+	}
+	if e := read("stated").Entitlements; e == nil || len(e) != 0 {
+		t.Fatalf("stated: %v; want the empty block it was stated with", e)
+	}
+	if e := read("unknown").Entitlements; e != nil {
+		t.Fatalf("unknown: %v; want nothing recorded for a slug the vendored catalog does not publish", e)
+	}
+	if _, filled, err := SeedPlans(c); err != nil || filled != 0 {
+		t.Fatalf("second boot filled %d, err %v; want 0", filled, err)
+	}
+}
+
+// The one import: a store that holds no row takes the vendored catalog, with
+// what each plan grants and replaces on its row.
+func TestAnEmptyStoreImportsOnce(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := datastore.New(nscontext.WithNamespace(c, plan.Namespace))
+	created, _, err := SeedPlans(c)
+	if err != nil || created != len(SeedRows()) {
+		t.Fatalf("import created %d, err %v; want %d", created, err, len(SeedRows()))
+	}
+	for _, r := range SeedRows() {
+		p := plan.New(db)
+		if ok, err := p.Query().Filter("Slug=", r.Slug).Get(); err != nil || !ok {
+			t.Fatalf("%s: ok=%v err=%v", r.Slug, ok, err)
+		}
+		if p.Entitlements == nil || len(p.Entitlements) != len(r.Entitlements) || !slices.Equal(p.Replaces, r.Replaces) {
+			t.Errorf("%s: entitlements %v replaces %v; want %v and %v", r.Slug, p.Entitlements, p.Replaces, r.Entitlements, r.Replaces)
+		}
+	}
+	// An admin reprices a row; the next boot leaves it.
+	p := plan.New(db)
+	if ok, err := p.Query().Filter("Slug=", "dev").Get(); err != nil || !ok {
+		t.Fatalf("dev: ok=%v err=%v", ok, err)
+	}
+	p.Price, p.AdminEdited = 4242, true
+	if err := p.Update(); err != nil {
+		t.Fatalf("edit: %v", err)
+	}
+	if created, corrected, err := SeedPlans(c); err != nil || created != 0 || corrected != 0 {
+		t.Fatalf("second boot = created %d corrected %d err %v; want nothing written", created, corrected, err)
+	}
+	p = plan.New(db)
+	if ok, err := p.Query().Filter("Slug=", "dev").Get(); err != nil || !ok || p.Price != 4242 {
+		t.Fatalf("dev after the second boot: price %d ok %v err %v; want the admin's 4242", p.Price, ok, err)
 	}
 }
 
 func currencyCents(v int64) currency.Cents { return currency.Cents(v) }
 
 // A PLAN THE CATALOG DOES NOT SELL IS PUBLISHED AND SOLD BY NOTHING. @hanzo/plans
-// 1.10.0 keeps Unlimited ($995) private — staff assign it, no checkout sells it —
-// and the rungs commerce retired (dev, max-5x, max-20x, max-50x) archived, exactly
-// as they were sold. A boot creates each row at its status, the public catalog
-// does not list it, and every purchase entrypoint treats it as a slug that never
-// existed — so a deploy that carries the price charges no one. Each still resolves
-// at its price, for the renewals and invoices that recorded it. Max 100x, the one
-// draft before, is gone from the catalog.
+// 1.10.1 keeps the rungs commerce retired (dev, max-5x, max-20x, max-50x)
+// archived, exactly as they were sold, and states no other plan unlisted. A boot
+// creates each row at its status, the public catalog does not list it, and every
+// purchase entrypoint treats it as a slug that never existed — so a deploy that
+// carries the price charges no one. Each still resolves at its price, for the
+// renewals and invoices that recorded it. Max 100x, the one draft before, is gone
+// from the catalog.
 func TestUnlistedTiersAreSeededUnlistedAndSoldByNothing(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
@@ -104,11 +203,10 @@ func TestUnlistedTiersAreSeededUnlistedAndSoldByNothing(t *testing.T) {
 		status string
 		cents  int64
 	}{
-		"unlimited": {plan.StatusPrivate, 99500},
-		"dev":       {plan.StatusArchived, 2000},
-		"max-5x":    {plan.StatusArchived, 10000},
-		"max-20x":   {plan.StatusArchived, 20000},
-		"max-50x":   {plan.StatusArchived, 50000},
+		"dev":     {plan.StatusArchived, 2000},
+		"max-5x":  {plan.StatusArchived, 10000},
+		"max-20x": {plan.StatusArchived, 20000},
+		"max-50x": {plan.StatusArchived, 50000},
 	}
 	held := 0
 	for i := range catalog {
@@ -196,5 +294,29 @@ func TestUnlistedTiersAreSeededUnlistedAndSoldByNothing(t *testing.T) {
 	}
 	if got := reload(t, odb, onGo.Id()); got.Plan.Slug != "go" {
 		t.Errorf("a refused move left the subscription on %q, want go", got.Plan.Slug)
+	}
+}
+
+// Every rung of the 1.10.1 ladder, Ultimate and Unlimited included, is bought by
+// card at its list price by the buyer themselves, with no price agreed and no
+// staff: the ladder is self-serve from Go to Unlimited.
+func TestEveryLadderRungSellsByCardAtList(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	if _, _, err := SeedPlans(c); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	for _, slug := range []string{"go", "pro-3x", "dev-5x", "max-15x", "ultra", "ultimate", "unlimited"} {
+		org := moneyOrg("rung-" + slug)
+		m := squareMock("cust_"+slug, "ccof_"+slug, "sqpay_"+slug)
+		withFakeSquare(t, m)
+		r := invokeSubscribeCard(org, c, `{"sourceId":"cnon:ok","planId":"`+slug+`"}`, nil)
+		if r.StatusCode != http.StatusCreated {
+			t.Errorf("%s by card: %d %s, want 201", slug, r.StatusCode, bodyOf(r))
+			continue
+		}
+		if want := lookupPlan(slug).Price; m.chargeCalls != 1 || m.lastChargeAmount != want {
+			t.Errorf("%s by card charged %d time(s), last %d; want once at its list %d", slug, m.chargeCalls, m.lastChargeAmount, want)
+		}
 	}
 }

@@ -3,6 +3,7 @@ package subscription
 import (
 	"github.com/zap-proto/zip"
 
+	billing "github.com/hanzoai/commerce/api/billing"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/organization"
@@ -45,6 +46,11 @@ func subscribe(c *zip.Ctx, org *organization.Organization) (*subscription.Subscr
 		return nil, nil, err
 	}
 	log.Debug("Subscription: %#v", sub, c)
+
+	// The providers commerce's own billing writes are never the body's to name.
+	if billing.Reserved(sub.ProviderType) {
+		return nil, nil, ReservedProvider
+	}
 
 	// Subscription w/o quantity defaults to 1
 	if sub.Quantity < 1 {
@@ -93,6 +99,12 @@ func updateSubscribe(c *zip.Ctx, org *organization.Organization, sub *subscripti
 	nsCtx := org.Namespaced(ctx)
 	db := datastore.New(nsCtx)
 
+	// A Hanzo subscription row shares the org's namespace with the merchant's
+	// customers' rows; its billing is commerce's, never this API's to edit.
+	if billing.Owns(ctx, sub) {
+		return nil, HanzoSubscription
+	}
+
 	userId := sub.UserId
 	test := sub.Test
 
@@ -106,13 +118,11 @@ func updateSubscribe(c *zip.Ctx, org *organization.Organization, sub *subscripti
 	if userId != sub.UserId {
 		return nil, CannotChangeUser
 	}
+	if billing.Reserved(sub.ProviderType) {
+		return nil, ReservedProvider
+	}
 
 	log.Warn("Quantity %v", sub.Quantity)
-
-	// Delete Case
-	if sub.Quantity < 1 {
-		return unsubscribe(c, org, sub)
-	}
 
 	pln := plan.New(db)
 	err := pln.GetById(sub.PlanId)
@@ -121,7 +131,16 @@ func updateSubscribe(c *zip.Ctx, org *organization.Organization, sub *subscripti
 	}
 	log.Debug("Plan: %#v", pln, c)
 
+	// The row names its plan by the plan's id, as a subscribe writes it, never by
+	// the body's string.
+	sub.PlanId = pln.Id()
 	sub.Plan = *pln
+
+	// Delete Case: written as every update is, only once the row names the
+	// merchant's plan.
+	if sub.Quantity < 1 {
+		return unsubscribe(c, org, sub)
+	}
 
 	sub.MustPut()
 

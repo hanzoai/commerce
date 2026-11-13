@@ -24,7 +24,6 @@ func Route(router *zip.Group, args ...zip.Handler) {
 	api.GET("/current", current...)
 	access := append(append([]zip.Handler{}, args...), getAccess)
 	api.GET("/access", access...)
-	api.POST("/:storeid/trial", adminRequired, namespaced, startTrial)
 
 	// Mint the org's least-privilege Published storefront read key (design
 	// path b). Admin-gated + org-bound; the returned token is stored in KMS and

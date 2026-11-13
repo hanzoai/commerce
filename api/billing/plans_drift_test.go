@@ -20,6 +20,10 @@ import (
 // entry whose digests must equal the new bytes, and editing the bytes under the
 // current version breaks the current entry.
 var versionDigests = map[string]struct{ subscription, dns string }{
+	"1.10.1": {
+		subscription: "c88996e72c784cb15fe52fc725c05c4a3dfcafc7926cf806d46e64f40f46239c",
+		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
+	},
 	"1.10.0": {
 		subscription: "457bb229defbb9b0de028c17b472f9521566eecb94c2333fd69dcc7a5334f088",
 		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
@@ -147,12 +151,12 @@ func TestVendoredPlansMatchPinnedVersion(t *testing.T) {
 
 // TestVendoredPlanPrices is a diagnostic price-canary: if a money-bearing plan's
 // cents change, THIS test names which one (the digest test only says "drifted").
-// These are the @hanzo/plans@1.10.0 cents — monthly, the annual price tag shown
+// These are the @hanzo/plans@1.10.1 cents — monthly, the annual price tag shown
 // per month, and the year a yearly subscription is charged. contactSales plans
 // are null-priced → stored as 0 + ContactSales (never a chargeable $0).
 func TestVendoredPlanPrices(t *testing.T) {
-	if got := len(catalog); got != 19 { // 16 subscription + 3 dns
-		t.Fatalf("catalog = %d, want 19 (16 subscription + 3 dns)", got)
+	if got := len(catalog); got != 20 { // 17 subscription + 3 dns
+		t.Fatalf("catalog = %d, want 20 (17 subscription + 3 dns)", got)
 	}
 	if got := len(dnsPlans); got != 3 {
 		t.Fatalf("dnsPlans = %d, want 3", got)
@@ -179,7 +183,8 @@ func TestVendoredPlanPrices(t *testing.T) {
 		"dev-5x":         {4500, none, 0, false}, // shown as Dev
 		"max-15x":        {9500, none, 0, false}, // shown as Max
 		"ultra":          {19500, none, 0, false},
-		"unlimited":      {99500, none, 0, false},       // private: priced, sold by no checkout
+		"ultimate":       {49500, none, 0, false},
+		"unlimited":      {99500, none, 0, false},
 		"dev":            {2000, 1667, 20000, false},    // archived: the old Pro, as it was sold
 		"max-5x":         {10000, 8333, 100000, false},  // archived
 		"max-20x":        {20000, 16667, 200000, false}, // archived
@@ -230,6 +235,7 @@ func TestVendoredPlanRoster(t *testing.T) {
 		"dev-5x":       {10, 2},
 		"max-15x":      {10, 5},
 		"ultra":        {10, 10},
+		"ultimate":     {10, 10},
 		"unlimited":    {10, 10},
 		"pro-2x":       {10, 1}, // renamed, and answered by pro-3x for its holders
 		"max-10x":      {10, 5}, // renamed, and answered by max-15x for its holders
@@ -332,7 +338,7 @@ func TestRetiredSlugsAreNotInTheEmbed(t *testing.T) {
 // TestVendoredAllotmentAmounts canaries what a plan gives away: no rung mints
 // prepaid credit — the ledger holds only credit a buyer bought.
 func TestVendoredAllotmentAmounts(t *testing.T) {
-	for _, slug := range []string{"free", "go", "pro-3x", "dev-5x", "max-15x", "ultra", "unlimited", "dev", "max-5x", "max-20x", "max", "team", "team-premium", "advisory", "dedicated", "enterprise", "dns-pro", "pro"} {
+	for _, slug := range []string{"free", "go", "pro-3x", "dev-5x", "max-15x", "ultra", "ultimate", "unlimited", "dev", "max-5x", "max-20x", "max", "team", "team-premium", "advisory", "dedicated", "enterprise", "dns-pro", "pro"} {
 		if got := IncludedMonthlyCents(slug); got != 0 {
 			t.Errorf("IncludedMonthlyCents(%q) = %d, want 0 — no rung mints credit", slug, got)
 		}
@@ -351,6 +357,7 @@ func TestVendoredMoveScores(t *testing.T) {
 		"dev-5x":       4500,
 		"max-15x":      9500,
 		"ultra":        19500,
+		"ultimate":     49500,
 		"unlimited":    99500,
 		"pro-2x":       1500, // renamed; scored as pro-3x
 		"max-10x":      9500, // renamed; scored as max-15x

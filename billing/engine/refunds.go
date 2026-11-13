@@ -37,7 +37,7 @@ func RecordDispute(db *datastore.Datastore, id, state string, version int64, at 
 // recordOn reads invoice id, applies change, and swaps the invoice in, reading again
 // when another writer changed it first. A change that moves nothing writes nothing.
 func recordOn(db *datastore.Datastore, id string, change func(*billinginvoice.BillingInvoice) bool) error {
-	for range mixin.Swaps {
+	for range mixin.Rounds() {
 		inv := billinginvoice.New(db)
 		if err := inv.GetById(id); err != nil {
 			return err

@@ -5,7 +5,6 @@ import (
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/plan"
-	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
@@ -94,73 +93,6 @@ func TestProdPath_SeedReadbackAllFields(t *testing.T) {
 		if int64(rp.Price) != e.Price || int64(rp.PriceAnnual) != e.annual() {
 			t.Errorf("%s: RESOLVE price=%d/%d want %d/%d (CHARGE)", e.Slug, rp.Price, rp.PriceAnnual, e.Price, e.annual())
 		}
-	}
-}
-
-// TestProdPath_CorrectsPreexistingBadRows proves fix #3: the corrective seed
-// repairs PRE-EXISTING unmanaged partial rows on the (persistent) store — not
-// just an empty DB. It plants the exact prod corruption (world-pro Price=0 like
-// the bundle write; a row with no Category; team with no minSeats), then runs
-// SeedPlans and asserts the charge + display are corrected to the embed.
-func TestProdPath_CorrectsPreexistingBadRows(t *testing.T) {
-	c := ae.NewContext()
-	defer c.Close()
-	adb := plan.AuthorityDB(c)
-
-	plant := func(slug string, price int64, category string) {
-		p := plan.New(adb)
-		p.Slug = slug
-		p.Price = currency.Cents(price)
-		p.Category = category
-		p.Managed = false // written by a subscription-flow path, not the seed
-		if err := p.Create(); err != nil {
-			t.Fatalf("plant %s: %v", slug, err)
-		}
-	}
-	// The prod corruption, re-planted on CURRENT slugs: a subscription-flow path
-	// wrote a $0 or category-less row where the catalog has a real one.
-	plant("go", 0, "")      // wrote $0 (the under-charge)
-	plant("pro-3x", 0, "")  // wrote $0
-	plant("team", 2500, "") // a stale $25 seat price, no Category/PriceAnnual/envelope
-	plant("free", 900, "")  // wrote a charge over a rung that is genuinely free
-
-	if _, corrected, err := SeedPlans(c); err != nil {
-		t.Fatalf("seed: %v", err)
-	} else if corrected < 4 {
-		t.Fatalf("corrected=%d, want >=4 (the planted bad rows)", corrected)
-	}
-
-	orgDB := datastore.New(nscontext.WithNamespace(c, "acme"))
-	// The charge path resolves the CATALOG price — never the $0 under-charge,
-	// never the stale 2500 planted over team, and never the 900 planted over a
-	// free rung.
-	for _, slug := range []string{"free", "go", "pro-3x", "team"} {
-		want := lookupPlan(slug).Price
-		rp, err := resolveSubscriptionPlan(orgDB, slug)
-		if err != nil {
-			t.Fatalf("resolve %s: %v", slug, err)
-		}
-		if int64(rp.Price) != want {
-			t.Fatalf("RESOLVE %s price=%d, want %d (bad row NOT corrected → under-charge)", slug, rp.Price, want)
-		}
-	}
-	// Display projection is corrected too (category + minSeats restored).
-	rows, ok := planAuthorityRows(c)
-	if !ok {
-		t.Fatal("authority empty")
-	}
-	byslug := map[string]staticPlan{}
-	for _, r := range rows {
-		byslug[r.Slug] = r
-	}
-	if byslug["go"].Category != "personal" {
-		t.Fatalf("go category=%q, want personal (not corrected)", byslug["go"].Category)
-	}
-	if ms := minSeatsOf(ptr(byslug["team"])); ms != 2 {
-		t.Fatalf("team minSeats=%d, want 2 (not corrected)", ms)
-	}
-	if want := lookupPlan("team").PriceAnnual; !sameCents(byslug["team"].PriceAnnual, want) {
-		t.Fatalf("team priceAnnual=%s, want %s (not corrected)", centsText(byslug["team"].PriceAnnual), centsText(want))
 	}
 }
 

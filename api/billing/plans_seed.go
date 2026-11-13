@@ -24,7 +24,7 @@ import (
 // the seed writes and resolveSubscriptionPlan charges) fails CI loudly.
 // NOTE: the vendored plans/package.json is gitignored (a broad package.json
 // ignore), so it is NOT the pin — this const + the digest test are.
-const PinnedPlansVersion = "1.10.0"
+const PinnedPlansVersion = "1.10.1"
 
 // The display envelope (features/bundles/includedIn/limits) is the MODEL's, not
 // this package's: plan.Plan carries those fields and packs them itself. This file
@@ -50,27 +50,28 @@ func SeedRows() []*plan.Plan {
 // coercing a null-priced custom plan into a chargeable $0.
 func planFromStatic(sp *staticPlan) *plan.Plan {
 	p := &plan.Plan{
-		Slug:            sp.Slug,
-		Name:            sp.Name,
-		Description:     sp.Description,
-		Category:        sp.Category,
-		Price:           currency.Cents(sp.Price),
-		PriceAnnual:     currency.Cents(sp.annual()),
-		AnnualTotal:     currency.Cents(sp.AnnualTotal),
-		Prices:          centsOf(sp.Prices),
-		Currency:        currency.Type(sp.Currency),
-		Interval:        types.Interval(sp.Interval),
-		IntervalCount:   sp.IntervalCount,
-		TrialPeriodDays: sp.TrialPeriodDays,
-		PerSeat:         sp.PerSeat,
-		ContactSales:    sp.ContactSales,
-		Popular:         sp.Popular,
-		Status:          sp.Status,
-		Features:        sp.Features,
-		Bundles:         sp.Bundles,
-		IncludedIn:      sp.IncludedIn,
-		Limits:          sp.Limits,
-		Licensing:       sp.Licensing,
+		Slug:          sp.Slug,
+		Name:          sp.Name,
+		Description:   sp.Description,
+		Category:      sp.Category,
+		Price:         currency.Cents(sp.Price),
+		PriceAnnual:   currency.Cents(sp.annual()),
+		AnnualTotal:   currency.Cents(sp.AnnualTotal),
+		Prices:        centsOf(sp.Prices),
+		Currency:      currency.Type(sp.Currency),
+		Interval:      types.Interval(sp.Interval),
+		IntervalCount: sp.IntervalCount,
+		PerSeat:       sp.PerSeat,
+		ContactSales:  sp.ContactSales,
+		Popular:       sp.Popular,
+		Status:        sp.Status,
+		Features:      sp.Features,
+		Bundles:       sp.Bundles,
+		IncludedIn:    sp.IncludedIn,
+		Limits:        sp.Limits,
+		Licensing:     sp.Licensing,
+		Entitlements:  sp.Entitlements,
+		Replaces:      sp.Replaces,
 	}
 	return p
 }
@@ -103,7 +104,7 @@ func plainOf(in []currency.Cents) []int64 {
 	return out
 }
 
-// retired records what a tier licensed WHEN IT WAS LAST ON SALE, for the rows that
+// retiredLicensing records what a tier licensed WHEN IT WAS LAST ON SALE, for the rows that
 // were archived before the plan row carried a licensing block at all.
 //
 // Provenance: @hanzo/plans@1.4.4 subscription.json — the last published version
@@ -120,7 +121,7 @@ func plainOf(in []currency.Cents) []int64 {
 //
 // This map is closed. A tier retired from here on carries its licensing on the row
 // before it is archived, so nothing will ever need to be added.
-var retired = map[string]*plan.Licensing{
+var retiredLicensing = map[string]*plan.Licensing{
 	"plus":     {Products: []string{"team"}},
 	"team-max": {Products: []string{"team"}},
 }
@@ -131,27 +132,26 @@ var retired = map[string]*plan.Licensing{
 // applied separately at the read edge (withPromo), exactly as for the embed.
 func staticPlanFromModel(p *plan.Plan) staticPlan {
 	return staticPlan{
-		Slug:            p.Slug,
-		Name:            p.Name,
-		Description:     p.Description,
-		Category:        p.Category,
-		Group:           group(p.Slug),
-		Price:           int64(p.Price),
-		PriceAnnual:     annualOf(p),
-		AnnualTotal:     int64(p.AnnualTotal),
-		Prices:          plainOf(p.Prices),
-		Currency:        string(p.Currency),
-		Interval:        string(p.Interval),
-		IntervalCount:   p.IntervalCount,
-		TrialPeriodDays: p.TrialPeriodDays,
-		ContactSales:    p.ContactSales,
-		Popular:         p.Popular,
-		PerSeat:         p.PerSeat,
-		Features:        p.Features,
-		Bundles:         p.Bundles,
-		IncludedIn:      p.IncludedIn,
-		Limits:          p.Limits,
-		Licensing:       p.Licensing,
+		Slug:          p.Slug,
+		Name:          p.Name,
+		Description:   p.Description,
+		Category:      p.Category,
+		Group:         group(p.Slug),
+		Price:         int64(p.Price),
+		PriceAnnual:   annualOf(p),
+		AnnualTotal:   int64(p.AnnualTotal),
+		Prices:        plainOf(p.Prices),
+		Currency:      string(p.Currency),
+		Interval:      string(p.Interval),
+		IntervalCount: p.IntervalCount,
+		ContactSales:  p.ContactSales,
+		Popular:       p.Popular,
+		PerSeat:       p.PerSeat,
+		Features:      p.Features,
+		Bundles:       p.Bundles,
+		IncludedIn:    p.IncludedIn,
+		Limits:        p.Limits,
+		Licensing:     p.Licensing,
 	}
 }
 
@@ -167,24 +167,64 @@ func annualOf(p *plan.Plan) *int64 {
 	return &annual
 }
 
-// SeedPlans reconciles the subscription + DNS plan authority to the embed
-// (SyncStripe/StaticPlans read the SAME source). Safe on every boot: it creates
-// missing plans and FORCE-CORRECTS any unmanaged partial row (Red: the bundle
-// expansion wrote Price=0 rows the old count-gated seed then skipped) while
-// leaving admin-edited rows authoritative until the embed publishes the same
-// values, when they are the embed's again. A new embed can change a charge: it
-// reprices every row the embed owns on the next boot.
-// Returns (created, corrected); corrected counts reconciles, archives, releases
-// of admin-edited rows the embed caught up with, and the
-// licensing backfilled onto rows retired before the row carried a licensing block.
+// SeedPlans imports the vendored subscription and DNS catalog into a plan
+// authority that holds no row, once. An authority that holds any row is never
+// reconciled to the vendored copy again: its rows are what is sold, and only a
+// SuperAdmin's edit at admin.hanzo.ai changes one. A new vendored catalog
+// therefore changes no price, no feature list and no status on a store that has
+// been imported.
+//
+// On an authority that already holds rows it does one thing: plan.Fill records
+// the entitlement block and the renamed slugs on rows written before a row
+// carried them, once per row, and touches nothing else.
+// Returns (created, corrected); corrected counts the rows Fill wrote and the
+// licensing backfilled onto rows retired before the row carried a licensing
+// block.
+//
+// Either way it then moves every holder of a retired personal rung onto the ladder
+// the catalog sells (MigrateRetired). A migration that cannot run is logged, never
+// fatal: the next boot moves whoever this one did not.
 func SeedPlans(ctx context.Context) (created, corrected int, err error) {
 	db := plan.AuthorityDB(ctx)
+	held, err := plan.Held(db)
+	if err != nil {
+		return 0, 0, err
+	}
+	if held {
+		if corrected, err = plan.Fill(db, SeedRows()); err != nil {
+			return 0, corrected, err
+		}
+		// Backfill is the same kind of thing as Fill: a closed migration that
+		// writes licensing once onto a retired row that never carried any.
+		filled, err := plan.Backfill(db, retiredLicensing)
+		if err != nil {
+			return 0, corrected + filled, err
+		}
+		migrate(ctx)
+		return 0, corrected + filled, nil
+	}
 	created, corrected, err = plan.Seed(db, SeedRows())
 	if err != nil {
 		return created, corrected, err
 	}
-	filled, err := plan.Backfill(db, retired)
-	return created, corrected + filled, err
+	filled, err := plan.Backfill(db, retiredLicensing)
+	if err != nil {
+		return created, corrected + filled, err
+	}
+	migrate(ctx)
+	return created, corrected + filled, nil
+}
+
+// migrate moves the holders of a retired rung onto the ladder and logs the outcome.
+func migrate(ctx context.Context) {
+	m, merr := MigrateRetired(ctx)
+	switch {
+	case merr != nil:
+		log.Error("plan migration did not run: %v", merr)
+	case len(m.Moved) > 0 || m.Left > 0 || m.Busy > 0 || len(m.Errors) > 0:
+		log.Info("plan migration: %d moved onto the ladder, %d left (no rung fits), %d busy, %d failed: %v",
+			len(m.Moved), m.Left, m.Busy, len(m.Errors), m.Errors)
+	}
 }
 
 // planAuthorityRows reads the plan authority for the read edge (ListPlans/

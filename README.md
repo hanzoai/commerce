@@ -41,7 +41,7 @@ Implements:
 ## Development
 
 ```bash
-sh scripts/fetch-plans.sh                  # vendor the @hanzo/plans catalog (go:embed)
+PLANS_VERSION=1.10.1 sh scripts/fetch-plans.sh  # re-vendor @hanzo/plans; then bump PinnedPlansVersion + digest
 go run ./cmd/commerce -dev                  # API on 127.0.0.1:8090
 ```
 

@@ -5,15 +5,15 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hanzoai/commerce/billing/creditledger"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/autorecharge"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/plan"
-	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/payment/processor"
-	"github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
@@ -352,33 +352,61 @@ func TestAWalletPurchaseArmsWhenACardIsOnFile(t *testing.T) {
 	}
 }
 
-// A trial arms nothing at the sale and arms the rule when the renewal sweep charges
-// its first paid period.
-func TestATrialArmsWhenItsFirstPeriodIsCharged(t *testing.T) {
+// A trial opened before commerce stopped selling them ends at its end: the
+// renewal sweep charges nothing, ends the row, and switches no reload on, even on
+// a plan that states one and with a card on the row.
+func TestAnOpenTrialEndsUnchargedAndArmsNothing(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
-	p := plan.New(plan.AuthorityDB(ctx))
-	p.Slug, p.Name, p.Category = "ultra-trial", "Ultra trial", "personal"
-	p.Price, p.Currency, p.Interval, p.IntervalCount = currency.Cents(19500), currency.USD, types.Monthly, 1
-	p.TrialPeriodDays = 7
-	p.Limits = &plan.Limits{Reload: ultraReload}
-	p.AdminEdited, p.Managed = true, true
-	if err := p.Create(); err != nil {
+	reloadPlan(t, ctx, "ultra", 19500, nil, ultraReload)
+	org := moneyOrg("arm-trial")
+	m := squareMock("cust_tr", "ccof_tr", "sqpay_tr")
+	withFakeSquare(t, m)
+	db := datastore.New(org.Namespaced(ctx))
+	sub := seedCardBackedSub(t, db, org.Name, "ultra", "ccof_tr", "cust_tr")
+	row := reload(t, db, sub.Id())
+	row.Status = subscription.Trialing
+	row.TrialStart, row.TrialEnd = time.Now().AddDate(0, 0, -8), time.Now().AddDate(0, 0, -1)
+	if err := row.Update(); err != nil {
 		t.Fatal(err)
 	}
-	org := moneyOrg("arm-trial")
-	trialSquare(t, "fp_arm_trial")
-	db := datastore.New(org.Namespaced(ctx))
+	out := renewDue(ctx, org, "")
+	if len(out) != 1 || !out[0].Lapsed || m.chargeCalls != 0 {
+		t.Fatalf("the trial's end: %+v, %d charge(s); want it lapsed and nothing charged", out, m.chargeCalls)
+	}
+	if got := reload(t, db, sub.Id()); got.Status != subscription.Canceled {
+		t.Fatalf("after its end the trial is %s, want canceled", got.Status)
+	}
+	if armedAt(t, ctx, org, org.Name) {
+		t.Fatal("a trial's end switched the reload on")
+	}
+}
 
-	sale := buyTrial(t, ctx, org, org.Name, "ultra-trial")
-	if sale.Reload != nil || loadAutoRecharge(db, org.Name) != nil {
-		t.Fatalf("a trial armed at the sale: receipt %+v", sale.Reload)
+// A holder still inside a card trial opened before commerce stopped selling them
+// buys the plan like anyone else: the sale charges now, and the trial it replaces
+// ends once the payment settles.
+func TestATrialHolderBuysThePlan(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	if _, _, err := SeedPlans(ctx); err != nil {
+		t.Fatalf("seed: %v", err)
 	}
-	endTrial(t, db, sale.SubscriptionID)
-	if out := renewDue(ctx, org, ""); len(out) != 1 || !out[0].Success {
-		t.Fatalf("the trial's first period was not charged: %+v", out)
+	org := moneyOrg("trial-buyer")
+	m := squareMock("cust_tb", "ccof_tb", "sqpay_tb")
+	withFakeSquare(t, m)
+	db := datastore.New(org.Namespaced(ctx))
+	sub := seedCardBackedSub(t, db, org.Name, "go", "ccof_tb", "cust_tb")
+	row := reload(t, db, sub.Id())
+	row.Status = subscription.Trialing
+	row.TrialStart, row.TrialEnd = time.Now().AddDate(0, 0, -2), time.Now().AddDate(0, 0, 5)
+	if err := row.Update(); err != nil {
+		t.Fatal(err)
 	}
-	if !armedAt(t, ctx, org, org.Name) {
-		t.Fatal("the trial's first paid period did not arm the rule")
+	r := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"go"}`, nil)
+	if r.StatusCode != http.StatusCreated || m.chargeCalls != 1 || m.lastChargeAmount != 800 {
+		t.Fatalf("a trial holder buying go: %d %s, charged %d time(s) at %d; want 201 at 800", r.StatusCode, bodyOf(r), m.chargeCalls, m.lastChargeAmount)
+	}
+	if got := reload(t, db, sub.Id()); got.Status != subscription.Canceled {
+		t.Fatalf("the trial the sale replaced is %s, want canceled", got.Status)
 	}
 }

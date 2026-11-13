@@ -42,7 +42,7 @@ func AssignSeats(ctx context.Context, org *organization.Organization, holder, id
 // one it read, and reads again when a renewal or a change of seats wrote first,
 // so an assignment never puts back what another writer moved.
 func assignSeats(ctx context.Context, org *organization.Organization, holder, id string, seats []subscription.Seat) (*subscription.Subscription, error) {
-	for range mixin.Swaps {
+	for range mixin.Rounds() {
 		sub, err := heldSubscription(ctx, org, holder, id)
 		if err != nil {
 			return nil, err

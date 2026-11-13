@@ -18,6 +18,7 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
+	"github.com/hanzoai/commerce/models/types/currency"
 	types "github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/util/json/http"
 )
@@ -66,17 +67,18 @@ type canonicalPlan struct {
 	// (retired) are listed nowhere and refused by every purchase entrypoint (see
 	// plan.Listed). A deploy that carries such a row creates it unlisted, so no
 	// checkout charges its list price until the catalog makes it active.
-	Status string `json:"status,omitempty"`
-	// TrialPeriodDays is the plan's free-trial length. A card sale of the plan
-	// (POST /v1/billing/subscribe/card) opens in a trial this long for a buyer
-	// and a card that have not had one, and charges the card when it ends. The
-	// entry plan's signup on-ramp is billing/trial's own (7 days without a card,
-	// 30 with one).
-	TrialPeriodDays *int        `json:"trialPeriodDays,omitempty"`
-	Features        []string    `json:"features"`
-	Bundles         []string    `json:"bundles,omitempty"`    // slugs of plans whose entitlement this plan also grants
-	IncludedIn      []string    `json:"includedIn,omitempty"` // slugs of plans that include this plan as a bundle
-	Limits          *planLimits `json:"limits,omitempty"`
+	Status   string   `json:"status,omitempty"`
+	Features []string `json:"features"`
+	// Usage is the catalog's display block for a rung of the personal ladder.
+	// Commerce reads only its multiple, which says the plan is a rung a retired
+	// holder may be moved onto (migrateRetired); the figures are cloud's usage
+	// policy, not commerce's. A rung with no caps states no multiple.
+	Usage *struct {
+		Multiple *int `json:"multiple"`
+	} `json:"usage,omitempty"`
+	Bundles    []string    `json:"bundles,omitempty"`    // slugs of plans whose entitlement this plan also grants
+	IncludedIn []string    `json:"includedIn,omitempty"` // slugs of plans that include this plan as a bundle
+	Limits     *planLimits `json:"limits,omitempty"`
 	// PriceRef carries the catalog's billing reference; recurring.per_seat marks
 	// the plan as billed per seat (price × quantity, floored at limits.minSeats).
 	PriceRef *struct {
@@ -145,13 +147,12 @@ type staticPlan struct {
 	// back the INDEX it landed on (subscribe/card's `level`) — never a price. It
 	// is absent for a plan sold at a single price, so a client that ignores it
 	// keeps working and a plan that gains a ladder needs no client release.
-	Prices          []int64 `json:"prices,omitempty"`
-	Currency        string  `json:"currency"`
-	Interval        string  `json:"interval"`
-	IntervalCount   int     `json:"intervalCount"`
-	TrialPeriodDays int     `json:"trialPeriodDays"`
-	ContactSales    bool    `json:"contactSales,omitempty"`
-	Popular         bool    `json:"popular,omitempty"`
+	Prices        []int64 `json:"prices,omitempty"`
+	Currency      string  `json:"currency"`
+	Interval      string  `json:"interval"`
+	IntervalCount int     `json:"intervalCount"`
+	ContactSales  bool    `json:"contactSales,omitempty"`
+	Popular       bool    `json:"popular,omitempty"`
 	// Status is plan.Plan.Status as the catalog states it: "" and "active" are on
 	// sale; "draft", "private" and "archived" are not, and the public answer never
 	// carries one of those.
@@ -172,6 +173,14 @@ type staticPlan struct {
 	// Licensing is what the tier licenses — carried so the seed can persist it onto
 	// the row, where it survives the tier's retirement.
 	Licensing *plan.Licensing `json:"licensing,omitempty"`
+	// Multiple is the rung's usage multiple of Go as the catalog states it, 0 for a
+	// plan that is no rung of the ladder or has no caps. It is never served.
+	Multiple int `json:"-"`
+	// Entitlements and Replaces are the vendored catalog's entitlement block and
+	// renamed slugs, carried so the one import writes them onto the row. Neither
+	// is served here: what a plan grants is read off its row.
+	Entitlements map[string]any `json:"-"`
+	Replaces     []string       `json:"-"`
 }
 
 // PlanView is a plan as this service SELLS it — the wire type GET /billing/plans
@@ -185,9 +194,10 @@ type staticPlan struct {
 type PlanView struct {
 	staticPlan
 	Limits *Capacity `json:"limits,omitempty"`
-	// Reload is the automatic reload buying the plan switches on, present only for
-	// a plan whose row states one (plan.Limits.Reload): the terms a checkout shows
-	// the buyer before they pay.
+	// Reload is the automatic reload buying the plan switches on (planReload): the
+	// row's own, or DefaultReload for a paid plan whose row states none, absent for
+	// a plan that charges nothing or whose row switches it off. These are the terms
+	// a checkout shows the buyer before they pay, and the buyer may decline them.
 	Reload *Recharge `json:"reload,omitempty"`
 	// The coupon quote, present only when the catalog was read with a coupon
 	// code (QuoteCoupon). A paid plan the coupon covers carries its code, its
@@ -243,14 +253,16 @@ type Recharge struct {
 	PerDay         int   `json:"perDay"`
 }
 
-// rechargeOf reads a plan's reload terms off its limits, nil when it states none.
-// PerDay is the row's ReloadsPerDay, ReloadsPerDay when the row states no bound.
-func rechargeOf(l *planLimits) *Recharge {
-	if l == nil || l.Reload == nil {
+// rechargeOf is the reload terms buying a plan priced at price switches on
+// (planReload), nil when it switches none. PerDay is the row's ReloadsPerDay, and
+// the package's ReloadsPerDay when the row states no bound.
+func rechargeOf(price int64, l *planLimits) *Recharge {
+	reload := planReload(currency.Cents(price), l)
+	if reload == nil {
 		return nil
 	}
-	r := Recharge{ThresholdCents: l.Reload.ThresholdCents, AmountCents: l.Reload.AmountCents, PerDay: ReloadsPerDay}
-	if l.ReloadsPerDay != nil && *l.ReloadsPerDay >= 0 {
+	r := Recharge{ThresholdCents: reload.ThresholdCents, AmountCents: reload.AmountCents, PerDay: ReloadsPerDay}
+	if l != nil && l.ReloadsPerDay != nil && *l.ReloadsPerDay >= 0 {
 		r.PerDay = *l.ReloadsPerDay
 	}
 	return &r
@@ -292,7 +304,7 @@ func (p staticPlan) view() PlanView {
 	if p.Category == categoryPersonal {
 		p.PriceAnnual, p.AnnualTotal = nil, 0
 	}
-	return PlanView{staticPlan: p, Limits: capacityOf(p.Limits), Reload: rechargeOf(p.Limits)}
+	return PlanView{staticPlan: p, Limits: capacityOf(p.Limits), Reload: rechargeOf(p.Price, p.Limits)}
 }
 
 // views serves a list of plans, in order.
@@ -402,9 +414,6 @@ func parsePlans(data []byte) ([]staticPlan, error) {
 		for _, d := range cp.Prices {
 			sp.Prices = append(sp.Prices, int64(math.Round(d*100)))
 		}
-		if cp.TrialPeriodDays != nil {
-			sp.TrialPeriodDays = *cp.TrialPeriodDays
-		}
 		if cp.PriceRef != nil && cp.PriceRef.Recurring != nil {
 			sp.PerSeat = cp.PriceRef.Recurring.PerSeat
 			if t := cp.PriceRef.Recurring.AnnualTotalUSD; t != nil {
@@ -419,8 +428,27 @@ func parsePlans(data []byte) ([]staticPlan, error) {
 		}
 		sp.Limits = cp.Limits
 		sp.Licensing = licensingOf(&canonical[i])
+		if cp.Usage != nil && cp.Usage.Multiple != nil {
+			sp.Multiple = *cp.Usage.Multiple
+		}
+		sp.Replaces = cp.Replaces
 
 		plans[i] = sp
+	}
+
+	// The whole entitlement block, as the catalog wrote it. canonicalPlan reads
+	// only its licensing.* keys, typed; the row carries all of it.
+	var blocks []struct {
+		Entitlements map[string]any `json:"entitlements"`
+	}
+	if err := json.Unmarshal(data, &blocks); err != nil {
+		return nil, err
+	}
+	for i := range plans {
+		plans[i].Entitlements = blocks[i].Entitlements
+		if plans[i].Entitlements == nil {
+			plans[i].Entitlements = map[string]any{}
+		}
 	}
 
 	return plans, nil

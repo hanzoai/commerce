@@ -122,21 +122,12 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     fi; \
     go mod download
 
-# Copy source code (note: api/billing/plans/ is gitignored — the pre-build
-# step in the CI workflow curls the @hanzo/plans npm tarball into
-# api/billing/plans/, so this COPY picks up the canonical SOT for
-# go:embed at compile time. Local dev mirrors via scripts/fetch-plans.sh —
-# public package, no auth needed).
+# Copy source code. api/billing/plans/subscription.json and dns.json are the
+# vendored @hanzo/plans catalog, tracked in git and pinned by PinnedPlansVersion
+# and its digest (api/billing/plans_drift_test.go); go:embed compiles exactly
+# those bytes. Nothing fetches the catalog at build time: a build that pulled
+# another version would sell a catalog the pin does not name.
 COPY . .
-
-# Populate api/billing/plans/*.json (gitignored, so absent from the git
-# build context) from the public @hanzo/plans npm tarball. api/billing/
-# plans.go go:embed's plans/dns.json + plans/subscription.json at compile
-# time, so this MUST run before `go build`. No auth (public npm).
-# Pin to the highest published version (the script's internal default tracked
-# an unpublished tag and 404'd); override with --build-arg PLANS_VERSION=.
-ARG PLANS_VERSION=1.1.4
-RUN apk add --no-cache curl && sh scripts/fetch-plans.sh
 
 # Bake the admin export into ui/dist for //go:embed (ui/embed.go). Same contract
 # as the plans hydrate above: the directory is gitignored build output, so the ONE

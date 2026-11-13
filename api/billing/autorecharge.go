@@ -106,7 +106,7 @@ func reconcile(db *datastore.Datastore, cfg *autorecharge.AutoRecharge, own data
 // over one another: whichever writes second reads what the first wrote. change
 // answers false to write nothing. A nil rule is a payer with none.
 func changeRule(db *datastore.Datastore, payer string, change func(*autorecharge.AutoRecharge) bool) (*autorecharge.AutoRecharge, bool, error) {
-	for range mixin.Swaps {
+	for range mixin.Rounds() {
 		cfg := loadAutoRecharge(db, payer)
 		if cfg == nil {
 			return nil, false, nil
@@ -209,6 +209,14 @@ func servedLimits(ctx context.Context, db *datastore.Datastore, org *organizatio
 // authorityLimits is the limits block of the plan authority row for slug, nil when
 // there is no such row or it states none.
 func authorityLimits(ctx context.Context, slug string) *plan.Limits {
+	if row := rowOf(ctx, slug); row != nil {
+		return row.Limits
+	}
+	return nil
+}
+
+// rowOf is the plan authority row for slug, nil when there is none.
+func rowOf(ctx context.Context, slug string) *plan.Plan {
 	if slug == "" {
 		return nil
 	}
@@ -216,7 +224,35 @@ func authorityLimits(ctx context.Context, slug string) *plan.Limits {
 	if ok, err := row.Query().Filter("Slug=", slug).Get(); err != nil || !ok {
 		return nil
 	}
-	return row.Limits
+	return row
+}
+
+// DefaultReload is the automatic reload every paid plan switches on when its row
+// states none of its own: the buyer's card is charged $50 whenever the prepaid
+// balance falls below $10 (owner, 2026-11-12; the figures cloud's
+// scripts/ladder-writes.sh ultra step states). It is the one place the default
+// lives: no catalog rung and no row restates it.
+var DefaultReload = plan.Reload{ThresholdCents: 1000, AmountCents: 5000}
+
+// planReload is the reload buying a plan priced at price, whose row's limits are
+// l, switches on: the row's own when it states one, none when it states an amount
+// of 0 (the row switches the default off) or when the plan charges nothing, and
+// DefaultReload for every other paid plan. A checkout shows it (PlanView.Reload),
+// a paid sale arms it (armForPlan), and the buyer may decline it
+// (SubscribeIn.DeclineReload).
+func planReload(price currency.Cents, l *plan.Limits) *plan.Reload {
+	if l != nil && l.Reload != nil {
+		if l.Reload.AmountCents == 0 {
+			return nil
+		}
+		r := *l.Reload
+		return &r
+	}
+	if price <= 0 {
+		return nil
+	}
+	r := DefaultReload
+	return &r
 }
 
 // payerOf is the payer a rule of org belongs to, named by subject: the org's own
@@ -436,12 +472,13 @@ func ruleCurrencyOf(cur string) string {
 }
 
 // Arming is what a purchase did to the buying payer's auto-recharge, answered for a
-// plan whose row states a reload (plan.Limits.Reload). State is one of:
+// plan that switches a reload on (planReload). State is one of:
 //
 //	"armed"      the rule is on at the plan's figures
 //	"kept"       the payer had switched its own rule on, and it is left as it stands
 //	"needs_card" the payer has no card on file to charge: nothing was switched on,
 //	             and saving a card switches it on (armOnCard)
+//	"declined"   the buyer turned the reload off at checkout: nothing was touched
 type Arming struct {
 	State string `json:"state"`
 }
@@ -451,22 +488,27 @@ const (
 	armed     = "armed"
 	kept      = "kept"
 	needsCard = "needs_card"
+	declined  = "declined"
 )
 
 // armForPlan switches payer's auto-recharge on at the figures the plan row for slug
-// states (plan.Limits.Reload) once a purchase of the plan is paid, and answers what
+// switches on (planReload) once a purchase of the plan is paid, and answers what
 // it did. A rule the payer switched on themselves is left as it stands (kept). A
 // missing or switched-off rule, or one another plan switched on, takes the plan's
 // figures and names the plan (armed) — which needs a card on file; with none the
-// rule is marked waiting for one (needs_card). nil when the row states no reload,
-// or when the rule could not be written for a reason the buyer cannot fix, which
-// is logged. It never fails the purchase.
+// rule is marked waiting for one (needs_card). nil when the plan switches no
+// reload on, or when the rule could not be written for a reason the buyer cannot
+// fix, which is logged. It never fails the purchase.
 func armForPlan(ctx context.Context, org *organization.Organization, payer, slug string, cur currency.Type) *Arming {
-	l := authorityLimits(ctx, slug)
-	if l == nil || l.Reload == nil {
+	row := rowOf(ctx, slug)
+	if row == nil {
 		return nil
 	}
-	in := AutoRechargeEdit{Enabled: true, ThresholdCents: l.Reload.ThresholdCents, AmountCents: l.Reload.AmountCents, Currency: string(cur)}
+	reload := planReload(row.Price, row.Limits)
+	if reload == nil {
+		return nil
+	}
+	in := AutoRechargeEdit{Enabled: true, ThresholdCents: reload.ThresholdCents, AmountCents: reload.AmountCents, Currency: string(cur)}
 	if err := checkRule(in); err != nil {
 		log.Error("auto-recharge: plan %q states a reload its sweep would refuse, so the rule for %q was not switched on: %v", slug, payer, err)
 		return nil
@@ -547,6 +589,27 @@ func disarm(ctx context.Context, org *organization.Organization, payer, slug str
 		log.Error("auto-recharge: the rule plan %q switched on for %q was not switched off: %v", slug, payer, err)
 	case off:
 		log.Info("auto-recharge: %q no longer holds plan %q; the rule it switched on is off", payer, slug)
+	}
+}
+
+// follow renames, for payer, the rule plan from switched on to the plan to that
+// the payer moved onto, so the rule is switched off when the payer no longer holds
+// to (disarm). Its figures and whether it is on stay as they are: a move shows no
+// terms, so it switches nothing on. A rule naming another plan, or none, is never
+// touched. It never fails the act that called it.
+func follow(ctx context.Context, org *organization.Organization, payer, from, to string) {
+	if from == "" || to == "" || from == to {
+		return
+	}
+	db := datastore.New(org.Namespaced(ctx))
+	if _, _, err := changeRule(db, payer, func(c *autorecharge.AutoRecharge) bool {
+		if c.Plan != from {
+			return false
+		}
+		c.Plan = to
+		return true
+	}); err != nil {
+		log.Error("auto-recharge: the rule plan %q switched on for %q was not moved to %q: %v", from, payer, to, err)
 	}
 }
 

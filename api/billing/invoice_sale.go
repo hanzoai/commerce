@@ -260,7 +260,7 @@ func OrderInvoice(ctx context.Context, org *organization.Organization, in OrderI
 	}
 	defer lease.Release()
 
-	if held := billingSubscription(db, in.Subject, org.TestMode()); held != nil && subscriptionSlug(held) == q.slug {
+	if held := billingSubscription(db, in.Subject, org.TestMode()); held != nil && held.Status != subscription.Trialing && subscriptionSlug(held) == q.slug {
 		abandon()
 		return nil, false, coded(saleHeld, "plan_held", fmt.Sprintf("this account already pays for the %q plan (subscription %s)", q.slug, held.Id()))
 	}
@@ -560,7 +560,6 @@ func openPlan(ctx context.Context, db *datastore.Datastore, org *organization.Or
 		if err != nil {
 			return nil, saleRefusal{saleRefused, err.Error()}
 		}
-		p.TrialPeriodDays = 0
 		if sub, err = createSubscription(db, p, &createSubscriptionRequest{
 			UserId: inv.UserId, PlanId: o.Plan, DefaultPaymentMethod: string(processor.Wire),
 			Quantity: o.Quantity, Metadata: map[string]interface{}{"source": "subscribe/invoice", "payment": key},

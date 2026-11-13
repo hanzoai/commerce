@@ -12,4 +12,6 @@ var (
 	FailedToCreateUser        = errors.New("failed to create user")
 	OnlyOneOfUserBuyerAllowed = errors.New("only one of user buyer allowed")
 	CannotChangeUser          = errors.New("subscription user cannot be changed")
+	ReservedProvider          = errors.New("that provider is written by Hanzo billing only")
+	HanzoSubscription         = errors.New("this is a Hanzo plan subscription: manage it through /v1/billing")
 )

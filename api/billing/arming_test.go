@@ -142,14 +142,14 @@ func TestCancellingAPlanStopsItsReload(t *testing.T) {
 	})
 }
 
-// Moving to a plan whose row states no reload — buying it, or moving the
+// Moving to a plan whose row switches the reload off — buying it, or moving the
 // subscription onto it — switches off the reload the plan left switched on.
 func TestMovingOffAPlanStopsItsReload(t *testing.T) {
 	t.Run("a sale of the next plan", func(t *testing.T) {
 		ctx := ae.NewContext()
 		defer ctx.Close()
 		reloadPlan(t, ctx, "ultra", 19500, nil, ultraReload)
-		reloadPlan(t, ctx, "plain", 2000, nil, nil)
+		reloadPlan(t, ctx, "plain", 2000, nil, &plan.Reload{})
 		org := moneyOrg("move-sale")
 		withFakeSquare(t, squareMock("cust_ms", "ccof_ms", "sqpay_ms"))
 		subscribeAs(t, ctx, org, `{"sourceId":"cnon:ok","planId":"ultra"}`, nil)
@@ -165,7 +165,7 @@ func TestMovingOffAPlanStopsItsReload(t *testing.T) {
 		ctx := ae.NewContext()
 		defer ctx.Close()
 		reloadPlan(t, ctx, "ultra", 19500, nil, ultraReload)
-		reloadPlan(t, ctx, "plain", 2000, nil, nil)
+		reloadPlan(t, ctx, "plain", 2000, nil, &plan.Reload{})
 		org := moneyOrg("acme")
 		withFakeSquare(t, squareMock("cust_mm", "ccof_mm", "sqpay_mm"))
 		subscribeAs(t, ctx, org, `{"sourceId":"cnon:ok","planId":"ultra"}`, nil)
@@ -177,6 +177,32 @@ func TestMovingOffAPlanStopsItsReload(t *testing.T) {
 			t.Fatalf("after the move the rule is %+v, want it off", c)
 		}
 	})
+}
+
+// A move onto a plan that switches a reload on keeps the rule the plan left
+// switched on, as it stands — a move shows no terms, so it arms nothing — now
+// named for the plan moved onto, so cancelling that plan switches it off.
+func TestAMoveOntoAReloadPlanKeepsTheRuleForIt(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	reloadPlan(t, ctx, "ultra", 19500, nil, ultraReload)
+	reloadPlan(t, ctx, "steady", 2000, nil, nil)
+	org := moneyOrg("acme")
+	withFakeSquare(t, squareMock("cust_mk", "ccof_mk", "sqpay_mk"))
+	subscribeAs(t, ctx, org, `{"sourceId":"cnon:ok","planId":"ultra"}`, nil)
+	id := subscriptionOn(t, ctx, org, org.Name, "ultra").Id()
+	if r := invokeSubPatch(org, ctx, c1MintPrincipal, id, `{"planId":"steady"}`); r.StatusCode != http.StatusOK {
+		t.Fatalf("move: %d %s", r.StatusCode, bodyOf(r))
+	}
+	if c := storedRule(t, ctx, org); !c.Enabled || c.Plan != "steady" || c.AmountCents != ultraReload.AmountCents {
+		t.Fatalf("after the move the rule is %+v, want it on as ultra left it, named steady", c)
+	}
+	if _, err := CancelSubscription(ctx, org, AnyHolder, id, false); err != nil {
+		t.Fatalf("cancel: %v", err)
+	}
+	if c := storedRule(t, ctx, org); c.Enabled || c.Plan != "" {
+		t.Fatalf("after cancelling the plan moved onto the rule is %+v, want it off", c)
+	}
 }
 
 // A reload charge records whose payment it is, so a refund of it takes the
