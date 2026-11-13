@@ -92,6 +92,10 @@ type Config struct {
 	// replaces SQL_URL and the per-org files commerce would open itself.
 	Seam db.Seam
 
+	// Base, when set, places the Base commerce keeps its cache and its settings in
+	// (EmbedConfig.Base): its two databases and its files.
+	Base commercestore.Host
+
 	// Dev enables development mode
 	Dev bool
 
@@ -699,6 +703,7 @@ func (app *App) Bootstrap() error {
 		// under one tree.
 		storeCfg.DataDir = filepath.Join(app.config.DataDir, "base")
 	}
+	storeCfg.Host = app.config.Base
 	cStore, storeErr := commercestore.New(storeCfg)
 	if storeErr != nil {
 		return fmt.Errorf("failed to initialize commerce store: %w", storeErr)

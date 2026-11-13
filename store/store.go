@@ -19,12 +19,14 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
 	"time"
 
 	"github.com/hanzoai/base/core"
+	"github.com/hanzoai/base/tools/filesystem"
 
 	// Register base's system migrations (collection tables, superusers,
 	// etc.). These run during Bootstrap() — if they are not imported the
@@ -40,6 +42,19 @@ import (
 	_ "github.com/hanzoai/commerce/store/migrations"
 )
 
+// Host is what a host that keeps no state on its own disk hands the Base in place
+// of the files it would open: the two databases' pools and the filesystem uploaded
+// files live in. Each field, when set, replaces its file: Data and Aux are asked
+// for twice each (one pool for readers, one for the writer) and every call returns
+// a pool of its own, running pgx in describe-exec mode; Files is asked for a
+// filesystem per use, which the caller closes. The zero Host is the files under
+// DataDir.
+type Host struct {
+	Data  func() (*sql.DB, error)
+	Aux   func() (*sql.DB, error)
+	Files func() (*filesystem.System, error)
+}
+
 // Config controls how the store connects to its backing database. Zero value
 // is valid and selects the file-path SQLite default under DataDir.
 type Config struct {
@@ -54,6 +69,10 @@ type Config struct {
 	// AuxDSN is an optional PostgreSQL DSN for the auxiliary DB. When empty,
 	// aux falls back to DataDir/auxiliary.db.
 	AuxDSN string
+
+	// Host, when set, places the databases and the files with the embedding host
+	// and takes precedence over DataDSN and AuxDSN.
+	Host Host
 
 	// QueryTimeout is applied to all store-issued queries. Defaults to 30s
 	// when zero; never unlimited — a hung query is a DoS vector.
@@ -102,6 +121,9 @@ func New(cfg Config) (*Store, error) {
 		QueryTimeout: cfg.QueryTimeout,
 		DataDSN:      cfg.DataDSN,
 		AuxDSN:       cfg.AuxDSN,
+		DataDB:       cfg.Host.Data,
+		AuxDB:        cfg.Host.Aux,
+		Files:        cfg.Host.Files,
 	}
 	app := core.NewBaseApp(appCfg)
 

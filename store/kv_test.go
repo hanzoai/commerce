@@ -7,13 +7,51 @@
 package store
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 )
+
+// hosted places the store's Base on the PostgreSQL server COMMERCE_TEST_POSTGRES names,
+// a schema of its own for each database, as a host does: the pools are the host's and
+// run describe-exec. Unset, the store is the files under t.TempDir().
+func hosted(t *testing.T) Host {
+	t.Helper()
+	server := os.Getenv("COMMERCE_TEST_POSTGRES")
+	if server == "" {
+		return Host{}
+	}
+	admin, err := sql.Open("pgx", server)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = admin.Close() })
+	place := func(kind string) func() (*sql.DB, error) {
+		schema := fmt.Sprintf("kv_%s_%d_%d", kind, os.Getpid(), time.Now().UnixNano())
+		if _, err := admin.Exec(`CREATE SCHEMA ` + schema); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _, _ = admin.Exec(`DROP SCHEMA ` + schema + ` CASCADE`) })
+		return func() (*sql.DB, error) {
+			cfg, err := pgx.ParseConfig(server)
+			if err != nil {
+				return nil, err
+			}
+			cfg.RuntimeParams["search_path"] = schema
+			cfg.DefaultQueryExecMode = pgx.QueryExecModeDescribeExec
+			return stdlib.OpenDB(*cfg), nil
+		}
+	}
+	return Host{Data: place("data"), Aux: place("aux")}
+}
 
 // newTestStore constructs an isolated store under t.TempDir(). Cleanup is
 // registered via t.Cleanup so the DB pool is closed and the on-disk files
@@ -21,7 +59,7 @@ import (
 func newTestStore(t *testing.T) *Store {
 	t.Helper()
 	dir := t.TempDir()
-	s, err := New(Config{DataDir: filepath.Join(dir, "commerce")})
+	s, err := New(Config{DataDir: filepath.Join(dir, "commerce"), Host: hosted(t)})
 	if err != nil {
 		t.Fatalf("store.New: %v", err)
 	}

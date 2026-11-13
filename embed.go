@@ -31,6 +31,7 @@ import (
 	"github.com/hanzoai/commerce/mail"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/webhook/census"
+	commercestore "github.com/hanzoai/commerce/store"
 )
 
 // legacyWebhooks logs the census of commerce's legacy webhook rows: one line per
@@ -107,6 +108,12 @@ type EmbedConfig struct {
 	// its own files, or SQL_URL's server.
 	Seam db.Seam
 
+	// Base places the Base commerce keeps its cache and settings in: the pools of
+	// its two databases and the filesystem of its files (see store.Host). A host
+	// that keeps no state on its own disk gives all three, and DataDir then holds
+	// nothing of the Base's. The zero value is the files under DataDir/base.
+	Base commercestore.Host
+
 	// Ledger is the host-injected double-entry credit ledger. When the cloud
 	// binary embeds commerce it passes a ledger-backed impl here, so
 	// POST /v1/billing/credit and GET /v1/billing/balance route to the SAME
@@ -180,6 +187,7 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 		appCfg.MasterKey = cfg.MasterKey
 	}
 	appCfg.Seam = cfg.Seam
+	appCfg.Base = cfg.Base
 	if len(cfg.AllowedOrigins) > 0 {
 		appCfg.AllowedOrigins = cfg.AllowedOrigins
 	}
