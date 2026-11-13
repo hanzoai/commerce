@@ -45,6 +45,12 @@ type Intent struct {
 	Cents    int64  `json:"cents"`
 	Currency string `json:"currency"`
 	Test     bool   `json:"test"`
+	// PaidCents and PaidCurrency are what the buyer was asked to pay when it is not
+	// the credit: a local method (Pix, iDEAL, ...) takes the buyer's own currency, and
+	// the quote made at the start fixed how many of those buy Cents of Currency. The
+	// intent settles only for exactly this, and credits Cents.
+	PaidCents    int64  `json:"paidCents,omitempty"`
+	PaidCurrency string `json:"paidCurrency,omitempty"`
 	// Ref names what the intent pays beyond the buyer: the invoice, for Invoice.
 	Ref string `json:"ref,omitempty"`
 	// Tries is how many sweeps failed to settle it, Next the earliest the next one
@@ -84,6 +90,34 @@ func PutRef(id, org, subject, purpose, ref string, cents int64, currency string,
 	i.SetId(id)
 	i.Org, i.Subject, i.Purpose, i.Ref, i.Cents, i.Currency, i.Test = org, subject, purpose, ref, cents, strings.ToLower(currency), test
 	return i.Put()
+}
+
+// PutQuoted is Put for a local-method intent: Cents of Currency is the credit, and
+// the buyer pays paidCents of paidCurrency for it.
+func PutQuoted(id, org, subject, purpose string, cents int64, cur string, paidCents int64, paidCur string, test bool) error {
+	id = strings.TrimSpace(id)
+	if id == "" || org == "" || subject == "" {
+		return nil
+	}
+	if _, found, err := Get(id); err != nil || found {
+		return err
+	}
+	d := db()
+	i := new(Intent)
+	i.Init(d)
+	i.SetId(id)
+	i.Org, i.Subject, i.Purpose, i.Cents, i.Currency, i.Test = org, subject, purpose, cents, strings.ToLower(cur), test
+	i.PaidCents, i.PaidCurrency = paidCents, strings.ToLower(paidCur)
+	return i.Put()
+}
+
+// Charged is what the processor is asked to take and must settle: the quoted amount
+// in the buyer's currency for a local method, else the credit itself.
+func (i *Intent) Charged() (int64, string) {
+	if i.PaidCurrency != "" {
+		return i.PaidCents, i.PaidCurrency
+	}
+	return i.Cents, i.Currency
 }
 
 // Get answers the intent recorded under id.

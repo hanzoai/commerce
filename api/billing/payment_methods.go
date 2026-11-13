@@ -256,7 +256,7 @@ func CreateMethod(ctx context.Context, org *organization.Organization, email str
 	// again. Use the per-org registry so Square carries the org's credentials.
 	if in.ProviderRef != "" {
 		reg := processorsForOrg(org)
-		if cp, ok := cardVaultFrom(reg); ok {
+		if cp, ok := cardVaultFrom(reg, processor.ProcessorType(strings.ToLower(strings.TrimSpace(in.ProviderType)))); ok {
 			pm, created, err := saveCard(ctx, db, cp, in.CustomerId, strings.TrimSpace(email), in.ProviderRef)
 			if err != nil {
 				return nil, false, declineError{parseCardDeclineReason(&processor.PaymentResult{ErrorMessage: err.Error()}, err)}

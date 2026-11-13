@@ -874,6 +874,10 @@ func mapEventType(stripeType string) string {
 		return "payment.completed"
 	case "payment_intent.payment_failed":
 		return "payment.failed"
+	case "payment_intent.processing":
+		return "payment.pending"
+	case "payment_intent.canceled":
+		return "payment.canceled"
 	case "charge.refunded":
 		return "refund.succeeded"
 	case "charge.refund.updated":

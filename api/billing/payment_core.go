@@ -266,6 +266,12 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		} else if !found || (reg.Purpose != pendingintent.Topup && reg.Purpose != pendingintent.Reload) || !strings.EqualFold(reg.Subject, in.Subject) {
 			abandon()
 			return nil, fault(422, "this payment was not made for a top-up of this account", nil)
+		} else if reg.PaidCurrency != "" {
+			// A local-method payment settles in the currency it was quoted in and is
+			// credited the quote, by the verified webhook or the reconciler: the amount
+			// a browser states here is not the quote.
+			abandon()
+			return nil, fault(422, "this payment settles on its own; check your balance in a moment", nil)
 		}
 		// ONE claim per intent, in the system namespace, shared by the webhook, the
 		// reconciler, a top-up and a sale: whoever holds it credits. A claim that is
