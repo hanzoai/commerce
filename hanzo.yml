@@ -112,6 +112,10 @@ test:
           case "$code" in 000|429|5*) continue ;; *) break ;; esac
         done
         echo "kms $1 -> HTTP $code" >&2
+        if [ "$code" = 401 ] || [ "$code" = 403 ]; then # name who asked; claims only, never the token
+          printf '%s' "${HANZO_API_TOKEN#*.}" | cut -d. -f1 | tr '_-' '/+' | { read -r p; printf '%s%s' "$p" "$(printf '%*s' $(( (4 - ${#p} % 4) % 4 )) '' | tr ' ' '=')"; } | base64 -d 2>/dev/null \
+            | jq -c '{sub, owner, azp, client_id, iss, aud}' >&2 || true
+        fi
         [ "$code" = 200 ] && cat /tmp/kms.body || true
       }
       get() { # get NAME -> the value, "" when KMS holds none
