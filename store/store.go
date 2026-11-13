@@ -125,6 +125,14 @@ func New(cfg Config) (*Store, error) {
 		AuxDB:        cfg.Host.Aux,
 		Files:        cfg.Host.Files,
 	}
+	// A host's pools draw on a connection budget the host holds for the whole process;
+	// Base's own defaults (120 and 20 open) are sized for a server of its own.
+	if cfg.Host.Data != nil {
+		appCfg.DataMaxOpenConns, appCfg.DataMaxIdleConns = 4, 1
+	}
+	if cfg.Host.Aux != nil {
+		appCfg.AuxMaxOpenConns, appCfg.AuxMaxIdleConns = 2, 1
+	}
 	app := core.NewBaseApp(appCfg)
 
 	if err := app.Bootstrap(); err != nil {
