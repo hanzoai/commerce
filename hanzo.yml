@@ -74,7 +74,9 @@ test:
     run: |
       set -e
       export GOWORK=off CGO_ENABLED=1 GOFLAGS=-tags=sqlite_math_functions
+      # The tests that need Stripe's test keys run in stripe-test-mode, below.
       go test -count=1 -timeout=10m \
+        -skip 'TestLiveStripe_|TestRed_SaleWebhook|TestExistingSquareCard|TestRenewalsMove' \
         ./api/billing/... \
         ./api/store/... \
         ./api/subscription/... \
