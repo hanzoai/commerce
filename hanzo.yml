@@ -89,20 +89,46 @@ test:
         ./payment/...
   # Commerce's money paths against STRIPE'S OWN TEST MODE, with Stripe's test cards
   # (api/billing/stripe_live_test.go). The tests read STRIPE_TEST_SECRET_KEY and
-  # STRIPE_TEST_PUBLISHABLE_KEY from the environment and FAIL without them: a
-  # money gate that skips when it cannot run is a green over nothing. The values
-  # are the test-mode pair testnet already holds — KMS env testnet, org hanzo,
-  # path /cloud — never a live key, and the gate's job must export them from KMS
-  # with the repo's KMS identity before this step (names only, here and in KMS).
-  # Each test creates a webhook endpoint with the test key and deletes it again.
+  # STRIPE_TEST_PUBLISHABLE_KEY from the environment and FAIL without them: a money
+  # gate that skips when it cannot run is a green over nothing. Both are TEST-mode
+  # keys only, sealed in KMS org hanzo, path /deploy, env prod (this repo's
+  # kms.path, below). The step reads them with the bearer the job's KMS login
+  # minted (HANZO_API_TOKEN), the way hanzoai/ci's own `get` does: the embedded
+  # route first, the standalone one as the fallback, a lost answer asked again. It
+  # masks both and refuses to run without either. Each test creates a webhook
+  # endpoint with the test key and deletes it again.
   - name: stripe-test-mode
     run: |
-      set -e
-      : "${STRIPE_TEST_SECRET_KEY:?STRIPE_TEST_SECRET_KEY is not exported: read it from KMS env testnet /cloud}"
-      : "${STRIPE_TEST_PUBLISHABLE_KEY:?STRIPE_TEST_PUBLISHABLE_KEY is not exported: read it from KMS env testnet /cloud}"
+      set -euo pipefail
+      : "${HANZO_API_TOKEN:?the job's KMS login minted no HANZO_API_TOKEN, so the Stripe test keys cannot be read}"
+      KMS_ENDPOINT="${KMS_ENDPOINT:-https://kms.hanzo.ai}"
+      ask() { # ask <url> -> body on 200; a lost answer or a 5xx/429 is asked again
+        local code=""
+        for wait in 0 5 15; do
+          [ "$wait" = 0 ] || sleep "$wait"
+          code=$(curl -s -o /tmp/kms.body -w '%{http_code}' --max-time 30 "$1" -H "Authorization: Bearer $HANZO_API_TOKEN") || code=000
+          case "$code" in 000|429|5*) continue ;; *) break ;; esac
+        done
+        [ "$code" = 200 ] && cat /tmp/kms.body || true
+      }
+      get() { # get NAME -> the value, "" when KMS holds none
+        local v
+        v=$(ask "$KMS_ENDPOINT/v1/kms/secrets/deploy/$1?env=prod" | jq -r '.value // empty')
+        if [ -z "$v" ]; then
+          v=$(ask "$KMS_ENDPOINT/v1/kms/orgs/${KMS_ORG:-hanzo}/secrets/deploy/$1?env=prod" | jq -r '.secret.value // empty')
+        fi
+        printf '%s' "$v"
+      }
+      for NAME in STRIPE_TEST_SECRET_KEY STRIPE_TEST_PUBLISHABLE_KEY; do
+        v=$(get "$NAME")
+        [ -n "$v" ] || { echo "::error::$NAME is not in KMS org hanzo /deploy env prod (or KMS did not answer): the Stripe test-mode gate cannot run"; exit 1; }
+        echo "::add-mask::$v"
+        export "$NAME=$v"
+      done
+      case "$STRIPE_TEST_SECRET_KEY" in sk_test_*|rk_test_*) ;; *) echo "::error::STRIPE_TEST_SECRET_KEY is not a test-mode key; refusing to run money tests against it"; exit 1 ;; esac
       export GOWORK=off CGO_ENABLED=1 GOFLAGS=-tags=sqlite_math_functions
       sh scripts/fetch-plans.sh
-      go test -count=1 -timeout=10m -run 'TestLiveStripe_|TestExistingSquareCard' ./api/billing/
+      go test -count=1 -timeout=10m -run 'TestLiveStripe_|TestRed_SaleWebhook|TestExistingSquareCard|TestRenewalsMove' ./api/billing/
   # API suites (test/), the gate .github/workflows/test.yml used to own alone.
   # All 49 green. It was red on arrival for two unrelated reasons, both since
   # fixed at the cause rather than skipped: four suites got 402
