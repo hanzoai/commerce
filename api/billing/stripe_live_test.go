@@ -1290,3 +1290,77 @@ func TestLiveStripe_LocalIntentIsQuotedAndRecorded(t *testing.T) {
 	}
 	l.call("POST", "/payment_intents/"+out.IntentID+"/cancel", nil)
 }
+
+// ONE PAYMENT, ONE LEDGER ENTRY, whichever writer reaches it first. Real Stripe test-mode
+// intents, commerce's own credit paths, no stand-ins for any of them: the buyer's
+// in-session finish (TakePayment), their retry, the signed webhook delivered twice, and
+// the reconciler's sweep over the pending row. The ledger's dedup is on the charge's
+// reference, so the entry count is the proof that every writer posts the same key.
+
+// The buyer's browser comes back first: its credit, its retry, the webhook twice, then a
+// sweep of the row that browser closed.
+func TestLiveStripe_InSessionThenRetryThenWebhookThenSweepIsOneEntry(t *testing.T) {
+	l := liveSetup(t)
+	id, charge := l.paid(2500)
+	l.register(id, pendingintent.Topup, 2500)
+
+	if _, f := l.topup(id, 2500, "usd", "parity-a"); f != nil {
+		t.Fatalf("the in-session finish: %d %s", f.Status, f.Message)
+	}
+	if _, f := l.topup(id, 2500, "usd", "parity-a"); f != nil { // the buyer's retry replays the sealed answer
+		t.Fatalf("the retry: %d %s", f.Status, f.Message)
+	}
+	body := l.event("payment_intent.succeeded", func(o map[string]any) bool { return str(o["id"]) == id })
+	for i := 0; i < 2; i++ {
+		if status, _ := l.deliver(body, l.hook); status != 200 {
+			t.Fatalf("webhook delivery %d answered %d", i, status)
+		}
+	}
+	reconcileIntents(*l.ctx)
+
+	l.oneEntry(charge)
+}
+
+// The buyer never comes back: the reconciler posts first (the row aged past its grace),
+// then the webhook twice, then the late in-session finish.
+func TestLiveStripe_SweepThenWebhookThenLateBrowserIsOneEntry(t *testing.T) {
+	l := liveSetup(t)
+	id, charge := l.paid(2500)
+	l.register(id, pendingintent.Topup, 2500)
+
+	p, _, _ := pendingintent.Get(id)
+	p.CreatedAt = p.CreatedAt.Add(-2 * intentGrace)
+	if err := reconcileIntent(*l.ctx, p); err != nil {
+		t.Fatalf("the sweep: %v", err)
+	}
+	if len(l.ledger.credits()) != 1 {
+		t.Fatalf("the sweep posted %d credits, want 1: it must really post here", len(l.ledger.credits()))
+	}
+	body := l.event("payment_intent.succeeded", func(o map[string]any) bool { return str(o["id"]) == id })
+	for i := 0; i < 2; i++ {
+		if status, _ := l.deliver(body, l.hook); status != 200 {
+			t.Fatalf("webhook delivery %d answered %d", i, status)
+		}
+	}
+	if _, f := l.topup(id, 2500, "usd", "parity-b"); f != nil {
+		t.Fatalf("the late in-session finish: %d %s", f.Status, f.Message)
+	}
+
+	l.oneEntry(charge)
+}
+
+// oneEntry asserts the ledger holds exactly one credit for the payment, under the
+// charge's reference, for the buyer, in cash.
+func (l *liveStripe) oneEntry(charge string) {
+	l.t.Helper()
+	got := l.ledger.credits()
+	if len(got) != 1 {
+		l.t.Fatalf("the ledger holds %d entries for one payment, want exactly 1: %+v", len(got), got)
+	}
+	if g := got[0]; g.IdempotencyKey != charge || g.AmountCents != 2500 || !g.Cash {
+		l.t.Fatalf("the entry = %+v; want 2500 cash under %s", g, charge)
+	}
+	if l.balance() != 2500 {
+		l.t.Fatalf("balance %d, want 2500", l.balance())
+	}
+}
