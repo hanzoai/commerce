@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/hanzoai/commerce/billing/creditledger"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/transaction"
@@ -144,9 +143,9 @@ func TestAStartingBalanceLandsOnceInBothLedgers(t *testing.T) {
 	}
 }
 
-// A saved-card top-up: one deposit row under its reference. Commerce never credits
-// the host ledger itself — the host's screen credits it under the reference — and
-// the payment webhook adds nothing.
+// A saved-card top-up: one deposit row under its reference, and one credit in the host
+// ledger, posted by commerce — the only writer — under the processor's reference. The
+// payment webhook adds nothing to either.
 func TestATopUpLandsOnceInBothLedgers(t *testing.T) {
 	const secret = "whsec_once_topup"
 	registerSquare(t, secret)
@@ -162,12 +161,8 @@ func TestATopUpLandsOnceInBothLedgers(t *testing.T) {
 	if err != nil || got.Status != "ok" {
 		t.Fatalf("top-up: %+v, %v", got, err)
 	}
-	if led.calls != 0 {
-		t.Fatalf("commerce posted %d host-ledger credits for the top-up, want none", led.calls)
-	}
-	// The host's screen credits the top-up once, under the payment's reference.
-	if _, _, err := led.Credit(ctx, creditledger.CreditInput{Org: org.Name, Subject: org.Name, Currency: "usd", IdempotencyKey: "sqpay_once_topup", AmountCents: 2500, Cash: true}); err != nil {
-		t.Fatal(err)
+	if led.calls != 1 || creditsUnder(led, "sqpay_once_topup") != 1 {
+		t.Fatalf("commerce posted %d host-ledger credits for the top-up (%d under the payment), want one", led.calls, creditsUnder(led, "sqpay_once_topup"))
 	}
 	redeliver(t, ctx, secret, org.Name, "sqpay_once_topup", org.Name, 2500)
 
@@ -178,7 +173,7 @@ func TestATopUpLandsOnceInBothLedgers(t *testing.T) {
 		t.Errorf("the webhook wrote %d deposit rows in the deployment's books", n)
 	}
 	if led.calls != 1 || creditsUnder(led, "sqpay_once_topup") != 1 {
-		t.Errorf("the host ledger took %d calls (%d under the payment), want only the screen's one credit", led.calls, creditsUnder(led, "sqpay_once_topup"))
+		t.Errorf("the host ledger took %d calls (%d under the payment), want only commerce's one credit", led.calls, creditsUnder(led, "sqpay_once_topup"))
 	}
 	if got := gate(t, ctx, org, org.Name); got != 2500 {
 		t.Errorf("the gate reads %d, want the top-up's 2500", got)
