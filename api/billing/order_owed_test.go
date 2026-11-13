@@ -299,11 +299,11 @@ func TestFundCreditsOnePaymentOnce(t *testing.T) {
 	defer ctx.Close()
 	org := moneyOrg("fund-once")
 	db := datastore.New(org.Namespaced(ctx))
-	a, _, err := fund(ctx, nil, org, db, "fund-once", 40000, currency.USD, processor.Square, "sqpay_fund_once")
+	a, err := fund(ctx, nil, org, db, "fund-once", 40000, currency.USD, processor.Square, "sqpay_fund_once")
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, _, err := fund(ctx, nil, org, db, "fund-once", 40000, currency.USD, processor.Square, "sqpay_fund_once")
+	b, err := fund(ctx, nil, org, db, "fund-once", 40000, currency.USD, processor.Square, "sqpay_fund_once")
 	if err != nil {
 		t.Fatal(err)
 	}

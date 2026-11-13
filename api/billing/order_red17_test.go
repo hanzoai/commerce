@@ -357,7 +357,7 @@ func TestFundsRacingForOnePaymentDepositOnce(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				for range 20 {
-					id, _, err := fund(ctx, nil, org, db, org.Name, 40000, "usd", "square", ref)
+					id, err := fund(ctx, nil, org, db, org.Name, 40000, "usd", "square", ref)
 					if err == nil {
 						ids[i] = id
 						return

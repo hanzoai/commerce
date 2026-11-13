@@ -21,7 +21,6 @@ import (
 	"github.com/hanzoai/commerce/models/paymentorg"
 	"github.com/hanzoai/commerce/models/pendingintent"
 	"github.com/hanzoai/commerce/models/transaction"
-	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/treasury"
@@ -100,7 +99,6 @@ func IsTopupUncredited(err error) bool { return errors.Is(err, errChargedButCred
 // charged: the key and the amount a ledger credits the payment under.
 type receipt struct {
 	TransactionId string `json:"transactionId"`
-	BalanceCents  int64  `json:"balanceCents"`
 	ProcessorRef  string `json:"processorRef,omitempty"`
 	AmountCents   int64  `json:"amountCents,omitempty"`
 }
@@ -207,11 +205,11 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 	}
 	via := providerOf(pm)
 
-	id, balanceCents, err := fund(ctx, ev, org, db, userId, amountCents, cur, via, result.ProcessorRef)
+	id, err := fund(ctx, ev, org, db, userId, amountCents, cur, via, result.ProcessorRef)
 	if err != nil {
 		return receipt{}, err
 	}
-	r := receipt{TransactionId: id, BalanceCents: int64(balanceCents), ProcessorRef: result.ProcessorRef, AmountCents: amountCents}
+	r := receipt{TransactionId: id, ProcessorRef: result.ProcessorRef, AmountCents: amountCents}
 	seal(rec, r)
 	return r, nil
 }
@@ -226,7 +224,7 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 // credit that fails is money taken and not credited: it raises the money alarm
 // and answers errChargedButCreditFailed, and the caller leaves its retry guard
 // STARTED so a retry is refused rather than charged again.
-func fund(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, subject string, cents int64, cur currency.Type, via processor.ProcessorType, ref string) (string, currency.Cents, error) {
+func fund(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, subject string, cents int64, cur currency.Type, via processor.ProcessorType, ref string) (string, error) {
 	// Ledger test-ness MUST follow the charge environment (org.TestMode), not
 	// org.Live alone — otherwise a Square sandbox charge could credit the live
 	// (spendable) balance. test==credit-bucket==read-bucket==charge-env.
@@ -240,31 +238,24 @@ func fund(ctx context.Context, ev *events.Client, org *organization.Organization
 			fmt.Sprintf("topup via %s (ref: %s)", via, ref), "topup:"+ref)
 		if err != nil {
 			uncredited(ctx, ev, org.Name, subject, ref, "the charge settled and the chain mint failed: "+err.Error(), cents, false)
-			return "", 0, fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, ref, err)
+			return "", fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, ref, err)
 		}
 		id = rc.TxHash
 	} else if held, ok, err := deposited(db, subject, via, ref); err != nil {
 		// Whether the payment is credited cannot be told, so it is not credited
 		// again: the money is owed, and a retry asks again.
 		uncredited(ctx, ev, org.Name, subject, ref, "the charge settled and its deposits could not be read: "+err.Error(), cents, false)
-		return "", 0, fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, ref, err)
+		return "", fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, ref, err)
 	} else if ok {
 		// The payment is already credited: a retry that completes a sale's credit
 		// finds the deposit the first attempt wrote, and credits nothing twice.
 		id = held
 	} else if id, err = lodge(db, subject, cents, cur, via, ref, test); err != nil {
 		uncredited(ctx, ev, org.Name, subject, ref, "the charge settled and the deposit failed: "+err.Error(), cents, false)
-		return "", 0, fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, ref, err)
+		return "", fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, ref, err)
 	}
 
-	// Read back the new balance so the caller doesn't need a separate request.
-	var balanceCents currency.Cents
-	if datas, err := util.GetTransactionsByCurrency(org.Namespaced(ctx), subject, "iam-user", cur, test); err == nil {
-		if data, ok := datas.Data[cur]; ok {
-			balanceCents = data.Balance
-		}
-	}
-	return id, balanceCents, nil
+	return id, nil
 }
 
 // lodge writes the one deposit payment ref makes to subject, atomically: a guard
@@ -382,9 +373,6 @@ type TopupCardIn struct {
 type TopupCardOut struct {
 	// TransactionID is the ledger deposit's id: the receipt for the credit.
 	TransactionID string `json:"transactionId"`
-	// BalanceCents is the subject's balance read back AFTER the credit, from the
-	// same key just credited, so what is returned is what me/balance will report.
-	BalanceCents int64 `json:"balanceCents"`
 	// Status is "ok" on a settled charge. A failure is an error, never a status.
 	Status string `json:"status"`
 }
@@ -464,7 +452,7 @@ func TopupCard(ctx context.Context, org *organization.Organization, in TopupCard
 			log.Warn("topup: payment %s: the index to its wallet was not written: %v", r.ProcessorRef, err)
 		}
 	}
-	return &TopupCardOut{TransactionID: r.TransactionId, BalanceCents: r.BalanceCents, Status: "ok"}, nil
+	return &TopupCardOut{TransactionID: r.TransactionId, Status: "ok"}, nil
 }
 
 // Topup charges a saved payment method and credits the user's balance.

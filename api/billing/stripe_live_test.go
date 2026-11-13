@@ -223,7 +223,7 @@ func TestLiveStripe_TopupSettlesOnce(t *testing.T) {
 	if f != nil {
 		t.Fatalf("top-up: %d %s (%v)", f.Status, f.Message, f.Err)
 	}
-	if out.BalanceCents != 2500 || !strings.HasPrefix(out.ProcessorRef, "ch_") {
+	if l.balance() != 2500 || !strings.HasPrefix(out.ProcessorRef, "ch_") {
 		t.Fatalf("out = %+v; want 2500 on a charge id", out)
 	}
 	ch := l.call("GET", "/charges/"+out.ProcessorRef, nil)
@@ -270,7 +270,7 @@ func TestLiveStripe_DeclineThenAnotherCard(t *testing.T) {
 		t.Fatalf("balance %d after a decline", l.balance())
 	}
 	out, f := l.topup("pm_card_visa", 2500, "usd", "live-decline-1")
-	if f != nil || out.BalanceCents != 2500 {
+	if f != nil || l.balance() != 2500 {
 		t.Fatalf("the next card = %+v (%v); want 2500", out, f)
 	}
 }
@@ -319,11 +319,11 @@ func TestLiveStripe_FinishedIntentIsCreditedOnceAndOnlyToItsBuyer(t *testing.T) 
 		t.Fatalf("balance %d after refused attempts", l.balance())
 	}
 	out, f := l.topup(id, 2500, "usd", "live-pi-1")
-	if f != nil || out.BalanceCents != 2500 {
+	if f != nil || l.balance() != 2500 {
 		t.Fatalf("the finished intent = %+v (%v); want 2500", out, f)
 	}
 	// The same intent under another key is the credit that is there, not another.
-	if out, f := l.topup(id, 2500, "usd", "live-pi-2"); f != nil || out.BalanceCents != 2500 {
+	if out, f := l.topup(id, 2500, "usd", "live-pi-2"); f != nil || l.balance() != 2500 {
 		t.Fatalf("the same intent under another key = %+v (%v); want the credit already there", out, f)
 	}
 	if l.balance() != 2500 {
@@ -598,7 +598,7 @@ func TestLiveStripe_ClosedTabIsCreditedByTheWebhook(t *testing.T) {
 		t.Fatalf("host credits = %+v; want one, keyed on the charge", l.ledger.credits())
 	}
 	// The browser comes back after all.
-	if out, f := l.topup(id, 2500, "usd", "live-closed-tab"); f != nil || out.BalanceCents != 2500 {
+	if out, f := l.topup(id, 2500, "usd", "live-closed-tab"); f != nil || l.balance() != 2500 {
 		t.Fatalf("the late request = %+v (%v); want the credit that is there, not another", out, f)
 	}
 	if l.balance() != 2500 {
@@ -822,7 +822,7 @@ func TestLiveStripe_BrowserThenWebhookCreditsOnce(t *testing.T) {
 	l := liveSetup(t)
 	id, _ := l.paid(2500)
 	l.register(id, pendingintent.Topup, 2500)
-	if out, f := l.topup(id, 2500, "usd", "live-order-1"); f != nil || out.BalanceCents != 2500 {
+	if out, f := l.topup(id, 2500, "usd", "live-order-1"); f != nil || l.balance() != 2500 {
 		t.Fatalf("browser first = %+v (%v)", out, f)
 	}
 	body := l.event("payment_intent.succeeded", func(o map[string]any) bool { return str(o["id"]) == id })

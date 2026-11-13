@@ -1504,7 +1504,7 @@ func endow(ctx context.Context, ev *events.Client, org *organization.Organizatio
 // payment's lease.
 func land(ctx context.Context, ev *events.Client, org *organization.Organization, db *datastore.Datastore, cur currency.Type, po *paymentorg.PaymentOrg, payment string) (*paymentorg.PaymentOrg, error) {
 	if po.Credit > 0 && po.Deposit == "" {
-		id, _, err := fund(ctx, ev, org, db, po.Subject, po.Credit, cur, processor.ProcessorType(cmp.Or(po.Via, string(processor.Square))), payment)
+		id, err := fund(ctx, ev, org, db, po.Subject, po.Credit, cur, processor.ProcessorType(cmp.Or(po.Via, string(processor.Square))), payment)
 		if err != nil {
 			return nil, owedBalance
 		}
