@@ -279,6 +279,13 @@ func Route(r *zip.Group, args ...zip.Handler) {
 	// service-token / SuperAdmin ONLY, never an org owner.
 	mint.Raw(http.MethodPost, "/mode", SetOrgTestMode)
 
+	// How new card checkouts are divided between processors. Changing it moves
+	// where real money is taken, so it is the platform bar's (owner == "admin"),
+	// never an org admin's; reading it is the same bar because it names every
+	// org's recent checkouts.
+	mint.Raw(http.MethodGet, "/routing", GetRouting)
+	mint.Raw(http.MethodPut, "/routing", PutRouting)
+
 	// ── User-facing billing endpoints ─────────────────────────────────────
 	// Called by billing.hanzo.ai with user OIDC tokens. Gated by a NO-MASK
 	// TokenRequired(): any authenticated principal is admitted — an IAM user (via
@@ -303,6 +310,14 @@ func Route(r *zip.Group, args ...zip.Handler) {
 	// orgs, production for live orgs) — so the browser tokenizes against the
 	// same Square account commerce vaults/charges with.
 	user.Raw(http.MethodGet, "/settings", GetPaymentConfig)
+
+	// Which processor takes THIS buyer's new checkout, and the methods to mount.
+	user.Raw(http.MethodPost, "/route", RouteCheckout)
+
+	// Stripe's Payment Element for a top-up (Pix, iDEAL, OXXO, SEPA, cards, wallets):
+	// the intent, and where it stands. Nothing here credits; the verified webhook does.
+	user.Raw(http.MethodPost, "/topup/intent", CreateTopupIntent)
+	user.Raw(http.MethodGet, "/topup/intent/:id", GetTopupIntent)
 
 	// Wire + crypto top-up rails (user-scoped; nothing here mints — a wire
 	// settles via the admin wire/credit verb on bank receipt, a crypto deposit

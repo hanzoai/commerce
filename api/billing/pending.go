@@ -15,7 +15,6 @@ import (
 	"github.com/hanzoai/commerce/models/paymentorg"
 	"github.com/hanzoai/commerce/models/pendingintent"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/util/nscontext"
 )
@@ -87,6 +86,10 @@ const (
 	giveUp = 12
 	// abandonAfter is how long an intent may wait on a buyer who never finishes.
 	abandonAfter = 48 * time.Hour
+	// delayedAbandonAfter is how long a local-method payment may wait: past a voucher's
+	// three days, with room for a bank's weekend.
+	delayedAbandonAfter = 8 * 24 * time.Hour
+	delayedLookEvery    = 6 * time.Hour
 	// intentGrace is how long a buyer has to finish their bank's step before the
 	// reconciler looks at the intent.
 	intentGrace = 30 * time.Minute
@@ -167,7 +170,7 @@ func reconcileIntent(ctx context.Context, p *pendingintent.Intent) error {
 	if err != nil {
 		return err
 	}
-	sp, err := payment.ProcessorsForOrg(org).Existing(ctx, processor.Stripe)
+	sp, err := processorsForOrg(org).Existing(ctx, processor.Stripe)
 	if err != nil {
 		return err
 	}
@@ -178,7 +181,18 @@ func reconcileIntent(ctx context.Context, p *pendingintent.Intent) error {
 	switch tx.Status {
 	case "succeeded":
 	case "requires_action", "requires_payment_method", "requires_confirmation", "processing":
-		if time.Since(p.CreatedAt) <= abandonAfter {
+		limit := abandonAfter
+		if p.PaidCurrency != "" {
+			// A voucher or a bank transfer (boleto, OXXO, SEPA debit) is paid days after
+			// the buyer left, and cancelling it earlier would void a payment they may
+			// still make. Its webhook is the way it settles; this is the backstop, so it
+			// looks again every few hours until the voucher's own life is over.
+			limit = delayedAbandonAfter
+		}
+		if time.Since(p.CreatedAt) <= limit {
+			if p.PaidCurrency != "" {
+				return pendingintent.Wait(p.Id(), time.Now().Add(delayedLookEvery))
+			}
 			// Only waiting on the buyer: not looked at again before its 48 hours are up,
 			// so a few waiting rows never crowd out the ones that took money.
 			return pendingintent.Wait(p.Id(), p.CreatedAt.Add(abandonAfter))
@@ -234,8 +248,8 @@ func reconcileIntent(ctx context.Context, p *pendingintent.Intent) error {
 	// What Stripe took must be what was registered. A row that does not match is a
 	// failure like any other — backed off, and closed with an alarm after giveUp
 	// sweeps — rather than an alarm every sweep for good.
-	if int64(tx.Amount) != p.Cents || !strings.EqualFold(string(tx.Currency), p.Currency) {
-		return fmt.Errorf("intent %s took %d %s but was registered for %d %s", p.Id(), tx.Amount, tx.Currency, p.Cents, p.Currency)
+	if wantCents, wantCur := p.Charged(); int64(tx.Amount) != wantCents || !strings.EqualFold(string(tx.Currency), wantCur) {
+		return fmt.Errorf("intent %s took %d %s but was registered for %d %s", p.Id(), tx.Amount, tx.Currency, wantCents, wantCur)
 	}
 	ev := &processor.WebhookEvent{
 		ID: "reconcile:" + p.Id(), Type: "payment.completed", Processor: processor.Stripe,

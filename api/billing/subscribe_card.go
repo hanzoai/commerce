@@ -779,7 +779,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// the existing row instead of stacking a duplicate); a paymentMethodId names
 	// a card the subject already saved, charged directly with nothing re-entered.
 	reg := processorsForOrg(org)
-	cp, ok := cardVaultFrom(reg)
+	cp, ok := cardVaultFrom(reg, processor.ProcessorType(strings.ToLower(strings.TrimSpace(in.Provider))))
 	if !ok {
 		abandon()
 		return nil, saleRefusal{saleUnchargeable, "no card-on-file payment processor available for this organization"}

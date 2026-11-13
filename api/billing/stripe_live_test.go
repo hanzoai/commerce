@@ -25,7 +25,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/hanzoai/commerce/payment/fx"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -540,7 +542,7 @@ func TestLiveStripe_ReloadOnADecliningCardCreditsNothing(t *testing.T) {
 
 func mustVault(t *testing.T, l *liveStripe) cardVault {
 	t.Helper()
-	cp, ok := cardVaultFrom(processorsForOrg(l.org))
+	cp, ok := cardVaultFrom(processorsForOrg(l.org), "")
 	if !ok {
 		t.Fatal("no card vault for the org under the default policy")
 	}
@@ -1245,4 +1247,46 @@ func TestLiveStripe_ABuyerAtTheCapIsRefusedBeforeStripeIsAsked(t *testing.T) {
 	if n := l.intentsFor(); n != 1 {
 		t.Fatalf("Stripe holds %d intent(s) once the buyer had room; want 1", n)
 	}
+}
+
+// A buyer in Brazil is quoted in reais and gets an intent Stripe will offer Pix and
+// boleto on: the amount is the quote, the credit is the dollars, and the record that
+// attributes the payment is written before the secret leaves.
+func TestLiveStripe_LocalIntentIsQuotedAndRecorded(t *testing.T) {
+	l := liveSetup(t)
+	old := fx.Rate
+	fx.Rate = func(context.Context, string) (float64, error) { return 5.5, nil }
+	t.Cleanup(func() { fx.Rate = old })
+
+	out, f := OpenTopupIntent(*l.ctx, l.org, TopupIntentIn{Subject: l.subject, Country: "BR", AmountCents: 500})
+	if f != nil {
+		t.Fatalf("open: %d %s (%v)", f.Status, f.Message, f.Err)
+	}
+	want := int64(math.Ceil(500 * 5.5 * 1.02))
+	if out.Currency != "brl" || out.Amount != want || out.UsdCents != 500 || out.ClientSecret == "" || out.PublishableKey == "" {
+		t.Fatalf("out = %+v; want %d brl for 500 usd cents", out, want)
+	}
+	pi := l.call("GET", "/payment_intents/"+out.IntentID, nil)
+	if str(pi["currency"]) != "brl" || int64(pi["amount"].(float64)) != want || pi["status"] != "requires_payment_method" {
+		t.Fatalf("the intent at Stripe = %v %v %v", pi["currency"], pi["amount"], pi["status"])
+	}
+	types := fmt.Sprint(pi["payment_method_types"])
+	if !strings.Contains(types, "pix") || !strings.Contains(types, "card") {
+		t.Fatalf("Stripe offers %s on this intent; want pix and card", types)
+	}
+	rec, found, _ := pendingintent.Get(out.IntentID)
+	if !found || rec.Cents != 500 || rec.Currency != "usd" || rec.PaidCents != want || rec.PaidCurrency != "brl" || rec.Subject != l.subject {
+		t.Fatalf("the waiting record = %+v", rec)
+	}
+	st, f := ReadTopupIntent(*l.ctx, l.org, l.subject, out.IntentID)
+	if f != nil || st.State != "created" || st.Credited {
+		t.Fatalf("state = %+v %v; want created, not credited", st, f)
+	}
+	if _, f := ReadTopupIntent(*l.ctx, l.org, "someone-else", out.IntentID); f == nil || f.Status != 404 {
+		t.Fatalf("another buyer read this payment: %v", f)
+	}
+	if l.balance() != 0 {
+		t.Fatalf("opening a payment credited %d", l.balance())
+	}
+	l.call("POST", "/payment_intents/"+out.IntentID+"/cancel", nil)
 }

@@ -29,7 +29,6 @@ import (
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/util/nscontext"
 
@@ -128,6 +127,14 @@ func HandleProviderWebhook(c *zip.Ctx) error {
 	// authorization captures — the moment funds are guaranteed.
 	if isSettlementEvent(event.Type) {
 		effects = append(effects, applySettlementEvent(ctx, db, org, event))
+	}
+	// A cancelled payment credits nothing and closes its waiting record, so the
+	// reconciler never looks at it again. (payment.failed leaves the record open: the
+	// buyer may try the same intent with another method.)
+	if event.Type == "payment.canceled" && event.Processor == processor.Stripe {
+		if pi := stringField(event.Data, "payment_intent"); pi != "" {
+			settleWallet(pi)
+		}
 	}
 	if isClawbackEvent(event.Type) {
 		effects = append(effects, applyClawbackEvent(ctx, db, org, event))
@@ -327,6 +334,14 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 		return nil
 	}
 
+	// What the processor took, kept for the soundness check; what is CREDITED is the
+	// quote the buyer agreed to when it differs (a local method), never the
+	// processor's figure in another currency.
+	charged := amount
+	if who.credit > 0 {
+		amount, cur = who.credit, who.creditCur
+	}
+
 	// A Stripe intent is credited by ONE claimant across the webhook, the
 	// reconciler, the browser's top-up and a sale (the claim `billing-intent`). One
 	// that finds it taken has nothing to do; one that fails to credit gives it back
@@ -360,7 +375,7 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 			}
 			keysOrg = o
 		}
-		sp, serr := payment.ProcessorsForOrg(keysOrg).Existing(ctx, processor.Stripe)
+		sp, serr := processorsForOrg(keysOrg).Existing(ctx, processor.Stripe)
 		cs, ok := sp.(interface {
 			ChargeSound(context.Context, string, int64) (bool, error)
 		})
@@ -368,7 +383,7 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 			_ = g.Delete()
 			return fmt.Errorf("settlement %s: Stripe cannot be asked about the charge: %v", paymentID, serr)
 		}
-		sound, cerr := cs.ChargeSound(ctx, paymentID, int64(amount))
+		sound, cerr := cs.ChargeSound(ctx, paymentID, int64(charged))
 		if cerr != nil {
 			_ = g.Delete()
 			return fmt.Errorf("settlement %s: the charge could not be read: %w", paymentID, cerr)
@@ -483,6 +498,10 @@ type destination struct {
 	org     string
 	subject string
 	test    bool
+	// credit is what the payment funds when that is not what the processor took: a
+	// local method's quoted USD. Zero means the settled amount itself.
+	credit    currency.Cents
+	creditCur currency.Type
 }
 
 // settlementDestination answers who a settled payment funds, from what commerce
@@ -577,11 +596,12 @@ func settlementDestination(db *datastore.Datastore, org *organization.Organizati
 			}
 			if found {
 				amount, cur := settlementAmount(pay)
+				wantCents, wantCur := p.Charged()
 				switch {
 				case p.Purpose == pendingintent.Sale || p.Purpose == pendingintent.Invoice:
 					return nil, "", nil
-				case int64(amount) != p.Cents || !strings.EqualFold(string(cur), p.Currency):
-					return nil, fmt.Sprintf("intent %s was registered for %d %s and settled %d %s", pi, p.Cents, p.Currency, amount, cur), nil
+				case int64(amount) != wantCents || !strings.EqualFold(string(cur), wantCur):
+					return nil, fmt.Sprintf("intent %s was registered for %d %s and settled %d %s", pi, wantCents, wantCur, amount, cur), nil
 				}
 				// The receipt may already be in the PAYER's org, whose books are not the
 				// event's org's: asked of both, or a payment the browser credited is
@@ -592,7 +612,12 @@ func settlementDestination(db *datastore.Datastore, org *organization.Organizati
 				} else if dup {
 					return nil, "", nil
 				}
-				return &destination{org: strings.ToLower(strings.TrimSpace(p.Org)), subject: strings.ToLower(strings.TrimSpace(p.Subject)), test: p.Test}, "", nil
+				d := &destination{org: strings.ToLower(strings.TrimSpace(p.Org)), subject: strings.ToLower(strings.TrimSpace(p.Subject)), test: p.Test}
+				if p.PaidCurrency != "" {
+					// The buyer paid the quoted local amount; the wallet gets the USD they agreed to buy.
+					d.credit, d.creditCur = currency.Cents(p.Cents), currency.Type(p.Currency)
+				}
+				return d, "", nil
 			}
 		}
 	}

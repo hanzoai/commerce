@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/hanzoai/commerce/models/organization"
-	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
 )
 
@@ -34,6 +33,9 @@ import (
 // delivers refund.created, refund.updated or only charge.refunded.
 var StripeWebhookEvents = []string{
 	"payment_intent.succeeded",
+	"payment_intent.processing",
+	"payment_intent.payment_failed",
+	"payment_intent.canceled",
 	"charge.refunded",
 	"refund.created",
 	"refund.updated",
@@ -67,6 +69,13 @@ func normalizeStripeWebhookEvent(evt *processor.WebhookEvent) {
 		}
 		out["id"], out["status"] = charge, "COMPLETED"
 		out["payment_intent"] = stringField(obj, "id")
+		copyKeys("amount", "currency")
+	case "payment.pending", "payment.failed", "payment.canceled":
+		// A payment's life before it settles. None of them moves money: a delayed method
+		// (Pix, boleto, OXXO, SEPA debit) is "processing" until its bank answers, and only
+		// payment_intent.succeeded credits. They are recorded, and a cancelled payment
+		// closes its waiting record.
+		out["id"], out["payment_intent"] = stringField(obj, "id"), stringField(obj, "id")
 		copyKeys("amount", "currency")
 	case "refund.succeeded": // charge.refunded
 		out["charge"] = stringField(obj, "id")
@@ -119,7 +128,7 @@ func stripeDisputeState(status string) string {
 // the clawback reads, so charge.refunded takes back exactly what refund.created
 // would have: once per refund id.
 func stripeRefunds(ctx context.Context, org *organization.Organization, chargeID string, test bool) ([]*processor.WebhookEvent, error) {
-	sp, err := payment.ProcessorsForOrg(org).Existing(ctx, processor.Stripe)
+	sp, err := processorsForOrg(org).Existing(ctx, processor.Stripe)
 	if err != nil {
 		return nil, err
 	}

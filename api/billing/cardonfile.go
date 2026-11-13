@@ -66,8 +66,12 @@ type cardOnFile struct {
 // cardVaultFrom returns the processor that vaults a NEW card for this org: the
 // one the deployment's charge policy has take a card (the selection rule, Fiat),
 // when it can hold cards on file. Stripe under the default policy.
-func cardVaultFrom(reg *processor.Registry) (cardVault, bool) {
-	p, err := reg.Fiat(context.Background(), processor.Need{Currency: currency.USD})
+//
+// want is the processor the checkout was routed to (api/billing/routing.go): the
+// token being saved is that processor's, and no other can vault it. Empty takes the
+// selection rule's first.
+func cardVaultFrom(reg *processor.Registry, want processor.ProcessorType) (cardVault, bool) {
+	p, err := reg.Fiat(context.Background(), processor.Need{Currency: currency.USD, Want: want})
 	if err != nil {
 		return nil, false
 	}
