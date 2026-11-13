@@ -205,7 +205,7 @@ func TestPayPal_CreateOrderTopupSubscribeAndWebhooks(t *testing.T) {
 		t.Fatalf("TakePayment paypal: %v", pf)
 	}
 	// Mirror the host's settle.go post-handler credit into creditledger under ProcessorRef.
-	if paid.ProcessorRef != "PP-CAP-TOPUP-1" || paid.BalanceCents != 2500 {
+	if paid.ProcessorRef != "PP-CAP-TOPUP-1" {
 		t.Fatalf("unexpected TakePaymentOut: %+v", paid)
 	}
 	if _, _, err := fake.Credit(ctx, creditledger.CreditInput{

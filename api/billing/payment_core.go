@@ -53,7 +53,6 @@ import (
 	"github.com/hanzoai/commerce/models/paymentorg"
 	"github.com/hanzoai/commerce/models/pendingintent"
 	"github.com/hanzoai/commerce/models/transaction"
-	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 
@@ -96,9 +95,10 @@ type TakePaymentIn struct {
 type TakePaymentOut struct {
 	// TransactionID is the ledger deposit's id — the receipt for the credit.
 	TransactionID string `json:"transactionId"`
-	// BalanceCents is the subject's balance read back AFTER the credit, from the
-	// same key just credited, so what is returned is what me/balance will report.
-	BalanceCents int64 `json:"balanceCents"`
+	// There is no balance here. A balance is read from the ledger the spend gate
+	// reads, after the host has credited it, and only the host knows that ledger:
+	// the host sets balanceCents on the answer it sends. Reading commerce's own
+	// per-subject table here reported a different number than /v1/billing/balance.
 	// Status is "ok" on a settled charge. A failure is a fault, never a status.
 	Status string `json:"status"`
 	// ProcessorRef is the PROCESSOR's own reference for the charge (Square's
@@ -293,6 +293,18 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		return nil, fault(422, "top-ups are in US dollars", nil)
 	}
 
+	// A new card is charged only for a buyer with room for another payment waiting on
+	// their bank: asked here, before Stripe makes an intent, so a refusal leaves nothing
+	// at Stripe. Finishing an intent that already exists is not a new one and is not
+	// refused.
+	if proc.Type() == processor.Stripe && !strings.HasPrefix(in.SourceID, "pi_") {
+		if cerr := atCap(in.Subject); cerr != nil {
+			releaseIntent()
+			abandon()
+			return nil, fault(429, cerr.Error(), cerr)
+		}
+	}
+
 	result, err := proc.Charge(ctx, chargeReq)
 	// A Stripe call that got NO answer (a dropped connection, a timeout) may have
 	// charged the card. The attempt's guard stays held, so a retry — whose new card
@@ -327,12 +339,6 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 	if strings.HasPrefix(in.SourceID, "pi_") {
 		if _, found, perr := paymentorg.Get(result.ProcessorRef); perr == nil && found {
 			ownedHere := ownsIntent
-			var bal currency.Cents
-			if datas, derr := util.GetTransactionsByCurrency(org.Namespaced(ctx), in.Subject, "iam-user", cur, org.TestMode()); derr == nil {
-				if data, ok := datas.Data[cur]; ok {
-					bal = data.Balance
-				}
-			}
 			// The credit's own receipt: the row stamped with the charge. None yet means
 			// the claim holder is mid-credit.
 			stamped := transaction.New(db)
@@ -344,7 +350,7 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 				_ = idempotencykey.Complete(intentGuard, result.ProcessorRef)
 			}
 			settleWallet(in.SourceID)
-			return &TakePaymentOut{TransactionID: stamped.Id(), BalanceCents: int64(bal), Status: "ok", ProcessorRef: result.ProcessorRef, Test: org.TestMode()}, nil
+			return &TakePaymentOut{TransactionID: stamped.Id(), Status: "ok", ProcessorRef: result.ProcessorRef, Test: org.TestMode()}, nil
 		}
 		// Credited by nobody yet, and the claim is another's: that holder is
 		// crediting it now. Not ours to credit a second time.
@@ -399,18 +405,8 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		log.Warn("payment %s: the org index was not written: %v", result.ProcessorRef, err)
 	}
 
-	// Read back the SAME key just credited so the returned balance matches what
-	// me/balance reports (read == credit).
-	var balanceCents currency.Cents
-	if datas, derr := util.GetTransactionsByCurrency(org.Namespaced(ctx), in.Subject, "iam-user", cur, test); derr == nil {
-		if data, ok := datas.Data[cur]; ok {
-			balanceCents = data.Balance
-		}
-	}
-
 	out := &TakePaymentOut{
 		TransactionID: trans.Id(),
-		BalanceCents:  int64(balanceCents),
 		Status:        "ok",
 		ProcessorRef:  result.ProcessorRef,
 		Test:          test,

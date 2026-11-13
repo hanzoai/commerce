@@ -66,6 +66,7 @@ type liveStripe struct {
 	// keeps every customer and every idempotency key for days, so a fixed name
 	// would meet the last run's.
 	subject, run string
+	start        time.Time
 }
 
 func liveSetup(t *testing.T) *liveStripe {
@@ -223,7 +224,7 @@ func TestLiveStripe_TopupSettlesOnce(t *testing.T) {
 	if f != nil {
 		t.Fatalf("top-up: %d %s (%v)", f.Status, f.Message, f.Err)
 	}
-	if out.BalanceCents != 2500 || !strings.HasPrefix(out.ProcessorRef, "ch_") {
+	if l.balance() != 2500 || !strings.HasPrefix(out.ProcessorRef, "ch_") {
 		t.Fatalf("out = %+v; want 2500 on a charge id", out)
 	}
 	ch := l.call("GET", "/charges/"+out.ProcessorRef, nil)
@@ -270,7 +271,7 @@ func TestLiveStripe_DeclineThenAnotherCard(t *testing.T) {
 		t.Fatalf("balance %d after a decline", l.balance())
 	}
 	out, f := l.topup("pm_card_visa", 2500, "usd", "live-decline-1")
-	if f != nil || out.BalanceCents != 2500 {
+	if f != nil || l.balance() != 2500 {
 		t.Fatalf("the next card = %+v (%v); want 2500", out, f)
 	}
 }
@@ -319,11 +320,11 @@ func TestLiveStripe_FinishedIntentIsCreditedOnceAndOnlyToItsBuyer(t *testing.T) 
 		t.Fatalf("balance %d after refused attempts", l.balance())
 	}
 	out, f := l.topup(id, 2500, "usd", "live-pi-1")
-	if f != nil || out.BalanceCents != 2500 {
+	if f != nil || l.balance() != 2500 {
 		t.Fatalf("the finished intent = %+v (%v); want 2500", out, f)
 	}
 	// The same intent under another key is the credit that is there, not another.
-	if out, f := l.topup(id, 2500, "usd", "live-pi-2"); f != nil || out.BalanceCents != 2500 {
+	if out, f := l.topup(id, 2500, "usd", "live-pi-2"); f != nil || l.balance() != 2500 {
 		t.Fatalf("the same intent under another key = %+v (%v); want the credit already there", out, f)
 	}
 	if l.balance() != 2500 {
@@ -598,7 +599,7 @@ func TestLiveStripe_ClosedTabIsCreditedByTheWebhook(t *testing.T) {
 		t.Fatalf("host credits = %+v; want one, keyed on the charge", l.ledger.credits())
 	}
 	// The browser comes back after all.
-	if out, f := l.topup(id, 2500, "usd", "live-closed-tab"); f != nil || out.BalanceCents != 2500 {
+	if out, f := l.topup(id, 2500, "usd", "live-closed-tab"); f != nil || l.balance() != 2500 {
 		t.Fatalf("the late request = %+v (%v); want the credit that is there, not another", out, f)
 	}
 	if l.balance() != 2500 {
@@ -822,7 +823,7 @@ func TestLiveStripe_BrowserThenWebhookCreditsOnce(t *testing.T) {
 	l := liveSetup(t)
 	id, _ := l.paid(2500)
 	l.register(id, pendingintent.Topup, 2500)
-	if out, f := l.topup(id, 2500, "usd", "live-order-1"); f != nil || out.BalanceCents != 2500 {
+	if out, f := l.topup(id, 2500, "usd", "live-order-1"); f != nil || l.balance() != 2500 {
 		t.Fatalf("browser first = %+v (%v)", out, f)
 	}
 	body := l.event("payment_intent.succeeded", func(o map[string]any) bool { return str(o["id"]) == id })
@@ -1193,5 +1194,55 @@ func TestLiveStripe_InvoiceIntentFinishesAfterTheAmountOwedMoves(t *testing.T) {
 	}
 	if rule := loadAutoRecharge(db, l.subject); rule == nil || !rule.Enabled {
 		t.Fatalf("the buyer's reload was stopped by the excess refund: %+v", rule)
+	}
+}
+
+// intentsFor counts the PaymentIntents Stripe holds for this run's buyer: an intent
+// exists at Stripe the moment a charge reaches it, whatever the request is answered.
+func (l *liveStripe) intentsFor() int {
+	l.t.Helper()
+	out := l.call("GET", "/payment_intents?limit=100&created[gte]="+strconv.FormatInt(l.start.Unix(), 10), nil)
+	n := 0
+	data, _ := out["data"].([]any)
+	for _, d := range data {
+		if m, _ := d.(map[string]any)["metadata"].(map[string]any); str(m["hanzo_subject"]) == l.subject {
+			n++
+		}
+	}
+	return n
+}
+
+// A buyer with five payments already waiting on their bank is refused BEFORE Stripe is
+// asked: the cap used to be checked after the intent existed, so each refusal left an
+// intent at Stripe that no one held the secret to. One payment settled makes room, and
+// the next is charged.
+func TestLiveStripe_ABuyerAtTheCapIsRefusedBeforeStripeIsAsked(t *testing.T) {
+	l := liveSetup(t)
+	l.start = time.Now().Add(-time.Minute)
+
+	var open []string
+	for i := 0; i < maxUnfinished; i++ {
+		id := fmt.Sprintf("pi_cap_%s_%d", l.run, i)
+		if err := pendingintent.Put(id, l.org.Name, strings.ToLower(l.subject), pendingintent.Topup, 500, "usd", true); err != nil {
+			t.Fatal(err)
+		}
+		open = append(open, id)
+	}
+
+	if _, f := l.topup("pm_card_threeDSecure2Required", 500, "usd", "cap-1"); f == nil || f.Status != 429 {
+		t.Fatalf("a buyer at the cap = %+v; want 429", f)
+	}
+	if n := l.intentsFor(); n != 0 {
+		t.Fatalf("Stripe holds %d intent(s) for a buyer refused at the cap; want none", n)
+	}
+
+	if _, err := pendingintent.Settle(open[0]); err != nil {
+		t.Fatal(err)
+	}
+	if _, f := l.topup("pm_card_visa", 500, "usd", "cap-2"); f != nil {
+		t.Fatalf("with room again: %d %s (%v)", f.Status, f.Message, f.Err)
+	}
+	if n := l.intentsFor(); n != 1 {
+		t.Fatalf("Stripe holds %d intent(s) once the buyer had room; want 1", n)
 	}
 }

@@ -460,12 +460,12 @@ func TestFundFailsClosedWhenItsDepositsCannotBeRead(t *testing.T) {
 	defer ctx.Close()
 	org := moneyOrg("fund-closed")
 	db := datastore.New(org.Namespaced(ctx))
-	if _, _, err := fund(ctx, nil, org, db, "fund-closed", 40000, currency.USD, processor.Square, "sqpay_fund_closed"); err != nil {
+	if _, err := fund(ctx, nil, org, db, "fund-closed", 40000, currency.USD, processor.Square, "sqpay_fund_closed"); err != nil {
 		t.Fatal(err)
 	}
 	up := datastore.New(ctx).DB()
 	datastore.SetDefaultDB(depositsUnread{up})
-	_, _, err := fund(ctx, nil, org, datastore.New(org.Namespaced(ctx)), "fund-closed", 40000, currency.USD, processor.Square, "sqpay_fund_closed")
+	_, err := fund(ctx, nil, org, datastore.New(org.Namespaced(ctx)), "fund-closed", 40000, currency.USD, processor.Square, "sqpay_fund_closed")
 	datastore.SetDefaultDB(up)
 	if err == nil || depositsOf(t, db, "fund-closed", "sqpay_fund_closed") != 1 {
 		t.Fatalf("FINDING: with its deposits unreadable fund answered %v and wrote %d deposits", err, depositsOf(t, db, "fund-closed", "sqpay_fund_closed"))
