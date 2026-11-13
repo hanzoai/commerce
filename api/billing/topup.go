@@ -360,6 +360,9 @@ type TopupCardIn struct {
 	// own signed identity by the endpoint. The core trusts it and cannot re-derive
 	// it: a subject the core chose would be a subject nobody proved.
 	Subject string
+	// Ledger is the org whose books the subject's wallet is in, resolved by the host
+	// from the caller's identity; empty is the org the card is charged in.
+	Ledger string
 	// IdempotencyKey is the caller's explicit retry key. Empty falls back to the
 	// same windowed derivation over the stable facts — the saved card, the amount
 	// and the currency — that a browser sending no header has always used.
@@ -457,6 +460,14 @@ func TopupCard(ctx context.Context, org *organization.Organization, in TopupCard
 		if err := paymentorg.Put(r.ProcessorRef, org.Name, in.Subject, "", 0, org.TestMode()); err != nil {
 			log.Warn("topup: payment %s: the index to its wallet was not written: %v", r.ProcessorRef, err)
 		}
+	}
+	// The spendable credit, posted here and nowhere else. A ledger that refuses leaves
+	// the charge taken and the balance not moved, said loudly; the caller's retry
+	// replays the sealed charge and posts the same entry again, which the ledger
+	// dedups on the processor's reference.
+	if err := bankAt(ctx, org, in.Ledger, in.Subject, cur, r, "Top-up via card"); err != nil {
+		log.Error("RECONCILE: top-up %s was charged and the spendable balance was NOT credited: org=%s subject=%s: %v", r.ProcessorRef, org.Name, in.Subject, err)
+		return nil, fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, r.ProcessorRef, err)
 	}
 	return &TopupCardOut{TransactionID: r.TransactionId, Status: "ok"}, nil
 }

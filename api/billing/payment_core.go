@@ -78,6 +78,10 @@ type TakePaymentIn struct {
 	// org by the endpoint that resolved it (inOrgSubject). The core trusts it and
 	// cannot re-derive it — see the package note.
 	Subject string
+	// Ledger is the org whose books the subject's wallet is in, resolved by the host
+	// from the caller's identity (commerce cannot derive it); empty is the org the
+	// card is charged in. The credit is posted there, by this core, and nowhere else.
+	Ledger string
 	// IdempotencyKey is the caller's explicit retry key. Empty falls back to the
 	// windowed derivation over the stable request facts, which is what the
 	// browser path does when it sends no X-Idempotency-Key.
@@ -110,6 +114,12 @@ type TakePaymentOut struct {
 	// the TEST balance, false is live money. It is stated rather than inferred so
 	// no reader has to guess whether a receipt is real.
 	Test bool `json:"test"`
+	// AmountCents and Currency are what settled, sealed with the answer so a replay
+	// posts the same credit again if the first attempt's ledger write was lost. A
+	// record sealed before these existed decodes without them and posts nothing: it
+	// was credited by the path that wrote it.
+	AmountCents int64  `json:"amountCents,omitempty"`
+	Currency    string `json:"currency,omitempty"`
 }
 
 // PaymentFault is a money-path failure carrying the status the endpoint must answer
@@ -205,6 +215,9 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 			out, derr := decodeTakePaymentOut(rec.Response)
 			if derr != nil {
 				return nil, fault(500, "could not read the completed payment record", derr)
+			}
+			if f := bankTaken(ctx, org, in, out); f != nil {
+				return nil, f
 			}
 			return out, nil
 		}
@@ -416,6 +429,8 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		Status:        "ok",
 		ProcessorRef:  result.ProcessorRef,
 		Test:          test,
+		AmountCents:   in.AmountCents,
+		Currency:      string(cur),
 	}
 	// Seal the guard with the exact success body so a retry replays it verbatim —
 	// no second charge, identical answer.
@@ -432,7 +447,29 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 	if intentGuard != nil {
 		settleWallet(in.SourceID)
 	}
+	// The spendable credit, after the charge is sealed so that a refusal here is
+	// recovered by the caller's retry (the replay above posts it again).
+	if f := bankTaken(ctx, org, in, out); f != nil {
+		return nil, f
+	}
 	return out, nil
+}
+
+// bankTaken posts a settled payment to the spendable ledger, keyed on the processor's
+// reference. It is safe to ask again for the same payment, which is the whole recovery
+// from a ledger that was down: the answer to a retry is the same posting.
+func bankTaken(ctx context.Context, org *organization.Organization, in TakePaymentIn, out *TakePaymentOut) *PaymentFault {
+	if out.AmountCents <= 0 {
+		return nil
+	}
+	err := bankAt(ctx, org, in.Ledger, in.Subject, normalizeCurrency(out.Currency),
+		receipt{TransactionId: out.TransactionID, ProcessorRef: out.ProcessorRef, AmountCents: out.AmountCents}, "Top-up via card")
+	if err != nil {
+		log.Error("RECONCILE: payment %s was taken and the spendable balance was NOT credited: org=%s subject=%s: %v — a retry of the same request posts it again",
+			out.ProcessorRef, org.Name, in.Subject, err)
+		return fault(503, "your payment was received and your balance is still being updated; repeat the request to finish", err)
+	}
+	return nil
 }
 
 // PaymentRecord is a settled payment as the ledger holds it — the receipt a

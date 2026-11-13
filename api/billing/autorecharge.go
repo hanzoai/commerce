@@ -1008,6 +1008,19 @@ func ruleCurrency(c *autorecharge.AutoRecharge) currency.Type {
 // ledger the charge's deposit is already in commerce's own ledger, which is the
 // one read, and there is nothing to do.
 func bank(ctx context.Context, org *organization.Organization, payer string, cur currency.Type, r receipt, why string) error {
+	return bankAt(ctx, org, "", payer, cur, r, why)
+}
+
+// bankAt is bank at a ledger the host named: the org whose books the payer's wallet
+// is in, which is not always the org the charge was taken in (a platform SuperAdmin
+// acting inside a customer's org funds their own books, not the customer's). Empty is
+// the org itself. The host resolves it from the caller's identity, which commerce
+// cannot do, and passes it as a value.
+//
+// THIS IS THE ONE WRITER of spendable credit for a card payment. The key is the
+// processor's reference for the charge, so a retry, a replayed request, the provider's
+// webhook and the reconciler each post the same entry and the ledger holds one.
+func bankAt(ctx context.Context, org *organization.Organization, ledger, payer string, cur currency.Type, r receipt, why string) error {
 	led := creditledger.Get()
 	if led == nil {
 		return nil
@@ -1015,8 +1028,11 @@ func bank(ctx context.Context, org *organization.Organization, payer string, cur
 	if r.ProcessorRef == "" || r.AmountCents <= 0 {
 		return fmt.Errorf("the charge's receipt names no processor reference and amount to credit under")
 	}
+	if ledger = strings.ToLower(strings.TrimSpace(ledger)); ledger == "" {
+		ledger = ledgerOrg(org)
+	}
 	_, _, err := led.Credit(ctx, creditledger.CreditInput{
-		Org:            ledgerOrg(org),
+		Org:            ledger,
 		Subject:        payer,
 		Currency:       string(cur),
 		Reason:         why + " " + r.ProcessorRef,
