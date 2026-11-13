@@ -176,6 +176,12 @@ func chargeAndCredit(ctx context.Context, ev *events.Client, org *organization.O
 	// The gateway de-dups on this key, derived from the SAME stable guard key. It
 	// is the backstop that survives a guard-store outage or two racing submits,
 	// because it is enforced where the money actually moves.
+	if buyerPresent && providerOf(pm) == processor.Stripe {
+		if cerr := atCap(userId); cerr != nil {
+			abandon()
+			return receipt{}, cerr
+		}
+	}
 	result, err := chargeSavedCard(ctx, reg, pm, amountCents, cur, gatewayKey("charge", userId, idemKey), description, buyerPresent)
 	// A card sent to its bank is recorded for its buyer first: whoever finishes the
 	// step — in this request's browser or later — the webhook credits it.

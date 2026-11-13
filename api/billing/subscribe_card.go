@@ -894,6 +894,13 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		}
 		spent = g
 	}
+	if finished == "" && providerOf(pm) == processor.Stripe {
+		if cerr := atCap(in.Subject); cerr != nil {
+			hold.Release()
+			abandon()
+			return nil, saleRefusal{saleDeclined, cerr.Error()}
+		}
+	}
 	var res *processor.PaymentResult
 	if finished != "" {
 		res, err = chargeFinished(ctx, reg, pm, finished, chargeCents+bal, cur, desc)
@@ -1858,6 +1865,11 @@ func chargeProvider(org *organization.Organization, buyerPresent bool) engine.Pr
 				return "", fmt.Errorf("%s", parseCardDeclineReason(res, err))
 			}
 		} else {
+			if buyerPresent && providerOf(pm) == processor.Stripe {
+				if cerr := atCap(inv.UserId); cerr != nil {
+					return "", cerr
+				}
+			}
 			res, err = chargeSavedCard(ctx, reg, pm, amountCents, cur, squareKey, desc, buyerPresent)
 			if buyerPresent && actionOf(res, err) != nil {
 				if rerr := registerActionFor(res, err, org, inv.UserId, pendingintent.Invoice, inv.Id(), amountCents, cur); rerr != nil {

@@ -51,12 +51,27 @@ func registerActionFor(result *processor.PaymentResult, err error, org *organiza
 	if ar == nil || !strings.HasPrefix(ar.ID, "pi_") {
 		return nil
 	}
-	if n, cerr := pendingintent.CountOpen(strings.ToLower(subject)); cerr == nil && n >= maxUnfinished {
-		return errors.New("too many payments are waiting on your bank; finish or cancel them first")
+	if cerr := atCap(subject); cerr != nil {
+		return cerr
 	}
 	if perr := pendingintent.PutRef(ar.ID, org.Name, strings.ToLower(subject), purpose, ref, cents, string(cur), org.TestMode()); perr != nil {
 		log.Error("RECONCILE: the 3-D Secure intent %s for %s could not be recorded, so its payment cannot be attributed if the buyer does not come back: %v", ar.ID, subject, perr)
 		return errors.New("billing is temporarily unavailable; please retry")
+	}
+	return nil
+}
+
+// errTooManyUnfinished is what a buyer at the cap is told.
+var errTooManyUnfinished = errors.New("too many payments are waiting on your bank; finish or cancel them first")
+
+// atCap answers errTooManyUnfinished when subject already has maxUnfinished payments
+// waiting on their bank. It is asked BEFORE a new card is charged, because a card that
+// needs its bank has by then already made an intent at Stripe, and a refusal after that
+// leaves an intent no one holds the secret to. registerActionFor asks it again, which
+// is the backstop for two requests that both passed.
+func atCap(subject string) error {
+	if n, err := pendingintent.CountOpen(strings.ToLower(subject)); err == nil && n >= maxUnfinished {
+		return errTooManyUnfinished
 	}
 	return nil
 }

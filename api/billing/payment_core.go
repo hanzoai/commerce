@@ -293,6 +293,18 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		return nil, fault(422, "top-ups are in US dollars", nil)
 	}
 
+	// A new card is charged only for a buyer with room for another payment waiting on
+	// their bank: asked here, before Stripe makes an intent, so a refusal leaves nothing
+	// at Stripe. Finishing an intent that already exists is not a new one and is not
+	// refused.
+	if proc.Type() == processor.Stripe && !strings.HasPrefix(in.SourceID, "pi_") {
+		if cerr := atCap(in.Subject); cerr != nil {
+			releaseIntent()
+			abandon()
+			return nil, fault(429, cerr.Error(), cerr)
+		}
+	}
+
 	result, err := proc.Charge(ctx, chargeReq)
 	// A Stripe call that got NO answer (a dropped connection, a timeout) may have
 	// charged the card. The attempt's guard stays held, so a retry — whose new card
