@@ -1154,6 +1154,10 @@ func TestLiveStripe_InvoiceIntentFinishesAfterTheAmountOwedMoves(t *testing.T) {
 	if err := inv.Update(); err != nil {
 		t.Fatal(err)
 	}
+	// The buyer has auto-reload on: an excess refund must not stop it.
+	if _, err := WriteAutoRecharge(*l.ctx, l.org, l.subject, AutoRechargeEdit{Enabled: true, ThresholdCents: 1000, AmountCents: 2500}); err != nil {
+		t.Fatalf("reload rule: %v", err)
+	}
 	got, f := CollectInvoice(*l.ctx, l.org, inv.Id(), nil)
 	if f != nil || !got.Paid {
 		t.Fatalf("pay again = %+v (%v); want the invoice paid", got, f)
@@ -1164,5 +1168,30 @@ func TestLiveStripe_InvoiceIntentFinishesAfterTheAmountOwedMoves(t *testing.T) {
 	ch := l.call("GET", "/charges/"+pd.charge, nil)
 	if ch["amount_refunded"].(float64) != 500 {
 		t.Fatalf("the intent took 1500 for 1000 owed: refunded %v; want the 500 excess returned", ch["amount_refunded"])
+	}
+
+	// Stripe tells commerce about that refund, both ways it can. It is an overpayment
+	// returned, not a refund of the invoice: nothing is recorded against the invoice,
+	// nothing is clawed back, and the buyer's reload stays on.
+	created := l.event("refund.created", func(o map[string]any) bool { return str(o["charge"]) == pd.charge && str(o["status"]) == "succeeded" })
+	if status, resp := l.deliver(created, l.hook); status != 200 {
+		t.Fatalf("refund.created = %d %v", status, resp)
+	}
+	charged := l.event("charge.refunded", func(o map[string]any) bool { return str(o["id"]) == pd.charge })
+	if status, resp := l.deliver(charged, l.hook); status != 200 {
+		t.Fatalf("charge.refunded = %d %v", status, resp)
+	}
+	after := billinginvoice.New(db)
+	if err := after.GetById(inv.Id()); err != nil {
+		t.Fatal(err)
+	}
+	if after.Refunded() != 0 || after.Status != billinginvoice.Paid {
+		t.Fatalf("invoice after the excess refund: refunded %d status %s; want 0 and paid", after.Refunded(), after.Status)
+	}
+	if len(l.ledger.clawbacks) != 0 {
+		t.Fatalf("an excess refund clawed back %+v", l.ledger.clawbacks)
+	}
+	if rule := loadAutoRecharge(db, l.subject); rule == nil || !rule.Enabled {
+		t.Fatalf("the buyer's reload was stopped by the excess refund: %+v", rule)
 	}
 }

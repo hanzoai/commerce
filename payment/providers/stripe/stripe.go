@@ -342,6 +342,9 @@ func (p *Provider) Refund(ctx context.Context, req processor.RefundRequest) (*pr
 	if req.Reason != "" {
 		params.Set("reason", mapRefundReason(req.Reason))
 	}
+	for k, v := range req.Metadata {
+		params.Set("metadata["+k+"]", fmt.Sprintf("%v", v))
+	}
 
 	var ref refund
 	if err := p.postKey(ctx, "/refunds", params, req.IdempotencyKey, &ref); err != nil {

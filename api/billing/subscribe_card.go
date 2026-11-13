@@ -2123,7 +2123,7 @@ func payInvoiceIntent(ctx context.Context, reg *processor.Registry, pm *paymentm
 	// owed is returned now (after the charge was verified: a refunded charge is not
 	// money in hand), and said loudly if that fails.
 	if excess := p.Cents - owedCents; excess > 0 {
-		if _, rerr := sp.Refund(ctx, processor.RefundRequest{TransactionID: p.Id(), Amount: money.FromMinor(excess, cur.Money()), Reason: "requested_by_customer", IdempotencyKey: "invoice-excess:" + p.Id()}); rerr != nil {
+		if _, rerr := sp.Refund(ctx, processor.RefundRequest{TransactionID: p.Id(), Amount: money.FromMinor(excess, cur.Money()), Reason: "requested_by_customer", IdempotencyKey: "invoice-excess:" + p.Id(), Metadata: map[string]interface{}{excessRefund: "invoice"}}); rerr != nil {
 			log.Error("RECONCILE: invoice paid from intent %s, which took %d more than was owed; returning the excess failed: %v", p.Id(), excess, rerr)
 		}
 	}
@@ -2131,3 +2131,9 @@ func payInvoiceIntent(ctx context.Context, reg *processor.Registry, pm *paymentm
 	_, _ = pendingintent.Settle(p.Id())
 	return res, nil, true
 }
+
+// excessRefund tags a refund commerce itself makes to return what an intent took
+// beyond what an invoice owed. It is not the buyer getting back money they were
+// owed: the invoice is paid in full, and the refund must not be recorded against it
+// or stop the buyer's reload (api/billing applyClawbackEvent).
+const excessRefund = "hanzo_excess"

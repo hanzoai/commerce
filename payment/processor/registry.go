@@ -46,8 +46,8 @@ type RegistryConfig struct {
 //
 // Fiat: Square first, Stripe second, then the rest, and Fiat takes the first
 // that can serve the payment. WHICH processors may take a NEW charge at all is
-// the deployment's policy (ChargeProcessors): Stripe only, unless the
-// deployment says otherwise.
+// the deployment's policy (ChargeProcessors), which production sets to Stripe
+// alone explicitly.
 //
 // Crypto: DefaultCryptoProcessor (MPC) plus the crypto fallback order in
 // SelectProcessor.
@@ -79,9 +79,12 @@ func DefaultConfig() *RegistryConfig {
 
 // ChargeProcessors is the deployment's policy for NEW charges, by name:
 // COMMERCE_CHARGE_PROCESSORS, a comma-separated list of processor types, or "*"
-// for every one. Unset or empty is "stripe": Stripe is the only processor that
-// takes a new payment. Another processor comes back by naming it here, not by
-// restoring code.
+// for every one. A deployment that wants Stripe alone SAYS SO ("stripe"): production
+// and the test networks do, in universe, so a Stripe key that never arrives fails
+// closed. Unset is only a convenience for a deployment that names nothing: Stripe
+// alone where a Stripe key is configured, and otherwise every configured processor,
+// with an alarm (see chargeAllowed). Another processor comes back by naming it
+// here, not by restoring code.
 //
 // It governs NEW charges and offers only. A customer's card already on file with
 // a processor keeps being charged by that processor (Registry.Existing), so a

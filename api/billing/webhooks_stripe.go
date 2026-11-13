@@ -77,6 +77,9 @@ func normalizeStripeWebhookEvent(evt *processor.WebhookEvent) {
 		if stringField(obj, "status") == "succeeded" {
 			out["status"] = "COMPLETED"
 		}
+		if md, _ := obj["metadata"].(map[string]interface{}); md != nil && stringField(md, excessRefund) != "" {
+			out[excessRefund] = true
+		}
 		copyKeys("amount", "currency")
 	case "dispute.created", "dispute.updated":
 		out["id"], out["payment_id"] = stringField(obj, "id"), stringField(obj, "charge")
@@ -134,6 +137,9 @@ func stripeRefunds(ctx context.Context, org *organization.Organization, chargeID
 	for _, r := range refunds {
 		if stringField(r, "status") != "succeeded" {
 			continue
+		}
+		if md, _ := r["metadata"].(map[string]interface{}); md != nil && stringField(md, excessRefund) != "" {
+			continue // an excess commerce returned itself, not a refund of the payment
 		}
 		out = append(out, &processor.WebhookEvent{
 			Type: "refund.updated", Processor: processor.Stripe,

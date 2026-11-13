@@ -1200,6 +1200,9 @@ func applyClawbackEvent(ctx context.Context, booked *datastore.Datastore, org *o
 	if event.Data == nil {
 		return nil
 	}
+	if excess, _ := event.Data[excessRefund].(bool); excess {
+		return nil // the invoice is paid in full: this only returned an overpayment
+	}
 	obj := unwrapObject(event.Data, "refund")
 	paymentID := stringField(obj, "payment_id")
 	isDispute := strings.HasPrefix(event.Type, "dispute.")
