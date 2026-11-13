@@ -132,6 +132,11 @@ func (p Policy) Decide(in Input) Decision {
 		d.Processor, d.Reason = processor.Stripe, "split"
 	}
 	d.Methods = p.Methods(d.Processor, country)
+	if d.Reason == "saved" && d.Processor == processor.Stripe {
+		// A card already saved at Stripe is topped up through the saved-card path, not a
+		// fresh Payment Element: the plain card form, which also saves it again.
+		d.Methods = []string{"card", "apple_pay", "google_pay"}
+	}
 	return d
 }
 

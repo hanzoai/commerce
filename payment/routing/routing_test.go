@@ -101,3 +101,10 @@ func TestMethods(t *testing.T) {
 		t.Fatalf("local off mounts the card form: %v", m)
 	}
 }
+
+func TestASavedStripeCardIsOfferedTheCardFormNotThePaymentElement(t *testing.T) {
+	d := Default().Decide(Input{Org: "hanzo", Key: "k", Country: "BR", Saved: processor.Stripe})
+	if d.Methods[0] != "card" {
+		t.Fatalf("a Stripe card holder was sent to %v", d.Methods)
+	}
+}

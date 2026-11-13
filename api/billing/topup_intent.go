@@ -7,11 +7,13 @@ import (
 
 	"github.com/zap-proto/zip"
 
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentorg"
 	"github.com/hanzoai/commerce/models/pendingintent"
+	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/fx"
 	"github.com/hanzoai/commerce/payment/processor"
@@ -131,6 +133,9 @@ type TopupIntentState struct {
 	State string `json:"state"`
 	// Credited says the wallet holds the money. A page shows "paid" only on this.
 	Credited bool `json:"credited"`
+	// PaymentID is the receipt of the credit, set once Credited: the transaction the
+	// wallet's credit was written as.
+	PaymentID string `json:"paymentId,omitempty"`
 }
 
 // ReadTopupIntent answers where one of the caller's own payments is. A payment that
@@ -154,6 +159,13 @@ func ReadTopupIntent(ctx context.Context, org *organization.Organization, subjec
 	out := &TopupIntentState{State: processor.IntentState(tx.Status)}
 	if tx.ProcessorRef != "" {
 		_, out.Credited, _ = paymentorg.Get(tx.ProcessorRef)
+		if out.Credited {
+			db := datastore.New(org.Namespaced(ctx))
+			stamped := transaction.New(db)
+			if found, _ := stamped.Query().Filter("SourceKind=", chargeSourceKind(processor.Stripe)).Filter("SourceId=", tx.ProcessorRef).Get(); found {
+				out.PaymentID = stamped.Id()
+			}
+		}
 	}
 	return out, nil
 }

@@ -87,6 +87,10 @@ func TestAPixPaymentCreditsTheQuotedDollarsExactlyOnce(t *testing.T) {
 	if got[0].AmountCents != 500 || got[0].Currency != "usd" || got[0].IdempotencyKey != "ch_pix_once" || got[0].Subject != "buyer" || !got[0].Cash {
 		t.Fatalf("the wallet must get the $5.00 the buyer bought, keyed on the charge: %+v", got[0])
 	}
+	st, f := ReadTopupIntent(ctx, org, "buyer", "pi_pix_once")
+	if f != nil || st.State != "succeeded" || !st.Credited || st.PaymentID == "" {
+		t.Fatalf("the page waiting on this payment is told %+v (%v); want succeeded, credited, with a receipt", st, f)
+	}
 }
 
 func TestAPaymentThatSettlesForAnotherAmountCreditsNothing(t *testing.T) {
