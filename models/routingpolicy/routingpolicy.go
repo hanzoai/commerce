@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -22,6 +23,7 @@ func init() {
 	orm.Register[Row]("routing-policy", orm.WithStringKey[Row]())
 	orm.Register[Decision]("routing-decision", orm.WithStringKey[Decision]())
 	orm.Register[Assignment]("routing-assignment", orm.WithStringKey[Assignment]())
+	orm.Register[Version]("routing-version", orm.WithStringKey[Version]())
 }
 
 // Platform is the id of the row every org without its own inherits.
@@ -31,13 +33,19 @@ const Platform = "_platform"
 type Row struct {
 	mixin.Model[Row]
 
-	SquareWeight int    `json:"squareWeight"`
-	SquareOn     bool   `json:"squareOn"`
-	StripeOn     bool   `json:"stripeOn"`
-	LocalOn      bool   `json:"localOn"`
-	PayPalOn     bool   `json:"paypalOn"`
-	CryptoOn     bool   `json:"cryptoOn"`
-	By           string `json:"by"`
+	SquareWeight int  `json:"squareWeight"`
+	SquareOn     bool `json:"squareOn"`
+	StripeOn     bool `json:"stripeOn"`
+	LocalOn      bool `json:"localOn"`
+	PayPalOn     bool `json:"paypalOn"`
+	CryptoOn     bool `json:"cryptoOn"`
+	// Rules is the JSON of the rule lists (currency, brand, issuer country, fallback,
+	// method switches, noSticky): the store holds no lists, and an empty string is
+	// the defaults, so a row written before they existed reads as it always did.
+	Rules string `json:"rules,omitempty"`
+	// Version is the active version: a pointer into the immutable history.
+	Version int    `json:"version,omitempty"`
+	By      string `json:"by"`
 }
 
 func (r *Row) Load(ps []datastore.Property) error  { return datastore.LoadStruct(r, ps) }
@@ -83,7 +91,7 @@ func Put(ctx context.Context, id string, in Row) error {
 	r.Init(d)
 	r.SetId(strings.ToLower(strings.TrimSpace(id)))
 	r.SquareWeight, r.SquareOn, r.StripeOn, r.LocalOn, r.By = in.SquareWeight, in.SquareOn, in.StripeOn, in.LocalOn, in.By
-	r.PayPalOn, r.CryptoOn = in.PayPalOn, in.CryptoOn
+	r.PayPalOn, r.CryptoOn, r.Rules, r.Version = in.PayPalOn, in.CryptoOn, in.Rules, in.Version
 	return r.Put()
 }
 
@@ -202,4 +210,92 @@ func End(ctx context.Context, org, subject, ref string) error {
 	}
 	cur.Attempt, cur.AttemptAt = "", time.Time{}
 	return cur.Put()
+}
+
+// Forget drops the payer's placement, so their next checkout is placed afresh.
+func Forget(ctx context.Context, org, subject string) error {
+	a, found, err := Assigned(ctx, org, subject)
+	if err != nil || !found {
+		return err
+	}
+	return a.Delete()
+}
+
+// ForgetOrg drops every placement in org and says how many.
+func ForgetOrg(ctx context.Context, org string) (int, error) {
+	rows := make([]*Assignment, 0)
+	if _, err := db(ctx).Query("routing-assignment").Filter("Org=", strings.ToLower(strings.TrimSpace(org))).GetAll(&rows); err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, a := range rows {
+		if err := a.Delete(); err != nil {
+			return n, err
+		}
+		n++
+	}
+	return n, nil
+}
+
+// Version is one saved policy, immutable: who saved it, when, what changed from the
+// one before, and the note they left. The active version is the Row's pointer, so a
+// restore is a new Version and history is never rewritten.
+type Version struct {
+	mixin.Model[Version]
+
+	Scope    string `json:"scope"`
+	N        int    `json:"n"`
+	Policy   string `json:"policy"` // the whole policy as JSON
+	By       string `json:"by"`
+	Note     string `json:"note,omitempty"`
+	Diff     string `json:"diff"`               // JSON list of "field: before -> after"
+	Restored int    `json:"restored,omitempty"` // the version this one restored, if any
+}
+
+func (v *Version) Load(ps []datastore.Property) error  { return datastore.LoadStruct(v, ps) }
+func (v *Version) Save() ([]datastore.Property, error) { return datastore.SaveStruct(v) }
+
+func versionKey(scope string, n int) string {
+	return strings.ToLower(strings.TrimSpace(scope)) + "|" + fmt.Sprintf("%08d", n)
+}
+
+// PutVersion stores version n of scope. A version that exists is never replaced.
+func PutVersion(ctx context.Context, in Version) error {
+	d := db(ctx)
+	if _, found, err := GetVersion(ctx, in.Scope, in.N); err != nil {
+		return err
+	} else if found {
+		return fmt.Errorf("routing version %d of %s exists and is immutable", in.N, in.Scope)
+	}
+	v := new(Version)
+	v.Init(d)
+	v.SetId(versionKey(in.Scope, in.N))
+	v.Scope, v.N, v.Policy, v.By, v.Note, v.Diff, v.Restored = strings.ToLower(in.Scope), in.N, in.Policy, in.By, in.Note, in.Diff, in.Restored
+	return v.Put()
+}
+
+// GetVersion answers version n of scope.
+func GetVersion(ctx context.Context, scope string, n int) (*Version, bool, error) {
+	d := db(ctx)
+	v := new(Version)
+	v.Init(d)
+	err := v.Get(d.NewKey(v.Kind(), versionKey(scope, n), 0, nil))
+	switch {
+	case err == nil:
+		return v, true, nil
+	case err == datastore.ErrNoSuchEntity:
+		return nil, false, nil
+	default:
+		return nil, false, err
+	}
+}
+
+// Versions lists every version of scope, newest first.
+func Versions(ctx context.Context, scope string) ([]*Version, error) {
+	rows := make([]*Version, 0)
+	if _, err := db(ctx).Query("routing-version").Filter("Scope=", strings.ToLower(strings.TrimSpace(scope))).GetAll(&rows); err != nil {
+		return nil, err
+	}
+	sort.Slice(rows, func(i, j int) bool { return rows[i].N > rows[j].N })
+	return rows, nil
 }

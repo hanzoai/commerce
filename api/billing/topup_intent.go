@@ -157,7 +157,7 @@ func OpenTopupIntent(ctx context.Context, org *organization.Organization, in Top
 	}
 	out, err := maker.CreateLocalIntent(ctx, processor.LocalIntent{
 		Customer: customer, ReceiptEmail: payer.Email,
-		Amount: paid, Currency: cur,
+		Amount: paid, Currency: cur, Excluded: pol.Off(),
 		Key:      gatewayKey("topup-local", in.Subject, fmt.Sprintf("%s:%d", key, paid)),
 		Desc:     fmt.Sprintf("Top-up %d usd for %s", in.AmountCents, in.Subject),
 		Metadata: map[string]interface{}{"hanzo_subject": in.Subject, "hanzo_usd_cents": in.AmountCents, "hanzo_org": org.Name, "org": org.Name, "user": strings.ToLower(in.Subject)},

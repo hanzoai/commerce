@@ -26,6 +26,9 @@ func (p *Provider) CreateLocalIntent(ctx context.Context, in processor.LocalInte
 	params.Set("payment_method_options[boleto][expires_after_days]", "3")
 	params.Set("payment_method_options[oxxo][expires_after_days]", "3")
 	params.Set("payment_method_options[pix][expires_after_seconds]", "86400")
+	for i, m := range in.Excluded {
+		params.Set(fmt.Sprintf("excluded_payment_method_types[%d]", i), m)
+	}
 	if in.Desc != "" {
 		params.Set("description", in.Desc)
 	}

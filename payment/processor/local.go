@@ -17,6 +17,8 @@ type LocalIntent struct {
 	Key      string // idempotency key
 	Metadata map[string]interface{}
 	Desc     string
+	// Excluded are payment method types the Payment Element must not offer.
+	Excluded []string
 	// Customer is the payer's customer at the processor; ReceiptEmail their email.
 	Customer     string
 	ReceiptEmail string

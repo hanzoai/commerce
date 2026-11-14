@@ -285,6 +285,10 @@ func Route(r *zip.Group, args ...zip.Handler) {
 	// org's recent checkouts.
 	mint.Raw(http.MethodGet, "/routing", GetRouting)
 	mint.Raw(http.MethodPut, "/routing", PutRouting)
+	mint.Raw(http.MethodPost, "/routing/preview", PreviewRoutingHandler)
+	mint.Raw(http.MethodPost, "/routing/reset", ResetRoutingHandler)
+	mint.Raw(http.MethodGet, "/routing/versions", ListRoutingVersionsHandler)
+	mint.Raw(http.MethodPost, "/routing/restore", RestoreRoutingHandler)
 
 	// ── User-facing billing endpoints ─────────────────────────────────────
 	// Called by billing.hanzo.ai with user OIDC tokens. Gated by a NO-MASK
