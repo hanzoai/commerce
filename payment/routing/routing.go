@@ -31,6 +31,10 @@ type Policy struct {
 	// SquareOn and StripeOn take a processor in or out of new checkouts.
 	SquareOn bool `json:"squareOn"`
 	StripeOn bool `json:"stripeOn"`
+	// PayPalOn and CryptoOn take PayPal and the native crypto rail in or out of the
+	// options a buyer is shown beside the card slot.
+	PayPalOn bool `json:"paypalOn"`
+	CryptoOn bool `json:"cryptoOn"`
 	// LocalOn lets Stripe's Payment Element offer each country's native methods.
 	LocalOn bool `json:"localOn"`
 	// Countries is the set Square takes cards in (ISO 3166-1 alpha-2).
@@ -39,7 +43,7 @@ type Policy struct {
 
 // Default is the platform policy: half and half across Square's eight countries.
 func Default() Policy {
-	return Policy{SquareWeight: 50, SquareOn: true, StripeOn: true, LocalOn: true, Countries: append([]string{}, SquareCountries...)}
+	return Policy{SquareWeight: 50, SquareOn: true, StripeOn: true, PayPalOn: true, CryptoOn: true, LocalOn: true, Countries: append([]string{}, SquareCountries...)}
 }
 
 // Normal is p with its countries upper-cased, de-duplicated and sorted, and its
@@ -95,6 +99,10 @@ type Decision struct {
 	Reason    string                  `json:"reason"`
 	Methods   []string                `json:"methods"`
 	Country   string                  `json:"country"`
+	// Alternatives are the other ways this buyer may pay, each its own button beside
+	// the card slot: "paypal" where PayPal operates, "crypto" where a deposit watcher
+	// is running. Filled by the caller, which knows what is configured.
+	Alternatives []string `json:"alternatives"`
 }
 
 // Bucket is the buyer's place in 0-99, stable per (org, key).
@@ -132,6 +140,7 @@ func (p Policy) Decide(in Input) Decision {
 		d.Processor, d.Reason = processor.Stripe, "split"
 	}
 	d.Methods = p.Methods(d.Processor, country)
+	d.Alternatives = []string{}
 	if d.Reason == "saved" && d.Processor == processor.Stripe {
 		// A card already saved at Stripe is topped up through the saved-card path, not a
 		// fresh Payment Element: the plain card form, which also saves it again.

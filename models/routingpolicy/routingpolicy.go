@@ -35,6 +35,8 @@ type Row struct {
 	SquareOn     bool   `json:"squareOn"`
 	StripeOn     bool   `json:"stripeOn"`
 	LocalOn      bool   `json:"localOn"`
+	PayPalOn     bool   `json:"paypalOn"`
+	CryptoOn     bool   `json:"cryptoOn"`
 	Countries    string `json:"countries"`
 	By           string `json:"by"`
 }
@@ -82,6 +84,7 @@ func Put(ctx context.Context, id string, in Row) error {
 	r.Init(d)
 	r.SetId(strings.ToLower(strings.TrimSpace(id)))
 	r.SquareWeight, r.SquareOn, r.StripeOn, r.LocalOn, r.Countries, r.By = in.SquareWeight, in.SquareOn, in.StripeOn, in.LocalOn, in.Countries, in.By
+	r.PayPalOn, r.CryptoOn = in.PayPalOn, in.CryptoOn
 	return r.Put()
 }
 
