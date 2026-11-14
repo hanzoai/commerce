@@ -191,7 +191,15 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 	}
 
 	var pi paymentIntent
-	if err := p.postKey(ctx, "/payment_intents", params, req.IdempotencyKey, &pi); err != nil {
+	post := func() error { return p.postKey(ctx, "/payment_intents", params, req.IdempotencyKey, &pi) }
+	if q, _ := req.Options["quoteId"].(string); q != "" {
+		// The charge is bound to the rate the buyer was quoted for it.
+		params.Set("fx_quote", q)
+		post = func() error {
+			return p.postVersion(ctx, "/payment_intents", params, req.IdempotencyKey, fxVersion, &pi)
+		}
+	}
+	if err := post(); err != nil {
 		// A card Stripe refuses for authentication carries the intent that waits
 		// for it; that is the buyer's step, not a decline.
 		if pe := intentOf(err); pe != nil && pe.Status == "requires_action" {

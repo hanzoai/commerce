@@ -3,8 +3,15 @@ package billing
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hanzoai/commerce/billing/engine"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/billinginvoice"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/paymentmethod"
+	"github.com/hanzoai/commerce/models/subscription"
+	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/payment/routing"
 )
@@ -36,33 +43,81 @@ func RequoteRenewal(ctx context.Context, reg *processor.Registry, pol routing.Po
 	return out, nil
 }
 
-// indiaNoAuthLimit is the RBI ceiling, in paise, for a recurring charge that may run
-// without the cardholder authenticating it (Rs 15,000).
-const indiaNoAuthLimit int64 = 15000 * 100
-
-// mandateHeadroomBps is the room a mandate's maximum leaves over the renewal's local
-// amount for the exchange rate to move before the next period: a ceiling the bank holds
-// the merchant to, never part of a price.
-const mandateHeadroomBps = 1000
-
-// RenewalMode says how a renewal of localMinor in cur may be charged: off-session on the
-// mandate, or only with the buyer present, who is then sent a pay link. Under the RBI's
-// rules a recurring charge above Rs 15,000 needs the buyer's authentication each time.
-func RenewalMode(cur string, localMinor int64) (offSession bool) {
-	return !(cur == "inr" && localMinor > indiaNoAuthLimit)
+// RenewalNeedsBuyer says a renewal cannot be charged without the buyer there. A card
+// issued in India cannot be charged off-session without an RBI e-mandate, and Stripe
+// registers those only on its own Subscriptions, which this service does not use; so a
+// renewal of an Indian card, or in rupees, whatever the amount, runs on-session: the
+// buyer is sent a link and pays by card with 3-D Secure or by UPI.
+func RenewalNeedsBuyer(cardCountry, cur string) bool {
+	return strings.EqualFold(strings.TrimSpace(cardCountry), "IN") || strings.EqualFold(cur, "inr")
 }
 
-// MandateMax is the maximum a card mandate is registered for: the renewal's local
-// amount plus headroom, rounded up to the increment.
-func MandateMax(localMinor, step int64) int64 {
-	m := (localMinor*(10000+mandateHeadroomBps) + 9999) / 10000 // exact, rounded up
-	return (m + step - 1) / step * step
+// requoteLocalRenewal is the part of a renewal charge that converts: it prices the
+// plan's USD amount in the subscription's billing currency from a fresh quote, or, when
+// the renewal cannot run without the buyer, announces renewal.action_required with the
+// invoice to pay and answers errWaitingOnBuyer, which leaves the invoice open and the
+// subscription past due, in the grace the dunning gives it before it suspends.
+func requoteLocalRenewal(ctx context.Context, db *datastore.Datastore, org *organization.Organization, sub *subscription.Subscription, pm *paymentmethod.PaymentMethod, inv *billinginvoice.BillingInvoice, usdCents int64, planCur currency.Type, billCur string, buyerPresent bool) (*RenewalQuote, error) {
+	if planCur != currency.USD {
+		return nil, fmt.Errorf("subscription %s is billed in %s but its plan is priced in %s, not dollars", sub.Id(), billCur, planCur)
+	}
+	country := ""
+	if pm.Card != nil {
+		country = pm.Card.Country
+	}
+	if !buyerPresent && RenewalNeedsBuyer(country, billCur) {
+		if _, err := engine.EmitBillingEvent(webhookGuardDB(ctx), "renewal.action_required", "subscription", sub.Id(), sub.UserId,
+			map[string]interface{}{"invoiceId": inv.Id(), "pay": "/v1/billing/invoices/" + inv.Id() + "/pay", "currency": billCur, "usdCents": usdCents,
+				"reason": "a card issued in India, or a payment in rupees, is charged only with the buyer present"}, nil); err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("%w: renewal of %s needs the buyer (card issued in %q, billed in %s)", errWaitingOnBuyer, sub.Id(), country, billCur)
+	}
+	pol, err := ReadRouting(ctx, org.Name)
+	if err != nil {
+		return nil, err
+	}
+	rq, f := RequoteRenewal(ctx, processorsForOrg(org), pol, providerOf(pm), usdCents, billCur, lastLocalAmount(db, sub, billCur), sub.UserId, sub.Id())
+	if f != nil {
+		return nil, fmt.Errorf("%s", f.Message)
+	}
+	return rq, nil
 }
 
-// PayLinkEvent is emitted instead of an off-session attempt when the renewal needs the
-// buyer: it carries what the notification needs to ask them to pay.
-func PayLinkEvent(ctx context.Context, subject, subscription, cur string, localMinor int64) error {
-	_, err := engine.EmitBillingEvent(webhookGuardDB(ctx), "renewal.pay_link", "subscription", subscription, subject,
-		map[string]interface{}{"currency": cur, "amount": localMinor, "reason": fmt.Sprintf("a renewal over %d paise needs the buyer's authentication", indiaNoAuthLimit)}, nil)
-	return err
+// lastLocalAmount is the local amount the subscription's latest paid invoice in billCur
+// was charged, in minor units, or 0 when it has none.
+func lastLocalAmount(db *datastore.Datastore, sub *subscription.Subscription, billCur string) int64 {
+	invs := make([]*billinginvoice.BillingInvoice, 0)
+	if _, err := billinginvoice.Query(db).Filter("SubscriptionId=", sub.Id()).Filter("UserId=", sub.UserId).GetAll(&invs); err != nil {
+		return 0
+	}
+	var at int64
+	var amount int64
+	for _, i := range invs {
+		if i.Status != billinginvoice.Paid || i.PeriodStart.Unix() <= at {
+			continue
+		}
+		if l, ok := i.Metadata["local"].(map[string]interface{}); ok && l["currency"] == billCur {
+			if n, ok := l["amount"].(float64); ok {
+				at, amount = i.PeriodStart.Unix(), int64(n)
+			} else if n, ok := l["amount"].(int64); ok {
+				at, amount = i.PeriodStart.Unix(), n
+			}
+		}
+	}
+	return amount
+}
+
+// bindRenewalTerms records on the invoice the terms of the attempt that paid it: the
+// local amount and currency, the USD it bought, the rate and its source, and the quote
+// the charge was bound to.
+func bindRenewalTerms(inv *billinginvoice.BillingInvoice, q *routing.Quote) {
+	if inv.Metadata == nil {
+		inv.Metadata = map[string]interface{}{}
+	}
+	inv.Metadata["local"] = map[string]interface{}{
+		"amount": q.Amount, "currency": q.Currency, "usdCents": q.UsdCents, "rate": q.Rate, "source": q.Source, "fxFee": q.FXFee,
+		"quoteId": q.QuoteID, "baseRate": q.BaseRate, "feeRate": q.FeeRate, "premium": q.Premium, "exchangeRate": q.ExchangeRate,
+		"lockExpiresAt": q.LockExpiresAt, "decimals": q.Decimals,
+	}
 }

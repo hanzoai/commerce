@@ -1780,6 +1780,12 @@ var errNoProcessorFor = errors.New("no payment processor for saved-card charge")
 // buyerPresent says the buyer is here (a sale, a top-up): their bank may then ask
 // them to authenticate. A renewal or a reload is off-session.
 func chargeSavedCard(ctx context.Context, reg *processor.Registry, pm *paymentmethod.PaymentMethod, amountCents int64, cur currency.Type, idempotencyKey, desc string, buyerPresent bool) (*processor.PaymentResult, error) {
+	return chargeSavedCardAt(ctx, reg, pm, amountCents, cur, idempotencyKey, desc, buyerPresent, "")
+}
+
+// chargeSavedCardAt is chargeSavedCard bound to quoteID, the processor's locked rate the
+// amount was priced at ("" for none).
+func chargeSavedCardAt(ctx context.Context, reg *processor.Registry, pm *paymentmethod.PaymentMethod, amountCents int64, cur currency.Type, idempotencyKey, desc string, buyerPresent bool, quoteID string) (*processor.PaymentResult, error) {
 	req := processor.PaymentRequest{
 		Token:      strings.TrimSpace(pm.ProviderRef), // the card-on-file token
 		CustomerID: customerIDOf(pm),                  // the customer that owns it
@@ -1795,7 +1801,7 @@ func chargeSavedCard(ctx context.Context, reg *processor.Registry, pm *paymentme
 		Metadata:       chargeMetadata(pm),
 		// Off-session for a renewal or a reload; on-session when the buyer is here to
 		// answer their bank's authentication step.
-		Options: map[string]interface{}{"offSession": !buyerPresent},
+		Options: map[string]interface{}{"offSession": !buyerPresent, "quoteId": quoteID},
 	}
 	proc, err := reg.Existing(ctx, providerOf(pm))
 	if err != nil {
@@ -1862,6 +1868,16 @@ func chargeProvider(org *organization.Organization, buyerPresent bool) engine.Pr
 		if cur == "" {
 			cur = currency.USD
 		}
+		// A subscription billed in the buyer's currency is re-quoted for this renewal.
+		var local *RenewalQuote
+		if bc := strings.ToLower(strings.TrimSpace(sub.BillingCurrency)); bc != "" && currency.Type(bc) != cur {
+			lq, lerr := requoteLocalRenewal(ctx, db, org, sub, pm, inv, amountCents, cur, bc, buyerPresent)
+			if lerr != nil {
+				return "", lerr
+			}
+			local = lq
+			amountCents, cur = lq.Quote.Amount, currency.Type(bc)
+		}
 		// Square idempotency key scoped to (subscription, period, attempt). The PERIOD
 		// (not the invoice id) is the shared axis: concurrent renewals each build their
 		// OWN invoice row for the same period, so an invoice-id key would NOT de-dup them
@@ -1893,7 +1909,11 @@ func chargeProvider(org *organization.Organization, buyerPresent bool) engine.Pr
 					return "", cerr
 				}
 			}
-			res, err = chargeSavedCard(ctx, reg, pm, amountCents, cur, squareKey, desc, buyerPresent)
+			qid := ""
+			if local != nil {
+				qid = local.Quote.QuoteID
+			}
+			res, err = chargeSavedCardAt(ctx, reg, pm, amountCents, cur, squareKey, desc, buyerPresent, qid)
 			if buyerPresent && actionOf(res, err) != nil {
 				if rerr := registerActionFor(res, err, org, inv.UserId, pendingintent.Invoice, inv.Id(), amountCents, cur); rerr != nil {
 					return "", rerr
@@ -1905,6 +1925,18 @@ func chargeProvider(org *organization.Organization, buyerPresent bool) engine.Pr
 		}
 		if err := paymentorg.Put(res.ProcessorRef, org.Name, inv.UserId, inv.Id(), 0, org.TestMode()); err != nil {
 			log.Warn("renewal: payment %s: the index to invoice %s was not written, so its refund or dispute will not find the period it paid: %v", res.ProcessorRef, inv.Id(), err)
+		}
+		if local != nil {
+			// Paid in the buyer's currency against a quote: both figures are kept, so a refund
+			// or a dispute in that currency is taken back in the dollars credited, and the
+			// invoice carries the terms this attempt was bound to.
+			if _, _, cerr := paymentorg.Change(res.ProcessorRef, func(r *paymentorg.PaymentOrg) bool {
+				r.PaidCents, r.PaidCurrency, r.CreditCents = local.Quote.Amount, string(cur), local.Quote.UsdCents
+				return true
+			}); cerr != nil {
+				log.Error("RECONCILE: renewal payment %s was charged %d %s against a quote of %d usd cents and the quote was not recorded: %v", res.ProcessorRef, local.Quote.Amount, cur, local.Quote.UsdCents, cerr)
+			}
+			bindRenewalTerms(inv, local.Quote)
 		}
 		return res.ProcessorRef, nil
 	}
