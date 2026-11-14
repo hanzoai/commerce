@@ -6,14 +6,16 @@
 //
 //   - A buyer with a card saved at a processor stays on it. A saved card is bound
 //     to the processor that vaulted it; nothing here moves it.
-//   - The MERCHANT decides first. Square takes a card only where the merchant's
-//     Square location can charge it (a location with card processing, in the
-//     checkout's currency); the caller states that as SquareOK. Where it cannot, the checkout is Stripe's, decided before any
-//     payment exists. Where the BUYER lives is not a condition: a German buyer paying
-//     dollars to a US location is eligible.
-//   - An eligible checkout is placed by weight, and placed the same way every time:
-//     the bucket is a hash of (org, customer key), so a returning buyer lands where
-//     they landed before and raising the weight only ever moves buyers toward Square.
+//   - The MERCHANT decides first. A processor takes a card only where the merchant's
+//     account with it can charge it (Square: a location with card processing, in the
+//     checkout's currency); the caller states that per processor as Input.Capable.
+//     A processor that cannot is out of every later step, decided before any payment
+//     exists. Where the BUYER lives is not a condition: a German buyer paying dollars
+//     to a US location is eligible.
+//   - An eligible checkout is placed by weight across however many processors the
+//     policy names, and placed the same way every time: the bucket is a hash of
+//     (org, customer key), so a returning buyer lands where they landed before and
+//     raising a weight only ever moves buyers toward that processor.
 package routing
 
 import (
@@ -30,15 +32,19 @@ import (
 
 // Policy is how an org's new card checkouts are divided.
 type Policy struct {
-	// SquareWeight is the percentage (0-100) of Square-eligible buyers sent to Square.
-	SquareWeight int `json:"squareWeight"`
-	// SquareOn and StripeOn take a processor in or out of new checkouts.
-	SquareOn bool `json:"squareOn"`
-	StripeOn bool `json:"stripeOn"`
-	// PayPalOn and CryptoOn take PayPal and the native crypto rail in or out of the
-	// options a buyer is shown beside the card slot.
-	PayPalOn bool `json:"paypalOn"`
-	CryptoOn bool `json:"cryptoOn"`
+	// Processors are the processors a checkout may be placed on, in the order the split
+	// takes them: On takes one in or out of new checkouts, Weight is its share of the
+	// buyers that are eligible for it (any whole number; only the proportions count).
+	// A processor with weight 0 takes no share but is still a target of the rules and
+	// the fallback, and PayPal and crypto are listed here to be switched on or off as
+	// the other ways a buyer may pay.
+	Processors []ProcessorRule `json:"processors"`
+	// Accounts are the merchant accounts held with each processor (a Square location,
+	// a Stripe account): where it is, the currency it charges in, whether it takes
+	// cards. A processor with accounts is eligible for a checkout only where one of its
+	// accounts that is on takes cards in the checkout's currency; a processor with none
+	// is eligible wherever the processor itself says it can take the charge.
+	Accounts []Account `json:"accounts"`
 	// LocalOn lets Stripe's Payment Element offer each country's native methods.
 	LocalOn bool `json:"localOn"`
 	// Sticky keeps a payer on the processor the split first placed them on. On by
@@ -83,6 +89,84 @@ type Policy struct {
 	// LocalMethods holds the per-method switches the admin has set. A method with no
 	// entry is on, so an empty list is every method on.
 	LocalMethods []MethodRule `json:"methods"`
+}
+
+// ProcessorRule is one processor in the policy: whether it takes new checkouts and its
+// share of the split.
+type ProcessorRule struct {
+	Processor string `json:"processor"`
+	On        bool   `json:"on"`
+	Weight    int    `json:"weight"`
+}
+
+// Account is one merchant account the org holds with a processor: a Square location, a
+// Stripe account. Country is where the account is and Currency what it charges in ("" for
+// any); neither is about the buyer. Cards says it takes card payments; On takes it in or
+// out of checkouts without deleting it.
+type Account struct {
+	Processor string `json:"processor"`
+	ID        string `json:"id"`
+	Country   string `json:"country,omitempty"`
+	Currency  string `json:"currency,omitempty"`
+	Cards     bool   `json:"cards"`
+	On        bool   `json:"on"`
+}
+
+// DefaultProcessors is the platform split: Square and Stripe half and half, with PayPal
+// and crypto on as the other ways to pay.
+func DefaultProcessors() []ProcessorRule {
+	return []ProcessorRule{
+		{string(processor.Square), true, 50},
+		{string(processor.Stripe), true, 50},
+		{string(processor.PayPal), true, 0},
+		{CryptoRail, true, 0},
+	}
+}
+
+// CryptoRail names the native crypto rail among the processors a policy lists.
+const CryptoRail = "crypto"
+
+// KnownProcessor says name is one a policy may list: a card or wallet processor commerce
+// has, or the native crypto rail.
+func KnownProcessor(name string) bool {
+	return name == CryptoRail || processor.KnownType(name)
+}
+
+// takesCards says a processor takes new card checkouts, as opposed to being another way
+// to pay beside the card slot (PayPal, crypto).
+func takesCards(name string) bool {
+	return name != CryptoRail && name != string(processor.PayPal)
+}
+
+// FallbackOrder is the order processors are tried in when the chosen one cannot take a
+// charge: the admin's list, else the processors that take cards in the policy's order.
+func (p Policy) FallbackOrder() []string {
+	if len(p.Fallback) > 0 {
+		return p.Fallback
+	}
+	order := []string{}
+	for _, r := range p.Processors {
+		if takesCards(r.Processor) {
+			order = append(order, r.Processor)
+		}
+	}
+	return order
+}
+
+// rule is the policy's entry for t.
+func (p Policy) rule(t processor.ProcessorType) (ProcessorRule, bool) {
+	for _, r := range p.Processors {
+		if r.Processor == string(t) {
+			return r, true
+		}
+	}
+	return ProcessorRule{}, false
+}
+
+// On says processor t is switched on in the policy.
+func (p Policy) On(t processor.ProcessorType) bool {
+	r, ok := p.rule(t)
+	return ok && r.On
 }
 
 // RoundingIncrement is the increment, in major units, a price in Currency rounds up to.
@@ -254,13 +338,24 @@ func (p Policy) Off() []string {
 
 // Default is the platform policy: half and half across Square's eight countries.
 func Default() Policy {
-	return Policy{SquareWeight: 50, SquareOn: true, StripeOn: true, PayPalOn: true, CryptoOn: true, LocalOn: true, Sticky: true, FXSource: FXProcessor, FXFee: FXPass, RoundingIncrements: []RoundingIncrement{}, LocalCurrencies: []LocalCurrencyRule{},
+	return Policy{Processors: DefaultProcessors(), Accounts: []Account{}, LocalOn: true, Sticky: true, FXSource: FXProcessor, FXFee: FXPass, RoundingIncrements: []RoundingIncrement{}, LocalCurrencies: []LocalCurrencyRule{},
 		CurrencyRules: []CurrencyRule{}, CountryRules: []CountryRule{}, BrandRules: []BrandRule{}, IssuerCountryRules: []IssuerRule{}, Fallback: []string{}, LocalMethods: []MethodRule{}}
 }
 
 // Normal is p with its weight inside 0-100.
 func (p Policy) Normal() Policy {
-	p.SquareWeight = max(0, min(100, p.SquareWeight))
+	pr := []ProcessorRule{}
+	for _, r := range p.Processors {
+		pr = append(pr, ProcessorRule{strings.ToLower(strings.TrimSpace(r.Processor)), r.On, max(0, r.Weight)})
+	}
+	p.Processors = pr
+	ac := []Account{}
+	for _, a := range p.Accounts {
+		a.Processor, a.ID = strings.ToLower(strings.TrimSpace(a.Processor)), strings.TrimSpace(a.ID)
+		a.Country, a.Currency = strings.ToUpper(strings.TrimSpace(a.Country)), strings.ToLower(strings.TrimSpace(a.Currency))
+		ac = append(ac, a)
+	}
+	p.Accounts = ac
 	cr := []CurrencyRule{}
 	for _, r := range p.CurrencyRules {
 		cr = append(cr, CurrencyRule{strings.ToLower(strings.TrimSpace(r.Currency)), strings.ToLower(strings.TrimSpace(r.Processor))})
@@ -307,11 +402,39 @@ func (p Policy) Normal() Policy {
 
 // Valid says why p cannot be stored, or "".
 func (p Policy) Valid() string {
-	if p.SquareWeight < 0 || p.SquareWeight > 100 {
-		return "squareWeight must be between 0 and 100"
+	seenP := map[string]bool{}
+	anyOn := false
+	for _, r := range p.Processors {
+		if !KnownProcessor(r.Processor) {
+			return "processors: " + strconvQ(r.Processor) + " is not a processor"
+		}
+		if seenP[r.Processor] {
+			return "processors: " + r.Processor + " is named twice"
+		}
+		seenP[r.Processor] = true
+		if r.Weight > 1000 {
+			return "processors: " + r.Processor + " weight must be between 0 and 1000"
+		}
+		anyOn = anyOn || (r.On && takesCards(r.Processor))
 	}
-	if !p.SquareOn && !p.StripeOn {
-		return "at least one processor must be on"
+	if !anyOn {
+		return "at least one processor that takes cards must be on"
+	}
+	seenA := map[string]bool{}
+	for _, a := range p.Accounts {
+		switch {
+		case !seenP[a.Processor]:
+			return "accounts: " + strconvQ(a.Processor) + " is not a processor named in processors"
+		case a.ID == "":
+			return "accounts: an account of " + a.Processor + " has no id"
+		case seenA[a.Processor+"\x00"+a.ID]:
+			return "accounts: " + a.Processor + " " + a.ID + " is named twice"
+		case a.Country != "" && !KnownCountry(a.Country):
+			return "accounts: " + strconvQ(a.Country) + " is not an ISO 3166-1 country"
+		case a.Currency != "" && len(a.Currency) != 3:
+			return "accounts: " + strconvQ(a.Currency) + " is not an ISO 4217 currency"
+		}
+		seenA[a.Processor+"\x00"+a.ID] = true
 	}
 	if p.FXFee != "" && p.FXFee != FXPass && p.FXFee != FXAbsorb {
 		return "fxCost must be pass or absorb"
@@ -429,11 +552,10 @@ type Input struct {
 	// it applies while that processor can take this checkout, and a checkout it cannot
 	// take is the other processor's without changing the assignment.
 	Assigned processor.ProcessorType
-	// SquareOK says a Square location the merchant holds can take this checkout's
-	// card in its currency (square.Provider.Eligible).
-	SquareOK bool
-	// SquareWhy says why Square is not eligible, for the reason chain.
-	SquareWhy string
+	// Capable is what each processor says of this checkout, as the caller found it: a
+	// Square location of ours that takes cards in the checkout's currency, a Stripe
+	// account that can charge it. A processor the caller says nothing of can take it.
+	Capable []Capability
 	// Saved is the processor holding a card the buyer saved; "" for none.
 	Saved processor.ProcessorType
 	// Currency is what the checkout is paid in; the currency rules read it.
@@ -443,6 +565,13 @@ type Input struct {
 	Method string
 	// Brand and IssuerCountry describe the card once it is entered; empty before.
 	Brand, IssuerCountry string
+}
+
+// Capability is whether a processor can take this checkout, and why not.
+type Capability struct {
+	Processor processor.ProcessorType `json:"processor"`
+	OK        bool                    `json:"ok"`
+	Why       string                  `json:"why,omitempty"`
 }
 
 // Decision is the answer: who takes the checkout, why, and what to mount.
@@ -518,22 +647,49 @@ type Step struct {
 	Why     string `json:"why"`
 }
 
+// buckets is how many places Bucket has.
+const buckets = 100
+
 // Bucket is the buyer's place in 0-99, stable per (org, key).
 func Bucket(org, key string) int {
 	h := sha256.Sum256([]byte(strings.ToLower(org) + "\x00" + strings.ToLower(key)))
-	return int(binary.BigEndian.Uint64(h[:8]) % 100)
+	return int(binary.BigEndian.Uint64(h[:8]) % buckets)
 }
 
-// Usable says processor t can take this checkout at all: switched on, and for Square
-// only where the merchant's location can charge it.
+// Usable says processor t can take this checkout at all: switched on, able to take it
+// as the caller found, and, where the policy lists accounts for it, holding one that is
+// on and takes cards in the checkout's currency.
 func (p Policy) Usable(t processor.ProcessorType, in Input) bool {
-	switch t {
-	case processor.Square:
-		return p.SquareOn && in.SquareOK
-	case processor.Stripe:
-		return p.StripeOn
+	return p.unusable(t, in) == ""
+}
+
+// unusable says why t cannot take this checkout, or "" when it can.
+func (p Policy) unusable(t processor.ProcessorType, in Input) string {
+	if !p.On(t) {
+		return string(t) + " is switched off"
 	}
-	return false
+	for _, c := range in.Capable {
+		if c.Processor == t && !c.OK {
+			if c.Why != "" {
+				return string(t) + " excluded: " + c.Why
+			}
+			return string(t) + " excluded: it cannot take this charge"
+		}
+	}
+	var mine, ok int
+	for _, a := range p.Accounts {
+		if a.Processor != string(t) {
+			continue
+		}
+		mine++
+		if a.On && a.Cards && (a.Currency == "" || a.Currency == strings.ToLower(in.Currency)) {
+			ok++
+		}
+	}
+	if mine > 0 && ok == 0 {
+		return string(t) + " excluded: none of its accounts takes cards in " + strings.ToUpper(in.Currency)
+	}
+	return ""
 }
 
 func (p Policy) ruled(proc string, in Input) (processor.ProcessorType, bool) {
@@ -573,17 +729,13 @@ func (p Policy) Decide(in Input) Decision {
 
 	// 2. eligibility
 	var out []string
-	if !p.SquareOn {
-		out = append(out, "square is switched off")
-	} else if !in.SquareOK {
-		why := in.SquareWhy
-		if why == "" {
-			why = "no Square merchant location takes cards in " + cur
+	for _, r := range p.Processors {
+		if !takesCards(r.Processor) {
+			continue
 		}
-		out = append(out, "square excluded: "+why)
-	}
-	if !p.StripeOn {
-		out = append(out, "stripe is switched off")
+		if why := p.unusable(processor.ProcessorType(r.Processor), in); why != "" {
+			out = append(out, why)
+		}
 	}
 	if len(out) > 0 {
 		step("eligibility", true, strings.Join(out, "; "))
@@ -682,30 +834,92 @@ func (p Policy) Decide(in Input) Decision {
 	}
 
 	// 6. weight
+	var cut []string
+	capability := false
 	if decided {
 		step("weight", false, "skipped: already decided")
 	} else {
+		var cand []ProcessorRule
+		total := 0
+		for _, r := range p.Processors {
+			if !takesCards(r.Processor) {
+				continue
+			}
+			if why := p.unusable(processor.ProcessorType(r.Processor), in); why != "" {
+				// A processor cut from the checkout, share or none, is why the rest decide.
+				cut = append(cut, why)
+				capability = capability || p.On(processor.ProcessorType(r.Processor))
+				continue
+			}
+			if r.Weight > 0 {
+				cand = append(cand, r)
+				total += r.Weight
+			}
+		}
 		switch {
-		case !p.StripeOn:
-			set(processor.Square, "stripe-off", "toggle")
-			step("weight", true, "stripe is off, so square")
-		case !p.SquareOn:
-			set(processor.Stripe, "square-off", "toggle")
-			step("weight", true, "square is off, so stripe")
-		case !in.SquareOK:
-			set(processor.Stripe, "merchant", "merchant")
-			step("weight", true, "square cannot take this charge, so stripe")
-		case Bucket(in.Org, in.Key) < p.SquareWeight:
-			set(processor.Square, "split", "split")
-			step("weight", true, "bucket below the square weight of "+strconvI(p.SquareWeight))
+		case len(cand) == 0:
+			step("weight", false, "no processor with a share can take this charge; the fallback decides")
+		case len(cand) == 1:
+			reason := "split"
+			why := "the only processor with a share is " + cand[0].Processor
+			if len(cut) > 0 {
+				reason, why = "toggle", cand[0].Processor+" is the only processor with a share that can take this charge ("+strings.Join(cut, "; ")+")"
+				if capability {
+					reason = "merchant"
+				}
+			}
+			set(processor.ProcessorType(cand[0].Processor), reason, reason)
+			step("weight", true, why)
 		default:
-			set(processor.Stripe, "split", "split")
-			step("weight", true, "bucket at or above the square weight of "+strconvI(p.SquareWeight))
+			// The buyer's bucket (0-99) scaled to the eligible weights: a processor takes the
+			// buckets from its running total to the next, in the policy's order.
+			pos, run, shares := Bucket(in.Org, in.Key)*total/buckets, 0, make([]string, 0, len(cand))
+			chosen := cand[len(cand)-1]
+			picked := false
+			for _, r := range cand {
+				shares = append(shares, r.Processor+" "+strconvI(r.Weight))
+				run += r.Weight
+				if !picked && pos < run {
+					chosen, picked = r, true
+				}
+			}
+			set(processor.ProcessorType(chosen.Processor), "split", "split")
+			step("weight", true, "bucket "+strconvI(Bucket(in.Org, in.Key))+" of "+strconvI(buckets)+" falls on "+chosen.Processor+" among "+strings.Join(shares, ", "))
 		}
 	}
 
-	// 7. fallback is the caller's; recorded here as not needed until it applies.
-	step("fallback", false, "not needed: the chosen processor can take the charge")
+	// 7. fallback: when nothing with a share could take the charge, the first processor
+	// of the admin's fallback order (else the card processors in the policy's order) that
+	// can; the caller applies the same order again if the chosen one is down.
+	if decided {
+		step("fallback", false, "not needed: the chosen processor can take the charge")
+	} else {
+		for _, name := range p.FallbackOrder() {
+			if t := processor.ProcessorType(name); p.Usable(t, in) {
+				// When the processors with a share were cut, the reason is the cut: the
+				// merchant's account, or the switch.
+				reason := "fallback"
+				if len(cut) > 0 {
+					reason = "toggle"
+					if capability {
+						reason = "merchant"
+					}
+				}
+				set(t, reason, reason)
+				step("fallback", true, name+" is the first processor in the fallback order that can take this charge")
+				break
+			}
+		}
+		if !decided {
+			for _, r := range p.Processors {
+				if r.On && takesCards(r.Processor) {
+					set(processor.ProcessorType(r.Processor), "none-eligible", "toggle")
+					break
+				}
+			}
+			step("fallback", true, "no processor can take this charge; "+string(d.Processor)+" is tried and the caller answers if it is down")
+		}
+	}
 
 	d.Methods = p.Methods(d.Processor, country)
 	d.Alternatives = []string{}

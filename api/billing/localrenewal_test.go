@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/zap-proto/zip"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -27,16 +31,16 @@ func TestARenewalIsRequotedAndTheChangeIsAnnounced(t *testing.T) {
 	reg := useQuotingRail(t, stripe)
 	p := routing.Default()
 
-	first, f := RequoteRenewal(ctx, reg, p, processor.Stripe, 800, "inr", 0, "alice", "sub_1")
+	first, f := RequoteRenewal(ctx, reg, p, processor.Stripe, 800, "inr", 0, "alice", "sub_1", "inv_1")
 	if f != nil || first.Quote.Amount != 76200 || first.Changed || first.Quote.QuoteID != "fxq_r1" {
 		t.Fatalf("first: %+v %v", first, f)
 	}
 	stripe.rq.ID, stripe.rq.PerDollar = "fxq_r2", 96.5
-	second, f := RequoteRenewal(ctx, reg, p, processor.Stripe, 800, "inr", first.Quote.Amount, "alice", "sub_1")
+	second, f := RequoteRenewal(ctx, reg, p, processor.Stripe, 800, "inr", first.Quote.Amount, "alice", "sub_1", "inv_1")
 	if f != nil || second.Quote.Amount != 77200 || !second.Changed || second.Quote.UsdCents != 800 || second.Quote.QuoteID != "fxq_r2" {
 		t.Fatalf("second: %+v %v", second, f)
 	}
-	if third, _ := RequoteRenewal(ctx, reg, p, processor.Stripe, 800, "inr", second.Quote.Amount, "alice", "sub_1"); third.Changed {
+	if third, _ := RequoteRenewal(ctx, reg, p, processor.Stripe, 800, "inr", second.Quote.Amount, "alice", "sub_1", "inv_1"); third.Changed {
 		t.Fatalf("an unchanged amount was announced: %+v", third)
 	}
 }
@@ -429,5 +433,104 @@ func TestABuyerReturningAfterTheLockLapsedIsReQuotedAndShownTheNewPrice(t *testi
 	fresh := SubscribeIn{MethodID: pm, PlanID: "go", Subject: org.Name, Country: "IN", QuotedAmount: 76800, QuotedCurrency: "inr"}
 	if _, err := Subscribe(ctx, org, fresh); err == nil {
 		t.Fatal("the fresh quote's first charge should ask for the bank's step again")
+	}
+}
+
+// The price shown before the sale is the price the sale charges, for the same plan and
+// country, and a top-up asks the same route for its amount.
+func TestThePriceShownBeforeTheSaleIsWhatTheSaleCharges(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org, _, pm, ch := stripeBuyer(t, ctx, "quote-first", "KR", 1403.2)
+
+	shown, f := QuoteBeforeSale(ctx, org, QuoteIn{Subject: org.Name, Plan: "go", Country: "KR"})
+	if f != nil || shown.Currency != "krw" || shown.UsdCents != 800 || shown.Amount != 11300 || shown.Decimals != 0 || shown.Source != "processor" ||
+		shown.Disclosure == "" || shown.QuoteID != "" || shown.FXFee != "pass" {
+		t.Fatalf("shown = %+v %v; want 11300 won for $8, a displayed (unlocked) quote", shown, f)
+	}
+	if len(ch.reqs) != 0 {
+		t.Fatal("showing a price charged something")
+	}
+	if _, err := Subscribe(ctx, org, SubscribeIn{MethodID: pm, PlanID: "go", Subject: org.Name, Country: "KR", QuotedAmount: shown.Amount, QuotedCurrency: shown.Currency}); err != nil {
+		t.Fatalf("subscribe at the shown price: %v", err)
+	}
+	if len(ch.reqs) != 1 || int64(ch.reqs[0].Amount) != shown.Amount || string(ch.reqs[0].Currency) != shown.Currency {
+		t.Fatalf("charged %+v; want exactly the shown %d %s", ch.reqs, shown.Amount, shown.Currency)
+	}
+
+	// The same route prices a top-up, and a country in dollars is in dollars.
+	top, f := QuoteBeforeSale(ctx, org, QuoteIn{Subject: org.Name, UsdCents: 2000, Country: "KR"})
+	if f != nil || top.UsdCents != 2000 || top.Amount != 28100 || top.Currency != "krw" {
+		t.Fatalf("top-up quote = %+v %v; want $20 as 28100 won", top, f)
+	}
+	us, f := QuoteBeforeSale(ctx, org, QuoteIn{Subject: org.Name, UsdCents: 2000, Country: "US"})
+	if f != nil || us.Currency != "usd" || us.Amount != 2000 || us.Source != "none" || us.Rate != 1 {
+		t.Fatalf("US quote = %+v %v", us, f)
+	}
+	if _, f := QuoteBeforeSale(ctx, org, QuoteIn{Subject: org.Name, Country: "KR"}); f == nil || f.Status != 400 {
+		t.Fatalf("a quote with no plan and no amount: %v", f)
+	}
+}
+
+// renewal.amount_changed carries what pay and notify need: the invoice, the old and the
+// new amount in the currency, the quote, and the paths to read or pay the invoice.
+func TestTheAmountChangedEventCarriesTheInvoiceTheQuoteAndTheLinks(t *testing.T) {
+	ctx := heldStore(t)
+	stripe := &quotingRail{rail: newRail(processor.Stripe, true), rq: processor.RateQuote{ID: "fxq_e1", PerDollar: 95.2361, BasePerDollar: 95.2361}}
+	reg := useQuotingRail(t, stripe)
+	if _, f := RequoteRenewal(ctx, reg, routing.Default(), processor.Stripe, 800, "inr", 75400, "alice", "sub_9", "inv_9"); f != nil {
+		t.Fatal(f.Err)
+	}
+	evs := make([]*billingevent.BillingEvent, 0)
+	if _, err := billingevent.Query(webhookGuardDB(ctx)).Filter("Type=", "renewal.amount_changed").GetAll(&evs); err != nil || len(evs) != 1 {
+		t.Fatalf("want one event, got %d (%v)", len(evs), err)
+	}
+	d := evs[0].Data
+	if d["invoiceId"] != "inv_9" || d["subscriptionId"] != "sub_9" || d["currency"] != "inr" || d["quoteId"] != "fxq_e1" ||
+		d["payPath"] != "/v1/billing/invoices/inv_9/pay" || d["invoicePath"] != "/v1/billing/invoices/inv_9" || d["disclosure"] == "" || d["quote"] == nil {
+		t.Fatalf("event data = %+v", d)
+	}
+	if n, _ := d["previous"].(int64); n != 75400 {
+		if f, _ := d["previous"].(float64); int64(f) != 75400 {
+			t.Fatalf("previous = %v", d["previous"])
+		}
+	}
+	if n, _ := d["amount"].(int64); n != 76200 {
+		if f, _ := d["amount"].(float64); int64(f) != 76200 {
+			t.Fatalf("amount = %v, want Rs 762", d["amount"])
+		}
+	}
+}
+
+func TestTheQuoteRouteAnswersTheNeutralShape(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org, _, _, _ := stripeBuyer(t, ctx, "quote-route", "KR", 1403.2)
+	req := httptest.NewRequest(http.MethodGet, "/v1/billing/quote?plan=go&country=KR", nil)
+	resp := driveSeeded(func(c *zip.Ctx) {
+		c.Locals("organization", org)
+		c.SetContext(ctx)
+		c.Locals("iam_email", "buyer@acme.test")
+	}, "/v1/billing/quote", req, QuoteHandler)
+	if resp.StatusCode != 200 {
+		t.Fatalf("GET /quote = %d %s", resp.StatusCode, bodyOf(resp))
+	}
+	var q map[string]any
+	raw, _ := io.ReadAll(resp.Body)
+	if err := json.Unmarshal(raw, &q); err != nil {
+		t.Fatal(err)
+	}
+	for _, k := range []string{"amount", "decimals", "currency", "usdCents", "rate", "source", "fxFee", "disclosure"} {
+		if _, ok := q[k]; !ok {
+			t.Errorf("the quote answer lacks %q: %s", k, raw)
+		}
+	}
+	if q["currency"] != "krw" || q["amount"].(float64) != 11300 || q["usdCents"].(float64) != 800 {
+		t.Fatalf("quote = %s", raw)
+	}
+	for _, vendor := range []string{"stripe", "fx_quote", "fxq"} {
+		if strings.Contains(strings.ToLower(string(raw)), vendor) {
+			t.Errorf("the quote names a vendor (%s): %s", vendor, raw)
+		}
 	}
 }

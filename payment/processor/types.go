@@ -229,3 +229,12 @@ func IsCryptoCurrency(c currency.Type) bool {
 	// Then check our extended list
 	return CryptoCurrencies[c]
 }
+
+// KnownType says name is a processor commerce has.
+func KnownType(name string) bool {
+	switch ProcessorType(name) {
+	case Stripe, Square, PayPal, Adyen, Braintree, Recurly, LemonSqueezy, BitPay, CoinbaseCommerce, OpenNode, Bitcoin, Ethereum, MPC, Wire, SolanaPay, MoonPay, Kraken:
+		return true
+	}
+	return false
+}

@@ -8,6 +8,7 @@ import (
 	"github.com/hanzoai/commerce/util/test/ae"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -60,7 +61,7 @@ func putRouting(eng *zip.App, body string) *http.Response {
 	return resp
 }
 
-const sevenTenths = `{"squareWeight":70,"squareOn":true,"stripeOn":true,"localOn":true}`
+const sevenTenths = `{"processors":[{"processor":"square","on":true,"weight":70},{"processor":"stripe","on":true,"weight":30}],"localOn":true}`
 
 func TestAnOrgAdminCannotChangeRouting(t *testing.T) {
 	ctx := heldStore(t)
@@ -68,7 +69,7 @@ func TestAnOrgAdminCannotChangeRouting(t *testing.T) {
 	if resp.StatusCode != 403 {
 		t.Fatalf("an org admin changing the routing got %d, want 403", resp.StatusCode)
 	}
-	if p, err := ReadRouting(ctx, "acme"); err != nil || p.SquareWeight != 50 {
+	if p, err := ReadRouting(ctx, "acme"); err != nil || squareWeightOf(p) != 50 {
 		t.Fatalf("the refused write changed the policy: %+v %v", p, err)
 	}
 }
@@ -81,14 +82,14 @@ func TestASuperAdminChangesRoutingAndItIsAudited(t *testing.T) {
 		t.Fatalf("a SuperAdmin changing the routing got %d", resp.StatusCode)
 	}
 	p, err := ReadRouting(ctx, "hanzo")
-	if err != nil || p.SquareWeight != 70 {
+	if err != nil || squareWeightOf(p) != 70 {
 		t.Fatalf("the platform policy did not take: %+v %v", p, err)
 	}
 	// An org's own row overrides the platform's.
-	if _, f := WriteRouting(ctx, "acme", routing.Policy{SquareWeight: 0, SquareOn: true, StripeOn: true}, "z@hanzo.ai", ""); f != nil {
+	if _, f := WriteRouting(ctx, "acme", withWeight(0), "z@hanzo.ai", ""); f != nil {
 		t.Fatal(f.Err)
 	}
-	if p, _ := ReadRouting(ctx, "acme"); p.SquareWeight != 0 {
+	if p, _ := ReadRouting(ctx, "acme"); squareWeightOf(p) != 0 {
 		t.Fatalf("the org's row lost to the platform's: %+v", p)
 	}
 
@@ -109,7 +110,7 @@ func TestASuperAdminChangesRoutingAndItIsAudited(t *testing.T) {
 
 func TestARoutingNobodyCanServeIsRefused(t *testing.T) {
 	ctx := heldStore(t)
-	_, f := WriteRouting(ctx, "", routing.Policy{SquareWeight: 50}, "z", "")
+	_, f := WriteRouting(ctx, "", routing.Policy{Processors: []routing.ProcessorRule{{Processor: "square", Weight: 50}}}, "z", "")
 	if f == nil || f.Status != 400 {
 		t.Fatalf("both processors off must be refused, got %+v", f)
 	}
@@ -165,7 +166,7 @@ func routingOrg(ctx context.Context, t *testing.T) *organization.Organization {
 func TestAProcessorThatIsDownHandsNewBuyersToTheOtherNeverASavedCard(t *testing.T) {
 	ctx := heldStore(t)
 	org := routingOrg(ctx, t)
-	if _, f := WriteRouting(ctx, org.Name, routing.Policy{SquareWeight: 100, SquareOn: true, StripeOn: true, LocalOn: true}, "z", ""); f != nil {
+	if _, f := WriteRouting(ctx, org.Name, func() routing.Policy { q := withWeight(100); return q }(), "z", ""); f != nil {
 		t.Fatal(f.Err)
 	}
 
@@ -242,7 +243,7 @@ func TestPayPalIsOfferedBesideTheCardWhereItOperatesAndTheDeploymentAllowsIt(t *
 		t.Fatalf("PayPal does not operate in PK: %+v", d.Alternatives)
 	}
 	pol := routing.Default()
-	pol.PayPalOn = false
+	setOn(&pol, "paypal", false)
 	if _, f := WriteRouting(ctx, org.Name, pol, "z", ""); f != nil {
 		t.Fatal(f.Err)
 	}
@@ -250,7 +251,7 @@ func TestPayPalIsOfferedBesideTheCardWhereItOperatesAndTheDeploymentAllowsIt(t *
 		t.Fatalf("the admin switched PayPal off: %+v", d.Alternatives)
 	}
 	t.Setenv(processor.ChargeProcessors, "stripe,square")
-	pol.PayPalOn = true
+	setOn(&pol, "paypal", true)
 	_, _ = WriteRouting(ctx, org.Name, pol, "z", "")
 	if d, _ = Place(ctx, org, RouteIn{Subject: "p", Country: "BR"}); len(d.Alternatives) != 0 {
 		t.Fatalf("the deployment does not allow PayPal: %+v", d.Alternatives)
@@ -319,7 +320,7 @@ func (d *profileDouble) ProfileCustomer(context.Context, string, processor.Payer
 func TestACardIsSquaresOnlyWhereTheMerchantLocationCanTakeIt(t *testing.T) {
 	ctx := heldStore(t)
 	org := routingOrg(ctx, t)
-	if _, f := WriteRouting(ctx, org.Name, routing.Policy{SquareWeight: 100, SquareOn: true, StripeOn: true, LocalOn: true}, "z", ""); f != nil {
+	if _, f := WriteRouting(ctx, org.Name, func() routing.Policy { q := withWeight(100); return q }(), "z", ""); f != nil {
 		t.Fatal(f.Err)
 	}
 	useRails(t, true, true)
@@ -388,10 +389,41 @@ func TestNoOtherProcessorIsOfferedWhileASquareChargeIsUnresolved(t *testing.T) {
 	}
 }
 
+// squareWeightOf is Square's weight in a policy.
+func squareWeightOf(p routing.Policy) int {
+	for _, r := range p.Processors {
+		if r.Processor == "square" {
+			return r.Weight
+		}
+	}
+	return -1
+}
+
+// setWeights sets the weights of Square and Stripe.
+func setWeights(p *routing.Policy, square, stripe int) {
+	for i := range p.Processors {
+		switch p.Processors[i].Processor {
+		case "square":
+			p.Processors[i].Weight = square
+		case "stripe":
+			p.Processors[i].Weight = stripe
+		}
+	}
+}
+
+// setOn switches a processor in or out.
+func setOn(p *routing.Policy, name string, on bool) {
+	for i := range p.Processors {
+		if p.Processors[i].Processor == name {
+			p.Processors[i].On = on
+		}
+	}
+}
+
 // withWeight is the default policy with only the weight changed.
 func withWeight(w int) routing.Policy {
 	p := routing.Default()
-	p.SquareWeight = w
+	setWeights(&p, w, 100-w)
 	return p
 }
 
@@ -429,7 +461,7 @@ func TestAnIneligibleOverrideIsRefusedAtSaveAndChangesNothing(t *testing.T) {
 			t.Fatalf("%s: want a 400 refusal, got %v", name, f)
 		}
 	}
-	if got, _ := ReadRouting(ctx, scope); got.SquareWeight != before.SquareWeight || len(got.CurrencyRules) != 0 {
+	if got, _ := ReadRouting(ctx, scope); squareWeightOf(got) != squareWeightOf(before) || len(got.CurrencyRules) != 0 {
 		t.Fatalf("a refused save changed the policy: %+v", got)
 	}
 	if vs, _ := ListRoutingVersions(ctx, scope); len(vs) != 1 {
@@ -524,8 +556,8 @@ func TestTheChainHasSevenStepsInOrderAndSavedCardsIgnoreEveryRule(t *testing.T) 
 	p.CountryRules = []routing.CountryRule{{Country: "DE", Processor: "stripe"}}
 	p.BrandRules = []routing.BrandRule{{Brand: "visa", Processor: "stripe"}}
 	p.IssuerCountryRules = []routing.IssuerRule{{Country: "DE", Processor: "stripe"}}
-	p.SquareWeight = 100
-	in := routing.Input{Org: "o", Key: "k", Country: "DE", Currency: "usd", Brand: "visa", IssuerCountry: "DE", SquareOK: true, Saved: processor.Square, Assigned: processor.Stripe}
+	setWeights(&p, 100, 0)
+	in := routing.Input{Org: "o", Key: "k", Country: "DE", Currency: "usd", Brand: "visa", IssuerCountry: "DE", Capable: []routing.Capability{{Processor: processor.Square, OK: true}}, Saved: processor.Square, Assigned: processor.Stripe}
 	d := p.Decide(in)
 	if d.Processor != processor.Square || d.Rule != "saved" {
 		t.Fatalf("a saved Square card was moved by a rule: %+v", d)
@@ -595,21 +627,21 @@ func TestVersionsAreImmutableListedAndRestoredAsNewVersions(t *testing.T) {
 		}
 	}
 	vs, _ := ListRoutingVersions(ctx, scope)
-	if len(vs) != 3 || vs[0].N != 3 || !vs[0].Active || vs[0].Policy.SquareWeight != 90 || vs[0].By != "z@hanzo.ai" || vs[0].Note != "set 90" {
+	if len(vs) != 3 || vs[0].N != 3 || !vs[0].Active || squareWeightOf(vs[0].Policy) != 90 || vs[0].By != "z@hanzo.ai" || vs[0].Note != "set 90" {
 		t.Fatalf("history: %+v", vs)
 	}
-	if len(vs[0].Diff) == 0 || !strings.Contains(strings.Join(vs[0].Diff, ";"), "squareWeight: 60 -> 90") {
+	if len(vs[0].Diff) == 0 || !strings.Contains(strings.Join(vs[0].Diff, ";"), "processors: ") {
 		t.Fatalf("the diff against the previous version: %v", vs[0].Diff)
 	}
 	if err := routingpolicy.PutVersion(ctx, routingpolicy.Version{Scope: scope, N: 1, Policy: "{}"}); err == nil {
 		t.Fatal("a stored version was replaced")
 	}
 	p, f := RestoreRouting(ctx, scope, 1, "z@hanzo.ai", "")
-	if f != nil || p.SquareWeight != 20 {
+	if f != nil || squareWeightOf(p) != 20 {
 		t.Fatalf("restore: %+v %v", p, f)
 	}
 	vs, _ = ListRoutingVersions(ctx, scope)
-	if len(vs) != 4 || vs[0].N != 4 || vs[0].Restored != 1 || !vs[0].Active || vs[3].Policy.SquareWeight != 20 || vs[1].Policy.SquareWeight != 90 {
+	if len(vs) != 4 || vs[0].N != 4 || vs[0].Restored != 1 || !vs[0].Active || squareWeightOf(vs[3].Policy) != 20 || squareWeightOf(vs[1].Policy) != 90 {
 		t.Fatalf("a restore must add a version and rewrite nothing: %+v", vs)
 	}
 	// A version that no longer holds is refused with the reason.
@@ -634,7 +666,7 @@ func TestAPolicyChangeReflectsOnTheNextCheckoutWithNoRestart(t *testing.T) {
 	for i, want := range []processor.ProcessorType{processor.Square, processor.Stripe, processor.Square} {
 		p := withWeight(0)
 		if want == processor.Square {
-			p.SquareWeight = 100
+			setWeights(&p, 100, 0)
 		}
 		p.Sticky = false
 		if _, f := WriteRouting(ctx, org.Name, p, "z", ""); f != nil {
@@ -671,14 +703,14 @@ func TestTheFallbackOrderIsTheAdminsAndIsUsedOnlyBeforePayment(t *testing.T) {
 
 func TestTheDefaultPolicyIsTodaysBehaviour(t *testing.T) {
 	p := routing.Default()
-	if p.SquareWeight != 50 || !p.SquareOn || !p.StripeOn || !p.LocalOn || !p.Sticky || !p.PayPalOn || !p.CryptoOn {
+	if squareWeightOf(p) != 50 || !p.On(processor.Square) || !p.On(processor.Stripe) || !p.LocalOn || !p.Sticky || !p.On(processor.PayPal) || !p.On(routing.CryptoRail) {
 		t.Fatalf("defaults: %+v", p)
 	}
 	if len(p.CurrencyRules)+len(p.CountryRules)+len(p.BrandRules)+len(p.IssuerCountryRules)+len(p.Fallback)+len(p.LocalMethods) != 0 || len(p.Off()) != 0 {
 		t.Fatalf("the default carries rules: %+v", p)
 	}
 	// An eligible dollar checkout is the split; an ineligible one is Stripe's.
-	if d := p.Decide(routing.Input{Org: "o", Key: "k", Currency: "usd", SquareOK: false}); d.Processor != processor.Stripe || d.Rule != "merchant" {
+	if d := p.Decide(routing.Input{Org: "o", Key: "k", Currency: "usd", Capable: []routing.Capability{{Processor: processor.Square, OK: false}}}); d.Processor != processor.Stripe || d.Rule != "merchant" {
 		t.Fatalf("%+v", d)
 	}
 	// Every method is on, and switching one off is visible to the Payment Element.
@@ -823,12 +855,12 @@ func TestCardRulesSayTheyDoNotApplyWhenNoCardMetadataIsKnown(t *testing.T) {
 	p := routing.Default()
 	p.BrandRules = []routing.BrandRule{{Brand: "amex", Processor: "stripe"}}
 	p.IssuerCountryRules = []routing.IssuerRule{{Country: "GB", Processor: "stripe"}}
-	d := p.Decide(routing.Input{Org: "o", Key: "k", Currency: "usd", SquareOK: true})
+	d := p.Decide(routing.Input{Org: "o", Key: "k", Currency: "usd", Capable: []routing.Capability{{Processor: processor.Square, OK: true}}})
 	step := d.Chain[3]
 	if step.Step != "overrides" || step.Applied || !strings.Contains(step.Why, "not applicable: card metadata unknown before selection") {
 		t.Fatalf("a new card must not be decided by a card rule: %+v", step)
 	}
-	d = p.Decide(routing.Input{Org: "o", Key: "k", Currency: "usd", SquareOK: true, Brand: "amex"})
+	d = p.Decide(routing.Input{Org: "o", Key: "k", Currency: "usd", Capable: []routing.Capability{{Processor: processor.Square, OK: true}}, Brand: "amex"})
 	if !d.Chain[3].Applied || d.Rule != "brand" {
 		t.Fatalf("with metadata known the rule applies: %+v", d)
 	}
@@ -989,5 +1021,51 @@ func TestARouteToSquareOrCryptoQuotesWithoutAskingStripe(t *testing.T) {
 	p.FXSource = routing.FXReference
 	if q, f = quoteVia(ctx, reg, p, processor.Stripe, 800, "IN", "", "", false); f != nil || q.Source != "reference" || q.Amount != 75400 || len(stripe.locks) != 1 {
 		t.Fatalf("reference: %+v %v", q, f)
+	}
+}
+
+// A policy stored before processors and accounts held its split in columns. It is read
+// once into the processors it meant, rewritten in the new shape, and read the same
+// afterwards; its saved versions are read the same way, and restore as the new shape.
+func TestAPolicyStoredInTheOldShapeIsMigratedOnceAtLoad(t *testing.T) {
+	ctx := heldStore(t)
+	useRails(t, true, true)
+	scope := "legacy-" + t.Name()
+	old := routingpolicy.Row{SquareWeight: 70, SquareOn: true, StripeOn: true, PayPalOn: true, CryptoOn: false, LocalOn: true,
+		Rules: `{"fallback":["stripe"],"noSticky":true}`, Version: 3, By: "z@hanzo.ai"}
+	if err := routingpolicy.Put(ctx, scope, old); err != nil {
+		t.Fatal(err)
+	}
+	want := []routing.ProcessorRule{{Processor: "square", On: true, Weight: 70}, {Processor: "stripe", On: true, Weight: 30}, {Processor: "paypal", On: true}, {Processor: "crypto"}}
+	p, v, err := ReadRoutingVersioned(ctx, scope)
+	if err != nil || v != 3 || !reflect.DeepEqual(p.Processors, want) || len(p.Fallback) != 1 || p.Sticky {
+		t.Fatalf("migrated policy = %+v (v%d, %v); want %+v, the rules kept", p, v, err, want)
+	}
+	// Written back in the new shape: the columns are gone, the split is in the rules.
+	row, found, _ := routingpolicy.Get(ctx, scope)
+	if !found || row.SquareWeight != 0 || row.SquareOn || row.StripeOn || row.PayPalOn || !strings.Contains(row.Rules, `"processors"`) || row.Version != 3 || row.By != "z@hanzo.ai" {
+		t.Fatalf("row after the migration = %+v; want the new shape with its version and author", row)
+	}
+	again, _, _ := ReadRoutingVersioned(ctx, scope)
+	if !reflect.DeepEqual(again.Processors, want) {
+		t.Fatalf("a second read = %+v", again.Processors)
+	}
+
+	// A version saved in the old shape reads as the processors it meant, and restores as
+	// a new version in the new shape.
+	if err := routingpolicy.PutVersion(ctx, routingpolicy.Version{Scope: scope, N: 1, By: "z", Note: "old",
+		Policy: `{"squareWeight":20,"squareOn":true,"stripeOn":true,"paypalOn":true,"cryptoOn":true,"localOn":true,"currencyRules":[],"countryRules":[],"brandRules":[],"issuerCountryRules":[],"fallback":[],"methods":[],"fxSpreadBps":200,"localCurrencies":[]}`}); err != nil {
+		t.Fatal(err)
+	}
+	vs, _ := ListRoutingVersions(ctx, scope)
+	if len(vs) != 1 || squareWeightOf(vs[0].Policy) != 20 || len(vs[0].Policy.Processors) != 4 {
+		t.Fatalf("the old version reads %+v", vs)
+	}
+	restored, f := RestoreRouting(ctx, scope, 1, "z", "")
+	if f != nil || squareWeightOf(restored) != 20 || restored.Processors[1].Weight != 80 {
+		t.Fatalf("restore = %+v %v; want Square 20, Stripe 80", restored, f)
+	}
+	if row, _, _ := routingpolicy.Get(ctx, scope); !strings.Contains(row.Rules, `"processors"`) || row.SquareWeight != 0 {
+		t.Fatalf("the restored row is in the old shape: %+v", row)
 	}
 }
