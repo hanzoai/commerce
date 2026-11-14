@@ -21,13 +21,13 @@ import (
 func init() {
 	orm.Register[Row]("routing-policy", orm.WithStringKey[Row]())
 	orm.Register[Decision]("routing-decision", orm.WithStringKey[Decision]())
+	orm.Register[Assignment]("routing-assignment", orm.WithStringKey[Assignment]())
 }
 
 // Platform is the id of the row every org without its own inherits.
 const Platform = "_platform"
 
-// Row is one policy. Countries is the comma-joined ISO 3166-1 alpha-2 set Square
-// takes cards in; it is a string because the store holds no lists.
+// Row is one policy.
 type Row struct {
 	mixin.Model[Row]
 
@@ -37,7 +37,6 @@ type Row struct {
 	LocalOn      bool   `json:"localOn"`
 	PayPalOn     bool   `json:"paypalOn"`
 	CryptoOn     bool   `json:"cryptoOn"`
-	Countries    string `json:"countries"`
 	By           string `json:"by"`
 }
 
@@ -83,7 +82,7 @@ func Put(ctx context.Context, id string, in Row) error {
 	r := new(Row)
 	r.Init(d)
 	r.SetId(strings.ToLower(strings.TrimSpace(id)))
-	r.SquareWeight, r.SquareOn, r.StripeOn, r.LocalOn, r.Countries, r.By = in.SquareWeight, in.SquareOn, in.StripeOn, in.LocalOn, in.Countries, in.By
+	r.SquareWeight, r.SquareOn, r.StripeOn, r.LocalOn, r.By = in.SquareWeight, in.SquareOn, in.StripeOn, in.LocalOn, in.By
 	r.PayPalOn, r.CryptoOn = in.PayPalOn, in.CryptoOn
 	return r.Put()
 }
@@ -119,4 +118,88 @@ func Recent(ctx context.Context, n int) ([]*Decision, error) {
 		rows = rows[:n]
 	}
 	return rows, nil
+}
+
+// Assignment is the processor a payer was placed on, kept once so the split is a
+// property of the customer and not of each checkout: a weight changed later moves
+// nobody who has been placed. Attempt marks a Square charge begun and not yet known
+// to have succeeded or failed.
+type Assignment struct {
+	mixin.Model[Assignment]
+
+	Org       string    `json:"org"`
+	Subject   string    `json:"subject"`
+	Processor string    `json:"processor"`
+	Attempt   string    `json:"attempt,omitempty"`
+	AttemptAt time.Time `json:"attemptAt,omitempty"`
+}
+
+func (a *Assignment) Load(ps []datastore.Property) error  { return datastore.LoadStruct(a, ps) }
+func (a *Assignment) Save() ([]datastore.Property, error) { return datastore.SaveStruct(a) }
+
+func assignKey(org, subject string) string {
+	return strings.ToLower(strings.TrimSpace(org)) + "|" + strings.ToLower(strings.TrimSpace(subject))
+}
+
+// Assigned answers where the payer was placed.
+func Assigned(ctx context.Context, org, subject string) (*Assignment, bool, error) {
+	d := db(ctx)
+	a := new(Assignment)
+	a.Init(d)
+	err := a.Get(d.NewKey(a.Kind(), assignKey(org, subject), 0, nil))
+	switch {
+	case err == nil:
+		return a, true, nil
+	case err == datastore.ErrNoSuchEntity:
+		return nil, false, nil
+	default:
+		return nil, false, err
+	}
+}
+
+// Place keeps processor as the payer's, replacing a placement that is no longer
+// eligible. An open Attempt survives the replacement.
+func Place(ctx context.Context, org, subject, processor string) error {
+	cur, found, err := Assigned(ctx, org, subject)
+	if err != nil {
+		return err
+	}
+	d := db(ctx)
+	a := new(Assignment)
+	a.Init(d)
+	a.SetId(assignKey(org, subject))
+	a.Org, a.Subject, a.Processor = strings.ToLower(org), strings.ToLower(subject), processor
+	if found {
+		a.Attempt, a.AttemptAt = cur.Attempt, cur.AttemptAt
+	}
+	return a.Put()
+}
+
+// Begin marks a charge on processor started for the payer: until End says how it
+// ended, no other processor is offered to them.
+func Begin(ctx context.Context, org, subject, processor, ref string) error {
+	cur, found, err := Assigned(ctx, org, subject)
+	if err != nil {
+		return err
+	}
+	d := db(ctx)
+	a := new(Assignment)
+	a.Init(d)
+	a.SetId(assignKey(org, subject))
+	a.Org, a.Subject, a.Processor = strings.ToLower(org), strings.ToLower(subject), processor
+	if found && cur.Processor != "" {
+		a.Processor = cur.Processor
+	}
+	a.Attempt, a.AttemptAt = ref, time.Now()
+	return a.Put()
+}
+
+// End records that the charge begun under ref is known, whichever way it went.
+func End(ctx context.Context, org, subject, ref string) error {
+	cur, found, err := Assigned(ctx, org, subject)
+	if err != nil || !found || cur.Attempt != ref {
+		return err
+	}
+	cur.Attempt, cur.AttemptAt = "", time.Time{}
+	return cur.Put()
 }

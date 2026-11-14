@@ -1,13 +1,17 @@
 // Package routing decides which processor takes a NEW card checkout.
 //
-// The decision is a pure function of a policy and four facts about the buyer, so
+// The decision is a pure function of a policy and a few facts, so
 // it is the same on every replica and for every asker: the checkout session, the
 // public settings read and the admin readout all call Decide.
 //
 //   - A buyer with a card saved at a processor stays on it. A saved card is bound
 //     to the processor that vaulted it; nothing here moves it.
-//   - A buyer outside the policy's Square countries goes to Stripe.
-//   - A buyer inside them is placed by weight, and placed the same way every time:
+//   - The MERCHANT decides first. Square takes a card only where the merchant's
+//     Square location can charge it (a location with card processing, in the
+//     checkout's currency); the caller states that as SquareOK. Where it cannot, the checkout is Stripe's, decided before any
+//     payment exists. Where the BUYER lives is not a condition: a German buyer paying
+//     dollars to a US location is eligible.
+//   - An eligible checkout is placed by weight, and placed the same way every time:
 //     the bucket is a hash of (org, customer key), so a returning buyer lands where
 //     they landed before and raising the weight only ever moves buyers toward Square.
 package routing
@@ -15,14 +19,10 @@ package routing
 import (
 	"crypto/sha256"
 	"encoding/binary"
-	"sort"
 	"strings"
 
 	"github.com/hanzoai/commerce/payment/processor"
 )
-
-// SquareCountries is where Square card processing is enabled: US, CA, AU, JP, GB, IE, FR, ES.
-var SquareCountries = []string{"US", "CA", "AU", "JP", "GB", "IE", "FR", "ES"}
 
 // Policy is how an org's new card checkouts are divided.
 type Policy struct {
@@ -37,33 +37,16 @@ type Policy struct {
 	CryptoOn bool `json:"cryptoOn"`
 	// LocalOn lets Stripe's Payment Element offer each country's native methods.
 	LocalOn bool `json:"localOn"`
-	// Countries is the set Square takes cards in (ISO 3166-1 alpha-2).
-	Countries []string `json:"squareCountries"`
 }
 
 // Default is the platform policy: half and half across Square's eight countries.
 func Default() Policy {
-	return Policy{SquareWeight: 50, SquareOn: true, StripeOn: true, PayPalOn: true, CryptoOn: true, LocalOn: true, Countries: append([]string{}, SquareCountries...)}
+	return Policy{SquareWeight: 50, SquareOn: true, StripeOn: true, PayPalOn: true, CryptoOn: true, LocalOn: true}
 }
 
-// Normal is p with its countries upper-cased, de-duplicated and sorted, and its
-// weight inside 0-100.
+// Normal is p with its weight inside 0-100.
 func (p Policy) Normal() Policy {
 	p.SquareWeight = max(0, min(100, p.SquareWeight))
-	seen := map[string]bool{}
-	out := []string{}
-	for _, c := range p.Countries {
-		c = strings.ToUpper(strings.TrimSpace(c))
-		if c == "UK" {
-			c = "GB"
-		}
-		if len(c) == 2 && !seen[c] {
-			seen[c] = true
-			out = append(out, c)
-		}
-	}
-	sort.Strings(out)
-	p.Countries = out
 	return p
 }
 
@@ -71,11 +54,6 @@ func (p Policy) Normal() Policy {
 func (p Policy) Valid() string {
 	if p.SquareWeight < 0 || p.SquareWeight > 100 {
 		return "squareWeight must be between 0 and 100"
-	}
-	for _, c := range p.Countries {
-		if n := strings.TrimSpace(c); len(n) != 2 {
-			return "squareCountries holds ISO 3166-1 alpha-2 codes"
-		}
 	}
 	if !p.SquareOn && !p.StripeOn {
 		return "at least one processor must be on"
@@ -88,7 +66,15 @@ type Input struct {
 	// Org and Key make the bucket: Key is the customer's stable id.
 	Org, Key string
 	// Country is the buyer's billing country, else the edge's geo country; "" if unknown.
+	// It chooses methods (Cash App Pay is for US buyers) and never the processor.
 	Country string
+	// Assigned is the processor this payer was placed on before. It is a preference:
+	// it applies while that processor can take this checkout, and a checkout it cannot
+	// take is the other processor's without changing the assignment.
+	Assigned processor.ProcessorType
+	// SquareOK says a Square location the merchant holds can take this checkout's
+	// card in its currency (square.Provider.Eligible).
+	SquareOK bool
 	// Saved is the processor holding a card the buyer saved; "" for none.
 	Saved processor.ProcessorType
 }
@@ -111,16 +97,6 @@ func Bucket(org, key string) int {
 	return int(binary.BigEndian.Uint64(h[:8]) % 100)
 }
 
-func (p Policy) square(country string) bool {
-	country = strings.ToUpper(strings.TrimSpace(country))
-	for _, c := range p.Countries {
-		if c == country {
-			return true
-		}
-	}
-	return false
-}
-
 // Decide places one buyer.
 func (p Policy) Decide(in Input) Decision {
 	country := strings.ToUpper(strings.TrimSpace(in.Country))
@@ -128,12 +104,16 @@ func (p Policy) Decide(in Input) Decision {
 	switch {
 	case in.Saved != "":
 		d.Processor, d.Reason = in.Saved, "saved"
+	case in.Assigned == processor.Square && in.SquareOK && p.SquareOn:
+		d.Processor, d.Reason = processor.Square, "assigned"
+	case in.Assigned == processor.Stripe && p.StripeOn:
+		d.Processor, d.Reason = processor.Stripe, "assigned"
 	case !p.StripeOn:
 		d.Processor, d.Reason = processor.Square, "stripe-off"
 	case !p.SquareOn:
 		d.Processor, d.Reason = processor.Stripe, "square-off"
-	case country == "" || !p.square(country):
-		d.Processor, d.Reason = processor.Stripe, "country"
+	case !in.SquareOK:
+		d.Processor, d.Reason = processor.Stripe, "merchant"
 	case Bucket(in.Org, in.Key) < p.SquareWeight:
 		d.Processor, d.Reason = processor.Square, "split"
 	default:

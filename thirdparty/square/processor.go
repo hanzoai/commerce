@@ -46,7 +46,7 @@ type Config struct {
 // NewProcessor creates a new Square processor
 func NewProcessor(cfg Config) *SquareProcessor {
 	sp := &SquareProcessor{
-		BaseProcessor: processor.NewBaseProcessor(processor.Square, SquareSupportedCurrencies()),
+		BaseProcessor: processor.NewBaseProcessor(processor.Square, nil),
 		accessToken:   cfg.AccessToken,
 		locationID:    cfg.LocationID,
 		environment:   cfg.Environment,
@@ -75,14 +75,6 @@ func (sp *SquareProcessor) initClient() {
 	sp.refundsClient = refunds.NewClient(reqOpts)
 	sp.customersClient = client.NewClient(reqOpts)
 	sp.cardsClient = cards.NewClient(reqOpts)
-}
-
-// SquareSupportedCurrencies returns currencies Square supports
-func SquareSupportedCurrencies() []currency.Type {
-	return []currency.Type{
-		currency.USD, currency.CAD, currency.GBP, currency.EUR,
-		currency.AUD, currency.JPY,
-	}
 }
 
 // Type returns the processor type

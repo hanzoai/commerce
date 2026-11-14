@@ -325,6 +325,14 @@ type Reach interface {
 	Reaches(country, method string) bool
 }
 
+// Merchant is implemented by a processor whose ability to take a currency is a
+// fact about the merchant's own account, read from the processor (a Square location
+// in one currency, in one country), not a list kept here. Eligible answers the
+// country of the account that can take a card in cur, and false when none can.
+type Merchant interface {
+	Eligible(ctx context.Context, cur currency.Type) (country string, ok bool)
+}
+
 // Fiat names the processor that takes a fiat payment.
 //
 // A payment the caller names a processor for goes to that processor or to none:

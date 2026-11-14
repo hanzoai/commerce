@@ -14,6 +14,7 @@ import (
 	"context"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
@@ -38,6 +39,9 @@ type Config struct {
 	WebhookURL string
 	// Environment must be "sandbox" or "production".
 	Environment string
+	// Endpoint is Square's API origin when it is not the one the Environment names;
+	// empty for Square itself.
+	Endpoint string
 	// Org is the org this Square account belongs to: a delivery it verifies is
 	// applied to that org's books. Empty is the deployment's own account.
 	Org string
@@ -57,7 +61,7 @@ func init() {
 	// sessionless verifier HandleProviderWebhook reaches with no tenant resolver
 	// in front, so it is configured here or not at all.
 	p := &Provider{
-		BaseProcessor: processor.NewBaseProcessor(processor.Square, thirdparty.SquareSupportedCurrencies()),
+		BaseProcessor: processor.NewBaseProcessor(processor.Square, nil),
 	}
 	p.Configure(configFromEnv())
 	processor.Register(p)
@@ -88,7 +92,7 @@ func configFromEnv() Config {
 // NewProvider builds and configures a Provider in one shot.
 func NewProvider(cfg Config) *Provider {
 	p := &Provider{
-		BaseProcessor: processor.NewBaseProcessor(processor.Square, thirdparty.SquareSupportedCurrencies()),
+		BaseProcessor: processor.NewBaseProcessor(processor.Square, nil),
 	}
 	p.Configure(cfg)
 	return p
@@ -124,34 +128,24 @@ func (p *Provider) IsAvailable(ctx context.Context) bool {
 
 // SupportedCurrencies returns the currencies Square supports.
 func (p *Provider) SupportedCurrencies() []currency.Type {
-	return thirdparty.SquareSupportedCurrencies()
-}
-
-// Reaches reports whether Square takes a payment from a buyer in country by
-// method, as this deployment sells it.
-//
-// Countries: the eight where Square card processing is enabled — US, CA, AU,
-// JP, GB (also written UK), IE, FR, ES. Outside them a checkout does not mount
-// Square's card form, and a payment from an unknown country ("") is not refused
-// on its country.
-//
-// Methods: what Square's Web Payments SDK tokenizes and this service charges —
-// a typed card, Apple Pay, Google Pay and Cash App Pay. ACH is declined on
-// Square (its settlement is not synchronous), and "" is a token already minted,
-// whose method was Square's to choose.
-func (p *Provider) Reaches(country, method string) bool {
-	return Country(country) && squareMethods[method]
-}
-
-// Country reports whether Square card processing is enabled for an ISO 3166-1
-// alpha-2 country code; "" (unknown) is not refused.
-func Country(code string) bool {
-	switch strings.ToUpper(strings.TrimSpace(code)) {
-	case "", "US", "CA", "AU", "JP", "GB", "UK", "IE", "FR", "ES":
-		return true
-	default:
-		return false
+	// The currency of the merchant's location, when it takes cards: nothing else
+	// would be charged. No eligible location, no currency, and Square is not offered.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if s, ok := p.Location(ctx); ok && s.Cards {
+		return []currency.Type{s.Currency}
 	}
+	return nil
+}
+
+// Reaches reports whether Square takes a payment by method. WHERE the buyer is does
+// not matter: Square takes a card from any buyer the merchant's location can charge
+// in its currency (SupportedCurrencies). Methods: what Square's Web Payments SDK
+// tokenizes and this service charges, a typed card, Apple Pay, Google Pay and Cash
+// App Pay. ACH is declined (its settlement is not synchronous), and "" is a token
+// already minted, whose method was Square's to choose.
+func (p *Provider) Reaches(country, method string) bool {
+	return squareMethods[method]
 }
 
 var squareMethods = map[string]bool{"": true, "card": true, "apple_pay": true, "google_pay": true, "cash_app": true}
