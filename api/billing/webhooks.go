@@ -1532,26 +1532,81 @@ func invoiced(err error, what, id, paymentID string, where *paymentorg.PaymentOr
 	return nil
 }
 
-// clawback takes in.AmountCents back from the wallet a payment credited, or, for a
-// dispute won, gives back what its loss took: commerce's own books first (clawLocal)
-// — without a host ledger they are the balance, and with one they are commerce's
-// record of the same money, as the settlement's local receipt is — then the host's.
+// clawback takes back from the wallet a payment credited, or, for a dispute won, gives
+// back what its loss took: commerce's own books first (clawLocal) — without a host
+// ledger they are the balance, and with one they are commerce's record of the same
+// money, as the settlement's local receipt is — then the host's.
+//
+// THE THREE THINGS A REFUND IS KEPT APART. The processor's refund moves money at the
+// processor and is only read here. The credit reversal is this function: it posts to
+// the ledger the units the payment credited, and never more than that credit less what
+// earlier refunds and disputes already reversed, however many arrive and whatever
+// each states (a dispute lost after a refund takes only what is left). A won dispute
+// gives back exactly what its loss reversed. Processor fees are never netted into
+// either. And units the wallet had already spent are neither netted nor dropped: the
+// reversal posts in full (the ledger may go below zero, the money being gone either
+// way) and the part the wallet could not cover is recorded on its own, once, as a
+// refund.unrecovered event and a RECONCILE line.
 func clawback(ctx context.Context, db *datastore.Datastore, in creditledger.ClawbackInput, cur currency.Type, won bool) error {
-	if err := clawLocal(db, in, cur, won); err != nil {
+	posted, known, err := clawLocal(db, in, cur, won)
+	if err != nil {
 		return fmt.Errorf("%s on payment %s for %s/%s was not recorded: %w", in.Reason, in.Payment, in.Org, in.Subject, err)
 	}
-	if led := creditledger.Get(); led != nil {
-		var err error
-		if won {
-			_, err = led.Restore(ctx, in)
-		} else {
-			_, err = led.Clawback(ctx, in)
+	if known {
+		// Commerce's books hold the payment's credit and what has been taken from it:
+		// the host ledger is asked for that, not for the figure the event stated.
+		if posted <= 0 {
+			return nil // nothing left to reverse, or nothing of this loss to give back
 		}
-		if err != nil {
+		in.AmountCents = posted
+	}
+	if led := creditledger.Get(); led != nil {
+		if won {
+			if _, err := led.Restore(ctx, in); err != nil {
+				return fmt.Errorf("%s on payment %s for %s/%s did not post: %w", in.Reason, in.Payment, in.Org, in.Subject, err)
+			}
+			return nil
+		}
+		unrecovered(ctx, db, led, in, cur)
+		if _, err := led.Clawback(ctx, in); err != nil {
 			return fmt.Errorf("%s on payment %s for %s/%s did not post: %w", in.Reason, in.Payment, in.Org, in.Subject, err)
 		}
 	}
 	return nil
+}
+
+// unrecovered records, before a reversal posts and once per ref, how much of it the
+// wallet could not cover because the units were spent. It reads the wallet as it
+// stands before THIS reversal, so a redelivery (which finds the record) never judges
+// the wallet again after the reversal has already drawn on it. Nothing is recorded for
+// a reversal the wallet covers.
+func unrecovered(ctx context.Context, db *datastore.Datastore, led creditledger.CreditLedger, in creditledger.ClawbackInput, cur currency.Type) {
+	for _, typ := range []string{"refund.unrecovered", "refund.covered"} {
+		if held, err := billingevent.Query(db).Filter("Type=", typ).Filter("ObjectId=", in.Ref).Count(); err == nil && held > 0 {
+			return
+		}
+	}
+	bal, err := led.Balance(ctx, in.Org, in.Subject, string(cur), in.Test)
+	if err != nil {
+		log.Warn("refund %s: the wallet could not be read, so whether it covers the reversal is not recorded: %v", in.Ref, err)
+		return
+	}
+	short := max(in.AmountCents-max(bal, 0), 0)
+	typ := "refund.covered"
+	if short > 0 {
+		typ = "refund.unrecovered"
+		log.Error("RECONCILE: %s took back %d from payment %s for %s/%s, whose wallet held %d: %d units were already spent and are unrecovered — a receivable to settle", in.Ref, in.AmountCents, in.Payment, in.Org, in.Subject, max(bal, 0), short)
+	}
+	evt := billingevent.New(db)
+	evt.Type, evt.ObjectType, evt.ObjectId, evt.CustomerId = typ, "clawback", in.Ref, in.Subject
+	evt.Livemode = !in.Test
+	evt.Data = map[string]interface{}{
+		"payment": in.Payment, "subject": in.Subject, "org": in.Org, "reason": in.Reason,
+		"reversedCents": in.AmountCents, "walletCents": max(bal, 0), "shortfallCents": short,
+	}
+	if err := evt.Create(); err != nil {
+		log.Warn("refund %s: its accounting record was not written: %v", in.Ref, err)
+	}
 }
 
 // claimed is what refunds and disputes of payment have taken back from subject in
@@ -1583,29 +1638,32 @@ func claimed(db *datastore.Datastore, subject, payment, ref string) (total, own 
 // per ref; or, for a dispute won, the deposit of what its loss took, once. Without
 // a host ledger these books are the balance, so a refunded payment no longer stays
 // spendable in them.
-func clawLocal(db *datastore.Datastore, in creditledger.ClawbackInput, cur currency.Type, won bool) error {
+func clawLocal(db *datastore.Datastore, in creditledger.ClawbackInput, cur currency.Type, won bool) (posted int64, known bool, err error) {
 	total, own, restored, err := claimed(db, in.Subject, in.Payment, in.Ref)
 	if err != nil {
-		return err
+		return 0, false, err
 	}
 	t := transaction.New(db)
 	t.Currency, t.Tags, t.Test = cur, "clawback:"+in.Payment, in.Test
 	if won {
-		if own == 0 || restored {
-			return nil
+		if own == 0 {
+			return 0, true, nil // this loss took nothing: there is nothing to give back
+		}
+		if restored {
+			return own, true, nil
 		}
 		t.Type, t.DestinationId, t.DestinationKind = transaction.Deposit, in.Subject, transaction.IAMUserKind
 		t.Amount, t.Notes = currency.Cents(own), "restore "+in.Ref
 		// Giving back what these books took is not new money.
 		t.SetContext(mintauth.WithAuthorized(t.Context()))
-		return t.Create()
+		return own, true, t.Create()
 	}
 	if own > 0 {
-		return nil // this refund or dispute already took its part
+		return own, true, nil // this refund or dispute already took its part
 	}
 	deps := make([]*transaction.Transaction, 0)
 	if _, err := transaction.Query(db).Filter("SourceId=", in.Payment).Filter("DestinationId=", in.Subject).GetAll(&deps); err != nil {
-		return err
+		return 0, false, err
 	}
 	paid := int64(0)
 	for _, d := range deps {
@@ -1613,13 +1671,16 @@ func clawLocal(db *datastore.Datastore, in creditledger.ClawbackInput, cur curre
 			paid += int64(d.Amount)
 		}
 	}
+	if paid <= 0 {
+		return 0, false, nil // these books hold no deposit of this payment: the event's figure stands
+	}
 	amount := min(in.AmountCents, paid-total)
 	if amount <= 0 {
-		return nil
+		return 0, true, nil
 	}
 	t.Type, t.SourceId, t.SourceKind = transaction.Withdraw, in.Subject, transaction.IAMUserKind
 	t.Amount, t.Notes = currency.Cents(amount), in.Ref
-	return t.Create()
+	return amount, true, t.Create()
 }
 
 // traced finds a payment the index does not name in the books of the org whose
