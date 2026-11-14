@@ -21,7 +21,7 @@ func oneAsset() []string {
 // can be started and stopped in a unit test.
 func noChain(t *testing.T, environ []string) *Service {
 	t.Helper()
-	svc, err := New(environ,
+	svc, err := New(accountsOf(environ),
 		WithStore(stubStore{}),
 		WithCursor(stubCursor{}),
 		WithReader(func(depositwatch.Asset) (depositwatch.Reader, error) { return stubReader{}, nil }),

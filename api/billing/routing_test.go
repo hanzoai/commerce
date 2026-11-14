@@ -224,7 +224,7 @@ func TestEveryAnswerIsRecordedForTheAdminReadout(t *testing.T) {
 func TestPayPalIsOfferedBesideTheCardWhereItOperatesAndTheDeploymentAllowsIt(t *testing.T) {
 	ctx := heldStore(t)
 	org := routingOrg(ctx, t)
-	t.Setenv(processor.ChargeProcessors, "stripe,square,paypal")
+	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("stripe,square,paypal") }))
 	old := processorsForOrg
 	processorsForOrg = func(*organization.Organization) *processor.Registry {
 		reg := processor.NewRegistry(processor.DefaultConfig())
@@ -239,7 +239,7 @@ func TestPayPalIsOfferedBesideTheCardWhereItOperatesAndTheDeploymentAllowsIt(t *
 	if f != nil || len(d.Alternatives) == 0 || d.Alternatives[0] != "paypal" {
 		t.Fatalf("a Brazilian buyer should be offered PayPal: %+v %v", d, f)
 	}
-	if d, _ = Place(ctx, org, RouteIn{Subject: "p", Country: "PK"}); len(d.Alternatives) != 0 {
+	if d, _ = Place(ctx, org, RouteIn{Subject: "p", Country: "PK"}); strings.Contains(strings.Join(d.Alternatives, ","), "paypal") {
 		t.Fatalf("PayPal does not operate in PK: %+v", d.Alternatives)
 	}
 	pol := routing.Default()
@@ -247,13 +247,13 @@ func TestPayPalIsOfferedBesideTheCardWhereItOperatesAndTheDeploymentAllowsIt(t *
 	if _, f := WriteRouting(ctx, org.Name, pol, "z", ""); f != nil {
 		t.Fatal(f.Err)
 	}
-	if d, _ = Place(ctx, org, RouteIn{Subject: "p", Country: "BR"}); len(d.Alternatives) != 0 {
+	if d, _ = Place(ctx, org, RouteIn{Subject: "p", Country: "BR"}); strings.Contains(strings.Join(d.Alternatives, ","), "paypal") {
 		t.Fatalf("the admin switched PayPal off: %+v", d.Alternatives)
 	}
-	t.Setenv(processor.ChargeProcessors, "stripe,square")
+	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("stripe,square") }))
 	setOn(&pol, "paypal", true)
 	_, _ = WriteRouting(ctx, org.Name, pol, "z", "")
-	if d, _ = Place(ctx, org, RouteIn{Subject: "p", Country: "BR"}); len(d.Alternatives) != 0 {
+	if d, _ = Place(ctx, org, RouteIn{Subject: "p", Country: "BR"}); strings.Contains(strings.Join(d.Alternatives, ","), "paypal") {
 		t.Fatalf("the deployment does not allow PayPal: %+v", d.Alternatives)
 	}
 }
@@ -1036,7 +1036,7 @@ func TestAPolicyStoredInTheOldShapeIsMigratedOnceAtLoad(t *testing.T) {
 	if err := routingpolicy.Put(ctx, scope, old); err != nil {
 		t.Fatal(err)
 	}
-	want := []routing.ProcessorRule{{Processor: "square", On: true, Weight: 70}, {Processor: "stripe", On: true, Weight: 30}, {Processor: "paypal", On: true}, {Processor: "crypto"}}
+	want := []routing.ProcessorRule{{Processor: "square", On: true, Weight: 70}, {Processor: "stripe", On: true, Weight: 30}, {Processor: "paypal", On: true}, {Processor: "crypto"}, {Processor: "kraken"}, {Processor: "mpc"}}
 	p, v, err := ReadRoutingVersioned(ctx, scope)
 	if err != nil || v != 3 || !reflect.DeepEqual(p.Processors, want) || len(p.Fallback) != 1 || p.Sticky {
 		t.Fatalf("migrated policy = %+v (v%d, %v); want %+v, the rules kept", p, v, err, want)
@@ -1058,7 +1058,7 @@ func TestAPolicyStoredInTheOldShapeIsMigratedOnceAtLoad(t *testing.T) {
 		t.Fatal(err)
 	}
 	vs, _ := ListRoutingVersions(ctx, scope)
-	if len(vs) != 1 || squareWeightOf(vs[0].Policy) != 20 || len(vs[0].Policy.Processors) != 4 {
+	if len(vs) != 1 || squareWeightOf(vs[0].Policy) != 20 || len(vs[0].Policy.Processors) != 6 {
 		t.Fatalf("the old version reads %+v", vs)
 	}
 	restored, f := RestoreRouting(ctx, scope, 1, "z", "")

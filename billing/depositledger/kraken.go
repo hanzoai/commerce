@@ -8,7 +8,10 @@ import (
 	"github.com/hanzoai/commerce/billing/depositwatch"
 	"github.com/hanzoai/commerce/models/cryptopaymentintent"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/payment/providers/kraken"
+	"github.com/hanzoai/commerce/payment/routing"
+	"github.com/hanzoai/commerce/secrets"
 )
 
 var defaultKrakenPairs = []struct {
@@ -30,55 +33,42 @@ var defaultKrakenPairs = []struct {
 	{chain: "solana", token: "usdt"},
 }
 
-func krakenFromEnv(environ []string) (*kraken.Processor, []depositwatch.Asset) {
-	var apiKey, apiSecret, apiURL, otp string
-	for _, entry := range environ {
-		k, v, ok := strings.Cut(entry, "=")
-		if !ok {
+// krakenFromAccounts is the exchange processor and the assets it takes deposits in, when
+// the policy has a kraken account on. The credential is read from the account's
+// SecretRef at this call: the KMS folder holding KRAKEN_API_KEY, KRAKEN_API_SECRET and
+// optionally KRAKEN_OTP. The
+// account's Endpoint, when set, is the exchange's API origin.
+func krakenFromAccounts(ctx context.Context, accounts []routing.Account) (*kraken.Processor, []depositwatch.Asset) {
+	for _, a := range accounts {
+		if !a.On || a.Processor != string(processor.Kraken) || a.SecretRef == "" {
 			continue
 		}
-		v = strings.TrimSpace(v)
-		switch k {
-		case "KRAKEN_API_KEY":
-			apiKey = v
-		case "KRAKEN_API_SECRET":
-			apiSecret = v
-		case "KRAKEN_API_URL":
-			apiURL = v
-		case "KRAKEN_OTP":
-			otp = v
+		folder := strings.TrimRight(a.SecretRef, "/")
+		cred := struct{ APIKey, APISecret, OTP string }{
+			APIKey: secrets.String(ctx, folder+"/KRAKEN_API_KEY"), APISecret: secrets.String(ctx, folder+"/KRAKEN_API_SECRET"), OTP: secrets.String(ctx, folder+"/KRAKEN_OTP"),
 		}
+		if cred.APIKey == "" || cred.APISecret == "" {
+			continue
+		}
+		kp := kraken.NewProcessor(kraken.Config{APIKey: cred.APIKey, APISecret: cred.APISecret, APIURL: a.Endpoint, OTP: cred.OTP})
+		if !kp.IsAvailable(ctx) {
+			continue
+		}
+		endpoint := "https://api.kraken.com"
+		if a.Endpoint != "" {
+			endpoint = a.Endpoint
+		}
+		assets := make([]depositwatch.Asset, 0, len(defaultKrakenPairs))
+		for _, p := range defaultKrakenPairs {
+			assets = append(assets, depositwatch.Asset{Chain: p.chain, Token: p.token, Contract: "kraken:" + p.chain + ":" + p.token, RPCURL: endpoint})
+		}
+		return kp, assets
 	}
-	if apiKey == "" || apiSecret == "" {
-		return nil, nil
-	}
-	kp := kraken.NewProcessor(kraken.Config{
-		APIKey:    apiKey,
-		APISecret: apiSecret,
-		APIURL:    apiURL,
-		OTP:       otp,
-	})
-	if !kp.IsAvailable(context.Background()) {
-		return nil, nil
-	}
-	endpoint := "https://api.kraken.com"
-	if apiURL != "" {
-		endpoint = apiURL
-	}
-	assets := make([]depositwatch.Asset, 0, len(defaultKrakenPairs))
-	for _, p := range defaultKrakenPairs {
-		assets = append(assets, depositwatch.Asset{
-			Chain:    p.chain,
-			Token:    p.token,
-			Contract: "kraken:" + p.chain + ":" + p.token,
-			RPCURL:   endpoint,
-		})
-	}
-	return kp, assets
+	return nil, nil
 }
 
-func (s *Service) syncKraken(ctx context.Context) (int, error) {
-	if s == nil || s.kraken == nil || s.store == nil {
+func (s *Service) syncKraken(ctx context.Context, st *state) (int, error) {
+	if s == nil || st.kraken == nil || s.store == nil {
 		return 0, nil
 	}
 
@@ -90,7 +80,7 @@ func (s *Service) syncKraken(ctx context.Context) (int, error) {
 	byToken := make(map[string][]watchedPair)
 	seenPair := make(map[string]bool)
 
-	for _, a := range s.assets {
+	for _, a := range st.assets {
 		key := a.Chain + ":" + a.Token
 		if seenPair[key] {
 			continue
@@ -117,7 +107,7 @@ func (s *Service) syncKraken(ctx context.Context) (int, error) {
 
 	creditedCount := 0
 	for token, pairs := range byToken {
-		records, err := s.kraken.ListDeposits(ctx, "", token)
+		records, err := st.kraken.ListDeposits(ctx, "", token)
 		if err != nil {
 			return creditedCount, err
 		}

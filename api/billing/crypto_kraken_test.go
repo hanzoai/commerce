@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/hanzoai/commerce/payment/routing"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -31,6 +32,15 @@ func TestCreateCryptoDeposit_KrakenOneFreshAddressPerPayment(t *testing.T) {
 	defer c.Close()
 
 	installWatcher(t, baseUSDCEnv(), true)
+	// The policy's crypto rails send USDC to Stripe and everything else to Kraken, which
+	// an admin turns on; here Kraken is on and is asked for USDC by its own rule.
+	krakenOn := routing.Default()
+	setOn(&krakenOn, "kraken", true)
+	krakenOn.Accounts = accountsOf(baseUSDCEnv())
+	krakenOn.CryptoRails = []routing.CryptoRoute{{Asset: "usdc", Processor: "kraken"}}
+	if _, f := WriteRouting(c, "", krakenOn, "test", ""); f != nil {
+		t.Fatalf("policy: %v", f.Err)
+	}
 
 	var addrSeq int64
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

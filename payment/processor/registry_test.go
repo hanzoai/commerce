@@ -17,7 +17,7 @@ import (
 // TestChargePolicy_DefaultIsStripeOnly.
 func withDefaultDisabledPolicy(t *testing.T) {
 	t.Helper()
-	t.Setenv(processor.ChargeProcessors, "*")
+	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("*") }))
 }
 
 // configuredStripe returns a REAL Stripe provider whose IsAvailable() is true —
@@ -205,7 +205,7 @@ func TestSelectProcessor_NamedButUnavailable_NoSubstitute(t *testing.T) {
 // The deny switch binds every branch: with Stripe denied, a Stripe-only currency
 // has no processor and a caller naming Stripe is refused.
 func TestSelectProcessor_DeniedStripe(t *testing.T) {
-	t.Setenv(processor.ChargeProcessors, "square")
+	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("square") }))
 	reg := processor.NewRegistry(processor.DefaultConfig())
 	reg.Register(configuredStripe())
 	reg.Register(configuredSquare(t))
@@ -312,63 +312,51 @@ func TestCards_OnlyEligibleCurrenciesAreSquares(t *testing.T) {
 	}
 }
 
-// The deployment default is Stripe alone: Square, PayPal and the rest take no new
-// charge, however configured, and Stripe takes every one.
-func TestChargePolicy_DefaultIsStripeOnly(t *testing.T) {
-	t.Setenv(processor.ChargeProcessors, "")
-	t.Setenv("STRIPE_TEST_SECRET_KEY", "sk_test_present")
-	if processor.DisabledByPolicy(processor.Stripe) {
-		t.Fatal("the default policy denies Stripe")
-	}
-	for _, p := range []processor.ProcessorType{processor.Square, processor.PayPal, processor.MPC, processor.Wire, processor.Kraken} {
-		if !processor.DisabledByPolicy(p) {
-			t.Fatalf("the default policy lets %s take a new charge", p)
-		}
-	}
+// The charge policy is the routing policy's processor list, read when a charge is
+// attempted: a registry built once refuses a processor the moment the policy switches it
+// off, and takes it again the moment it is back on, with no restart and no new registry.
+func TestChargePolicy_IsReadWhenTheChargeIsAttempted(t *testing.T) {
+	allowed := "stripe"
+	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames(allowed) }))
 	reg := processor.NewRegistry(processor.DefaultConfig())
 	reg.Register(configuredStripe())
 	reg.Register(configuredSquare(t))
+	ctx := context.Background()
+
 	for _, cur := range []currency.Type{currency.USD, currency.EUR, currency.CHF} {
-		p, err := reg.SelectProcessor(context.Background(), processor.PaymentRequest{Amount: 100, Currency: cur})
+		p, err := reg.SelectProcessor(ctx, processor.PaymentRequest{Amount: 100, Currency: cur})
 		if err != nil || p.Type() != processor.Stripe {
 			t.Fatalf("%s: %v %v; want stripe", cur, p, err)
 		}
 	}
+	for _, p := range []processor.ProcessorType{processor.Square, processor.PayPal, processor.MPC, processor.Wire, processor.Kraken} {
+		if !processor.DisabledByPolicy(p) {
+			t.Fatalf("a policy naming only stripe lets %s take a new charge", p)
+		}
+	}
 	if _, err := reg.Get(processor.Square); err == nil {
-		t.Fatal("Get(Square) succeeded under the default policy")
+		t.Fatal("Get(Square) succeeded while the policy has it off")
 	}
 	// A customer already on Square is still reachable, for renewals.
-	if p, err := reg.Existing(context.Background(), processor.Square); err != nil || p.Type() != processor.Square {
+	if p, err := reg.Existing(ctx, processor.Square); err != nil || p.Type() != processor.Square {
 		t.Fatalf("Existing(Square) = %v, %v", p, err)
 	}
-	// A processor comes back by config.
-	t.Setenv(processor.ChargeProcessors, "stripe, square")
-	if processor.DisabledByPolicy(processor.Square) || !processor.DisabledByPolicy(processor.PayPal) {
-		t.Fatal("COMMERCE_CHARGE_PROCESSORS=stripe,square must allow exactly those")
-	}
-	t.Setenv(processor.ChargeProcessors, "*")
-	if processor.DisabledByPolicy(processor.PayPal) || processor.DisabledByPolicy(processor.MPC) {
-		t.Fatal("COMMERCE_CHARGE_PROCESSORS=* must allow every processor")
-	}
-}
 
-// A deployment that names no policy and holds no Stripe key cannot be Stripe-only:
-// the processors it did configure keep taking payments, and it is said loudly.
-func TestChargePolicy_NoStripeKeyFallsBackToWhatIsConfigured(t *testing.T) {
-	t.Setenv(processor.ChargeProcessors, "")
-	t.Setenv("STRIPE_SECRET_KEY", "")
-	t.Setenv("STRIPE_TEST_SECRET_KEY", "")
-	if processor.DisabledByPolicy(processor.Square) || processor.DisabledByPolicy(processor.PayPal) {
-		t.Fatal("with no Stripe key the default left a configured processor unable to take a payment")
+	// The admin switches Square on: the next attempt takes it, on the same registry.
+	allowed = "stripe, square"
+	if _, err := reg.Get(processor.Square); err != nil {
+		t.Fatalf("Square switched on and still refused: %v", err)
 	}
-	t.Setenv("STRIPE_TEST_SECRET_KEY", "sk_test_present")
-	if !processor.DisabledByPolicy(processor.Square) {
-		t.Fatal("with a Stripe key the default must be Stripe alone")
+	if processor.DisabledByPolicy(processor.Square) || !processor.DisabledByPolicy(processor.PayPal) {
+		t.Fatal("a policy of stripe and square must allow exactly those")
 	}
-	// An explicit policy is never second-guessed.
-	t.Setenv("STRIPE_TEST_SECRET_KEY", "")
-	t.Setenv(processor.ChargeProcessors, "stripe")
-	if !processor.DisabledByPolicy(processor.Square) {
-		t.Fatal("an explicit stripe-only policy was widened because no key was found")
+	// And off again: refused at once.
+	allowed = "stripe"
+	if _, err := reg.Get(processor.Square); err == nil {
+		t.Fatal("Square switched off and still taken")
+	}
+	allowed = "*"
+	if processor.DisabledByPolicy(processor.PayPal) || processor.DisabledByPolicy(processor.MPC) {
+		t.Fatal("a policy of * must allow every processor")
 	}
 }

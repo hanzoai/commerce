@@ -73,9 +73,11 @@ import (
 // the immutable image tag (-X github.com/hanzoai/commerce.Version=<tag>) so
 // the running binary's /healthz version always equals its deployed tag.
 var (
-	Version   = "1.49.43"
-	GitCommit = "dev"
-	BuildTime = "unknown"
+	// stopRuntime ends the platform policy refresh started with the serving entry points.
+	stopRuntime func()
+	Version     = "1.49.43"
+	GitCommit   = "dev"
+	BuildTime   = "unknown"
 )
 
 // Config holds application configuration
@@ -669,11 +671,18 @@ func (app *App) Bootstrap() error {
 	// process that watches less than they asked for, because the deposits it does
 	// not watch are money received and never credited. An EMPTY table is not an
 	// error — it is the inert state, identical to before this existed.
-	depositSvc, depositErr := depositledger.New(depositledger.Env())
+	// The watcher starts with no accounts and is given the platform policy's by
+	// InstallRuntime, which also puts the processors' charge policy under that policy and
+	// seeds it once from the environment on the first run. After that the deposit rail, the
+	// processors and the MPC endpoint are configured from admin, at runtime.
+	depositSvc, depositErr := depositledger.New(nil)
 	if depositErr != nil {
 		return fmt.Errorf("commerce: crypto deposit watcher: %w", depositErr)
 	}
 	depositledger.SetDefault(depositSvc)
+	if err := billingPkg.InstallRuntime(context.Background()); err != nil {
+		return fmt.Errorf("commerce: runtime configuration: %w", err)
+	}
 
 	// The USDC authorization top-up rail. Armed by USDC_TREASURY (plain, not
 	// secret) with USDC_NETWORK naming the network and USDC_RELAYER_KEY (KMS
@@ -1272,6 +1281,7 @@ func (app *App) Serve() error {
 	// which the one-shot cmd/ tools also call. Idempotent, and a no-op when no
 	// asset is configured. Shutdown stops it.
 	depositledger.Default().Start()
+	stopRuntime = billingPkg.StartRuntimeRefresh()
 	gateway.Default().Start()
 
 	// Trigger OnServe hooks
@@ -1334,6 +1344,9 @@ func (app *App) Shutdown() error {
 		// flight is holding the ledger open, and a half-written credit is the one
 		// thing this rail must never produce.
 		depositledger.Default().Stop()
+		if stopRuntime != nil {
+			stopRuntime()
+		}
 		// And the Gateway reconciler, for the same reason: a pass in flight may
 		// be between Gateway's answer and the credit it carries.
 		gateway.Default().Stop()

@@ -152,7 +152,7 @@ func TestLiveXRPLReadPath(t *testing.T) {
 	// 5. And the whole watcher, wired exactly as production wires it. The gate
 	// that hands an address out is elsewhere and stays shut, so a scan of
 	// addresses holding nothing credits nothing.
-	svc, err := New(os.Environ())
+	svc, err := New(accountsOf(os.Environ()))
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}

@@ -79,7 +79,7 @@ func liveSetup(t *testing.T) *liveStripe {
 		t.Fatal("STRIPE_TEST_SECRET_KEY and STRIPE_TEST_PUBLISHABLE_KEY are required: these tests run against Stripe's test mode")
 	}
 	// The deployment default: Stripe is the only processor that takes a new charge.
-	t.Setenv(processor.ChargeProcessors, "")
+	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("stripe") }))
 	run := strconv.FormatInt(time.Now().UnixNano(), 36)
 	l := &liveStripe{t: t, sk: sk, run: run, subject: "hanzo/live-" + run}
 

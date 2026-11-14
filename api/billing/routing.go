@@ -46,10 +46,14 @@ type rules struct {
 	RoundingIncrements []routing.RoundingIncrement `json:"roundingIncrements"`
 	Processors         []routing.ProcessorRule     `json:"processors"`
 	Accounts           []routing.Account           `json:"accounts"`
+	CryptoRails        []routing.CryptoRoute       `json:"cryptoRails"`
+	// Seeded says the first policy was made from the deployment's environment (seedRuntime)
+	// and the environment is not read again.
+	Seeded bool `json:"seeded,omitempty"`
 }
 
 func encodeRules(p routing.Policy) string {
-	b, _ := json.Marshal(rules{p.CurrencyRules, p.CountryRules, p.BrandRules, p.IssuerCountryRules, p.Fallback, p.LocalMethods, !p.Sticky, p.LocalCurrencies, p.FXSource, p.FXFee, p.NoRounding, p.RoundingIncrements, p.Processors, p.Accounts})
+	b, _ := json.Marshal(rules{p.CurrencyRules, p.CountryRules, p.BrandRules, p.IssuerCountryRules, p.Fallback, p.LocalMethods, !p.Sticky, p.LocalCurrencies, p.FXSource, p.FXFee, p.NoRounding, p.RoundingIncrements, p.Processors, p.Accounts, p.CryptoRails, true})
 	return string(b)
 }
 
@@ -65,6 +69,9 @@ func policyOf(r *routingpolicy.Row) (p routing.Policy, migrated bool) {
 		var x rules
 		if json.Unmarshal([]byte(r.Rules), &x) == nil {
 			p.Processors, p.Accounts = x.Processors, x.Accounts
+			if len(x.CryptoRails) > 0 {
+				p.CryptoRails = x.CryptoRails
+			}
 			p.CurrencyRules, p.CountryRules, p.BrandRules, p.IssuerCountryRules, p.Fallback, p.LocalMethods, p.Sticky = x.CurrencyRules, x.CountryRules, x.BrandRules, x.IssuerCountryRules, x.Fallback, x.LocalMethods, !x.NoSticky
 			p.LocalCurrencies, p.FXSource, p.FXFee, p.NoRounding, p.RoundingIncrements = x.LocalCurrencies, x.FXSource, x.FXFee, x.NoRounding, x.RoundingIncrements
 		}
@@ -86,6 +93,8 @@ func legacyProcessors(squareWeight int, squareOn, stripeOn, paypalOn, cryptoOn b
 		{Processor: string(processor.Stripe), On: stripeOn, Weight: 100 - w},
 		{Processor: string(processor.PayPal), On: paypalOn},
 		{Processor: routing.CryptoRail, On: cryptoOn},
+		{Processor: string(processor.Kraken)},
+		{Processor: string(processor.MPC)},
 	}
 }
 
@@ -109,6 +118,9 @@ func decodePolicy(raw string) (routing.Policy, error) {
 			return p, err
 		}
 		p.Processors = legacyProcessors(l.SquareWeight, l.SquareOn, l.StripeOn, l.PayPalOn, l.CryptoOn)
+	}
+	if len(p.CryptoRails) == 0 {
+		p.CryptoRails = routing.DefaultCryptoRails()
 	}
 	return p.Normal(), nil
 }
@@ -140,7 +152,9 @@ func ReadRoutingVersioned(ctx context.Context, org string) (routing.Policy, int,
 			p, migrated := policyOf(r)
 			if migrated {
 				// Written back once in the new shape, so no later read finds the old one.
-				if perr := routingpolicy.Put(ctx, id, policyRow(p, r.By, r.Version)); perr != nil {
+				row := policyRow(p, r.By, r.Version)
+				row.Rules = unmarkSeeded(row.Rules)
+				if perr := routingpolicy.Put(ctx, id, row); perr != nil {
 					log.Warn("routing: the policy of %q was read in its old shape and not rewritten: %v", id, perr)
 				}
 			}
@@ -373,6 +387,9 @@ func ValidateRouting(ctx context.Context, scope string, p routing.Policy) string
 	if why := p.Valid(); why != "" {
 		return why
 	}
+	if why := validateAccounts(ctx, p); why != "" {
+		return why
+	}
 	table, squareAny := eligibility(ctx, registryFor(ctx, scope))
 	takes := func(cur, proc string) bool {
 		for _, e := range table {
@@ -488,6 +505,11 @@ func saveRouting(ctx context.Context, scope string, p routing.Policy, by, note s
 		map[string]interface{}{"policy": p, "by": by, "note": note, "version": next, "restored": restored}, map[string]interface{}{"policy": before, "version": prev}); err != nil {
 		_ = routingpolicy.Put(ctx, id, policyRow(before, "revert", prev))
 		return p, fault(503, "the change could not be audited, so it was not made", err)
+	}
+	if id == routingpolicy.Platform {
+		// The processors and the deposit watcher run under the new policy from the next
+		// attempt on this replica; the others pick it up on their refresh.
+		_ = applyRuntime(ctx, p, next)
 	}
 	return p, nil
 }
@@ -784,6 +806,7 @@ func place(ctx context.Context, org *organization.Organization, in RouteIn, live
 		d.Quote = q
 	}
 	d.Alternatives = alternativesFor(ctx, reg, pol, country)
+	d.Crypto = cryptoRoutesFor(ctx, reg, pol)
 	d.LocalCurrency, d.Version = pol.LocalCurrency(country), polVersion
 	if live {
 		if err := routingpolicy.Record(ctx, org.Name, string(d.Processor), country, d.Reason, polVersion); err != nil {
@@ -841,10 +864,39 @@ func alternativesFor(ctx context.Context, reg *processor.Registry, pol routing.P
 			alt = append(alt, "paypal")
 		}
 	}
-	if pol.On(routing.CryptoRail) && cryptoServes(ctx) {
+	if pol.On(routing.CryptoRail) && (pol.StripeCrypto() || cryptoServes(ctx)) {
 		alt = append(alt, "crypto")
 	}
 	return alt
+}
+
+// cryptoRoutesFor is, for each asset the policy's crypto rails name, the processor that
+// takes it now: the first the rails list that is on and able. Stripe is able when it is
+// registered and available (its Payment Element offers crypto on a dollar intent);
+// the custody and exchange processors are able when something is watching deposits.
+func cryptoRoutesFor(ctx context.Context, reg *processor.Registry, pol routing.Policy) []routing.CryptoRoute {
+	out := []routing.CryptoRoute{}
+	if !pol.On(routing.CryptoRail) {
+		return out
+	}
+	able := func(t processor.ProcessorType) bool {
+		if t == processor.Stripe {
+			p, err := reg.Registered(processor.Stripe)
+			return err == nil && p.IsAvailable(ctx)
+		}
+		return len(watchedAssets()) > 0
+	}
+	seen := map[string]bool{}
+	for _, r := range pol.CryptoRails {
+		if r.Asset == "*" || seen[r.Asset] {
+			continue
+		}
+		seen[r.Asset] = true
+		if procs := pol.CryptoProcessors(r.Asset, able); len(procs) > 0 {
+			out = append(out, routing.CryptoRoute{Asset: r.Asset, Processor: string(procs[0])})
+		}
+	}
+	return out
 }
 
 // RoutingView is what the platform admin reads: the policy, the platform default,

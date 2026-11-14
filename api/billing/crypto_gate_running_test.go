@@ -6,6 +6,7 @@ import (
 
 	"github.com/hanzoai/commerce/billing/depositledger"
 	"github.com/hanzoai/commerce/billing/depositwatch"
+	"github.com/hanzoai/commerce/payment/routing"
 )
 
 // installWatcher installs a process-wide watcher for the duration of one test
@@ -17,7 +18,7 @@ import (
 // makes the ambient state testable — the seam is the setter.
 func installWatcher(t *testing.T, environ []string, start bool) *depositledger.Service {
 	t.Helper()
-	svc, err := depositledger.New(environ,
+	svc, err := depositledger.New(accountsOf(environ),
 		depositledger.WithStore(gateStore{}),
 		depositledger.WithCursor(gateCursor{}),
 		depositledger.WithReader(func(depositwatch.Asset) (depositwatch.Reader, error) {
@@ -172,3 +173,11 @@ type gateCursor struct{}
 
 func (gateCursor) Last(ctx context.Context, _ string) (uint64, error) { return 0, nil }
 func (gateCursor) Save(ctx context.Context, _ string, _ uint64) error { return nil }
+
+// accountsOf is the deposit accounts a table written as CRYPTO_DEPOSIT_* pairs describes.
+func accountsOf(environ []string) []routing.Account {
+	pol := routing.Default()
+	pol.Accounts = nil
+	seedFromEnvironment(&pol, environ)
+	return pol.Accounts
+}

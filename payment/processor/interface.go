@@ -88,6 +88,27 @@ func WithToken(ctx context.Context, token string) context.Context {
 	return context.WithValue(ctx, tokenCtxKey{}, token)
 }
 
+type addressFreeKey struct{}
+
+// WithAddressFree attaches the test an exchange-backed processor applies to a deposit
+// address before it hands it out: free reports the address is bound to no open payment.
+// An address that is not free is never returned, and when none is the call is refused.
+func WithAddressFree(ctx context.Context, free func(address string) bool) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return context.WithValue(ctx, addressFreeKey{}, free)
+}
+
+// AddressFreeFromContext reads the test attached by WithAddressFree, or nil.
+func AddressFreeFromContext(ctx context.Context) func(address string) bool {
+	if ctx == nil {
+		return nil
+	}
+	f, _ := ctx.Value(addressFreeKey{}).(func(address string) bool)
+	return f
+}
+
 // TokenFromContext reads the crypto token symbol attached by WithToken, or "".
 func TokenFromContext(ctx context.Context) string {
 	if ctx == nil {

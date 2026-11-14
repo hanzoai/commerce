@@ -78,7 +78,6 @@ func TestTransport_SelectingZAPDoesNotDial(t *testing.T) {
 // that is the path registration takes and the only one worth pinning.
 func TestDefaultConfig_EnvironmentSelectsTheWire(t *testing.T) {
 	t.Setenv("MPC_KMS_ENDPOINT", "https://kms.example")
-	t.Setenv("MPC_ENDPOINT", "http://mpc.example")
 
 	t.Run("unset stays on HTTP", func(t *testing.T) {
 		t.Setenv("MPC_ZAP_ADDR", "")
@@ -86,6 +85,10 @@ func TestDefaultConfig_EnvironmentSelectsTheWire(t *testing.T) {
 		if _, ok := mp.transport.(*httpTransport); !ok {
 			t.Fatalf("transport is %T with MPC_ZAP_ADDR unset, want *httpTransport", mp.transport)
 		}
+		if mp.configured() {
+			t.Error("the rail is configured before the policy's mpc account names an endpoint")
+		}
+		mp.Configure("https://mpc.example", "")
 		if !mp.configured() {
 			t.Error("rail is not configured with both endpoints set")
 		}

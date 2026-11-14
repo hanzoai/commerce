@@ -61,7 +61,7 @@ func (f *fakeChain) TransfersTo(_ context.Context, addrs []string, from, to uint
 
 func serviceOver(t *testing.T, chain *fakeChain) *Service {
 	t.Helper()
-	svc, err := New(testEnv(), WithReader(func(depositwatch.Asset) (depositwatch.Reader, error) { return chain, nil }))
+	svc, err := New(accountsOf(testEnv()), WithReader(func(depositwatch.Asset) (depositwatch.Reader, error) { return chain, nil }))
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -398,7 +398,7 @@ func TestCreditKey_IsDeterministicPerOnChainEvent(t *testing.T) {
 
 // An unconfigured deploy is inert.
 func TestNew_UnconfiguredIsDisabled(t *testing.T) {
-	svc, err := New([]string{"PATH=/usr/bin"})
+	svc, err := New(nil)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -414,7 +414,7 @@ func TestNew_UnconfiguredIsDisabled(t *testing.T) {
 
 // An incoherent config is fatal, not a quiet partial watch.
 func TestNew_RefusesIncoherentConfig(t *testing.T) {
-	if _, err := New([]string{"CRYPTO_DEPOSIT_TOKEN_BASE_USDC=" + testContract}); err == nil {
+	if _, err := New(accountsOf([]string{"CRYPTO_DEPOSIT_TOKEN_BASE_USDC=" + testContract})); err == nil {
 		t.Fatal("accepted a token with no RPC endpoint — those deposits would never be seen")
 	}
 }
@@ -432,7 +432,7 @@ func TestStart_CreditsWithoutAnyCaller(t *testing.T) {
 	chain := &fakeChain{head: head, transfers: []depositwatch.Transfer{
 		usdcTransfer(1234, head-30, "0xscheduled", 0),
 	}}
-	svc, err := New(testEnv(),
+	svc, err := New(accountsOf(testEnv()),
 		WithReader(func(depositwatch.Asset) (depositwatch.Reader, error) { return chain, nil }),
 		WithInterval(5*time.Millisecond))
 	if err != nil {
@@ -461,7 +461,7 @@ func TestStopIsIdempotent(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
 
-	svc, err := New(testEnv(),
+	svc, err := New(accountsOf(testEnv()),
 		WithReader(func(depositwatch.Asset) (depositwatch.Reader, error) { return &fakeChain{head: 10}, nil }),
 		WithInterval(time.Millisecond))
 	if err != nil {

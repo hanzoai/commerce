@@ -169,7 +169,7 @@ func TestLiveSolanaReadPath(t *testing.T) {
 	// is real, the chain is real; the gate that hands an address out is
 	// elsewhere and stays shut, so a scan of addresses holding nothing credits
 	// nothing.
-	svc, err := New(os.Environ())
+	svc, err := New(accountsOf(os.Environ()))
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}

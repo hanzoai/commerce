@@ -3,7 +3,7 @@ package commerce
 import (
 	"context"
 	"fmt"
-	"os"
+	billingPkg "github.com/hanzoai/commerce/api/billing"
 	"strings"
 
 	"github.com/hanzoai/commerce/billing/custody"
@@ -22,8 +22,8 @@ import (
 // and `to` is a treasury address, which nothing in this system should be
 // inferring on its own.
 //
-// It configures nothing. The asset comes from the same CRYPTO_DEPOSIT_*
-// environment the watcher reads, so an operator can only sweep an asset the rail
+// It configures nothing. The asset comes from the same deposit
+// accounts the watcher reads, so an operator can only sweep an asset the rail
 // was actually taking deposits for, and the two can never be pointed at
 // different chains, contracts or endpoints.
 func Sweep(ctx context.Context, chain, token, to string) error {
@@ -32,7 +32,11 @@ func Sweep(ctx context.Context, chain, token, to string) error {
 	}
 	chain, token = strings.ToLower(chain), strings.ToLower(token)
 
-	assets, err := depositwatch.AssetsFromEnv(os.Environ())
+	pol, err := billingPkg.ReadRouting(ctx, "")
+	if err != nil {
+		return err
+	}
+	assets, err := depositwatch.AssetsFromAccounts(pol.Accounts)
 	if err != nil {
 		return err
 	}
@@ -44,7 +48,7 @@ func Sweep(ctx context.Context, chain, token, to string) error {
 		}
 	}
 	if asset.Chain == "" {
-		return fmt.Errorf("nothing is configured for %s/%s; CRYPTO_DEPOSIT_* names %d asset(s)", chain, token, len(assets))
+		return fmt.Errorf("nothing is configured for %s/%s; the policy's deposit accounts name %d asset(s)", chain, token, len(assets))
 	}
 
 	// The processor is the fleet's one client, so it is also its signer. Sweeping

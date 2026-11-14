@@ -263,3 +263,38 @@ func TestAPolicyNeedsKnownDistinctProcessorsAndRealAccounts(t *testing.T) {
 		}
 	}
 }
+
+func TestCryptoRailsPutUSDCOnStripeAndBTCOnKrakenAndTheOrderIsThePolicys(t *testing.T) {
+	p := Default()
+	switchOn(&p, processor.Kraken)
+	first := func(asset string) processor.ProcessorType {
+		procs := p.CryptoProcessors(asset, nil)
+		if len(procs) == 0 {
+			return ""
+		}
+		return procs[0]
+	}
+	if first("usdc") != processor.Stripe || first("btc") != processor.Kraken {
+		t.Fatalf("usdc %s, btc %s; want stripe and kraken", first("usdc"), first("btc"))
+	}
+	if !p.StripeCrypto() {
+		t.Fatal("Stripe leads for USDC and its crypto is not offered")
+	}
+	// Kraken ahead of Stripe for USDC: the next attempt follows, and the Payment Element is told to drop crypto.
+	p.CryptoRails = append([]CryptoRoute{{"usdc", string(processor.Kraken)}}, p.CryptoRails...)
+	if first("usdc") != processor.Kraken || p.StripeCrypto() {
+		t.Fatalf("after the flip usdc is on %s, stripe crypto %v", first("usdc"), p.StripeCrypto())
+	}
+	// A processor that is off is skipped: MPC self-custody is off by default.
+	if procs := p.CryptoProcessors("doge", nil); len(procs) != 1 || procs[0] != processor.Kraken {
+		t.Fatalf("doge goes to %v; want kraken alone (mpc is off)", procs)
+	}
+}
+
+func switchOn(p *Policy, t processor.ProcessorType) {
+	for i := range p.Processors {
+		if p.Processors[i].Processor == string(t) {
+			p.Processors[i].On = true
+		}
+	}
+}

@@ -25,7 +25,6 @@ import (
 type MPCProcessor struct {
 	*processor.BaseProcessor
 	kmsEndpoint   string
-	mpcEndpoint   string
 	webhookSecret string
 
 	// transport carries keygen and health, and which wire it is came from
@@ -85,8 +84,6 @@ func DefaultConfig() Config {
 
 	return Config{
 		KMSEndpoint: kmsEndpoint,
-		MPCEndpoint: strings.TrimSpace(os.Getenv("MPC_ENDPOINT")),
-		APIKey:      strings.TrimSpace(os.Getenv("MPC_API_KEY")),
 
 		// The secret the MPC service signs its deliveries with, separate from
 		// the API key we authenticate outbound calls with. Unset means inbound
@@ -110,7 +107,6 @@ func NewProcessor(cfg Config) *MPCProcessor {
 	mp := &MPCProcessor{
 		BaseProcessor: processor.NewBaseProcessor(processor.MPC, MPCSupportedCurrencies()),
 		kmsEndpoint:   strings.TrimRight(cfg.KMSEndpoint, "/"),
-		mpcEndpoint:   h.endpoint,
 		webhookSecret: cfg.WebhookSecret,
 		transport:     newTransport(cfg, h),
 		http:          h,
@@ -135,7 +131,7 @@ func NewProcessor(cfg Config) *MPCProcessor {
 // rail without an HTTP endpoint is still a rail that can mint a custody address
 // and never spend from it.
 func (mp *MPCProcessor) configured() bool {
-	return mp.kmsEndpoint != "" && mp.mpcEndpoint != ""
+	return mp.kmsEndpoint != "" && mp.http.ep() != ""
 }
 
 // MPCSupportedCurrencies returns cryptocurrencies supported by MPC.
@@ -552,3 +548,11 @@ func (mp *MPCProcessor) IsAvailable(ctx context.Context) bool {
 
 // Ensure MPCProcessor implements CryptoProcessor.
 var _ processor.CryptoProcessor = (*MPCProcessor)(nil)
+
+// Configure points the rail at the policy's mpc account: its endpoint and the API key
+// read from the account's secret reference. An empty endpoint turns the rail off. It
+// takes effect on the next call, with no restart.
+func (mp *MPCProcessor) Configure(endpoint, apiKey string) {
+	mp.http.set(endpoint, apiKey)
+	mp.SetConfigured(mp.configured())
+}

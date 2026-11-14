@@ -180,3 +180,20 @@ func TestKrakenGenerateAddress_NewAddressPerPayment(t *testing.T) {
 		t.Fatalf("GetBalance.Available = %d, want 2500", bal.Available)
 	}
 }
+
+func TestPickFreeAddressNeverReturnsAnAddressAnOpenPaymentHolds(t *testing.T) {
+	addrs := []DepositAddress{{Address: "0xaaa", New: false}, {Address: "0xbbb", New: false}, {Address: "0xccc", New: true}}
+	held := map[string]bool{"0xccc": true, "0xaaa": true}
+	free := func(a string) bool { return !held[a] }
+	got, ok := pickFreeAddress(addrs, free)
+	if !ok || got.Address != "0xbbb" {
+		t.Fatalf("picked %+v (%v); want the one address no open payment holds", got, ok)
+	}
+	held["0xbbb"] = true
+	if got, ok := pickFreeAddress(addrs, free); ok {
+		t.Fatalf("every address is held and %q was handed out", got.Address)
+	}
+	if got, ok := pickFreeAddress(addrs, nil); !ok || got.Address != "0xccc" {
+		t.Fatalf("with no test a fresh address is preferred: %+v", got)
+	}
+}
