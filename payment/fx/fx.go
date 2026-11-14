@@ -22,19 +22,12 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 )
 
-// DefaultSpread is the margin over the mid-market rate, in basis points, when the
-// routing policy states none: what converting the local money back to dollars costs
-// us, so a top-up of $5 is never worth less than $5 once it settles. The policy owns
-// the figure (0 to MaxSpread); Quote is told it at each call.
 const (
 	// MinChargeUSDCents is Stripe's minimum charge for an account that settles in USD
 	// (0.50 USD, https://docs.stripe.com/currencies#minimum-and-maximum-charge-amounts).
 	// A charge in another currency must meet the equivalent after conversion, and a
 	// quote only rounds up, so a credit of at least this clears it in every currency.
 	MinChargeUSDCents = 50
-
-	DefaultSpread = 200
-	MaxSpread     = 1000
 )
 
 // Rate is the mid-market price of one USD in cur (a lower-case ISO 4217 code), in
@@ -116,12 +109,11 @@ func fetch(ctx context.Context, url, cur string) (float64, error) {
 	return r, nil
 }
 
-// Step is the smallest amount Stripe takes in cur, in cur's minor units, per
-// https://docs.stripe.com/currencies: one for a two-decimal currency and a zero-decimal
-// one (the amount already counts whole units); 100 for ISK and UGX, which Stripe
-// states in hundredths with the fraction always 00; 10 for a three-decimal currency
-// (BHD, JOD, KWD, OMR, TND), whose amount must end in 0.
-func Step(cur string) int64 {
+// Granule is the smallest amount Stripe takes in cur, in cur's minor units
+// (https://docs.stripe.com/currencies#special-cases): 1 for a two-decimal and a
+// zero-decimal currency, 10 for a three-decimal one (the amount ends in 0), and 100 for
+// ISK and UGX, stated in hundredths with the fraction always 00.
+func Granule(cur string) int64 {
 	switch cur = strings.ToLower(cur); cur {
 	case "isk", "ugx":
 		return 100
@@ -132,31 +124,45 @@ func Step(cur string) int64 {
 	return 1
 }
 
-// Quote is what usdCents costs in cur, in cur's own minor units (yen for JPY, fils
-// for KWD, hundredths for USD), at the quoted rate plus spreadBps, rounded UP to the
-// smallest amount Stripe takes in cur (Step), so the buyer's payment always covers the
-// credit. The wallet is credited usdCents exactly, whatever the rounding.
-func Quote(ctx context.Context, usdCents int64, cur string, spreadBps int) (minor int64, rate float64, err error) {
-	if usdCents <= 0 {
-		return 0, 0, errors.New("fx: nothing to quote")
+// Minor is inc major units of cur in cur's minor units (0.01 KWD is 10 fils).
+func Minor(inc float64, cur string) int64 {
+	return int64(math.Round(inc * math.Pow10(int(currency.Type(strings.ToLower(cur)).Decimals()))))
+}
+
+// Convert is what usdCents costs in cur, in cur's minor units, at rate (cur per
+// dollar, in major units), rounded UP to a multiple of step minor units, so the buyer's
+// payment always covers the credit: P_local = ceilToIncrement(P_usd x rate). The wallet
+// is credited usdCents exactly, whatever the rounding. step must be a multiple of
+// Granule(cur).
+func Convert(usdCents int64, cur string, rate float64, step int64) (int64, error) {
+	if usdCents <= 0 || rate <= 0 || math.IsNaN(rate) || math.IsInf(rate, 0) {
+		return 0, errors.New("fx: nothing to quote")
 	}
-	rate, err = Rate(ctx, cur)
-	if err != nil {
-		return 0, 0, err
+	if step <= 0 || step%Granule(cur) != 0 {
+		return 0, fmt.Errorf("fx: a step of %d is not an amount Stripe takes in %s", step, cur)
 	}
-	if spreadBps < 0 || spreadBps > MaxSpread {
-		return 0, 0, errors.New("fx: spread outside 0 to 1000 basis points")
-	}
-	marked := rate * (1 + float64(spreadBps)/10000)
 	// usdCents is hundredths of a dollar; the answer is in cur's minor unit, which is
 	// 10^decimals of cur's major unit, so the scale is 10^(decimals-2) and not always 1.
 	scale := math.Pow10(int(currency.Type(strings.ToLower(cur)).Decimals()) - 2)
 	// Float error must not cost the buyer a unit: 945.0000000000001 is 945.
-	v := math.Round(float64(usdCents)*marked*scale*1e6) / 1e6
-	step := Step(cur)
+	v := math.Round(float64(usdCents)*rate*scale*1e6) / 1e6
 	n := int64(math.Ceil(v/float64(step))) * step
 	if n <= 0 || n > 999999999999 {
-		return 0, 0, fmt.Errorf("fx: %d usd cents is %d %s, outside what Stripe takes", usdCents, n, strings.ToLower(cur))
+		return 0, fmt.Errorf("fx: %d usd cents is %d %s, outside what Stripe takes", usdCents, n, strings.ToLower(cur))
 	}
-	return n, marked, nil
+	return n, nil
+}
+
+// Quote is Convert at the market rate (Frankfurter's, the wider table when it has no
+// rate): what usdCents costs in cur, rounded up to step, and the rate applied. No margin
+// is added; the cost of converting the money back is Hanzo's.
+func Quote(ctx context.Context, usdCents int64, cur string, step int64) (minor int64, rate float64, err error) {
+	rate, err = Rate(ctx, cur)
+	if err != nil {
+		return 0, 0, err
+	}
+	if minor, err = Convert(usdCents, cur, rate, step); err != nil {
+		return 0, 0, err
+	}
+	return minor, rate, nil
 }

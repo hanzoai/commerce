@@ -47,6 +47,15 @@ func (p *Provider) CreateLocalIntent(ctx context.Context, in processor.LocalInte
 		params.Set("metadata["+k+"]", fmt.Sprintf("%v", v))
 	}
 	var pi paymentIntent
+	if in.FXQuote != "" {
+		// A payment bound to a locked FX quote is converted at the quoted rate; Stripe
+		// takes the quote on the PaymentIntent in its preview API version.
+		params.Set("fx_quote", in.FXQuote)
+		if err := p.postVersion(ctx, "/payment_intents", params, in.Key, fxVersion, &pi); err != nil {
+			return nil, err
+		}
+		return &processor.LocalIntentOut{ID: pi.ID, ClientSecret: pi.ClientSecret}, nil
+	}
 	if err := p.postKey(ctx, "/payment_intents", params, in.Key, &pi); err != nil {
 		return nil, err
 	}

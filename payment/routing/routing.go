@@ -19,8 +19,12 @@ package routing
 import (
 	"crypto/sha256"
 	"encoding/binary"
+	"math"
+	"strconv"
 	"strings"
 
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/payment/fx"
 	"github.com/hanzoai/commerce/payment/processor"
 )
 
@@ -51,9 +55,24 @@ type Policy struct {
 	// IssuerCountryRules send cards issued in a country to a processor (for example
 	// every card issued outside the US to Stripe). Known only once the card is entered.
 	IssuerCountryRules []IssuerRule `json:"issuerCountryRules"`
-	// FXSpreadBps is the margin over the mid-market rate when a local-currency payment
-	// is quoted, in basis points (0 to 1000). Default 200.
-	FXSpreadBps int `json:"fxSpreadBps"`
+	// FXSource is where the rate comes from: "processor" (the default, and what "" means)
+	// is Stripe's FX Quotes API bound to the PaymentIntent (its rate before Stripe's
+	// fee and premium), with the market rate as the fallback when the account cannot use it; "market" is the market rate always.
+	FXSource string `json:"fxSource"`
+	// FXCost is who bears Stripe's currency-conversion cost when the rate is Stripe's:
+	// "pass" (the default) prices on Stripe's effective exchange_rate, which includes its
+	// fx_fee_rate and duration_premium, so the dollars credited settle whole; "absorb"
+	// prices on base_rate and Hanzo bears the cost. The market-rate fallback is always
+	// "absorb": no fee is guessed, and the quote says Hanzo bears the conversion cost.
+	// There is no percentage added on top of either.
+	FXCost string `json:"fxCost"`
+	// NoRounding turns off rounding a local price up to an increment; the price is then
+	// rounded up only to the smallest amount Stripe takes. Rounding is on by default.
+	NoRounding bool `json:"noRounding"`
+	// RoundingIncrements set, per currency, the increment a local price is rounded UP
+	// to, in major units (1 is a whole rupee, 100 is 100 won, 0.01 is one fils-cent of a
+	// dinar). A currency with no entry takes the built-in default (DefaultIncrement).
+	RoundingIncrements []RoundingIncrement `json:"roundingIncrements"`
 	// LocalCurrencies sets the currency a buyer in a country is shown local methods in.
 	// A country with no entry takes the built-in default; an entry of usd switches
 	// local currency off for that country.
@@ -64,6 +83,47 @@ type Policy struct {
 	// LocalMethods holds the per-method switches the admin has set. A method with no
 	// entry is on, so an empty list is every method on.
 	LocalMethods []MethodRule `json:"methods"`
+}
+
+// RoundingIncrement is the increment, in major units, a price in Currency rounds up to.
+type RoundingIncrement struct {
+	Currency  string  `json:"currency"`
+	Increment float64 `json:"increment"`
+}
+
+// DefaultIncrement is the increment, in major units, a price in cur rounds up to when
+// the policy names none: one whole unit, except 100 won and 10 yen (a single won or yen
+// is under a hundredth of a cent, so a whole one is not a price), and 0.01 for the
+// three-decimal currencies. Stripe requires a three-decimal amount to end in 0
+// (https://docs.stripe.com/currencies#special-cases), so 0.005 is not chargeable and
+// 0.01 is the finest increment; ISK and UGX are stated in hundredths with the fraction
+// 00, so a whole unit is their finest.
+func DefaultIncrement(cur string) float64 {
+	switch strings.ToLower(cur) {
+	case "krw":
+		return 100
+	case "jpy":
+		return 10
+	case "bhd", "jod", "kwd", "omr", "tnd", "iqd", "lyd":
+		return 0.01
+	}
+	return 1
+}
+
+// Step is the increment a price in cur rounds up to, in cur's minor units: the policy's
+// entry, else the default; the smallest amount Stripe takes when rounding is off.
+func (p Policy) Step(cur string) int64 {
+	cur = strings.ToLower(cur)
+	if p.NoRounding {
+		return fx.Granule(cur)
+	}
+	inc := DefaultIncrement(cur)
+	for _, r := range p.RoundingIncrements {
+		if r.Currency == cur {
+			inc = r.Increment
+		}
+	}
+	return fx.Minor(inc, cur)
 }
 
 // CurrencyRule sends checkouts in Currency (lower-case ISO 4217) to Processor.
@@ -117,6 +177,15 @@ type MethodRule struct {
 	Method string `json:"method"`
 	On     bool   `json:"on"`
 }
+
+// FXProcessor and FXMarket are the rate sources a policy may name.
+const (
+	FXProcessor = "processor"
+	FXMarket    = "market"
+	// FXPass and FXAbsorb say who bears the processor's conversion cost.
+	FXPass   = "pass"
+	FXAbsorb = "absorb"
+)
 
 // Brands are the card brands a rule may name.
 var Brands = []string{"visa", "mastercard", "amex", "discover", "jcb", "unionpay", "diners"}
@@ -185,7 +254,7 @@ func (p Policy) Off() []string {
 
 // Default is the platform policy: half and half across Square's eight countries.
 func Default() Policy {
-	return Policy{SquareWeight: 50, SquareOn: true, StripeOn: true, PayPalOn: true, CryptoOn: true, LocalOn: true, Sticky: true, FXSpreadBps: 200, LocalCurrencies: []LocalCurrencyRule{},
+	return Policy{SquareWeight: 50, SquareOn: true, StripeOn: true, PayPalOn: true, CryptoOn: true, LocalOn: true, Sticky: true, FXSource: FXProcessor, FXCost: FXPass, RoundingIncrements: []RoundingIncrement{}, LocalCurrencies: []LocalCurrencyRule{},
 		CurrencyRules: []CurrencyRule{}, CountryRules: []CountryRule{}, BrandRules: []BrandRule{}, IssuerCountryRules: []IssuerRule{}, Fallback: []string{}, LocalMethods: []MethodRule{}}
 }
 
@@ -221,6 +290,17 @@ func (p Policy) Normal() Policy {
 	for _, r := range p.LocalMethods {
 		mr = append(mr, MethodRule{strings.ToLower(strings.TrimSpace(r.Method)), r.On})
 	}
+	ri := []RoundingIncrement{}
+	for _, r := range p.RoundingIncrements {
+		ri = append(ri, RoundingIncrement{strings.ToLower(strings.TrimSpace(r.Currency)), r.Increment})
+	}
+	p.RoundingIncrements = ri
+	if p.FXSource == "" {
+		p.FXSource = FXProcessor
+	}
+	if p.FXCost == "" {
+		p.FXCost = FXPass
+	}
 	p.CurrencyRules, p.CountryRules, p.BrandRules, p.IssuerCountryRules, p.Fallback, p.LocalMethods = cr, co, br, ir, fb, mr
 	return p
 }
@@ -233,8 +313,24 @@ func (p Policy) Valid() string {
 	if !p.SquareOn && !p.StripeOn {
 		return "at least one processor must be on"
 	}
-	if p.FXSpreadBps < 0 || p.FXSpreadBps > 1000 {
-		return "fxSpreadBps must be between 0 and 1000"
+	if p.FXCost != "" && p.FXCost != FXPass && p.FXCost != FXAbsorb {
+		return "fxCost must be pass or absorb"
+	}
+	if p.FXSource != "" && p.FXSource != FXProcessor && p.FXSource != FXMarket {
+		return "fxSource must be processor or market"
+	}
+	seenRI := map[string]bool{}
+	for _, r := range p.RoundingIncrements {
+		if len(r.Currency) != 3 {
+			return "roundingIncrements: " + strconvQ(r.Currency) + " is not an ISO 4217 currency"
+		}
+		if seenRI[r.Currency] {
+			return "roundingIncrements: " + r.Currency + " is named twice"
+		}
+		seenRI[r.Currency] = true
+		if m := fx.Minor(r.Increment, r.Currency); r.Increment <= 0 || m <= 0 || m%fx.Granule(r.Currency) != 0 || float64(m) != math.Round(r.Increment*math.Pow10(int(currency.Type(r.Currency).Decimals()))*1e6)/1e6 {
+			return "roundingIncrements: " + r.Currency + " cannot be rounded to " + strconv.FormatFloat(r.Increment, 'f', -1, 64) + " (Stripe takes " + r.Currency + " in steps of " + strconv.FormatFloat(float64(fx.Granule(r.Currency))/math.Pow10(int(currency.Type(r.Currency).Decimals())), 'f', -1, 64) + ")"
+		}
 	}
 	seenLC := map[string]bool{}
 	for _, r := range p.LocalCurrencies {
@@ -361,10 +457,9 @@ type Decision struct {
 	// Chain is the seven steps in the order they are taken, each applied or skipped and
 	// why: saved, eligibility, method, overrides, sticky, weight, fallback.
 	Chain []Step `json:"chain"`
-	// LocalCurrency and FXSpreadBps are what a local-method payment for this buyer
-	// would be quoted in and at: the policy's, shown so the admin sees them applied.
+	// LocalCurrency is what a local-method payment for this buyer would be quoted in:
+	// the policy's, shown so the admin sees it applied.
 	LocalCurrency string `json:"localCurrency"`
-	FXSpreadBps   int    `json:"fxSpreadBps"`
 	// Version is the policy version this decision was made under.
 	Version int `json:"version"`
 	// Quote is the price of a local-currency payment for the amount the caller asked
@@ -378,18 +473,43 @@ type Decision struct {
 
 // Quote is what a local-currency payment will cost, disclosed before the buyer
 // authorizes: Amount of Currency buys UsdCents of credit, at Rate per dollar, which
-// carries MarkupBps over the mid-market rate. The amount charged at confirm is Amount.
+// is the rate the amount was made at. The amount charged at confirm is Amount.
 // Amount is in the currency's minor unit and Decimals says how many digits that is
 // past the point (0 for JPY, 2 for USD, 3 for KWD), so a page renders Amount/10^Decimals.
 // Rate is per major unit. UsdCents is what the wallet is credited, exactly.
 type Quote struct {
-	Amount    int64   `json:"amount"`
-	Decimals  int     `json:"decimals"`
-	Currency  string  `json:"currency"`
-	UsdCents  int64   `json:"usdCents"`
-	Rate      float64 `json:"rate"`
-	MarkupBps int     `json:"markupBps"`
+	Amount   int64   `json:"amount"`
+	Decimals int     `json:"decimals"`
+	Currency string  `json:"currency"`
+	UsdCents int64   `json:"usdCents"`
+	Rate     float64 `json:"rate"`
+	// Source is where Rate came from: "processor" (Stripe's FX quote) or "market". FXCost
+	// says who bears the conversion cost: "pass" (Rate is Stripe's effective exchange_rate,
+	// fee and premium in it) or "absorb" (Hanzo bears it). ExchangeRate is Stripe's
+	// effective rate in USD per unit of Currency and LockExpires when its lock lapses
+	// (unix seconds), when the quote is Stripe's. FxQuote is the processor's locked quote the payment is bound
+	// to, "" for a price shown and not yet bound. Increment is the minor-unit step the
+	// amount was rounded up to. Disclosure is the sentence the buyer is shown.
+	Source       string  `json:"source"`
+	FXCost       string  `json:"fxCost"`
+	ExchangeRate float64 `json:"exchangeRate,omitempty"`
+	LockExpires  int64   `json:"lockExpires,omitempty"`
+	FxQuote      string  `json:"fxQuote,omitempty"`
+	// ReferenceRate and ReferenceProvider are the market reference Stripe measured its
+	// rate against (the ECB's), recorded with the bound quote.
+	ReferenceRate     float64 `json:"referenceRate,omitempty"`
+	ReferenceProvider string  `json:"referenceProvider,omitempty"`
+	BaseRate          float64 `json:"baseRate,omitempty"`
+	// FeeRate and Premium are the processor's conversion fee and lock premium, as
+	// fractions: costs to Hanzo, recorded and never part of Amount.
+	FeeRate    float64 `json:"feeRate,omitempty"`
+	Premium    float64 `json:"premium,omitempty"`
+	Increment  int64   `json:"increment"`
+	Disclosure string  `json:"disclosure"`
 }
+
+// Disclosure is the line shown with every local price.
+const Disclosure = "Local price follows the exchange rate and can change at renewal"
 
 // Step is one step of the reason chain.
 type Step struct {

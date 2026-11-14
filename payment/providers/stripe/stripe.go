@@ -693,7 +693,9 @@ func (p *Provider) del(ctx context.Context, path string, params url.Values) erro
 func (p *Provider) doRequest(req *http.Request, result interface{}) error {
 	req.SetBasicAuth(p.secretKey, "")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Stripe-Version", apiVersion)
+	if req.Header.Get("Stripe-Version") == "" {
+		req.Header.Set("Stripe-Version", apiVersion)
+	}
 
 	resp, err := p.client.Do(req)
 	if err != nil {

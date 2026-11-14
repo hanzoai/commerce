@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/zap-proto/zip"
@@ -38,12 +39,15 @@ type rules struct {
 	Fallback           []string                    `json:"fallback"`
 	LocalMethods       []routing.MethodRule        `json:"methods"`
 	NoSticky           bool                        `json:"noSticky,omitempty"`
-	FXSpreadBps        *int                        `json:"fxSpreadBps,omitempty"`
 	LocalCurrencies    []routing.LocalCurrencyRule `json:"localCurrencies"`
+	FXSource           string                      `json:"fxSource,omitempty"`
+	FXCost             string                      `json:"fxCost,omitempty"`
+	NoRounding         bool                        `json:"noRounding,omitempty"`
+	RoundingIncrements []routing.RoundingIncrement `json:"roundingIncrements"`
 }
 
 func encodeRules(p routing.Policy) string {
-	b, _ := json.Marshal(rules{p.CurrencyRules, p.CountryRules, p.BrandRules, p.IssuerCountryRules, p.Fallback, p.LocalMethods, !p.Sticky, &p.FXSpreadBps, p.LocalCurrencies})
+	b, _ := json.Marshal(rules{p.CurrencyRules, p.CountryRules, p.BrandRules, p.IssuerCountryRules, p.Fallback, p.LocalMethods, !p.Sticky, p.LocalCurrencies, p.FXSource, p.FXCost, p.NoRounding, p.RoundingIncrements})
 	return string(b)
 }
 
@@ -55,10 +59,7 @@ func policyOf(r *routingpolicy.Row) routing.Policy {
 		var x rules
 		if json.Unmarshal([]byte(r.Rules), &x) == nil {
 			p.CurrencyRules, p.CountryRules, p.BrandRules, p.IssuerCountryRules, p.Fallback, p.LocalMethods, p.Sticky = x.CurrencyRules, x.CountryRules, x.BrandRules, x.IssuerCountryRules, x.Fallback, x.LocalMethods, !x.NoSticky
-			if x.FXSpreadBps != nil {
-				p.FXSpreadBps = *x.FXSpreadBps
-			}
-			p.LocalCurrencies = x.LocalCurrencies
+			p.LocalCurrencies, p.FXSource, p.FXCost, p.NoRounding, p.RoundingIncrements = x.LocalCurrencies, x.FXSource, x.FXCost, x.NoRounding, x.RoundingIncrements
 		}
 	}
 	return p.Normal()
@@ -121,8 +122,10 @@ func registryFor(ctx context.Context, scope string) *processor.Registry {
 // authorize. It refuses, with a clear 400, a currency that is not viable: not one
 // Stripe takes, or not one the chosen method can be paid in (Pix in dollars), or an
 // amount under Stripe's minimum charge. The country table only ever supplies the
-// default. Amounts are in the currency's own minor unit (yen, fils, cents).
-func quoteFor(ctx context.Context, reg *processor.Registry, pol routing.Policy, amountCents int64, country, explicit, method string) (*routing.Quote, *PaymentFault) {
+// default. Amounts are in the currency's own minor unit (yen, fils, cents), rounded up
+// to the policy's increment. bind says a payment is about to be opened on this quote:
+// the processor's rate is then locked for it, and the quote names the lock.
+func quoteFor(ctx context.Context, reg *processor.Registry, pol routing.Policy, amountCents int64, country, explicit, method string, bind bool) (*routing.Quote, *PaymentFault) {
 	cur := strings.ToLower(strings.TrimSpace(explicit))
 	if cur == "" {
 		cur = pol.LocalCurrency(country)
@@ -135,7 +138,7 @@ func quoteFor(ctx context.Context, reg *processor.Registry, pol routing.Policy, 
 		return nil, fault(400, why, errors.New(why))
 	}
 	if cur == "usd" {
-		return &routing.Quote{Amount: amountCents, Decimals: 2, Currency: "usd", UsdCents: amountCents, Rate: 1, MarkupBps: 0}, nil
+		return &routing.Quote{Amount: amountCents, Decimals: 2, Currency: "usd", UsdCents: amountCents, Rate: 1}, nil
 	}
 	if amountCents < fx.MinChargeUSDCents {
 		return nil, fault(400, fmt.Sprintf("Stripe takes no charge under %d usd cents (its minimum, which a charge in %s must also meet)", fx.MinChargeUSDCents, cur), nil)
@@ -152,11 +155,91 @@ func quoteFor(ctx context.Context, reg *processor.Registry, pol routing.Policy, 
 	if !stripeTakes {
 		return nil, fault(400, "stripe cannot take "+cur+" for this account", nil)
 	}
-	paid, rate, err := fx.Quote(ctx, amountCents, cur, pol.FXSpreadBps)
+	step := pol.Step(cur)
+	dec := int(currency.Type(cur).Decimals())
+	// Stripe's FX quote first. Priced "pass" (the default) the rate is its effective
+	// exchange_rate, fee and lock premium in it, so the dollars credited settle whole;
+	// priced "absorb" it is base_rate and Hanzo bears the cost. No percentage of Hanzo's
+	// is added to either. The market rate is the fallback when the account cannot use
+	// the quote, and Hanzo bears the conversion cost there: no fee is guessed.
+	if pol.FXSource != routing.FXMarket {
+		if rq, err := processorRate(ctx, reg, cur, bind, method); err == nil {
+			rate, cost := rq.PerDollar, routing.FXPass
+			if pol.FXCost == routing.FXAbsorb {
+				rate, cost = rq.BasePerDollar, routing.FXAbsorb
+			}
+			if paid, cerr := fx.Convert(amountCents, cur, rate, step); cerr == nil {
+				q := &routing.Quote{Amount: paid, Decimals: dec, Currency: cur, UsdCents: amountCents, Rate: rate,
+					Source: routing.FXProcessor, FXCost: cost, ExchangeRate: rq.ExchangeRate, BaseRate: rq.BasePerDollar,
+					FeeRate: rq.FeeRate, Premium: rq.Premium, LockExpires: rq.ExpiresAt, Increment: step, Disclosure: routing.Disclosure}
+				if bind {
+					q.FxQuote = rq.ID
+					q.ReferenceRate, q.ReferenceProvider = rq.ReferenceRate, rq.ReferenceProvider
+				}
+				return q, nil
+			}
+		} else {
+			log.Warn("fx: Stripe's FX quote for %s is unavailable, using the market rate: %v", cur, err)
+		}
+	}
+	paid, rate, err := fx.Quote(ctx, amountCents, cur, step)
 	if err != nil {
 		return nil, fault(503, "local payment methods are unavailable right now; please retry", err)
 	}
-	return &routing.Quote{Amount: paid, Decimals: int(currency.Type(cur).Decimals()), Currency: cur, UsdCents: amountCents, Rate: rate, MarkupBps: pol.FXSpreadBps}, nil
+	return &routing.Quote{Amount: paid, Decimals: dec, Currency: cur, UsdCents: amountCents, Rate: rate,
+		Source: routing.FXMarket, FXCost: routing.FXAbsorb, Increment: step, Disclosure: routing.Disclosure}, nil
+}
+
+// displayTTL is how long a processor rate shown as a price is reused: an hour, well
+// inside the day a displayed price may go without a refresh. A price a payment is bound
+// to is never taken from here.
+const displayTTL = time.Hour
+
+type shownRate struct {
+	q  *processor.RateQuote
+	at time.Time
+}
+
+var (
+	shownMu sync.Mutex
+	shown   = map[string]shownRate{}
+)
+
+// processorRate is the processor's rate for cur: a fresh locked quote when a payment is
+// being bound to it (lock for the life of the method: a day for a voucher or a bank
+// transfer that settles after the buyer leaves, an hour otherwise), else the cached
+// current rate.
+func processorRate(ctx context.Context, reg *processor.Registry, cur string, bind bool, method string) (*processor.RateQuote, error) {
+	sp, err := reg.Registered(processor.Stripe)
+	if err != nil {
+		return nil, err
+	}
+	rq, ok := sp.(processor.RateQuoter)
+	if !ok {
+		return nil, errors.New("this processor does not quote rates")
+	}
+	if bind {
+		lock := processor.LockHour
+		switch strings.ToLower(method) {
+		case "pix", "boleto", "oxxo", "sepa_debit":
+			lock = processor.LockDay
+		}
+		return rq.QuoteRate(ctx, cur, lock)
+	}
+	shownMu.Lock()
+	if c, ok := shown[cur]; ok && time.Since(c.at) < displayTTL {
+		shownMu.Unlock()
+		return c.q, nil
+	}
+	shownMu.Unlock()
+	q, err := rq.QuoteRate(ctx, cur, processor.LockNone)
+	if err != nil {
+		return nil, err
+	}
+	shownMu.Lock()
+	shown[cur] = shownRate{q, time.Now()}
+	shownMu.Unlock()
+	return q, nil
 }
 
 // CurrencyEligibility says which card processors can take a currency now. It is the
@@ -227,7 +310,7 @@ func ValidateRouting(ctx context.Context, scope string, p routing.Policy) string
 			return "localCurrencies: stripe cannot take " + r.Currency + " now"
 		}
 		qctx, cancel := context.WithTimeout(ctx, 6*time.Second)
-		_, _, qerr := fx.Quote(qctx, 100, r.Currency, p.FXSpreadBps)
+		_, _, qerr := fx.Quote(qctx, 100, r.Currency, fx.Granule(r.Currency))
 		cancel()
 		if qerr != nil {
 			return "localCurrencies: " + r.Currency + " has no rate source, so it cannot be quoted (" + qerr.Error() + ")"
@@ -606,14 +689,14 @@ func place(ctx context.Context, org *organization.Organization, in RouteIn, live
 		}
 	}
 	if in.AmountCents > 0 && d.Processor == processor.Stripe && d.Reason != "saved" && pol.LocalOn {
-		q, qf := quoteFor(ctx, reg, pol, in.AmountCents, country, in.QuoteCurrency, in.Method)
+		q, qf := quoteFor(ctx, reg, pol, in.AmountCents, country, in.QuoteCurrency, in.Method, false)
 		if qf != nil {
 			return nil, qf
 		}
 		d.Quote = q
 	}
 	d.Alternatives = alternativesFor(ctx, reg, pol, country)
-	d.LocalCurrency, d.FXSpreadBps, d.Version = pol.LocalCurrency(country), pol.FXSpreadBps, polVersion
+	d.LocalCurrency, d.Version = pol.LocalCurrency(country), polVersion
 	if live {
 		if err := routingpolicy.Record(ctx, org.Name, string(d.Processor), country, d.Reason, polVersion); err != nil {
 			log.Warn("routing: the decision was not recorded: %v", err)

@@ -1423,8 +1423,8 @@ func TestLiveStripe_TheDisclosedQuoteIsTheChargeAndALaterPolicyMovesNothing(t *t
 	t.Cleanup(func() { fx.Rate = old })
 
 	pol := routing.Default()
-	pol.FXSpreadBps = 300
-	if _, f := WriteRouting(*l.ctx, l.org.Name, pol, "z", "spread 300"); f != nil {
+	pol.FXSource = routing.FXMarket
+	if _, f := WriteRouting(*l.ctx, l.org.Name, pol, "z", "market rate"); f != nil {
 		t.Fatalf("policy: %v", f.Err)
 	}
 	// Not viable: Pix in dollars is refused with a clear 400 before anything is opened.
@@ -1433,7 +1433,7 @@ func TestLiveStripe_TheDisclosedQuoteIsTheChargeAndALaterPolicyMovesNothing(t *t
 	}
 	// A German buyer may choose USD: the country table is a default and no restriction.
 	usd, f := OpenTopupIntent(*l.ctx, l.org, TopupIntentIn{Subject: l.subject, Country: "DE", AmountCents: 500, Currency: "usd", IdempotencyKey: "q-usd-" + l.run})
-	if f != nil || usd.Quote.Currency != "usd" || usd.Quote.Amount != 500 || usd.Quote.MarkupBps != 0 {
+	if f != nil || usd.Quote.Currency != "usd" || usd.Quote.Amount != 500 {
 		t.Fatalf("a DE buyer choosing usd: %+v %v", usd, f)
 	}
 	l.call("POST", "/payment_intents/"+usd.IntentID+"/cancel", nil)
@@ -1442,10 +1442,10 @@ func TestLiveStripe_TheDisclosedQuoteIsTheChargeAndALaterPolicyMovesNothing(t *t
 	if f != nil {
 		t.Fatalf("open: %v", f.Err)
 	}
-	want := int64(math.Ceil(500*5.5*1.03 - 1e-9))
+	want := int64(math.Ceil(500*5.5/100)) * 100 // $5 at 5.5 is 27.50 brl, rounded up to a whole real
 	q := out.Quote
-	if q.Currency != "brl" || q.Amount != want || q.UsdCents != 500 || q.MarkupBps != 300 || out.PolicyVersion != 1 || out.Amount != q.Amount {
-		t.Fatalf("quote %+v version %d; want %d brl at 300 bps under version 1", q, out.PolicyVersion, want)
+	if q.Currency != "brl" || q.Amount != want || q.UsdCents != 500 || out.PolicyVersion != 1 || out.Amount != q.Amount {
+		t.Fatalf("quote %+v version %d; want %d brl under version 1", q, out.PolicyVersion, want)
 	}
 	pi := l.call("GET", "/payment_intents/"+out.IntentID, nil)
 	if int64(pi["amount"].(float64)) != q.Amount || pi["currency"] != q.Currency {
@@ -1458,7 +1458,6 @@ func TestLiveStripe_TheDisclosedQuoteIsTheChargeAndALaterPolicyMovesNothing(t *t
 
 	// The policy changes mid-checkout: another spread, and Brazil in dollars.
 	next := routing.Default()
-	next.FXSpreadBps = 100
 	next.LocalCurrencies = []routing.LocalCurrencyRule{{Country: "BR", Currency: "usd"}}
 	if _, f := WriteRouting(*l.ctx, l.org.Name, next, "z", "mid-checkout"); f != nil {
 		t.Fatalf("second policy: %v", f.Err)
