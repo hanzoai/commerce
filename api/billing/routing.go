@@ -16,6 +16,7 @@ import (
 	"github.com/hanzoai/commerce/models/paymentmethod"
 	"github.com/hanzoai/commerce/models/routingpolicy"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/payment/routing"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
@@ -36,7 +37,7 @@ func ReadRouting(ctx context.Context, org string) (routing.Policy, error) {
 		if found {
 			return routing.Policy{
 				SquareWeight: r.SquareWeight, SquareOn: r.SquareOn, StripeOn: r.StripeOn, LocalOn: r.LocalOn,
-				Countries: splitCountries(r.Countries),
+				PayPalOn: r.PayPalOn, CryptoOn: r.CryptoOn, Countries: splitCountries(r.Countries),
 			}.Normal(), nil
 		}
 	}
@@ -69,6 +70,7 @@ func WriteRouting(ctx context.Context, scope string, p routing.Policy, by string
 	}
 	if err := routingpolicy.Put(ctx, id, routingpolicy.Row{
 		SquareWeight: p.SquareWeight, SquareOn: p.SquareOn, StripeOn: p.StripeOn, LocalOn: p.LocalOn,
+		PayPalOn: p.PayPalOn, CryptoOn: p.CryptoOn,
 		Countries: strings.Join(p.Countries, ","), By: by,
 	}); err != nil {
 		return p, fault(503, "routing could not be stored", err)
@@ -80,6 +82,7 @@ func WriteRouting(ctx context.Context, scope string, p routing.Policy, by string
 		map[string]interface{}{"policy": p, "by": by}, map[string]interface{}{"policy": before}); err != nil {
 		_ = routingpolicy.Put(ctx, id, routingpolicy.Row{
 			SquareWeight: before.SquareWeight, SquareOn: before.SquareOn, StripeOn: before.StripeOn, LocalOn: before.LocalOn,
+			PayPalOn: before.PayPalOn, CryptoOn: before.CryptoOn,
 			Countries: strings.Join(before.Countries, ","), By: "revert",
 		})
 		return p, fault(503, "the change could not be audited, so it was not made", err)
@@ -149,10 +152,27 @@ func Place(ctx context.Context, org *organization.Organization, in RouteIn) (*ro
 		}
 		d.Processor, d.Reason, d.Methods = other, "fallback", pol.Methods(other, country)
 	}
+	d.Alternatives = alternativesFor(ctx, reg, pol, country)
 	if err := routingpolicy.Record(ctx, org.Name, string(d.Processor), country, d.Reason); err != nil {
 		log.Warn("routing: the decision was not recorded: %v", err)
 	}
 	return &d, nil
+}
+
+// alternativesFor are the other ways a buyer in country may pay, beyond the card
+// slot: PayPal wherever PayPal operates and the deployment allows it and the policy
+// has it on, and native crypto where a deposit watcher is really running.
+func alternativesFor(ctx context.Context, reg *processor.Registry, pol routing.Policy, country string) []string {
+	alt := []string{}
+	if pol.PayPalOn && payment.IsPayPalCountry(country) && !processor.DisabledByPolicy(processor.PayPal) {
+		if p, err := reg.Registered(processor.PayPal); err == nil && p.IsAvailable(ctx) {
+			alt = append(alt, "paypal")
+		}
+	}
+	if pol.CryptoOn && len(watchedAssets()) > 0 {
+		alt = append(alt, "crypto")
+	}
+	return alt
 }
 
 // RoutingView is what the platform admin reads: the policy, the platform default,
@@ -207,10 +227,16 @@ func ReadRoutingView(ctx context.Context, org *organization.Organization, scope 
 	v := &RoutingView{Policy: pol, Default: routing.Default(), Recent: recent,
 		Counts: []RoutingCount{{"square", counts["square"]}, {"stripe", counts["stripe"]}}}
 	reg := processorsForOrg(orgOrZero(org))
-	for _, t := range []processor.ProcessorType{processor.Square, processor.Stripe} {
+	for _, t := range []processor.ProcessorType{processor.Square, processor.Stripe, processor.PayPal} {
 		_, ferr := reg.Fiat(ctx, processor.Need{Currency: currency.USD, Method: "card", Want: t})
-		v.Processor = append(v.Processor, ProcessorState{string(t), ferr == nil})
+		ok := ferr == nil
+		if t == processor.PayPal {
+			p, perr := reg.Registered(t)
+			ok = perr == nil && p.IsAvailable(ctx) && !processor.DisabledByPolicy(t)
+		}
+		v.Processor = append(v.Processor, ProcessorState{string(t), ok})
 	}
+	v.Processor = append(v.Processor, ProcessorState{"crypto", len(watchedAssets()) > 0})
 	return v, nil
 }
 

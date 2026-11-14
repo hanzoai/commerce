@@ -203,3 +203,40 @@ func TestEveryAnswerIsRecordedForTheAdminReadout(t *testing.T) {
 		t.Fatalf("the readout lost the decisions: %+v", v)
 	}
 }
+
+func TestPayPalIsOfferedBesideTheCardWhereItOperatesAndTheDeploymentAllowsIt(t *testing.T) {
+	ctx := heldStore(t)
+	org := routingOrg(ctx, t)
+	t.Setenv(processor.ChargeProcessors, "stripe,square,paypal")
+	old := processorsForOrg
+	processorsForOrg = func(*organization.Organization) *processor.Registry {
+		reg := processor.NewRegistry(processor.DefaultConfig())
+		for _, k := range []processor.ProcessorType{processor.Square, processor.Stripe, processor.PayPal} {
+			reg.Register(newRail(k, true))
+		}
+		return reg
+	}
+	t.Cleanup(func() { processorsForOrg = old })
+
+	d, f := Place(ctx, org, RouteIn{Subject: "p", Country: "BR"})
+	if f != nil || len(d.Alternatives) == 0 || d.Alternatives[0] != "paypal" {
+		t.Fatalf("a Brazilian buyer should be offered PayPal: %+v %v", d, f)
+	}
+	if d, _ = Place(ctx, org, RouteIn{Subject: "p", Country: "PK"}); len(d.Alternatives) != 0 {
+		t.Fatalf("PayPal does not operate in PK: %+v", d.Alternatives)
+	}
+	pol := routing.Default()
+	pol.PayPalOn = false
+	if _, f := WriteRouting(ctx, org.Name, pol, "z"); f != nil {
+		t.Fatal(f.Err)
+	}
+	if d, _ = Place(ctx, org, RouteIn{Subject: "p", Country: "BR"}); len(d.Alternatives) != 0 {
+		t.Fatalf("the admin switched PayPal off: %+v", d.Alternatives)
+	}
+	t.Setenv(processor.ChargeProcessors, "stripe,square")
+	pol.PayPalOn = true
+	_, _ = WriteRouting(ctx, org.Name, pol, "z")
+	if d, _ = Place(ctx, org, RouteIn{Subject: "p", Country: "BR"}); len(d.Alternatives) != 0 {
+		t.Fatalf("the deployment does not allow PayPal: %+v", d.Alternatives)
+	}
+}
