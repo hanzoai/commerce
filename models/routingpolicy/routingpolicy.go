@@ -33,12 +33,15 @@ const Platform = "_platform"
 type Row struct {
 	mixin.Model[Row]
 
-	SquareWeight int  `json:"squareWeight"`
-	SquareOn     bool `json:"squareOn"`
-	StripeOn     bool `json:"stripeOn"`
-	LocalOn      bool `json:"localOn"`
-	PayPalOn     bool `json:"paypalOn"`
-	CryptoOn     bool `json:"cryptoOn"`
+	LocalOn bool `json:"localOn"`
+	// SquareWeight, SquareOn, StripeOn, PayPalOn and CryptoOn are the split as it was
+	// stored before processors and accounts moved into Rules. They are read once, to
+	// migrate a row (api/billing.policyOf), and never written.
+	SquareWeight int  `json:"squareWeight,omitempty"`
+	SquareOn     bool `json:"squareOn,omitempty"`
+	StripeOn     bool `json:"stripeOn,omitempty"`
+	PayPalOn     bool `json:"paypalOn,omitempty"`
+	CryptoOn     bool `json:"cryptoOn,omitempty"`
 	// Rules is the JSON of the rule lists (currency, brand, issuer country, fallback,
 	// method switches, noSticky): the store holds no lists, and an empty string is
 	// the defaults, so a row written before they existed reads as it always did.
@@ -91,8 +94,9 @@ func Put(ctx context.Context, id string, in Row) error {
 	r := new(Row)
 	r.Init(d)
 	r.SetId(strings.ToLower(strings.TrimSpace(id)))
-	r.SquareWeight, r.SquareOn, r.StripeOn, r.LocalOn, r.By = in.SquareWeight, in.SquareOn, in.StripeOn, in.LocalOn, in.By
-	r.PayPalOn, r.CryptoOn, r.Rules, r.Version = in.PayPalOn, in.CryptoOn, in.Rules, in.Version
+	r.LocalOn, r.By, r.Rules, r.Version = in.LocalOn, in.By, in.Rules, in.Version
+	// The old columns are copied as given: a row in the new shape carries none.
+	r.SquareWeight, r.SquareOn, r.StripeOn, r.PayPalOn, r.CryptoOn = in.SquareWeight, in.SquareOn, in.StripeOn, in.PayPalOn, in.CryptoOn
 	return r.Put()
 }
 

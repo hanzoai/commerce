@@ -44,32 +44,77 @@ type rules struct {
 	FXFee              string                      `json:"fxCost,omitempty"`
 	NoRounding         bool                        `json:"noRounding,omitempty"`
 	RoundingIncrements []routing.RoundingIncrement `json:"roundingIncrements"`
+	Processors         []routing.ProcessorRule     `json:"processors"`
+	Accounts           []routing.Account           `json:"accounts"`
 }
 
 func encodeRules(p routing.Policy) string {
-	b, _ := json.Marshal(rules{p.CurrencyRules, p.CountryRules, p.BrandRules, p.IssuerCountryRules, p.Fallback, p.LocalMethods, !p.Sticky, p.LocalCurrencies, p.FXSource, p.FXFee, p.NoRounding, p.RoundingIncrements})
+	b, _ := json.Marshal(rules{p.CurrencyRules, p.CountryRules, p.BrandRules, p.IssuerCountryRules, p.Fallback, p.LocalMethods, !p.Sticky, p.LocalCurrencies, p.FXSource, p.FXFee, p.NoRounding, p.RoundingIncrements, p.Processors, p.Accounts})
 	return string(b)
 }
 
-func policyOf(r *routingpolicy.Row) routing.Policy {
-	p := routing.Default()
-	p.SquareWeight, p.SquareOn, p.StripeOn, p.LocalOn = r.SquareWeight, r.SquareOn, r.StripeOn, r.LocalOn
-	p.PayPalOn, p.CryptoOn = r.PayPalOn, r.CryptoOn
+// policyOf is the policy a stored row holds. A row written before processors and
+// accounts held its split in columns (squareWeight, squareOn, stripeOn, paypalOn,
+// cryptoOn); it is read once, here, into the processors it meant, and migrated says so
+// for the caller to write the row back in the new shape.
+func policyOf(r *routingpolicy.Row) (p routing.Policy, migrated bool) {
+	p = routing.Default()
+	p.LocalOn = r.LocalOn
+	p.Processors = nil
 	if strings.TrimSpace(r.Rules) != "" {
 		var x rules
 		if json.Unmarshal([]byte(r.Rules), &x) == nil {
+			p.Processors, p.Accounts = x.Processors, x.Accounts
 			p.CurrencyRules, p.CountryRules, p.BrandRules, p.IssuerCountryRules, p.Fallback, p.LocalMethods, p.Sticky = x.CurrencyRules, x.CountryRules, x.BrandRules, x.IssuerCountryRules, x.Fallback, x.LocalMethods, !x.NoSticky
 			p.LocalCurrencies, p.FXSource, p.FXFee, p.NoRounding, p.RoundingIncrements = x.LocalCurrencies, x.FXSource, x.FXFee, x.NoRounding, x.RoundingIncrements
 		}
 	}
-	return p.Normal()
+	if len(p.Processors) == 0 {
+		p.Processors = legacyProcessors(r.SquareWeight, r.SquareOn, r.StripeOn, r.PayPalOn, r.CryptoOn)
+		migrated = true
+	}
+	return p.Normal(), migrated
+}
+
+// legacyProcessors is the split a policy stored as squareWeight, squareOn, stripeOn,
+// paypalOn and cryptoOn meant: Square with its weight, Stripe with the rest of the
+// hundred, and PayPal and crypto as the other ways to pay.
+func legacyProcessors(squareWeight int, squareOn, stripeOn, paypalOn, cryptoOn bool) []routing.ProcessorRule {
+	w := max(0, min(100, squareWeight))
+	return []routing.ProcessorRule{
+		{Processor: string(processor.Square), On: squareOn, Weight: w},
+		{Processor: string(processor.Stripe), On: stripeOn, Weight: 100 - w},
+		{Processor: string(processor.PayPal), On: paypalOn},
+		{Processor: routing.CryptoRail, On: cryptoOn},
+	}
+}
+
+// decodePolicy reads a policy from the JSON a version of it was stored as, whatever
+// shape it was written in: a version from before processors and accounts is migrated
+// the same way a stored row is.
+func decodePolicy(raw string) (routing.Policy, error) {
+	var p routing.Policy
+	if err := json.Unmarshal([]byte(raw), &p); err != nil {
+		return p, err
+	}
+	if len(p.Processors) == 0 {
+		var l struct {
+			SquareWeight int  `json:"squareWeight"`
+			SquareOn     bool `json:"squareOn"`
+			StripeOn     bool `json:"stripeOn"`
+			PayPalOn     bool `json:"paypalOn"`
+			CryptoOn     bool `json:"cryptoOn"`
+		}
+		if err := json.Unmarshal([]byte(raw), &l); err != nil {
+			return p, err
+		}
+		p.Processors = legacyProcessors(l.SquareWeight, l.SquareOn, l.StripeOn, l.PayPalOn, l.CryptoOn)
+	}
+	return p.Normal(), nil
 }
 
 func policyRow(p routing.Policy, by string, version int) routingpolicy.Row {
-	return routingpolicy.Row{
-		SquareWeight: p.SquareWeight, SquareOn: p.SquareOn, StripeOn: p.StripeOn, LocalOn: p.LocalOn,
-		PayPalOn: p.PayPalOn, CryptoOn: p.CryptoOn, Rules: encodeRules(p), By: by, Version: version,
-	}
+	return routingpolicy.Row{LocalOn: p.LocalOn, Rules: encodeRules(p), By: by, Version: version}
 }
 
 // ReadRouting is the policy an org's new card checkouts are divided by: the org's
@@ -92,7 +137,14 @@ func ReadRoutingVersioned(ctx context.Context, org string) (routing.Policy, int,
 			return routing.Policy{}, 0, err
 		}
 		if found {
-			return policyOf(r), r.Version, nil
+			p, migrated := policyOf(r)
+			if migrated {
+				// Written back once in the new shape, so no later read finds the old one.
+				if perr := routingpolicy.Put(ctx, id, policyRow(p, r.By, r.Version)); perr != nil {
+					log.Warn("routing: the policy of %q was read in its old shape and not rewritten: %v", id, perr)
+				}
+			}
+			return p, r.Version, nil
 		}
 	}
 	return routing.Default(), 0, nil
@@ -488,8 +540,7 @@ func ListRoutingVersions(ctx context.Context, scope string) ([]RoutingVersion, *
 	active := activeVersion(ctx, id)
 	out := make([]RoutingVersion, 0, len(rows))
 	for _, v := range rows {
-		var p routing.Policy
-		_ = json.Unmarshal([]byte(v.Policy), &p)
+		p, _ := decodePolicy(v.Policy)
 		var d []string
 		_ = json.Unmarshal([]byte(v.Diff), &d)
 		if d == nil {
@@ -514,8 +565,8 @@ func RestoreRouting(ctx context.Context, scope string, n int, by, note string) (
 	if !found {
 		return routing.Policy{}, fault(404, "no such version", nil)
 	}
-	var p routing.Policy
-	if err := json.Unmarshal([]byte(v.Policy), &p); err != nil {
+	p, err := decodePolicy(v.Policy)
+	if err != nil {
 		return routing.Policy{}, fault(500, "that version cannot be read", err)
 	}
 	if note == "" {
@@ -685,7 +736,8 @@ func place(ctx context.Context, org *organization.Organization, in RouteIn, live
 	if brand == "" && issuer == "" {
 		brand, issuer = savedCardMeta(ctx, org, in.Subject)
 	}
-	d := pol.Decide(routing.Input{Org: org.Name, Key: in.Subject, Country: country, Saved: saved, Assigned: prior, SquareOK: squareOK, SquareWhy: squareWhy,
+	d := pol.Decide(routing.Input{Org: org.Name, Key: in.Subject, Country: country, Saved: saved, Assigned: prior,
+		Capable:  []routing.Capability{{Processor: processor.Square, OK: squareOK, Why: squareWhy}},
 		Currency: string(cur), Method: in.Method, Brand: brand, IssuerCountry: issuer})
 	if live && pol.Sticky && d.Reason == "split" {
 		// First placement by the split, kept: the weight changed later moves nobody
@@ -696,7 +748,7 @@ func place(ctx context.Context, org *organization.Organization, in RouteIn, live
 	}
 
 	take := func(t processor.ProcessorType) bool {
-		if !pol.Usable(t, routing.Input{SquareOK: squareOK}) {
+		if !pol.Usable(t, routing.Input{Currency: string(cur), Capable: []routing.Capability{{Processor: processor.Square, OK: squareOK}}}) {
 			return false
 		}
 		_, err := reg.Fiat(ctx, processor.Need{Currency: cur, Method: "card", Want: t})
@@ -709,12 +761,8 @@ func place(ctx context.Context, org *organization.Organization, in RouteIn, live
 		}
 		// The fallback order, before any payment exists: the admin's list, else the
 		// other card processor.
-		order := pol.Fallback
-		if len(order) == 0 {
-			order = []string{"square", "stripe"}
-		}
 		picked := false
-		for _, name := range order {
+		for _, name := range pol.FallbackOrder() {
 			t := processor.ProcessorType(name)
 			if t == d.Processor || !take(t) {
 				continue
@@ -778,12 +826,12 @@ func take2(ctx context.Context, reg *processor.Registry, cur currency.Type, t pr
 // has it on, and native crypto where a deposit watcher is really running.
 func alternativesFor(ctx context.Context, reg *processor.Registry, pol routing.Policy, country string) []string {
 	alt := []string{}
-	if pol.PayPalOn && payment.IsPayPalCountry(country) && !processor.DisabledByPolicy(processor.PayPal) {
+	if pol.On(processor.PayPal) && payment.IsPayPalCountry(country) && !processor.DisabledByPolicy(processor.PayPal) {
 		if p, err := reg.Registered(processor.PayPal); err == nil && p.IsAvailable(ctx) {
 			alt = append(alt, "paypal")
 		}
 	}
-	if pol.CryptoOn && len(watchedAssets()) > 0 {
+	if pol.On(routing.CryptoRail) && len(watchedAssets()) > 0 {
 		alt = append(alt, "crypto")
 	}
 	return alt
@@ -797,10 +845,11 @@ type RoutingView struct {
 	Counts    []RoutingCount   `json:"counts"`
 	Recent    []RoutingRecent  `json:"recent"`
 	Processor []ProcessorState `json:"processors"`
-	// Locations are the Square merchant locations, read from Square: their country,
-	// currency, capabilities and the methods each can mount. Country is information
-	// about the location, never a condition on a buyer.
-	Locations []squareprovider.Place `json:"locations"`
+	// Accounts are the merchant accounts the processors report holding now (Square's
+	// locations): where each is, what it charges in, whether it takes cards. Country is
+	// information about the account, never a condition on a buyer. Policy.Accounts is
+	// what the admin has declared; these are what exists.
+	Accounts []routing.Account `json:"accounts"`
 	// Eligibility is which card processors can take which currency now, so a form
 	// offers only rules that will be accepted. Brands and Methods are the names a rule
 	// may use.
@@ -850,22 +899,27 @@ func ReadRoutingView(ctx context.Context, org *organization.Organization, scope 
 			recent = append(recent, RoutingRecent{At: r.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"), Org: r.Org, Processor: r.Processor, Country: r.Country, Reason: r.Reason})
 		}
 	}
-	v := &RoutingView{Policy: pol, Default: routing.Default(), Recent: recent,
-		Counts: []RoutingCount{{"square", counts["square"]}, {"stripe", counts["stripe"]}}}
+	v := &RoutingView{Policy: pol, Default: routing.Default(), Recent: recent, Counts: []RoutingCount{}}
 	reg := processorsForOrg(orgOrZero(org))
-	for _, t := range []processor.ProcessorType{processor.Square, processor.Stripe, processor.PayPal} {
-		_, ferr := reg.Fiat(ctx, processor.Need{Currency: currency.USD, Method: "card", Want: t})
-		ok := ferr == nil
-		if t == processor.PayPal {
+	for _, r := range pol.Processors {
+		v.Counts = append(v.Counts, RoutingCount{r.Processor, counts[r.Processor]})
+		t := processor.ProcessorType(r.Processor)
+		var ok bool
+		switch t {
+		case routing.CryptoRail:
+			ok = len(watchedAssets()) > 0
+		case processor.PayPal:
 			p, perr := reg.Registered(t)
 			ok = perr == nil && p.IsAvailable(ctx) && !processor.DisabledByPolicy(t)
+		default:
+			_, ferr := reg.Fiat(ctx, processor.Need{Currency: currency.USD, Method: "card", Want: t})
+			ok = ferr == nil
 		}
-		v.Processor = append(v.Processor, ProcessorState{string(t), ok})
+		v.Processor = append(v.Processor, ProcessorState{r.Processor, ok})
 	}
-	v.Processor = append(v.Processor, ProcessorState{"crypto", len(watchedAssets()) > 0})
 	v.Eligibility, _ = eligibility(ctx, registryFor(ctx, scope))
 	v.Brands, v.Methods, v.MethodNotes = routing.Brands, routing.MethodNames, routing.MethodNotes
-	v.Locations = []squareprovider.Place{}
+	v.Accounts = []routing.Account{}
 	if sq, err := reg.Registered(processor.Square); err == nil {
 		if lister, ok := sq.(interface {
 			Locations(context.Context) ([]squareprovider.Place, error)
@@ -873,7 +927,10 @@ func ReadRoutingView(ctx context.Context, org *organization.Organization, scope 
 			if places, lerr := lister.Locations(ctx); lerr != nil {
 				log.Warn("routing: the Square locations could not be listed: %v", lerr)
 			} else {
-				v.Locations = places
+				for _, pl := range places {
+					v.Accounts = append(v.Accounts, routing.Account{Processor: string(processor.Square), ID: pl.ID, Country: pl.Country, Currency: strings.ToLower(pl.Currency),
+						Cards: len(pl.Methods) > 0, On: strings.EqualFold(pl.Status, "ACTIVE")})
+				}
 			}
 		}
 	}
