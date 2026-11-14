@@ -312,6 +312,12 @@ func (sp *SquareProcessor) CreateCustomerFor(ctx context.Context, p processor.Pa
 		req.PhoneNumber = square.String(ph)
 	}
 	req.Address = payerAddress(p.Address)
+	// The organization the payer buys for is the customer's company. Square refuses a
+	// customer with no name, email, phone or company, so a payer the host could not
+	// name is still recorded under the org it pays in.
+	if o := strings.TrimSpace(p.Org); o != "" {
+		req.CompanyName = square.String(o)
+	}
 	note, _ := metadata["note"].(string)
 	if p.Org != "" {
 		note = strings.TrimSpace(note + " org=" + p.Org)
