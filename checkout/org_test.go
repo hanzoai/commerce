@@ -12,6 +12,7 @@ import (
 
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/payment/providers/square"
+	"github.com/hanzoai/commerce/payment/providers/square/squaretest"
 )
 
 // serveOrg runs OrgJSON(r) against a synthetic request carrying the
@@ -302,36 +303,44 @@ func TestApplyCountryPolicy_SquarePayPalCryptoFallback(t *testing.T) {
 		},
 		Square: SquarePublic{ApplicationID: "sq-app", LocationID: "sq-loc", Environment: "production"},
 		PayPal: PayPalPublic{ClientID: "pp-client", Environment: "live"},
-		reg:    squareOnly(),
+		reg:    squareOnly(t),
 	}
 
-	// US (one of the 8 Square countries): Square, PayPal, and Crypto all enabled.
+	// US: Square, PayPal, and Crypto all enabled.
 	us := toPublicView(applyCountryPolicy(base, "US"))
 	if len(us.Providers) != 3 || us.Square.ApplicationID == "" || us.PayPal.ClientID == "" {
 		t.Fatalf("US: expected square+paypal+crypto enabled, got %+v", us)
 	}
 
-	// DE (outside the 8 Square countries, PayPal supported): PayPal and Crypto enabled, Square disabled.
+	// DE: Square's eligibility is the merchant location's (a US/USD location takes
+	// dollars), not the buyer's country, so a German buyer keeps Square beside PayPal and Crypto.
 	de := toPublicView(applyCountryPolicy(base, "DE"))
-	if len(de.Providers) != 2 || de.Square.ApplicationID != "" || de.PayPal.ClientID == "" {
-		t.Fatalf("DE: expected paypal+crypto enabled and square disabled, got %+v", de)
+	if len(de.Providers) != 3 || de.Square.ApplicationID == "" || de.PayPal.ClientID == "" {
+		t.Fatalf("DE: expected square+paypal+crypto enabled, got %+v", de)
 	}
 
-	// TR / PK (neither Square nor PayPal supported): Crypto remains enabled, Square and PayPal disabled.
-	for _, code := range []string{"TR", "PK", "IR"} {
+	// TR / PK: PayPal does not operate there but Square (a merchant fact) and Crypto do.
+	for _, code := range []string{"TR", "PK"} {
 		c := toPublicView(applyCountryPolicy(base, code))
-		if len(c.Providers) != 1 || c.Providers[0].Name != "crypto" || c.Square.ApplicationID != "" || c.PayPal.ClientID != "" {
-			t.Fatalf("%s: expected only crypto enabled, got %+v", code, c)
+		if len(c.Providers) != 2 || c.Square.ApplicationID == "" || c.PayPal.ClientID != "" {
+			t.Fatalf("%s: expected square+crypto enabled and paypal disabled, got %+v", code, c)
 		}
+	}
+	// IR is sanctioned: no card form and no PayPal; Crypto remains enabled.
+	ir := toPublicView(applyCountryPolicy(base, "IR"))
+	if len(ir.Providers) != 1 || ir.Providers[0].Name != "crypto" || ir.Square.ApplicationID != "" || ir.PayPal.ClientID != "" {
+		t.Fatalf("IR: expected only crypto enabled, got %+v", ir)
 	}
 }
 
 // squareOnly is a registry holding one configured Square account, the shape
 // the resolver builds for a brand with Square and no Stripe.
-func squareOnly() *processor.Registry {
+func squareOnly(t *testing.T) *processor.Registry {
+	t.Helper()
 	reg := processor.NewRegistry(processor.DefaultConfig())
 	reg.Register(square.NewProvider(square.Config{
 		ApplicationID: "sq-app", AccessToken: "sq-token", LocationID: "sq-loc", Environment: "production",
+		Endpoint: squaretest.Cards(t, "US", "usd"), // a US/USD merchant location that takes cards
 	}))
 	return reg
 }

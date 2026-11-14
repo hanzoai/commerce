@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/zap-proto/zip"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
+	squareprovider "github.com/hanzoai/commerce/payment/providers/square"
 	"github.com/hanzoai/commerce/payment/routing"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 )
@@ -37,18 +39,11 @@ func ReadRouting(ctx context.Context, org string) (routing.Policy, error) {
 		if found {
 			return routing.Policy{
 				SquareWeight: r.SquareWeight, SquareOn: r.SquareOn, StripeOn: r.StripeOn, LocalOn: r.LocalOn,
-				PayPalOn: r.PayPalOn, CryptoOn: r.CryptoOn, Countries: splitCountries(r.Countries),
+				PayPalOn: r.PayPalOn, CryptoOn: r.CryptoOn,
 			}.Normal(), nil
 		}
 	}
 	return routing.Default(), nil
-}
-
-func splitCountries(s string) []string {
-	if strings.TrimSpace(s) == "" {
-		return []string{}
-	}
-	return strings.Split(s, ",")
 }
 
 // WriteRouting stores p as the policy for scope (an org name, or "" for the platform
@@ -71,7 +66,7 @@ func WriteRouting(ctx context.Context, scope string, p routing.Policy, by string
 	if err := routingpolicy.Put(ctx, id, routingpolicy.Row{
 		SquareWeight: p.SquareWeight, SquareOn: p.SquareOn, StripeOn: p.StripeOn, LocalOn: p.LocalOn,
 		PayPalOn: p.PayPalOn, CryptoOn: p.CryptoOn,
-		Countries: strings.Join(p.Countries, ","), By: by,
+		By: by,
 	}); err != nil {
 		return p, fault(503, "routing could not be stored", err)
 	}
@@ -83,17 +78,23 @@ func WriteRouting(ctx context.Context, scope string, p routing.Policy, by string
 		_ = routingpolicy.Put(ctx, id, routingpolicy.Row{
 			SquareWeight: before.SquareWeight, SquareOn: before.SquareOn, StripeOn: before.StripeOn, LocalOn: before.LocalOn,
 			PayPalOn: before.PayPalOn, CryptoOn: before.CryptoOn,
-			Countries: strings.Join(before.Countries, ","), By: "revert",
+			By: "revert",
 		})
 		return p, fault(503, "the change could not be audited, so it was not made", err)
 	}
 	return p, nil
 }
 
+// attemptHold is how long a Square charge of unknown outcome keeps its payer from
+// being offered another processor.
+const attemptHold = 15 * time.Minute
+
 // RouteIn is one buyer asking where to pay.
 type RouteIn struct {
 	Subject string
 	Country string
+	// Currency is what the checkout is paid in; empty is usd.
+	Currency string
 }
 
 // savedProcessor is the processor a card the subject saved was vaulted with: the
@@ -131,11 +132,47 @@ func Place(ctx context.Context, org *organization.Organization, in RouteIn) (*ro
 		return nil, fault(503, "routing is temporarily unavailable; please retry", err)
 	}
 	saved := savedProcessor(ctx, org, in.Subject)
-	d := pol.Decide(routing.Input{Org: org.Name, Key: in.Subject, Country: country, Saved: saved})
-
 	reg := processorsForOrg(org)
+	cur := currency.Type(strings.ToLower(strings.TrimSpace(in.Currency)))
+	if cur == "" {
+		cur = currency.USD
+	}
+	// A Square charge begun for this payer and not yet known to have ended holds them
+	// where they are: no other processor is offered until it is known whether the
+	// first one took the money. (A hold older than attemptHold is let go.)
+	asg, assigned, aerr := routingpolicy.Assigned(ctx, org.Name, in.Subject)
+	if aerr != nil {
+		return nil, fault(503, "routing is temporarily unavailable; please retry", aerr)
+	}
+	if assigned && asg.Attempt != "" && time.Since(asg.AttemptAt) < attemptHold {
+		return nil, fault(409, "a payment is still being confirmed; wait for it to finish before paying again", nil)
+	}
+	// The merchant account decides first: Square takes this checkout only if a Square
+	// location of ours can charge a card in this currency. The buyer's country is not
+	// asked.
+	squareOK := false
+	if sq, err := reg.Registered(processor.Square); err == nil && sq.IsAvailable(ctx) {
+		if m, ok := sq.(processor.Merchant); ok {
+			if _, eligible := m.Eligible(ctx, cur); eligible {
+				squareOK = true
+			}
+		}
+	}
+	var prior processor.ProcessorType
+	if assigned {
+		prior = processor.ProcessorType(asg.Processor)
+	}
+	d := pol.Decide(routing.Input{Org: org.Name, Key: in.Subject, Country: country, Saved: saved, Assigned: prior, SquareOK: squareOK})
+	if d.Reason == "split" {
+		// First placement by the split, kept: the weight changed later moves nobody
+		// who has been placed.
+		if err := routingpolicy.Place(ctx, org.Name, in.Subject, string(d.Processor)); err != nil {
+			log.Warn("routing: the placement was not kept: %v", err)
+		}
+	}
+
 	take := func(t processor.ProcessorType) bool {
-		_, err := reg.Fiat(ctx, processor.Need{Currency: currency.USD, Method: "card", Want: t})
+		_, err := reg.Fiat(ctx, processor.Need{Currency: cur, Method: "card", Want: t})
 		return err == nil
 	}
 	if !take(d.Processor) {
@@ -183,6 +220,10 @@ type RoutingView struct {
 	Counts    []RoutingCount   `json:"counts"`
 	Recent    []RoutingRecent  `json:"recent"`
 	Processor []ProcessorState `json:"processors"`
+	// Locations are the Square merchant locations, read from Square: their country,
+	// currency, capabilities and the methods each can mount. Country is information
+	// about the location, never a condition on a buyer.
+	Locations []squareprovider.Place `json:"locations"`
 }
 
 // RoutingCount is how many of the recent decisions each processor took.
@@ -237,6 +278,18 @@ func ReadRoutingView(ctx context.Context, org *organization.Organization, scope 
 		v.Processor = append(v.Processor, ProcessorState{string(t), ok})
 	}
 	v.Processor = append(v.Processor, ProcessorState{"crypto", len(watchedAssets()) > 0})
+	v.Locations = []squareprovider.Place{}
+	if sq, err := reg.Registered(processor.Square); err == nil {
+		if lister, ok := sq.(interface {
+			Locations(context.Context) ([]squareprovider.Place, error)
+		}); ok {
+			if places, lerr := lister.Locations(ctx); lerr != nil {
+				log.Warn("routing: the Square locations could not be listed: %v", lerr)
+			} else {
+				v.Locations = places
+			}
+		}
+	}
 	return v, nil
 }
 
@@ -244,7 +297,8 @@ func ReadRoutingView(ctx context.Context, org *organization.Organization, scope 
 func requestCountry(c *zip.Ctx) string { return checkout.RequestCountry(c) }
 
 type routeRequest struct {
-	Country string `json:"country"`
+	Country  string `json:"country"`
+	Currency string `json:"currency"`
 }
 
 // RouteCheckout answers a signed-in buyer which processor takes their checkout.
@@ -261,7 +315,7 @@ func RouteCheckout(c *zip.Ctx) error {
 	if country == "" {
 		country = requestCountry(c)
 	}
-	d, f := Place(c.Context(), org, RouteIn{Subject: userBillingKey(c), Country: country})
+	d, f := Place(c.Context(), org, RouteIn{Subject: userBillingKey(c), Country: country, Currency: req.Currency})
 	if f != nil {
 		return jsonhttp.Fail(c, f.Status, f.Message, f.Err)
 	}

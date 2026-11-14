@@ -52,6 +52,7 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentorg"
 	"github.com/hanzoai/commerce/models/pendingintent"
+	"github.com/hanzoai/commerce/models/routingpolicy"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
@@ -328,7 +329,19 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		}
 	}
 
+	// A Square charge is marked begun before it is made and ended when its outcome is
+	// known, so routing never offers this payer another processor while it is not.
+	if proc.Type() == processor.Square {
+		if berr := routingpolicy.Begin(ctx, org.Name, in.Subject, string(processor.Square), squareKey); berr != nil {
+			log.Warn("routing: the Square attempt was not marked: %v", berr)
+		}
+	}
 	result, err := proc.Charge(ctx, chargeReq)
+	if proc.Type() == processor.Square && result != nil {
+		if eerr := routingpolicy.End(ctx, org.Name, in.Subject, squareKey); eerr != nil {
+			log.Warn("routing: the Square attempt was not closed: %v", eerr)
+		}
+	}
 	// A Stripe call that got NO answer (a dropped connection, a timeout) may have
 	// charged the card. The attempt's guard stays held, so a retry — whose new card
 	// token would be a new Stripe key — is refused rather than charged twice, and

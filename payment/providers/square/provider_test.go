@@ -2,7 +2,9 @@ package square
 
 import (
 	"context"
+	"github.com/hanzoai/commerce/payment/providers/square/squaretest"
 	"testing"
+	"time"
 
 	"github.com/hanzoai/money"
 
@@ -124,8 +126,22 @@ func TestConfigure_EmptyDisables(t *testing.T) {
 	}
 }
 
-func TestSupportedCurrencies_IncludesUSD(t *testing.T) {
-	p := NewProvider(Config{AccessToken: "x", LocationID: "x"})
+func TestSupportedCurrencies_IsTheLocationsCurrency(t *testing.T) {
+	p := NewProvider(Config{AccessToken: "x", LocationID: "x", Endpoint: squaretest.Cards(t, "US", "usd")})
+	if got := p.SupportedCurrencies(); len(got) != 1 || got[0] != currency.USD {
+		t.Fatalf("SupportedCurrencies() = %v; want exactly the location's usd", got)
+	}
+	if _, ok := p.Eligible(context.Background(), currency.EUR); ok {
+		t.Fatal("a USD location was eligible for EUR")
+	}
+	if c, ok := p.Eligible(context.Background(), currency.USD); !ok || c != "US" {
+		t.Fatalf("Eligible(usd) = %q %v; want US true", c, ok)
+	}
+	none := NewProvider(Config{AccessToken: "x", LocationID: "x", Endpoint: "http://127.0.0.1:1"})
+	if got := none.SupportedCurrencies(); len(got) != 0 {
+		t.Fatalf("an unreachable Square offered %v", got)
+	}
+	p = NewProvider(Config{AccessToken: "x", LocationID: "x", Endpoint: squaretest.Cards(t, "US", "usd")})
 	found := false
 	for _, c := range p.SupportedCurrencies() {
 		if c == currency.USD {
@@ -213,5 +229,29 @@ func TestCancelAuthorization_Unconfigured(t *testing.T) {
 	err := p.CancelAuthorization(context.Background(), "tx")
 	if err == nil {
 		t.Fatal("expected error on unconfigured CancelAuthorization")
+	}
+}
+
+func TestTheLastAnswerIsKeptForAtMostLocationStale(t *testing.T) {
+	p := NewProvider(Config{AccessToken: "stale-tok", LocationID: "stale-loc", Endpoint: "http://127.0.0.1:1"})
+	key := p.siteKey()
+	set := func(age time.Duration) {
+		siteMu.Lock()
+		siteCache[key] = &siteEntry{site: Site{ID: "stale-loc", Country: "US", Currency: currency.USD, Cards: true},
+			ok: true, at: time.Now().Add(-time.Hour), good: time.Now().Add(-age), ttl: locationFresh}
+		siteMu.Unlock()
+	}
+	// Square cannot be asked: an answer 5 minutes old is kept ...
+	set(5 * time.Minute)
+	if _, ok := p.Eligible(context.Background(), currency.USD); !ok {
+		t.Fatal("a 5-minute-old answer was dropped")
+	}
+	// ... and one past LocationStale is not, so Square is ineligible and checkouts are Stripe's.
+	set(LocationStale + time.Minute)
+	if _, ok := p.Eligible(context.Background(), currency.USD); ok {
+		t.Fatal("an answer older than LocationStale still made Square eligible")
+	}
+	if LocationStale != 30*time.Minute {
+		t.Fatalf("LocationStale = %s; the bound is thirty minutes", LocationStale)
 	}
 }

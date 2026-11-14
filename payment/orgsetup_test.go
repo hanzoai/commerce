@@ -104,10 +104,11 @@ func TestProcessorsForOrg_SquareEnvVarFallback_FollowsOrgMode(t *testing.T) {
 	}
 }
 
-// A hydrated Stripe token registers Stripe and leaves Square the default: a USD
-// charge selects Square, a currency Square does not take selects Stripe, and a
-// caller naming Stripe reaches it.
-func TestProcessorsForOrg_StripeHydratedSquareStillDefault(t *testing.T) {
+// A hydrated Stripe token registers Stripe. Square is offered only where Square
+// itself states a location that takes cards, so with no answer from Square (these
+// credentials are made up) every payment is Stripe's, and a caller naming Stripe
+// reaches it.
+func TestProcessorsForOrg_SquareIsOfferedOnlyForAnEligibleLocation(t *testing.T) {
 	ensureDefaultProcessorPolicy(t)
 	t.Setenv("SQUARE_ENVIRONMENT", "production")
 
@@ -120,19 +121,14 @@ func TestProcessorsForOrg_StripeHydratedSquareStillDefault(t *testing.T) {
 	if _, err := reg.Get(processor.Stripe); err != nil {
 		t.Fatalf("Get(Stripe) with a hydrated Stripe token: %v", err)
 	}
-	proc, err := reg.SelectProcessor(context.Background(), processor.PaymentRequest{Amount: 500, Currency: currency.USD})
-	if err != nil {
-		t.Fatalf("SelectProcessor(USD): %v", err)
-	}
-	if proc.Type() != processor.Square {
-		t.Fatalf("USD selected %q; want square (Square takes every payment it can)", proc.Type())
-	}
-	proc, err = reg.SelectProcessor(context.Background(), processor.PaymentRequest{Amount: 500, Currency: currency.CHF})
-	if err != nil {
-		t.Fatalf("SelectProcessor(CHF): %v", err)
-	}
-	if proc.Type() != processor.Stripe {
-		t.Fatalf("CHF selected %q; want stripe (Square does not take CHF)", proc.Type())
+	for _, cur := range []currency.Type{currency.USD, currency.CHF} {
+		proc, err := reg.SelectProcessor(context.Background(), processor.PaymentRequest{Amount: 500, Currency: cur})
+		if err != nil {
+			t.Fatalf("SelectProcessor(%s): %v", cur, err)
+		}
+		if proc.Type() != processor.Stripe {
+			t.Fatalf("%s selected %q; want stripe (Square states no eligible location)", cur, proc.Type())
+		}
 	}
 }
 

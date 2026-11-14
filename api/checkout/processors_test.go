@@ -7,14 +7,16 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
+	"github.com/hanzoai/commerce/payment/providers/square/squaretest"
 )
 
 // A hosted checkout picks its processor by the one rule, over the merchant's
-// own accounts: Square wherever Square takes the payment, Stripe where it does
-// not or where the caller names it, and nothing on an account the merchant
-// does not hold.
+// own accounts: Square where the merchant's Square location takes the currency
+// (a US/USD location takes dollars from any buyer), nothing on an account the
+// merchant does not hold, and never Stripe, which hosts no checkout page.
 func TestCheckoutProcessors_Rule(t *testing.T) {
 	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
+	squaretest.Everywhere(t, "US", "usd")
 	org := &organization.Organization{Live: true}
 	org.Name = "merchant"
 	org.Square.Production.AccessToken = "sq-own"
@@ -43,10 +45,11 @@ func TestCheckoutProcessors_Rule(t *testing.T) {
 	}
 }
 
-// Hosted checkout does not gate Square on the buyer's country (Square's countries
-// are where a SELLER can be), but a sanctioned buyer is refused.
+// Hosted checkout does not gate Square on the buyer's country (eligibility is the
+// merchant location's), but a sanctioned buyer is refused.
 func TestSanctionedOnly(t *testing.T) {
 	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
+	squaretest.Everywhere(t, "US", "usd")
 	for in, want := range map[string]string{"DE": "", "BR": "", "": "", "US": "", "IR": "IR", "ru": "ru"} {
 		if got := sanctionedOnly(in); got != want {
 			t.Errorf("sanctionedOnly(%q) = %q; want %q", in, got, want)

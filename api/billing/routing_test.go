@@ -15,6 +15,7 @@ import (
 	"github.com/hanzoai/commerce/models/billingevent"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
+	"github.com/hanzoai/commerce/models/routingpolicy"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/payment/routing"
@@ -54,7 +55,7 @@ func putRouting(eng *zip.App, body string) *http.Response {
 	return resp
 }
 
-const sevenTenths = `{"squareWeight":70,"squareOn":true,"stripeOn":true,"localOn":true,"squareCountries":["us","gb"]}`
+const sevenTenths = `{"squareWeight":70,"squareOn":true,"stripeOn":true,"localOn":true}`
 
 func TestAnOrgAdminCannotChangeRouting(t *testing.T) {
 	ctx := heldStore(t)
@@ -75,11 +76,11 @@ func TestASuperAdminChangesRoutingAndItIsAudited(t *testing.T) {
 		t.Fatalf("a SuperAdmin changing the routing got %d", resp.StatusCode)
 	}
 	p, err := ReadRouting(ctx, "hanzo")
-	if err != nil || p.SquareWeight != 70 || len(p.Countries) != 2 || p.Countries[0] != "GB" {
+	if err != nil || p.SquareWeight != 70 {
 		t.Fatalf("the platform policy did not take: %+v %v", p, err)
 	}
 	// An org's own row overrides the platform's.
-	if _, f := WriteRouting(ctx, "acme", routing.Policy{SquareWeight: 0, SquareOn: true, StripeOn: true, Countries: []string{"US"}}, "z@hanzo.ai"); f != nil {
+	if _, f := WriteRouting(ctx, "acme", routing.Policy{SquareWeight: 0, SquareOn: true, StripeOn: true}, "z@hanzo.ai"); f != nil {
 		t.Fatal(f.Err)
 	}
 	if p, _ := ReadRouting(ctx, "acme"); p.SquareWeight != 0 {
@@ -117,9 +118,14 @@ type rail struct {
 	up   bool
 }
 
-func (r rail) Type() processor.ProcessorType          { return r.kind }
-func (r rail) IsAvailable(context.Context) bool       { return r.up }
-func (rail) SupportedCurrencies() []currency.Type     { return []currency.Type{currency.USD} }
+func (r rail) Type() processor.ProcessorType      { return r.kind }
+func (r rail) IsAvailable(context.Context) bool   { return r.up }
+func (rail) SupportedCurrencies() []currency.Type { return []currency.Type{currency.USD, currency.EUR} }
+
+// Eligible is Square's answer for a US/USD merchant location: only dollars, and only while it is up.
+func (r rail) Eligible(_ context.Context, cur currency.Type) (string, bool) {
+	return "US", r.kind == processor.Square && r.up && cur == currency.USD
+}
 func (rail) Reaches(string, string) bool              { return true }
 func newRail(t processor.ProcessorType, up bool) rail { return rail{kind: t, up: up} }
 
@@ -149,7 +155,7 @@ func routingOrg(ctx context.Context, t *testing.T) *organization.Organization {
 func TestAProcessorThatIsDownHandsNewBuyersToTheOtherNeverASavedCard(t *testing.T) {
 	ctx := heldStore(t)
 	org := routingOrg(ctx, t)
-	if _, f := WriteRouting(ctx, org.Name, routing.Policy{SquareWeight: 100, SquareOn: true, StripeOn: true, LocalOn: true, Countries: []string{"US"}}, "z"); f != nil {
+	if _, f := WriteRouting(ctx, org.Name, routing.Policy{SquareWeight: 100, SquareOn: true, StripeOn: true, LocalOn: true}, "z"); f != nil {
 		t.Fatal(f.Err)
 	}
 
@@ -160,8 +166,8 @@ func TestAProcessorThatIsDownHandsNewBuyersToTheOtherNeverASavedCard(t *testing.
 
 	useRails(t, false, true)
 	d, f := Place(ctx, org, RouteIn{Subject: "new-buyer", Country: "US"})
-	if f != nil || d.Processor != processor.Stripe || d.Reason != "fallback" {
-		t.Fatalf("a new buyer should fall back to Stripe while Square is down: %+v %v", d, f)
+	if f != nil || d.Processor != processor.Stripe || d.Reason != "merchant" {
+		t.Fatalf("a new buyer should go to Stripe while Square is down: %+v %v", d, f)
 	}
 
 	// A buyer whose card is saved at Square is not handed to Stripe.
@@ -298,4 +304,76 @@ func (d *profileDouble) CreateCustomerFor(context.Context, processor.Payer, stri
 func (d *profileDouble) ProfileCustomer(context.Context, string, processor.Payer) error {
 	d.wrote++
 	return nil
+}
+
+func TestACardIsSquaresOnlyWhereTheMerchantLocationCanTakeIt(t *testing.T) {
+	ctx := heldStore(t)
+	org := routingOrg(ctx, t)
+	if _, f := WriteRouting(ctx, org.Name, routing.Policy{SquareWeight: 100, SquareOn: true, StripeOn: true, LocalOn: true}, "z"); f != nil {
+		t.Fatal(f.Err)
+	}
+	useRails(t, true, true)
+
+	// A dollar checkout from a German buyer: eligible for the split, and at 100% it is Square's.
+	d, f := Place(ctx, org, RouteIn{Subject: "de-buyer", Country: "DE", Currency: "usd"})
+	if f != nil || d.Processor != processor.Square || d.Reason != "split" {
+		t.Fatalf("a USD checkout from DE must be eligible for Square: %+v %v", d, f)
+	}
+	// A euro checkout with only a US/USD Square location: Stripe's, decided before any payment.
+	d, f = Place(ctx, org, RouteIn{Subject: "de-buyer", Country: "FR", Currency: "eur"})
+	if f != nil || d.Processor != processor.Stripe || d.Reason != "merchant" {
+		t.Fatalf("a EUR card checkout with a USD-only location must be Stripe's: %+v %v", d, f)
+	}
+}
+
+func TestAStoredAssignmentSurvivesAnIneligibleCheckoutAndAppliesAgain(t *testing.T) {
+	ctx := heldStore(t)
+	org := routingOrg(ctx, t)
+	if _, f := WriteRouting(ctx, org.Name, routing.Policy{SquareWeight: 100, SquareOn: true, StripeOn: true}, "z"); f != nil {
+		t.Fatal(f.Err)
+	}
+	useRails(t, true, true)
+	first, f := Place(ctx, org, RouteIn{Subject: "sticky", Country: "DE", Currency: "usd"})
+	if f != nil || first.Processor != processor.Square || first.Reason != "split" {
+		t.Fatalf("first placement: %+v %v", first, f)
+	}
+	// The weight moves to Stripe; the placed customer stays on Square.
+	if _, f := WriteRouting(ctx, org.Name, routing.Policy{SquareWeight: 0, SquareOn: true, StripeOn: true}, "z"); f != nil {
+		t.Fatal(f.Err)
+	}
+	if d, _ := Place(ctx, org, RouteIn{Subject: "sticky", Country: "DE", Currency: "usd"}); d.Processor != processor.Square || d.Reason != "assigned" {
+		t.Fatalf("a placed customer was re-randomized by a new weight: %+v", d)
+	}
+	// A euro checkout: Square cannot take it, Stripe does, and the assignment is untouched.
+	if d, _ := Place(ctx, org, RouteIn{Subject: "sticky", Country: "DE", Currency: "eur"}); d.Processor != processor.Stripe {
+		t.Fatalf("an ineligible checkout was not Stripe's: %+v", d)
+	}
+	a, found, _ := routingpolicy.Assigned(ctx, org.Name, "sticky")
+	if !found || a.Processor != "square" {
+		t.Fatalf("the stored assignment changed: %+v", a)
+	}
+	if d, _ := Place(ctx, org, RouteIn{Subject: "sticky", Country: "FR", Currency: "usd"}); d.Processor != processor.Square {
+		t.Fatalf("the assignment did not apply again at the next eligible checkout: %+v", d)
+	}
+}
+
+func TestNoOtherProcessorIsOfferedWhileASquareChargeIsUnresolved(t *testing.T) {
+	ctx := heldStore(t)
+	org := routingOrg(ctx, t)
+	useRails(t, true, true)
+	if err := routingpolicy.Begin(ctx, org.Name, "midway", "square", "attempt-1"); err != nil {
+		t.Fatal(err)
+	}
+	// Square goes down mid-attempt: the payer is held, not handed to Stripe to pay twice.
+	useRails(t, false, true)
+	if d, f := Place(ctx, org, RouteIn{Subject: "midway", Country: "DE"}); f == nil || f.Status != 409 {
+		t.Fatalf("a payer with an unresolved Square charge was offered %+v (%v)", d, f)
+	}
+	// Known now, whichever way it went: they may check out again, and Stripe takes it.
+	if err := routingpolicy.End(ctx, org.Name, "midway", "attempt-1"); err != nil {
+		t.Fatal(err)
+	}
+	if d, f := Place(ctx, org, RouteIn{Subject: "midway", Country: "DE"}); f != nil || d.Processor != processor.Stripe {
+		t.Fatalf("after the attempt ended: %+v %v", d, f)
+	}
 }

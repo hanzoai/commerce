@@ -2,6 +2,7 @@ package checkout
 
 import (
 	"encoding/json"
+	"github.com/hanzoai/commerce/payment/providers/square/squaretest"
 	"strings"
 	"testing"
 
@@ -363,8 +364,9 @@ func TestReturnHosts_EachConsoleIsItsBrands(t *testing.T) {
 	}
 }
 
-func TestOrgJSON_PayPalAlongsideSquareIn8CountriesAndReplacesElsewhere(t *testing.T) {
+func TestOrgJSON_PayPalAlongsideSquareByMerchantNotCountry(t *testing.T) {
 	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
+	squaretest.Everywhere(t, "US", "usd")
 	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "sandbox-sq0idb-TEST")
 	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "LOCTEST")
 	// Square's card form is offered only where commerce can charge Square, which
@@ -403,7 +405,9 @@ func TestOrgJSON_PayPalAlongsideSquareIn8CountriesAndReplacesElsewhere(t *testin
 		return false
 	}
 
-	for _, c := range []string{"US", "CA", "AU", "JP", "GB", "IE", "FR", "ES"} {
+	// Square is the merchant's (a US/USD location), so every buyer's country is offered it
+	// beside PayPal, wherever PayPal operates; the buyer's country decides neither.
+	for _, c := range []string{"US", "CA", "AU", "JP", "GB", "IE", "FR", "ES", "DE", "BR", "IN", "SG", "NL", "KR", "MX"} {
 		pv := run(c, "")
 		if !hasProvider(pv, "square") || !hasProvider(pv, "paypal") {
 			t.Fatalf("country %s: providers=%+v, want both square and paypal enabled", c, pv.Providers)
@@ -416,22 +420,9 @@ func TestOrgJSON_PayPalAlongsideSquareIn8CountriesAndReplacesElsewhere(t *testin
 		}
 	}
 
-	for _, c := range []string{"DE", "BR", "IN", "SG", "NL", "KR", "MX"} {
-		pv := run(c, "")
-		if hasProvider(pv, "square") {
-			t.Fatalf("non-Square country %s: square must be disabled, got %+v", c, pv.Providers)
-		}
-		if pv.Square.ApplicationID != "" {
-			t.Fatalf("non-Square country %s: square config must be cleared, got %+v", c, pv.Square)
-		}
-		if !hasProvider(pv, "paypal") || pv.PayPal.ClientID != "sb-paypal-client-id" {
-			t.Fatalf("non-Square country %s: paypal must replace square, got %+v / %+v", c, pv.Providers, pv.PayPal)
-		}
-	}
-
 	// Query parameter override (?country=DE) overrides CF-IPCountry: US.
 	pv := run("US", "DE")
-	if hasProvider(pv, "square") || !hasProvider(pv, "paypal") || pv.Country != "DE" {
+	if !hasProvider(pv, "square") || !hasProvider(pv, "paypal") || pv.Country != "DE" {
 		t.Fatalf("query override failed: country=%q providers=%+v", pv.Country, pv.Providers)
 	}
 }
@@ -439,8 +430,9 @@ func TestOrgJSON_PayPalAlongsideSquareIn8CountriesAndReplacesElsewhere(t *testin
 // The checkout's public config is the selection rule's answer for the caller's
 // country: Square's card form wherever Square takes the currency, Stripe's where
 // it does not, each with its public config only when it is offered.
-func TestOrgJSON_StripeWhereSquareCannot(t *testing.T) {
+func TestOrgJSON_StripeWhereTheMerchantLocationCannot(t *testing.T) {
 	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
+	squaretest.Everywhere(t, "US", "usd")
 	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "sandbox-sq0idb-TEST")
 	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "LOCTEST")
 	t.Setenv("SQUARE_SANDBOX_ACCESS_TOKEN", "sandbox-sq-token")
@@ -477,7 +469,7 @@ func TestOrgJSON_StripeWhereSquareCannot(t *testing.T) {
 		return false
 	}
 
-	// US: USD on Square's form; Stripe offered only for what Square cannot take.
+	// US: USD on Square's form (the location's currency); Stripe for every other currency.
 	us, body := view("pay.hanzo.ai", "US")
 	if us.Cards["usd"] != "square" || us.Cards["chf"] != "stripe" || !on(us, "square") || !on(us, "stripe") || !on(us, "paypal") {
 		t.Fatalf("US: cards=%v providers=%+v", us.Cards, us.Providers)
@@ -489,13 +481,13 @@ func TestOrgJSON_StripeWhereSquareCannot(t *testing.T) {
 		t.Fatalf("US: a secret reached the public config: %s", body)
 	}
 
-	// DE: Square does not take DE, so every card currency is Stripe's form, and
-	// Square and its config are gone. PayPal operates in DE.
+	// DE: the buyer's country decides nothing. A dollar card is still Square's (a German
+	// buyer paying dollars to a US location), every other currency is Stripe's form.
 	de, _ := view("pay.hanzo.ai", "DE")
-	if de.Cards["usd"] != "stripe" || de.Cards["eur"] != "stripe" || on(de, "square") || !on(de, "stripe") || !on(de, "paypal") {
+	if de.Cards["usd"] != "square" || de.Cards["eur"] != "stripe" || de.Cards["chf"] != "stripe" || !on(de, "square") || !on(de, "stripe") || !on(de, "paypal") {
 		t.Fatalf("DE: cards=%v providers=%+v", de.Cards, de.Providers)
 	}
-	if de.Square.ApplicationID != "" || de.Stripe.PublishableKey != "pk_test_checkout" {
+	if de.Square.ApplicationID == "" || de.Stripe.PublishableKey != "pk_test_checkout" {
 		t.Fatalf("DE: square=%+v stripe=%+v", de.Square, de.Stripe)
 	}
 
@@ -512,10 +504,11 @@ func TestOrgJSON_StripeWhereSquareCannot(t *testing.T) {
 		t.Fatalf("lux: cards=%v providers=%+v stripe=%+v", lux.Cards, lux.Providers, lux.Stripe)
 	}
 
-	// With Stripe denied by the operator, DE has no card form at all.
+	// With Stripe denied by the operator, only the merchant location's currency has a
+	// card form, and it is Square's, whoever the buyer is.
 	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "square")
 	denied, _ := view("pay.hanzo.ai", "DE")
-	if len(denied.Cards) != 0 || on(denied, "stripe") || on(denied, "square") {
+	if len(denied.Cards) != 1 || denied.Cards["usd"] != "square" || on(denied, "stripe") || !on(denied, "square") {
 		t.Fatalf("stripe denied, DE: cards=%v providers=%+v", denied.Cards, denied.Providers)
 	}
 }
