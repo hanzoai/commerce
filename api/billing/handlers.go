@@ -318,6 +318,10 @@ func Route(r *zip.Group, args ...zip.Handler) {
 	// Which processor takes THIS buyer's new checkout, and the methods to mount.
 	user.Raw(http.MethodPost, "/route", RouteCheckout)
 
+	// What the buyer is about to pay, in their currency, before the sale: a plan's first
+	// charge or an amount of credit.
+	user.Raw(http.MethodGet, "/quote", QuoteHandler)
+
 	// Stripe's Payment Element for a top-up (Pix, iDEAL, OXXO, SEPA, cards, wallets):
 	// the intent, and where it stands. Nothing here credits; the verified webhook does.
 	user.Raw(http.MethodPost, "/topup/intent", CreateTopupIntent)
