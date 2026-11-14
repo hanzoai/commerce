@@ -66,3 +66,41 @@ func (p *Provider) QuoteRate(ctx context.Context, cur, lock string) (*processor.
 }
 
 var _ processor.RateQuoter = (*Provider)(nil)
+
+// Settlement reads the balance transaction of a settled PaymentIntent's charge.
+func (p *Provider) Settlement(ctx context.Context, intentID string) (*processor.Settlement, error) {
+	q := url.Values{}
+	q.Add("expand[]", "latest_charge.balance_transaction")
+	var pi struct {
+		LatestCharge struct {
+			BT struct {
+				ID           string  `json:"id"`
+				Currency     string  `json:"currency"`
+				Amount       int64   `json:"amount"`
+				Fee          int64   `json:"fee"`
+				Net          int64   `json:"net"`
+				ExchangeRate float64 `json:"exchange_rate"`
+				FeeDetails   []struct {
+					Type   string `json:"type"`
+					Amount int64  `json:"amount"`
+				} `json:"fee_details"`
+			} `json:"balance_transaction"`
+		} `json:"latest_charge"`
+	}
+	if err := p.get(ctx, "/payment_intents/"+intentID, q, &pi); err != nil {
+		return nil, err
+	}
+	b := pi.LatestCharge.BT
+	if b.ID == "" {
+		return nil, fmt.Errorf("stripe: %s has no balance transaction yet", intentID)
+	}
+	s := &processor.Settlement{BalanceTransaction: b.ID, Currency: b.Currency, Gross: b.Amount, Fee: b.Fee, Net: b.Net, ExchangeRate: b.ExchangeRate}
+	for _, d := range b.FeeDetails {
+		if d.Type == "tax" {
+			s.Tax += d.Amount
+		}
+	}
+	return s, nil
+}
+
+var _ processor.SettlementReader = (*Provider)(nil)

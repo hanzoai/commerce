@@ -128,7 +128,7 @@ func OpenTopupIntent(ctx context.Context, org *organization.Organization, in Top
 			if p.Done {
 				continue
 			}
-			if p.LockExpires > 0 && time.Now().Unix() >= p.LockExpires-30 {
+			if p.LockExpiresAt > 0 && time.Now().Unix() >= p.LockExpiresAt-30 {
 				// The rate lock has lapsed (or is about to): the old intent is not replayed at
 				// a rate Stripe will refuse. A new one is opened below on a fresh quote, and the
 				// buyer is shown its amount before they authorize.
@@ -157,7 +157,7 @@ func OpenTopupIntent(ctx context.Context, org *organization.Organization, in Top
 					IntentID: p.Id(), ClientSecret: secret, PublishableKey: payment.StripePublicConfig(org).PublishableKey,
 					Currency: cur, Amount: amount, UsdCents: in.AmountCents, Rate: rate,
 					Quote: routing.Quote{Amount: amount, Decimals: int(dec), Currency: cur, UsdCents: in.AmountCents, Rate: rate,
-						Source: p.RateSource, FXCost: p.FXCost, ExchangeRate: p.ExchangeRate, LockExpires: p.LockExpires, FxQuote: p.FxQuote, BaseRate: p.BaseRate, FeeRate: p.FeeRate, Premium: p.Premium, Disclosure: routing.Disclosure},
+						Source: p.RateSource, FXFee: p.FXFee, ExchangeRate: p.ExchangeRate, LockExpiresAt: p.LockExpiresAt, QuoteID: p.QuoteID, BaseRate: p.BaseRate, FeeRate: p.FeeRate, Premium: p.Premium, Disclosure: routing.Disclosure},
 				}, nil
 			}
 		}
@@ -191,7 +191,7 @@ func OpenTopupIntent(ctx context.Context, org *organization.Organization, in Top
 	}
 	out, err := maker.CreateLocalIntent(ctx, processor.LocalIntent{
 		Customer: customer, ReceiptEmail: payer.Email,
-		Amount: paid, Currency: cur, Excluded: pol.Off(), Configuration: walletConfig, FXQuote: quote.FxQuote,
+		Amount: paid, Currency: cur, Excluded: pol.Off(), Configuration: walletConfig, QuoteID: quote.QuoteID,
 		Key:      gatewayKey("topup-local", in.Subject, fmt.Sprintf("%s:%d", key, paid)),
 		Desc:     fmt.Sprintf("Top-up %d usd for %s", in.AmountCents, in.Subject),
 		Metadata: map[string]interface{}{"hanzo_subject": in.Subject, "hanzo_usd_cents": in.AmountCents, "hanzo_org": org.Name, "org": org.Name, "user": strings.ToLower(in.Subject)},
@@ -217,13 +217,13 @@ func OpenTopupIntent(ctx context.Context, org *organization.Organization, in Top
 	if cur != "usd" {
 		// The terms the quote was made on are bound to this attempt, once: the rate
 		// disclosed is the rate charged, and a refund or a record reads it back.
-		if berr := pendingintent.Bind(out.ID, pendingintent.Terms{Rate: quote.Rate, RateSource: quote.Source, FxQuote: quote.FxQuote, BaseRate: quote.BaseRate, FeeRate: quote.FeeRate, Premium: quote.Premium,
-			ExchangeRate: quote.ExchangeRate, ReferenceRate: quote.ReferenceRate, ReferenceProvider: quote.ReferenceProvider, FXCost: quote.FXCost, LockExpires: quote.LockExpires}); berr != nil {
+		if berr := pendingintent.Bind(out.ID, pendingintent.Terms{Rate: quote.Rate, RateSource: quote.Source, QuoteID: quote.QuoteID, BaseRate: quote.BaseRate, FeeRate: quote.FeeRate, Premium: quote.Premium,
+			ExchangeRate: quote.ExchangeRate, ReferenceRate: quote.ReferenceRate, ReferenceProvider: quote.ReferenceProvider, FXFee: quote.FXFee, LockExpiresAt: quote.LockExpiresAt}); berr != nil {
 			log.Warn("topup intent: the terms of %s were not bound: %v", out.ID, berr)
 		}
 	}
 	if _, eerr := engine.EmitBillingEvent(webhookGuardDB(ctx), "topup.intent.opened", "payment_intent", out.ID, in.Subject,
-		map[string]interface{}{"policyVersion": polVersion, "currency": cur, "amount": paid, "usdCents": in.AmountCents, "source": quote.Source, "fxCost": quote.FXCost, "rate": rate, "fxQuote": quote.FxQuote, "org": org.Name}, nil); eerr != nil {
+		map[string]interface{}{"policyVersion": polVersion, "currency": cur, "amount": paid, "usdCents": in.AmountCents, "source": quote.Source, "fxFee": quote.FXFee, "rate": rate, "fxQuote": quote.QuoteID, "org": org.Name}, nil); eerr != nil {
 		log.Warn("topup intent: the opening was not recorded: %v", eerr)
 	}
 	return &TopupIntentOut{

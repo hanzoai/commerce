@@ -712,7 +712,7 @@ func TestTheDefaultPolicyChargesExactlyTheConvertedAmountRoundedUpToTheIncrement
 	p := routing.Default()
 	// No margin by default, whatever the source: $10 at 0.9137 is 9.137 euro, rounded up to 10.
 	q, f := quoteFor(ctx, reg, p, 1000, "DE", "", "", false)
-	if f != nil || q.Currency != "eur" || q.Amount != 1000 || q.UsdCents != 1000 || q.Rate != 0.9137 || q.Source != "market" || q.FXCost != "absorb" {
+	if f != nil || q.Currency != "eur" || q.Amount != 1000 || q.UsdCents != 1000 || q.Rate != 0.9137 || q.Source != "reference" || q.FXFee != "absorb" {
 		t.Fatalf("default: %+v %v", q, f)
 	}
 	// Go at 94.25: $8 is exactly Rs 754.
@@ -772,7 +772,7 @@ func TestInvalidFXAndCountryTableEntriesAreRefusedAndTheseFieldsAreVersioned(t *
 	stubRates(t, map[string]float64{"eur": 0.9, "brl": 5, "gbp": 0.8})
 	scope := "fx-" + t.Name()
 	bad := map[string]func(*routing.Policy){
-		"unknown fx cost":   func(p *routing.Policy) { p.FXCost = "split" },
+		"unknown fx cost":   func(p *routing.Policy) { p.FXFee = "split" },
 		"unknown fx source": func(p *routing.Policy) { p.FXSource = "oracle" },
 		"unknown country": func(p *routing.Policy) {
 			p.LocalCurrencies = []routing.LocalCurrencyRule{{Country: "ZZ", Currency: "eur"}}
@@ -798,7 +798,7 @@ func TestInvalidFXAndCountryTableEntriesAreRefusedAndTheseFieldsAreVersioned(t *
 		t.Fatalf("a refused save made a version")
 	}
 	one := routing.Default()
-	one.FXCost = routing.FXAbsorb
+	one.FXFee = routing.FXAbsorb
 	one.LocalCurrencies = []routing.LocalCurrencyRule{{Country: "GB", Currency: "gbp"}, {Country: "BR", Currency: "usd"}}
 	if _, f := WriteRouting(ctx, scope, one, "z", "uk in pounds, br in dollars"); f != nil {
 		t.Fatal(f.Err)
@@ -808,13 +808,13 @@ func TestInvalidFXAndCountryTableEntriesAreRefusedAndTheseFieldsAreVersioned(t *
 		t.Fatal(f.Err)
 	}
 	vs, _ := ListRoutingVersions(ctx, scope)
-	if len(vs) != 2 || !strings.Contains(strings.Join(vs[0].Diff, ";"), "fxCost: \"absorb\" -> \"pass\"") || !strings.Contains(strings.Join(vs[0].Diff, ";"), "localCurrencies") {
+	if len(vs) != 2 || !strings.Contains(strings.Join(vs[0].Diff, ";"), "fxFee: \"absorb\" -> \"pass\"") || !strings.Contains(strings.Join(vs[0].Diff, ";"), "localCurrencies") {
 		t.Fatalf("the diff misses these fields: %+v", vs)
 	}
-	if p, f := RestoreRouting(ctx, scope, 1, "z", ""); f != nil || p.FXCost != routing.FXAbsorb || len(p.LocalCurrencies) != 2 {
+	if p, f := RestoreRouting(ctx, scope, 1, "z", ""); f != nil || p.FXFee != routing.FXAbsorb || len(p.LocalCurrencies) != 2 {
 		t.Fatalf("restore: %+v %v", p, f)
 	}
-	if got, _ := ReadRouting(ctx, scope); got.FXCost != routing.FXAbsorb || got.LocalCurrency("gb") != "gbp" || got.LocalCurrency("BR") != "usd" || got.LocalCurrency("DE") != "eur" {
+	if got, _ := ReadRouting(ctx, scope); got.FXFee != routing.FXAbsorb || got.LocalCurrency("gb") != "gbp" || got.LocalCurrency("BR") != "usd" || got.LocalCurrency("DE") != "eur" {
 		t.Fatalf("the restored policy reads wrong: %+v", got)
 	}
 }
@@ -914,7 +914,7 @@ func TestStripesRateIsPassedThroughOrAbsorbedAndBoundToThePayment(t *testing.T) 
 	// Pass (the default): $8 at Stripe's effective rate, fee and premium in it: 761.89 -> Rs 762.
 	p := routing.Default()
 	q, f := quoteFor(ctx, reg, p, 800, "IN", "", "", false)
-	if f != nil || q.Amount != 76200 || q.Source != "processor" || q.FXCost != "pass" || q.Rate != 95.2361 || q.FxQuote != "" || q.ExchangeRate != 0.0105002 {
+	if f != nil || q.Amount != 76200 || q.Source != "processor" || q.FXFee != "pass" || q.Rate != 95.2361 || q.QuoteID != "" || q.ExchangeRate != 0.0105002 {
 		t.Fatalf("pass: %+v %v", q, f)
 	}
 	if len(r.locks) != 1 || r.locks[0] != "none" {
@@ -926,14 +926,14 @@ func TestStripesRateIsPassedThroughOrAbsorbedAndBoundToThePayment(t *testing.T) 
 		t.Fatalf("the shown rate was not cached: %v", r.locks)
 	}
 	// Absorb: base_rate, Hanzo bears the cost: 754.27 -> Rs 755.
-	p.FXCost = routing.FXAbsorb
-	if q, _ = quoteFor(ctx, reg, p, 800, "IN", "", "", false); q.Amount != 75500 || q.FXCost != "absorb" {
+	p.FXFee = routing.FXAbsorb
+	if q, _ = quoteFor(ctx, reg, p, 800, "IN", "", "", false); q.Amount != 75500 || q.FXFee != "absorb" {
 		t.Fatalf("absorb: %+v", q)
 	}
 	// A payment being opened locks the rate for an hour, a voucher method for a day, and
 	// the quote names the lock the intent is bound to.
 	p = routing.Default()
-	if q, _ = quoteFor(ctx, reg, p, 800, "IN", "", "", true); q.FxQuote != "fxq_1" || q.ReferenceProvider != "ecb" || q.LockExpires != 1900000000 || r.locks[len(r.locks)-1] != "hour" {
+	if q, _ = quoteFor(ctx, reg, p, 800, "IN", "", "", true); q.QuoteID != "fxq_1" || q.ReferenceProvider != "ecb" || q.LockExpiresAt != 1900000000 || r.locks[len(r.locks)-1] != "hour" {
 		t.Fatalf("bind: %+v %v", q, r.locks)
 	}
 	r.rq.PerDollar, r.rq.BasePerDollar = 5.1, 5.05
@@ -943,13 +943,51 @@ func TestStripesRateIsPassedThroughOrAbsorbedAndBoundToThePayment(t *testing.T) 
 	// Without FX Quotes the market rate is used, no margin, and the quote says Hanzo
 	// bears the conversion cost.
 	r.fail = true
-	if q, f = quoteFor(ctx, reg, p, 800, "IN", "", "", true); f != nil || q.Source != "market" || q.FXCost != "absorb" || q.Amount != 72000 || q.FxQuote != "" {
+	if q, f = quoteFor(ctx, reg, p, 800, "IN", "", "", true); f != nil || q.Source != "reference" || q.FXFee != "absorb" || q.Amount != 72000 || q.QuoteID != "" {
 		t.Fatalf("fallback: %+v %v", q, f)
 	}
 	// The market source can be chosen outright.
 	r.fail = false
-	p.FXSource = routing.FXMarket
-	if q, _ = quoteFor(ctx, reg, p, 800, "IN", "", "", false); q.Source != "market" || q.Amount != 72000 {
+	p.FXSource = routing.FXReference
+	if q, _ = quoteFor(ctx, reg, p, 800, "IN", "", "", false); q.Source != "reference" || q.Amount != 72000 {
 		t.Fatalf("market: %+v", q)
+	}
+}
+
+// A route to Square or to crypto yields a valid quote, and never asks Stripe for a rate.
+func TestARouteToSquareOrCryptoQuotesWithoutAskingStripe(t *testing.T) {
+	ctx := heldStore(t)
+	stripe := &quotingRail{rail: newRail(processor.Stripe, true), rq: processor.RateQuote{ID: "fxq_x", PerDollar: 95, BasePerDollar: 94}}
+	old := processorsForOrg
+	reg := processor.NewRegistry(processor.DefaultConfig())
+	reg.SetConfig(&processor.RegistryConfig{ProcessorPriority: []processor.ProcessorType{processor.Square, processor.Stripe}, DisabledProcessors: map[processor.ProcessorType]bool{}})
+	reg.Register(newRail(processor.Square, true))
+	reg.Register(stripe)
+	processorsForOrg = func(*organization.Organization) *processor.Registry { return reg }
+	t.Cleanup(func() { processorsForOrg = old })
+	stubRates(t, map[string]float64{"inr": 94.25})
+
+	p := routing.Default()
+	for _, via := range []processor.ProcessorType{processor.Square, "crypto"} {
+		q, f := quoteVia(ctx, reg, p, via, 2000, "IN", "", "", true)
+		if f != nil || q.Currency != "usd" || q.Amount != 2000 || q.UsdCents != 2000 || q.Rate != 1 || q.Source != "none" || q.Decimals != 2 {
+			t.Fatalf("%s: %+v %v", via, q, f)
+		}
+	}
+	if q := nativeQuote(2000); q.Source != "none" || q.Rate != 1 || q.Amount != 2000 {
+		t.Fatalf("native: %+v", q)
+	}
+	if len(stripe.locks) != 0 {
+		t.Fatalf("Stripe was asked for a rate: %v", stripe.locks)
+	}
+	// A rail without a quote of its own that can take the currency prices on the
+	// reference rate: the same path, another source.
+	q, f := quoteVia(ctx, reg, p, processor.Stripe, 800, "IN", "", "", false)
+	if f != nil || q.Source != "processor" || len(stripe.locks) != 1 {
+		t.Fatalf("stripe: %+v %v", q, f)
+	}
+	p.FXSource = routing.FXReference
+	if q, f = quoteVia(ctx, reg, p, processor.Stripe, 800, "IN", "", "", false); f != nil || q.Source != "reference" || q.Amount != 75400 || len(stripe.locks) != 1 {
+		t.Fatalf("reference: %+v %v", q, f)
 	}
 }

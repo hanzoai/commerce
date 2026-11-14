@@ -67,20 +67,20 @@ type Intent struct {
 	// the processor's own conversion fee.
 	Rate       float64 `json:"rate,omitempty"`
 	RateSource string  `json:"rateSource,omitempty"`
-	FxQuote    string  `json:"fxQuote,omitempty"`
+	QuoteID    string  `json:"quoteId,omitempty"`
 	BaseRate   float64 `json:"baseRate,omitempty"`
 	// FeeRate and Premium are the processor's conversion fee and lock premium as
 	// fractions of the amount: costs, recorded with the attempt, never in the price.
 	FeeRate float64 `json:"feeRate,omitempty"`
 	Premium float64 `json:"premium,omitempty"`
 	// ExchangeRate is Stripe's effective rate (USD per unit of the paid currency),
-	// ReferenceRate and ReferenceProvider its market reference, FXCost who bears the
-	// conversion cost ("pass" or "absorb"), LockExpires when the locked quote lapses.
+	// ReferenceRate and ReferenceProvider its market reference, FXFee who bears the
+	// conversion cost ("pass" or "absorb"), LockExpiresAt when the locked quote lapses.
 	ExchangeRate      float64 `json:"exchangeRate,omitempty"`
 	ReferenceRate     float64 `json:"referenceRate,omitempty"`
 	ReferenceProvider string  `json:"referenceProvider,omitempty"`
-	FXCost            string  `json:"fxCost,omitempty"`
-	LockExpires       int64   `json:"lockExpires,omitempty"`
+	FXFee             string  `json:"fxCost,omitempty"`
+	LockExpiresAt     int64   `json:"lockExpiresAt,omitempty"`
 	// Done says the intent was settled — credited, finished by its sale, or
 	// refunded — and is never settled again.
 	Done bool `json:"done,omitempty"`
@@ -138,7 +138,7 @@ func PutQuoted(id, org, subject, purpose string, cents int64, cur string, paidCe
 type Terms struct {
 	Rate       float64
 	RateSource string
-	FxQuote    string
+	QuoteID    string
 	BaseRate   float64
 	FeeRate    float64
 	Premium    float64
@@ -146,8 +146,8 @@ type Terms struct {
 	ExchangeRate      float64
 	ReferenceRate     float64
 	ReferenceProvider string
-	FXCost            string
-	LockExpires       int64
+	FXFee             string
+	LockExpiresAt     int64
 }
 
 // Bind records the terms the intent's quote was made on. They are written once, when the
@@ -160,8 +160,8 @@ func Bind(id string, t Terms) error {
 	if i.RateSource != "" {
 		return nil
 	}
-	i.Rate, i.RateSource, i.FxQuote, i.BaseRate, i.FeeRate, i.Premium = t.Rate, t.RateSource, t.FxQuote, t.BaseRate, t.FeeRate, t.Premium
-	i.ExchangeRate, i.ReferenceRate, i.ReferenceProvider, i.FXCost, i.LockExpires = t.ExchangeRate, t.ReferenceRate, t.ReferenceProvider, t.FXCost, t.LockExpires
+	i.Rate, i.RateSource, i.QuoteID, i.BaseRate, i.FeeRate, i.Premium = t.Rate, t.RateSource, t.QuoteID, t.BaseRate, t.FeeRate, t.Premium
+	i.ExchangeRate, i.ReferenceRate, i.ReferenceProvider, i.FXFee, i.LockExpiresAt = t.ExchangeRate, t.ReferenceRate, t.ReferenceProvider, t.FXFee, t.LockExpiresAt
 	return i.Put()
 }
 

@@ -57,15 +57,15 @@ type Policy struct {
 	IssuerCountryRules []IssuerRule `json:"issuerCountryRules"`
 	// FXSource is where the rate comes from: "processor" (the default, and what "" means)
 	// is Stripe's FX Quotes API bound to the PaymentIntent (its rate before Stripe's
-	// fee and premium), with the market rate as the fallback when the account cannot use it; "market" is the market rate always.
+	// fee and premium), with the market rate as the fallback when the account cannot use it; "reference" is the market reference rate always.
 	FXSource string `json:"fxSource"`
-	// FXCost is who bears Stripe's currency-conversion cost when the rate is Stripe's:
+	// FXFee is who bears Stripe's currency-conversion cost when the rate is Stripe's:
 	// "pass" (the default) prices on Stripe's effective exchange_rate, which includes its
 	// fx_fee_rate and duration_premium, so the dollars credited settle whole; "absorb"
 	// prices on base_rate and Hanzo bears the cost. The market-rate fallback is always
 	// "absorb": no fee is guessed, and the quote says Hanzo bears the conversion cost.
 	// There is no percentage added on top of either.
-	FXCost string `json:"fxCost"`
+	FXFee string `json:"fxFee"`
 	// NoRounding turns off rounding a local price up to an increment; the price is then
 	// rounded up only to the smallest amount Stripe takes. Rounding is on by default.
 	NoRounding bool `json:"noRounding"`
@@ -178,10 +178,10 @@ type MethodRule struct {
 	On     bool   `json:"on"`
 }
 
-// FXProcessor and FXMarket are the rate sources a policy may name.
+// FXProcessor and FXReference are the rate sources a policy may name.
 const (
 	FXProcessor = "processor"
-	FXMarket    = "market"
+	FXReference = "reference"
 	// FXPass and FXAbsorb say who bears the processor's conversion cost.
 	FXPass   = "pass"
 	FXAbsorb = "absorb"
@@ -254,7 +254,7 @@ func (p Policy) Off() []string {
 
 // Default is the platform policy: half and half across Square's eight countries.
 func Default() Policy {
-	return Policy{SquareWeight: 50, SquareOn: true, StripeOn: true, PayPalOn: true, CryptoOn: true, LocalOn: true, Sticky: true, FXSource: FXProcessor, FXCost: FXPass, RoundingIncrements: []RoundingIncrement{}, LocalCurrencies: []LocalCurrencyRule{},
+	return Policy{SquareWeight: 50, SquareOn: true, StripeOn: true, PayPalOn: true, CryptoOn: true, LocalOn: true, Sticky: true, FXSource: FXProcessor, FXFee: FXPass, RoundingIncrements: []RoundingIncrement{}, LocalCurrencies: []LocalCurrencyRule{},
 		CurrencyRules: []CurrencyRule{}, CountryRules: []CountryRule{}, BrandRules: []BrandRule{}, IssuerCountryRules: []IssuerRule{}, Fallback: []string{}, LocalMethods: []MethodRule{}}
 }
 
@@ -298,8 +298,8 @@ func (p Policy) Normal() Policy {
 	if p.FXSource == "" {
 		p.FXSource = FXProcessor
 	}
-	if p.FXCost == "" {
-		p.FXCost = FXPass
+	if p.FXFee == "" {
+		p.FXFee = FXPass
 	}
 	p.CurrencyRules, p.CountryRules, p.BrandRules, p.IssuerCountryRules, p.Fallback, p.LocalMethods = cr, co, br, ir, fb, mr
 	return p
@@ -313,11 +313,11 @@ func (p Policy) Valid() string {
 	if !p.SquareOn && !p.StripeOn {
 		return "at least one processor must be on"
 	}
-	if p.FXCost != "" && p.FXCost != FXPass && p.FXCost != FXAbsorb {
+	if p.FXFee != "" && p.FXFee != FXPass && p.FXFee != FXAbsorb {
 		return "fxCost must be pass or absorb"
 	}
-	if p.FXSource != "" && p.FXSource != FXProcessor && p.FXSource != FXMarket {
-		return "fxSource must be processor or market"
+	if p.FXSource != "" && p.FXSource != FXProcessor && p.FXSource != FXReference {
+		return "fxSource must be processor or reference"
 	}
 	seenRI := map[string]bool{}
 	for _, r := range p.RoundingIncrements {
@@ -483,18 +483,18 @@ type Quote struct {
 	Currency string  `json:"currency"`
 	UsdCents int64   `json:"usdCents"`
 	Rate     float64 `json:"rate"`
-	// Source is where Rate came from: "processor" (Stripe's FX quote) or "market". FXCost
+	// Source is where Rate came from: "processor" (Stripe's FX quote) or "reference". FXFee
 	// says who bears the conversion cost: "pass" (Rate is Stripe's effective exchange_rate,
 	// fee and premium in it) or "absorb" (Hanzo bears it). ExchangeRate is Stripe's
-	// effective rate in USD per unit of Currency and LockExpires when its lock lapses
-	// (unix seconds), when the quote is Stripe's. FxQuote is the processor's locked quote the payment is bound
+	// effective rate in USD per unit of Currency and LockExpiresAt when its lock lapses
+	// (unix seconds), when the quote is Stripe's. QuoteID is the processor's locked quote the payment is bound
 	// to, "" for a price shown and not yet bound. Increment is the minor-unit step the
 	// amount was rounded up to. Disclosure is the sentence the buyer is shown.
-	Source       string  `json:"source"`
-	FXCost       string  `json:"fxCost"`
-	ExchangeRate float64 `json:"exchangeRate,omitempty"`
-	LockExpires  int64   `json:"lockExpires,omitempty"`
-	FxQuote      string  `json:"fxQuote,omitempty"`
+	Source        string  `json:"source"`
+	FXFee         string  `json:"fxFee"`
+	ExchangeRate  float64 `json:"exchangeRate,omitempty"`
+	LockExpiresAt int64   `json:"lockExpiresAt,omitempty"`
+	QuoteID       string  `json:"quoteId,omitempty"`
 	// ReferenceRate and ReferenceProvider are the market reference Stripe measured its
 	// rate against (the ECB's), recorded with the bound quote.
 	ReferenceRate     float64 `json:"referenceRate,omitempty"`

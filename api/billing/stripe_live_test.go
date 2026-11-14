@@ -1423,7 +1423,7 @@ func TestLiveStripe_TheDisclosedQuoteIsTheChargeAndALaterPolicyMovesNothing(t *t
 	t.Cleanup(func() { fx.Rate = old })
 
 	pol := routing.Default()
-	pol.FXSource = routing.FXMarket
+	pol.FXSource = routing.FXReference
 	if _, f := WriteRouting(*l.ctx, l.org.Name, pol, "z", "market rate"); f != nil {
 		t.Fatalf("policy: %v", f.Err)
 	}

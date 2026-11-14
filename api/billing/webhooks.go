@@ -453,6 +453,14 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 	trans.Tags = "topup"
 	trans.Notes = string(event.Processor) + " settlement " + paymentID
 	trans.Metadata = Map{"provider": string(event.Processor), "eventType": event.Type}
+	if who.credit > 0 && event.Processor == processor.Stripe {
+		// A payment in the buyer's currency: the record of what it cost and settled for.
+		if sp, serr := processorsForOrg(org).Existing(ctx, processor.Stripe); serr == nil {
+			for k, v := range fxRecord(ctx, sp, stringField(pay, "payment_intent"), int64(charged), chargedCur, int64(amount)) {
+				trans.Metadata[k] = v
+			}
+		}
+	}
 	// The SAME bit the seam credit above carried, off the same value — one resolution
 	// of which books, spent twice, so the two records of one payment can never
 	// disagree about whether the money is spendable.

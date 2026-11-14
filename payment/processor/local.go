@@ -30,9 +30,9 @@ type LocalIntent struct {
 	// Customer is the payer's customer at the processor; ReceiptEmail their email.
 	Customer     string
 	ReceiptEmail string
-	// FXQuote is the processor's locked exchange rate (RateQuote.ID) the intent is
+	// QuoteID is the processor's locked exchange rate (RateQuote.ID) the intent is
 	// bound to, so the processor converts at the rate the buyer was quoted. "" for none.
-	FXQuote string
+	QuoteID string
 }
 
 // RateQuoter is a processor that quotes its own exchange rate to USD, the currency it
@@ -88,4 +88,25 @@ func IntentState(status string) string {
 	default: // requires_payment_method
 		return "created"
 	}
+}
+
+// SettlementReader is a processor that reports what a payment settled for: the
+// processor's balance transaction, in the currency it settles in.
+type SettlementReader interface {
+	Settlement(ctx context.Context, intentID string) (*Settlement, error)
+}
+
+// Settlement is what the processor reports once a payment has settled, all in minor
+// units of Currency (the settlement currency, USD). Gross is what the buyer's payment
+// converted to, Fee the processor's fees in total (Tax inside it is the tax on them),
+// Net what is left, and ExchangeRate the rate the processor converted at (settlement
+// currency per unit of the paid currency), 0 when no conversion happened.
+type Settlement struct {
+	BalanceTransaction string
+	Currency           string
+	Gross              int64
+	Fee                int64
+	Tax                int64
+	Net                int64
+	ExchangeRate       float64
 }
