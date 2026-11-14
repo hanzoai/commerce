@@ -821,6 +821,16 @@ func take2(ctx context.Context, reg *processor.Registry, cur currency.Type, t pr
 	return err == nil
 }
 
+// cryptoServes says a buyer can really be given a crypto deposit address now: the same
+// menu the picker serves (GetCryptoOptions) holds at least one asset or Gateway network.
+// A watcher that is running is not enough: the custody signer must be allowed and
+// reachable too, or the picker answers "not configured" and a buyer would be shown a
+// method that cannot take money. A package var so a test can name either answer.
+var cryptoServes = func(ctx context.Context) bool {
+	o, err := GetCryptoOptions(ctx)
+	return err == nil && (len(o.Assets) > 0 || len(o.Gateway) > 0)
+}
+
 // alternativesFor are the other ways a buyer in country may pay, beyond the card
 // slot: PayPal wherever PayPal operates and the deployment allows it and the policy
 // has it on, and native crypto where a deposit watcher is really running.
@@ -831,7 +841,7 @@ func alternativesFor(ctx context.Context, reg *processor.Registry, pol routing.P
 			alt = append(alt, "paypal")
 		}
 	}
-	if pol.On(routing.CryptoRail) && len(watchedAssets()) > 0 {
+	if pol.On(routing.CryptoRail) && cryptoServes(ctx) {
 		alt = append(alt, "crypto")
 	}
 	return alt
@@ -907,7 +917,7 @@ func ReadRoutingView(ctx context.Context, org *organization.Organization, scope 
 		var ok bool
 		switch t {
 		case routing.CryptoRail:
-			ok = len(watchedAssets()) > 0
+			ok = cryptoServes(ctx)
 		case processor.PayPal:
 			p, perr := reg.Registered(t)
 			ok = perr == nil && p.IsAvailable(ctx) && !processor.DisabledByPolicy(t)
