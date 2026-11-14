@@ -1475,3 +1475,72 @@ func TestLiveStripe_TheDisclosedQuoteIsTheChargeAndALaterPolicyMovesNothing(t *t
 	l.call("POST", "/payment_intents/"+out.IntentID+"/cancel", nil)
 	l.call("POST", "/payment_intents/"+again.IntentID+"/cancel", nil)
 }
+
+// An Indian buyer's card asks for the bank's step (3-D Secure) on the first charge. The
+// sale is billed in rupees on a locked FX quote: the intent Stripe holds is in INR and
+// carries the quote, the attempt is recorded with the quote bound, and nothing is
+// credited and no subscription opened until the buyer is back. A buyer who abandons the
+// step is not charged: the intent is cancelled at Stripe, the attempt closed, and no
+// subscription or credit appears; the quote, locked for an hour, lapses unused.
+func TestLiveStripe_AnIndianSaleThatNeedsTheBankIsBoundToItsQuoteAndAbandonedLeavesNothing(t *testing.T) {
+	l := liveSetup(t)
+	db := datastore.New(l.org.Namespaced(*l.ctx))
+	// A card already on file that asks for the bank's step when it pays (attaching it asks
+	// nothing; a new card is authenticated at setup, which saveCard already answers).
+	cus := l.call("POST", "/customers", url.Values{"email": {"asha@example.com"}, "metadata[hanzo_subject]": {l.subject}})
+	pmID := str(l.call("POST", "/payment_methods/pm_card_authenticationRequired/attach", url.Values{"customer": {str(cus["id"])}})["id"])
+	saved := paymentmethod.New(db)
+	saved.CustomerId, saved.UserId, saved.ProviderType, saved.ProviderRef = l.subject, l.subject, "stripe", pmID
+	saved.Metadata = map[string]interface{}{"customerId": str(cus["id"])}
+	saved.Card = &paymentmethod.CardDetails{Brand: "visa", Last4: "3184", Country: "IN"}
+	if err := saved.Create(); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Subscribe(*l.ctx, l.org, SubscribeIn{
+		MethodID: saved.Id(), PlanID: "pro-3x", Subject: l.subject, Email: "asha@example.com",
+		Interval: types.Monthly, Country: "IN", IdempotencyKey: l.run + "-live-in-3ds",
+	})
+	var ar authRequired
+	if err == nil || json.Unmarshal([]byte(err.Error()), &ar) != nil || ar.Code != "authentication_required" || !strings.HasPrefix(ar.ID, "pi_") {
+		t.Fatalf("sale = %v; want the bank's step with a PaymentIntent", err)
+	}
+	pi := l.call("GET", "/payment_intents/"+ar.ID, nil)
+	paid := int64(pi["amount"].(float64))
+	// The FX quote an intent is bound to is shown only in Stripe's preview API version.
+	req, _ := http.NewRequest(http.MethodGet, "https://api.stripe.com/v1/payment_intents/"+ar.ID, nil)
+	req.SetBasicAuth(l.sk, "")
+	req.Header.Set("Stripe-Version", "2026-10-28.preview")
+	resp, rerr := http.DefaultClient.Do(req)
+	if rerr != nil {
+		t.Fatal(rerr)
+	}
+	var preview map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&preview)
+	resp.Body.Close()
+	pi["fx_quote"] = preview["fx_quote"]
+	if pi["status"] != "requires_action" || pi["currency"] != "inr" || !strings.HasPrefix(str(pi["fx_quote"]), "fxq_") || paid < 1500*50 {
+		t.Fatalf("Stripe holds %v %v %v bound to %q; want a rupee intent over Rs 750, requires_action, on an FX quote", pi["amount"], pi["currency"], pi["status"], pi["fx_quote"])
+	}
+	rec, found, _ := pendingintent.Get(ar.ID)
+	if !found || rec.Purpose != pendingintent.Sale || rec.Cents != 1500 || rec.PaidCurrency != "inr" || rec.PaidCents != paid || rec.QuoteID != pi["fx_quote"] || rec.RateSource != "processor" {
+		t.Fatalf("attempt = %+v; want a sale of 1500 usd cents paid %d inr on quote %v", rec, paid, pi["fx_quote"])
+	}
+	if subs, _ := userSubscriptions(db, l.subject, true); len(subs) != 0 || l.balance() != 0 {
+		t.Fatalf("%d subscriptions and balance %d before the buyer is back; want none", len(subs), l.balance())
+	}
+
+	// The buyer walks away.
+	rec.CreatedAt = time.Now().Add(-delayedAbandonAfter - time.Hour)
+	if err := reconcileIntent(*l.ctx, rec); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if after := l.call("GET", "/payment_intents/"+ar.ID, nil); after["status"] != "canceled" {
+		t.Fatalf("Stripe holds %v after the abandon; want canceled", after["status"])
+	}
+	if done, _, _ := pendingintent.Get(ar.ID); done == nil || !done.Done {
+		t.Fatalf("the attempt is still open: %+v", done)
+	}
+	if subs, _ := userSubscriptions(db, l.subject, true); len(subs) != 0 || l.balance() != 0 {
+		t.Fatalf("%d subscriptions and balance %d after the abandon; want none", len(subs), l.balance())
+	}
+}

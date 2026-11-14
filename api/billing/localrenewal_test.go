@@ -2,6 +2,8 @@ package billing
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,6 +12,8 @@ import (
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
+	"github.com/hanzoai/commerce/models/paymentorg"
+	"github.com/hanzoai/commerce/models/pendingintent"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/payment/routing"
@@ -303,5 +307,78 @@ func TestASaleIsRefusedWhenTheLockedQuoteIsNotThePriceTheBuyerSaw(t *testing.T) 
 	_, err := Subscribe(ctx, org, SubscribeIn{MethodID: pm, PlanID: "go", Subject: org.Name, Country: "KR", QuotedAmount: 11000, QuotedCurrency: "krw"})
 	if err == nil || len(ch.reqs) != 0 {
 		t.Fatalf("a stale price was charged: %v, %d charges", err, len(ch.reqs))
+	}
+}
+
+// authRail asks for the bank's step on the first charge of a card, and takes the charge
+// when the buyer comes back naming the intent they authenticated.
+type authRail struct {
+	*chargingRail
+}
+
+func (r *authRail) Charge(_ context.Context, req processor.PaymentRequest) (*processor.PaymentResult, error) {
+	r.reqs = append(r.reqs, req)
+	if strings.HasPrefix(req.Token, "pi_") {
+		return &processor.PaymentResult{Success: true, ProcessorRef: "ch_after_3ds"}, nil
+	}
+	return &processor.PaymentResult{Error: &processor.ActionRequired{ID: "pi_3ds", ClientSecret: "pi_3ds_secret_x"}}, &processor.ActionRequired{ID: "pi_3ds", ClientSecret: "pi_3ds_secret_x"}
+}
+
+// An Indian card needs its bank on the first charge. The sale answers the step and
+// records the attempt bound to its quote; the buyer comes back with the intent they
+// authenticated and is charged exactly what was quoted, once: one subscription, in INR,
+// the quote on its payment, and the same intent cannot buy a second.
+func TestAnIndianSaleFinishedAfterTheBanksStepIsOneCreditInRupeesOnItsQuote(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org, db, pm, ch := stripeBuyer(t, ctx, "sale-in-3ds", "IN", 94.25)
+	rail := &authRail{chargingRail: ch}
+	old := processorsForOrg
+	processorsForOrg = func(*organization.Organization) *processor.Registry {
+		reg := processor.NewRegistry(processor.DefaultConfig())
+		reg.Register(rail)
+		return reg
+	}
+	t.Cleanup(func() { processorsForOrg = old })
+
+	in := SubscribeIn{MethodID: pm, PlanID: "go", Subject: org.Name, Country: "IN"}
+	_, err := Subscribe(ctx, org, in)
+	var ar authRequired
+	if err == nil || json.Unmarshal([]byte(err.Error()), &ar) != nil || ar.ID != "pi_3ds" {
+		t.Fatalf("first charge = %v; want the bank's step", err)
+	}
+	rec, found, _ := pendingintent.Get("pi_3ds")
+	if !found || rec.Cents != 800 || rec.PaidCurrency != "inr" || rec.PaidCents != 75400 || rec.QuoteID != "fxq_s1" {
+		t.Fatalf("attempt = %+v; want 800 usd cents paid Rs 754 on fxq_s1", rec)
+	}
+	if subs, _ := userSubscriptions(db, org.Name, false); len(subs) != 0 {
+		t.Fatalf("%d subscriptions before the buyer is back", len(subs))
+	}
+
+	in.SourceID = "pi_3ds"
+	sale, err := Subscribe(ctx, org, in)
+	if err != nil {
+		t.Fatalf("finish: %v", err)
+	}
+	last := rail.reqs[len(rail.reqs)-1]
+	if last.Token != "pi_3ds" || string(last.Currency) != "inr" || int64(last.Amount) != 75400 {
+		t.Fatalf("finishing charge = %+v; want the intent for Rs 754", last)
+	}
+	if sale.AmountCents != 800 || sale.Quote == nil || sale.Quote.Currency != "inr" || sale.Quote.Amount != 75400 || sale.Quote.QuoteID != "fxq_s1" {
+		t.Fatalf("sale = %+v quote %+v", sale, sale.Quote)
+	}
+	if s := reload(t, db, sale.SubscriptionID); s.BillingCurrency != "inr" {
+		t.Fatalf("billing currency = %q, want inr", s.BillingCurrency)
+	}
+	if po, ok, _ := paymentorg.Get("ch_after_3ds"); !ok || po.PaidCurrency != "inr" || po.PaidCents != 75400 || po.CreditCents != 800 {
+		t.Fatalf("payment record = %+v; want paid Rs 754 for 800 usd cents", po)
+	}
+	// The same intent is spent: a second finish buys nothing.
+	calls := len(rail.reqs)
+	if _, err := Subscribe(ctx, org, in); err == nil && len(rail.reqs) != calls {
+		t.Fatalf("the spent intent was charged again")
+	}
+	if subs, _ := userSubscriptions(db, org.Name, false); len(subs) != 1 {
+		t.Fatalf("%d subscriptions after finishing twice; want 1", len(subs))
 	}
 }
