@@ -127,7 +127,7 @@ func TestSaveCard_StampsFacts(t *testing.T) {
 	m.vaultCard = processor.Card{Brand: "Visa", Last4: "4242", ExpMonth: 12, ExpYear: 2030, Fingerprint: "fp-visa-4242"}
 	withFakeSquare(t, m)
 
-	pm, created, err := saveCard(context.Background(), db, m, "stamp", "buyer@acme.test", "cnon:ok")
+	pm, created, err := saveCard(context.Background(), db, m, "stamp", processor.Payer{Email: "buyer@acme.test"}, "cnon:ok")
 	if err != nil || !created {
 		t.Fatalf("saveCard: created=%v err=%v", created, err)
 	}
@@ -155,7 +155,7 @@ func TestSaveCard_DedupesByFingerprint(t *testing.T) {
 	m.vaultCard = processor.Card{Brand: "Visa", Last4: "4242", ExpMonth: 12, ExpYear: 2030, Fingerprint: "fp-dup"}
 	withFakeSquare(t, m)
 
-	first, created, err := saveCard(context.Background(), db, m, "dedupe", "", "cnon:one")
+	first, created, err := saveCard(context.Background(), db, m, "dedupe", processor.Payer{}, "cnon:one")
 	if err != nil || !created {
 		t.Fatalf("first save: created=%v err=%v", created, err)
 	}
@@ -163,7 +163,7 @@ func TestSaveCard_DedupesByFingerprint(t *testing.T) {
 	// Same card, new nonce, new Square card id.
 	m.addedCardID = "ccof_second"
 	m.vaultCard.ID = "ccof_second"
-	second, created, err := saveCard(context.Background(), db, m, "dedupe", "", "cnon:two")
+	second, created, err := saveCard(context.Background(), db, m, "dedupe", processor.Payer{}, "cnon:two")
 	if err != nil {
 		t.Fatalf("second save: %v", err)
 	}

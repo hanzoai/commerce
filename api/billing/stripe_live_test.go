@@ -527,7 +527,7 @@ func TestLiveStripe_ReloadOnADecliningCardCreditsNothing(t *testing.T) {
 	l := liveSetup(t)
 	db := datastore.New(l.org.Namespaced(*l.ctx))
 	// Save a card that attaches but is declined when charged.
-	pm, _, err := saveCard(context.Background(), db, mustVault(t, l), l.subject, "alice@example.com", "pm_card_chargeCustomerFail")
+	pm, _, err := saveCard(context.Background(), db, mustVault(t, l), l.subject, processor.Payer{Email: "alice@example.com"}, "pm_card_chargeCustomerFail")
 	if err != nil {
 		t.Fatalf("saving the card: %v", err)
 	}
@@ -652,7 +652,7 @@ func TestLiveStripe_CardSaveNeedingAuthenticationFinishes(t *testing.T) {
 	db := datastore.New(l.org.Namespaced(*l.ctx))
 	cp := mustVault(t, l)
 
-	_, _, err := saveCard(context.Background(), db, cp, l.subject, "buyer@example.com", "pm_card_authenticationRequiredSetupForOffSession")
+	_, _, err := saveCard(context.Background(), db, cp, l.subject, processor.Payer{Email: "buyer@example.com"}, "pm_card_authenticationRequiredSetupForOffSession")
 	var ar *processor.ActionRequired
 	if !errors.As(err, &ar) || !strings.HasPrefix(ar.ID, "seti_") || ar.ClientSecret == "" {
 		t.Fatalf("saving a card that needs authentication = %v; want the step for a SetupIntent", err)
@@ -662,7 +662,7 @@ func TestLiveStripe_CardSaveNeedingAuthenticationFinishes(t *testing.T) {
 	}
 
 	// What the browser's step leaves behind: a SetupIntent that SUCCEEDED for the customer.
-	cust, err := vaultCustomer(context.Background(), db, cp, l.subject, "buyer@example.com")
+	cust, err := vaultCustomer(context.Background(), db, cp, l.subject, processor.Payer{Email: "buyer@example.com"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -670,7 +670,7 @@ func TestLiveStripe_CardSaveNeedingAuthenticationFinishes(t *testing.T) {
 		"customer": {cust}, "payment_method": {"pm_card_visa"}, "confirm": {"true"}, "usage": {"off_session"},
 		"automatic_payment_methods[enabled]": {"true"}, "automatic_payment_methods[allow_redirects]": {"never"},
 	})
-	pm, created, err := saveCard(context.Background(), db, cp, l.subject, "buyer@example.com", str(si["id"]))
+	pm, created, err := saveCard(context.Background(), db, cp, l.subject, processor.Payer{Email: "buyer@example.com"}, str(si["id"]))
 	if err != nil || !created || pm.Card == nil || pm.Card.Last4 != "4242" || metaStr(pm, "country") != "US" {
 		t.Fatalf("finishing the setup = %+v created %v err %v; want the visa saved with its country", pm, created, err)
 	}
@@ -700,7 +700,7 @@ func TestLiveStripe_PlanFinishedFromTheBuyersIntent(t *testing.T) {
 	l := liveSetup(t)
 	db := datastore.New(l.org.Namespaced(*l.ctx))
 	cp := mustVault(t, l)
-	pm, _, err := saveCard(context.Background(), db, cp, l.subject, "buyer@example.com", "pm_card_visa")
+	pm, _, err := saveCard(context.Background(), db, cp, l.subject, processor.Payer{Email: "buyer@example.com"}, "pm_card_visa")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -780,7 +780,7 @@ func TestLiveStripe_RefundedIntentCannotBeRedeemed(t *testing.T) {
 	reconcileIntent(*l.ctx, mustIntent(t, sale))
 	db := datastore.New(l.org.Namespaced(*l.ctx))
 	cp := mustVault(t, l)
-	if _, _, err := saveCard(context.Background(), db, cp, l.subject, "buyer@example.com", "pm_card_visa"); err != nil {
+	if _, _, err := saveCard(context.Background(), db, cp, l.subject, processor.Payer{Email: "buyer@example.com"}, "pm_card_visa"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Subscribe(*l.ctx, l.org, SubscribeIn{SourceID: sale, PlanID: "pro-3x", Subject: l.subject, Interval: types.Monthly, IdempotencyKey: l.run + "-refunded-sale"}); err == nil {
@@ -797,7 +797,7 @@ func TestLiveStripe_OneIntentIsOneUse(t *testing.T) {
 	l := liveSetup(t)
 	db := datastore.New(l.org.Namespaced(*l.ctx))
 	cp := mustVault(t, l)
-	if _, _, err := saveCard(context.Background(), db, cp, l.subject, "buyer@example.com", "pm_card_visa"); err != nil {
+	if _, _, err := saveCard(context.Background(), db, cp, l.subject, processor.Payer{Email: "buyer@example.com"}, "pm_card_visa"); err != nil {
 		t.Fatal(err)
 	}
 	top, _ := l.paid(1500)
@@ -886,7 +886,7 @@ func TestLiveStripe_SavedCardPlanFinishesFromIntentWithTheCardNamed(t *testing.T
 	l := liveSetup(t)
 	db := datastore.New(l.org.Namespaced(*l.ctx))
 	cp := mustVault(t, l)
-	pm, _, err := saveCard(context.Background(), db, cp, l.subject, "buyer@example.com", "pm_card_visa")
+	pm, _, err := saveCard(context.Background(), db, cp, l.subject, processor.Payer{Email: "buyer@example.com"}, "pm_card_visa")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1024,7 +1024,7 @@ func (l *liveStripe) pastDue() *pastDue {
 		t.Fatal(err)
 	}
 	// A card that attaches and declines when charged, and the subscription renews on it.
-	bad, _, err := saveCard(context.Background(), db, mustVault(t, l), l.subject, "buyer@example.com", "pm_card_chargeCustomerFail")
+	bad, _, err := saveCard(context.Background(), db, mustVault(t, l), l.subject, processor.Payer{Email: "buyer@example.com"}, "pm_card_chargeCustomerFail")
 	if err != nil {
 		t.Fatal(err)
 	}

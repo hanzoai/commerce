@@ -209,8 +209,13 @@ type CreateMethodIn struct {
 	Wire           *paymentmethod.WireDetails        `json:"wire,omitempty"`
 	PayPal         *paymentmethod.PayPalDetails      `json:"paypal,omitempty"`
 	BillingAddress *types.Address                    `json:"billingAddress,omitempty"`
-	ProviderRef    string                            `json:"providerRef,omitempty"`
-	ProviderType   string                            `json:"providerType,omitempty"`
+	// BillingName and BillingPhone: the payer's, with BillingAddress and the email the
+	// host passes beside the input. The host fills the name from the verified identity;
+	// the phone is the buyer's. No request body can set the name.
+	BillingName  string `json:"-"`
+	BillingPhone string `json:"billingPhone,omitempty"`
+	ProviderRef  string `json:"providerRef,omitempty"`
+	ProviderType string `json:"providerType,omitempty"`
 	// Metadata is the caller's free-form extras, carried raw so the input crosses
 	// the typed plane the same way the answer does.
 	Metadata json.RawMessage `json:"metadata,omitempty"`
@@ -257,7 +262,7 @@ func CreateMethod(ctx context.Context, org *organization.Organization, email str
 	if in.ProviderRef != "" {
 		reg := processorsForOrg(org)
 		if cp, ok := cardVaultFrom(reg, processor.ProcessorType(strings.ToLower(strings.TrimSpace(in.ProviderType)))); ok {
-			pm, created, err := saveCard(ctx, db, cp, in.CustomerId, strings.TrimSpace(email), in.ProviderRef)
+			pm, created, err := saveCard(ctx, db, cp, in.CustomerId, payerFor(org, in.CustomerId, PayerIn{Name: in.BillingName, Email: email, Phone: in.BillingPhone, Address: in.BillingAddress}), in.ProviderRef)
 			if err != nil {
 				return nil, false, declineError{parseCardDeclineReason(&processor.PaymentResult{ErrorMessage: err.Error()}, err)}
 			}

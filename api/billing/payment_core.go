@@ -90,6 +90,9 @@ type TakePaymentIn struct {
 	// when SourceID belongs to a specific rail (e.g. an approved PayPal Order ID).
 	// Empty uses the registry's default fiat selection.
 	Provider string
+	// Payer is who is paying: the receipt goes to Payer.Email and the processor's
+	// records name the person, not the billing key.
+	Payer PayerIn
 }
 
 // TakePaymentOut is the settled result. The first three fields are the response
@@ -238,8 +241,9 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 		Currency:       cur,
 		IdempotencyKey: squareKey,
 		Description:    fmt.Sprintf("Top-up %d %s for org %s", in.AmountCents, cur, in.Subject),
+		ReceiptEmail:   strings.TrimSpace(in.Payer.Email),
 		// An intent the buyer authenticated is bound to the account it was made for.
-		Metadata: map[string]interface{}{"hanzo_subject": in.Subject},
+		Metadata: map[string]interface{}{"hanzo_subject": in.Subject, "org": org.Name, "user": strings.ToLower(in.Subject)},
 	}
 
 	// The per-org processor registry. The global registry holds the webhook

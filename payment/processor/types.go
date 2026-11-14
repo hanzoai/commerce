@@ -36,6 +36,9 @@ type PaymentRequest struct {
 	CustomerID  string                 `json:"customerId,omitempty"`
 	OrderID     string                 `json:"orderId,omitempty"`
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	// ReceiptEmail is the payer's email, so the processor sends the receipt and the
+	// issuer sees who paid.
+	ReceiptEmail string `json:"receiptEmail,omitempty"`
 
 	// Processor-specific options
 	Options map[string]interface{} `json:"options,omitempty"`

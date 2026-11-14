@@ -261,3 +261,123 @@ func safeStr(s *string) string {
 	}
 	return *s
 }
+
+// payerCustomer is the Square customer fields of p that are known.
+func payerName(name string) (given, family *string) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, nil
+	}
+	parts := strings.SplitN(name, " ", 2)
+	given = square.String(parts[0])
+	if len(parts) == 2 && strings.TrimSpace(parts[1]) != "" {
+		family = square.String(strings.TrimSpace(parts[1]))
+	}
+	return given, family
+}
+
+func payerAddress(a *processor.PayerAddress) *square.Address {
+	if a.Empty() {
+		return nil
+	}
+	out := &square.Address{}
+	set := func(dst **string, v string) {
+		if v = strings.TrimSpace(v); v != "" {
+			*dst = square.String(v)
+		}
+	}
+	set(&out.AddressLine1, a.Line1)
+	set(&out.AddressLine2, a.Line2)
+	set(&out.Locality, a.City)
+	set(&out.AdministrativeDistrictLevel1, a.State)
+	set(&out.PostalCode, a.Postal)
+	if c := strings.ToUpper(strings.TrimSpace(a.Country)); c != "" {
+		country := square.Country(c)
+		out.Country = &country
+	}
+	return out
+}
+
+// CreateCustomerFor makes the payer's Square customer with everything known: given
+// and family name, email, phone and billing address, the org in the note, and the
+// reference FindCustomer searches. The key is digested from the body, as in
+// CreateCustomer.
+func (sp *SquareProcessor) CreateCustomerFor(ctx context.Context, p processor.Payer, reference string, metadata map[string]interface{}) (string, error) {
+	req := &square.CreateCustomerRequest{}
+	if e := strings.TrimSpace(p.Email); e != "" {
+		req.EmailAddress = square.String(e)
+	}
+	req.GivenName, req.FamilyName = payerName(p.Name)
+	if ph := strings.TrimSpace(p.Phone); ph != "" {
+		req.PhoneNumber = square.String(ph)
+	}
+	req.Address = payerAddress(p.Address)
+	// The organization the payer buys for is the customer's company. Square refuses a
+	// customer with no name, email, phone or company, so a payer the host could not
+	// name is still recorded under the org it pays in.
+	if o := strings.TrimSpace(p.Org); o != "" {
+		req.CompanyName = square.String(o)
+	}
+	note, _ := metadata["note"].(string)
+	if p.Org != "" {
+		note = strings.TrimSpace(note + " org=" + p.Org)
+	}
+	if note != "" {
+		req.Note = square.String(note)
+	}
+	if reference != "" {
+		req.ReferenceID = square.String(fit(reference, refMax))
+	}
+	body, err := json.Marshal(req)
+	if err != nil {
+		return "", fmt.Errorf("square create customer: %w", err)
+	}
+	sum := sha256.Sum256(body)
+	req.IdempotencyKey = square.String(hex.EncodeToString(sum[:])[:keyMax])
+	resp, err := sp.customersClient.Create(ctx, req)
+	if err != nil {
+		return "", fmt.Errorf("square create customer: %w", err)
+	}
+	if resp.Customer == nil || resp.Customer.ID == nil {
+		return "", fmt.Errorf("square create customer: empty response")
+	}
+	return *resp.Customer.ID, nil
+}
+
+// ProfileCustomer sets the fields of p the Square customer lacks or holds
+// differently, in one update, and writes nothing when they agree.
+func (sp *SquareProcessor) ProfileCustomer(ctx context.Context, customerID string, p processor.Payer) error {
+	resp, err := sp.customersClient.Get(ctx, &square.GetCustomersRequest{CustomerID: customerID})
+	if err != nil {
+		return fmt.Errorf("square get customer: %w", err)
+	}
+	if resp.Customer == nil {
+		return fmt.Errorf("square get customer: not found")
+	}
+	c := resp.Customer
+	req := &square.UpdateCustomerRequest{CustomerID: customerID}
+	changed := false
+	if e := strings.TrimSpace(p.Email); e != "" && e != safeStr(c.EmailAddress) {
+		req.EmailAddress, changed = square.String(e), true
+	}
+	if g, f := payerName(p.Name); g != nil && (*g != safeStr(c.GivenName) || safeStr(f) != safeStr(c.FamilyName)) {
+		req.GivenName, req.FamilyName, changed = g, f, true
+	}
+	if ph := strings.TrimSpace(p.Phone); ph != "" && ph != safeStr(c.PhoneNumber) {
+		req.PhoneNumber, changed = square.String(ph), true
+	}
+	if a := payerAddress(p.Address); a != nil {
+		h := c.Address
+		if h == nil || safeStr(h.AddressLine1) != safeStr(a.AddressLine1) || safeStr(h.Locality) != safeStr(a.Locality) ||
+			safeStr(h.PostalCode) != safeStr(a.PostalCode) || (a.Country != nil && (h.Country == nil || *h.Country != *a.Country)) {
+			req.Address, changed = a, true
+		}
+	}
+	if !changed {
+		return nil
+	}
+	if _, err := sp.customersClient.Update(ctx, req); err != nil {
+		return fmt.Errorf("square update customer: %w", err)
+	}
+	return nil
+}

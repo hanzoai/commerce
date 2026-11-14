@@ -28,6 +28,9 @@ type TopupIntentIn struct {
 	Country        string
 	AmountCents    int64
 	IdempotencyKey string
+	// Payer is who is paying; the intent is made for their customer, with their
+	// receipt email.
+	Payer PayerIn
 }
 
 // TopupIntentOut is what the browser mounts the Payment Element with, and what the
@@ -95,11 +98,23 @@ func OpenTopupIntent(ctx context.Context, org *organization.Organization, in Top
 	if key == "" {
 		key = windowKey(fmt.Sprintf("local:%d:%s:%s", in.AmountCents, cur, d.Country))
 	}
+	// The payer's one customer at Stripe, named and addressed, so the issuer and Radar
+	// see a person and not an anonymous buyer.
+	payer := payerFor(org, in.Subject, in.Payer)
+	customer := ""
+	if cv, ok := sp.(cardVault); ok && payer.Known() {
+		if id, cerr := vaultCustomer(ctx, datastore.New(org.Namespaced(ctx)), cv, in.Subject, payer); cerr != nil {
+			log.Warn("topup intent: no customer for %s: %v", in.Subject, cerr)
+		} else {
+			customer = id
+		}
+	}
 	out, err := maker.CreateLocalIntent(ctx, processor.LocalIntent{
+		Customer: customer, ReceiptEmail: payer.Email,
 		Amount: paid, Currency: cur,
 		Key:      gatewayKey("topup-local", in.Subject, fmt.Sprintf("%s:%d", key, paid)),
 		Desc:     fmt.Sprintf("Top-up %d usd for %s", in.AmountCents, in.Subject),
-		Metadata: map[string]interface{}{"hanzo_subject": in.Subject, "hanzo_usd_cents": in.AmountCents, "hanzo_org": org.Name},
+		Metadata: map[string]interface{}{"hanzo_subject": in.Subject, "hanzo_usd_cents": in.AmountCents, "hanzo_org": org.Name, "org": org.Name, "user": strings.ToLower(in.Subject)},
 	})
 	if err != nil {
 		return nil, fault(502, "the payment could not be opened", err)
@@ -194,6 +209,7 @@ func CreateTopupIntent(c *zip.Ctx) error {
 	out, f := OpenTopupIntent(c.Context(), org, TopupIntentIn{
 		Subject: userBillingKey(c), Country: country, AmountCents: req.AmountCents,
 		IdempotencyKey: strings.TrimSpace(c.Header("X-Idempotency-Key")),
+		Payer:          PayerIn{Email: iamEmail(c)},
 	})
 	if f != nil {
 		return jsonhttp.Fail(c, f.Status, f.Message, f.Err)
@@ -214,4 +230,10 @@ func GetTopupIntent(c *zip.Ctx) error {
 		return jsonhttp.Fail(c, f.Status, f.Message, f.Err)
 	}
 	return c.JSON(200, out)
+}
+
+// iamEmail is the verified identity's email, "" when the request carries none.
+func iamEmail(c *zip.Ctx) string {
+	e, _ := c.Locals("iam_email").(string)
+	return strings.TrimSpace(e)
 }
