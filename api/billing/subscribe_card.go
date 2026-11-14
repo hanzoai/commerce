@@ -956,6 +956,19 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	default:
 		res, err = chargeSavedCard(ctx, reg, pm, chargeCents+bal, cur, squareKey, desc, true)
 	}
+	// A buyer who comes back after the rate lock lapsed, and whose payment did not go
+	// through, is re-quoted and shown the new amount before they authorize anything.
+	if finished != "" && lq != nil && (err != nil || res == nil || !res.Success) && lq.LockExpiresAt > 0 && time.Now().Unix() >= lq.LockExpiresAt {
+		hold.Release()
+		abandon()
+		msg := "the rate locked for this payment has lapsed; start the purchase again to see the new price"
+		fresh := in
+		fresh.QuotedAmount, fresh.QuotedCurrency = 0, "" // the price now, not a comparison with the old one
+		if nq, qerr := saleQuote(ctx, org, fresh, chargeCents+bal); qerr == nil && nq != nil {
+			msg = fmt.Sprintf("the rate locked for this payment has lapsed; the price is now %d %s (minor units, %d decimals); confirm it to continue", nq.Amount, nq.Currency, nq.Decimals)
+		}
+		return nil, saleRefusal{saleRefused, msg}
+	}
 	// The card needs its bank: the intent is recorded for its buyer (the sale is
 	// finished by the retry, or the intent refunded if it never is), the card
 	// stays saved, and the answer is the step, not a decline.

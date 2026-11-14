@@ -19,6 +19,7 @@ import (
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment"
+	"github.com/hanzoai/commerce/payment/fx"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/payment/routing"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
@@ -218,7 +219,7 @@ func OpenTopupIntent(ctx context.Context, org *organization.Organization, in Top
 		// The terms the quote was made on are bound to this attempt, once: the rate
 		// disclosed is the rate charged, and a refund or a record reads it back.
 		if berr := pendingintent.Bind(out.ID, pendingintent.Terms{Rate: quote.Rate, RateSource: quote.Source, QuoteID: quote.QuoteID, BaseRate: quote.BaseRate, FeeRate: quote.FeeRate, Premium: quote.Premium,
-			ExchangeRate: quote.ExchangeRate, ReferenceRate: quote.ReferenceRate, ReferenceProvider: quote.ReferenceProvider, FXFee: quote.FXFee, LockExpiresAt: quote.LockExpiresAt}); berr != nil {
+			ExchangeRate: quote.ExchangeRate, ReferenceRate: quote.ReferenceRate, ReferenceProvider: quote.ReferenceProvider, FXFee: quote.FXFee, LockExpiresAt: quote.LockExpiresAt, Delayed: lockFor(in.Method) == fx.LockDay}); berr != nil {
 			log.Warn("topup intent: the terms of %s were not bound: %v", out.ID, berr)
 		}
 	}

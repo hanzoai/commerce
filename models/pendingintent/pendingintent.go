@@ -79,8 +79,11 @@ type Intent struct {
 	ExchangeRate      float64 `json:"exchangeRate,omitempty"`
 	ReferenceRate     float64 `json:"referenceRate,omitempty"`
 	ReferenceProvider string  `json:"referenceProvider,omitempty"`
-	FXFee             string  `json:"fxCost,omitempty"`
+	FXFee             string  `json:"fxFee,omitempty"`
 	LockExpiresAt     int64   `json:"lockExpiresAt,omitempty"`
+	// Delayed says the method settles after the buyer has left (a voucher, a bank
+	// transfer, Pix): the attempt waits for it past the rate lock. A card's does not.
+	Delayed bool `json:"delayed,omitempty"`
 	// Done says the intent was settled — credited, finished by its sale, or
 	// refunded — and is never settled again.
 	Done bool `json:"done,omitempty"`
@@ -148,6 +151,7 @@ type Terms struct {
 	ReferenceProvider string
 	FXFee             string
 	LockExpiresAt     int64
+	Delayed           bool
 }
 
 // Bind records the terms the intent's quote was made on. They are written once, when the
@@ -161,7 +165,7 @@ func Bind(id string, t Terms) error {
 		return nil
 	}
 	i.Rate, i.RateSource, i.QuoteID, i.BaseRate, i.FeeRate, i.Premium = t.Rate, t.RateSource, t.QuoteID, t.BaseRate, t.FeeRate, t.Premium
-	i.ExchangeRate, i.ReferenceRate, i.ReferenceProvider, i.FXFee, i.LockExpiresAt = t.ExchangeRate, t.ReferenceRate, t.ReferenceProvider, t.FXFee, t.LockExpiresAt
+	i.ExchangeRate, i.ReferenceRate, i.ReferenceProvider, i.FXFee, i.LockExpiresAt, i.Delayed = t.ExchangeRate, t.ReferenceRate, t.ReferenceProvider, t.FXFee, t.LockExpiresAt, t.Delayed
 	return i.Put()
 }
 

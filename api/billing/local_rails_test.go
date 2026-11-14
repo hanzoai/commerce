@@ -3,6 +3,7 @@ package billing
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/organization"
@@ -51,6 +52,10 @@ func quotedPix(ctx context.Context, t *testing.T, id string) (*organization.Orga
 	led := newFakeLedger()
 	injectLedger(t, led)
 	if err := pendingintent.PutQuoted(id, org.Name, "buyer", pendingintent.Topup, 500, "usd", 2750, "brl", 3, false); err != nil {
+		t.Fatal(err)
+	}
+	// Pix settles after the buyer has left: the attempt waits for it past the rate lock.
+	if err := pendingintent.Bind(id, pendingintent.Terms{Rate: 5.5, RateSource: "processor", Delayed: true}); err != nil {
 		t.Fatal(err)
 	}
 	return org, led
@@ -166,5 +171,51 @@ func TestAVoucherIsNotCancelledWhileItCanStillBePaid(t *testing.T) {
 	}
 	if len(d.cancelled) != 0 {
 		t.Fatal("a boleto still inside its life was cancelled")
+	}
+}
+
+// A card on a locked quote is abandoned when the lock lapses, not after the days a
+// voucher is given; a lock still running, and a delayed method, are waited for.
+func TestACardOnALockedQuoteIsAbandonedWhenTheLockLapses(t *testing.T) {
+	ctx := heldStore(t)
+	org := routingOrg(ctx, t)
+	open := func(id string, lockedUntil time.Time, delayed bool) *pendingintent.Intent {
+		if err := pendingintent.PutQuoted(id, org.Name, "buyer", pendingintent.Sale, 1500, "usd", 143000, "inr", 1, false); err != nil {
+			t.Fatal(err)
+		}
+		if err := pendingintent.Bind(id, pendingintent.Terms{Rate: 95.3, RateSource: "processor", QuoteID: "fxq_" + id, LockExpiresAt: lockedUntil.Unix(), Delayed: delayed}); err != nil {
+			t.Fatal(err)
+		}
+		p, _, _ := pendingintent.Get(id)
+		p.CreatedAt = time.Now().Add(-2 * time.Hour) // far inside 48 hours, past an hour
+		return p
+	}
+	d := &stripeDouble{tx: &processor.Transaction{Amount: 143000, Currency: "inr", Status: "requires_action"}}
+	useStripe(t, d)
+
+	// The lock lapsed: abandoned and cancelled at Stripe.
+	if err := reconcileIntent(ctx, open("pi_card_lapsed", time.Now().Add(-time.Minute), false)); err != nil {
+		t.Fatal(err)
+	}
+	if len(d.cancelled) != 1 || d.cancelled[0] != "pi_card_lapsed" {
+		t.Fatalf("a card whose lock lapsed must be cancelled, got %v", d.cancelled)
+	}
+	if closed, _, _ := pendingintent.Get("pi_card_lapsed"); !closed.Done {
+		t.Fatal("the abandoned attempt stays open")
+	}
+	// The lock still holds: waited for.
+	d.cancelled = nil
+	if err := reconcileIntent(ctx, open("pi_card_locked", time.Now().Add(30*time.Minute), false)); err != nil {
+		t.Fatal(err)
+	}
+	if len(d.cancelled) != 0 {
+		t.Fatal("a card inside its lock was cancelled")
+	}
+	// A delayed method outlives the lock: Pix is paid days later.
+	if err := reconcileIntent(ctx, open("pi_pix_lapsed", time.Now().Add(-time.Minute), true)); err != nil {
+		t.Fatal(err)
+	}
+	if len(d.cancelled) != 0 {
+		t.Fatal("a delayed method was cancelled when its lock lapsed")
 	}
 }

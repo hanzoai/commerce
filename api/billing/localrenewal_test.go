@@ -3,6 +3,7 @@ package billing
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -314,11 +315,15 @@ func TestASaleIsRefusedWhenTheLockedQuoteIsNotThePriceTheBuyerSaw(t *testing.T) 
 // when the buyer comes back naming the intent they authenticated.
 type authRail struct {
 	*chargingRail
+	failFinish bool // the bank's step was never completed, or its rate lock lapsed
 }
 
 func (r *authRail) Charge(_ context.Context, req processor.PaymentRequest) (*processor.PaymentResult, error) {
 	r.reqs = append(r.reqs, req)
 	if strings.HasPrefix(req.Token, "pi_") {
+		if r.failFinish {
+			return &processor.PaymentResult{ErrorMessage: "payment_intent_fx_quote_invalid"}, errors.New("payment_intent_fx_quote_invalid")
+		}
 		return &processor.PaymentResult{Success: true, ProcessorRef: "ch_after_3ds"}, nil
 	}
 	return &processor.PaymentResult{Error: &processor.ActionRequired{ID: "pi_3ds", ClientSecret: "pi_3ds_secret_x"}}, &processor.ActionRequired{ID: "pi_3ds", ClientSecret: "pi_3ds_secret_x"}
@@ -380,5 +385,49 @@ func TestAnIndianSaleFinishedAfterTheBanksStepIsOneCreditInRupeesOnItsQuote(t *t
 	}
 	if subs, _ := userSubscriptions(db, org.Name, false); len(subs) != 1 {
 		t.Fatalf("%d subscriptions after finishing twice; want 1", len(subs))
+	}
+}
+
+// A buyer who comes back after the rate lock lapsed, and whose payment did not go through,
+// is shown the new price and charged nothing; coming back with it confirmed, they are sold
+// at the fresh quote.
+func TestABuyerReturningAfterTheLockLapsedIsReQuotedAndShownTheNewPrice(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org, db, pm, ch := stripeBuyer(t, ctx, "sale-lapsed", "IN", 94.25)
+	rail := &authRail{chargingRail: ch}
+	old := processorsForOrg
+	processorsForOrg = func(*organization.Organization) *processor.Registry {
+		reg := processor.NewRegistry(processor.DefaultConfig())
+		reg.Register(rail)
+		return reg
+	}
+	t.Cleanup(func() { processorsForOrg = old })
+
+	in := SubscribeIn{MethodID: pm, PlanID: "go", Subject: org.Name, Country: "IN", QuotedAmount: 75400, QuotedCurrency: "inr"}
+	if _, err := Subscribe(ctx, org, in); err == nil {
+		t.Fatal("the first charge should ask for the bank's step")
+	}
+	// An hour on: the lock has lapsed and the rupee has moved.
+	rec, _, _ := pendingintent.Get("pi_3ds")
+	rec.LockExpiresAt = time.Now().Add(-time.Minute).Unix()
+	if err := rec.Put(); err != nil {
+		t.Fatal(err)
+	}
+	ch.rq.ID, ch.rq.PerDollar, ch.rq.BasePerDollar = "fxq_s9", 96.0, 96.0
+	rail.failFinish = true
+	in.SourceID = "pi_3ds"
+	_, err := Subscribe(ctx, org, in)
+	if err == nil || !strings.Contains(err.Error(), "lapsed") || !strings.Contains(err.Error(), "76800 inr") {
+		t.Fatalf("returning after the lapse = %v; want the new price, Rs 768, named", err)
+	}
+	if subs, _ := userSubscriptions(db, org.Name, false); len(subs) != 0 {
+		t.Fatalf("%d subscriptions opened by a payment that did not go through", len(subs))
+	}
+	// Seeing the new price, the buyer confirms it and is sold at the fresh quote.
+	rail.failFinish = false
+	fresh := SubscribeIn{MethodID: pm, PlanID: "go", Subject: org.Name, Country: "IN", QuotedAmount: 76800, QuotedCurrency: "inr"}
+	if _, err := Subscribe(ctx, org, fresh); err == nil {
+		t.Fatal("the fresh quote's first charge should ask for the bank's step again")
 	}
 }

@@ -181,21 +181,27 @@ func reconcileIntent(ctx context.Context, p *pendingintent.Intent) error {
 	switch tx.Status {
 	case "succeeded":
 	case "requires_action", "requires_payment_method", "requires_confirmation", "processing":
-		limit := abandonAfter
-		if p.PaidCurrency != "" {
-			// A voucher or a bank transfer (boleto, OXXO, SEPA debit) is paid days after
+		deadline := p.CreatedAt.Add(abandonAfter)
+		switch {
+		case p.PaidCurrency != "" && p.Delayed:
+			// A voucher or a bank transfer (boleto, OXXO, SEPA debit, Pix) is paid days after
 			// the buyer left, and cancelling it earlier would void a payment they may
 			// still make. Its webhook is the way it settles; this is the backstop, so it
 			// looks again every few hours until the voucher's own life is over.
-			limit = delayedAbandonAfter
+			deadline = p.CreatedAt.Add(delayedAbandonAfter)
+		case p.PaidCurrency != "" && p.LockExpiresAt > 0:
+			// A card on a locked quote: once the lock lapses the amount charged matches no
+			// live quote, so the attempt is abandoned there, not days later. A buyer who
+			// returns is re-quoted and shown the new amount before they authorize.
+			deadline = time.Unix(p.LockExpiresAt, 0)
 		}
-		if time.Since(p.CreatedAt) <= limit {
-			if p.PaidCurrency != "" {
+		if time.Now().Before(deadline) {
+			if p.PaidCurrency != "" && p.Delayed {
 				return pendingintent.Wait(p.Id(), time.Now().Add(delayedLookEvery))
 			}
-			// Only waiting on the buyer: not looked at again before its 48 hours are up,
-			// so a few waiting rows never crowd out the ones that took money.
-			return pendingintent.Wait(p.Id(), p.CreatedAt.Add(abandonAfter))
+			// Only waiting on the buyer: not looked at again before its deadline, so a few
+			// waiting rows never crowd out the ones that took money.
+			return pendingintent.Wait(p.Id(), deadline)
 		}
 		{
 			// The buyer never finished: cancel it at Stripe so it cannot succeed after

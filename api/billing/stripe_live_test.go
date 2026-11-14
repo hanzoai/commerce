@@ -1255,15 +1255,15 @@ func TestLiveStripe_ABuyerAtTheCapIsRefusedBeforeStripeIsAsked(t *testing.T) {
 // attributes the payment is written before the secret leaves.
 func TestLiveStripe_LocalIntentIsQuotedAndRecorded(t *testing.T) {
 	l := liveSetup(t)
-	old := fx.Rate
-	fx.Rate = func(context.Context, string) (float64, error) { return 5.5, nil }
-	t.Cleanup(func() { fx.Rate = old })
-
 	out, f := OpenTopupIntent(*l.ctx, l.org, TopupIntentIn{Subject: l.subject, Country: "BR", AmountCents: 500})
 	if f != nil {
 		t.Fatalf("open: %d %s (%v)", f.Status, f.Message, f.Err)
 	}
-	want := int64(math.Ceil(500 * 5.5 * 1.02))
+	// Stripe's own locked FX quote prices it: $5 at the rate it quoted, up to a whole real.
+	want := int64(math.Ceil(5*out.Rate-1e-9)) * 100
+	if out.Quote.Source != "processor" || !strings.HasPrefix(out.Quote.QuoteID, "fxq_") {
+		t.Fatalf("quote = %+v; want Stripe's FX quote", out.Quote)
+	}
 	if out.Currency != "brl" || out.Amount != want || out.UsdCents != 500 || out.ClientSecret == "" || out.PublishableKey == "" {
 		t.Fatalf("out = %+v; want %d brl for 500 usd cents", out, want)
 	}
@@ -1530,7 +1530,7 @@ func TestLiveStripe_AnIndianSaleThatNeedsTheBankIsBoundToItsQuoteAndAbandonedLea
 	}
 
 	// The buyer walks away.
-	rec.CreatedAt = time.Now().Add(-delayedAbandonAfter - time.Hour)
+	rec.LockExpiresAt = time.Now().Add(-time.Minute).Unix() // a card's attempt ends with its rate lock
 	if err := reconcileIntent(*l.ctx, rec); err != nil {
 		t.Fatalf("reconcile: %v", err)
 	}
