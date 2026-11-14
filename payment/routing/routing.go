@@ -45,6 +45,10 @@ type Policy struct {
 	// accounts that is on takes cards in the checkout's currency; a processor with none
 	// is eligible wherever the processor itself says it can take the charge.
 	Accounts []Account `json:"accounts"`
+	// CryptoRails say, in order, which processor takes a crypto payment in an asset:
+	// the first rule naming the asset (or "*") whose processor is on and able to take it.
+	// An admin changes the order at runtime and the next attempt follows it.
+	CryptoRails []CryptoRoute `json:"cryptoRails"`
 	// LocalOn lets Stripe's Payment Element offer each country's native methods.
 	LocalOn bool `json:"localOn"`
 	// Sticky keeps a payer on the processor the split first placed them on. On by
@@ -103,13 +107,78 @@ type ProcessorRule struct {
 // Stripe account. Country is where the account is and Currency what it charges in ("" for
 // any); neither is about the buyer. Cards says it takes card payments; On takes it in or
 // out of checkouts without deleting it.
+//
+// A custody or deposit account also says what it watches or talks to: Network and Asset
+// (base / usdc), Token (the contract, mint or issuer that defines the asset there),
+// Endpoint (the read endpoint, or the custody service), Address (the one pooled account
+// every payer sends to, on chains that have one), Confirmations (how many it waits for),
+// FeeCents and SlippageBps (the deductions on a sweep). SecretRef is a KMS path to the
+// credential the account needs, never the credential: admin edits the path, the
+// secret stays in KMS.
 type Account struct {
+	Processor     string `json:"processor"`
+	ID            string `json:"id"`
+	Country       string `json:"country,omitempty"`
+	Currency      string `json:"currency,omitempty"`
+	Cards         bool   `json:"cards"`
+	On            bool   `json:"on"`
+	Network       string `json:"network,omitempty"`
+	Asset         string `json:"asset,omitempty"`
+	Token         string `json:"token,omitempty"`
+	Endpoint      string `json:"endpoint,omitempty"`
+	Address       string `json:"address,omitempty"`
+	Confirmations int    `json:"confirmations,omitempty"`
+	FeeCents      int64  `json:"feeCents,omitempty"`
+	SlippageBps   int    `json:"slippageBps,omitempty"`
+	SecretRef     string `json:"secretRef,omitempty"`
+}
+
+// CryptoRoute sends payments in Asset ("*" for any) to Processor.
+type CryptoRoute struct {
+	Asset     string `json:"asset"`
 	Processor string `json:"processor"`
-	ID        string `json:"id"`
-	Country   string `json:"country,omitempty"`
-	Currency  string `json:"currency,omitempty"`
-	Cards     bool   `json:"cards"`
-	On        bool   `json:"on"`
+}
+
+// DefaultCryptoRails: stablecoins Stripe takes go to Stripe (settled in USD into its
+// balance, no custody, no address, no watcher); the coins it does not take go to Kraken;
+// MPC self-custody is last and off by default.
+func DefaultCryptoRails() []CryptoRoute {
+	return []CryptoRoute{
+		{"usdc", string(processor.Stripe)}, {"usdp", string(processor.Stripe)}, {"usdg", string(processor.Stripe)},
+		{"btc", string(processor.Kraken)}, {"eth", string(processor.Kraken)}, {"sol", string(processor.Kraken)},
+		{"usdt", string(processor.Kraken)}, {"*", string(processor.Kraken)}, {"*", string(processor.MPC)},
+	}
+}
+
+// StripeCrypto says Stripe's own crypto, stablecoins settled in USD into its balance and
+// credited on the same path as a card, is the rail for USDC: the crypto switch is on,
+// Stripe is on, and the rails put Stripe first for USDC.
+func (p Policy) StripeCrypto() bool {
+	if !p.On(CryptoRail) || !p.On(processor.Stripe) {
+		return false
+	}
+	procs := p.CryptoProcessors("usdc", nil)
+	return len(procs) > 0 && procs[0] == processor.Stripe
+}
+
+// CryptoProcessors are the processors that can take a crypto asset, in the order the
+// rails name them for it. able says a processor can take the asset now.
+func (p Policy) CryptoProcessors(asset string, able func(processor.ProcessorType) bool) []processor.ProcessorType {
+	asset = strings.ToLower(strings.TrimSpace(asset))
+	out := []processor.ProcessorType{}
+	seen := map[processor.ProcessorType]bool{}
+	for _, r := range p.CryptoRails {
+		if r.Asset != asset && r.Asset != "*" {
+			continue
+		}
+		t := processor.ProcessorType(r.Processor)
+		if seen[t] || !p.On(t) || (able != nil && !able(t)) {
+			continue
+		}
+		seen[t] = true
+		out = append(out, t)
+	}
+	return out
 }
 
 // DefaultProcessors is the platform split: Square and Stripe half and half, with PayPal
@@ -120,6 +189,11 @@ func DefaultProcessors() []ProcessorRule {
 		{string(processor.Stripe), true, 50},
 		{string(processor.PayPal), true, 0},
 		{CryptoRail, true, 0},
+		// Crypto custody and trading: they never take a buyer's card charge (weight 0),
+		// and are used only where the crypto rails name them. Kraken and MPC are off
+		// until an admin turns them on.
+		{string(processor.Kraken), false, 0},
+		{string(processor.MPC), false, 0},
 	}
 }
 
@@ -135,7 +209,11 @@ func KnownProcessor(name string) bool {
 // takesCards says a processor takes new card checkouts, as opposed to being another way
 // to pay beside the card slot (PayPal, crypto).
 func takesCards(name string) bool {
-	return name != CryptoRail && name != string(processor.PayPal)
+	switch processor.ProcessorType(name) {
+	case processor.Square, processor.Stripe, processor.Adyen, processor.Braintree, processor.Recurly, processor.LemonSqueezy:
+		return true
+	}
+	return false
 }
 
 // FallbackOrder is the order processors are tried in when the chosen one cannot take a
@@ -328,6 +406,11 @@ func (p Policy) MethodOn(method string) bool {
 // Off lists the Stripe-excludable methods switched off, to leave out of the Payment Element.
 func (p Policy) Off() []string {
 	out := []string{}
+	if !p.StripeCrypto() {
+		// Crypto in the Payment Element is Stripe's stablecoin rail: it is offered only
+		// while the crypto rails send a stablecoin to Stripe.
+		out = append(out, "crypto")
+	}
 	for _, m := range Excludable {
 		if !p.MethodOn(m) {
 			out = append(out, m)
@@ -338,7 +421,7 @@ func (p Policy) Off() []string {
 
 // Default is the platform policy: half and half across Square's eight countries.
 func Default() Policy {
-	return Policy{Processors: DefaultProcessors(), Accounts: []Account{}, LocalOn: true, Sticky: true, FXSource: FXProcessor, FXFee: FXPass, RoundingIncrements: []RoundingIncrement{}, LocalCurrencies: []LocalCurrencyRule{},
+	return Policy{Processors: DefaultProcessors(), Accounts: []Account{}, CryptoRails: DefaultCryptoRails(), LocalOn: true, Sticky: true, FXSource: FXProcessor, FXFee: FXPass, RoundingIncrements: []RoundingIncrement{}, LocalCurrencies: []LocalCurrencyRule{},
 		CurrencyRules: []CurrencyRule{}, CountryRules: []CountryRule{}, BrandRules: []BrandRule{}, IssuerCountryRules: []IssuerRule{}, Fallback: []string{}, LocalMethods: []MethodRule{}}
 }
 
@@ -356,6 +439,11 @@ func (p Policy) Normal() Policy {
 		ac = append(ac, a)
 	}
 	p.Accounts = ac
+	rails := []CryptoRoute{}
+	for _, r := range p.CryptoRails {
+		rails = append(rails, CryptoRoute{strings.ToLower(strings.TrimSpace(r.Asset)), strings.ToLower(strings.TrimSpace(r.Processor))})
+	}
+	p.CryptoRails = rails
 	cr := []CurrencyRule{}
 	for _, r := range p.CurrencyRules {
 		cr = append(cr, CurrencyRule{strings.ToLower(strings.TrimSpace(r.Currency)), strings.ToLower(strings.TrimSpace(r.Processor))})
@@ -419,6 +507,14 @@ func (p Policy) Valid() string {
 	}
 	if !anyOn {
 		return "at least one processor that takes cards must be on"
+	}
+	for _, r := range p.CryptoRails {
+		if r.Asset == "" {
+			return "cryptoRails: a rule names no asset"
+		}
+		if !KnownProcessor(r.Processor) {
+			return "cryptoRails: " + strconvQ(r.Processor) + " is not a processor"
+		}
 	}
 	seenA := map[string]bool{}
 	for _, a := range p.Accounts {
@@ -594,6 +690,11 @@ type Decision struct {
 	// Quote is the price of a local-currency payment for the amount the caller asked
 	// about, when it asked and the checkout is Stripe's.
 	Quote *Quote `json:"quote,omitempty"`
+	// Crypto says, per asset the crypto rails name, which processor takes it for this
+	// buyer, in the order the policy chose: "stripe" means the Payment Element's crypto
+	// option on a dollar intent (no address, no watcher); another processor means a
+	// deposit address minted for the payment.
+	Crypto []CryptoRoute `json:"crypto"`
 	// Alternatives are the other ways this buyer may pay, each its own button beside
 	// the card slot: "paypal" where PayPal operates, "crypto" where a deposit watcher
 	// is running. Filled by the caller, which knows what is configured.

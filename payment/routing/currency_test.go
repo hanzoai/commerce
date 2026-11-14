@@ -1,9 +1,12 @@
 package routing_test
 
 import (
+	"math"
 	"strings"
 	"testing"
 
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/payment/fx"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/payment/providers/stripe"
 	"github.com/hanzoai/commerce/payment/routing"
@@ -107,5 +110,46 @@ func TestMethodsAreTiedToTheirCurrency(t *testing.T) {
 		if !routing.KnownMethod(m) {
 			t.Errorf("excludable %s is unknown", m)
 		}
+	}
+}
+
+// A price is the smallest multiple of the currency's increment that covers what the
+// dollars convert to: never under it, and less than one increment over it. Checked for $5
+// and $8 in every currency Stripe presents, at rates from a few thousandths to tens of
+// thousands. There is no minimum-charge clamp inside the price, so there is no exception:
+// Stripe's minimum is checked on the dollars before a price is made.
+func TestAPriceCoversWhatTheDollarsConvertToAndExceedsItByLessThanOneIncrement(t *testing.T) {
+	p := routing.Default()
+	rates := []float64{0.0031, 0.27, 0.74, 1.0, 1.368, 1.4429, 3.6725, 7.21, 83.5, 150.4, 1403.2, 16000.5, 25000}
+	for i, c := range stripe.Presentment {
+		cur := string(c)
+		step := p.Step(cur)
+		dec := currency.Type(cur).Decimals()
+		for _, usd := range []int64{500, 800} {
+			rate := rates[i%len(rates)]
+			got, err := fx.Convert(usd, cur, rate, step)
+			if err != nil {
+				t.Errorf("%s $%d at %v: %v", cur, usd/100, rate, err)
+				continue
+			}
+			scale := math.Pow10(int(dec))
+			converted := float64(usd) / 100 * rate * scale // in minor units
+			if float64(got) < converted-1e-6 {
+				t.Errorf("%s $%d at %v: quoted %d minor units, under the %.4f it converts to", cur, usd/100, rate, got, converted)
+			}
+			if float64(got) >= converted+float64(step)-1e-6 {
+				t.Errorf("%s $%d at %v: quoted %d minor units, a full increment (%d) or more over the %.4f it converts to", cur, usd/100, rate, got, step, converted)
+			}
+			if got%step != 0 {
+				t.Errorf("%s: %d is not a multiple of its increment %d", cur, got, step)
+			}
+		}
+	}
+	// Canada, at today's rates: $5 at 1.4429 per dollar is C$7.21, so C$8: the smallest whole dollar over it.
+	if got, _ := fx.Convert(500, "cad", 1.4429, p.Step("cad")); got != 800 {
+		t.Errorf("$5 in CAD at 1.4429 = %d, want 800", got)
+	}
+	if got, _ := fx.Convert(500, "cad", 1.3683, p.Step("cad")); got != 700 {
+		t.Errorf("$5 in CAD at 1.3683 (C$6.84) = %d, want 700", got)
 	}
 }

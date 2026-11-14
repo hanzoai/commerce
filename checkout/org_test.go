@@ -293,7 +293,7 @@ func TestOrgJSON_MalformedHost(t *testing.T) {
 }
 
 func TestApplyCountryPolicy_SquarePayPalCryptoFallback(t *testing.T) {
-	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
+	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("*") }))
 	base := Org{
 		Name: "hanzo",
 		Providers: []Provider{

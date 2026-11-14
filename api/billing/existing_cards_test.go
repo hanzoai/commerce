@@ -29,7 +29,7 @@ func TestExistingSquareCardKeepsRenewingUnderTheStripeOnlyPolicy(t *testing.T) {
 	legacyPlan(t, ctx, "uni-legacy")
 	db := datastore.New(org.Namespaced(ctx))
 
-	t.Setenv(processor.ChargeProcessors, "*")
+	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("*") }))
 	sale := legacySale(t, ctx, org, "legacy-renewal", "uni-legacy")
 	pm := paymentmethod.New(db)
 	if err := pm.GetById(sale.PaymentMethodID); err != nil {
@@ -39,7 +39,7 @@ func TestExistingSquareCardKeepsRenewingUnderTheStripeOnlyPolicy(t *testing.T) {
 		t.Fatalf("the card was saved with %s; want square", providerOf(pm))
 	}
 
-	t.Setenv(processor.ChargeProcessors, "")
+	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("stripe") }))
 	t.Setenv("STRIPE_TEST_SECRET_KEY", "sk_test_present") // the default is Stripe alone where Stripe is keyed
 	if _, ok := cardVaultFrom(processorsForOrg(org), ""); ok {
 		t.Fatal("a NEW card could be saved with Square under the Stripe-only policy")
@@ -64,7 +64,7 @@ func TestRenewalsMoveToAStripeCardAndOffARemovedOne(t *testing.T) {
 	legacySquare(t, "fp_repoint")
 	legacyPlan(t, ctx, "uni-repoint")
 	db := datastore.New(org.Namespaced(ctx))
-	t.Setenv(processor.ChargeProcessors, "*")
+	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("*") }))
 	sale := legacySale(t, ctx, org, "repoint", "uni-repoint")
 	square := paymentmethod.New(db)
 	if err := square.GetById(sale.PaymentMethodID); err != nil {

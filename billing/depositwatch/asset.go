@@ -39,6 +39,8 @@ import (
 	"strings"
 
 	"github.com/hanzoai/commerce/models/cryptopaymentintent"
+	"github.com/hanzoai/commerce/payment/processor"
+	"github.com/hanzoai/commerce/payment/routing"
 )
 
 // Asset is ONE watched (chain, token) pair: where the token is defined on chain
@@ -62,6 +64,9 @@ type Asset struct {
 	// Normalising it any other way would break the comparison it exists for.
 	Contract string
 	RPCURL   string // JSON-RPC endpoint for Chain
+	// Confirmations is how many blocks the watcher waits for on this asset when the
+	// operator asks for more than the chain's own minimum; 0 takes the minimum.
+	Confirmations int
 
 	// PooledAddress is the ONE custody account this chain's deposits all land
 	// in, for a chain where deposits are POOLED (see Pooled). Empty everywhere
@@ -903,4 +908,56 @@ func AmountCents(units *big.Int, decimals int, rateMicroCents int64, terms Terms
 		return 0, fmt.Errorf("%w: %d cents arrived, fee is %d", ErrUnderFee, cents.Int64(), terms.FeeCents)
 	}
 	return net, nil
+}
+
+// AssetsFromAccounts builds the watch table from the policy's accounts: every account
+// that is on and names a Network and an Asset, with its Endpoint (the chain's read
+// endpoint), Token (what defines the asset there), Address (the pooled custody
+// account), FeeCents and SlippageBps. It is the SAME builder and the SAME refusals as
+// AssetsFromEnv, so an incoherent table (a token with no endpoint, a token this rail
+// cannot price, an address written for another chain) fails here exactly as it did.
+// Confirmations may only raise the chain's own minimum.
+func AssetsFromAccounts(accounts []routing.Account) ([]Asset, error) {
+	var pairs []string
+	rpcOf := map[string]string{}
+	for _, a := range accounts {
+		if !a.On || a.Network == "" || a.Asset == "" || a.Processor == string(processor.Kraken) {
+			continue
+		}
+		net, asset := strings.ToUpper(a.Network), strings.ToUpper(a.Asset)
+		if a.Endpoint != "" {
+			if prior, ok := rpcOf[net]; ok && prior != a.Endpoint {
+				return nil, fmt.Errorf("depositwatch: %s is given two endpoints, %q and %q", a.Network, prior, a.Endpoint)
+			}
+			rpcOf[net] = a.Endpoint
+			pairs = append(pairs, envRPCPrefix+net+"="+a.Endpoint)
+		}
+		if a.Token != "" {
+			pairs = append(pairs, envTokenPrefix+net+"_"+asset+"="+a.Token)
+		}
+		if a.Address != "" {
+			pairs = append(pairs, envAddressPrefix+net+"="+a.Address)
+		}
+		if a.FeeCents > 0 {
+			pairs = append(pairs, envFeePrefix+net+"="+strconv.FormatInt(a.FeeCents, 10))
+		}
+		if a.SlippageBps > 0 {
+			pairs = append(pairs, envSlippagePrefix+net+"="+strconv.Itoa(a.SlippageBps))
+		}
+	}
+	assets, err := AssetsFromEnv(pairs)
+	if err != nil {
+		return nil, err
+	}
+	for i, as := range assets {
+		for _, a := range accounts {
+			if a.On && strings.EqualFold(a.Network, as.Chain) && strings.EqualFold(a.Asset, as.Token) && a.Confirmations > 0 {
+				if min := cryptopaymentintent.RequiredConfirmationsForChain(cryptopaymentintent.Chain(as.Chain)); a.Confirmations < min {
+					return nil, fmt.Errorf("depositwatch: %s/%s asks for %d confirmations, below the %d %s needs", as.Chain, as.Token, a.Confirmations, min, as.Chain)
+				}
+				assets[i].Confirmations = a.Confirmations
+			}
+		}
+	}
+	return assets, nil
 }

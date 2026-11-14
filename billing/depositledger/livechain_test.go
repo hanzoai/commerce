@@ -37,7 +37,7 @@ func TestLiveChainReadPath(t *testing.T) {
 	c := ae.NewContext()
 	_ = c // the watcher resolves watched addresses before it reads the chain
 
-	svc, err := New(os.Environ())
+	svc, err := New(accountsOf(os.Environ()))
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}

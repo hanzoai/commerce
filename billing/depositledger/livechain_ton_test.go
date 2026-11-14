@@ -169,7 +169,7 @@ func TestLiveTONReadPath(t *testing.T) {
 	// jetton could not identify itself on chain, the ONLY acceptable outcome is
 	// a refusal — an unidentifiable token must credit nothing, and asserting it
 	// here proves the refusal survives all the way out to the scheduled pass.
-	svc, err := New(os.Environ())
+	svc, err := New(accountsOf(os.Environ()))
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}

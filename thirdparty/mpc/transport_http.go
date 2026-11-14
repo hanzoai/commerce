@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
+	"sync"
 )
 
 // httpTransport is the wire this rail has always used: JSON over HTTP to
@@ -21,9 +23,24 @@ import (
 // selected Transport is why there is only ever one implementation of "post JSON
 // at mpcd" to keep correct.
 type httpTransport struct {
+	mu       sync.RWMutex
 	endpoint string
 	apiKey   string
 	client   *http.Client
+}
+
+// conn is the endpoint and key as they stand now: they change when the policy's mpc
+// account does, with no restart.
+func (t *httpTransport) conn() (endpoint, apiKey string) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.endpoint, t.apiKey
+}
+
+func (t *httpTransport) set(endpoint, apiKey string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.endpoint, t.apiKey = strings.TrimRight(strings.TrimSpace(endpoint), "/"), strings.TrimSpace(apiKey)
 }
 
 // Keygen posts to mpcd's /keygen and returns the response body untouched.
@@ -35,7 +52,7 @@ type httpTransport struct {
 // impossible by construction rather than by our care.
 func (t *httpTransport) Keygen(ctx context.Context, orgID string) ([]byte, error) {
 	var raw json.RawMessage
-	if err := t.doJSON(ctx, http.MethodPost, t.endpoint+"/keygen",
+	if err := t.doJSON(ctx, http.MethodPost, t.ep()+"/keygen",
 		map[string]string{"org_id": orgID}, &raw); err != nil {
 		return nil, err
 	}
@@ -44,13 +61,13 @@ func (t *httpTransport) Keygen(ctx context.Context, orgID string) ([]byte, error
 
 // Health probes mpcd's /healthz.
 func (t *httpTransport) Health(ctx context.Context) error {
-	resp, err := t.doRequest(ctx, http.MethodGet, t.endpoint+"/healthz", nil)
+	resp, err := t.doRequest(ctx, http.MethodGet, t.ep()+"/healthz", nil)
 	if err != nil {
 		return err
 	}
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("mpc: GET %s/healthz returned %d", t.endpoint, resp.StatusCode)
+		return fmt.Errorf("mpc: GET %s/healthz returned %d", t.ep(), resp.StatusCode)
 	}
 	return nil
 }
@@ -70,8 +87,8 @@ func (t *httpTransport) doRequest(ctx context.Context, method, url string, body 
 		return nil, fmt.Errorf("mpc: build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	if t.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+t.apiKey)
+	if _, key := t.conn(); key != "" {
+		req.Header.Set("Authorization", "Bearer "+key)
 	}
 
 	resp, err := t.client.Do(req)
@@ -108,3 +125,5 @@ func (t *httpTransport) doJSON(ctx context.Context, method, url string, reqBody,
 
 // Ensure httpTransport satisfies the seam.
 var _ Transport = (*httpTransport)(nil)
+
+func (t *httpTransport) ep() string { e, _ := t.conn(); return e }

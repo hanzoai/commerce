@@ -14,7 +14,7 @@ import (
 // test (COMMERCE_CHARGE_PROCESSORS=*); the deployment default is Stripe alone.
 func ensureDefaultProcessorPolicy(t *testing.T) {
 	t.Helper()
-	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
+	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("*") }))
 }
 
 func orgWithSquareCreds() *organization.Organization {

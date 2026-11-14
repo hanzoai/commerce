@@ -15,7 +15,7 @@ import (
 // (a US/USD location takes dollars from any buyer), nothing on an account the
 // merchant does not hold, and never Stripe, which hosts no checkout page.
 func TestCheckoutProcessors_Rule(t *testing.T) {
-	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
+	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("*") }))
 	squaretest.Everywhere(t, "US", "usd")
 	org := &organization.Organization{Live: true}
 	org.Name = "merchant"
@@ -48,7 +48,7 @@ func TestCheckoutProcessors_Rule(t *testing.T) {
 // Hosted checkout does not gate Square on the buyer's country (eligibility is the
 // merchant location's), but a sanctioned buyer is refused.
 func TestSanctionedOnly(t *testing.T) {
-	t.Setenv("COMMERCE_CHARGE_PROCESSORS", "*")
+	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("*") }))
 	squaretest.Everywhere(t, "US", "usd")
 	for in, want := range map[string]string{"DE": "", "BR": "", "": "", "US": "", "IR": "IR", "ru": "ru"} {
 		if got := sanctionedOnly(in); got != want {

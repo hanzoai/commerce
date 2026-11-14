@@ -3,14 +3,15 @@ package depositledger
 import (
 	"context"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hanzoai/commerce/billing/depositwatch"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/payment/providers/kraken"
+	"github.com/hanzoai/commerce/payment/routing"
 )
 
 // defaultInterval is how often the watcher looks at the chains.
@@ -29,16 +30,25 @@ const defaultInterval = 30 * time.Second
 // with no CRYPTO_DEPOSIT_* environment watches nothing and behaves exactly as
 // before this package existed.
 type Service struct {
-	assets   []depositwatch.Asset
-	watcher  *depositwatch.Watcher
-	kraken   *kraken.Processor
+	// st is what is watched now. It is replaced whole when the policy's accounts change
+	// (Apply), so a pass in flight finishes on the set it began with.
+	st       atomic.Pointer[state]
 	store    depositwatch.Store
 	cursor   depositwatch.Cursor
 	interval time.Duration
+	reader   func(depositwatch.Asset) (depositwatch.Reader, error)
 
 	mu     sync.Mutex
 	cancel context.CancelFunc
 	done   chan struct{}
+}
+
+// state is one reading of the policy's deposit accounts: the assets, the chain watcher
+// over them, and the exchange processor when an exchange account is on.
+type state struct {
+	assets  []depositwatch.Asset
+	watcher *depositwatch.Watcher
+	kraken  *kraken.Processor
 }
 
 // Option configures a Service (seams for tests: a fake chain, a fake store).
@@ -66,14 +76,14 @@ func WithReader(fn func(depositwatch.Asset) (depositwatch.Reader, error)) Option
 // WithInterval overrides the schedule period.
 func WithInterval(d time.Duration) Option { return func(b *builder) { b.interval = d } }
 
-// New builds the watcher from the environment (KMS-injected; pass os.Environ()).
+// New builds the watcher from the policy's accounts.
 //
 // It returns an error ONLY on an incoherent configuration — a token with no
 // endpoint, an unpriceable token, a malformed address. That is deliberately
 // fatal to boot (see commerce.Bootstrap): an operator who configured a deposit
 // rail must not get a process that silently watches less than they asked for,
 // because the failure mode is money arriving at an address nobody reads.
-func New(environ []string, opts ...Option) (*Service, error) {
+func New(accounts []routing.Account, opts ...Option) (*Service, error) {
 	b := &builder{
 		store:    intentStore{},
 		cursor:   cursorStore{},
@@ -84,46 +94,87 @@ func New(environ []string, opts ...Option) (*Service, error) {
 		o(b)
 	}
 
-	assets, err := depositwatch.AssetsFromEnv(environ)
+	s := &Service{store: b.store, cursor: b.cursor, interval: b.interval, reader: b.reader}
+	st, err := s.build(context.Background(), accounts)
 	if err != nil {
 		return nil, err
 	}
-	kp, krakenAssets := krakenFromEnv(environ)
-	s := &Service{assets: assets, kraken: kp, store: b.store, cursor: b.cursor, interval: b.interval}
+	s.st.Store(st)
+	return s, nil
+}
+
+// build reads the accounts into a watch set. It fails closed on an incoherent table and
+// changes nothing.
+func (s *Service) build(ctx context.Context, accounts []routing.Account) (*state, error) {
+	assets, err := depositwatch.AssetsFromAccounts(accounts)
+	if err != nil {
+		return nil, err
+	}
+	kp, krakenAssets := krakenFromAccounts(ctx, accounts)
+	st := &state{assets: assets, kraken: kp}
 	if len(assets) > 0 {
 		bound := make([]depositwatch.Bound, 0, len(assets))
 		for _, a := range assets {
-			r, err := b.reader(a)
+			r, err := s.reader(a)
 			if err != nil {
 				return nil, err
 			}
 			bound = append(bound, depositwatch.Bound{Asset: a, Reader: r})
 		}
-		s.watcher = depositwatch.New(bound, b.store, b.cursor)
+		st.watcher = depositwatch.New(bound, s.store, s.cursor)
 	}
 	if len(krakenAssets) > 0 {
-		existing := make(map[string]bool, len(s.assets))
-		for _, a := range s.assets {
+		existing := make(map[string]bool, len(st.assets))
+		for _, a := range st.assets {
 			existing[strings.ToLower(a.Chain)+":"+strings.ToLower(a.Token)] = true
 		}
 		for _, ka := range krakenAssets {
 			if !existing[ka.Chain+":"+ka.Token] {
-				s.assets = append(s.assets, ka)
+				st.assets = append(st.assets, ka)
 			}
 		}
 	}
-	return s, nil
+	return st, nil
+}
+
+// Apply makes accounts what is watched, now. A table that does not hold is refused and
+// the previous one stays. A network whose account was switched off or removed stops
+// being watched, one added starts, and the schedule keeps turning (or stays stopped) as
+// it was: this changes WHAT is read, never whether the process is reading.
+func (s *Service) Apply(ctx context.Context, accounts []routing.Account) error {
+	if s == nil {
+		return nil
+	}
+	st, err := s.build(ctx, accounts)
+	if err != nil {
+		return err
+	}
+	s.st.Store(st)
+	return nil
+}
+
+func (s *Service) state() *state {
+	if s == nil {
+		return &state{}
+	}
+	if st := s.st.Load(); st != nil {
+		return st
+	}
+	return &state{}
 }
 
 // Enabled reports whether any asset is being watched.
-func (s *Service) Enabled() bool { return s != nil && (s.watcher != nil || s.kraken != nil) }
+func (s *Service) Enabled() bool {
+	st := s.state()
+	return s != nil && (st.watcher != nil || st.kraken != nil)
+}
 
 // Assets reports the watched assets (boot log / diagnostics).
 func (s *Service) Assets() []depositwatch.Asset {
 	if s == nil {
 		return nil
 	}
-	return s.assets
+	return s.state().assets
 }
 
 // Running reports whether the schedule is actually turning.
@@ -136,7 +187,7 @@ func (s *Service) Assets() []depositwatch.Asset {
 // would follow the money to a balance. So this, not Enabled, is what the mint
 // gate consults (api/billing.watchedAssets).
 func (s *Service) Running() bool {
-	if s == nil || (s.watcher == nil && s.kraken == nil) {
+	if st := s.state(); s == nil || (st.watcher == nil && st.kraken == nil) {
 		return false
 	}
 	s.mu.Lock()
@@ -189,7 +240,7 @@ func (s *Service) Status(ctx context.Context) Status {
 	if s == nil {
 		return st
 	}
-	for _, a := range s.assets {
+	for _, a := range s.state().assets {
 		as := AssetStatus{
 			Chain: a.Chain, Token: a.Token, Contract: a.Contract,
 			Endpoint: rpcHost(a.RPCURL), Pooled: a.PooledAddress,
@@ -227,15 +278,16 @@ func (s *Service) SyncOnce(ctx context.Context) (int, error) {
 		return 0, nil
 	}
 	var total int
-	if s.watcher != nil {
-		n, err := s.watcher.Sync(ctx)
+	st := s.state()
+	if st.watcher != nil {
+		n, err := st.watcher.Sync(ctx)
 		total += n
 		if err != nil {
 			return total, err
 		}
 	}
-	if s.kraken != nil {
-		n, err := s.syncKraken(ctx)
+	if st.kraken != nil {
+		n, err := s.syncKraken(ctx, st)
 		total += n
 		if err != nil {
 			return total, err
@@ -257,9 +309,11 @@ func (s *Service) SyncOnce(ctx context.Context) (int, error) {
 // ledger row, not two. The only cost of a second replica is a second read of the
 // same blocks.
 func (s *Service) Start() {
-	if !s.Enabled() {
+	if s == nil {
 		return
 	}
+	// The schedule turns whether or not anything is watched yet: an account the admin
+	// adds later is picked up by the next pass, and a pass over nothing is a no-op.
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.cancel != nil {
@@ -328,6 +382,3 @@ func SetDefault(s *Service) { defaultService = s }
 
 // Default returns the process-wide watcher (may be a disabled Service).
 func Default() *Service { return defaultService }
-
-// Env is os.Environ, named here so callers read as intent rather than mechanism.
-func Env() []string { return os.Environ() }

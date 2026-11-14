@@ -132,14 +132,10 @@ type krakenEnvelope struct {
 	Result json.RawMessage `json:"result"`
 }
 
+// init registers the processor unconfigured: its credentials come from the policy's
+// kraken account (Configure), at runtime, never from the environment.
 func init() {
-	p := NewProcessor(Config{
-		APIKey:    strings.TrimSpace(os.Getenv("KRAKEN_API_KEY")),
-		APISecret: strings.TrimSpace(os.Getenv("KRAKEN_API_SECRET")),
-		APIURL:    strings.TrimSpace(os.Getenv("KRAKEN_API_URL")),
-		OTP:       strings.TrimSpace(os.Getenv("KRAKEN_OTP")),
-	})
-	processor.Register(p)
+	processor.Register(NewProcessor(Config{}))
 }
 
 // NewProcessor creates a Kraken processor instance from the given Config.
@@ -193,23 +189,8 @@ func (p *Processor) configureCredentials(apiKey, apiSecret string) {
 	p.SetConfigured(true)
 }
 
-// IsAvailable reports whether Kraken API credentials are configured (checking
-// environment variables dynamically if credentials were injected after init).
+// IsAvailable reports whether Kraken API credentials are configured.
 func (p *Processor) IsAvailable(ctx context.Context) bool {
-	if p.BaseProcessor.IsAvailable(ctx) {
-		return true
-	}
-	key := strings.TrimSpace(os.Getenv("KRAKEN_API_KEY"))
-	secret := strings.TrimSpace(os.Getenv("KRAKEN_API_SECRET"))
-	if key != "" && secret != "" {
-		if urlEnv := strings.TrimSpace(os.Getenv("KRAKEN_API_URL")); urlEnv != "" {
-			p.baseURL = strings.TrimRight(urlEnv, "/")
-		}
-		if otpEnv := strings.TrimSpace(os.Getenv("KRAKEN_OTP")); otpEnv != "" {
-			p.otp = otpEnv
-		}
-		p.configureCredentials(key, secret)
-	}
 	return p.BaseProcessor.IsAvailable(ctx)
 }
 
@@ -261,10 +242,14 @@ func (p *Processor) GenerateAddress(ctx context.Context, customerID string, chai
 		return processor.Wallet{}, err
 	}
 
-	chosen, ok := pickDepositAddress(addrs)
+	// An address is bound to exactly one open payment: the new=false fallback hands back
+	// addresses that were minted earlier, and one of them may be waiting on another
+	// payment. Only an address bound to no open payment is chosen; when there is none the
+	// payment is refused, never attributed to an address already spoken for.
+	chosen, ok := pickFreeAddress(addrs, processor.AddressFreeFromContext(ctx))
 	if !ok {
-		return processor.Wallet{}, processor.NewPaymentError(processor.Kraken, "NO_ADDRESS",
-			fmt.Sprintf("kraken: DepositAddresses returned no usable address for asset=%s method=%q", asset, method), nil)
+		return processor.Wallet{}, processor.NewPaymentError(processor.Kraken, "NO_FREE_ADDRESS",
+			fmt.Sprintf("kraken: no deposit address for asset=%s method=%q is free of an open payment", asset, method), nil)
 	}
 
 	tag := strings.TrimSpace(chosen.Tag)
@@ -603,14 +588,22 @@ func isChainSupported(chain string) bool {
 }
 
 func pickDepositAddress(addrs []DepositAddress) (DepositAddress, bool) {
-	// Prefer a newly generated address (New: true) that has a non-empty Address.
+	return pickFreeAddress(addrs, nil)
+}
+
+// pickFreeAddress chooses a deposit address, a newly generated one before a reused one,
+// and only one that free says is bound to no open payment (nil free accepts any).
+func pickFreeAddress(addrs []DepositAddress, free func(string) bool) (DepositAddress, bool) {
+	ok := func(a DepositAddress) bool {
+		return strings.TrimSpace(a.Address) != "" && (free == nil || free(strings.TrimSpace(a.Address)))
+	}
 	for _, a := range addrs {
-		if strings.TrimSpace(a.Address) != "" && a.New {
+		if a.New && ok(a) {
 			return a, true
 		}
 	}
 	for _, a := range addrs {
-		if strings.TrimSpace(a.Address) != "" {
+		if ok(a) {
 			return a, true
 		}
 	}

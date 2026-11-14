@@ -69,7 +69,7 @@ func (mp *MPCProcessor) Sign(ctx context.Context, orgID, walletID string, n cust
 	}
 
 	var resp signResp
-	err := mp.http.doJSON(ctx, http.MethodPost, mp.mpcEndpoint+"/sign", &signReq{
+	err := mp.http.doJSON(ctx, http.MethodPost, mp.http.ep()+"/sign", &signReq{
 		OrgID:          orgID,
 		WalletID:       walletID,
 		Network:        string(n),

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -174,29 +173,20 @@ func IsDepositRefused(err error) bool {
 func IsDepositNotFound(err error) bool { return errors.Is(err, errDepositNotFound) }
 
 // cryptoProcessor resolves the ONE crypto custody processor (default MPC,
-// cryptoProcessor resolves the active CryptoProcessor for minting per-payment
-// deposit addresses.
-//
-// Resolution order:
-//  1. Explicit COMMERCE_DEFAULT_CRYPTO_PROCESSOR environment override, if set.
-//  2. Kraken exchange processor (processor.Kraken), when KRAKEN_API_KEY and
-//     KRAKEN_API_SECRET are configured — mints 1 fresh exchange deposit address
-//     per payment via Kraken's DepositAddresses API (new=true).
-//  3. MPC threshold custody processor (processor.MPC).
+// cryptoProcessor resolves the CryptoProcessor that mints addresses for payments in asset
+// ("" asks for any), from the policy's crypto rails: the first processor the rails name
+// for the asset that is on and reachable. The order is the admin's, read when the payment
+// is attempted, so flipping it takes effect on the next one. Stripe is a rail in the list
+// but takes crypto in the Payment Element, mints no address and is not asked here.
 //
 // Availability is probed with a short deadline so an unconfigured or wedged
 // endpoint answers 503 fast instead of hanging the request.
-func cryptoProcessor(ctx context.Context) (processor.CryptoProcessor, error) {
-	candidates := []processor.ProcessorType{processor.Kraken, processor.MPC}
-	if explicit := strings.ToLower(strings.TrimSpace(os.Getenv("COMMERCE_DEFAULT_CRYPTO_PROCESSOR"))); explicit != "" {
-		first := processor.ProcessorType(explicit)
-		candidates = []processor.ProcessorType{first}
-		for _, fallback := range []processor.ProcessorType{processor.Kraken, processor.MPC} {
-			if fallback != first {
-				candidates = append(candidates, fallback)
-			}
-		}
+func cryptoProcessor(ctx context.Context, asset string) (processor.CryptoProcessor, error) {
+	pol, err := ReadRouting(ctx, "")
+	if err != nil {
+		return nil, err
 	}
+	candidates := pol.CryptoProcessors(asset, func(t processor.ProcessorType) bool { return t != processor.Stripe })
 
 	probe, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
@@ -251,7 +241,7 @@ func cryptoProcessor(ctx context.Context) (processor.CryptoProcessor, error) {
 func GetCryptoOptions(ctx context.Context) (CryptoOptions, error) {
 	// The custody signer must still be reachable — an asset nobody can mint an
 	// address for is no more useful than one nobody can credit.
-	cp, err := cryptoProcessor(ctx)
+	cp, err := cryptoProcessor(ctx, "")
 	var assets []CryptoAsset
 	if err == nil {
 		assets = offeredAssets(watchedAssets(), cp.SupportedChains())
@@ -579,7 +569,7 @@ func CreateCryptoDeposit(ctx context.Context, org *organization.Organization, pa
 	var cp processor.CryptoProcessor
 	if !pooled {
 		var err error
-		cp, err = cryptoProcessor(ctx)
+		cp, err = cryptoProcessor(ctx, token)
 		if err != nil {
 			return CryptoDeposit{}, depositRefusal{msg: "Crypto deposits not configured", cause: err}
 		}
@@ -648,7 +638,8 @@ func CreateCryptoDeposit(ctx context.Context, org *organization.Organization, pa
 		wallet = processor.Wallet{Address: addr}
 	} else {
 		var err error
-		if wallet, err = cp.GenerateAddress(processor.WithToken(ctx, token), payer, chain); err != nil {
+		mintCtx := processor.WithAddressFree(processor.WithToken(ctx, token), func(addr string) bool { return !addressSpokenFor(db, addr, "") })
+		if wallet, err = cp.GenerateAddress(mintCtx, payer, chain); err != nil {
 			return CryptoDeposit{}, depositRefusal{
 				msg:   "Crypto deposits are temporarily unavailable — the custody service is not accepting new addresses. Try again shortly or choose another way to pay.",
 				cause: fmt.Errorf("crypto deposit address generation failed for %q on %s: %w", payer, chain, err),
@@ -662,6 +653,13 @@ func CreateCryptoDeposit(ctx context.Context, org *organization.Organization, pa
 	intent, err := recordIntent(db, payer, chain, token, amountCents, wallet, tag)
 	if err != nil {
 		return CryptoDeposit{}, err
+	}
+	if !pooled && addressSpokenFor(db, wallet.Address, intent.Id()) {
+		// Another open payment holds this address (two requests chose it at once, or the
+		// processor handed back one already in use): this one is withdrawn, never both.
+		intent.Status = cryptopaymentintent.Expired
+		_ = intent.Update()
+		return CryptoDeposit{}, depositRefusal{msg: "Crypto deposits are temporarily unavailable — no deposit address is free right now. Try again shortly or choose another way to pay."}
 	}
 
 	return toCryptoDepositResponse(intent), nil
@@ -858,4 +856,39 @@ func supportedChain(cp processor.CryptoProcessor, chain string) bool {
 		}
 	}
 	return false
+}
+
+// addressSpokenFor says an open payment other than except holds the deposit address: an
+// intent still pending or confirming and not past its expiry. A per-payment address is
+// bound to exactly one of them at a time.
+func addressSpokenFor(db *datastore.Datastore, address, except string) bool {
+	rows := make([]*cryptopaymentintent.CryptoPaymentIntent, 0)
+	if _, err := cryptopaymentintent.Query(db).Filter("DepositAddress=", address).GetAll(&rows); err != nil {
+		return true // an unreadable store is not proof the address is free
+	}
+	now := time.Now()
+	var holder *cryptopaymentintent.CryptoPaymentIntent
+	for _, r := range rows {
+		if r.Id() == except || (r.Status != cryptopaymentintent.Pending && r.Status != cryptopaymentintent.Confirming) || now.After(r.ExpiresAt) {
+			continue
+		}
+		if except == "" {
+			return true
+		}
+		// A race between two requests: the one made first keeps the address, so exactly one
+		// of them is withdrawn whichever runs this check.
+		if holder == nil || r.CreatedAt.Before(holder.CreatedAt) {
+			holder = r
+		}
+	}
+	if except == "" || holder == nil {
+		return false
+	}
+	var mine *cryptopaymentintent.CryptoPaymentIntent
+	for _, r := range rows {
+		if r.Id() == except {
+			mine = r
+		}
+	}
+	return mine != nil && !mine.CreatedAt.Before(holder.CreatedAt)
 }

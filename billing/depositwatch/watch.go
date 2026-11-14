@@ -390,7 +390,7 @@ func (w *Watcher) syncAsset(ctx context.Context, a *asset) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	required := uint64(cryptopaymentintent.RequiredConfirmationsForChain(cryptopaymentintent.Chain(a.Chain)))
+	required := uint64(max(cryptopaymentintent.RequiredConfirmationsForChain(cryptopaymentintent.Chain(a.Chain)), a.Confirmations))
 
 	last, err := w.cursor.Last(ctx, a.Key())
 	if err != nil {
