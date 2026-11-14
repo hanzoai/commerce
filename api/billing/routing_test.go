@@ -1069,3 +1069,43 @@ func TestAPolicyStoredInTheOldShapeIsMigratedOnceAtLoad(t *testing.T) {
 		t.Fatalf("the restored row is in the old shape: %+v", row)
 	}
 }
+
+func TestCryptoIsOfferedOnlyWhenTheCryptoMenuCanServe(t *testing.T) {
+	ctx := heldStore(t)
+	org := routingOrg(ctx, t)
+	t.Setenv(processor.ChargeProcessors, "stripe,square,paypal")
+	old, oldServes := processorsForOrg, cryptoServes
+	processorsForOrg = func(*organization.Organization) *processor.Registry {
+		reg := processor.NewRegistry(processor.DefaultConfig())
+		for _, k := range []processor.ProcessorType{processor.Square, processor.Stripe, processor.PayPal} {
+			reg.Register(newRail(k, true))
+		}
+		return reg
+	}
+	t.Cleanup(func() { processorsForOrg, cryptoServes = old, oldServes })
+
+	// The picker cannot serve (custody signer not allowed or unreachable): crypto is not offered.
+	cryptoServes = func(context.Context) bool { return false }
+	if d, f := Place(ctx, org, RouteIn{Subject: "c", Country: "DE"}); f != nil || contains(d.Alternatives, "crypto") {
+		t.Fatalf("crypto was offered while the menu cannot serve: %+v %v", d, f)
+	}
+	// The picker can serve: crypto is offered beside the card.
+	cryptoServes = func(context.Context) bool { return true }
+	if d, f := Place(ctx, org, RouteIn{Subject: "c", Country: "DE"}); f != nil || !contains(d.Alternatives, "crypto") {
+		t.Fatalf("crypto was not offered while the menu can serve: %+v %v", d, f)
+	}
+	// The real answer with the custody processors not allowed by the charge policy is "cannot serve".
+	cryptoServes = oldServes
+	if cryptoServes(ctx) {
+		t.Fatal("crypto served with mpc and kraken outside COMMERCE_CHARGE_PROCESSORS")
+	}
+}
+
+func contains(l []string, s string) bool {
+	for _, v := range l {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
