@@ -1073,7 +1073,13 @@ func TestAPolicyStoredInTheOldShapeIsMigratedOnceAtLoad(t *testing.T) {
 func TestCryptoIsOfferedOnlyWhenTheCryptoMenuCanServe(t *testing.T) {
 	ctx := heldStore(t)
 	org := routingOrg(ctx, t)
-	t.Setenv(processor.ChargeProcessors, "stripe,square,paypal")
+	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("stripe,square,paypal") }))
+	// Custody only: the rails send no stablecoin to Stripe, so crypto is offered only if the menu serves.
+	custody := routing.Default()
+	custody.CryptoRails = []routing.CryptoRoute{{Asset: "*", Processor: "mpc"}}
+	if _, f := WriteRouting(ctx, org.Name, custody, "z", ""); f != nil {
+		t.Fatal(f.Err)
+	}
 	old, oldServes := processorsForOrg, cryptoServes
 	processorsForOrg = func(*organization.Organization) *processor.Registry {
 		reg := processor.NewRegistry(processor.DefaultConfig())
@@ -1097,7 +1103,15 @@ func TestCryptoIsOfferedOnlyWhenTheCryptoMenuCanServe(t *testing.T) {
 	// The real answer with the custody processors not allowed by the charge policy is "cannot serve".
 	cryptoServes = oldServes
 	if cryptoServes(ctx) {
-		t.Fatal("crypto served with mpc and kraken outside COMMERCE_CHARGE_PROCESSORS")
+		t.Fatal("crypto served with mpc and kraken outside the policy's processors")
+	}
+	// With Stripe first for USDC crypto is the Payment Element's, and offered whatever the custody menu says.
+	cryptoServes = func(context.Context) bool { return false }
+	if _, f := WriteRouting(ctx, org.Name, routing.Default(), "z", ""); f != nil {
+		t.Fatal(f.Err)
+	}
+	if d, f := Place(ctx, org, RouteIn{Subject: "c2", Country: "DE"}); f != nil || !contains(d.Alternatives, "crypto") {
+		t.Fatalf("Stripe crypto was not offered: %+v %v", d, f)
 	}
 }
 
