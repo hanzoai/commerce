@@ -72,25 +72,26 @@ func TestTransport_SelectingZAPDoesNotDial(t *testing.T) {
 	}
 }
 
-// The environment is what actually selects the wire in a running commerce, and
-// a setting that never reaches the processor is a feature that does nothing.
-// This walks the real path — environment, DefaultConfig, NewProcessor — because
-// that is the path registration takes and the only one worth pinning.
-func TestDefaultConfig_EnvironmentSelectsTheWire(t *testing.T) {
-	t.Setenv("MPC_KMS_ENDPOINT", "https://kms.example")
-
-	t.Run("unset stays on HTTP", func(t *testing.T) {
-		t.Setenv("MPC_ZAP_ADDR", "")
+// The policy's mpc account is what selects the wire in a running commerce, and a setting
+// that never reaches the processor is a feature that does nothing. This walks the real
+// path — DefaultConfig, NewProcessor, Configure — because that is the path the runtime
+// takes, and it reads nothing from the environment.
+func TestConfigure_TheAccountSelectsTheWireAndTheSecrets(t *testing.T) {
+	t.Run("unset stays on HTTP and off", func(t *testing.T) {
 		mp := NewProcessor(DefaultConfig())
 		if _, ok := mp.transport.(*httpTransport); !ok {
-			t.Fatalf("transport is %T with MPC_ZAP_ADDR unset, want *httpTransport", mp.transport)
+			t.Fatalf("transport is %T before any account, want *httpTransport", mp.transport)
 		}
 		if mp.configured() {
 			t.Error("the rail is configured before the policy's mpc account names an endpoint")
 		}
-		mp.Configure("https://mpc.example", "")
-		if !mp.configured() {
-			t.Error("rail is not configured with both endpoints set")
+		mp.Configure(Settings{Endpoint: "https://mpc.example", KMSEndpoint: "https://kms.example", WebhookSecret: "whsec"})
+		if !mp.configured() || mp.kmsEndpoint != "https://kms.example" || mp.secret() != "whsec" || !mp.ReceivesWebhooks() {
+			t.Errorf("rail = configured %v kms %q webhooks %v; want the account's settings", mp.configured(), mp.kmsEndpoint, mp.ReceivesWebhooks())
+		}
+		mp.Configure(Settings{})
+		if mp.configured() || mp.ReceivesWebhooks() {
+			t.Error("an empty account left the rail on")
 		}
 	})
 
@@ -98,26 +99,30 @@ func TestDefaultConfig_EnvironmentSelectsTheWire(t *testing.T) {
 		"mpc-node-headless.hanzo-mpc.svc.cluster.local:9805",
 		"/run/mpc/zap.sock",
 	} {
-		t.Run("MPC_ZAP_ADDR="+addr, func(t *testing.T) {
-			t.Setenv("MPC_ZAP_ADDR", addr)
+		t.Run("zap="+addr, func(t *testing.T) {
 			mp := NewProcessor(DefaultConfig())
-			zt, ok := mp.transport.(*zapTransport)
+			mp.Configure(Settings{Endpoint: "https://mpc.example", ZAPAddress: addr})
+			zt, ok := mp.wire().(*zapTransport)
 			if !ok {
-				t.Fatalf("transport is %T with MPC_ZAP_ADDR=%q, want *zapTransport", mp.transport, addr)
+				t.Fatalf("transport is %T with zap=%q, want *zapTransport", mp.wire(), addr)
 			}
 			if zt.addr != addr {
 				t.Errorf("transport dials %q, want %q", zt.addr, addr)
 			}
+			// And back to HTTP when the account drops it.
+			mp.Configure(Settings{Endpoint: "https://mpc.example"})
+			if _, ok := mp.wire().(*httpTransport); !ok {
+				t.Errorf("transport is %T after the zap address was removed, want *httpTransport", mp.wire())
+			}
 		})
 	}
 
-	// Surrounding whitespace is a configuration accident, not an address. A
-	// padded value must not be mistaken for one, nor turn the wire on.
+	// Surrounding whitespace is a configuration accident, not an address.
 	t.Run("whitespace is not an address", func(t *testing.T) {
-		t.Setenv("MPC_ZAP_ADDR", "   ")
 		mp := NewProcessor(DefaultConfig())
-		if _, ok := mp.transport.(*httpTransport); !ok {
-			t.Fatalf("transport is %T for a blank MPC_ZAP_ADDR, want *httpTransport", mp.transport)
+		mp.Configure(Settings{Endpoint: "https://mpc.example", ZAPAddress: "   "})
+		if _, ok := mp.wire().(*httpTransport); !ok {
+			t.Fatalf("transport is %T for a blank zap address, want *httpTransport", mp.wire())
 		}
 	})
 }

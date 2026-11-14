@@ -131,6 +131,27 @@ type Account struct {
 	FeeCents      int64  `json:"feeCents,omitempty"`
 	SlippageBps   int    `json:"slippageBps,omitempty"`
 	SecretRef     string `json:"secretRef,omitempty"`
+	// Endpoints and Secrets are the account's other named endpoints and credentials (the mpc
+	// account's "kms" control plane and "zap" address; its "webhook" secret). A secret's
+	// value is a KMS path, like SecretRef.
+	Endpoints []Named `json:"endpoints,omitempty"`
+	Secrets   []Named `json:"secrets,omitempty"`
+}
+
+// Named is a name and its value, in a list because the policy holds no maps.
+type Named struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+// Get is the value named name, or "".
+func Get(l []Named, name string) string {
+	for _, n := range l {
+		if n.Name == name {
+			return n.Value
+		}
+	}
+	return ""
 }
 
 // CryptoRoute sends payments in Asset ("*" for any) to Processor.

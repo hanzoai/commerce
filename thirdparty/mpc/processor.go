@@ -9,9 +9,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hanzoai/money"
@@ -24,8 +24,11 @@ import (
 // using Hanzo KMS (control plane) + MPC Signer (signing backend).
 type MPCProcessor struct {
 	*processor.BaseProcessor
+	// mu guards the settings below, which the policy's mpc account changes at runtime.
+	mu            sync.RWMutex
 	kmsEndpoint   string
 	webhookSecret string
+	zapAddr       string
 
 	// transport carries keygen and health, and which wire it is came from
 	// configuration at construction. Nothing below this field ever asks: that
@@ -77,25 +80,13 @@ type Config struct {
 // called it with, while registration built its own Config from a DIFFERENT set,
 // so the two could not agree and the dead one silently claimed the good name.
 func DefaultConfig() Config {
-	kmsEndpoint := strings.TrimSpace(os.Getenv("MPC_KMS_ENDPOINT"))
-	if kmsEndpoint == "" {
-		kmsEndpoint = "https://kms.hanzo.ai"
-	}
-
-	return Config{
-		KMSEndpoint: kmsEndpoint,
-
-		// The secret the MPC service signs its deliveries with, separate from
-		// the API key we authenticate outbound calls with. Unset means inbound
-		// webhooks are refused, so turning the rail on means provisioning both.
-		WebhookSecret: strings.TrimSpace(os.Getenv("MPC_WEBHOOK_SECRET")),
-
-		// Where mpcd's ZAP surface listens, and naming it is what moves keygen
-		// and health onto that wire. Unset — every deployment until one says
-		// otherwise — leaves the rail on HTTP exactly as before.
-		ZAPAddress: strings.TrimSpace(os.Getenv("MPC_ZAP_ADDR")),
-	}
+	// Nothing here is read from the environment: the rail is configured at runtime from
+	// the routing policy's mpc account (Configure), and until then it is off.
+	return Config{KMSEndpoint: defaultKMSEndpoint}
 }
+
+// defaultKMSEndpoint is the control plane the rail uses when the policy names none.
+const defaultKMSEndpoint = "https://kms.hanzo.ai"
 
 // NewProcessor creates a new MPC processor.
 func NewProcessor(cfg Config) *MPCProcessor {
@@ -131,7 +122,10 @@ func NewProcessor(cfg Config) *MPCProcessor {
 // rail without an HTTP endpoint is still a rail that can mint a custody address
 // and never spend from it.
 func (mp *MPCProcessor) configured() bool {
-	return mp.kmsEndpoint != "" && mp.http.ep() != ""
+	mp.mu.RLock()
+	kms := mp.kmsEndpoint
+	mp.mu.RUnlock()
+	return kms != "" && mp.http.ep() != ""
 }
 
 // MPCSupportedCurrencies returns cryptocurrencies supported by MPC.
@@ -347,7 +341,7 @@ func (mp *MPCProcessor) GenerateAddress(ctx context.Context, customerID string, 
 			fmt.Sprintf("MPC signer mints no address for chain %s", chain), nil)
 	}
 
-	raw, err := mp.transport.Keygen(ctx, orgID)
+	raw, err := mp.wire().Keygen(ctx, orgID)
 	if err != nil {
 		return processor.Wallet{}, processor.NewPaymentError(processor.MPC, "KEYGEN_FAILED", "failed to generate MPC wallet", err)
 	}
@@ -480,14 +474,14 @@ func (mp *MPCProcessor) ValidateWebhook(ctx context.Context, payload []byte, sig
 	if !mp.configured() {
 		return nil, fmt.Errorf("%w: mpc rail is not configured", processor.ErrWebhookValidationFailed)
 	}
-	if mp.webhookSecret == "" {
+	if mp.secret() == "" {
 		return nil, fmt.Errorf("%w: mpc webhook secret is not configured", processor.ErrWebhookValidationFailed)
 	}
 	if len(payload) == 0 || signature == "" {
 		return nil, processor.ErrWebhookValidationFailed
 	}
 
-	mac := hmac.New(sha256.New, []byte(mp.webhookSecret))
+	mac := hmac.New(sha256.New, []byte(mp.secret()))
 	mac.Write(payload)
 	expected := mac.Sum(nil)
 
@@ -526,7 +520,7 @@ func (mp *MPCProcessor) ValidateWebhook(ctx context.Context, payload []byte, sig
 
 // ReceivesWebhooks reports whether the rail can verify the MPC service's
 // deliveries: it holds the secret they are signed with.
-func (mp *MPCProcessor) ReceivesWebhooks() bool { return mp.webhookSecret != "" }
+func (mp *MPCProcessor) ReceivesWebhooks() bool { return mp.secret() != "" }
 
 var _ processor.WebhookReceiver = (*MPCProcessor)(nil)
 
@@ -543,16 +537,52 @@ func (mp *MPCProcessor) IsAvailable(ctx context.Context) bool {
 	healthCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	return mp.transport.Health(healthCtx) == nil
+	return mp.wire().Health(healthCtx) == nil
 }
 
 // Ensure MPCProcessor implements CryptoProcessor.
 var _ processor.CryptoProcessor = (*MPCProcessor)(nil)
 
-// Configure points the rail at the policy's mpc account: its endpoint and the API key
-// read from the account's secret reference. An empty endpoint turns the rail off. It
-// takes effect on the next call, with no restart.
-func (mp *MPCProcessor) Configure(endpoint, apiKey string) {
-	mp.http.set(endpoint, apiKey)
+// Settings are what the policy's mpc account gives the rail: the signer's endpoint and
+// API key, the KMS control plane, the ZAP address that moves keygen and health onto that
+// wire, and the secret the service signs its deliveries with.
+type Settings struct {
+	Endpoint      string
+	APIKey        string
+	KMSEndpoint   string
+	ZAPAddress    string
+	WebhookSecret string
+}
+
+// Configure points the rail at the policy's mpc account. Empty Endpoint turns the rail
+// off. It takes effect on the next call, with no restart.
+func (mp *MPCProcessor) Configure(st Settings) {
+	kms := strings.TrimRight(strings.TrimSpace(st.KMSEndpoint), "/")
+	if kms == "" {
+		kms = defaultKMSEndpoint
+	}
+	mp.mu.Lock()
+	mp.kmsEndpoint = kms
+	mp.webhookSecret = strings.TrimSpace(st.WebhookSecret)
+	if zap := strings.TrimSpace(st.ZAPAddress); zap != mp.zapAddr {
+		mp.zapAddr = zap
+		mp.transport = newTransport(Config{ZAPAddress: zap}, mp.http)
+	}
+	mp.mu.Unlock()
+	mp.http.set(st.Endpoint, st.APIKey)
 	mp.SetConfigured(mp.configured())
+}
+
+// wire is the transport carrying keygen and health as it stands now.
+func (mp *MPCProcessor) wire() Transport {
+	mp.mu.RLock()
+	defer mp.mu.RUnlock()
+	return mp.transport
+}
+
+// secret is the webhook secret as it stands now.
+func (mp *MPCProcessor) secret() string {
+	mp.mu.RLock()
+	defer mp.mu.RUnlock()
+	return mp.webhookSecret
 }

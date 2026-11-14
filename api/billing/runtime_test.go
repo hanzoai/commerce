@@ -21,6 +21,7 @@ import (
 	"github.com/hanzoai/commerce/payment/providers/kraken"
 	"github.com/hanzoai/commerce/payment/routing"
 	"github.com/hanzoai/commerce/secrets"
+	"github.com/hanzoai/commerce/thirdparty/mpc"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
@@ -150,7 +151,10 @@ func TestTheEnvironmentSeedsThePolicyOnceAndIsNeverReadAgain(t *testing.T) {
 	t.Setenv("CRYPTO_DEPOSIT_TOKEN_BASE_USDC", "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913")
 	t.Setenv("MPC_ENDPOINT", "https://mpc.example")
 	t.Setenv("MPC_API_KEY", "x")
-	useSecrets(t, mapSecrets{"/commerce-secrets/MPC_API_KEY": "x"})
+	t.Setenv("MPC_KMS_ENDPOINT", "https://kms.example")
+	t.Setenv("MPC_ZAP_ADDR", "mpc.svc:9805")
+	t.Setenv("MPC_WEBHOOK_SECRET", "wh")
+	useSecrets(t, mapSecrets{"/commerce-secrets/MPC_API_KEY": "x", "/commerce-secrets/MPC_WEBHOOK_SECRET": "wh"})
 	installRuntime(t, ctx)
 
 	pol, v, err := ReadRoutingVersioned(ctx, "")
@@ -174,7 +178,9 @@ func TestTheEnvironmentSeedsThePolicyOnceAndIsNeverReadAgain(t *testing.T) {
 		}
 	}
 	if base == nil || base.Endpoint != "https://mainnet.base.org" || base.Token != "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" ||
-		mpcSvc == nil || mpcSvc.Endpoint != "https://mpc.example" || mpcSvc.SecretRef != "/commerce-secrets/MPC_API_KEY" {
+		mpcSvc == nil || mpcSvc.Endpoint != "https://mpc.example" || mpcSvc.SecretRef != "/commerce-secrets/MPC_API_KEY" ||
+		routing.Get(mpcSvc.Endpoints, "kms") != "https://kms.example" || routing.Get(mpcSvc.Endpoints, "zap") != "mpc.svc:9805" ||
+		routing.Get(mpcSvc.Secrets, "webhook") != "/commerce-secrets/MPC_WEBHOOK_SECRET" {
 		t.Fatalf("accounts = %+v", pol.Accounts)
 	}
 
@@ -329,4 +335,44 @@ func cryptoIntentByAddress(t *testing.T, org *organization.Organization, ctx con
 		t.Fatalf("no intent holds %s (%v)", address, err)
 	}
 	return rows[0]
+}
+
+// The mpc account in the policy configures the rail live: its endpoint, its KMS and ZAP
+// endpoints, and the webhook secret read from KMS; removed, the rail is off.
+func TestTheMPCAccountConfiguresTheRailAtRuntime(t *testing.T) {
+	ctx := heldStore(t)
+	installRuntime(t, ctx)
+	useSecrets(t, mapSecrets{"/commerce-secrets/MPC_API_KEY": "k", "/commerce-secrets/MPC_WEBHOOK_SECRET": "wh"})
+	p, err := processor.Global().Registered(processor.MPC)
+	if err != nil {
+		t.Skip("mpc is not registered in this build")
+	}
+	rail := p.(*mpc.MPCProcessor)
+	if rail.ReceivesWebhooks() {
+		t.Fatal("the rail takes webhooks before any account names a secret")
+	}
+	pol := routing.Default()
+	setOn(&pol, "mpc", true)
+	pol.Accounts = []routing.Account{{Processor: "mpc", ID: "service", Endpoint: "https://mpc.example", On: true, SecretRef: "/commerce-secrets/MPC_API_KEY",
+		Endpoints: []routing.Named{{Name: "kms", Value: "https://kms.example"}, {Name: "zap", Value: "mpc.svc:9805"}},
+		Secrets:   []routing.Named{{Name: "webhook", Value: "/commerce-secrets/MPC_WEBHOOK_SECRET"}}}}
+	if _, f := WriteRouting(ctx, "", pol, "z", ""); f != nil {
+		t.Fatalf("policy: %v", f.Err)
+	}
+	if !rail.ReceivesWebhooks() {
+		t.Fatal("the webhook secret in the account did not reach the rail")
+	}
+	// A webhook secret that does not resolve is refused.
+	bad := pol
+	bad.Accounts = []routing.Account{pol.Accounts[0]}
+	bad.Accounts[0].Secrets = []routing.Named{{Name: "webhook", Value: "/commerce-secrets/NOPE"}}
+	if _, f := WriteRouting(ctx, "", bad, "z", ""); f == nil {
+		t.Fatal("an unresolvable webhook secret was accepted")
+	}
+	if _, f := WriteRouting(ctx, "", routing.Default(), "z", ""); f != nil {
+		t.Fatal(f.Err)
+	}
+	if rail.ReceivesWebhooks() {
+		t.Fatal("the account was removed and the rail still takes webhooks")
+	}
 }

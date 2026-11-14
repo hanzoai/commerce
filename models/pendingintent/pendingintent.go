@@ -121,6 +121,11 @@ func PutRef(id, org, subject, purpose, ref string, cents int64, currency string,
 // PutQuoted is Put for a local-method intent: Cents of Currency is the credit, and
 // the buyer pays paidCents of paidCurrency for it.
 func PutQuoted(id, org, subject, purpose string, cents int64, cur string, paidCents int64, paidCur string, version int, test bool) error {
+	return PutQuotedRef(id, org, subject, purpose, "", cents, cur, paidCents, paidCur, version, test)
+}
+
+// PutQuotedRef is PutQuoted for an intent that also names what it pays (an invoice).
+func PutQuotedRef(id, org, subject, purpose, ref string, cents int64, cur string, paidCents int64, paidCur string, version int, test bool) error {
 	id = strings.TrimSpace(id)
 	if id == "" || org == "" || subject == "" {
 		return nil
@@ -132,7 +137,7 @@ func PutQuoted(id, org, subject, purpose string, cents int64, cur string, paidCe
 	i := new(Intent)
 	i.Init(d)
 	i.SetId(id)
-	i.Org, i.Subject, i.Purpose, i.Cents, i.Currency, i.Test = org, subject, purpose, cents, strings.ToLower(cur), test
+	i.Org, i.Subject, i.Purpose, i.Ref, i.Cents, i.Currency, i.Test = org, subject, purpose, ref, cents, strings.ToLower(cur), test
 	i.PaidCents, i.PaidCurrency, i.PolicyVersion = paidCents, strings.ToLower(paidCur), version
 	return i.Put()
 }

@@ -975,7 +975,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	if actionOf(res, err) != nil {
 		var rerr error
 		if lq != nil && finished == "" {
-			rerr = registerQuotedAction(res, err, org, in.Subject, pendingintent.Sale, chargeCents+bal, lq)
+			rerr = registerQuotedAction(res, err, org, in.Subject, pendingintent.Sale, "", chargeCents+bal, lq)
 		} else {
 			rerr = registerAction(res, err, org, in.Subject, pendingintent.Sale, chargeCents+bal, cur)
 		}
@@ -1949,6 +1949,7 @@ func chargeProvider(org *organization.Organization, buyerPresent bool) engine.Pr
 		}
 		// A subscription billed in the buyer's currency is re-quoted for this renewal.
 		var local *RenewalQuote
+		usdOwed := amountCents
 		if bc := strings.ToLower(strings.TrimSpace(sub.BillingCurrency)); bc != "" && currency.Type(bc) != cur {
 			lq, lerr := requoteLocalRenewal(ctx, db, org, sub, pm, inv, amountCents, cur, bc, buyerPresent)
 			if lerr != nil {
@@ -1970,7 +1971,13 @@ func chargeProvider(org *organization.Organization, buyerPresent bool) engine.Pr
 		desc := fmt.Sprintf("Subscription renewal invoice %s", inv.NumberStr)
 		var res *processor.PaymentResult
 		var err error
-		if open := finishedInvoiceIntent(inv); open != nil {
+		open := finishedInvoiceIntent(inv)
+		if open != nil && open.PaidCurrency != "" && open.LockExpiresAt > 0 && open.LockExpiresAt <= time.Now().Unix()+30 && releaseIntent(ctx, reg, open) {
+			// The rate it was quoted at has lapsed and Stripe has cancelled it unpaid: the
+			// buyer is charged afresh, at a new quote, below.
+			open = nil
+		}
+		if open != nil {
 			// The buyer was sent to their bank for this invoice: it is settled from that
 			// intent if they finished, and NEVER charged again beside it — by the cron
 			// or by another press of "pay" — while they have not.
@@ -1994,7 +2001,13 @@ func chargeProvider(org *organization.Organization, buyerPresent bool) engine.Pr
 			}
 			res, err = chargeSavedCardAt(ctx, reg, pm, amountCents, cur, squareKey, desc, buyerPresent, qid)
 			if buyerPresent && actionOf(res, err) != nil {
-				if rerr := registerActionFor(res, err, org, inv.UserId, pendingintent.Invoice, inv.Id(), amountCents, cur); rerr != nil {
+				var rerr error
+				if local != nil {
+					rerr = registerQuotedAction(res, err, org, inv.UserId, pendingintent.Invoice, inv.Id(), usdOwed, local.Quote)
+				} else {
+					rerr = registerActionFor(res, err, org, inv.UserId, pendingintent.Invoice, inv.Id(), amountCents, cur)
+				}
+				if rerr != nil {
 					return "", rerr
 				}
 			}
@@ -2123,7 +2136,10 @@ func payInvoiceIntent(ctx context.Context, reg *processor.Registry, pm *paymentm
 	if cerr != nil || replayed {
 		return nil, fmt.Errorf("this payment is already being applied"), false
 	}
-	if p.Cents < owedCents {
+	// What the intent took is in the currency it was charged in: the buyer's own for a
+	// quoted payment, whose amount is what they authenticated, not the dollars it credits.
+	taken, takenCur := p.Charged()
+	if taken < owedCents || !strings.EqualFold(takenCur, string(cur)) {
 		// Not enough for what is owed now: give it back and ask again for the right amount.
 		if _, rerr := sp.Refund(ctx, processor.RefundRequest{TransactionID: p.Id(), Reason: "requested_by_customer", IdempotencyKey: "invoice-refund:" + p.Id()}); rerr != nil {
 			_ = claim.Delete()
@@ -2133,7 +2149,7 @@ func payInvoiceIntent(ctx context.Context, reg *processor.Registry, pm *paymentm
 		_, _ = pendingintent.Settle(p.Id())
 		return nil, errors.New("the amount due changed after you paid, so your payment was returned; pay again for the amount now due"), false
 	}
-	res, err = chargeFinished(ctx, reg, pm, p.Id(), p.Cents, cur, desc)
+	res, err = chargeFinished(ctx, reg, pm, p.Id(), taken, cur, desc)
 	if err != nil || res == nil || !res.Success {
 		_ = claim.Delete()
 		return res, err, false
@@ -2141,7 +2157,7 @@ func payInvoiceIntent(ctx context.Context, reg *processor.Registry, pm *paymentm
 	// The invoice is settled by the intent's charge. What it took beyond what was
 	// owed is returned now (after the charge was verified: a refunded charge is not
 	// money in hand), and said loudly if that fails.
-	if excess := p.Cents - owedCents; excess > 0 {
+	if excess := taken - owedCents; excess > 0 {
 		if _, rerr := sp.Refund(ctx, processor.RefundRequest{TransactionID: p.Id(), Amount: money.FromMinor(excess, cur.Money()), Reason: "requested_by_customer", IdempotencyKey: "invoice-excess:" + p.Id(), Metadata: map[string]interface{}{excessRefund: "invoice"}}); rerr != nil {
 			log.Error("RECONCILE: invoice paid from intent %s, which took %d more than was owed; returning the excess failed: %v", p.Id(), excess, rerr)
 		}
@@ -2163,4 +2179,22 @@ func plural(n int64) string {
 		return ""
 	}
 	return "s"
+}
+
+// releaseIntent cancels an intent at its processor and closes its record, and says it did.
+// An intent that cannot be cancelled (it has succeeded, or the processor will not say) is
+// left as it is.
+func releaseIntent(ctx context.Context, reg *processor.Registry, p *pendingintent.Intent) bool {
+	sp, err := reg.Existing(ctx, processor.Stripe)
+	if err != nil {
+		return false
+	}
+	c, ok := sp.(interface {
+		CancelIntent(context.Context, string) error
+	})
+	if !ok || c.CancelIntent(ctx, p.Id()) != nil {
+		return false
+	}
+	_, _ = pendingintent.Settle(p.Id())
+	return true
 }
