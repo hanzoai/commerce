@@ -238,3 +238,20 @@ func CountOpen(subject string) (int, error) {
 	}
 	return len(rows), nil
 }
+
+// Since lists the subject's intents for purpose recorded at or after since, newest
+// first, settled or not.
+func Since(subject, purpose string, since time.Time) ([]*Intent, error) {
+	rows := make([]*Intent, 0)
+	if _, err := db().Query("pending-intent").Filter("Subject=", subject).GetAll(&rows); err != nil {
+		return nil, err
+	}
+	var out []*Intent
+	for _, r := range rows {
+		if r.Purpose == purpose && !r.CreatedAt.Before(since) {
+			out = append(out, r)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.After(out[j].CreatedAt) })
+	return out, nil
+}

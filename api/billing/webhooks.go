@@ -337,7 +337,7 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 	// What the processor took, kept for the soundness check; what is CREDITED is the
 	// quote the buyer agreed to when it differs (a local method), never the
 	// processor's figure in another currency.
-	charged := amount
+	charged, chargedCur := amount, cur
 	if who.credit > 0 {
 		amount, cur = who.credit, who.creditCur
 	}
@@ -466,6 +466,15 @@ func applySettlementEvent(ctx context.Context, db *datastore.Datastore, org *org
 	}
 	if err := paymentorg.Put(paymentID, who.org, who.subject, "", 0, who.test); err != nil {
 		log.Warn("settlement %s: the org index was not written: %v", paymentID, err)
+	} else if who.credit > 0 {
+		// Paid in the buyer's currency against a quote: remember both figures, so a
+		// refund or a dispute in that currency is taken back in the dollars credited.
+		if _, _, err := paymentorg.Change(paymentID, func(r *paymentorg.PaymentOrg) bool {
+			r.PaidCents, r.PaidCurrency, r.CreditCents = int64(charged), strings.ToLower(string(chargedCur)), int64(amount)
+			return true
+		}); err != nil {
+			log.Error("RECONCILE: payment %s was credited %d against a quote of %d %s and the quote was not recorded, so a refund of it cannot be converted: %v", paymentID, amount, charged, chargedCur, err)
+		}
 	}
 	if claim != nil {
 		_ = idempotencykey.Complete(claim, paymentID)
@@ -1351,10 +1360,45 @@ func applyClawbackEvent(ctx context.Context, booked *datastore.Datastore, org *o
 	if !moves {
 		return nil
 	}
+	// A payment paid in the buyer's currency against a quote was credited in dollars:
+	// what is refunded or withheld in the buyer's currency is taken back as its
+	// proportional share of that credit, never the foreign figure read as dollars, and
+	// never more than the credit less what earlier ones took.
+	take := int64(amount)
+	if where.PaidCurrency != "" && where.PaidCents > 0 && strings.EqualFold(string(cur), where.PaidCurrency) {
+		total, own, _, cerr := claimed(db, where.Subject, paymentID, ref)
+		if cerr != nil {
+			return fmt.Errorf("%s %s on payment %s: what earlier ones took could not be read: %w", event.Type, id, paymentID, cerr)
+		}
+		take = quotedShare(where.CreditCents, int64(amount), where.PaidCents)
+		if own > 0 {
+			take = own // this one was applied before: the redelivery posts what was recorded
+		} else {
+			take = min(take, where.CreditCents-total)
+		}
+		cur = currency.USD
+		if take <= 0 && !won {
+			return nil
+		}
+	}
 	return clawback(ctx, db, creditledger.ClawbackInput{
 		Org: where.Org, Subject: where.Subject, Payment: paymentID,
-		Ref: ref, AmountCents: int64(amount), Reason: event.Type + " " + id, Test: where.Test,
+		Ref: ref, AmountCents: take, Reason: event.Type + " " + id, Test: where.Test,
 	}, cur, won)
+}
+
+// quotedShare is the part of a credit that a refund of `refunded` takes back, when the
+// payment was `paid` in the buyer's currency and credited `credit` in the wallet's:
+// credit * refunded / paid, to the nearest cent, never more than the credit. A full
+// refund is the whole credit exactly.
+func quotedShare(credit, refunded, paid int64) int64 {
+	if credit <= 0 || refunded <= 0 || paid <= 0 {
+		return 0
+	}
+	if refunded >= paid {
+		return credit
+	}
+	return min((credit*refunded+paid/2)/paid, credit)
 }
 
 // takeOrder applies a refund or a dispute to an organization's order: one payment
