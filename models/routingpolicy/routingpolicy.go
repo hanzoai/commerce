@@ -59,6 +59,7 @@ type Decision struct {
 	Processor string `json:"processor"`
 	Country   string `json:"country"`
 	Reason    string `json:"reason"`
+	Version   int    `json:"version"`
 }
 
 func (d *Decision) Load(ps []datastore.Property) error  { return datastore.LoadStruct(d, ps) }
@@ -96,14 +97,14 @@ func Put(ctx context.Context, id string, in Row) error {
 }
 
 // Record keeps one routing answer.
-func Record(ctx context.Context, org, processor, country, reason string) error {
+func Record(ctx context.Context, org, processor, country, reason string, version int) error {
 	d := db(ctx)
 	r := new(Decision)
 	r.Init(d)
 	var b [12]byte
 	_, _ = rand.Read(b[:])
 	r.SetId(hex.EncodeToString(b[:]))
-	r.Org, r.Processor, r.Country, r.Reason = org, processor, country, reason
+	r.Org, r.Processor, r.Country, r.Reason, r.Version = org, processor, country, reason, version
 	return r.Put()
 }
 
@@ -135,11 +136,13 @@ func Recent(ctx context.Context, n int) ([]*Decision, error) {
 type Assignment struct {
 	mixin.Model[Assignment]
 
-	Org       string    `json:"org"`
-	Subject   string    `json:"subject"`
-	Processor string    `json:"processor"`
-	Attempt   string    `json:"attempt,omitempty"`
-	AttemptAt time.Time `json:"attemptAt,omitempty"`
+	Org       string `json:"org"`
+	Subject   string `json:"subject"`
+	Processor string `json:"processor"`
+	Attempt   string `json:"attempt,omitempty"`
+	// AttemptVersion is the policy version the attempt was begun under.
+	AttemptVersion int       `json:"attemptVersion,omitempty"`
+	AttemptAt      time.Time `json:"attemptAt,omitempty"`
 }
 
 func (a *Assignment) Load(ps []datastore.Property) error  { return datastore.LoadStruct(a, ps) }
@@ -185,7 +188,7 @@ func Place(ctx context.Context, org, subject, processor string) error {
 
 // Begin marks a charge on processor started for the payer: until End says how it
 // ended, no other processor is offered to them.
-func Begin(ctx context.Context, org, subject, processor, ref string) error {
+func Begin(ctx context.Context, org, subject, processor, ref string, version int) error {
 	cur, found, err := Assigned(ctx, org, subject)
 	if err != nil {
 		return err
@@ -198,7 +201,7 @@ func Begin(ctx context.Context, org, subject, processor, ref string) error {
 	if found && cur.Processor != "" {
 		a.Processor = cur.Processor
 	}
-	a.Attempt, a.AttemptAt = ref, time.Now()
+	a.Attempt, a.AttemptAt, a.AttemptVersion = ref, time.Now(), version
 	return a.Put()
 }
 

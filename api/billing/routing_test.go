@@ -3,6 +3,8 @@ package billing
 import (
 	"bytes"
 	"context"
+	"errors"
+	"github.com/hanzoai/commerce/payment/fx"
 	"github.com/hanzoai/commerce/util/test/ae"
 	"net/http"
 	"net/http/httptest"
@@ -126,7 +128,7 @@ func (r rail) SupportedCurrencies() []currency.Type {
 	if r.kind == processor.Square {
 		return []currency.Type{currency.USD} // a US/USD Square location
 	}
-	return []currency.Type{currency.USD, currency.EUR, currency.GBP}
+	return []currency.Type{currency.USD, currency.EUR, currency.GBP, "brl", "chf"}
 }
 
 // Eligible is Square's answer for a US/USD merchant location: only dollars, and only while it is up.
@@ -368,7 +370,7 @@ func TestNoOtherProcessorIsOfferedWhileASquareChargeIsUnresolved(t *testing.T) {
 	ctx := heldStore(t)
 	org := routingOrg(ctx, t)
 	useRails(t, true, true)
-	if err := routingpolicy.Begin(ctx, org.Name, "midway", "square", "attempt-1"); err != nil {
+	if err := routingpolicy.Begin(ctx, org.Name, "midway", "square", "attempt-1", 1); err != nil {
 		t.Fatal(err)
 	}
 	// Square goes down mid-attempt: the payer is held, not handed to Stripe to pay twice.
@@ -658,7 +660,7 @@ func TestTheFallbackOrderIsTheAdminsAndIsUsedOnlyBeforePayment(t *testing.T) {
 		t.Fatalf("pre-payment failover: %+v %v", d, f)
 	}
 	// Once a Square attempt exists, no failover: the payer waits for its outcome.
-	if err := routingpolicy.Begin(ctx, org.Name, "fb2", "square", "att"); err != nil {
+	if err := routingpolicy.Begin(ctx, org.Name, "fb2", "square", "att", 1); err != nil {
 		t.Fatal(err)
 	}
 	if _, f := Place(ctx, org, RouteIn{Subject: "fb2", Country: "DE"}); f == nil || f.Status != 409 {
@@ -685,5 +687,130 @@ func TestTheDefaultPolicyIsTodaysBehaviour(t *testing.T) {
 	}
 	if m := p.Methods(processor.Square, "US"); strings.Contains(strings.Join(m, ","), "apple_pay") {
 		t.Fatalf("apple_pay is off but mounted: %v", m)
+	}
+}
+
+func stubRates(t *testing.T, rates map[string]float64) {
+	t.Helper()
+	old := fx.Rate
+	fx.Rate = func(_ context.Context, cur string) (float64, error) {
+		if r, ok := rates[cur]; ok {
+			return r, nil
+		}
+		return 0, errors.New("no rate source for " + cur)
+	}
+	t.Cleanup(func() { fx.Rate = old })
+}
+
+func TestTheSpreadAndTheCountryTableArePolicyAndShapeTheQuote(t *testing.T) {
+	ctx := heldStore(t)
+	useRails(t, true, true)
+	stubRates(t, map[string]float64{"eur": 0.9, "brl": 5})
+	reg := processorsForOrg(&organization.Organization{})
+
+	p := routing.Default()
+	q, f := quoteFor(ctx, reg, p, 1000, "DE", "", "")
+	if f != nil || q.Currency != "eur" || q.MarkupBps != 200 || q.Amount != 918 || q.UsdCents != 1000 {
+		t.Fatalf("default: %+v %v", q, f)
+	}
+	p.FXSpreadBps = 0
+	if q, _ = quoteFor(ctx, reg, p, 1000, "DE", "", ""); q.Amount != 900 || q.MarkupBps != 0 {
+		t.Fatalf("a spread of 0 changes the quote: %+v", q)
+	}
+	p.FXSpreadBps = 500
+	if q, _ = quoteFor(ctx, reg, p, 1000, "DE", "", ""); q.Amount != 945 || q.MarkupBps != 500 {
+		t.Fatalf("a spread of 500 changes the quote: %+v", q)
+	}
+	// The table is a default, never a restriction: BR is brl by default, usd when the
+	// admin sets it, and a DE buyer may choose usd or brl whatever the table says.
+	p = routing.Default()
+	if q, _ = quoteFor(ctx, reg, p, 1000, "BR", "", ""); q.Currency != "brl" {
+		t.Fatalf("BR default: %+v", q)
+	}
+	p.LocalCurrencies = []routing.LocalCurrencyRule{{Country: "BR", Currency: "usd"}}
+	if q, _ = quoteFor(ctx, reg, p, 1000, "BR", "", ""); q.Currency != "usd" || q.Amount != 1000 {
+		t.Fatalf("BR set to usd: %+v", q)
+	}
+	if q, f = quoteFor(ctx, reg, routing.Default(), 1000, "DE", "usd", ""); f != nil || q.Currency != "usd" {
+		t.Fatalf("a DE buyer choosing usd: %+v %v", q, f)
+	}
+	if q, f = quoteFor(ctx, reg, routing.Default(), 1000, "DE", "brl", "pix"); f != nil || q.Currency != "brl" {
+		t.Fatalf("a DE buyer choosing pix in brl: %+v %v", q, f)
+	}
+	// Not viable: refused with a clear 400.
+	for _, c := range []struct{ country, cur, method string }{
+		{"BR", "usd", "pix"}, {"DE", "", "pix"}, {"DE", "jpy", ""}, {"DE", "xyz", ""},
+	} {
+		if _, f := quoteFor(ctx, reg, routing.Default(), 1000, c.country, c.cur, c.method); f == nil || f.Status != 400 {
+			t.Fatalf("%+v should be a 400, got %v", c, f)
+		}
+	}
+}
+
+func TestInvalidSpreadAndCountryTableEntriesAreRefusedAndTheseFieldsAreVersioned(t *testing.T) {
+	ctx := heldStore(t)
+	useRails(t, true, true)
+	stubRates(t, map[string]float64{"eur": 0.9, "brl": 5, "gbp": 0.8})
+	scope := "fx-" + t.Name()
+	bad := map[string]func(*routing.Policy){
+		"spread over 1000": func(p *routing.Policy) { p.FXSpreadBps = 1500 },
+		"negative spread":  func(p *routing.Policy) { p.FXSpreadBps = -1 },
+		"unknown country": func(p *routing.Policy) {
+			p.LocalCurrencies = []routing.LocalCurrencyRule{{Country: "ZZ", Currency: "eur"}}
+		},
+		"zero-decimal currency": func(p *routing.Policy) {
+			p.LocalCurrencies = []routing.LocalCurrencyRule{{Country: "JP", Currency: "jpy"}}
+		},
+		"no rate source": func(p *routing.Policy) {
+			p.LocalCurrencies = []routing.LocalCurrencyRule{{Country: "CH", Currency: "chf"}}
+		},
+		"a country named twice": func(p *routing.Policy) {
+			p.LocalCurrencies = []routing.LocalCurrencyRule{{Country: "BR", Currency: "brl"}, {Country: "BR", Currency: "usd"}}
+		},
+	}
+	for name, mut := range bad {
+		p := routing.Default()
+		mut(&p)
+		if _, f := WriteRouting(ctx, scope, p, "z", ""); f == nil || f.Status != 400 {
+			t.Fatalf("%s: want a 400, got %v", name, f)
+		}
+	}
+	if vs, _ := ListRoutingVersions(ctx, scope); len(vs) != 0 {
+		t.Fatalf("a refused save made a version")
+	}
+	one := routing.Default()
+	one.FXSpreadBps = 300
+	one.LocalCurrencies = []routing.LocalCurrencyRule{{Country: "GB", Currency: "gbp"}, {Country: "BR", Currency: "usd"}}
+	if _, f := WriteRouting(ctx, scope, one, "z", "uk in pounds, br in dollars"); f != nil {
+		t.Fatal(f.Err)
+	}
+	two := routing.Default()
+	if _, f := WriteRouting(ctx, scope, two, "z", "back to defaults"); f != nil {
+		t.Fatal(f.Err)
+	}
+	vs, _ := ListRoutingVersions(ctx, scope)
+	if len(vs) != 2 || !strings.Contains(strings.Join(vs[0].Diff, ";"), "fxSpreadBps: 300 -> 200") || !strings.Contains(strings.Join(vs[0].Diff, ";"), "localCurrencies") {
+		t.Fatalf("the diff misses these fields: %+v", vs)
+	}
+	if p, f := RestoreRouting(ctx, scope, 1, "z", ""); f != nil || p.FXSpreadBps != 300 || len(p.LocalCurrencies) != 2 {
+		t.Fatalf("restore: %+v %v", p, f)
+	}
+	if got, _ := ReadRouting(ctx, scope); got.FXSpreadBps != 300 || got.LocalCurrency("gb") != "gbp" || got.LocalCurrency("BR") != "usd" || got.LocalCurrency("DE") != "eur" {
+		t.Fatalf("the restored policy reads wrong: %+v", got)
+	}
+}
+
+func TestCardRulesSayTheyDoNotApplyWhenNoCardMetadataIsKnown(t *testing.T) {
+	p := routing.Default()
+	p.BrandRules = []routing.BrandRule{{Brand: "amex", Processor: "stripe"}}
+	p.IssuerCountryRules = []routing.IssuerRule{{Country: "GB", Processor: "stripe"}}
+	d := p.Decide(routing.Input{Org: "o", Key: "k", Currency: "usd", SquareOK: true})
+	step := d.Chain[3]
+	if step.Step != "overrides" || step.Applied || !strings.Contains(step.Why, "not applicable: card metadata unknown before selection") {
+		t.Fatalf("a new card must not be decided by a card rule: %+v", step)
+	}
+	d = p.Decide(routing.Input{Org: "o", Key: "k", Currency: "usd", SquareOK: true, Brand: "amex"})
+	if !d.Chain[3].Applied || d.Rule != "brand" {
+		t.Fatalf("with metadata known the rule applies: %+v", d)
 	}
 }

@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hanzoai/commerce/payment/fx"
+	"github.com/hanzoai/commerce/payment/routing"
 	"io"
 	"math"
 	"net/http"
@@ -1363,4 +1364,115 @@ func (l *liveStripe) oneEntry(charge string) {
 	if l.balance() != 2500 {
 		l.t.Fatalf("balance %d, want 2500", l.balance())
 	}
+}
+
+// Stripe cannot exclude Apple Pay or Google Pay by method type on an intent, but it takes
+// a Payment Method Configuration per intent. Commerce keeps its own, with the wallets as
+// the admin set them, finds it again by name, and the intent carries its id.
+func TestLiveStripe_TheWalletSwitchIsEnforcedByACommerceOwnedConfiguration(t *testing.T) {
+	l := liveSetup(t)
+	sp, err := processorsForOrg(l.org).Existing(*l.ctx, processor.Stripe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wc, ok := sp.(processor.WalletConfigurer)
+	if !ok {
+		t.Fatal("the Stripe provider keeps no wallet configuration")
+	}
+	id, err := wc.WalletConfiguration(*l.ctx, false, false)
+	if err != nil || !strings.HasPrefix(id, "pmc_") {
+		t.Fatalf("wallet configuration: %q %v", id, err)
+	}
+	if again, _ := wc.WalletConfiguration(*l.ctx, false, false); again != id {
+		t.Fatalf("the configuration was made twice: %s then %s", id, again)
+	}
+	cfg := l.call("GET", "/payment_method_configurations/"+id, nil)
+	for _, w := range []string{"apple_pay", "google_pay"} {
+		pref := cfg[w].(map[string]any)["display_preference"].(map[string]any)["value"]
+		if pref != "off" {
+			t.Fatalf("%s is %v in the configuration; want off", w, pref)
+		}
+	}
+	if cfg["card"].(map[string]any)["display_preference"].(map[string]any)["value"] != "on" {
+		t.Fatal("cards must stay on")
+	}
+	maker := sp.(processor.LocalIntentMaker)
+	out, err := maker.CreateLocalIntent(*l.ctx, processor.LocalIntent{Amount: 1000, Currency: "eur", Configuration: id, Excluded: []string{"ideal"}, Key: "wallet-" + l.run})
+	if err != nil {
+		t.Fatalf("an intent with the configuration and an exclusion: %v", err)
+	}
+	pi := l.call("GET", "/payment_intents/"+out.ID, nil)
+	det, _ := pi["payment_method_configuration_details"].(map[string]any)
+	if det["id"] != id {
+		t.Fatalf("the intent does not carry the configuration: %v", det)
+	}
+	l.call("POST", "/payment_intents/"+out.ID+"/cancel", nil)
+}
+
+// The buyer authorizes a disclosed quote, the charge at confirm is exactly that amount, and
+// a policy change after the intent is opened moves nothing already opened.
+func TestLiveStripe_TheDisclosedQuoteIsTheChargeAndALaterPolicyMovesNothing(t *testing.T) {
+	l := liveSetup(t)
+	old := fx.Rate
+	fx.Rate = func(_ context.Context, cur string) (float64, error) {
+		if cur == "brl" || cur == "usd" {
+			return 5.5, nil
+		}
+		return 0, errors.New("no rate source for " + cur)
+	}
+	t.Cleanup(func() { fx.Rate = old })
+
+	pol := routing.Default()
+	pol.FXSpreadBps = 300
+	if _, f := WriteRouting(*l.ctx, l.org.Name, pol, "z", "spread 300"); f != nil {
+		t.Fatalf("policy: %v", f.Err)
+	}
+	// Not viable: Pix in dollars is refused with a clear 400 before anything is opened.
+	if _, f := OpenTopupIntent(*l.ctx, l.org, TopupIntentIn{Subject: l.subject, Country: "BR", AmountCents: 500, Currency: "usd", Method: "pix"}); f == nil || f.Status != 400 {
+		t.Fatalf("pix in usd: %v", f)
+	}
+	// A German buyer may choose USD: the country table is a default and no restriction.
+	usd, f := OpenTopupIntent(*l.ctx, l.org, TopupIntentIn{Subject: l.subject, Country: "DE", AmountCents: 500, Currency: "usd", IdempotencyKey: "q-usd-" + l.run})
+	if f != nil || usd.Quote.Currency != "usd" || usd.Quote.Amount != 500 || usd.Quote.MarkupBps != 0 {
+		t.Fatalf("a DE buyer choosing usd: %+v %v", usd, f)
+	}
+	l.call("POST", "/payment_intents/"+usd.IntentID+"/cancel", nil)
+
+	out, f := OpenTopupIntent(*l.ctx, l.org, TopupIntentIn{Subject: l.subject, Country: "BR", AmountCents: 500, IdempotencyKey: "q-brl-" + l.run})
+	if f != nil {
+		t.Fatalf("open: %v", f.Err)
+	}
+	want := int64(math.Ceil(500*5.5*1.03 - 1e-9))
+	q := out.Quote
+	if q.Currency != "brl" || q.Amount != want || q.UsdCents != 500 || q.MarkupBps != 300 || out.PolicyVersion != 1 || out.Amount != q.Amount {
+		t.Fatalf("quote %+v version %d; want %d brl at 300 bps under version 1", q, out.PolicyVersion, want)
+	}
+	pi := l.call("GET", "/payment_intents/"+out.IntentID, nil)
+	if int64(pi["amount"].(float64)) != q.Amount || pi["currency"] != q.Currency {
+		t.Fatalf("Stripe will charge %v %v; the buyer was shown %d %s", pi["amount"], pi["currency"], q.Amount, q.Currency)
+	}
+	rec, found, _ := pendingintent.Get(out.IntentID)
+	if !found || rec.PolicyVersion != 1 || rec.PaidCents != q.Amount {
+		t.Fatalf("the waiting record does not name the policy version and the quote: %+v", rec)
+	}
+
+	// The policy changes mid-checkout: another spread, and Brazil in dollars.
+	next := routing.Default()
+	next.FXSpreadBps = 100
+	next.LocalCurrencies = []routing.LocalCurrencyRule{{Country: "BR", Currency: "usd"}}
+	if _, f := WriteRouting(*l.ctx, l.org.Name, next, "z", "mid-checkout"); f != nil {
+		t.Fatalf("second policy: %v", f.Err)
+	}
+	rec2, _, _ := pendingintent.Get(out.IntentID)
+	pi2 := l.call("GET", "/payment_intents/"+out.IntentID, nil)
+	if rec2.PaidCents != q.Amount || rec2.PaidCurrency != "brl" || rec2.PolicyVersion != 1 || int64(pi2["amount"].(float64)) != q.Amount || pi2["currency"] != "brl" {
+		t.Fatalf("a policy change moved an intent that was already open: %+v %v %v", rec2, pi2["amount"], pi2["currency"])
+	}
+	// A NEW checkout takes the new policy.
+	again, f := OpenTopupIntent(*l.ctx, l.org, TopupIntentIn{Subject: l.subject, Country: "BR", AmountCents: 500, IdempotencyKey: "q-new-" + l.run})
+	if f != nil || again.PolicyVersion != 2 || again.Quote.Currency != "usd" {
+		t.Fatalf("a new checkout under version 2: %+v %v", again, f)
+	}
+	l.call("POST", "/payment_intents/"+out.IntentID+"/cancel", nil)
+	l.call("POST", "/payment_intents/"+again.IntentID+"/cancel", nil)
 }

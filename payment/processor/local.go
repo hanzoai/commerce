@@ -2,6 +2,12 @@ package processor
 
 import "context"
 
+// WalletConfigurer is a processor that keeps a commerce-owned configuration with the
+// chosen wallets off and answers its id.
+type WalletConfigurer interface {
+	WalletConfiguration(ctx context.Context, applePay, googlePay bool) (string, error)
+}
+
 // LocalIntentMaker is a processor that opens PaymentIntents for the Payment Element.
 type LocalIntentMaker interface {
 	CreateLocalIntent(ctx context.Context, in LocalIntent) (*LocalIntentOut, error)
@@ -19,6 +25,8 @@ type LocalIntent struct {
 	Desc     string
 	// Excluded are payment method types the Payment Element must not offer.
 	Excluded []string
+	// Configuration is a Payment Method Configuration id to offer methods from, or "".
+	Configuration string
 	// Customer is the payer's customer at the processor; ReceiptEmail their email.
 	Customer     string
 	ReceiptEmail string

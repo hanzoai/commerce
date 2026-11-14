@@ -331,8 +331,10 @@ func TakePayment(ctx context.Context, org *organization.Organization, in TakePay
 
 	// A Square charge is marked begun before it is made and ended when its outcome is
 	// known, so routing never offers this payer another processor while it is not.
+	polV := 0
 	if proc.Type() == processor.Square {
-		if berr := routingpolicy.Begin(ctx, org.Name, in.Subject, string(processor.Square), squareKey); berr != nil {
+		_, polV, _ = ReadRoutingVersioned(ctx, org.Name)
+		if berr := routingpolicy.Begin(ctx, org.Name, in.Subject, string(processor.Square), squareKey, polV); berr != nil {
 			log.Warn("routing: the Square attempt was not marked: %v", berr)
 		}
 	}

@@ -201,10 +201,10 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 // Commerce dashboard.
 func (p *Provider) Refund(ctx context.Context, req processor.RefundRequest) (*processor.RefundResult, error) {
 	return &processor.RefundResult{
-			Success:      false,
-			ErrorMessage: "coinbase commerce does not support programmatic refunds; process refunds manually via the Coinbase Commerce dashboard",
-		}, processor.NewPaymentError(processor.CoinbaseCommerce, "REFUND_NOT_SUPPORTED",
-			"coinbase commerce does not support programmatic refunds; process refunds manually via the Coinbase Commerce dashboard", nil)
+		Success:      false,
+		ErrorMessage: "coinbase commerce does not support programmatic refunds; process refunds manually via the Coinbase Commerce dashboard",
+	}, processor.NewPaymentError(processor.CoinbaseCommerce, "REFUND_NOT_SUPPORTED",
+		"coinbase commerce does not support programmatic refunds; process refunds manually via the Coinbase Commerce dashboard", nil)
 }
 
 // ValidateWebhook verifies a Coinbase Commerce webhook signature

@@ -49,8 +49,11 @@ type Intent struct {
 	// the credit: a local method (Pix, iDEAL, ...) takes the buyer's own currency, and
 	// the quote made at the start fixed how many of those buy Cents of Currency. The
 	// intent settles only for exactly this, and credits Cents.
-	PaidCents    int64  `json:"paidCents,omitempty"`
-	PaidCurrency string `json:"paidCurrency,omitempty"`
+	// PolicyVersion is the routing policy version the payment was opened under; a later
+	// change to the policy moves nothing already opened.
+	PolicyVersion int    `json:"policyVersion,omitempty"`
+	PaidCents     int64  `json:"paidCents,omitempty"`
+	PaidCurrency  string `json:"paidCurrency,omitempty"`
 	// Ref names what the intent pays beyond the buyer: the invoice, for Invoice.
 	Ref string `json:"ref,omitempty"`
 	// Tries is how many sweeps failed to settle it, Next the earliest the next one
@@ -94,7 +97,7 @@ func PutRef(id, org, subject, purpose, ref string, cents int64, currency string,
 
 // PutQuoted is Put for a local-method intent: Cents of Currency is the credit, and
 // the buyer pays paidCents of paidCurrency for it.
-func PutQuoted(id, org, subject, purpose string, cents int64, cur string, paidCents int64, paidCur string, test bool) error {
+func PutQuoted(id, org, subject, purpose string, cents int64, cur string, paidCents int64, paidCur string, version int, test bool) error {
 	id = strings.TrimSpace(id)
 	if id == "" || org == "" || subject == "" {
 		return nil
@@ -107,7 +110,7 @@ func PutQuoted(id, org, subject, purpose string, cents int64, cur string, paidCe
 	i.Init(d)
 	i.SetId(id)
 	i.Org, i.Subject, i.Purpose, i.Cents, i.Currency, i.Test = org, subject, purpose, cents, strings.ToLower(cur), test
-	i.PaidCents, i.PaidCurrency = paidCents, strings.ToLower(paidCur)
+	i.PaidCents, i.PaidCurrency, i.PolicyVersion = paidCents, strings.ToLower(paidCur), version
 	return i.Put()
 }
 

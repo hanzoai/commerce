@@ -8,6 +8,7 @@ import (
 
 	"github.com/zap-proto/zip"
 
+	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
@@ -16,7 +17,6 @@ import (
 	"github.com/hanzoai/commerce/models/pendingintent"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/payment"
-	"github.com/hanzoai/commerce/payment/fx"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/payment/routing"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
@@ -29,6 +29,10 @@ type TopupIntentIn struct {
 	Country        string
 	AmountCents    int64
 	IdempotencyKey string
+	// Currency is the currency the buyer chose to pay in, if they chose one; empty takes
+	// the country's default. Method is the method they chose, if they have: a currency
+	// the method cannot be paid in is refused.
+	Currency, Method string
 	// Payer is who is paying; the intent is made for their customer, with their
 	// receipt email.
 	Payer PayerIn
@@ -44,6 +48,13 @@ type TopupIntentOut struct {
 	Amount         int64   `json:"amount"`
 	UsdCents       int64   `json:"usdCents"`
 	Rate           float64 `json:"rate"`
+	// SpreadBps is the margin over the mid-market rate the quote carries.
+	SpreadBps int `json:"spreadBps"`
+	// Quote is the disclosure the buyer authorizes: the amount confirm will charge, its
+	// currency, the rate, the markup and the dollars of credit it buys.
+	Quote routing.Quote `json:"quote"`
+	// PolicyVersion is the routing policy version the payment was opened under.
+	PolicyVersion int `json:"policyVersion"`
 }
 
 // OpenTopupIntent opens a PaymentIntent for the Payment Element, in the currency
@@ -60,14 +71,14 @@ func OpenTopupIntent(ctx context.Context, org *organization.Organization, in Top
 	if in.AmountCents < minCents || in.AmountCents > maxCents {
 		return nil, fault(400, fmt.Sprintf("amountCents must be between %d and %d", minCents, maxCents), nil)
 	}
-	d, f := Place(ctx, org, RouteIn{Subject: in.Subject, Country: in.Country})
+	d, f := Place(ctx, org, RouteIn{Subject: in.Subject, Country: in.Country, Method: in.Method, Currency: in.Currency})
 	if f != nil {
 		return nil, f
 	}
 	if d.Processor != processor.Stripe {
 		return nil, fault(409, "this checkout is on "+string(d.Processor), nil)
 	}
-	pol, err := ReadRouting(ctx, org.Name)
+	pol, polVersion, err := ReadRoutingVersioned(ctx, org.Name)
 	if err != nil {
 		return nil, fault(503, "routing is temporarily unavailable; please retry", err)
 	}
@@ -80,15 +91,12 @@ func OpenTopupIntent(ctx context.Context, org *organization.Organization, in Top
 		return nil, fault(429, cerr.Error(), cerr)
 	}
 
-	cur := routing.LocalCurrency(d.Country)
-	paid, rate := in.AmountCents, 1.0
-	if cur != "usd" {
-		paid, rate, err = fx.Quote(ctx, in.AmountCents, cur)
-		if err != nil {
-			log.Error("topup intent: no quote for %s: %v", cur, err)
-			return nil, fault(503, "local payment methods are unavailable right now; please retry", err)
-		}
+	reg := processorsForOrg(org)
+	quote, qf := quoteFor(ctx, reg, pol, in.AmountCents, d.Country, in.Currency, in.Method)
+	if qf != nil {
+		return nil, qf
 	}
+	cur, paid, rate, spread := quote.Currency, quote.Amount, quote.Rate, quote.MarkupBps
 
 	sp, err := processorsForOrg(org).Existing(ctx, processor.Stripe)
 	maker, ok := sp.(processor.LocalIntentMaker)
@@ -155,9 +163,22 @@ func OpenTopupIntent(ctx context.Context, org *organization.Organization, in Top
 			customer = id
 		}
 	}
+	// Apple Pay and Google Pay cannot be excluded by type on an intent; the switch is
+	// enforced through a commerce-owned configuration that has them off.
+	walletConfig := ""
+	if !pol.MethodOn("apple_pay") || !pol.MethodOn("google_pay") {
+		if wc, ok := sp.(processor.WalletConfigurer); ok {
+			id, werr := wc.WalletConfiguration(ctx, pol.MethodOn("apple_pay"), pol.MethodOn("google_pay"))
+			if werr != nil {
+				log.Error("topup intent: no wallet configuration: %v", werr)
+				return nil, fault(503, "local payment methods are unavailable right now; please retry", werr)
+			}
+			walletConfig = id
+		}
+	}
 	out, err := maker.CreateLocalIntent(ctx, processor.LocalIntent{
 		Customer: customer, ReceiptEmail: payer.Email,
-		Amount: paid, Currency: cur, Excluded: pol.Off(),
+		Amount: paid, Currency: cur, Excluded: pol.Off(), Configuration: walletConfig,
 		Key:      gatewayKey("topup-local", in.Subject, fmt.Sprintf("%s:%d", key, paid)),
 		Desc:     fmt.Sprintf("Top-up %d usd for %s", in.AmountCents, in.Subject),
 		Metadata: map[string]interface{}{"hanzo_subject": in.Subject, "hanzo_usd_cents": in.AmountCents, "hanzo_org": org.Name, "org": org.Name, "user": strings.ToLower(in.Subject)},
@@ -169,7 +190,7 @@ func OpenTopupIntent(ctx context.Context, org *organization.Organization, in Top
 	if cur == "usd" {
 		paidCents, paidCur = 0, ""
 	}
-	if perr := pendingintent.PutQuoted(out.ID, org.Name, strings.ToLower(in.Subject), pendingintent.Topup, in.AmountCents, "usd", paidCents, paidCur, org.TestMode()); perr != nil {
+	if perr := pendingintent.PutQuoted(out.ID, org.Name, strings.ToLower(in.Subject), pendingintent.Topup, in.AmountCents, "usd", paidCents, paidCur, polVersion, org.TestMode()); perr != nil {
 		// Without the record the payment could not be attributed. Cancel it rather than
 		// hand the buyer a secret whose money nobody could place.
 		if c, ok := sp.(interface {
@@ -180,10 +201,14 @@ func OpenTopupIntent(ctx context.Context, org *organization.Organization, in Top
 		log.Error("RECONCILE: intent %s could not be recorded: %v", out.ID, perr)
 		return nil, fault(503, "billing is temporarily unavailable; please retry", perr)
 	}
+	if _, eerr := engine.EmitBillingEvent(webhookGuardDB(ctx), "topup.intent.opened", "payment_intent", out.ID, in.Subject,
+		map[string]interface{}{"policyVersion": polVersion, "currency": cur, "amount": paid, "usdCents": in.AmountCents, "markupBps": spread, "org": org.Name}, nil); eerr != nil {
+		log.Warn("topup intent: the opening was not recorded: %v", eerr)
+	}
 	return &TopupIntentOut{
 		IntentID: out.ID, ClientSecret: out.ClientSecret,
 		PublishableKey: payment.StripePublicConfig(org).PublishableKey,
-		Currency:       cur, Amount: paid, UsdCents: in.AmountCents, Rate: rate,
+		Currency:       cur, Amount: paid, UsdCents: in.AmountCents, Rate: rate, SpreadBps: spread, Quote: *quote, PolicyVersion: polVersion,
 	}, nil
 }
 
@@ -234,6 +259,8 @@ func ReadTopupIntent(ctx context.Context, org *organization.Organization, subjec
 type topupIntentRequest struct {
 	AmountCents int64  `json:"amountCents"`
 	Country     string `json:"country"`
+	Currency    string `json:"currency"`
+	Method      string `json:"method"`
 }
 
 // CreateTopupIntent opens a Stripe checkout for a top-up.

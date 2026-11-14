@@ -51,6 +51,13 @@ type Policy struct {
 	// IssuerCountryRules send cards issued in a country to a processor (for example
 	// every card issued outside the US to Stripe). Known only once the card is entered.
 	IssuerCountryRules []IssuerRule `json:"issuerCountryRules"`
+	// FXSpreadBps is the margin over the mid-market rate when a local-currency payment
+	// is quoted, in basis points (0 to 1000). Default 200.
+	FXSpreadBps int `json:"fxSpreadBps"`
+	// LocalCurrencies sets the currency a buyer in a country is shown local methods in.
+	// A country with no entry takes the built-in default; an entry of usd switches
+	// local currency off for that country.
+	LocalCurrencies []LocalCurrencyRule `json:"localCurrencies"`
 	// Fallback is the order of processors tried when the preferred one is ineligible
 	// or down, before any payment is started. Empty means the other card processor.
 	Fallback []string `json:"fallback"`
@@ -63,6 +70,28 @@ type Policy struct {
 type CurrencyRule struct {
 	Currency  string `json:"currency"`
 	Processor string `json:"processor"`
+}
+
+// LocalCurrencyRule sets the currency for buyers in Country.
+type LocalCurrencyRule struct {
+	Country  string `json:"country"`
+	Currency string `json:"currency"`
+}
+
+// MethodNote is a plain statement about what a method's switch does, for the admin to label it.
+type MethodNote struct {
+	Method string `json:"method"`
+	// Enforceable says the switch really turns the method off at the processor (or in
+	// the list commerce mounts). A switch that cannot be enforced is shown as such.
+	Enforceable bool   `json:"enforceable"`
+	Note        string `json:"note"`
+}
+
+// MethodNotes are the limits of the method switches, as data.
+var MethodNotes = []MethodNote{
+	{"apple_pay", true, "Stripe cannot exclude Apple Pay by method type, so commerce keeps its own Payment Method Configuration with Apple Pay off and passes it on each intent while this switch is off; it also leaves Apple Pay out of the card and wallet lists commerce mounts."},
+	{"google_pay", true, "Stripe cannot exclude Google Pay by method type, so commerce keeps its own Payment Method Configuration with Google Pay off and passes it on each intent while this switch is off; it also leaves Google Pay out of the card and wallet lists commerce mounts."},
+	{"cash_app", true, "Cash App Pay is mounted by commerce on a Square location in the United States; this switch removes it from that list."},
 }
 
 // CountryRule sends buyers in Country (ISO 3166-1 alpha-2) to Processor.
@@ -110,6 +139,22 @@ func in(list []string, v string) bool {
 	return false
 }
 
+// MethodCurrencies is the currency each local method can be paid in. A method not
+// listed takes any currency the account supports (cards, wallets, Link, BNPL).
+var MethodCurrencies = map[string][]string{
+	"pix": {"brl"}, "boleto": {"brl"}, "oxxo": {"mxn"}, "ideal": {"eur"}, "bancontact": {"eur"}, "sepa_debit": {"eur"},
+	"p24": {"pln", "eur"}, "blik": {"pln"}, "eps": {"eur"}, "paynow": {"sgd"}, "promptpay": {"thb"}, "grabpay": {"sgd", "myr", "php"},
+}
+
+// MethodViable says method can be paid in cur ("" or card methods: always).
+func MethodViable(method, cur string) bool {
+	m, ok := MethodCurrencies[strings.ToLower(method)]
+	if !ok {
+		return true
+	}
+	return in(m, strings.ToLower(cur))
+}
+
 // KnownBrand and KnownMethod say a name is one an admin may use.
 func KnownBrand(b string) bool  { return in(Brands, b) }
 func KnownMethod(m string) bool { return in(MethodNames, m) }
@@ -137,7 +182,7 @@ func (p Policy) Off() []string {
 
 // Default is the platform policy: half and half across Square's eight countries.
 func Default() Policy {
-	return Policy{SquareWeight: 50, SquareOn: true, StripeOn: true, PayPalOn: true, CryptoOn: true, LocalOn: true, Sticky: true,
+	return Policy{SquareWeight: 50, SquareOn: true, StripeOn: true, PayPalOn: true, CryptoOn: true, LocalOn: true, Sticky: true, FXSpreadBps: 200, LocalCurrencies: []LocalCurrencyRule{},
 		CurrencyRules: []CurrencyRule{}, CountryRules: []CountryRule{}, BrandRules: []BrandRule{}, IssuerCountryRules: []IssuerRule{}, Fallback: []string{}, LocalMethods: []MethodRule{}}
 }
 
@@ -148,6 +193,11 @@ func (p Policy) Normal() Policy {
 	for _, r := range p.CurrencyRules {
 		cr = append(cr, CurrencyRule{strings.ToLower(strings.TrimSpace(r.Currency)), strings.ToLower(strings.TrimSpace(r.Processor))})
 	}
+	lc := []LocalCurrencyRule{}
+	for _, r := range p.LocalCurrencies {
+		lc = append(lc, LocalCurrencyRule{strings.ToUpper(strings.TrimSpace(r.Country)), strings.ToLower(strings.TrimSpace(r.Currency))})
+	}
+	p.LocalCurrencies = lc
 	co := []CountryRule{}
 	for _, r := range p.CountryRules {
 		co = append(co, CountryRule{strings.ToUpper(strings.TrimSpace(r.Country)), strings.ToLower(strings.TrimSpace(r.Processor))})
@@ -179,6 +229,22 @@ func (p Policy) Valid() string {
 	}
 	if !p.SquareOn && !p.StripeOn {
 		return "at least one processor must be on"
+	}
+	if p.FXSpreadBps < 0 || p.FXSpreadBps > 1000 {
+		return "fxSpreadBps must be between 0 and 1000"
+	}
+	seenLC := map[string]bool{}
+	for _, r := range p.LocalCurrencies {
+		if !KnownCountry(r.Country) {
+			return "localCurrencies: " + strconvQ(r.Country) + " is not an ISO 3166-1 country"
+		}
+		if len(r.Currency) != 3 {
+			return "localCurrencies: " + strconvQ(r.Currency) + " is not an ISO 4217 currency"
+		}
+		if seenLC[r.Country] {
+			return "localCurrencies: " + r.Country + " is named twice"
+		}
+		seenLC[r.Country] = true
 	}
 	card := func(proc string) bool { return proc == string(processor.Square) || proc == string(processor.Stripe) }
 	seen := map[string]bool{}
@@ -292,10 +358,30 @@ type Decision struct {
 	// Chain is the seven steps in the order they are taken, each applied or skipped and
 	// why: saved, eligibility, method, overrides, sticky, weight, fallback.
 	Chain []Step `json:"chain"`
+	// LocalCurrency and FXSpreadBps are what a local-method payment for this buyer
+	// would be quoted in and at: the policy's, shown so the admin sees them applied.
+	LocalCurrency string `json:"localCurrency"`
+	FXSpreadBps   int    `json:"fxSpreadBps"`
+	// Version is the policy version this decision was made under.
+	Version int `json:"version"`
+	// Quote is the price of a local-currency payment for the amount the caller asked
+	// about, when it asked and the checkout is Stripe's.
+	Quote *Quote `json:"quote,omitempty"`
 	// Alternatives are the other ways this buyer may pay, each its own button beside
 	// the card slot: "paypal" where PayPal operates, "crypto" where a deposit watcher
 	// is running. Filled by the caller, which knows what is configured.
 	Alternatives []string `json:"alternatives"`
+}
+
+// Quote is what a local-currency payment will cost, disclosed before the buyer
+// authorizes: Amount of Currency buys UsdCents of credit, at Rate per dollar, which
+// carries MarkupBps over the mid-market rate. The amount charged at confirm is Amount.
+type Quote struct {
+	Amount    int64   `json:"amount"`
+	Currency  string  `json:"currency"`
+	UsdCents  int64   `json:"usdCents"`
+	Rate      float64 `json:"rate"`
+	MarkupBps int     `json:"markupBps"`
 }
 
 // Step is one step of the reason chain.
@@ -439,13 +525,17 @@ func (p Policy) Decide(in Input) Decision {
 				}
 			}
 		}
+		cardRules := len(p.IssuerCountryRules)+len(p.BrandRules) > 0
+		if cardRules && issuer == "" && brand == "" {
+			why = append(why, "card rules: not applicable: card metadata unknown before selection")
+		}
 		switch {
 		case decided:
 			step("overrides", true, strings.Join(why, "; "))
 		case len(why) > 0:
 			step("overrides", false, strings.Join(why, "; "))
 		default:
-			step("overrides", false, "no rule matches (card rules apply when card metadata is known)")
+			step("overrides", false, "no rule matches")
 		}
 	}
 
@@ -567,11 +657,22 @@ var local = map[string]string{
 	"PH": "php", // GrabPay
 }
 
-// LocalCurrency is the currency a buyer in country is shown Stripe's native
-// methods in, or "usd" when the country has none that needs its own money (a card,
-// Link, a wallet or a buy-now-pay-later method all take dollars). Every currency
-// here has two decimals.
-func LocalCurrency(country string) string {
+// LocalCurrency is the currency a buyer in country is shown local methods in: the
+// policy's entry for the country, else the built-in default, or "usd" when the country
+// has none that needs its own money (a card, Link, a wallet or a buy-now-pay-later
+// method all take dollars). Every currency here has two decimals.
+func (p Policy) LocalCurrency(country string) string {
+	c := strings.ToUpper(strings.TrimSpace(country))
+	for _, r := range p.LocalCurrencies {
+		if r.Country == c {
+			return r.Currency
+		}
+	}
+	return DefaultLocalCurrency(c)
+}
+
+// DefaultLocalCurrency is the built-in table a country with no policy entry takes.
+func DefaultLocalCurrency(country string) string {
 	c := strings.ToUpper(strings.TrimSpace(country))
 	if euro[c] {
 		return "eur"
@@ -581,3 +682,10 @@ func LocalCurrency(country string) string {
 	}
 	return "usd"
 }
+
+// KnownCountry says code is an ISO 3166-1 alpha-2 country.
+func KnownCountry(code string) bool {
+	return strings.Contains(" "+isoCountries+" ", " "+strings.ToUpper(code)+" ") && len(code) == 2
+}
+
+const isoCountries = "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW"

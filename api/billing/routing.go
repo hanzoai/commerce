@@ -21,6 +21,7 @@ import (
 	"github.com/hanzoai/commerce/models/routingpolicy"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment"
+	"github.com/hanzoai/commerce/payment/fx"
 	"github.com/hanzoai/commerce/payment/processor"
 	squareprovider "github.com/hanzoai/commerce/payment/providers/square"
 	"github.com/hanzoai/commerce/payment/routing"
@@ -29,17 +30,19 @@ import (
 
 // rules is the part of a policy the store keeps as one JSON string (it holds no lists).
 type rules struct {
-	CurrencyRules      []routing.CurrencyRule `json:"currencyRules"`
-	CountryRules       []routing.CountryRule  `json:"countryRules"`
-	BrandRules         []routing.BrandRule    `json:"brandRules"`
-	IssuerCountryRules []routing.IssuerRule   `json:"issuerCountryRules"`
-	Fallback           []string               `json:"fallback"`
-	LocalMethods       []routing.MethodRule   `json:"methods"`
-	NoSticky           bool                   `json:"noSticky,omitempty"`
+	CurrencyRules      []routing.CurrencyRule      `json:"currencyRules"`
+	CountryRules       []routing.CountryRule       `json:"countryRules"`
+	BrandRules         []routing.BrandRule         `json:"brandRules"`
+	IssuerCountryRules []routing.IssuerRule        `json:"issuerCountryRules"`
+	Fallback           []string                    `json:"fallback"`
+	LocalMethods       []routing.MethodRule        `json:"methods"`
+	NoSticky           bool                        `json:"noSticky,omitempty"`
+	FXSpreadBps        *int                        `json:"fxSpreadBps,omitempty"`
+	LocalCurrencies    []routing.LocalCurrencyRule `json:"localCurrencies"`
 }
 
 func encodeRules(p routing.Policy) string {
-	b, _ := json.Marshal(rules{p.CurrencyRules, p.CountryRules, p.BrandRules, p.IssuerCountryRules, p.Fallback, p.LocalMethods, !p.Sticky})
+	b, _ := json.Marshal(rules{p.CurrencyRules, p.CountryRules, p.BrandRules, p.IssuerCountryRules, p.Fallback, p.LocalMethods, !p.Sticky, &p.FXSpreadBps, p.LocalCurrencies})
 	return string(b)
 }
 
@@ -51,6 +54,10 @@ func policyOf(r *routingpolicy.Row) routing.Policy {
 		var x rules
 		if json.Unmarshal([]byte(r.Rules), &x) == nil {
 			p.CurrencyRules, p.CountryRules, p.BrandRules, p.IssuerCountryRules, p.Fallback, p.LocalMethods, p.Sticky = x.CurrencyRules, x.CountryRules, x.BrandRules, x.IssuerCountryRules, x.Fallback, x.LocalMethods, !x.NoSticky
+			if x.FXSpreadBps != nil {
+				p.FXSpreadBps = *x.FXSpreadBps
+			}
+			p.LocalCurrencies = x.LocalCurrencies
 		}
 	}
 	return p.Normal()
@@ -67,19 +74,26 @@ func policyRow(p routing.Policy, by string, version int) routingpolicy.Row {
 // own row, else the platform's, else the default (half and half, sticky, every
 // method on, no rules).
 func ReadRouting(ctx context.Context, org string) (routing.Policy, error) {
+	p, _, err := ReadRoutingVersioned(ctx, org)
+	return p, err
+}
+
+// ReadRoutingVersioned is ReadRouting with the version of the policy it read, so a
+// decision, an intent and an attempt can say which policy they were made under.
+func ReadRoutingVersioned(ctx context.Context, org string) (routing.Policy, int, error) {
 	for _, id := range []string{org, routingpolicy.Platform} {
 		if id == "" {
 			continue
 		}
 		r, found, err := routingpolicy.Get(ctx, id)
 		if err != nil {
-			return routing.Policy{}, err
+			return routing.Policy{}, 0, err
 		}
 		if found {
-			return policyOf(r), nil
+			return policyOf(r), r.Version, nil
 		}
 	}
-	return routing.Default(), nil
+	return routing.Default(), 0, nil
 }
 
 // activeVersion is the version the scope's policy row points at, 0 for none.
@@ -99,6 +113,64 @@ func registryFor(ctx context.Context, scope string) *processor.Registry {
 		}
 	}
 	return processorsForOrg(&organization.Organization{})
+}
+
+// quoteFor is what a payment of amountCents dollars of credit costs in the currency the
+// buyer chose (explicit), else their country's default, disclosed before they
+// authorize. It refuses, with a clear 400, a currency that is not viable: not
+// two-decimal, not one Stripe takes, or not one the chosen method can be paid in
+// (Pix in dollars). The country table only ever supplies the default.
+func quoteFor(ctx context.Context, reg *processor.Registry, pol routing.Policy, amountCents int64, country, explicit, method string) (*routing.Quote, *PaymentFault) {
+	cur := strings.ToLower(strings.TrimSpace(explicit))
+	if cur == "" {
+		cur = pol.LocalCurrency(country)
+		if method != "" && !routing.MethodViable(method, cur) {
+			for _, c := range routing.MethodCurrencies[strings.ToLower(method)] {
+				if c == cur {
+					break
+				}
+			}
+			return nil, fault(400, method+" is paid in "+strings.Join(routing.MethodCurrencies[strings.ToLower(method)], " or ")+", not "+cur+"; choose one of them", nil)
+		}
+	}
+	if !routing.MethodViable(method, cur) {
+		why := method + " cannot be paid in " + cur + "; it is paid in " + strings.Join(routing.MethodCurrencies[strings.ToLower(method)], " or ")
+		return nil, fault(400, why, errors.New(why))
+	}
+	if cur == "usd" {
+		return &routing.Quote{Amount: amountCents, Currency: "usd", UsdCents: amountCents, Rate: 1, MarkupBps: 0}, nil
+	}
+	if !twoDecimal(cur) {
+		return nil, fault(400, cur+" is not a two-decimal currency", nil)
+	}
+	table, _ := eligibility(ctx, reg)
+	stripeTakes := false
+	for _, e := range table {
+		if e.Currency == cur {
+			for _, x := range e.Processors {
+				stripeTakes = stripeTakes || x == "stripe"
+			}
+		}
+	}
+	if !stripeTakes {
+		return nil, fault(400, "stripe cannot take "+cur+" for this account", nil)
+	}
+	paid, rate, err := fx.Quote(ctx, amountCents, cur, pol.FXSpreadBps)
+	if err != nil {
+		return nil, fault(503, "local payment methods are unavailable right now; please retry", err)
+	}
+	return &routing.Quote{Amount: paid, Currency: cur, UsdCents: amountCents, Rate: rate, MarkupBps: pol.FXSpreadBps}, nil
+}
+
+// twoDecimal says a currency is minor-unit-of-100: the quote and the Payment Element
+// both count in hundredths, so zero- and three-decimal currencies are not offered.
+func twoDecimal(cur string) bool {
+	switch cur {
+	case "bif", "clp", "djf", "gnf", "jpy", "kmf", "krw", "mga", "pyg", "rwf", "ugx", "vnd", "vuv", "xaf", "xof", "xpf",
+		"bhd", "iqd", "jod", "kwd", "lyd", "omr", "tnd":
+		return false
+	}
+	return true
 }
 
 // CurrencyEligibility says which card processors can take a currency now. It is the
@@ -152,6 +224,31 @@ func ValidateRouting(ctx context.Context, scope string, p routing.Policy) string
 			}
 		}
 		return false
+	}
+	for _, r := range p.LocalCurrencies {
+		if r.Currency == "usd" {
+			continue // usd switches local currency off for the country
+		}
+		if !twoDecimal(r.Currency) {
+			return "localCurrencies: " + r.Currency + " is not a two-decimal currency"
+		}
+		stripeTakes := false
+		for _, e := range table {
+			if e.Currency == r.Currency {
+				for _, x := range e.Processors {
+					stripeTakes = stripeTakes || x == "stripe"
+				}
+			}
+		}
+		if !stripeTakes {
+			return "localCurrencies: stripe cannot take " + r.Currency + " now"
+		}
+		qctx, cancel := context.WithTimeout(ctx, 6*time.Second)
+		_, _, qerr := fx.Quote(qctx, 100, r.Currency, p.FXSpreadBps)
+		cancel()
+		if qerr != nil {
+			return "localCurrencies: " + r.Currency + " has no rate source, so it cannot be quoted (" + qerr.Error() + ")"
+		}
 	}
 	for _, r := range p.CurrencyRules {
 		if !takes(r.Currency, r.Processor) {
@@ -364,6 +461,11 @@ type RouteIn struct {
 	Currency string
 	// Method is how the buyer chose to pay, when they have (card, cash_app, pix, ...).
 	Method string
+	// AmountCents, when given, asks for the quote of a local-currency payment of that
+	// many dollars of credit, in QuoteCurrency (the buyer's choice) or the country's
+	// default.
+	AmountCents   int64
+	QuoteCurrency string
 	// Brand and IssuerCountry describe the card once it is entered; empty before.
 	Brand, IssuerCountry string
 }
@@ -373,6 +475,7 @@ type RouteIn struct {
 // count); without, a payer with neither.
 type PreviewIn struct {
 	Subject, Country, Currency, Method, Brand, IssuerCountry string
+	AmountCents                                              int64
 }
 
 // savedProcessor is the processor a card the subject saved was vaulted with: the
@@ -408,7 +511,7 @@ func PreviewRouting(ctx context.Context, org *organization.Organization, in Prev
 	if subject == "" {
 		subject = "preview"
 	}
-	return place(ctx, org, RouteIn{Subject: subject, Country: in.Country, Currency: in.Currency, Method: in.Method, Brand: in.Brand, IssuerCountry: in.IssuerCountry}, false)
+	return place(ctx, org, RouteIn{Subject: subject, Country: in.Country, Currency: in.Currency, QuoteCurrency: in.Currency, AmountCents: in.AmountCents, Method: in.Method, Brand: in.Brand, IssuerCountry: in.IssuerCountry}, false)
 }
 
 func place(ctx context.Context, org *organization.Organization, in RouteIn, live bool) (*routing.Decision, *PaymentFault) {
@@ -419,7 +522,7 @@ func place(ctx context.Context, org *organization.Organization, in RouteIn, live
 	if processor.Sanctioned(country) {
 		return nil, fault(403, "payments are not available here", nil)
 	}
-	pol, err := ReadRouting(ctx, org.Name)
+	pol, polVersion, err := ReadRoutingVersioned(ctx, org.Name)
 	if err != nil {
 		return nil, fault(503, "routing is temporarily unavailable; please retry", err)
 	}
@@ -519,9 +622,17 @@ func place(ctx context.Context, org *organization.Organization, in RouteIn, live
 			return nil, fault(503, "no payment processor is available right now", nil)
 		}
 	}
+	if in.AmountCents > 0 && d.Processor == processor.Stripe && d.Reason != "saved" && pol.LocalOn {
+		q, qf := quoteFor(ctx, reg, pol, in.AmountCents, country, in.QuoteCurrency, in.Method)
+		if qf != nil {
+			return nil, qf
+		}
+		d.Quote = q
+	}
 	d.Alternatives = alternativesFor(ctx, reg, pol, country)
+	d.LocalCurrency, d.FXSpreadBps, d.Version = pol.LocalCurrency(country), pol.FXSpreadBps, polVersion
 	if live {
-		if err := routingpolicy.Record(ctx, org.Name, string(d.Processor), country, d.Reason); err != nil {
+		if err := routingpolicy.Record(ctx, org.Name, string(d.Processor), country, d.Reason, polVersion); err != nil {
 			log.Warn("routing: the decision was not recorded: %v", err)
 		}
 	}
@@ -590,6 +701,8 @@ type RoutingView struct {
 	Eligibility []CurrencyEligibility `json:"eligibility"`
 	Brands      []string              `json:"brands"`
 	Methods     []string              `json:"methods"`
+	// MethodNotes say what a method's switch does and cannot do, for the admin to label it.
+	MethodNotes []routing.MethodNote `json:"methodNotes"`
 }
 
 // RoutingCount is how many of the recent decisions each processor took.
@@ -645,7 +758,7 @@ func ReadRoutingView(ctx context.Context, org *organization.Organization, scope 
 	}
 	v.Processor = append(v.Processor, ProcessorState{"crypto", len(watchedAssets()) > 0})
 	v.Eligibility, _ = eligibility(ctx, registryFor(ctx, scope))
-	v.Brands, v.Methods = routing.Brands, routing.MethodNames
+	v.Brands, v.Methods, v.MethodNotes = routing.Brands, routing.MethodNames, routing.MethodNotes
 	v.Locations = []squareprovider.Place{}
 	if sq, err := reg.Registered(processor.Square); err == nil {
 		if lister, ok := sq.(interface {
@@ -665,8 +778,11 @@ func ReadRoutingView(ctx context.Context, org *organization.Organization, scope 
 func requestCountry(c *zip.Ctx) string { return checkout.RequestCountry(c) }
 
 type routeRequest struct {
-	Country  string `json:"country"`
-	Currency string `json:"currency"`
+	Country string `json:"country"`
+	// Currency is the currency the buyer chose to pay in, if they chose one; empty
+	// takes the country's default. AmountCents asks for the quote.
+	Currency    string `json:"currency"`
+	AmountCents int64  `json:"amountCents"`
 	// Method is how the buyer chose to pay, when they have. Card brand and issuing
 	// country are not asked of the browser: a new card is tokenized inside the
 	// processor's own form, and rules on them apply where the metadata is already known.
@@ -687,7 +803,7 @@ func RouteCheckout(c *zip.Ctx) error {
 	if country == "" {
 		country = requestCountry(c)
 	}
-	d, f := Place(c.Context(), org, RouteIn{Subject: userBillingKey(c), Country: country, Currency: req.Currency, Method: req.Method})
+	d, f := Place(c.Context(), org, RouteIn{Subject: userBillingKey(c), Country: country, Currency: req.Currency, QuoteCurrency: req.Currency, AmountCents: req.AmountCents, Method: req.Method})
 	if f != nil {
 		return jsonhttp.Fail(c, f.Status, f.Message, f.Err)
 	}
@@ -742,6 +858,7 @@ type previewRequest struct {
 	Method        string `json:"method"`
 	Brand         string `json:"brand"`
 	IssuerCountry string `json:"issuerCountry"`
+	AmountCents   int64  `json:"amountCents"`
 }
 
 // PreviewRoutingHandler answers the effective route of a sample checkout, and the rule
@@ -764,7 +881,7 @@ func PreviewRoutingHandler(c *zip.Ctx) error {
 		}
 		org = o
 	}
-	d, f := PreviewRouting(c.Context(), org, PreviewIn{Subject: req.Subject, Country: req.Country, Currency: req.Currency, Method: req.Method, Brand: req.Brand, IssuerCountry: req.IssuerCountry})
+	d, f := PreviewRouting(c.Context(), org, PreviewIn{Subject: req.Subject, Country: req.Country, Currency: req.Currency, Method: req.Method, Brand: req.Brand, IssuerCountry: req.IssuerCountry, AmountCents: req.AmountCents})
 	if f != nil {
 		return jsonhttp.Fail(c, f.Status, f.Message, f.Err)
 	}
