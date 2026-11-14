@@ -59,6 +59,15 @@ type PaymentOrg struct {
 	Deposit  string `json:"deposit,omitempty"`
 	Takes    []Take `json:"takes,omitempty"`
 
+	// A payment made in another currency than the wallet's (a local method, quoted at
+	// the start) records what the processor took and what the wallet was credited for
+	// it, so a refund or a dispute stated in the buyer's currency is taken back in the
+	// dollars that were credited: CreditCents of the wallet's currency for PaidCents of
+	// PaidCurrency. All zero for a payment credited in the currency it was paid in.
+	PaidCents    int64  `json:"paidCents,omitempty"`
+	PaidCurrency string `json:"paidCurrency,omitempty"`
+	CreditCents  int64  `json:"creditCents,omitempty"`
+
 	dispute.Report
 }
 

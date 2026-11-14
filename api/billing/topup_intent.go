@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/zap-proto/zip"
 
@@ -97,6 +98,51 @@ func OpenTopupIntent(ctx context.Context, org *organization.Organization, in Top
 	key := in.IdempotencyKey
 	if key == "" {
 		key = windowKey(fmt.Sprintf("local:%d:%s:%s", in.AmountCents, cur, d.Country))
+		// A derived key replays an intent that can still be paid, and only that. A
+		// buyer who pressed twice gets the one unpaid intent back; one who comes back
+		// after paying (or after it was cancelled or is processing) gets a new one, not
+		// the finished payment their browser cannot confirm. The intents already opened
+		// for this amount in the window number the key.
+		prior, perr := pendingintent.Since(strings.ToLower(in.Subject), pendingintent.Topup, time.Now().Add(-idemWindowSec*time.Second))
+		if perr != nil {
+			return nil, fault(503, "billing is temporarily unavailable; please retry", perr)
+		}
+		paidCur := cur
+		if cur == "usd" {
+			paidCur = ""
+		}
+		n := 0
+		for _, p := range prior {
+			if p.Cents != in.AmountCents || p.PaidCurrency != paidCur {
+				continue
+			}
+			n++
+			if p.Done {
+				continue
+			}
+			tx, terr := sp.GetTransaction(ctx, p.Id())
+			if terr != nil {
+				continue
+			}
+			switch tx.Status {
+			case "requires_payment_method", "requires_confirmation", "requires_action":
+				secret, _ := tx.Metadata["client_secret"].(string)
+				if secret == "" {
+					continue
+				}
+				amount, rate := p.Cents, 1.0
+				if p.PaidCurrency != "" {
+					amount, rate = p.PaidCents, float64(p.PaidCents)/float64(p.Cents)
+				}
+				return &TopupIntentOut{
+					IntentID: p.Id(), ClientSecret: secret, PublishableKey: payment.StripePublicConfig(org).PublishableKey,
+					Currency: cur, Amount: amount, UsdCents: in.AmountCents, Rate: rate,
+				}, nil
+			}
+		}
+		if n > 0 {
+			key = fmt.Sprintf("%s:%d", key, n)
+		}
 	}
 	// The payer's one customer at Stripe, named and addressed, so the issuer and Radar
 	// see a person and not an anonymous buyer.
