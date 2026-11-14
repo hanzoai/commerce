@@ -431,7 +431,7 @@ func stripeReceivesWebhooks(p processor.PaymentProcessor) bool {
 // sandbox sets side by side with the named one marked as the deployment's.
 func TestTheSeedTurnsProcessorEnvironmentIntoAccountsWithSecretPaths(t *testing.T) {
 	pol := routing.Default()
-	seedFromEnvironment(&pol, []string{
+	seedFromEnvironment(context.Background(), &pol, []string{
 		"STRIPE_SECRET_KEY=sk_live_X", "STRIPE_PUBLISHABLE_KEY=pk_live_X", "STRIPE_TEST_SECRET_KEY=sk_test_X",
 		"SQUARE_ENVIRONMENT=sandbox", "SQUARE_ACCESS_TOKEN=tok", "SQUARE_LOCATION_ID=LOC", "SQUARE_SANDBOX_ACCESS_TOKEN=sbtok", "SQUARE_SANDBOX_LOCATION_ID=SBLOC",
 		"PAYPAL_CLIENT_ID=pp", "PAYPAL_CLIENT_SECRET=pps", "MOONPAY_API_KEY=mp", "OPENNODE_API_KEY=on", "OPENNODE_ENVIRONMENT=live",
@@ -475,6 +475,36 @@ func TestTheSeedTurnsProcessorEnvironmentIntoAccountsWithSecretPaths(t *testing.
 			if strings.HasPrefix(n.Value, "sk_") || n.Value == "tok" || n.Value == "pps" {
 				t.Errorf("account %s/%s holds a secret value as a setting: %+v", a.Processor, a.ID, n)
 			}
+		}
+	}
+}
+
+// A secret is named at the path it resolves at on this deployment: production's are under
+// /commerce-secrets, testnet's under /cloud (the universe KMS syncs), and the seed finds
+// whichever holds them.
+func TestTheSeedNamesEachSecretAtThePathThatResolvesOnThisDeployment(t *testing.T) {
+	useSecrets(t, mapSecrets{
+		"/cloud/STRIPE_TEST_SECRET_KEY": "x", "/cloud/SQUARE_SANDBOX_ACCESS_TOKEN": "y", "/cloud/PAYPAL_SANDBOX_CLIENT_SECRET": "z",
+		"/commerce-secrets/KRAKEN_API_KEY": "k", "/commerce-secrets/KRAKEN_API_SECRET": "s",
+	})
+	pol := routing.Default()
+	seedFromEnvironment(context.Background(), &pol, []string{
+		"STRIPE_TEST_SECRET_KEY=a", "SQUARE_SANDBOX_ACCESS_TOKEN=b", "PAYPAL_SANDBOX_CLIENT_SECRET=c", "PAYPAL_SANDBOX_CLIENT_ID=id",
+		"KRAKEN_API_KEY=k", "KRAKEN_API_SECRET=s",
+	})
+	want := map[string]string{"stripe/test/secretKey": "/cloud/STRIPE_TEST_SECRET_KEY", "square/sandbox/accessToken": "/cloud/SQUARE_SANDBOX_ACCESS_TOKEN", "paypal/sandbox/clientSecret": "/cloud/PAYPAL_SANDBOX_CLIENT_SECRET"}
+	got := map[string]string{}
+	for _, a := range pol.Accounts {
+		for _, n := range a.Secrets {
+			got[a.Processor+"/"+a.ID+"/"+n.Name] = n.Value
+		}
+		if a.Processor == "kraken" && a.SecretRef != "/commerce-secrets" {
+			t.Errorf("kraken folder = %q, want /commerce-secrets", a.SecretRef)
+		}
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("%s = %q, want %q", k, got[k], v)
 		}
 	}
 }

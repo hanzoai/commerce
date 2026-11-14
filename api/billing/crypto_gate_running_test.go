@@ -178,6 +178,6 @@ func (gateCursor) Save(ctx context.Context, _ string, _ uint64) error { return n
 func accountsOf(environ []string) []routing.Account {
 	pol := routing.Default()
 	pol.Accounts = nil
-	seedFromEnvironment(&pol, environ)
+	seedFromEnvironment(context.Background(), &pol, environ)
 	return pol.Accounts
 }
