@@ -126,7 +126,8 @@ var Brands = []string{"visa", "mastercard", "amex", "discover", "jcb", "unionpay
 // apple_pay, google_pay and cash_app are mounted by this service, not by the Element,
 // so their switches shape the lists the checkout mounts.
 var (
-	Excludable  = []string{"pix", "boleto", "oxxo", "ideal", "bancontact", "sepa_debit", "p24", "blik", "eps", "paynow", "promptpay", "grabpay", "alipay", "wechat_pay", "klarna", "affirm", "afterpay_clearpay", "link", "cashapp"}
+	Excludable = []string{"pix", "boleto", "oxxo", "ideal", "bancontact", "sepa_debit", "p24", "blik", "eps", "paynow", "promptpay", "grabpay", "alipay", "wechat_pay", "klarna", "affirm", "afterpay_clearpay", "link", "cashapp",
+		"upi", "kakao_pay", "naver_pay", "payco", "samsung_pay", "kr_card", "twint", "swish", "mobilepay", "multibanco", "fpx"}
 	MethodNames = append(append([]string{}, Excludable...), "apple_pay", "google_pay", "cash_app")
 )
 
@@ -144,6 +145,8 @@ func in(list []string, v string) bool {
 var MethodCurrencies = map[string][]string{
 	"pix": {"brl"}, "boleto": {"brl"}, "oxxo": {"mxn"}, "ideal": {"eur"}, "bancontact": {"eur"}, "sepa_debit": {"eur"},
 	"p24": {"pln", "eur"}, "blik": {"pln"}, "eps": {"eur"}, "paynow": {"sgd"}, "promptpay": {"thb"}, "grabpay": {"sgd", "myr", "php"},
+	"upi": {"inr"}, "kakao_pay": {"krw"}, "naver_pay": {"krw"}, "payco": {"krw"}, "samsung_pay": {"krw"}, "kr_card": {"krw"},
+	"wechat_pay": {"cny", "usd"}, "twint": {"chf"}, "swish": {"sek"}, "mobilepay": {"dkk", "eur"}, "multibanco": {"eur"}, "fpx": {"myr"},
 }
 
 // MethodViable says method can be paid in cur ("" or card methods: always).
@@ -376,8 +379,12 @@ type Decision struct {
 // Quote is what a local-currency payment will cost, disclosed before the buyer
 // authorizes: Amount of Currency buys UsdCents of credit, at Rate per dollar, which
 // carries MarkupBps over the mid-market rate. The amount charged at confirm is Amount.
+// Amount is in the currency's minor unit and Decimals says how many digits that is
+// past the point (0 for JPY, 2 for USD, 3 for KWD), so a page renders Amount/10^Decimals.
+// Rate is per major unit. UsdCents is what the wallet is credited, exactly.
 type Quote struct {
 	Amount    int64   `json:"amount"`
+	Decimals  int     `json:"decimals"`
 	Currency  string  `json:"currency"`
 	UsdCents  int64   `json:"usdCents"`
 	Rate      float64 `json:"rate"`
@@ -639,28 +646,57 @@ func (p Policy) Methods(t processor.ProcessorType, country string) []string {
 	return p.wallets([]string{"card", "apple_pay", "google_pay"})
 }
 
-// euro is the euro area plus the other markets Stripe's euro methods (iDEAL,
-// Bancontact, SEPA debit, EPS, ...) reach.
-var euro = map[string]bool{
-	"AT": true, "BE": true, "CY": true, "DE": true, "EE": true, "FI": true, "GR": true, "HR": true,
-	"IT": true, "LT": true, "LU": true, "LV": true, "MT": true, "NL": true, "PT": true, "SI": true, "SK": true,
-}
-
-// local is the one currency each other market's native methods need.
-var local = map[string]string{
-	"BR": "brl", // Pix, boleto
-	"MX": "mxn", // OXXO
-	"PL": "pln", // Przelewy24, BLIK
-	"SG": "sgd", // PayNow, GrabPay
-	"TH": "thb", // PromptPay
-	"MY": "myr", // GrabPay, FPX
-	"PH": "php", // GrabPay
+// countryCurrency is the currency each country's buyers are shown prices and local
+// methods in, so Stripe's local methods (UPI in INR, Kakao Pay in KRW, Pix in BRL,
+// WeChat Pay in CNY, ...) appear. Every value is a currency in Stripe's presentment
+// list for this account (stripe.Presentment, from https://docs.stripe.com/currencies):
+// a country whose own currency Stripe cannot present is absent and takes "usd", as does
+// a dollarised one. The euro area, and the markets Stripe's euro methods (iDEAL,
+// Bancontact, SEPA debit, EPS, ...) reach, map to "eur". Sanctioned jurisdictions
+// (processor.Sanctioned) are absent: no fiat processor here takes a payment from them.
+var countryCurrency = map[string]string{
+	"AD": "eur", "AE": "aed", "AF": "afn", "AG": "xcd", "AI": "xcd", "AL": "all",
+	"AM": "amd", "AO": "aoa", "AR": "ars", "AT": "eur", "AU": "aud", "AW": "awg",
+	"AX": "eur", "AZ": "azn", "BA": "bam", "BB": "bbd", "BD": "bdt", "BE": "eur",
+	"BF": "xof", "BG": "eur", "BI": "bif", "BJ": "xof", "BL": "eur", "BM": "bmd",
+	"BN": "bnd", "BO": "bob", "BR": "brl", "BS": "bsd", "BV": "nok", "BW": "bwp",
+	"BZ": "bzd", "CA": "cad", "CC": "aud", "CD": "cdf", "CF": "xaf", "CG": "xaf",
+	"CH": "chf", "CI": "xof", "CK": "nzd", "CL": "clp", "CM": "xaf", "CN": "cny",
+	"CO": "cop", "CR": "crc", "CV": "cve", "CW": "xcg", "CX": "aud", "CY": "eur",
+	"CZ": "czk", "DE": "eur", "DJ": "djf", "DK": "dkk", "DM": "xcd", "DO": "dop",
+	"DZ": "dzd", "EE": "eur", "EG": "egp", "EH": "mad", "ES": "eur", "ET": "etb",
+	"FI": "eur", "FJ": "fjd", "FK": "fkp", "FO": "dkk", "FR": "eur", "GA": "xaf",
+	"GB": "gbp", "GD": "xcd", "GE": "gel", "GF": "eur", "GG": "gbp", "GI": "gip",
+	"GL": "dkk", "GM": "gmd", "GN": "gnf", "GP": "eur", "GQ": "xaf", "GR": "eur",
+	"GS": "gbp", "GT": "gtq", "GW": "xof", "GY": "gyd", "HK": "hkd", "HM": "aud",
+	"HN": "hnl", "HR": "eur", "HT": "htg", "HU": "huf", "ID": "idr", "IE": "eur",
+	"IL": "ils", "IM": "gbp", "IN": "inr", "IS": "isk", "IT": "eur", "JE": "gbp",
+	"JM": "jmd", "JP": "jpy", "KE": "kes", "KG": "kgs", "KH": "khr", "KI": "aud",
+	"KM": "kmf", "KN": "xcd", "KR": "krw", "KY": "kyd", "KZ": "kzt", "LA": "lak",
+	"LB": "lbp", "LC": "xcd", "LI": "chf", "LK": "lkr", "LR": "lrd", "LS": "lsl",
+	"LT": "eur", "LU": "eur", "LV": "eur", "MA": "mad", "MC": "eur", "MD": "mdl",
+	"ME": "eur", "MF": "eur", "MG": "mga", "MK": "mkd", "ML": "xof", "MM": "mmk",
+	"MN": "mnt", "MO": "mop", "MQ": "eur", "MS": "xcd", "MT": "eur", "MU": "mur",
+	"MV": "mvr", "MW": "mwk", "MX": "mxn", "MY": "myr", "MZ": "mzn", "NA": "nad",
+	"NC": "xpf", "NE": "xof", "NF": "aud", "NG": "ngn", "NI": "nio", "NL": "eur",
+	"NO": "nok", "NP": "npr", "NR": "aud", "NU": "nzd", "NZ": "nzd", "PA": "pab", "PE": "pen",
+	"PF": "xpf", "PG": "pgk", "PH": "php", "PK": "pkr", "PL": "pln", "PM": "eur",
+	"PN": "nzd", "PS": "ils", "PT": "eur", "PY": "pyg", "QA": "qar", "RE": "eur",
+	"RO": "ron", "RS": "rsd", "RW": "rwf", "SA": "sar", "SB": "sbd", "SC": "scr",
+	"SE": "sek", "SG": "sgd", "SH": "shp", "SI": "eur", "SJ": "nok", "SK": "eur",
+	"SL": "sle", "SM": "eur", "SN": "xof", "SO": "sos", "SR": "srd", "SX": "xcg",
+	"SZ": "szl", "TD": "xaf", "TF": "eur", "TG": "xof", "TH": "thb", "TJ": "tjs",
+	"TK": "nzd", "TO": "top", "TR": "try", "TT": "ttd", "TV": "aud", "TW": "twd",
+	"TZ": "tzs", "UA": "uah", "UG": "ugx", "UY": "uyu", "UZ": "uzs", "VA": "eur",
+	"VC": "xcd", "VN": "vnd", "VU": "vuv", "WF": "xpf", "WS": "wst", "YE": "yer",
+	"YT": "eur", "ZA": "zar", "ZM": "zmw",
 }
 
 // LocalCurrency is the currency a buyer in country is shown local methods in: the
 // policy's entry for the country, else the built-in default, or "usd" when the country
-// has none that needs its own money (a card, Link, a wallet or a buy-now-pay-later
-// method all take dollars). Every currency here has two decimals.
+// has none Stripe can present (a card, Link, a wallet or a buy-now-pay-later method
+// all take dollars). Amounts are counted in the currency's own minor unit, which is
+// not always hundredths: see fx.Step and currency.Type.Decimals.
 func (p Policy) LocalCurrency(country string) string {
 	c := strings.ToUpper(strings.TrimSpace(country))
 	for _, r := range p.LocalCurrencies {
@@ -674,10 +710,10 @@ func (p Policy) LocalCurrency(country string) string {
 // DefaultLocalCurrency is the built-in table a country with no policy entry takes.
 func DefaultLocalCurrency(country string) string {
 	c := strings.ToUpper(strings.TrimSpace(country))
-	if euro[c] {
-		return "eur"
+	if processor.Sanctioned(c) {
+		return "usd"
 	}
-	if cur, ok := local[c]; ok {
+	if cur, ok := countryCurrency[c]; ok {
 		return cur
 	}
 	return "usd"

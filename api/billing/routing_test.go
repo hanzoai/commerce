@@ -22,6 +22,7 @@ import (
 	"github.com/hanzoai/commerce/models/routingpolicy"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
+	stripeprovider "github.com/hanzoai/commerce/payment/providers/stripe"
 	"github.com/hanzoai/commerce/payment/routing"
 	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/permission"
@@ -128,7 +129,7 @@ func (r rail) SupportedCurrencies() []currency.Type {
 	if r.kind == processor.Square {
 		return []currency.Type{currency.USD} // a US/USD Square location
 	}
-	return []currency.Type{currency.USD, currency.EUR, currency.GBP, "brl", "chf"}
+	return stripeprovider.Presentment
 }
 
 // Eligible is Square's answer for a US/USD merchant location: only dollars, and only while it is up.
@@ -416,7 +417,7 @@ func TestAnIneligibleOverrideIsRefusedAtSaveAndChangesNothing(t *testing.T) {
 		},
 		"fallback to an unknown name": func(p *routing.Policy) { p.Fallback = []string{"adyen"} },
 		"stripe for a currency it lacks": func(p *routing.Policy) {
-			p.CurrencyRules = []routing.CurrencyRule{{Currency: "jpy", Processor: "stripe"}}
+			p.CurrencyRules = []routing.CurrencyRule{{Currency: "kwd", Processor: "stripe"}}
 		},
 		"a rule named twice": func(p *routing.Policy) {
 			p.CountryRules = []routing.CountryRule{{Country: "DE", Processor: "stripe"}, {Country: "DE", Processor: "square"}}
@@ -739,7 +740,7 @@ func TestTheSpreadAndTheCountryTableArePolicyAndShapeTheQuote(t *testing.T) {
 	}
 	// Not viable: refused with a clear 400.
 	for _, c := range []struct{ country, cur, method string }{
-		{"BR", "usd", "pix"}, {"DE", "", "pix"}, {"DE", "jpy", ""}, {"DE", "xyz", ""},
+		{"BR", "usd", "pix"}, {"DE", "", "pix"}, {"DE", "kwd", ""}, {"DE", "xyz", ""},
 	} {
 		if _, f := quoteFor(ctx, reg, routing.Default(), 1000, c.country, c.cur, c.method); f == nil || f.Status != 400 {
 			t.Fatalf("%+v should be a 400, got %v", c, f)
@@ -812,5 +813,42 @@ func TestCardRulesSayTheyDoNotApplyWhenNoCardMetadataIsKnown(t *testing.T) {
 	d = p.Decide(routing.Input{Org: "o", Key: "k", Currency: "usd", SquareOK: true, Brand: "amex"})
 	if !d.Chain[3].Applied || d.Rule != "brand" {
 		t.Fatalf("with metadata known the rule applies: %+v", d)
+	}
+}
+
+func TestAQuoteCountsInTheCurrencysOwnMinorUnitAndKeepsTheCreditExact(t *testing.T) {
+	ctx := heldStore(t)
+	useRails(t, true, true)
+	stubRates(t, map[string]float64{"jpy": 150, "krw": 1400, "inr": 83.5, "huf": 360, "aed": 3.6725})
+	reg := processorsForOrg(&organization.Organization{})
+	p := routing.Default()
+	p.FXSpreadBps = 0
+	for _, c := range []struct {
+		country, cur string
+		amount       int64
+		dec          int
+	}{
+		{"JP", "jpy", 3000, 0}, {"KR", "krw", 28000, 0}, {"IN", "inr", 167000, 2}, {"HU", "huf", 720000, 2}, {"AE", "aed", 7345, 2},
+	} {
+		q, f := quoteFor(ctx, reg, p, 2000, c.country, "", "")
+		if f != nil || q.Currency != c.cur || q.Amount != c.amount || q.Decimals != c.dec || q.UsdCents != 2000 {
+			t.Errorf("%s: %+v %v, want %d %s", c.country, q, f, c.amount, c.cur)
+		}
+	}
+	// The weakest rate the table can meet still clears Stripe's minimum, and under it is refused.
+	if q, f := quoteFor(ctx, reg, p, 49, "JP", "", ""); q != nil || f == nil || f.Status != 400 {
+		t.Errorf("49 cents is under Stripe's minimum: %+v %v", q, f)
+	}
+	// A currency Stripe cannot present on this account is refused, not sent to fail there.
+	if q, f := quoteFor(ctx, reg, p, 2000, "KW", "kwd", ""); q != nil || f == nil {
+		t.Errorf("kwd is not presentable on a US account: %+v", q)
+	}
+	// The admin's entry wins over the table.
+	p.LocalCurrencies = []routing.LocalCurrencyRule{{Country: "JP", Currency: "usd"}, {Country: "US", Currency: "krw"}}
+	if q, _ := quoteFor(ctx, reg, p, 2000, "JP", "", ""); q.Currency != "usd" || q.Amount != 2000 {
+		t.Errorf("override JP: %+v", q)
+	}
+	if q, _ := quoteFor(ctx, reg, p, 2000, "US", "", ""); q.Currency != "krw" || q.Amount != 28000 {
+		t.Errorf("override US: %+v", q)
 	}
 }

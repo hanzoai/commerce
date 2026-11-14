@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -117,19 +118,15 @@ func registryFor(ctx context.Context, scope string) *processor.Registry {
 
 // quoteFor is what a payment of amountCents dollars of credit costs in the currency the
 // buyer chose (explicit), else their country's default, disclosed before they
-// authorize. It refuses, with a clear 400, a currency that is not viable: not
-// two-decimal, not one Stripe takes, or not one the chosen method can be paid in
-// (Pix in dollars). The country table only ever supplies the default.
+// authorize. It refuses, with a clear 400, a currency that is not viable: not one
+// Stripe takes, or not one the chosen method can be paid in (Pix in dollars), or an
+// amount under Stripe's minimum charge. The country table only ever supplies the
+// default. Amounts are in the currency's own minor unit (yen, fils, cents).
 func quoteFor(ctx context.Context, reg *processor.Registry, pol routing.Policy, amountCents int64, country, explicit, method string) (*routing.Quote, *PaymentFault) {
 	cur := strings.ToLower(strings.TrimSpace(explicit))
 	if cur == "" {
 		cur = pol.LocalCurrency(country)
 		if method != "" && !routing.MethodViable(method, cur) {
-			for _, c := range routing.MethodCurrencies[strings.ToLower(method)] {
-				if c == cur {
-					break
-				}
-			}
 			return nil, fault(400, method+" is paid in "+strings.Join(routing.MethodCurrencies[strings.ToLower(method)], " or ")+", not "+cur+"; choose one of them", nil)
 		}
 	}
@@ -138,10 +135,10 @@ func quoteFor(ctx context.Context, reg *processor.Registry, pol routing.Policy, 
 		return nil, fault(400, why, errors.New(why))
 	}
 	if cur == "usd" {
-		return &routing.Quote{Amount: amountCents, Currency: "usd", UsdCents: amountCents, Rate: 1, MarkupBps: 0}, nil
+		return &routing.Quote{Amount: amountCents, Decimals: 2, Currency: "usd", UsdCents: amountCents, Rate: 1, MarkupBps: 0}, nil
 	}
-	if !twoDecimal(cur) {
-		return nil, fault(400, cur+" is not a two-decimal currency", nil)
+	if amountCents < fx.MinChargeUSDCents {
+		return nil, fault(400, fmt.Sprintf("Stripe takes no charge under %d usd cents (its minimum, which a charge in %s must also meet)", fx.MinChargeUSDCents, cur), nil)
 	}
 	table, _ := eligibility(ctx, reg)
 	stripeTakes := false
@@ -159,18 +156,7 @@ func quoteFor(ctx context.Context, reg *processor.Registry, pol routing.Policy, 
 	if err != nil {
 		return nil, fault(503, "local payment methods are unavailable right now; please retry", err)
 	}
-	return &routing.Quote{Amount: paid, Currency: cur, UsdCents: amountCents, Rate: rate, MarkupBps: pol.FXSpreadBps}, nil
-}
-
-// twoDecimal says a currency is minor-unit-of-100: the quote and the Payment Element
-// both count in hundredths, so zero- and three-decimal currencies are not offered.
-func twoDecimal(cur string) bool {
-	switch cur {
-	case "bif", "clp", "djf", "gnf", "jpy", "kmf", "krw", "mga", "pyg", "rwf", "ugx", "vnd", "vuv", "xaf", "xof", "xpf",
-		"bhd", "iqd", "jod", "kwd", "lyd", "omr", "tnd":
-		return false
-	}
-	return true
+	return &routing.Quote{Amount: paid, Decimals: int(currency.Type(cur).Decimals()), Currency: cur, UsdCents: amountCents, Rate: rate, MarkupBps: pol.FXSpreadBps}, nil
 }
 
 // CurrencyEligibility says which card processors can take a currency now. It is the
@@ -228,9 +214,6 @@ func ValidateRouting(ctx context.Context, scope string, p routing.Policy) string
 	for _, r := range p.LocalCurrencies {
 		if r.Currency == "usd" {
 			continue // usd switches local currency off for the country
-		}
-		if !twoDecimal(r.Currency) {
-			return "localCurrencies: " + r.Currency + " is not a two-decimal currency"
 		}
 		stripeTakes := false
 		for _, e := range table {

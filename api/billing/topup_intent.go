@@ -3,6 +3,7 @@ package billing
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/hanzoai/commerce/models/paymentorg"
 	"github.com/hanzoai/commerce/models/pendingintent"
 	"github.com/hanzoai/commerce/models/transaction"
+	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/payment/routing"
@@ -138,13 +140,16 @@ func OpenTopupIntent(ctx context.Context, org *organization.Organization, in Top
 				if secret == "" {
 					continue
 				}
-				amount, rate := p.Cents, 1.0
+				amount, dec, rate := p.Cents, int32(2), 1.0
 				if p.PaidCurrency != "" {
-					amount, rate = p.PaidCents, float64(p.PaidCents)/float64(p.Cents)
+					// The rate is per major unit: yen paid per dollar, not yen-minor per cent.
+					dec = currency.Type(p.PaidCurrency).Decimals()
+					amount, rate = p.PaidCents, (float64(p.PaidCents)/math.Pow10(int(dec)))/(float64(p.Cents)/100)
 				}
 				return &TopupIntentOut{
 					IntentID: p.Id(), ClientSecret: secret, PublishableKey: payment.StripePublicConfig(org).PublishableKey,
 					Currency: cur, Amount: amount, UsdCents: in.AmountCents, Rate: rate,
+					Quote: routing.Quote{Amount: amount, Decimals: int(dec), Currency: cur, UsdCents: in.AmountCents, Rate: rate},
 				}, nil
 			}
 		}
