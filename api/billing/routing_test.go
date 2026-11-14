@@ -22,6 +22,7 @@ import (
 	"github.com/hanzoai/commerce/models/routingpolicy"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
+	stripeprovider "github.com/hanzoai/commerce/payment/providers/stripe"
 	"github.com/hanzoai/commerce/payment/routing"
 	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/permission"
@@ -128,7 +129,7 @@ func (r rail) SupportedCurrencies() []currency.Type {
 	if r.kind == processor.Square {
 		return []currency.Type{currency.USD} // a US/USD Square location
 	}
-	return []currency.Type{currency.USD, currency.EUR, currency.GBP, "brl", "chf"}
+	return stripeprovider.Presentment
 }
 
 // Eligible is Square's answer for a US/USD merchant location: only dollars, and only while it is up.
@@ -416,7 +417,7 @@ func TestAnIneligibleOverrideIsRefusedAtSaveAndChangesNothing(t *testing.T) {
 		},
 		"fallback to an unknown name": func(p *routing.Policy) { p.Fallback = []string{"adyen"} },
 		"stripe for a currency it lacks": func(p *routing.Policy) {
-			p.CurrencyRules = []routing.CurrencyRule{{Currency: "jpy", Processor: "stripe"}}
+			p.CurrencyRules = []routing.CurrencyRule{{Currency: "kwd", Processor: "stripe"}}
 		},
 		"a rule named twice": func(p *routing.Policy) {
 			p.CountryRules = []routing.CountryRule{{Country: "DE", Processor: "stripe"}, {Country: "DE", Processor: "square"}}
@@ -702,64 +703,82 @@ func stubRates(t *testing.T, rates map[string]float64) {
 	t.Cleanup(func() { fx.Rate = old })
 }
 
-func TestTheSpreadAndTheCountryTableArePolicyAndShapeTheQuote(t *testing.T) {
+func TestTheDefaultPolicyChargesExactlyTheConvertedAmountRoundedUpToTheIncrement(t *testing.T) {
 	ctx := heldStore(t)
 	useRails(t, true, true)
-	stubRates(t, map[string]float64{"eur": 0.9, "brl": 5})
+	stubRates(t, map[string]float64{"eur": 0.9137, "inr": 94.25, "jpy": 150.4, "brl": 5})
 	reg := processorsForOrg(&organization.Organization{})
 
 	p := routing.Default()
-	q, f := quoteFor(ctx, reg, p, 1000, "DE", "", "")
-	if f != nil || q.Currency != "eur" || q.MarkupBps != 200 || q.Amount != 918 || q.UsdCents != 1000 {
+	// No margin by default, whatever the source: $10 at 0.9137 is 9.137 euro, rounded up to 10.
+	q, f := quoteFor(ctx, reg, p, 1000, "DE", "", "", false)
+	if f != nil || q.Currency != "eur" || q.Amount != 1000 || q.UsdCents != 1000 || q.Rate != 0.9137 || q.Source != "reference" || q.FXFee != "absorb" {
 		t.Fatalf("default: %+v %v", q, f)
 	}
-	p.FXSpreadBps = 0
-	if q, _ = quoteFor(ctx, reg, p, 1000, "DE", "", ""); q.Amount != 900 || q.MarkupBps != 0 {
-		t.Fatalf("a spread of 0 changes the quote: %+v", q)
+	// Go at 94.25: $8 is exactly Rs 754.
+	if q, f = quoteFor(ctx, reg, p, 800, "IN", "", "", false); f != nil || q.Amount != 75400 || q.Increment != 100 || q.Decimals != 2 {
+		t.Fatalf("IN: %+v %v", q, f)
 	}
-	p.FXSpreadBps = 500
-	if q, _ = quoteFor(ctx, reg, p, 1000, "DE", "", ""); q.Amount != 945 || q.MarkupBps != 500 {
-		t.Fatalf("a spread of 500 changes the quote: %+v", q)
+	// Yen round up to ten: $20 is 3008 yen, charged 3010.
+	if q, f = quoteFor(ctx, reg, p, 2000, "JP", "", "", false); f != nil || q.Amount != 3010 || q.Increment != 10 || q.Decimals != 0 {
+		t.Fatalf("JP: %+v %v", q, f)
 	}
+	// The increment is the admin's to set, and rounding can be turned off.
+	p.RoundingIncrements = []routing.RoundingIncrement{{Currency: "jpy", Increment: 100}}
+	if q, _ = quoteFor(ctx, reg, p, 2000, "JP", "", "", false); q.Amount != 3100 {
+		t.Fatalf("a 100 yen increment: %+v", q)
+	}
+	p.RoundingIncrements, p.NoRounding = nil, true
+	if q, _ = quoteFor(ctx, reg, p, 2000, "JP", "", "", false); q.Amount != 3008 {
+		t.Fatalf("rounding off: %+v", q)
+	}
+	for _, bad := range []routing.RoundingIncrement{{Currency: "kwd", Increment: 0.005}, {Currency: "inr", Increment: 0}, {Currency: "isk", Increment: 0.5}} {
+		bp := routing.Default()
+		bp.RoundingIncrements = []routing.RoundingIncrement{bad}
+		if why := bp.Valid(); why == "" {
+			t.Errorf("%+v should be refused", bad)
+		}
+	}
+	// The table is a default, never a restriction.
 	// The table is a default, never a restriction: BR is brl by default, usd when the
 	// admin sets it, and a DE buyer may choose usd or brl whatever the table says.
 	p = routing.Default()
-	if q, _ = quoteFor(ctx, reg, p, 1000, "BR", "", ""); q.Currency != "brl" {
+	if q, _ = quoteFor(ctx, reg, p, 1000, "BR", "", "", false); q.Currency != "brl" {
 		t.Fatalf("BR default: %+v", q)
 	}
 	p.LocalCurrencies = []routing.LocalCurrencyRule{{Country: "BR", Currency: "usd"}}
-	if q, _ = quoteFor(ctx, reg, p, 1000, "BR", "", ""); q.Currency != "usd" || q.Amount != 1000 {
+	if q, _ = quoteFor(ctx, reg, p, 1000, "BR", "", "", false); q.Currency != "usd" || q.Amount != 1000 {
 		t.Fatalf("BR set to usd: %+v", q)
 	}
-	if q, f = quoteFor(ctx, reg, routing.Default(), 1000, "DE", "usd", ""); f != nil || q.Currency != "usd" {
+	if q, f = quoteFor(ctx, reg, routing.Default(), 1000, "DE", "usd", "", false); f != nil || q.Currency != "usd" {
 		t.Fatalf("a DE buyer choosing usd: %+v %v", q, f)
 	}
-	if q, f = quoteFor(ctx, reg, routing.Default(), 1000, "DE", "brl", "pix"); f != nil || q.Currency != "brl" {
+	if q, f = quoteFor(ctx, reg, routing.Default(), 1000, "DE", "brl", "pix", false); f != nil || q.Currency != "brl" {
 		t.Fatalf("a DE buyer choosing pix in brl: %+v %v", q, f)
 	}
 	// Not viable: refused with a clear 400.
 	for _, c := range []struct{ country, cur, method string }{
-		{"BR", "usd", "pix"}, {"DE", "", "pix"}, {"DE", "jpy", ""}, {"DE", "xyz", ""},
+		{"BR", "usd", "pix"}, {"DE", "", "pix"}, {"DE", "kwd", ""}, {"DE", "xyz", ""},
 	} {
-		if _, f := quoteFor(ctx, reg, routing.Default(), 1000, c.country, c.cur, c.method); f == nil || f.Status != 400 {
+		if _, f := quoteFor(ctx, reg, routing.Default(), 1000, c.country, c.cur, c.method, false); f == nil || f.Status != 400 {
 			t.Fatalf("%+v should be a 400, got %v", c, f)
 		}
 	}
 }
 
-func TestInvalidSpreadAndCountryTableEntriesAreRefusedAndTheseFieldsAreVersioned(t *testing.T) {
+func TestInvalidFXAndCountryTableEntriesAreRefusedAndTheseFieldsAreVersioned(t *testing.T) {
 	ctx := heldStore(t)
 	useRails(t, true, true)
 	stubRates(t, map[string]float64{"eur": 0.9, "brl": 5, "gbp": 0.8})
 	scope := "fx-" + t.Name()
 	bad := map[string]func(*routing.Policy){
-		"spread over 1000": func(p *routing.Policy) { p.FXSpreadBps = 1500 },
-		"negative spread":  func(p *routing.Policy) { p.FXSpreadBps = -1 },
+		"unknown fx cost":   func(p *routing.Policy) { p.FXFee = "split" },
+		"unknown fx source": func(p *routing.Policy) { p.FXSource = "oracle" },
 		"unknown country": func(p *routing.Policy) {
 			p.LocalCurrencies = []routing.LocalCurrencyRule{{Country: "ZZ", Currency: "eur"}}
 		},
-		"zero-decimal currency": func(p *routing.Policy) {
-			p.LocalCurrencies = []routing.LocalCurrencyRule{{Country: "JP", Currency: "jpy"}}
+		"an increment Stripe cannot take": func(p *routing.Policy) {
+			p.RoundingIncrements = []routing.RoundingIncrement{{Currency: "kwd", Increment: 0.005}}
 		},
 		"no rate source": func(p *routing.Policy) {
 			p.LocalCurrencies = []routing.LocalCurrencyRule{{Country: "CH", Currency: "chf"}}
@@ -779,7 +798,7 @@ func TestInvalidSpreadAndCountryTableEntriesAreRefusedAndTheseFieldsAreVersioned
 		t.Fatalf("a refused save made a version")
 	}
 	one := routing.Default()
-	one.FXSpreadBps = 300
+	one.FXFee = routing.FXAbsorb
 	one.LocalCurrencies = []routing.LocalCurrencyRule{{Country: "GB", Currency: "gbp"}, {Country: "BR", Currency: "usd"}}
 	if _, f := WriteRouting(ctx, scope, one, "z", "uk in pounds, br in dollars"); f != nil {
 		t.Fatal(f.Err)
@@ -789,13 +808,13 @@ func TestInvalidSpreadAndCountryTableEntriesAreRefusedAndTheseFieldsAreVersioned
 		t.Fatal(f.Err)
 	}
 	vs, _ := ListRoutingVersions(ctx, scope)
-	if len(vs) != 2 || !strings.Contains(strings.Join(vs[0].Diff, ";"), "fxSpreadBps: 300 -> 200") || !strings.Contains(strings.Join(vs[0].Diff, ";"), "localCurrencies") {
+	if len(vs) != 2 || !strings.Contains(strings.Join(vs[0].Diff, ";"), "fxFee: \"absorb\" -> \"pass\"") || !strings.Contains(strings.Join(vs[0].Diff, ";"), "localCurrencies") {
 		t.Fatalf("the diff misses these fields: %+v", vs)
 	}
-	if p, f := RestoreRouting(ctx, scope, 1, "z", ""); f != nil || p.FXSpreadBps != 300 || len(p.LocalCurrencies) != 2 {
+	if p, f := RestoreRouting(ctx, scope, 1, "z", ""); f != nil || p.FXFee != routing.FXAbsorb || len(p.LocalCurrencies) != 2 {
 		t.Fatalf("restore: %+v %v", p, f)
 	}
-	if got, _ := ReadRouting(ctx, scope); got.FXSpreadBps != 300 || got.LocalCurrency("gb") != "gbp" || got.LocalCurrency("BR") != "usd" || got.LocalCurrency("DE") != "eur" {
+	if got, _ := ReadRouting(ctx, scope); got.FXFee != routing.FXAbsorb || got.LocalCurrency("gb") != "gbp" || got.LocalCurrency("BR") != "usd" || got.LocalCurrency("DE") != "eur" {
 		t.Fatalf("the restored policy reads wrong: %+v", got)
 	}
 }
@@ -812,5 +831,163 @@ func TestCardRulesSayTheyDoNotApplyWhenNoCardMetadataIsKnown(t *testing.T) {
 	d = p.Decide(routing.Input{Org: "o", Key: "k", Currency: "usd", SquareOK: true, Brand: "amex"})
 	if !d.Chain[3].Applied || d.Rule != "brand" {
 		t.Fatalf("with metadata known the rule applies: %+v", d)
+	}
+}
+
+func TestAQuoteCountsInTheCurrencysOwnMinorUnitAndKeepsTheCreditExact(t *testing.T) {
+	ctx := heldStore(t)
+	useRails(t, true, true)
+	stubRates(t, map[string]float64{"jpy": 150, "krw": 1400, "inr": 83.5, "huf": 360, "aed": 3.6725})
+	reg := processorsForOrg(&organization.Organization{})
+	p := routing.Default()
+	for _, c := range []struct {
+		country, cur string
+		amount       int64
+		dec          int
+	}{
+		{"JP", "jpy", 3000, 0}, {"KR", "krw", 28000, 0}, {"IN", "inr", 167000, 2}, {"HU", "huf", 720000, 2}, {"AE", "aed", 7400, 2},
+	} {
+		q, f := quoteFor(ctx, reg, p, 2000, c.country, "", "", false)
+		if f != nil || q.Currency != c.cur || q.Amount != c.amount || q.Decimals != c.dec || q.UsdCents != 2000 {
+			t.Errorf("%s: %+v %v, want %d %s", c.country, q, f, c.amount, c.cur)
+		}
+	}
+	// The weakest rate the table can meet still clears Stripe's minimum, and under it is refused.
+	if q, f := quoteFor(ctx, reg, p, 49, "JP", "", "", false); q != nil || f == nil || f.Status != 400 {
+		t.Errorf("49 cents is under Stripe's minimum: %+v %v", q, f)
+	}
+	// A currency Stripe cannot present on this account is refused, not sent to fail there.
+	if q, f := quoteFor(ctx, reg, p, 2000, "KW", "kwd", "", false); q != nil || f == nil {
+		t.Errorf("kwd is not presentable on a US account: %+v", q)
+	}
+	// The admin's entry wins over the table.
+	p.LocalCurrencies = []routing.LocalCurrencyRule{{Country: "JP", Currency: "usd"}, {Country: "US", Currency: "krw"}}
+	if q, _ := quoteFor(ctx, reg, p, 2000, "JP", "", "", false); q.Currency != "usd" || q.Amount != 2000 {
+		t.Errorf("override JP: %+v", q)
+	}
+	if q, _ := quoteFor(ctx, reg, p, 2000, "US", "", "", false); q.Currency != "krw" || q.Amount != 28000 {
+		t.Errorf("override US: %+v", q)
+	}
+}
+
+// quotingRail is a Stripe that quotes its own rate, as one with FX Quotes does.
+type quotingRail struct {
+	rail
+	rq    processor.RateQuote
+	fail  bool
+	locks []string
+}
+
+func (r *quotingRail) QuoteRate(_ context.Context, cur, lock string) (*processor.RateQuote, error) {
+	r.locks = append(r.locks, lock)
+	if r.fail {
+		return nil, errors.New("fx quotes are not enabled for this account")
+	}
+	q := r.rq
+	q.Currency, q.Lock = cur, lock
+	return &q, nil
+}
+
+func useQuotingRail(t *testing.T, r *quotingRail) *processor.Registry {
+	t.Helper()
+	shownMu.Lock()
+	shown = map[string]shownRate{}
+	shownMu.Unlock()
+	old := processorsForOrg
+	processorsForOrg = func(*organization.Organization) *processor.Registry {
+		reg := processor.NewRegistry(processor.DefaultConfig())
+		reg.SetConfig(&processor.RegistryConfig{ProcessorPriority: []processor.ProcessorType{processor.Stripe}, DisabledProcessors: map[processor.ProcessorType]bool{}})
+		reg.Register(r)
+		return reg
+	}
+	t.Cleanup(func() { processorsForOrg = old; shownMu.Lock(); shown = map[string]shownRate{}; shownMu.Unlock() })
+	return processorsForOrg(nil)
+}
+
+func TestStripesRateIsPassedThroughOrAbsorbedAndBoundToThePayment(t *testing.T) {
+	ctx := heldStore(t)
+	stubRates(t, map[string]float64{"inr": 90})
+	r := &quotingRail{rail: newRail(processor.Stripe, true), rq: processor.RateQuote{ID: "fxq_1", PerDollar: 95.2361, BasePerDollar: 94.2842,
+		ExchangeRate: 0.0105002, FeeRate: 0.01, Premium: 0.001, ReferenceRate: 0.0106108, ReferenceProvider: "ecb", ExpiresAt: 1900000000}}
+	reg := useQuotingRail(t, r)
+
+	// Pass (the default): $8 at Stripe's effective rate, fee and premium in it: 761.89 -> Rs 762.
+	p := routing.Default()
+	q, f := quoteFor(ctx, reg, p, 800, "IN", "", "", false)
+	if f != nil || q.Amount != 76200 || q.Source != "processor" || q.FXFee != "pass" || q.Rate != 95.2361 || q.QuoteID != "" || q.ExchangeRate != 0.0105002 {
+		t.Fatalf("pass: %+v %v", q, f)
+	}
+	if len(r.locks) != 1 || r.locks[0] != "none" {
+		t.Fatalf("a displayed price takes the current rate with no lock: %v", r.locks)
+	}
+	// A displayed price reuses the cached rate; it does not quote again.
+	quoteFor(ctx, reg, p, 800, "IN", "", "", false)
+	if len(r.locks) != 1 {
+		t.Fatalf("the shown rate was not cached: %v", r.locks)
+	}
+	// Absorb: base_rate, Hanzo bears the cost: 754.27 -> Rs 755.
+	p.FXFee = routing.FXAbsorb
+	if q, _ = quoteFor(ctx, reg, p, 800, "IN", "", "", false); q.Amount != 75500 || q.FXFee != "absorb" {
+		t.Fatalf("absorb: %+v", q)
+	}
+	// A payment being opened locks the rate for an hour, a voucher method for a day, and
+	// the quote names the lock the intent is bound to.
+	p = routing.Default()
+	if q, _ = quoteFor(ctx, reg, p, 800, "IN", "", "", true); q.QuoteID != "fxq_1" || q.ReferenceProvider != "ecb" || q.LockExpiresAt != 1900000000 || r.locks[len(r.locks)-1] != "hour" {
+		t.Fatalf("bind: %+v %v", q, r.locks)
+	}
+	r.rq.PerDollar, r.rq.BasePerDollar = 5.1, 5.05
+	if q, _ = quoteFor(ctx, reg, p, 1000, "BR", "", "pix", true); q.Amount != 5100 || r.locks[len(r.locks)-1] != "day" {
+		t.Fatalf("pix locks a day: %+v %v", q, r.locks)
+	}
+	// Without FX Quotes the market rate is used, no margin, and the quote says Hanzo
+	// bears the conversion cost.
+	r.fail = true
+	if q, f = quoteFor(ctx, reg, p, 800, "IN", "", "", true); f != nil || q.Source != "reference" || q.FXFee != "absorb" || q.Amount != 72000 || q.QuoteID != "" {
+		t.Fatalf("fallback: %+v %v", q, f)
+	}
+	// The market source can be chosen outright.
+	r.fail = false
+	p.FXSource = routing.FXReference
+	if q, _ = quoteFor(ctx, reg, p, 800, "IN", "", "", false); q.Source != "reference" || q.Amount != 72000 {
+		t.Fatalf("market: %+v", q)
+	}
+}
+
+// A route to Square or to crypto yields a valid quote, and never asks Stripe for a rate.
+func TestARouteToSquareOrCryptoQuotesWithoutAskingStripe(t *testing.T) {
+	ctx := heldStore(t)
+	stripe := &quotingRail{rail: newRail(processor.Stripe, true), rq: processor.RateQuote{ID: "fxq_x", PerDollar: 95, BasePerDollar: 94}}
+	old := processorsForOrg
+	reg := processor.NewRegistry(processor.DefaultConfig())
+	reg.SetConfig(&processor.RegistryConfig{ProcessorPriority: []processor.ProcessorType{processor.Square, processor.Stripe}, DisabledProcessors: map[processor.ProcessorType]bool{}})
+	reg.Register(newRail(processor.Square, true))
+	reg.Register(stripe)
+	processorsForOrg = func(*organization.Organization) *processor.Registry { return reg }
+	t.Cleanup(func() { processorsForOrg = old })
+	stubRates(t, map[string]float64{"inr": 94.25})
+
+	p := routing.Default()
+	for _, via := range []processor.ProcessorType{processor.Square, "crypto"} {
+		q, f := quoteVia(ctx, reg, p, via, 2000, "IN", "", "", true)
+		if f != nil || q.Currency != "usd" || q.Amount != 2000 || q.UsdCents != 2000 || q.Rate != 1 || q.Source != "none" || q.Decimals != 2 {
+			t.Fatalf("%s: %+v %v", via, q, f)
+		}
+	}
+	if q := nativeQuote(2000); q.Source != "none" || q.Rate != 1 || q.Amount != 2000 {
+		t.Fatalf("native: %+v", q)
+	}
+	if len(stripe.locks) != 0 {
+		t.Fatalf("Stripe was asked for a rate: %v", stripe.locks)
+	}
+	// A rail without a quote of its own that can take the currency prices on the
+	// reference rate: the same path, another source.
+	q, f := quoteVia(ctx, reg, p, processor.Stripe, 800, "IN", "", "", false)
+	if f != nil || q.Source != "processor" || len(stripe.locks) != 1 {
+		t.Fatalf("stripe: %+v %v", q, f)
+	}
+	p.FXSource = routing.FXReference
+	if q, f = quoteVia(ctx, reg, p, processor.Stripe, 800, "IN", "", "", false); f != nil || q.Source != "reference" || q.Amount != 75400 || len(stripe.locks) != 1 {
+		t.Fatalf("reference: %+v %v", q, f)
 	}
 }

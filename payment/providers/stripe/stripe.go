@@ -82,13 +82,31 @@ func init() {
 	processor.Register(p)
 }
 
+// Presentment is the currencies this deployment's Stripe account can charge in, as
+// Stripe states them for the account's country (GET /v1/country_specs/US,
+// supported_payment_currencies; the list is documented at
+// https://docs.stripe.com/currencies#presentment-currencies). Amounts follow
+// https://docs.stripe.com/currencies#minor-units: zero-decimal currencies count whole
+// units, three-decimal ones end in 0, ISK and UGX are stated in hundredths with the
+// fraction 00. Stripe documents bhd, jod, kwd, omr and tnd for accounts elsewhere; a US
+// account cannot present them, so they are not listed here.
+var Presentment = []currency.Type{
+	"aed", "afn", "all", "amd", "ang", "aoa", "ars", "aud", "awg", "azn", "bam", "bbd",
+	"bdt", "bif", "bmd", "bnd", "bob", "brl", "bsd", "bwp", "byn", "bzd", "cad", "cdf",
+	"chf", "clp", "cny", "cop", "crc", "cve", "czk", "djf", "dkk", "dop", "dzd", "egp",
+	"etb", "eur", "fjd", "fkp", "gbp", "gel", "gip", "gmd", "gnf", "gtq", "gyd", "hkd",
+	"hnl", "htg", "huf", "idr", "ils", "inr", "isk", "jmd", "jpy", "kes", "kgs", "khr",
+	"kmf", "krw", "kyd", "kzt", "lak", "lbp", "lkr", "lrd", "lsl", "mad", "mdl", "mga",
+	"mkd", "mmk", "mnt", "mop", "mur", "mvr", "mwk", "mxn", "myr", "mzn", "nad", "ngn",
+	"nio", "nok", "npr", "nzd", "pab", "pen", "pgk", "php", "pkr", "pln", "pyg", "qar",
+	"ron", "rsd", "rub", "rwf", "sar", "sbd", "scr", "sek", "sgd", "shp", "sle", "sos",
+	"srd", "std", "szl", "thb", "tjs", "top", "try", "ttd", "twd", "tzs", "uah", "ugx",
+	"usd", "uyu", "uzs", "vnd", "vuv", "wst", "xaf", "xcd", "xcg", "xof", "xpf", "yer",
+	"zar", "zmw",
+}
+
 func supportedCurrencies() []currency.Type {
-	return []currency.Type{
-		currency.USD, currency.EUR, currency.GBP, currency.CAD, currency.AUD,
-		currency.JPY, currency.CHF, currency.NZD, "sgd", "hkd",
-		"nok", "sek", "dkk", "pln", "brl", "mxn",
-		"czk", "huf", "ron", "bgn", "inr", "krw", "cny", "zar",
-	}
+	return Presentment
 }
 
 // Type returns the processor type.
@@ -173,7 +191,15 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 	}
 
 	var pi paymentIntent
-	if err := p.postKey(ctx, "/payment_intents", params, req.IdempotencyKey, &pi); err != nil {
+	post := func() error { return p.postKey(ctx, "/payment_intents", params, req.IdempotencyKey, &pi) }
+	if q, _ := req.Options["quoteId"].(string); q != "" {
+		// The charge is bound to the rate the buyer was quoted for it.
+		params.Set("fx_quote", q)
+		post = func() error {
+			return p.postVersion(ctx, "/payment_intents", params, req.IdempotencyKey, fxVersion, &pi)
+		}
+	}
+	if err := post(); err != nil {
 		// A card Stripe refuses for authentication carries the intent that waits
 		// for it; that is the buyer's step, not a decline.
 		if pe := intentOf(err); pe != nil && pe.Status == "requires_action" {
@@ -675,7 +701,9 @@ func (p *Provider) del(ctx context.Context, path string, params url.Values) erro
 func (p *Provider) doRequest(req *http.Request, result interface{}) error {
 	req.SetBasicAuth(p.secretKey, "")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Stripe-Version", apiVersion)
+	if req.Header.Get("Stripe-Version") == "" {
+		req.Header.Set("Stripe-Version", apiVersion)
+	}
 
 	resp, err := p.client.Do(req)
 	if err != nil {

@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/zap-proto/zip"
@@ -37,12 +39,15 @@ type rules struct {
 	Fallback           []string                    `json:"fallback"`
 	LocalMethods       []routing.MethodRule        `json:"methods"`
 	NoSticky           bool                        `json:"noSticky,omitempty"`
-	FXSpreadBps        *int                        `json:"fxSpreadBps,omitempty"`
 	LocalCurrencies    []routing.LocalCurrencyRule `json:"localCurrencies"`
+	FXSource           string                      `json:"fxSource,omitempty"`
+	FXFee              string                      `json:"fxCost,omitempty"`
+	NoRounding         bool                        `json:"noRounding,omitempty"`
+	RoundingIncrements []routing.RoundingIncrement `json:"roundingIncrements"`
 }
 
 func encodeRules(p routing.Policy) string {
-	b, _ := json.Marshal(rules{p.CurrencyRules, p.CountryRules, p.BrandRules, p.IssuerCountryRules, p.Fallback, p.LocalMethods, !p.Sticky, &p.FXSpreadBps, p.LocalCurrencies})
+	b, _ := json.Marshal(rules{p.CurrencyRules, p.CountryRules, p.BrandRules, p.IssuerCountryRules, p.Fallback, p.LocalMethods, !p.Sticky, p.LocalCurrencies, p.FXSource, p.FXFee, p.NoRounding, p.RoundingIncrements})
 	return string(b)
 }
 
@@ -54,10 +59,7 @@ func policyOf(r *routingpolicy.Row) routing.Policy {
 		var x rules
 		if json.Unmarshal([]byte(r.Rules), &x) == nil {
 			p.CurrencyRules, p.CountryRules, p.BrandRules, p.IssuerCountryRules, p.Fallback, p.LocalMethods, p.Sticky = x.CurrencyRules, x.CountryRules, x.BrandRules, x.IssuerCountryRules, x.Fallback, x.LocalMethods, !x.NoSticky
-			if x.FXSpreadBps != nil {
-				p.FXSpreadBps = *x.FXSpreadBps
-			}
-			p.LocalCurrencies = x.LocalCurrencies
+			p.LocalCurrencies, p.FXSource, p.FXFee, p.NoRounding, p.RoundingIncrements = x.LocalCurrencies, x.FXSource, x.FXFee, x.NoRounding, x.RoundingIncrements
 		}
 	}
 	return p.Normal()
@@ -115,21 +117,31 @@ func registryFor(ctx context.Context, scope string) *processor.Registry {
 	return processorsForOrg(&organization.Organization{})
 }
 
-// quoteFor is what a payment of amountCents dollars of credit costs in the currency the
+// quoteFor is quoteVia for a checkout carried by Stripe.
+func quoteFor(ctx context.Context, reg *processor.Registry, pol routing.Policy, amountCents int64, country, explicit, method string, bind bool) (*routing.Quote, *PaymentFault) {
+	return quoteVia(ctx, reg, pol, processor.Stripe, amountCents, country, explicit, method, bind)
+}
+
+// quoteVia is what a payment of amountCents dollars of credit costs in the currency the
 // buyer chose (explicit), else their country's default, disclosed before they
-// authorize. It refuses, with a clear 400, a currency that is not viable: not
-// two-decimal, not one Stripe takes, or not one the chosen method can be paid in
-// (Pix in dollars). The country table only ever supplies the default.
-func quoteFor(ctx context.Context, reg *processor.Registry, pol routing.Policy, amountCents int64, country, explicit, method string) (*routing.Quote, *PaymentFault) {
+// authorize, when the route picked via to carry it. It is ONE path for every rail: the
+// price is ceilToIncrement(P_usd x rate), the rate comes from a fx.Source (the
+// processor's own quote when it has one and the policy allows it, else the market
+// reference, else nothing at all for a payment in dollars), and nothing here names a
+// vendor. A currency the carrying processor cannot take is refused when the buyer asked
+// for it, and is dollars when only the country's default asked. It also refuses a
+// currency the chosen method cannot be paid in (Pix in dollars) and an amount under
+// the processor's minimum. Amounts are in the currency's own minor unit, rounded up to
+// the policy's increment. bind says a payment is about to be opened on this quote: a
+// processor's rate is then locked for it, and the quote names the lock.
+func quoteVia(ctx context.Context, reg *processor.Registry, pol routing.Policy, via processor.ProcessorType, amountCents int64, country, explicit, method string, bind bool) (*routing.Quote, *PaymentFault) {
 	cur := strings.ToLower(strings.TrimSpace(explicit))
 	if cur == "" {
 		cur = pol.LocalCurrency(country)
+		if cur != "usd" && !takesCurrency(ctx, reg, via, cur) {
+			cur = "usd" // the default asked, the rail cannot: dollars
+		}
 		if method != "" && !routing.MethodViable(method, cur) {
-			for _, c := range routing.MethodCurrencies[strings.ToLower(method)] {
-				if c == cur {
-					break
-				}
-			}
 			return nil, fault(400, method+" is paid in "+strings.Join(routing.MethodCurrencies[strings.ToLower(method)], " or ")+", not "+cur+"; choose one of them", nil)
 		}
 	}
@@ -138,39 +150,136 @@ func quoteFor(ctx context.Context, reg *processor.Registry, pol routing.Policy, 
 		return nil, fault(400, why, errors.New(why))
 	}
 	if cur == "usd" {
-		return &routing.Quote{Amount: amountCents, Currency: "usd", UsdCents: amountCents, Rate: 1, MarkupBps: 0}, nil
+		return nativeQuote(amountCents), nil
 	}
-	if !twoDecimal(cur) {
-		return nil, fault(400, cur+" is not a two-decimal currency", nil)
+	if amountCents < fx.MinChargeUSDCents {
+		return nil, fault(400, fmt.Sprintf("%s takes no charge under %d usd cents (its minimum, which a charge in %s must also meet)", via, fx.MinChargeUSDCents, cur), nil)
 	}
-	table, _ := eligibility(ctx, reg)
-	stripeTakes := false
-	for _, e := range table {
-		if e.Currency == cur {
-			for _, x := range e.Processors {
-				stripeTakes = stripeTakes || x == "stripe"
-			}
+	if !takesCurrency(ctx, reg, via, cur) {
+		return nil, fault(400, string(via)+" cannot take "+cur+" for this account", nil)
+	}
+	step := pol.Step(cur)
+	var src fx.Source = fx.Reference{}
+	if pol.FXSource != routing.FXReference {
+		if ps, ok := processorSourceOf(reg, via, method, bind); ok {
+			src = ps
 		}
 	}
-	if !stripeTakes {
-		return nil, fault(400, "stripe cannot take "+cur+" for this account", nil)
+	lock := fx.LockNone
+	if bind {
+		lock = lockFor(method)
 	}
-	paid, rate, err := fx.Quote(ctx, amountCents, cur, pol.FXSpreadBps)
+	pr, err := fx.Price(ctx, src, fx.Reference{}, amountCents, cur, lock, pol.FXFee != routing.FXAbsorb, step)
 	if err != nil {
 		return nil, fault(503, "local payment methods are unavailable right now; please retry", err)
 	}
-	return &routing.Quote{Amount: paid, Currency: cur, UsdCents: amountCents, Rate: rate, MarkupBps: pol.FXSpreadBps}, nil
+	o := pr.Offer
+	fee := routing.FXAbsorb
+	if pr.Passed {
+		fee = routing.FXPass
+	}
+	q := &routing.Quote{Amount: pr.Amount, Decimals: int(currency.Type(cur).Decimals()), Currency: cur, UsdCents: amountCents, Rate: pr.PerDollar,
+		Source: o.Origin, FXFee: fee, ExchangeRate: o.Exchange, BaseRate: o.Base, FeeRate: o.FeeRate, Premium: o.Premium,
+		LockExpiresAt: o.LockExpiresAt, Increment: step, Disclosure: routing.Disclosure}
+	if bind {
+		q.QuoteID, q.ReferenceRate, q.ReferenceProvider = o.ID, o.Reference, o.ReferenceProvider
+	}
+	return q, nil
 }
 
-// twoDecimal says a currency is minor-unit-of-100: the quote and the Payment Element
-// both count in hundredths, so zero- and three-decimal currencies are not offered.
-func twoDecimal(cur string) bool {
-	switch cur {
-	case "bif", "clp", "djf", "gnf", "jpy", "kmf", "krw", "mga", "pyg", "rwf", "ugx", "vnd", "vuv", "xaf", "xof", "xpf",
-		"bhd", "iqd", "jod", "kwd", "lyd", "omr", "tnd":
+// nativeQuote is the quote of a payment that is not converted: dollars, USDC, or any
+// rail whose money is the credit's own. Same shape, source none, the rate at 1.
+func nativeQuote(usdCents int64) *routing.Quote {
+	return &routing.Quote{Amount: usdCents, Decimals: 2, Currency: "usd", UsdCents: usdCents, Rate: 1, BaseRate: 1, ExchangeRate: 1, Source: fx.OriginNone, Increment: 1}
+}
+
+// takesCurrency says the processor via can charge in cur on this account now.
+func takesCurrency(ctx context.Context, reg *processor.Registry, via processor.ProcessorType, cur string) bool {
+	table, _ := eligibility(ctx, reg)
+	for _, e := range table {
+		if e.Currency == cur {
+			for _, x := range e.Processors {
+				if x == string(via) {
+					return true
+				}
+			}
+		}
+	}
+	if via == processor.Stripe || via == processor.Square {
 		return false
 	}
-	return true
+	if p, err := reg.Registered(via); err == nil && p.IsAvailable(ctx) {
+		for _, c := range p.SupportedCurrencies() {
+			if string(c) == cur {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// lockFor is how long a rate is locked for a payment opened with method: a day for a
+// voucher or a bank transfer that settles after the buyer has left, an hour otherwise.
+func lockFor(method string) fx.Lock {
+	switch strings.ToLower(method) {
+	case "pix", "boleto", "oxxo", "sepa_debit":
+		return fx.LockDay
+	}
+	return fx.LockHour
+}
+
+// displayTTL is how long a processor rate shown as a price is reused: an hour, well
+// inside the day a displayed price may go without a refresh. A price a payment is bound
+// to is never taken from here.
+const displayTTL = time.Hour
+
+type shownRate struct {
+	o  *fx.Offer
+	at time.Time
+}
+
+var (
+	shownMu sync.Mutex
+	shown   = map[string]shownRate{}
+)
+
+// processorSource is a fx.Source over a processor that quotes its own rate.
+type processorSource struct {
+	q processor.RateQuoter
+}
+
+// processorSourceOf is via's own rate source, when via has one.
+func processorSourceOf(reg *processor.Registry, via processor.ProcessorType, _ string, _ bool) (fx.Source, bool) {
+	p, err := reg.Registered(via)
+	if err != nil {
+		return nil, false
+	}
+	q, ok := p.(processor.RateQuoter)
+	return processorSource{q}, ok
+}
+
+func (s processorSource) Quote(ctx context.Context, _ int64, cur string, lock fx.Lock) (*fx.Offer, error) {
+	if lock == fx.LockNone {
+		shownMu.Lock()
+		if c, ok := shown[cur]; ok && time.Since(c.at) < displayTTL {
+			shownMu.Unlock()
+			return c.o, nil
+		}
+		shownMu.Unlock()
+	}
+	rq, err := s.q.QuoteRate(ctx, cur, string(lock))
+	if err != nil {
+		log.Warn("fx: the processor's quote for %s is unavailable, using the reference rate: %v", cur, err)
+		return nil, err
+	}
+	o := &fx.Offer{ID: rq.ID, Origin: fx.OriginProcessor, PerDollar: rq.PerDollar, Base: rq.BasePerDollar, FeeRate: rq.FeeRate, Premium: rq.Premium,
+		Exchange: rq.ExchangeRate, Reference: rq.ReferenceRate, ReferenceProvider: rq.ReferenceProvider, LockExpiresAt: rq.ExpiresAt}
+	if lock == fx.LockNone {
+		shownMu.Lock()
+		shown[cur] = shownRate{o, time.Now()}
+		shownMu.Unlock()
+	}
+	return o, nil
 }
 
 // CurrencyEligibility says which card processors can take a currency now. It is the
@@ -229,9 +338,6 @@ func ValidateRouting(ctx context.Context, scope string, p routing.Policy) string
 		if r.Currency == "usd" {
 			continue // usd switches local currency off for the country
 		}
-		if !twoDecimal(r.Currency) {
-			return "localCurrencies: " + r.Currency + " is not a two-decimal currency"
-		}
 		stripeTakes := false
 		for _, e := range table {
 			if e.Currency == r.Currency {
@@ -244,7 +350,7 @@ func ValidateRouting(ctx context.Context, scope string, p routing.Policy) string
 			return "localCurrencies: stripe cannot take " + r.Currency + " now"
 		}
 		qctx, cancel := context.WithTimeout(ctx, 6*time.Second)
-		_, _, qerr := fx.Quote(qctx, 100, r.Currency, p.FXSpreadBps)
+		_, _, qerr := fx.Quote(qctx, 100, r.Currency, fx.Granule(r.Currency))
 		cancel()
 		if qerr != nil {
 			return "localCurrencies: " + r.Currency + " has no rate source, so it cannot be quoted (" + qerr.Error() + ")"
@@ -622,15 +728,15 @@ func place(ctx context.Context, org *organization.Organization, in RouteIn, live
 			return nil, fault(503, "no payment processor is available right now", nil)
 		}
 	}
-	if in.AmountCents > 0 && d.Processor == processor.Stripe && d.Reason != "saved" && pol.LocalOn {
-		q, qf := quoteFor(ctx, reg, pol, in.AmountCents, country, in.QuoteCurrency, in.Method)
+	if in.AmountCents > 0 && d.Reason != "saved" && pol.LocalOn {
+		q, qf := quoteVia(ctx, reg, pol, d.Processor, in.AmountCents, country, in.QuoteCurrency, in.Method, false)
 		if qf != nil {
 			return nil, qf
 		}
 		d.Quote = q
 	}
 	d.Alternatives = alternativesFor(ctx, reg, pol, country)
-	d.LocalCurrency, d.FXSpreadBps, d.Version = pol.LocalCurrency(country), pol.FXSpreadBps, polVersion
+	d.LocalCurrency, d.Version = pol.LocalCurrency(country), polVersion
 	if live {
 		if err := routingpolicy.Record(ctx, org.Name, string(d.Processor), country, d.Reason, polVersion); err != nil {
 			log.Warn("routing: the decision was not recorded: %v", err)

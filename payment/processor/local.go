@@ -30,6 +30,44 @@ type LocalIntent struct {
 	// Customer is the payer's customer at the processor; ReceiptEmail their email.
 	Customer     string
 	ReceiptEmail string
+	// QuoteID is the processor's locked exchange rate (RateQuote.ID) the intent is
+	// bound to, so the processor converts at the rate the buyer was quoted. "" for none.
+	QuoteID string
+}
+
+// RateQuoter is a processor that quotes its own exchange rate to USD, the currency it
+// settles in (Stripe's FX Quotes API), optionally locked for the life of one payment.
+type RateQuoter interface {
+	QuoteRate(ctx context.Context, cur, lock string) (*RateQuote, error)
+}
+
+// Rate locks: how long a quoted rate holds. LockNone is the current rate, no lock and
+// no premium; the others bind a payment and carry the processor's lock premium.
+const (
+	LockNone = "none"
+	LockHour = "hour"
+	LockDay  = "day"
+)
+
+// RateQuote is a processor's rate for converting Currency to USD. PerDollar is what one
+// dollar costs in Currency at the rate the processor will CONVERT at (its own
+// conversion fee and lock premium included), in major units. BasePerDollar is the same
+// before them. FeeRate and Premium are the fraction taken for each.
+type RateQuote struct {
+	ID            string
+	Currency      string
+	PerDollar     float64
+	BasePerDollar float64
+	FeeRate       float64
+	Premium       float64
+	// ExchangeRate is the same rate as PerDollar the way Stripe states it: USD per one
+	// unit of Currency. ReferenceRate is the market reference Stripe measured against,
+	// from ReferenceProvider.
+	ExchangeRate      float64
+	ReferenceRate     float64
+	ReferenceProvider string
+	Lock              string
+	ExpiresAt         int64
 }
 
 // LocalIntentOut is what the browser needs to mount the Payment Element.
@@ -50,4 +88,25 @@ func IntentState(status string) string {
 	default: // requires_payment_method
 		return "created"
 	}
+}
+
+// SettlementReader is a processor that reports what a payment settled for: the
+// processor's balance transaction, in the currency it settles in.
+type SettlementReader interface {
+	Settlement(ctx context.Context, intentID string) (*Settlement, error)
+}
+
+// Settlement is what the processor reports once a payment has settled, all in minor
+// units of Currency (the settlement currency, USD). Gross is what the buyer's payment
+// converted to, Fee the processor's fees in total (Tax inside it is the tax on them),
+// Net what is left, and ExchangeRate the rate the processor converted at (settlement
+// currency per unit of the paid currency), 0 when no conversion happened.
+type Settlement struct {
+	BalanceTransaction string
+	Currency           string
+	Gross              int64
+	Fee                int64
+	Tax                int64
+	Net                int64
+	ExchangeRate       float64
 }

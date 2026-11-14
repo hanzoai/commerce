@@ -207,6 +207,12 @@ type Subscription struct {
 
 	Account accounts.Account  `json:"account,omitempty"`
 	Ref     refs.EcommerceRef `json:"ref,omitempty"`
+
+	// BillingCurrency is the currency the buyer pays each period in when it is not the
+	// plan's: the plan stays priced in dollars, and every renewal converts that price at
+	// a rate quoted for that renewal (api/billing.RequoteRenewal). Empty bills in the
+	// plan's own currency.
+	BillingCurrency string `json:"billingCurrency,omitempty"`
 }
 
 // Line is one more seat type on a team's subscription: a plan of the catalog group

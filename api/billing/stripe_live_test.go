@@ -1255,15 +1255,15 @@ func TestLiveStripe_ABuyerAtTheCapIsRefusedBeforeStripeIsAsked(t *testing.T) {
 // attributes the payment is written before the secret leaves.
 func TestLiveStripe_LocalIntentIsQuotedAndRecorded(t *testing.T) {
 	l := liveSetup(t)
-	old := fx.Rate
-	fx.Rate = func(context.Context, string) (float64, error) { return 5.5, nil }
-	t.Cleanup(func() { fx.Rate = old })
-
 	out, f := OpenTopupIntent(*l.ctx, l.org, TopupIntentIn{Subject: l.subject, Country: "BR", AmountCents: 500})
 	if f != nil {
 		t.Fatalf("open: %d %s (%v)", f.Status, f.Message, f.Err)
 	}
-	want := int64(math.Ceil(500 * 5.5 * 1.02))
+	// Stripe's own locked FX quote prices it: $5 at the rate it quoted, up to a whole real.
+	want := int64(math.Ceil(5*out.Rate-1e-9)) * 100
+	if out.Quote.Source != "processor" || !strings.HasPrefix(out.Quote.QuoteID, "fxq_") {
+		t.Fatalf("quote = %+v; want Stripe's FX quote", out.Quote)
+	}
 	if out.Currency != "brl" || out.Amount != want || out.UsdCents != 500 || out.ClientSecret == "" || out.PublishableKey == "" {
 		t.Fatalf("out = %+v; want %d brl for 500 usd cents", out, want)
 	}
@@ -1423,8 +1423,8 @@ func TestLiveStripe_TheDisclosedQuoteIsTheChargeAndALaterPolicyMovesNothing(t *t
 	t.Cleanup(func() { fx.Rate = old })
 
 	pol := routing.Default()
-	pol.FXSpreadBps = 300
-	if _, f := WriteRouting(*l.ctx, l.org.Name, pol, "z", "spread 300"); f != nil {
+	pol.FXSource = routing.FXReference
+	if _, f := WriteRouting(*l.ctx, l.org.Name, pol, "z", "market rate"); f != nil {
 		t.Fatalf("policy: %v", f.Err)
 	}
 	// Not viable: Pix in dollars is refused with a clear 400 before anything is opened.
@@ -1433,7 +1433,7 @@ func TestLiveStripe_TheDisclosedQuoteIsTheChargeAndALaterPolicyMovesNothing(t *t
 	}
 	// A German buyer may choose USD: the country table is a default and no restriction.
 	usd, f := OpenTopupIntent(*l.ctx, l.org, TopupIntentIn{Subject: l.subject, Country: "DE", AmountCents: 500, Currency: "usd", IdempotencyKey: "q-usd-" + l.run})
-	if f != nil || usd.Quote.Currency != "usd" || usd.Quote.Amount != 500 || usd.Quote.MarkupBps != 0 {
+	if f != nil || usd.Quote.Currency != "usd" || usd.Quote.Amount != 500 {
 		t.Fatalf("a DE buyer choosing usd: %+v %v", usd, f)
 	}
 	l.call("POST", "/payment_intents/"+usd.IntentID+"/cancel", nil)
@@ -1442,10 +1442,10 @@ func TestLiveStripe_TheDisclosedQuoteIsTheChargeAndALaterPolicyMovesNothing(t *t
 	if f != nil {
 		t.Fatalf("open: %v", f.Err)
 	}
-	want := int64(math.Ceil(500*5.5*1.03 - 1e-9))
+	want := int64(math.Ceil(500*5.5/100)) * 100 // $5 at 5.5 is 27.50 brl, rounded up to a whole real
 	q := out.Quote
-	if q.Currency != "brl" || q.Amount != want || q.UsdCents != 500 || q.MarkupBps != 300 || out.PolicyVersion != 1 || out.Amount != q.Amount {
-		t.Fatalf("quote %+v version %d; want %d brl at 300 bps under version 1", q, out.PolicyVersion, want)
+	if q.Currency != "brl" || q.Amount != want || q.UsdCents != 500 || out.PolicyVersion != 1 || out.Amount != q.Amount {
+		t.Fatalf("quote %+v version %d; want %d brl under version 1", q, out.PolicyVersion, want)
 	}
 	pi := l.call("GET", "/payment_intents/"+out.IntentID, nil)
 	if int64(pi["amount"].(float64)) != q.Amount || pi["currency"] != q.Currency {
@@ -1458,7 +1458,6 @@ func TestLiveStripe_TheDisclosedQuoteIsTheChargeAndALaterPolicyMovesNothing(t *t
 
 	// The policy changes mid-checkout: another spread, and Brazil in dollars.
 	next := routing.Default()
-	next.FXSpreadBps = 100
 	next.LocalCurrencies = []routing.LocalCurrencyRule{{Country: "BR", Currency: "usd"}}
 	if _, f := WriteRouting(*l.ctx, l.org.Name, next, "z", "mid-checkout"); f != nil {
 		t.Fatalf("second policy: %v", f.Err)
@@ -1475,4 +1474,73 @@ func TestLiveStripe_TheDisclosedQuoteIsTheChargeAndALaterPolicyMovesNothing(t *t
 	}
 	l.call("POST", "/payment_intents/"+out.IntentID+"/cancel", nil)
 	l.call("POST", "/payment_intents/"+again.IntentID+"/cancel", nil)
+}
+
+// An Indian buyer's card asks for the bank's step (3-D Secure) on the first charge. The
+// sale is billed in rupees on a locked FX quote: the intent Stripe holds is in INR and
+// carries the quote, the attempt is recorded with the quote bound, and nothing is
+// credited and no subscription opened until the buyer is back. A buyer who abandons the
+// step is not charged: the intent is cancelled at Stripe, the attempt closed, and no
+// subscription or credit appears; the quote, locked for an hour, lapses unused.
+func TestLiveStripe_AnIndianSaleThatNeedsTheBankIsBoundToItsQuoteAndAbandonedLeavesNothing(t *testing.T) {
+	l := liveSetup(t)
+	db := datastore.New(l.org.Namespaced(*l.ctx))
+	// A card already on file that asks for the bank's step when it pays (attaching it asks
+	// nothing; a new card is authenticated at setup, which saveCard already answers).
+	cus := l.call("POST", "/customers", url.Values{"email": {"asha@example.com"}, "metadata[hanzo_subject]": {l.subject}})
+	pmID := str(l.call("POST", "/payment_methods/pm_card_authenticationRequired/attach", url.Values{"customer": {str(cus["id"])}})["id"])
+	saved := paymentmethod.New(db)
+	saved.CustomerId, saved.UserId, saved.ProviderType, saved.ProviderRef = l.subject, l.subject, "stripe", pmID
+	saved.Metadata = map[string]interface{}{"customerId": str(cus["id"])}
+	saved.Card = &paymentmethod.CardDetails{Brand: "visa", Last4: "3184", Country: "IN"}
+	if err := saved.Create(); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Subscribe(*l.ctx, l.org, SubscribeIn{
+		MethodID: saved.Id(), PlanID: "pro-3x", Subject: l.subject, Email: "asha@example.com",
+		Interval: types.Monthly, Country: "IN", IdempotencyKey: l.run + "-live-in-3ds",
+	})
+	var ar authRequired
+	if err == nil || json.Unmarshal([]byte(err.Error()), &ar) != nil || ar.Code != "authentication_required" || !strings.HasPrefix(ar.ID, "pi_") {
+		t.Fatalf("sale = %v; want the bank's step with a PaymentIntent", err)
+	}
+	pi := l.call("GET", "/payment_intents/"+ar.ID, nil)
+	paid := int64(pi["amount"].(float64))
+	// The FX quote an intent is bound to is shown only in Stripe's preview API version.
+	req, _ := http.NewRequest(http.MethodGet, "https://api.stripe.com/v1/payment_intents/"+ar.ID, nil)
+	req.SetBasicAuth(l.sk, "")
+	req.Header.Set("Stripe-Version", "2026-10-28.preview")
+	resp, rerr := http.DefaultClient.Do(req)
+	if rerr != nil {
+		t.Fatal(rerr)
+	}
+	var preview map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&preview)
+	resp.Body.Close()
+	pi["fx_quote"] = preview["fx_quote"]
+	if pi["status"] != "requires_action" || pi["currency"] != "inr" || !strings.HasPrefix(str(pi["fx_quote"]), "fxq_") || paid < 1500*50 {
+		t.Fatalf("Stripe holds %v %v %v bound to %q; want a rupee intent over Rs 750, requires_action, on an FX quote", pi["amount"], pi["currency"], pi["status"], pi["fx_quote"])
+	}
+	rec, found, _ := pendingintent.Get(ar.ID)
+	if !found || rec.Purpose != pendingintent.Sale || rec.Cents != 1500 || rec.PaidCurrency != "inr" || rec.PaidCents != paid || rec.QuoteID != pi["fx_quote"] || rec.RateSource != "processor" {
+		t.Fatalf("attempt = %+v; want a sale of 1500 usd cents paid %d inr on quote %v", rec, paid, pi["fx_quote"])
+	}
+	if subs, _ := userSubscriptions(db, l.subject, true); len(subs) != 0 || l.balance() != 0 {
+		t.Fatalf("%d subscriptions and balance %d before the buyer is back; want none", len(subs), l.balance())
+	}
+
+	// The buyer walks away.
+	rec.LockExpiresAt = time.Now().Add(-time.Minute).Unix() // a card's attempt ends with its rate lock
+	if err := reconcileIntent(*l.ctx, rec); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if after := l.call("GET", "/payment_intents/"+ar.ID, nil); after["status"] != "canceled" {
+		t.Fatalf("Stripe holds %v after the abandon; want canceled", after["status"])
+	}
+	if done, _, _ := pendingintent.Get(ar.ID); done == nil || !done.Done {
+		t.Fatalf("the attempt is still open: %+v", done)
+	}
+	if subs, _ := userSubscriptions(db, l.subject, true); len(subs) != 0 || l.balance() != 0 {
+		t.Fatalf("%d subscriptions and balance %d after the abandon; want none", len(subs), l.balance())
+	}
 }
