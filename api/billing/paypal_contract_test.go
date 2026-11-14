@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"github.com/hanzoai/commerce/payment/processor"
 	"testing"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -19,8 +20,7 @@ import (
 
 func paypalContractOrg(t *testing.T) (*paypaltest.Server, *organization.Organization, *ae.Context) {
 	t.Helper()
-	t.Setenv("PAYPAL_SANDBOX_CLIENT_ID", "contract-client")
-	t.Setenv("PAYPAL_SANDBOX_CLIENT_SECRET", "contract-secret")
+	t.Cleanup(processor.EnvSeed{"PAYPAL_SANDBOX_CLIENT_ID": "contract-client", "PAYPAL_SANDBOX_CLIENT_SECRET": "contract-secret"}.Apply())
 	srv := paypaltest.New(t, "contract-client", "contract-secret")
 	srv.Route(t)
 	injectLedger(t, newFakeLedger())

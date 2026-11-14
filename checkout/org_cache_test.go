@@ -22,9 +22,7 @@ func liveOrg(name string) *organization.Organization {
 // advertises production. This is the case the nil loader could not express.
 func TestCachedOrgLoader_LiveOrgReachesResolver(t *testing.T) {
 	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("*") }))
-	t.Setenv("SQUARE_ENVIRONMENT", "production")
-	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-PROD")
-	t.Setenv("SQUARE_LOCATION_ID", "LOCPROD")
+	t.Cleanup(processor.EnvSeed{"SQUARE_ENVIRONMENT": "production", "SQUARE_APPLICATION_ID": "sq0idp-PROD", "SQUARE_LOCATION_ID": "LOCPROD"}.Apply())
 
 	l := NewCachedOrgLoader(func(_ context.Context, slug string) (*organization.Organization, error) {
 		return liveOrg(slug), nil
@@ -46,10 +44,7 @@ func TestCachedOrgLoader_LiveOrgReachesResolver(t *testing.T) {
 // the org row is the authority, in both directions.
 func TestCachedOrgLoader_NotLiveOrgStaysSandbox(t *testing.T) {
 	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("*") }))
-	t.Setenv("SQUARE_ENVIRONMENT", "production")
-	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-PROD")
-	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "sandbox-sq0idb-TEST")
-	t.Setenv("SQUARE_LOCATION_ID", "LOCPROD")
+	t.Cleanup(processor.EnvSeed{"SQUARE_ENVIRONMENT": "production", "SQUARE_APPLICATION_ID": "sq0idp-PROD", "SQUARE_SANDBOX_APPLICATION_ID": "sandbox-sq0idb-TEST", "SQUARE_LOCATION_ID": "LOCPROD"}.Apply())
 
 	l := NewCachedOrgLoader(func(_ context.Context, slug string) (*organization.Organization, error) {
 		o := &organization.Organization{}
@@ -67,9 +62,7 @@ func TestCachedOrgLoader_NotLiveOrgStaysSandbox(t *testing.T) {
 // never promote a org onto production rails.
 func TestCachedOrgLoader_ReadFailureFailsClosed(t *testing.T) {
 	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("*") }))
-	t.Setenv("SQUARE_ENVIRONMENT", "production")
-	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-PROD")
-	t.Setenv("SQUARE_LOCATION_ID", "LOCPROD")
+	t.Cleanup(processor.EnvSeed{"SQUARE_ENVIRONMENT": "production", "SQUARE_APPLICATION_ID": "sq0idp-PROD", "SQUARE_LOCATION_ID": "LOCPROD"}.Apply())
 
 	l := NewCachedOrgLoader(func(_ context.Context, _ string) (*organization.Organization, error) {
 		return nil, errors.New("datastore down")

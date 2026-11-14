@@ -61,14 +61,16 @@ func init() {
 		BaseProcessor: processor.NewBaseProcessor(processor.PayPal, supportedCurrencies()),
 		httpClient:    &http.Client{Timeout: 30 * time.Second},
 	}
-	p.Configure(configFromEnv())
 	processor.Register(p)
 }
 
-func configFromEnv() Config {
+// Reconfigure reads the deployment's PayPal accounts from the routing policy.
+func (p *Provider) Reconfigure() { p.Configure(configFromAccounts()) }
+
+func configFromAccounts() Config {
 	sandbox := SandboxEnv()
-	creds := FromEnv(sandbox)
-	sbCreds := FromEnv(true)
+	creds := Deployment(sandbox)
+	sbCreds := Deployment(true)
 	return Config{
 		ClientID:            creds.ClientID,
 		ClientSecret:        creds.ClientSecret,

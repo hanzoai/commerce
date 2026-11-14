@@ -10,7 +10,6 @@
 package payment
 
 import (
-	"os"
 	"strings"
 
 	"github.com/hanzoai/commerce/models/organization"
@@ -82,12 +81,12 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 		appID := sqCfg.ApplicationId
 		webhookKey := org.Square.WebhookSignatureKey
 		// Notification URL that Square signs deliveries against. Prefer the
-		// org's configured value, then the deployment env, then the canonical
+		// org's configured value, then the deployment's square account, then the canonical
 		// commerce ingress URL. Must match the URL registered in the Square
 		// dashboard byte-for-byte or HMAC verification fails.
 		webhookURL := org.Square.WebhookURL
 		if webhookURL == "" {
-			webhookURL = strings.TrimSpace(os.Getenv("SQUARE_WEBHOOK_URL"))
+			webhookURL = strings.TrimSpace(sqenv.Active().Setting("webhookUrl"))
 		}
 		if webhookURL == "" {
 			webhookURL = defaultSquareWebhookURL
@@ -96,12 +95,12 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 		// Env-var credential fallback (KMS disabled or no stored Square creds).
 		// The SAME useSandbox authority picks the sandbox vs production env vars,
 		// so the credential set always matches `env`, and a sandbox org reads
-		// the sandbox names only (sqenv.FromEnv).
+		// the sandbox names only (sqenv.Deployment).
 		if token == "" {
-			creds := sqenv.FromEnv(useSandbox)
+			creds := sqenv.Deployment(useSandbox)
 			token, locationID, appID = creds.AccessToken, creds.LocationID, creds.ApplicationID
 			if webhookKey == "" {
-				webhookKey = strings.TrimSpace(os.Getenv("SQUARE_WEBHOOK_SIGNATURE_KEY"))
+				webhookKey = strings.TrimSpace(sqenv.Active().Secret("webhookSignature"))
 			}
 		}
 
@@ -142,7 +141,7 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 	// PayPal — REST API v2 OAuth2 client credentials, resolved through the same
 	// single org.TestMode() authority as Square: per-org REST v2 ClientId/ClientSecret
 	// first, then legacy SecurityUserId/SecurityPassword when both are present,
-	// then the deployment's env fallback (paypal.FromEnv) matching useSandbox.
+	// then the deployment's env fallback (paypal.Deployment) matching useSandbox.
 	{
 		useSandbox := org.TestMode()
 		ppCfg := org.PayPalConfig(useSandbox)
@@ -157,7 +156,7 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 			clientSecret = strings.TrimSpace(ppCfg.SecurityPassword)
 		}
 		if clientID == "" || clientSecret == "" {
-			creds := paypal.FromEnv(useSandbox)
+			creds := paypal.Deployment(useSandbox)
 			clientID, clientSecret = creds.ClientID, creds.ClientSecret
 			if webhookID == "" {
 				webhookID = creds.WebhookID

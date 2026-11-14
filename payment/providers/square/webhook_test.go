@@ -40,17 +40,12 @@ func verifier() *Provider {
 	return NewProvider(Config{WebhookSignatureKey: testKey, WebhookURL: testURL})
 }
 
-// The deployment's environment seeds the global verifier: env → configFromEnv →
+// The deployment's environment seeds the global verifier: env → configFromAccounts →
 // Configure → ValidateWebhook over a Square-spec signature.
 func TestEnvSeedsTheVerifier(t *testing.T) {
-	t.Setenv("SQUARE_ENVIRONMENT", "production")
-	t.Setenv("SQUARE_ACCESS_TOKEN", "tok")
-	t.Setenv("SQUARE_LOCATION_ID", "loc")
-	t.Setenv("SQUARE_APPLICATION_ID", "app")
-	t.Setenv("SQUARE_WEBHOOK_SIGNATURE_KEY", testKey)
-	t.Setenv("SQUARE_WEBHOOK_URL", testURL)
+	t.Cleanup(processor.EnvSeed{"SQUARE_ENVIRONMENT": "production", "SQUARE_ACCESS_TOKEN": "tok", "SQUARE_LOCATION_ID": "loc", "SQUARE_APPLICATION_ID": "app", "SQUARE_WEBHOOK_SIGNATURE_KEY": testKey, "SQUARE_WEBHOOK_URL": testURL}.Apply())
 
-	p := NewProvider(configFromEnv())
+	p := NewProvider(configFromAccounts())
 	if !p.IsAvailable(context.Background()) {
 		t.Fatal("env-seeded provider not available")
 	}
@@ -163,21 +158,14 @@ func TestTheRegistryHoldsOneSquareType(t *testing.T) {
 }
 
 func TestConfigFromEnvSandboxReadsNoProductionName(t *testing.T) {
-	t.Setenv("SQUARE_ENVIRONMENT", "sandbox")
-	t.Setenv("SQUARE_ACCESS_TOKEN", "EAAA-prod-hostile")
-	t.Setenv("SQUARE_LOCATION_ID", "PRODLOC-hostile")
-	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-hostile")
-	t.Setenv("SQUARE_SANDBOX_ACCESS_TOKEN", "sb-tok")
-	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "sb-loc")
-	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "")
+	t.Cleanup(processor.EnvSeed{"SQUARE_ENVIRONMENT": "sandbox", "SQUARE_ACCESS_TOKEN": "EAAA-prod-hostile", "SQUARE_LOCATION_ID": "PRODLOC-hostile", "SQUARE_APPLICATION_ID": "sq0idp-hostile", "SQUARE_SANDBOX_ACCESS_TOKEN": "sb-tok", "SQUARE_SANDBOX_LOCATION_ID": "sb-loc", "SQUARE_SANDBOX_APPLICATION_ID": ""}.Apply())
 
-	cfg := configFromEnv()
+	cfg := configFromAccounts()
 	if cfg.AccessToken != "sb-tok" || cfg.LocationID != "sb-loc" || cfg.Environment != "sandbox" {
 		t.Fatalf("sandbox switch broken: %+v", cfg)
 	}
-	t.Setenv("SQUARE_SANDBOX_ACCESS_TOKEN", "")
-	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "")
-	if p := NewProvider(configFromEnv()); p.IsAvailable(context.Background()) {
+	t.Cleanup(processor.EnvSeed{"SQUARE_SANDBOX_ACCESS_TOKEN": "", "SQUARE_SANDBOX_LOCATION_ID": "", "SQUARE_SANDBOX_APPLICATION_ID": "sandbox-app"}.Apply())
+	if p := NewProvider(configFromAccounts()); p.IsAvailable(context.Background()) {
 		t.Fatal("a sandbox deployment with no sandbox account charges through the production names")
 	}
 }

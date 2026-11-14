@@ -21,7 +21,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -420,16 +419,15 @@ func (p *Processor) fetchDepositAddresses(ctx context.Context, asset, method str
 }
 
 func (p *Processor) resolveDepositMethod(ctx context.Context, chain, token, asset string) (string, error) {
-	// 1. Check explicit environment overrides first:
-	//    KRAKEN_DEPOSIT_METHOD_<CHAIN>_<TOKEN> or KRAKEN_DEPOSIT_METHOD_<CHAIN>
-	chainUpper := strings.ToUpper(chain)
-	tokenUpper := strings.ToUpper(token)
-	if tokenUpper != "" {
-		if m := strings.TrimSpace(os.Getenv("KRAKEN_DEPOSIT_METHOD_" + chainUpper + "_" + tokenUpper)); m != "" {
+	// 1. Check the kraken account's explicit overrides first, its settings
+	//    depositMethod.<chain>.<token> or depositMethod.<chain>.
+	acct := processor.AccountOf(processor.Kraken, "exchange")
+	if token != "" {
+		if m := strings.TrimSpace(acct.Setting("depositMethod." + chain + "." + token)); m != "" {
 			return m, nil
 		}
 	}
-	if m := strings.TrimSpace(os.Getenv("KRAKEN_DEPOSIT_METHOD_" + chainUpper)); m != "" {
+	if m := strings.TrimSpace(acct.Setting("depositMethod." + chain)); m != "" {
 		return m, nil
 	}
 

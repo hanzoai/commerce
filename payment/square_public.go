@@ -43,9 +43,9 @@ func SquarePublicConfig(org *organization.Organization) SquarePublic {
 	// Env fallback (KMS disabled or no per-org Square creds — the common case
 	// for cloud orgs). The SAME useSandbox authority picks the sandbox vs
 	// production public vars, so the app id always matches `env`; a sandbox
-	// org is never shown the production application (square.FromEnv).
+	// org is never shown the production application (square.Deployment).
 	if appID == "" || locationID == "" {
-		creds := square.FromEnv(useSandbox)
+		creds := square.Deployment(useSandbox)
 		appID, locationID = creds.ApplicationID, creds.LocationID
 	}
 

@@ -40,7 +40,8 @@ func TestExistingSquareCardKeepsRenewingUnderTheStripeOnlyPolicy(t *testing.T) {
 	}
 
 	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("stripe") }))
-	t.Setenv("STRIPE_TEST_SECRET_KEY", "sk_test_present") // the default is Stripe alone where Stripe is keyed
+	// STRIPE_TEST_SECRET_KEY: the default is Stripe alone where Stripe is keyed
+	t.Cleanup(processor.EnvSeed{"STRIPE_TEST_SECRET_KEY": "sk_test_present"}.Apply())
 	if _, ok := cardVaultFrom(processorsForOrg(org), ""); ok {
 		t.Fatal("a NEW card could be saved with Square under the Stripe-only policy")
 	}

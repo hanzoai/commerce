@@ -45,7 +45,8 @@ func squareProcFromReg(t *testing.T, reg *processor.Registry) *square.Provider {
 // env is set to the OPPOSITE on purpose: it must not participate.
 func TestProcessorsForOrg_SquareSplit_LiveOrgIsProduction(t *testing.T) {
 	ensureDefaultProcessorPolicy(t)
-	t.Setenv("SQUARE_ENVIRONMENT", "sandbox") // hostile: the old authority says sandbox
+	// SQUARE_ENVIRONMENT: hostile: the old authority says sandbox
+	t.Cleanup(processor.EnvSeed{"SQUARE_ENVIRONMENT": "sandbox"}.Apply())
 
 	org := orgWithSquareCreds()
 	org.Live = true
@@ -64,7 +65,8 @@ func TestProcessorsForOrg_SquareSplit_LiveOrgIsProduction(t *testing.T) {
 // property. The env again says the opposite and is again ignored.
 func TestProcessorsForOrg_SquareSplit_TestOrgIsSandbox(t *testing.T) {
 	ensureDefaultProcessorPolicy(t)
-	t.Setenv("SQUARE_ENVIRONMENT", "production") // hostile: the old authority says production
+	// SQUARE_ENVIRONMENT: hostile: the old authority says production
+	t.Cleanup(processor.EnvSeed{"SQUARE_ENVIRONMENT": "production"}.Apply())
 
 	org := orgWithSquareCreds()
 	org.Live = false
@@ -86,11 +88,8 @@ func TestProcessorsForOrg_SquareSplit_TestOrgIsSandbox(t *testing.T) {
 // exists it at least follows the per-org mode.
 func TestProcessorsForOrg_SquareEnvVarFallback_FollowsOrgMode(t *testing.T) {
 	ensureDefaultProcessorPolicy(t)
-	t.Setenv("SQUARE_ENVIRONMENT", "production") // hostile: ignored
-	t.Setenv("SQUARE_ACCESS_TOKEN", "prod-env-token")
-	t.Setenv("SQUARE_LOCATION_ID", "prod-env-loc")
-	t.Setenv("SQUARE_SANDBOX_ACCESS_TOKEN", "sandbox-env-token")
-	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "sandbox-env-loc")
+	// SQUARE_ENVIRONMENT: hostile: ignored
+	t.Cleanup(processor.EnvSeed{"SQUARE_ENVIRONMENT": "production", "SQUARE_ACCESS_TOKEN": "prod-env-token", "SQUARE_LOCATION_ID": "prod-env-loc", "SQUARE_SANDBOX_ACCESS_TOKEN": "sandbox-env-token", "SQUARE_SANDBOX_LOCATION_ID": "sandbox-env-loc"}.Apply())
 
 	org := &organization.Organization{} // no KMS creds → env fallback
 	org.Live = false                    // test mode ⇒ sandbox credential set
@@ -110,7 +109,7 @@ func TestProcessorsForOrg_SquareEnvVarFallback_FollowsOrgMode(t *testing.T) {
 // reaches it.
 func TestProcessorsForOrg_SquareIsOfferedOnlyForAnEligibleLocation(t *testing.T) {
 	ensureDefaultProcessorPolicy(t)
-	t.Setenv("SQUARE_ENVIRONMENT", "production")
+	t.Cleanup(processor.EnvSeed{"SQUARE_ENVIRONMENT": "production"}.Apply())
 
 	org := orgWithSquareCreds()
 	org.Live = true
@@ -135,10 +134,7 @@ func TestProcessorsForOrg_SquareIsOfferedOnlyForAnEligibleLocation(t *testing.T)
 // With no Stripe keys of its own, an org charges the deployment's Stripe
 // account of its own kind — and never a key of the other kind.
 func TestStripeKeys_EnvFallbackByKind(t *testing.T) {
-	t.Setenv("STRIPE_SECRET_KEY", "sk_live_DEPLOY")
-	t.Setenv("STRIPE_PUBLISHABLE_KEY", "pk_live_DEPLOY")
-	t.Setenv("STRIPE_TEST_SECRET_KEY", "sk_test_DEPLOY")
-	t.Setenv("STRIPE_TEST_PUBLISHABLE_KEY", "pk_test_DEPLOY")
+	t.Cleanup(processor.EnvSeed{"STRIPE_SECRET_KEY": "sk_live_DEPLOY", "STRIPE_PUBLISHABLE_KEY": "pk_live_DEPLOY", "STRIPE_TEST_SECRET_KEY": "sk_test_DEPLOY", "STRIPE_TEST_PUBLISHABLE_KEY": "pk_test_DEPLOY"}.Apply())
 
 	live := &organization.Organization{Live: true}
 	if k := StripeKeys(live); k.SecretKey != "sk_live_DEPLOY" || k.PublishableKey != "pk_live_DEPLOY" {
@@ -153,14 +149,14 @@ func TestStripeKeys_EnvFallbackByKind(t *testing.T) {
 	}
 
 	// A secret key misfiled as the publishable key is never published.
-	t.Setenv("STRIPE_TEST_PUBLISHABLE_KEY", "sk_test_MISFILED")
+	t.Cleanup(processor.EnvSeed{"STRIPE_TEST_PUBLISHABLE_KEY": "sk_test_MISFILED"}.Apply())
 	if k := StripeKeys(test); k.PublishableKey != "" {
 		t.Fatalf("a secret key reached the publishable slot: %+v", k)
 	}
-	t.Setenv("STRIPE_TEST_PUBLISHABLE_KEY", "pk_test_DEPLOY")
+	t.Cleanup(processor.EnvSeed{"STRIPE_TEST_PUBLISHABLE_KEY": "pk_test_DEPLOY"}.Apply())
 
 	// A key of the wrong kind under a name is dropped, never used.
-	t.Setenv("STRIPE_SECRET_KEY", "sk_test_MISFILED")
+	t.Cleanup(processor.EnvSeed{"STRIPE_SECRET_KEY": "sk_test_MISFILED"}.Apply())
 	if k := StripeKeys(live); k.SecretKey != "" {
 		t.Fatalf("live org took a test key: %+v", k)
 	}
@@ -181,10 +177,7 @@ func TestStripeKeys_EnvFallbackByKind(t *testing.T) {
 // org's mode, a publishable key of that mode. A key of the other mode, or of the
 // wrong kind, is no key at all.
 func TestStripeKeys_OwnKeysAreCheckedByMode(t *testing.T) {
-	t.Setenv("STRIPE_SECRET_KEY", "")
-	t.Setenv("STRIPE_TEST_SECRET_KEY", "")
-	t.Setenv("STRIPE_PUBLISHABLE_KEY", "")
-	t.Setenv("STRIPE_TEST_PUBLISHABLE_KEY", "")
+	t.Cleanup(processor.EnvSeed{"STRIPE_SECRET_KEY": "", "STRIPE_TEST_SECRET_KEY": "", "STRIPE_PUBLISHABLE_KEY": "", "STRIPE_TEST_PUBLISHABLE_KEY": ""}.Apply())
 	cases := []struct {
 		name           string
 		live           bool

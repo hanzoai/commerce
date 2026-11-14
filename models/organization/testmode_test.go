@@ -1,6 +1,7 @@
 package organization
 
 import (
+	"github.com/hanzoai/commerce/payment/processor"
 	"sync"
 	"testing"
 )
@@ -48,7 +49,7 @@ func TestOrganization_TestMode_IgnoresDeploymentEnv(t *testing.T) {
 
 	for _, v := range []string{"production", "prod", "live", "sandbox", "test", "", "   ", "produciton", "bogus"} {
 		t.Run("SQUARE_ENVIRONMENT="+v, func(t *testing.T) {
-			t.Setenv("SQUARE_ENVIRONMENT", v)
+			t.Cleanup(processor.EnvSeed{"SQUARE_ENVIRONMENT": v}.Apply())
 			if live.TestMode() {
 				t.Errorf("live org became test mode under SQUARE_ENVIRONMENT=%q — the env is deciding again", v)
 			}
@@ -63,7 +64,8 @@ func TestOrganization_TestMode_IgnoresDeploymentEnv(t *testing.T) {
 // their OWN environments. This is what a single horizontally-scaled deployment
 // requires, and what the deployment-wide gate made impossible.
 func TestOrganization_TestMode_PerTenantInOneProcess(t *testing.T) {
-	t.Setenv("SQUARE_ENVIRONMENT", "sandbox") // hostile: the old authority says sandbox
+	// SQUARE_ENVIRONMENT: hostile: the old authority says sandbox
+	t.Cleanup(processor.EnvSeed{"SQUARE_ENVIRONMENT": "sandbox"}.Apply())
 
 	live := Organization{}
 	live.Live = true

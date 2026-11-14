@@ -12,7 +12,6 @@ package square
 
 import (
 	"context"
-	"os"
 	"strings"
 	"time"
 
@@ -57,34 +56,32 @@ type Provider struct {
 }
 
 func init() {
-	// The global registry's Square slot, seeded from the deployment. It is the
-	// sessionless verifier HandleProviderWebhook reaches with no tenant resolver
-	// in front, so it is configured here or not at all.
-	p := &Provider{
-		BaseProcessor: processor.NewBaseProcessor(processor.Square, nil),
-	}
-	p.Configure(configFromEnv())
-	processor.Register(p)
+	// The global registry's Square slot. It is the sessionless verifier
+	// HandleProviderWebhook reaches with no tenant resolver in front, so it exists from
+	// the start and is configured from the policy's square accounts (Reconfigure).
+	processor.Register(&Provider{BaseProcessor: processor.NewBaseProcessor(processor.Square, nil)})
 }
 
-// configFromEnv is the deployment's own Square account: SQUARE_ENVIRONMENT picks
-// the sandbox or production credential set, and only that set
-// (thirdparty.FromEnv), plus the webhook subscription's key and URL.
-func configFromEnv() Config {
-	env := strings.ToLower(strings.TrimSpace(os.Getenv("SQUARE_ENVIRONMENT")))
+// Reconfigure reads the deployment's own Square account from the routing policy.
+func (p *Provider) Reconfigure() { p.Configure(configFromAccounts()) }
+
+// configFromAccounts is the deployment's own Square account: the one the policy marks as
+// the deployment's picks the sandbox or production credential set, and only that set
+// (thirdparty.Deployment), plus the webhook subscription's key and URL.
+func configFromAccounts() Config {
 	sandbox := thirdparty.SandboxEnv()
-	creds := thirdparty.FromEnv(sandbox)
+	creds := thirdparty.Deployment(sandbox)
+	active := thirdparty.Active()
+	env := "production"
 	if sandbox {
 		env = "sandbox"
-	} else if env == "" {
-		env = "production"
 	}
 	return Config{
 		ApplicationID:       creds.ApplicationID,
 		AccessToken:         creds.AccessToken,
 		LocationID:          creds.LocationID,
-		WebhookSignatureKey: strings.TrimSpace(os.Getenv("SQUARE_WEBHOOK_SIGNATURE_KEY")),
-		WebhookURL:          strings.TrimSpace(os.Getenv("SQUARE_WEBHOOK_URL")),
+		WebhookSignatureKey: strings.TrimSpace(active.Secret("webhookSignature")),
+		WebhookURL:          strings.TrimSpace(active.Setting("webhookUrl")),
 		Environment:         env,
 	}
 }

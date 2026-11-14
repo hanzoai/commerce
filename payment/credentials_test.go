@@ -57,8 +57,7 @@ func TestHydrateLoadsTheOrgsOwnSquareCredential(t *testing.T) {
 		"orgs/acme/square/SQUARE_SANDBOX_APPLICATION_ID": "sandbox-sq0idb-acme",
 	}}
 	withStore(t, s)
-	t.Setenv("SQUARE_SANDBOX_ACCESS_TOKEN", "deployment-token")
-	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "DEPLOYMENT-LOC")
+	t.Cleanup(processor.EnvSeed{"SQUARE_SANDBOX_ACCESS_TOKEN": "deployment-token", "SQUARE_SANDBOX_LOCATION_ID": "DEPLOYMENT-LOC"}.Apply())
 
 	org := &organization.Organization{Name: "acme"} // not Live: sandbox
 	shopper := zip.WithCaller(context.Background(), zip.Caller{Org: "someone-else", User: "bob"})

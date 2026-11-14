@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -61,21 +60,10 @@ func NewProvider(cfg Config) *Provider {
 }
 
 func init() {
-	apiKey := os.Getenv("MOONPAY_API_KEY")
-	secretKey := os.Getenv("MOONPAY_SECRET_KEY")
-	webhookKey := os.Getenv("MOONPAY_WEBHOOK_KEY")
-
-	p := &Provider{
+	processor.Register(&Provider{
 		BaseProcessor: processor.NewBaseProcessor(processor.MoonPay, supportedCurrencies()),
-		apiKey:        apiKey,
-		secretKey:     secretKey,
-		webhookKey:    webhookKey,
 		client:        &http.Client{Timeout: defaultTimeout},
-	}
-	if apiKey != "" && secretKey != "" {
-		p.SetConfigured(true)
-	}
-	processor.Register(p)
+	})
 }
 
 func supportedCurrencies() []currency.Type {
@@ -440,3 +428,11 @@ func parseTime(s string) int64 {
 
 // Compile-time interface check.
 var _ processor.PaymentProcessor = (*Provider)(nil)
+
+// Reconfigure reads the "default" moonpay account from the routing policy: the API key,
+// the secret key and the webhook key, read from KMS.
+func (p *Provider) Reconfigure() {
+	a := processor.AccountOf(processor.MoonPay, "default")
+	p.apiKey, p.secretKey, p.webhookKey = strings.TrimSpace(a.Secret("apiKey")), strings.TrimSpace(a.Secret("secretKey")), strings.TrimSpace(a.Secret("webhookKey"))
+	p.SetConfigured(p.apiKey != "" && p.secretKey != "")
+}

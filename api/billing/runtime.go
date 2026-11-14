@@ -22,6 +22,12 @@ import (
 	"github.com/hanzoai/commerce/thirdparty/mpc"
 )
 
+// BOOTSTRAP EXCEPTION. The environment is read before the policy store exists, and only for
+// what is needed to open it and reach KMS: the store's location (COMMERCE_DATA_DIR,
+// COMMERCE_BASE_URL, COMMERCE_BASE_AUX, store.FromEnv) and the KMS client the host builds
+// (cmd/commerce/kms.go). Nothing about a processor, a deposit rail or a credential is read
+// from the environment after the first run seeded the policy (seedRuntime).
+//
 // The platform routing policy is the one place the processors commerce charges with,
 // and the deposit accounts it watches, are configured. It is applied to what runs the
 // moment it is written on this replica, and picked up by the others on a short refresh:
@@ -88,9 +94,44 @@ func applyRuntime(ctx context.Context, pol routing.Policy, version int) error {
 			first = err
 		}
 	}
+	applyAccounts(ctx, pol)
 	configureMPC(ctx, pol)
 	configureKraken(ctx, pol)
 	return first
+}
+
+// accountedProcessors are the processors given accounts by the last apply, so a processor
+// whose accounts were all removed is cleared.
+var accountedProcessors []processor.ProcessorType
+
+// applyAccounts gives each processor its accounts from the policy: every account that is on
+// and is not a deposit account (no network), with its settings and its secrets read from
+// KMS now. The processors read their configuration from these and from nothing else.
+func applyAccounts(ctx context.Context, pol routing.Policy) {
+	by := map[processor.ProcessorType][]processor.Account{}
+	for _, a := range pol.Accounts {
+		if !a.On || a.Network != "" || a.Processor == "" {
+			continue
+		}
+		acct := processor.Account{ID: a.ID, Settings: map[string]string{}, Secrets: map[string]string{}}
+		for _, n := range a.Settings {
+			acct.Settings[n.Name] = n.Value
+		}
+		for _, n := range a.Secrets {
+			acct.Secrets[n.Name] = secrets.String(ctx, n.Value)
+		}
+		by[processor.ProcessorType(a.Processor)] = append(by[processor.ProcessorType(a.Processor)], acct)
+	}
+	for _, t := range accountedProcessors {
+		if _, still := by[t]; !still {
+			processor.SetAccounts(t, nil)
+		}
+	}
+	accountedProcessors = accountedProcessors[:0]
+	for t, accts := range by {
+		processor.SetAccounts(t, accts)
+		accountedProcessors = append(accountedProcessors, t)
+	}
 }
 
 // configureMPC points the mpc rail at the policy's mpc service account (the one with no
@@ -331,6 +372,7 @@ func seedFromEnvironment(pol *routing.Policy, environ []string) {
 			}
 		}
 	}
+	seedProcessorAccounts(pol, env)
 	// The default crypto processor an operator named leads the rails for any asset.
 	if explicit := strings.ToLower(env["COMMERCE_DEFAULT_CRYPTO_PROCESSOR"]); explicit != "" {
 		pol.CryptoRails = append([]routing.CryptoRoute{{Asset: "*", Processor: explicit}}, routing.DefaultCryptoRails()...)
@@ -406,4 +448,55 @@ func resolveRef(ctx context.Context, a routing.Account) string {
 		}
 	}
 	return ""
+}
+
+// seedProcessorAccounts adds an account for every processor the environment configured
+// (processor.Seeds): the plain values as settings, and for each secret the KMS path it
+// lives at (/commerce-secrets/<NAME>), never the value. An account is made only if one of
+// its values was set; Square and PayPal's live and sandbox sets both survive, and the one
+// the environment named is marked as the deployment's.
+func seedProcessorAccounts(pol *routing.Policy, env map[string]string) {
+	for _, sp := range processor.Seeds {
+		a := routing.Account{Processor: sp.Processor, ID: sp.ID, On: true}
+		for _, f := range sp.Fields {
+			for _, name := range f.Envs {
+				v := env[name]
+				if v == "" {
+					continue
+				}
+				if f.Secret {
+					a.Secrets = append(a.Secrets, routing.Named{Name: f.Name, Value: "/commerce-secrets/" + name})
+				} else {
+					a.Settings = append(a.Settings, routing.Named{Name: f.Name, Value: v})
+				}
+				break
+			}
+		}
+		if len(a.Secrets)+len(a.Settings) == 0 {
+			continue
+		}
+		if sp.Deploys(env) {
+			a.Settings = append(a.Settings, routing.Named{Name: "deployment", Value: "true"})
+		}
+		pol.Accounts = append(pol.Accounts, a)
+	}
+	// Kraken's explicit deposit-method overrides ride on its exchange account.
+	for k, v := range env {
+		rest, ok := strings.CutPrefix(k, "KRAKEN_DEPOSIT_METHOD_")
+		if !ok {
+			continue
+		}
+		parts := strings.Split(strings.ToLower(rest), "_")
+		name := "depositMethod." + strings.Join(parts, ".")
+		found := false
+		for i := range pol.Accounts {
+			if pol.Accounts[i].Processor == string(processor.Kraken) && pol.Accounts[i].ID == "exchange" {
+				pol.Accounts[i].Settings = append(pol.Accounts[i].Settings, routing.Named{Name: name, Value: v})
+				found = true
+			}
+		}
+		if !found {
+			pol.Accounts = append(pol.Accounts, routing.Account{Processor: string(processor.Kraken), ID: "exchange", On: true, Settings: []routing.Named{{Name: name, Value: v}}})
+		}
+	}
 }

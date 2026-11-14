@@ -14,9 +14,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hanzoai/money"
@@ -41,6 +41,7 @@ type Config struct {
 // Provider implements PaymentProcessor, SubscriptionProcessor, and CustomerProcessor.
 type Provider struct {
 	*processor.BaseProcessor
+	keys           sync.RWMutex // guards the three below, which the policy's account changes
 	secretKey      string
 	publishableKey string
 	webhookSecret  string
@@ -62,24 +63,24 @@ func NewProvider(cfg Config) *Provider {
 	return p
 }
 
+// init registers the deployment's Stripe provider unconfigured: its keys come from the
+// routing policy's stripe account (Reconfigure), at runtime, never from the environment.
 func init() {
-	sk := os.Getenv("STRIPE_SECRET_KEY")
-	whs := os.Getenv("STRIPE_WEBHOOK_SECRET")
-	pk := os.Getenv("STRIPE_PUBLISHABLE_KEY")
+	processor.Register(&Provider{
+		BaseProcessor: processor.NewBaseProcessor(processor.Stripe, supportedCurrencies()),
+		client:        &http.Client{Timeout: defaultTimeout},
+	})
+}
 
-	p := &Provider{
-		BaseProcessor:  processor.NewBaseProcessor(processor.Stripe, supportedCurrencies()),
-		secretKey:      sk,
-		publishableKey: pk,
-		webhookSecret:  whs,
-		client:         &http.Client{Timeout: defaultTimeout},
-	}
-
-	if sk != "" {
-		p.SetConfigured(true)
-	}
-
-	processor.Register(p)
+// Reconfigure reads the "live" stripe account: the secret key, the publishable key and the
+// webhook secret. No account, or a key that is not a live key, leaves it unconfigured.
+func (p *Provider) Reconfigure() {
+	creds := Deployment(false)
+	hook := strings.TrimSpace(processor.AccountOf(processor.Stripe, "live").Secret("webhook"))
+	p.keys.Lock()
+	p.secretKey, p.publishableKey, p.webhookSecret = creds.SecretKey, creds.PublishableKey, hook
+	p.keys.Unlock()
+	p.SetConfigured(creds.SecretKey != "")
 }
 
 // Presentment is the currencies this deployment's Stripe account can charge in, as
@@ -116,7 +117,7 @@ func (p *Provider) Type() processor.ProcessorType {
 
 // IsAvailable checks if the processor is configured.
 func (p *Provider) IsAvailable(ctx context.Context) bool {
-	return p.secretKey != ""
+	return p.key() != ""
 }
 
 // SupportedCurrencies returns currencies this processor supports.
@@ -418,7 +419,7 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 
 // ValidateWebhook verifies a Stripe webhook signature and parses the event.
 func (p *Provider) ValidateWebhook(ctx context.Context, payload []byte, signature string) (*processor.WebhookEvent, error) {
-	if p.webhookSecret == "" {
+	if p.hook() == "" {
 		return nil, processor.ErrWebhookValidationFailed
 	}
 
@@ -431,7 +432,7 @@ func (p *Provider) ValidateWebhook(ctx context.Context, payload []byte, signatur
 
 	// Verify signature: HMAC-SHA256(secret, "timestamp.payload")
 	signedPayload := timestamp + "." + string(payload)
-	mac := hmac.New(sha256.New, []byte(p.webhookSecret))
+	mac := hmac.New(sha256.New, []byte(p.hook()))
 	mac.Write([]byte(signedPayload))
 	expectedSig := hex.EncodeToString(mac.Sum(nil))
 
@@ -699,7 +700,7 @@ func (p *Provider) del(ctx context.Context, path string, params url.Values) erro
 }
 
 func (p *Provider) doRequest(req *http.Request, result interface{}) error {
-	req.SetBasicAuth(p.secretKey, "")
+	req.SetBasicAuth(p.key(), "")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	if req.Header.Get("Stripe-Version") == "" {
 		req.Header.Set("Stripe-Version", apiVersion)
@@ -943,7 +944,7 @@ var (
 
 // ReceivesWebhooks reports whether this provider holds the secret Stripe signs
 // its deliveries with (STRIPE_WEBHOOK_SECRET). Without it no delivery is admitted.
-func (p *Provider) ReceivesWebhooks() bool { return p.webhookSecret != "" }
+func (p *Provider) ReceivesWebhooks() bool { return p.hook() != "" }
 
 // Reaches reports whether Stripe takes a payment by method from a buyer in
 // country. Stripe's card form takes a typed card, Apple Pay and Google Pay;
@@ -1022,4 +1023,17 @@ func (p *Provider) ChargeRefunds(ctx context.Context, chargeID string) ([]map[st
 		return nil, err
 	}
 	return list.Data, nil
+}
+
+// key and hook are the secret key and the webhook secret as they stand now.
+func (p *Provider) key() string {
+	p.keys.RLock()
+	defer p.keys.RUnlock()
+	return p.secretKey
+}
+
+func (p *Provider) hook() string {
+	p.keys.RLock()
+	defer p.keys.RUnlock()
+	return p.webhookSecret
 }
