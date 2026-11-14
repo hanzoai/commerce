@@ -25,6 +25,9 @@ package billing
 import (
 	"context"
 	"encoding/json"
+	"github.com/hanzoai/commerce/models/pendingintent"
+	"github.com/hanzoai/commerce/payment"
+	"github.com/hanzoai/commerce/payment/routing"
 	"strings"
 	"time"
 
@@ -91,6 +94,8 @@ type InvoiceView struct {
 	PaymentRef string `json:"paymentRef,omitempty"`
 	// CreatedAt is when the draft was raised, RFC3339.
 	CreatedAt string `json:"createdAt,omitempty"`
+	// Quote is the invoice's price in the buyer's own currency (see Invoice.Quote).
+	Quote *routing.Quote `json:"quote,omitempty"`
 }
 
 // InvoiceCollection is the outcome of attempting to collect an invoice.
@@ -422,4 +427,72 @@ func eventsOf(c *zip.Ctx) *events.Client {
 		}
 	}
 	return nil
+}
+
+// Invoice payment outcomes.
+const (
+	PayPaid           = "paid"
+	PayAuthentication = "authentication_required"
+	PayDeclined       = "declined"
+)
+
+// AuthenticationStep is the bank's step a payment is waiting on, typed: the intent to
+// finish, its client secret and the publishable key to finish it with, and the quote the
+// buyer is authenticating at, so the page shows the amount they are about to approve.
+type AuthenticationStep struct {
+	Code           string         `json:"code"`
+	ID             string         `json:"id"`
+	ClientSecret   string         `json:"clientSecret"`
+	PublishableKey string         `json:"publishableKey"`
+	Quote          *routing.Quote `json:"quote,omitempty"`
+	Message        string         `json:"message,omitempty"`
+}
+
+// InvoicePayment is the answer to paying an invoice with the buyer present: exactly one
+// of paid, authentication_required (Authentication is set) or declined (Reason is set).
+type InvoicePayment struct {
+	Status         string              `json:"status"`
+	Invoice        *InvoiceView        `json:"invoice"`
+	Authentication *AuthenticationStep `json:"authentication,omitempty"`
+	Reason         string              `json:"reason,omitempty"`
+}
+
+// PayInvoiceNow pays an open invoice on-session. It is idempotent per invoice: a paid
+// invoice answers paid and charges nothing, and two presses at once are one collection.
+// A subscription billed in the buyer's currency is charged at its bound quote, or at a
+// fresh one when that quote's lock has lapsed; the amount charged is the quote returned.
+func PayInvoiceNow(ctx context.Context, org *organization.Organization, id string, ev *events.Client) (*InvoicePayment, *PaymentFault) {
+	inv, db, f := loadInvoice(ctx, org, id)
+	if f != nil {
+		return nil, f
+	}
+	answer := func(status, reason string, i *billinginvoice.BillingInvoice) *InvoicePayment {
+		v := viewInvoice(i)
+		v.Quote = invoiceQuote(ctx, org, db, i)
+		return &InvoicePayment{Status: status, Invoice: v, Reason: reason}
+	}
+	if inv.Status == billinginvoice.Paid {
+		return answer(PayPaid, "", inv), nil
+	}
+	oc, f := collectInvoice(ctx, org, id, ev)
+	if f != nil {
+		return nil, f
+	}
+	if oc.Replayed != nil || oc.Result.Success {
+		return answer(PayPaid, "", oc.Inv), nil
+	}
+	reason := oc.Result.Error
+	var ar authRequired
+	if json.Unmarshal([]byte(reason), &ar) == nil && ar.Code == "authentication_required" && ar.ID != "" {
+		out := answer(PayAuthentication, "", oc.Inv)
+		step := &AuthenticationStep{Code: ar.Code, ID: ar.ID, ClientSecret: ar.ClientSecret, PublishableKey: payment.StripePublicConfig(org).PublishableKey, Message: ar.Message}
+		if p, found, _ := pendingintent.Get(ar.ID); found && p.PaidCurrency != "" {
+			step.Quote = quoteOfIntent(p)
+			step.Quote.Disclosure = routing.Disclosure
+			out.Invoice.Quote = step.Quote
+		}
+		out.Authentication = step
+		return out, nil
+	}
+	return answer(PayDeclined, reason, oc.Inv), nil
 }

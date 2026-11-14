@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"github.com/hanzoai/commerce/payment/routing"
 	"strconv"
 	"strings"
 	"time"
@@ -217,11 +218,14 @@ func ListBillingInvoices(c *zip.Ctx) error {
 //
 //	GET /v1/billing/invoices/:id
 func GetInvoice(c *zip.Ctx) error {
-	inv, _, f := loadInvoice(c.Context(), middleware.GetOrganization(c), c.Param("id"))
+	org := middleware.GetOrganization(c)
+	inv, db, f := loadInvoice(c.Context(), org, c.Param("id"))
 	if f != nil {
 		return http.Fail(c, f.Status, f.Message, f.Err)
 	}
-	return c.JSON(200, invoiceResponse(inv))
+	resp := invoiceResponse(inv)
+	resp.Quote = invoiceQuote(c.Context(), org, db, inv)
+	return c.JSON(200, resp)
 }
 
 // FinalizeInvoice transitions an invoice from draft to open.
@@ -239,20 +243,11 @@ func FinalizeInvoice(c *zip.Ctx) error {
 //
 //	POST /v1/billing/invoices/:id/pay
 func PayInvoice(c *zip.Ctx) error {
-	oc, f := collectInvoice(c.Context(), middleware.GetOrganization(c), c.Param("id"), eventsOf(c))
+	pay, f := PayInvoiceNow(c.Context(), middleware.GetOrganization(c), c.Param("id"), eventsOf(c))
 	if f != nil {
 		return http.Fail(c, f.Status, f.Message, f.Err)
 	}
-	if oc.Replayed != nil {
-		return c.JSON(200, map[string]any{
-			"invoice":    invoiceResponse(oc.Inv),
-			"collection": oc.Replayed,
-		})
-	}
-	return c.JSON(200, map[string]any{
-		"invoice":    invoiceResponse(oc.Inv),
-		"collection": oc.Result,
-	})
+	return c.JSON(200, pay)
 }
 
 // VoidInvoice voids a draft or open invoice.
@@ -367,6 +362,11 @@ type Invoice struct {
 	// ("Customer price: $195.00/month"), the promo, a coupon's month, joined by
 	// "; ". Empty with no discount.
 	DiscountName string `json:"discountName,omitempty"`
+	// Quote is the invoice's price in the buyer's own currency, when the subscription is
+	// billed in one: the quote the payment was bound to once paid, the one an attempt
+	// awaiting the buyer's bank is bound to, else the current displayed price. Nil for an
+	// invoice in the plan's currency.
+	Quote *routing.Quote `json:"quote,omitempty"`
 }
 
 // invoiceResponse projects the model onto that view. It stays the ONE projection

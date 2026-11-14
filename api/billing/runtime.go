@@ -19,6 +19,7 @@ import (
 	"github.com/hanzoai/commerce/payment/providers/kraken"
 	"github.com/hanzoai/commerce/payment/routing"
 	"github.com/hanzoai/commerce/secrets"
+	"github.com/hanzoai/commerce/thirdparty/mpc"
 )
 
 // The platform routing policy is the one place the processors commerce charges with,
@@ -100,21 +101,24 @@ func configureMPC(ctx context.Context, pol routing.Policy) {
 	if err != nil {
 		return
 	}
-	c, ok := p.(interface{ Configure(endpoint, apiKey string) })
+	c, ok := p.(interface{ Configure(mpc.Settings) })
 	if !ok {
 		return
 	}
 	for _, a := range pol.Accounts {
 		if a.Processor == string(processor.MPC) && a.On && a.Network == "" && a.Endpoint != "" {
-			key := ""
+			st := mpc.Settings{Endpoint: a.Endpoint, KMSEndpoint: routing.Get(a.Endpoints, "kms"), ZAPAddress: routing.Get(a.Endpoints, "zap")}
 			if a.SecretRef != "" {
-				key = secrets.String(ctx, a.SecretRef)
+				st.APIKey = secrets.String(ctx, a.SecretRef)
 			}
-			c.Configure(a.Endpoint, key)
+			if ref := routing.Get(a.Secrets, "webhook"); ref != "" {
+				st.WebhookSecret = secrets.String(ctx, ref)
+			}
+			c.Configure(st)
 			return
 		}
 	}
-	c.Configure("", "")
+	c.Configure(mpc.Settings{})
 }
 
 // configureKraken gives the exchange processor the policy's kraken account: the API
@@ -300,6 +304,15 @@ func seedFromEnvironment(pol *routing.Policy, environ []string) {
 		if env["MPC_API_KEY"] != "" {
 			a.SecretRef = "/commerce-secrets/MPC_API_KEY"
 		}
+		if v := env["MPC_KMS_ENDPOINT"]; v != "" {
+			a.Endpoints = append(a.Endpoints, routing.Named{Name: "kms", Value: v})
+		}
+		if v := env["MPC_ZAP_ADDR"]; v != "" {
+			a.Endpoints = append(a.Endpoints, routing.Named{Name: "zap", Value: v})
+		}
+		if env["MPC_WEBHOOK_SECRET"] != "" {
+			a.Secrets = append(a.Secrets, routing.Named{Name: "webhook", Value: "/commerce-secrets/MPC_WEBHOOK_SECRET"})
+		}
 		pol.Accounts = append(pol.Accounts, a)
 		mpcOn = true
 	}
@@ -351,9 +364,22 @@ func validateAccounts(ctx context.Context, p routing.Policy) string {
 				return "accounts: " + a.Processor + " " + a.ID + " endpoint must be an https URL"
 			}
 		}
+		for _, e := range a.Endpoints {
+			if e.Name == "zap" {
+				continue // a host:port or a socket path, not a URL
+			}
+			if u, err := url.Parse(e.Value); err != nil || u.Scheme != "https" || u.Host == "" {
+				return "accounts: " + a.Processor + " " + a.ID + " endpoint " + e.Name + " must be an https URL"
+			}
+		}
 		if a.SecretRef != "" {
 			if why := resolveRef(ctx, a); why != "" {
 				return "accounts: " + a.Processor + " " + a.ID + " " + why
+			}
+		}
+		for _, sc := range a.Secrets {
+			if !strings.HasPrefix(sc.Value, "/") || secrets.String(ctx, sc.Value) == "" {
+				return "accounts: " + a.Processor + " " + a.ID + " secret " + sc.Name + " " + sc.Value + " does not resolve in KMS"
 			}
 		}
 	}
