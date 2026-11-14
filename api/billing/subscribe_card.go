@@ -35,6 +35,7 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
+	"github.com/hanzoai/commerce/payment/routing"
 	types "github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/util/json/http"
 )
@@ -126,6 +127,13 @@ type subscribeCardRequest struct {
 	// DeclineReload turns off, for this purchase, the automatic reload the plan
 	// switches on (see SubscribeIn.DeclineReload).
 	DeclineReload bool `json:"declineReload,omitempty"`
+	// Country is the buyer's country (ISO 3166-1 alpha-2). The sale is billed in the
+	// currency the routing policy resolves for it when the card's processor can present
+	// it; QuotedAmount and QuotedCurrency are the price the buyer was shown, and the sale
+	// is refused, with the price now quoted, when the locked quote differs from it.
+	Country        string `json:"country,omitempty"`
+	QuotedAmount   int64  `json:"quotedAmount,omitempty"`
+	QuotedCurrency string `json:"quotedCurrency,omitempty"`
 }
 
 // SubscribeIn is the whole input of a card subscription. Every field is a VALUE
@@ -213,6 +221,10 @@ type SubscribeIn struct {
 	// and answers Reload state "declined". A rule the buyer already has is left as
 	// it stands.
 	DeclineReload bool
+	// Country, QuotedAmount and QuotedCurrency: see subscribeCardRequest.
+	Country        string
+	QuotedAmount   int64
+	QuotedCurrency string
 }
 
 // armSale is what a paid sale of slug does to the buying payer's auto-recharge
@@ -293,6 +305,11 @@ type Sale struct {
 	// Reload is what the sale did to the buyer's auto-recharge, present for a
 	// plan that switches one on (planReload) unless the buyer declined it.
 	Reload *Arming `json:"reload,omitempty"`
+	// Quote is the price the buyer paid when the sale was billed in their own currency:
+	// the local amount and currency, the rate and where it came from, the locked quote
+	// the charge was bound to. AmountCents and Currency stay the plan's dollars. Nil for
+	// a sale in the plan's currency.
+	Quote *routing.Quote `json:"quote,omitempty"`
 }
 
 // The kinds of no a sale can end in. They are separate because each is a
@@ -909,17 +926,47 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			return nil, saleRefusal{saleDeclined, cerr.Error()}
 		}
 	}
+	// Billed in the buyer's currency when the policy resolves one for their country and
+	// the card's processor can present it: the locked quote the buyer was shown is what
+	// is charged, and the plan stays dollars. A sale finished after the bank's step is
+	// charged as it was registered. Anything else stays in the plan's currency.
+	var lq *routing.Quote
+	switch {
+	case finished != "":
+		if rg, found, _ := pendingintent.Get(finished); found && rg.PaidCurrency != "" {
+			lq = quoteOfIntent(rg)
+		}
+	case providerOf(pm) == processor.Stripe && cur == currency.USD && strings.TrimSpace(in.Country) != "":
+		var rerr error
+		if lq, rerr = saleQuote(ctx, org, in, chargeCents+bal); rerr != nil {
+			hold.Release()
+			unvault()
+			abandon()
+			return nil, saleRefusal{saleRefused, rerr.Error()}
+		}
+	}
 	var res *processor.PaymentResult
-	if finished != "" {
+	switch {
+	case finished != "" && lq != nil:
+		res, err = chargeFinished(ctx, reg, pm, finished, lq.Amount, currency.Type(lq.Currency), desc)
+	case finished != "":
 		res, err = chargeFinished(ctx, reg, pm, finished, chargeCents+bal, cur, desc)
-	} else {
+	case lq != nil:
+		res, err = chargeSavedCardAt(ctx, reg, pm, lq.Amount, currency.Type(lq.Currency), squareKey+":"+lq.Currency, desc, true, lq.QuoteID)
+	default:
 		res, err = chargeSavedCard(ctx, reg, pm, chargeCents+bal, cur, squareKey, desc, true)
 	}
 	// The card needs its bank: the intent is recorded for its buyer (the sale is
 	// finished by the retry, or the intent refunded if it never is), the card
 	// stays saved, and the answer is the step, not a decline.
 	if actionOf(res, err) != nil {
-		if rerr := registerAction(res, err, org, in.Subject, pendingintent.Sale, chargeCents+bal, cur); rerr != nil {
+		var rerr error
+		if lq != nil && finished == "" {
+			rerr = registerQuotedAction(res, err, org, in.Subject, pendingintent.Sale, chargeCents+bal, lq)
+		} else {
+			rerr = registerAction(res, err, org, in.Subject, pendingintent.Sale, chargeCents+bal, cur)
+		}
+		if rerr != nil {
 			hold.Release()
 			abandon()
 			return nil, saleRefusal{saleDeclined, rerr.Error()}
@@ -973,6 +1020,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 			Coupon:          cpn.Code,
 			CouponPercent:   cpn.Percent,
 			CouponMonths:    cpn.Months,
+			Quote:           lq,
 		},
 		List:        listCents,
 		Promo:       promoPercent,
@@ -1187,6 +1235,16 @@ func enter(org *organization.Organization, in SubscribeIn, rec *idempotencykey.I
 	if err := paymentorg.Open(d.Payment, org.Name, in.Subject, order, cmp.Or(d.Via, string(processor.Square)), d.Sale.BalanceCents, org.TestMode()); err != nil {
 		return err
 	}
+	if q := d.Sale.Quote; q != nil {
+		// Paid in the buyer's currency against a quote: both figures are kept, so a refund
+		// or a dispute in that currency is taken back in the dollars credited.
+		if _, _, err := paymentorg.Change(d.Payment, func(r *paymentorg.PaymentOrg) bool {
+			r.PaidCents, r.PaidCurrency, r.CreditCents = q.Amount, q.Currency, q.UsdCents
+			return true
+		}); err != nil {
+			return err
+		}
+	}
 	if rec == nil {
 		return nil
 	}
@@ -1271,8 +1329,15 @@ func sell(ctx context.Context, db *datastore.Datastore, org *organization.Organi
 	sub.ProviderType = cmp.Or(d.Via, string(processor.Square))
 	sub.DiscountPercent, sub.DiscountName = d.Promo, d.PromoName
 	sub.CustomerCents = d.Customer
+	if q := d.Sale.Quote; q != nil {
+		sub.BillingCurrency = q.Currency // renewals convert the plan's dollars at a fresh quote
+	}
 	engine.Grant(sub, cpn, d.CouponPlans, sub.PeriodStart)
 	inv, err := paidBy(db, sub, d.Payment)
+	if err == nil && d.Sale.Quote != nil {
+		bindRenewalTerms(inv, d.Sale.Quote)
+		err = inv.Update()
+	}
 	if err == nil {
 		_, _, err = paymentorg.Change(d.Payment, func(r *paymentorg.PaymentOrg) bool {
 			if r.Invoice == inv.Id() {
@@ -1720,6 +1785,7 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		Delegated:      subject != userBillingKey(c),
 		BalanceCents:   req.BalanceCents,
 		DeclineReload:  req.DeclineReload,
+		Country:        req.Country, QuotedAmount: req.QuotedAmount, QuotedCurrency: req.QuotedCurrency,
 	})
 	if err != nil {
 		switch {

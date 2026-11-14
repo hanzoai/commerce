@@ -187,3 +187,121 @@ func TestARenewalThatNeedsTheBuyerEmitsActionRequiredAndChargesNothing(t *testin
 		})
 	}
 }
+
+func (r *chargingRail) CreateCustomer(context.Context, string, string, map[string]interface{}) (string, error) {
+	return "cus_x", nil
+}
+func (r *chargingRail) AddPaymentMethod(context.Context, string, string) (string, error) {
+	return "pm_card", nil
+}
+func (r *chargingRail) RemovePaymentMethod(context.Context, string, string) error { return nil }
+
+// stripeBuyer is a buyer in country with a Stripe card on file, and a Stripe that quotes.
+func stripeBuyer(t *testing.T, ctx ae.Context, name, country string, perDollar float64) (*organization.Organization, *datastore.Datastore, string, *chargingRail) {
+	t.Helper()
+	if _, _, err := SeedPlans(ctx); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	org := moneyOrg(name)
+	db := datastore.New(org.Namespaced(ctx))
+	ch := &chargingRail{quotingRail: &quotingRail{rail: newRail(processor.Stripe, true), rq: processor.RateQuote{ID: "fxq_s1", PerDollar: perDollar, BasePerDollar: perDollar, ExchangeRate: 1 / perDollar}}}
+	old := processorsForOrg
+	processorsForOrg = func(*organization.Organization) *processor.Registry {
+		reg := processor.NewRegistry(processor.DefaultConfig())
+		reg.Register(ch)
+		return reg
+	}
+	t.Cleanup(func() { processorsForOrg = old })
+	pm := paymentmethod.New(db)
+	pm.CustomerId, pm.UserId, pm.ProviderType, pm.ProviderRef = org.Name, org.Name, string(processor.Stripe), "pm_card"
+	pm.Metadata = map[string]interface{}{"customerId": "cus_x"}
+	pm.Card = &paymentmethod.CardDetails{Brand: "visa", Last4: "4242", Country: country}
+	if err := pm.Create(); err != nil {
+		t.Fatal(err)
+	}
+	return org, db, pm.Id(), ch
+}
+
+// An Indian buyer subscribes to Go, is quoted in rupees, is charged that amount on the
+// quote the charge is bound to, and the subscription records INR; its renewal then
+// needs the buyer and is announced, not charged.
+func TestAnIndianBuyerIsSoldInRupeesAndTheRenewalNeedsThem(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org, db, pm, ch := stripeBuyer(t, ctx, "sale-in", "IN", 94.25)
+
+	// The price the buyer is shown: the route's quote for the plan's dollars.
+	pol, _ := ReadRouting(ctx, org.Name)
+	shown, f := quoteVia(ctx, processorsForOrg(org), pol, processor.Stripe, 800, "IN", "", "", false)
+	if f != nil || shown.Currency != "inr" || shown.Amount != 75400 {
+		t.Fatalf("shown = %+v %v; want Rs 754", shown, f)
+	}
+	sale, err := Subscribe(ctx, org, SubscribeIn{MethodID: pm, PlanID: "go", Subject: org.Name, Country: "IN", QuotedAmount: shown.Amount, QuotedCurrency: shown.Currency})
+	if err != nil {
+		t.Fatalf("subscribe: %v", err)
+	}
+	if len(ch.reqs) != 1 || string(ch.reqs[0].Currency) != "inr" || int64(ch.reqs[0].Amount) != 75400 || ch.reqs[0].Options["quoteId"] != "fxq_s1" {
+		t.Fatalf("charge = %+v; want Rs 754 bound to fxq_s1", ch.reqs)
+	}
+	if sale.AmountCents != 800 || sale.Currency != "usd" || sale.Quote == nil || sale.Quote.Currency != "inr" || sale.Quote.Amount != 75400 {
+		t.Fatalf("sale = %+v quote %+v; want $8 credited, paid Rs 754", sale, sale.Quote)
+	}
+	if s := reload(t, db, sale.SubscriptionID); s.BillingCurrency != "inr" {
+		t.Fatalf("billing currency = %q, want inr", s.BillingCurrency)
+	}
+	due(t, db, sale.SubscriptionID)
+	out := renewDue(ctx, org, "")
+	if len(out) != 1 || out[0].Success || len(ch.reqs) != 1 {
+		t.Fatalf("renewal = %+v, %d charges; want none, the buyer is needed", out, len(ch.reqs))
+	}
+	if n := billingEventsOf(t, ctx, "renewal.action_required"); n != 1 {
+		t.Fatalf("want one renewal.action_required, got %d", n)
+	}
+}
+
+// A Korean buyer is sold in won; the renewal runs off-session at a fresh quote and says
+// the amount moved.
+func TestAKoreanBuyerIsSoldInWonAndRenewsOffSessionAtAFreshQuote(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org, db, pm, ch := stripeBuyer(t, ctx, "sale-kr", "KR", 1403.2)
+
+	sale, err := Subscribe(ctx, org, SubscribeIn{MethodID: pm, PlanID: "go", Subject: org.Name, Country: "KR"})
+	if err != nil {
+		t.Fatalf("subscribe: %v", err)
+	}
+	if len(ch.reqs) != 1 || string(ch.reqs[0].Currency) != "krw" || int64(ch.reqs[0].Amount) != 11300 { // $8 x 1403.2 = 11225.6, up to a hundred won
+		t.Fatalf("charge = %+v; want 11300 won", ch.reqs)
+	}
+	if s := reload(t, db, sale.SubscriptionID); s.BillingCurrency != "krw" {
+		t.Fatalf("billing currency = %q, want krw", s.BillingCurrency)
+	}
+	ch.rq.ID, ch.rq.PerDollar, ch.rq.BasePerDollar = "fxq_s2", 1500, 1500
+	next := reload(t, db, sale.SubscriptionID)
+	next.PeriodEnd = time.Now().Add(-48 * time.Hour)
+	next.PeriodStart = next.PeriodEnd.AddDate(0, -1, 0)
+	if err := next.Update(); err != nil {
+		t.Fatal(err)
+	}
+	out := renewDue(ctx, org, "")
+	if len(out) != 1 || !out[0].Success || len(ch.reqs) != 2 {
+		t.Fatalf("renewal = %+v, %d charges", out, len(ch.reqs))
+	}
+	if off, _ := ch.reqs[1].Options["offSession"].(bool); !off || int64(ch.reqs[1].Amount) != 12000 || ch.reqs[1].Options["quoteId"] != "fxq_s2" {
+		t.Fatalf("renewal charge = %+v; want off-session, 12000 won, bound to fxq_s2", ch.reqs[1])
+	}
+	if n := billingEventsOf(t, ctx, "renewal.amount_changed"); n != 1 {
+		t.Fatalf("want one renewal.amount_changed, got %d", n)
+	}
+}
+
+// A buyer shown a price the locked quote no longer matches is refused before any charge.
+func TestASaleIsRefusedWhenTheLockedQuoteIsNotThePriceTheBuyerSaw(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org, _, pm, ch := stripeBuyer(t, ctx, "sale-stale", "KR", 1403.2)
+	_, err := Subscribe(ctx, org, SubscribeIn{MethodID: pm, PlanID: "go", Subject: org.Name, Country: "KR", QuotedAmount: 11000, QuotedCurrency: "krw"})
+	if err == nil || len(ch.reqs) != 0 {
+		t.Fatalf("a stale price was charged: %v, %d charges", err, len(ch.reqs))
+	}
+}

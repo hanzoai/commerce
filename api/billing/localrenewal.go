@@ -2,14 +2,17 @@ package billing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
+	"github.com/hanzoai/commerce/models/pendingintent"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
@@ -120,4 +123,51 @@ func bindRenewalTerms(inv *billinginvoice.BillingInvoice, q *routing.Quote) {
 		"quoteId": q.QuoteID, "baseRate": q.BaseRate, "feeRate": q.FeeRate, "premium": q.Premium, "exchangeRate": q.ExchangeRate,
 		"lockExpiresAt": q.LockExpiresAt, "decimals": q.Decimals,
 	}
+}
+
+// saleQuote is the locked quote a first charge is made at, when the sale is to be billed
+// in the buyer's currency, or nil to keep the plan's. It is nil when the policy resolves
+// dollars for the country, when local currency is off, or when Stripe cannot present
+// the currency; an error only when the buyer was shown a price the locked quote does
+// not match, which they must see and confirm before anything is charged.
+func saleQuote(ctx context.Context, org *organization.Organization, in SubscribeIn, usdCents int64) (*routing.Quote, error) {
+	pol, err := ReadRouting(ctx, org.Name)
+	if err != nil || !pol.LocalOn || pol.LocalCurrency(in.Country) == "usd" {
+		return nil, nil
+	}
+	q, f := quoteVia(ctx, processorsForOrg(org), pol, processor.Stripe, usdCents, in.Country, "", "", true)
+	if f != nil || q.Currency == "usd" {
+		return nil, nil
+	}
+	if in.QuotedCurrency != "" && (!strings.EqualFold(in.QuotedCurrency, q.Currency) || in.QuotedAmount != q.Amount) {
+		return nil, fmt.Errorf("the price is now %d %s (minor units, %d decimals); confirm it to continue", q.Amount, q.Currency, q.Decimals)
+	}
+	return q, nil
+}
+
+// quoteOfIntent is the quote an attempt was opened on, as its record keeps it.
+func quoteOfIntent(p *pendingintent.Intent) *routing.Quote {
+	dec := int(currency.Type(p.PaidCurrency).Decimals())
+	return &routing.Quote{Amount: p.PaidCents, Decimals: dec, Currency: p.PaidCurrency, UsdCents: p.Cents, Rate: p.Rate, Source: p.RateSource, FXFee: p.FXFee,
+		ExchangeRate: p.ExchangeRate, BaseRate: p.BaseRate, FeeRate: p.FeeRate, Premium: p.Premium, LockExpiresAt: p.LockExpiresAt,
+		QuoteID: p.QuoteID, ReferenceRate: p.ReferenceRate, ReferenceProvider: p.ReferenceProvider, Disclosure: routing.Disclosure}
+}
+
+// registerQuotedAction records the intent a buyer is sent to their bank for when the
+// charge was made in their own currency: the credit is the plan's dollars, the amount
+// paid the quote, and the terms the quote was made on are bound to it.
+func registerQuotedAction(result *processor.PaymentResult, err error, org *organization.Organization, subject, purpose string, usdCents int64, q *routing.Quote) error {
+	ar := actionOf(result, err)
+	if ar == nil || !strings.HasPrefix(ar.ID, "pi_") {
+		return nil
+	}
+	if cerr := atCap(subject); cerr != nil {
+		return cerr
+	}
+	if perr := pendingintent.PutQuoted(ar.ID, org.Name, strings.ToLower(subject), purpose, usdCents, "usd", q.Amount, q.Currency, 0, org.TestMode()); perr != nil {
+		log.Error("RECONCILE: the 3-D Secure intent %s for %s could not be recorded: %v", ar.ID, subject, perr)
+		return errors.New("billing is temporarily unavailable; please retry")
+	}
+	return pendingintent.Bind(ar.ID, pendingintent.Terms{Rate: q.Rate, RateSource: q.Source, QuoteID: q.QuoteID, BaseRate: q.BaseRate, FeeRate: q.FeeRate, Premium: q.Premium,
+		ExchangeRate: q.ExchangeRate, ReferenceRate: q.ReferenceRate, ReferenceProvider: q.ReferenceProvider, FXFee: q.FXFee, LockExpiresAt: q.LockExpiresAt})
 }
