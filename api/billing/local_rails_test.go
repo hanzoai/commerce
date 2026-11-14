@@ -50,7 +50,7 @@ func quotedPix(ctx context.Context, t *testing.T, id string) (*organization.Orga
 	org := routingOrg(ctx, t)
 	led := newFakeLedger()
 	injectLedger(t, led)
-	if err := pendingintent.PutQuoted(id, org.Name, "buyer", pendingintent.Topup, 500, "usd", 2750, "brl", false); err != nil {
+	if err := pendingintent.PutQuoted(id, org.Name, "buyer", pendingintent.Topup, 500, "usd", 2750, "brl", 3, false); err != nil {
 		t.Fatal(err)
 	}
 	return org, led

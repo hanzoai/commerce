@@ -20,10 +20,14 @@ import (
 	"time"
 )
 
-// Spread is the margin over the mid-market rate, in basis points: what converting
-// the local money back to dollars costs us, so a top-up of $5 is never worth less
-// than $5 once it settles.
-const Spread = 200
+// DefaultSpread is the margin over the mid-market rate, in basis points, when the
+// routing policy states none: what converting the local money back to dollars costs
+// us, so a top-up of $5 is never worth less than $5 once it settles. The policy owns
+// the figure (0 to MaxSpread); Quote is told it at each call.
+const (
+	DefaultSpread = 200
+	MaxSpread     = 1000
+)
 
 // Rate is the mid-market price of one USD in cur (a lower-case ISO 4217 code).
 // It is a variable so the rate source is one place, and a test names its own.
@@ -82,9 +86,9 @@ func frankfurter(ctx context.Context, cur string) (float64, error) {
 }
 
 // Quote is what usdCents costs in cur, in cur's minor units, at the quoted rate
-// plus Spread, rounded UP so the buyer's payment always covers the credit.
+// plus spreadBps, rounded UP so the buyer's payment always covers the credit.
 // cur must be a two-decimal currency.
-func Quote(ctx context.Context, usdCents int64, cur string) (localCents int64, rate float64, err error) {
+func Quote(ctx context.Context, usdCents int64, cur string, spreadBps int) (localCents int64, rate float64, err error) {
 	if usdCents <= 0 {
 		return 0, 0, errors.New("fx: nothing to quote")
 	}
@@ -92,6 +96,11 @@ func Quote(ctx context.Context, usdCents int64, cur string) (localCents int64, r
 	if err != nil {
 		return 0, 0, err
 	}
-	marked := rate * (1 + float64(Spread)/10000)
-	return int64(math.Ceil(float64(usdCents) * marked)), marked, nil
+	if spreadBps < 0 || spreadBps > MaxSpread {
+		return 0, 0, errors.New("fx: spread outside 0 to 1000 basis points")
+	}
+	marked := rate * (1 + float64(spreadBps)/10000)
+	// Float error must not cost the buyer a cent: 945.0000000000001 is 945.
+	v := math.Round(float64(usdCents)*marked*1e6) / 1e6
+	return int64(math.Ceil(v)), marked, nil
 }
