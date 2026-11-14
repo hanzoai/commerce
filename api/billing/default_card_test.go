@@ -84,7 +84,7 @@ func TestSaveCard_TheFirstCardIsTheDefault(t *testing.T) {
 	db := datastore.New(org.Namespaced(ctx))
 	v := &vaultSeq{MockSquareProcessor: squareMock("cust_seq", "", "ref")}
 
-	pm, created, err := saveCard(context.Background(), db, v, "deffirst", "", "cnon:one")
+	pm, created, err := saveCard(context.Background(), db, v, "deffirst", processor.Payer{}, "cnon:one")
 	if err != nil || !created {
 		t.Fatalf("saveCard: created=%v err=%v", created, err)
 	}
@@ -107,7 +107,7 @@ func TestSaveCard_ALaterCardLeavesTheDefault(t *testing.T) {
 	first := card(t, db, "deflater", "ccof_first", true)
 	v := &vaultSeq{MockSquareProcessor: squareMock("cust_seq", "", "ref")}
 
-	pm, created, err := saveCard(context.Background(), db, v, "deflater", "", "cnon:two")
+	pm, created, err := saveCard(context.Background(), db, v, "deflater", processor.Payer{}, "cnon:two")
 	if err != nil || !created {
 		t.Fatalf("saveCard: created=%v err=%v", created, err)
 	}
@@ -127,7 +127,7 @@ func TestSaveCard_AnOrgWithCardsAndNoDefaultTakesTheNewCard(t *testing.T) {
 	old := card(t, db, "defnone", "ccof_old", false)
 	v := &vaultSeq{MockSquareProcessor: squareMock("cust_seq", "", "ref")}
 
-	pm, _, err := saveCard(context.Background(), db, v, "defnone", "", "cnon:new")
+	pm, _, err := saveCard(context.Background(), db, v, "defnone", processor.Payer{}, "cnon:new")
 	if err != nil {
 		t.Fatalf("saveCard: %v", err)
 	}
@@ -151,7 +151,7 @@ func TestSaveCard_ARefusedSaveChangesNoDefault(t *testing.T) {
 
 	m := squareMock("cust_r", "ccof_r", "ref")
 	m.addCardErr = errors.New("CARD_DECLINED")
-	if _, _, err := saveCard(context.Background(), db, m, "defrefused", "", "cnon:bad"); err == nil {
+	if _, _, err := saveCard(context.Background(), db, m, "defrefused", processor.Payer{}, "cnon:bad"); err == nil {
 		t.Fatal("a refused vault must fail the save")
 	}
 	if rows := pmsFor(t, db, "defrefused"); len(rows) != 0 {
@@ -159,7 +159,7 @@ func TestSaveCard_ARefusedSaveChangesNoDefault(t *testing.T) {
 	}
 
 	held := card(t, db, "defrefused", "ccof_held", true)
-	if _, _, err := saveCard(context.Background(), db, m, "defrefused", "", "cnon:bad"); err == nil {
+	if _, _, err := saveCard(context.Background(), db, m, "defrefused", processor.Payer{}, "cnon:bad"); err == nil {
 		t.Fatal("a refused vault must fail the save")
 	}
 	if got := defaults(t, db, "defrefused"); len(got) != 1 || got[0] != held.Id() {
@@ -186,7 +186,7 @@ func TestSaveCard_TwoSavesAtOnceLeaveOneDefault(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			own := datastore.New(org.Namespaced(ctx))
-			if _, _, err := saveCard(context.Background(), own, v, "defrace", "", fmt.Sprintf("cnon:%d", i)); err != nil {
+			if _, _, err := saveCard(context.Background(), own, v, "defrace", processor.Payer{}, fmt.Sprintf("cnon:%d", i)); err != nil {
 				errs <- err
 			}
 		}(i)

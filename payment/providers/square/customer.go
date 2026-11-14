@@ -81,3 +81,21 @@ func (p *Provider) RemovePaymentMethod(ctx context.Context, customerID, paymentM
 	}
 	return p.inner.RemovePaymentMethod(ctx, customerID, paymentMethodID)
 }
+
+// CreateCustomerFor makes the payer's customer with everything known.
+func (p *Provider) CreateCustomerFor(ctx context.Context, payer processor.Payer, reference string, metadata map[string]interface{}) (string, error) {
+	if err := p.checkAvailable(); err != nil {
+		return "", err
+	}
+	return p.inner.CreateCustomerFor(ctx, payer, reference, metadata)
+}
+
+// ProfileCustomer brings the customer up to date with the payer.
+func (p *Provider) ProfileCustomer(ctx context.Context, customerID string, payer processor.Payer) error {
+	if err := p.checkAvailable(); err != nil {
+		return err
+	}
+	return p.inner.ProfileCustomer(ctx, customerID, payer)
+}
+
+var _ processor.PayerProfiles = (*Provider)(nil)

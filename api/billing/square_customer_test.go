@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
@@ -35,7 +36,7 @@ func TestSaveCard_ADeclineAndARetryMakeOneCustomer(t *testing.T) {
 
 	m := squareMock("cust_once", "ccof_once", "ref")
 	m.addCardErr = errors.New("CARD_DECLINED")
-	if _, _, err := saveCard(context.Background(), db, m, "custretry", "buyer@acme.test", "cnon:bad"); err == nil {
+	if _, _, err := saveCard(context.Background(), db, m, "custretry", processor.Payer{Email: "buyer@acme.test"}, "cnon:bad"); err == nil {
 		t.Fatal("a declined card must fail the save")
 	}
 	if m.createCustomerCalls != 1 || m.customers["custretry/custretry"] != "cust_once" {
@@ -44,7 +45,7 @@ func TestSaveCard_ADeclineAndARetryMakeOneCustomer(t *testing.T) {
 	}
 
 	m.addCardErr = nil
-	pm, created, err := saveCard(context.Background(), db, m, "custretry", "buyer@acme.test", "cnon:good")
+	pm, created, err := saveCard(context.Background(), db, m, "custretry", processor.Payer{Email: "buyer@acme.test"}, "cnon:good")
 	if err != nil || !created {
 		t.Fatalf("retry: created=%v err=%v", created, err)
 	}
@@ -73,7 +74,7 @@ func TestSaveCard_SavesAtOnceMakeOneCustomer(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			own := datastore.New(org.Namespaced(ctx))
-			_, _, err := saveCard(context.Background(), own, cp, "custrace", "buyer@acme.test", "cnon:bad")
+			_, _, err := saveCard(context.Background(), own, cp, "custrace", processor.Payer{Email: "buyer@acme.test"}, "cnon:bad")
 			declined <- err
 		}()
 	}
@@ -97,7 +98,7 @@ func TestSaveCard_ASavedCardsCustomerIsReused(t *testing.T) {
 	seedSavedCard(t, db, "custsaved", "ccof_old", "cust_saved")
 
 	m := squareMock("cust_never", "ccof_new", "ref")
-	if _, _, err := saveCard(context.Background(), db, m, "custsaved", "buyer@acme.test", "cnon:new"); err != nil {
+	if _, _, err := saveCard(context.Background(), db, m, "custsaved", processor.Payer{Email: "buyer@acme.test"}, "cnon:new"); err != nil {
 		t.Fatalf("saveCard: %v", err)
 	}
 	if m.findCalls != 0 || m.createCustomerCalls != 0 {
@@ -116,7 +117,7 @@ func TestSaveCard_AFailedSearchStillMakesTheCustomer(t *testing.T) {
 
 	m := squareMock("cust_s", "ccof_s", "ref")
 	m.findErr = errors.New("503 Service Unavailable")
-	pm, _, err := saveCard(context.Background(), db, m, "custsearch", "buyer@acme.test", "cnon:ok")
+	pm, _, err := saveCard(context.Background(), db, m, "custsearch", processor.Payer{Email: "buyer@acme.test"}, "cnon:ok")
 	if err != nil {
 		t.Fatalf("saveCard: %v", err)
 	}

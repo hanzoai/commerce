@@ -240,3 +240,62 @@ func TestPayPalIsOfferedBesideTheCardWhereItOperatesAndTheDeploymentAllowsIt(t *
 		t.Fatalf("the deployment does not allow PayPal: %+v", d.Alternatives)
 	}
 }
+
+func TestTheBackfillListsBillingKeyNamesAndWritesOnlyWhenAsked(t *testing.T) {
+	ctx := heldStore(t)
+	org := routingOrg(ctx, t)
+	db := datastore.New(org.Namespaced(ctx))
+	pm := paymentmethod.New(db)
+	pm.CustomerId, pm.Type, pm.ProviderType = "github", "card", "stripe"
+	pm.Metadata = map[string]interface{}{"customerId": "cus_x"}
+	if err := pm.Create(); err != nil {
+		t.Fatal(err)
+	}
+	d := &profileDouble{name: "github"}
+	old := processorsForOrg
+	processorsForOrg = func(*organization.Organization) *processor.Registry {
+		reg := processor.NewRegistry(processor.DefaultConfig())
+		reg.Register(d)
+		return reg
+	}
+	t.Cleanup(func() { processorsForOrg = old })
+	who := func(context.Context, string) (string, string, bool) { return "Ada Lovelace", "ada@example.com", true }
+
+	rows, err := BackfillPayers(ctx, org, who, false)
+	if err != nil || len(rows) != 1 || rows[0].ProposedName != "Ada Lovelace" || rows[0].CurrentName != "github" || rows[0].Written {
+		t.Fatalf("dry run = %+v %v", rows, err)
+	}
+	if d.wrote != 0 {
+		t.Fatal("a dry run wrote")
+	}
+	rows, _ = BackfillPayers(ctx, org, who, true)
+	if len(rows) != 1 || !rows[0].Written || d.wrote != 1 {
+		t.Fatalf("write = %+v wrote %d", rows, d.wrote)
+	}
+	if !isBillingKey("Github", "github", "github") || isBillingKey("Ada Lovelace", "github", "github") {
+		t.Fatal("isBillingKey")
+	}
+}
+
+// profileDouble is a Stripe that holds one customer and counts profile writes.
+type profileDouble struct {
+	processor.PaymentProcessor
+	name  string
+	wrote int
+}
+
+func (*profileDouble) Type() processor.ProcessorType    { return processor.Stripe }
+func (*profileDouble) IsAvailable(context.Context) bool { return true }
+func (*profileDouble) SupportedCurrencies() []currency.Type {
+	return nil
+}
+func (d *profileDouble) GetCustomer(context.Context, string) (map[string]interface{}, error) {
+	return map[string]interface{}{"name": d.name, "email": ""}, nil
+}
+func (d *profileDouble) CreateCustomerFor(context.Context, processor.Payer, string, map[string]interface{}) (string, error) {
+	return "cus_x", nil
+}
+func (d *profileDouble) ProfileCustomer(context.Context, string, processor.Payer) error {
+	d.wrote++
+	return nil
+}

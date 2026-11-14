@@ -153,12 +153,23 @@ func customerLock(db *datastore.Datastore, subject string) *sync.Mutex {
 // request, answers that retry with the customer already made. Later retries find
 // it by reference. A failed search is logged and the keyed create still runs, so
 // a search outage never blocks a checkout.
-func vaultCustomer(ctx context.Context, db *datastore.Datastore, cp cardVault, subject, email string) (string, error) {
+func vaultCustomer(ctx context.Context, db *datastore.Datastore, cp cardVault, subject string, payer processor.Payer) (string, error) {
 	mu := customerLock(db, subject)
 	mu.Lock()
 	defer mu.Unlock()
 
+	// The payer's profile is brought up to date wherever the customer is found, so a
+	// customer made before the processor was told who it is gets named at its next
+	// checkout. A profile that cannot be written is said and does not stop the checkout.
+	profile := func(id string) {
+		if pp, ok := cp.(processor.PayerProfiles); ok && payer.Known() {
+			if err := pp.ProfileCustomer(ctx, id, payer); err != nil {
+				log.Warn("vaultCustomer: the profile of %s could not be brought up to date: %v", id, err)
+			}
+		}
+	}
 	if id := existingCustomerID(db, subject, cp.Type()); id != "" {
+		profile(id)
 		return id, nil
 	}
 	ref := nscontext.GetNamespace(db.Context) + "/" + subject
@@ -167,13 +178,22 @@ func vaultCustomer(ctx context.Context, db *datastore.Datastore, cp cardVault, s
 		case err != nil:
 			log.Warn("squareCustomer: search for %s failed, creating under its key: %v", ref, err)
 		case id != "":
+			profile(id)
 			return id, nil
 		}
 	}
 	meta := map[string]interface{}{"reference": ref, "note": "Hanzo billing customer " + subject}
-	id, err := cp.CreateCustomer(ctx, email, subject, meta)
+	var (
+		id  string
+		err error
+	)
+	if pp, ok := cp.(processor.PayerProfiles); ok {
+		id, err = pp.CreateCustomerFor(ctx, payer, ref, meta)
+	} else {
+		id, err = cp.CreateCustomer(ctx, payer.Email, payer.Name, meta)
+	}
 	if err != nil {
-		return "", fmt.Errorf("create square customer: %w", err)
+		return "", fmt.Errorf("create customer: %w", err)
 	}
 	return id, nil
 }
@@ -216,8 +236,8 @@ func attachCardOnFile(ctx context.Context, cp cardVault, customerID, nonce strin
 // created reports whether a NEW row was persisted; a decline after saveCard
 // must only remove the Square card when created is true, or a retried checkout
 // would destroy the customer's existing saved card.
-func saveCard(ctx context.Context, db *datastore.Datastore, cp cardVault, subject, email, nonce string) (pm *paymentmethod.PaymentMethod, created bool, err error) {
-	customerID, err := vaultCustomer(ctx, db, cp, subject, email)
+func saveCard(ctx context.Context, db *datastore.Datastore, cp cardVault, subject string, payer processor.Payer, nonce string) (pm *paymentmethod.PaymentMethod, created bool, err error) {
+	customerID, err := vaultCustomer(ctx, db, cp, subject, payer)
 	if err != nil {
 		return nil, false, err
 	}
@@ -249,6 +269,7 @@ func saveCard(ctx context.Context, db *datastore.Datastore, cp cardVault, subjec
 		"verified":   true,
 	}
 	stampCard(pm, cof.Card)
+	stampPayer(pm, payer)
 
 	// The first card a subject saves is its default; a card saved while it has
 	// one leaves that default alone. Decided and persisted under the subject's

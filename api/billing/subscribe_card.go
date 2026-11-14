@@ -165,6 +165,12 @@ type SubscribeIn struct {
 	// Email is stamped on the Square customer a fresh vault creates, and named
 	// in the operator's sale notice.
 	Email string
+	// Name is the payer's own name from the verified identity, Phone and BillingAddress
+	// what the buyer typed in the payment form. The processors record them on the
+	// customer and the card: an issuer that is told nothing about a payer declines more.
+	Name           string
+	Phone          string
+	BillingAddress *types.Address
 	// Coupon is a plan coupon code the buyer typed. Empty buys at the price the
 	// catalog and promo set. A code that does not stand, does not cover the plan,
 	// or was redeemed by this org or card REFUSES the sale before the card is
@@ -826,7 +832,7 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 		}
 	} else {
 		var err error
-		pm, fresh, err = saveCard(ctx, db, cp, in.Subject, strings.TrimSpace(in.Email), sourceID)
+		pm, fresh, err = saveCard(ctx, db, cp, in.Subject, payerFor(org, in.Subject, PayerIn{Name: in.Name, Email: in.Email, Phone: in.Phone, Address: in.BillingAddress}), sourceID)
 		if err != nil {
 			abandon()
 			return nil, saleRefusal{saleDeclined, parseCardDeclineReason(&processor.PaymentResult{ErrorMessage: err.Error()}, err)}
@@ -874,9 +880,11 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	// balance with it — one payment — with the stable Square idempotency key.
 	// All-or-nothing: on a decline no subscription is created and nothing is
 	// credited.
-	desc := fmt.Sprintf("Subscription %s — first period", p.Name)
+	// What the buyer sees on their statement line and receipt: the plan, how many
+	// seats, and the period it pays from.
+	desc := fmt.Sprintf("Subscription %s — first period, %d seat%s, %s", p.Name, seatMult, plural(seatMult), time.Now().UTC().Format("Jan 2 2006"))
 	if bal > 0 {
-		desc = fmt.Sprintf("Subscription %s — first period and starting usage balance", p.Name)
+		desc = fmt.Sprintf("Subscription %s — first period and starting usage balance, %d seat%s, %s", p.Name, seatMult, plural(seatMult), time.Now().UTC().Format("Jan 2 2006"))
 	}
 	// A finished intent is spent for good: the card is charged by naming it, once.
 	var spent *idempotencykey.IdempotencyKey
@@ -1783,7 +1791,8 @@ func chargeSavedCard(ctx context.Context, reg *processor.Registry, pm *paymentme
 		// another card is not told the first one failed again.
 		IdempotencyKey: idempotencyKey + ":" + pm.Id(),
 		Description:    desc,
-		Metadata:       map[string]interface{}{"hanzo_subject": pm.CustomerId},
+		ReceiptEmail:   payerOfCard(pm).Email,
+		Metadata:       chargeMetadata(pm),
 		// Off-session for a renewal or a reload; on-session when the buyer is here to
 		// answer their bank's authentication step.
 		Options: map[string]interface{}{"offSession": !buyerPresent},
@@ -1793,6 +1802,20 @@ func chargeSavedCard(ctx context.Context, reg *processor.Registry, pm *paymentme
 		return nil, fmt.Errorf("%w: %s: %v", errNoProcessorFor, providerOf(pm), err)
 	}
 	return proc.Charge(ctx, req)
+}
+
+// chargeMetadata is what a charge on a saved card records about whose it is: the
+// billing key, and the org and user the card was saved for.
+func chargeMetadata(pm *paymentmethod.PaymentMethod) map[string]interface{} {
+	m := map[string]interface{}{"hanzo_subject": pm.CustomerId}
+	p := payerOfCard(pm)
+	if p.Org != "" {
+		m["org"] = p.Org
+	}
+	if p.User != "" {
+		m["user"] = p.User
+	}
+	return m
 }
 
 // chargeProviderForOrg returns an engine.ProviderCharger bound to org: given an
@@ -2022,3 +2045,11 @@ func payInvoiceIntent(ctx context.Context, reg *processor.Registry, pm *paymentm
 // owed: the invoice is paid in full, and the refund must not be recorded against it
 // or stop the buyer's reload (api/billing applyClawbackEvent).
 const excessRefund = "hanzo_excess"
+
+// plural is "s" for a count other than one.
+func plural(n int64) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
+}

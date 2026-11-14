@@ -48,7 +48,11 @@ func (p *Provider) Vault(ctx context.Context, customerID, paymentMethodID string
 	// The card on file is the PaymentMethod the SetupIntent saved, by the id it
 	// answers with: the one attached to the customer, which is what a later charge
 	// must name.
-	return p.saved(ctx, customerID, si.PaymentMethod)
+	card, err := p.saved(ctx, customerID, si.PaymentMethod)
+	if err == nil {
+		p.completeBilling(ctx, customerID, si.PaymentMethod)
+	}
+	return card, err
 }
 
 // finishSetup is the card a SetupIntent the buyer authenticated saved, for
@@ -66,7 +70,11 @@ func (p *Provider) finishSetup(ctx context.Context, customerID, id string) (proc
 		return processor.Card{}, &processor.Answer{Err: processor.NewPaymentError(processor.Stripe, "setup_not_completed",
 			"the card was not confirmed for this account", nil)}
 	}
-	return p.saved(ctx, customerID, si.PaymentMethod)
+	card, err := p.saved(ctx, customerID, si.PaymentMethod)
+	if err == nil {
+		p.completeBilling(ctx, customerID, si.PaymentMethod)
+	}
+	return card, err
 }
 
 // saved reads the card a PaymentMethod is and refuses one issued in a sanctioned

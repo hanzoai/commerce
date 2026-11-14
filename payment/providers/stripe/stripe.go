@@ -158,6 +158,13 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 	if req.Description != "" {
 		params.Set("description", req.Description)
 	}
+	if e := strings.TrimSpace(req.ReceiptEmail); e != "" {
+		params.Set("receipt_email", e)
+	}
+	params.Set("statement_descriptor_suffix", processor.StatementSuffix)
+	if save, _ := req.Options["saveForOffSession"].(bool); save {
+		params.Set("setup_future_usage", "off_session")
+	}
 	if req.OrderID != "" {
 		params.Set("metadata[order_id]", req.OrderID)
 	}
@@ -554,28 +561,8 @@ func (p *Provider) ListSubscriptions(ctx context.Context, customerID string) ([]
 
 // CreateCustomer creates a Stripe customer.
 func (p *Provider) CreateCustomer(ctx context.Context, email, name string, metadata map[string]interface{}) (string, error) {
-	params := url.Values{}
-	if email != "" {
-		params.Set("email", email)
-	}
-	if name != "" {
-		params.Set("name", name)
-	}
-	for k, v := range metadata {
-		params.Set("metadata["+k+"]", fmt.Sprintf("%v", v))
-	}
-
-	// One customer per reference, whatever retries: Stripe answers a repeated
-	// create under the same key with the customer already made.
-	key := ""
-	if ref, _ := metadata["reference"].(string); ref != "" {
-		key = "customer:" + ref
-	}
-	var cust stripeCustomer
-	if err := p.postKey(ctx, "/customers", params, key, &cust); err != nil {
-		return "", err
-	}
-	return cust.ID, nil
+	ref, _ := metadata["reference"].(string)
+	return p.CreateCustomerFor(ctx, processor.Payer{Email: email, Name: name}, ref, metadata)
 }
 
 // GetCustomer retrieves customer details.
@@ -774,8 +761,20 @@ type stripeCustomer struct {
 	ID       string                 `json:"id"`
 	Email    string                 `json:"email"`
 	Name     string                 `json:"name"`
+	Phone    string                 `json:"phone"`
 	Created  int64                  `json:"created"`
 	Metadata map[string]interface{} `json:"metadata"`
+	Address  *stripeAddress         `json:"address"`
+}
+
+// stripeAddress is an address as Stripe states it.
+type stripeAddress struct {
+	Line1      string `json:"line1"`
+	Line2      string `json:"line2"`
+	City       string `json:"city"`
+	State      string `json:"state"`
+	PostalCode string `json:"postal_code"`
+	Country    string `json:"country"`
 }
 
 type stripeEvent struct {

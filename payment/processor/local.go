@@ -17,6 +17,9 @@ type LocalIntent struct {
 	Key      string // idempotency key
 	Metadata map[string]interface{}
 	Desc     string
+	// Customer is the payer's customer at the processor; ReceiptEmail their email.
+	Customer     string
+	ReceiptEmail string
 }
 
 // LocalIntentOut is what the browser needs to mount the Payment Element.

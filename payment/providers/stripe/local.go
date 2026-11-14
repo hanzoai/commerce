@@ -29,6 +29,13 @@ func (p *Provider) CreateLocalIntent(ctx context.Context, in processor.LocalInte
 	if in.Desc != "" {
 		params.Set("description", in.Desc)
 	}
+	if in.Customer != "" {
+		params.Set("customer", in.Customer)
+	}
+	if e := strings.TrimSpace(in.ReceiptEmail); e != "" {
+		params.Set("receipt_email", e)
+	}
+	params.Set("statement_descriptor_suffix", processor.StatementSuffix)
 	for k, v := range in.Metadata {
 		params.Set("metadata["+k+"]", fmt.Sprintf("%v", v))
 	}

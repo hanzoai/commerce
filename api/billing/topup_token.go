@@ -112,6 +112,7 @@ func TopupWithToken(c *zip.Ctx) error {
 		Subject:        userBillingKey(c),
 		IdempotencyKey: strings.TrimSpace(c.Header("X-Idempotency-Key")),
 		Provider:       req.Provider,
+		Payer:          PayerIn{Email: iamEmail(c)},
 	})
 	if f != nil {
 		return jsonhttp.Fail(c, f.Status, f.Message, f.Err)
