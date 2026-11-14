@@ -32,7 +32,7 @@ func PayPalPublicConfig(org *organization.Organization) PayPalPublic {
 	pp := org.PayPalConfig(useSandbox)
 	clientID := strings.TrimSpace(pp.ClientId)
 	if clientID == "" {
-		creds := paypal.FromEnv(useSandbox)
+		creds := paypal.Deployment(useSandbox)
 		clientID = creds.ClientID
 	}
 

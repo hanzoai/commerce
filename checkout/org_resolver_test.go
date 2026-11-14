@@ -72,13 +72,10 @@ func TestBrandForHost(t *testing.T) {
 // tokenizing against a production Square application.
 func TestOrgResolver_ResolvesOrgAsTenant(t *testing.T) {
 	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("*") }))
-	t.Setenv("STRIPE_TEST_SECRET_KEY", "")
-	t.Setenv("STRIPE_TEST_PUBLISHABLE_KEY", "")
-	t.Setenv("SQUARE_ENVIRONMENT", "production")     // hostile: ignored
-	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-PROD") // hostile: a sandbox org never reads it
-	t.Setenv("SQUARE_LOCATION_ID", "PRODLOC")        // hostile
-	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "sandbox-sq0idb-TESTAPP")
-	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "TESTLOC")
+	// SQUARE_ENVIRONMENT: hostile: ignored
+	// SQUARE_APPLICATION_ID: hostile: a sandbox org never reads it
+	// SQUARE_LOCATION_ID: hostile
+	t.Cleanup(processor.EnvSeed{"STRIPE_TEST_SECRET_KEY": "", "STRIPE_TEST_PUBLISHABLE_KEY": "", "SQUARE_ENVIRONMENT": "production", "SQUARE_APPLICATION_ID": "sq0idp-PROD", "SQUARE_LOCATION_ID": "PRODLOC", "SQUARE_SANDBOX_APPLICATION_ID": "sandbox-sq0idb-TESTAPP", "SQUARE_SANDBOX_LOCATION_ID": "TESTLOC"}.Apply())
 
 	r := NewOrgResolver(nil) // nil loader → brand-default synthetic org + env
 
@@ -131,10 +128,9 @@ func TestOrgResolver_MalformedHostRejected(t *testing.T) {
 // block and enabled square provider, and never leak a secret.
 func TestOrgResolver_PublicViewCarriesSquare(t *testing.T) {
 	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("*") }))
-	t.Setenv("SQUARE_ENVIRONMENT", "production")     // hostile: ignored, org decides
-	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-PROD") // hostile: a sandbox org never reads it
-	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "sandbox-sq0idb-PUBVIEW")
-	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "LOCPUB")
+	// SQUARE_ENVIRONMENT: hostile: ignored, org decides
+	// SQUARE_APPLICATION_ID: hostile: a sandbox org never reads it
+	t.Cleanup(processor.EnvSeed{"SQUARE_ENVIRONMENT": "production", "SQUARE_APPLICATION_ID": "sq0idp-PROD", "SQUARE_SANDBOX_APPLICATION_ID": "sandbox-sq0idb-PUBVIEW", "SQUARE_SANDBOX_LOCATION_ID": "LOCPUB"}.Apply())
 
 	r := NewOrgResolver(nil)
 	ten, err := r.Resolve("pay.hanzo.ai")
@@ -274,8 +270,7 @@ func TestTenantPayloadCarriesTheBrandLogo(t *testing.T) {
 // provider, so its pay host never tokenizes against another brand's merchant.
 func TestOrgResolver_SquareIsTheBrandsOwn(t *testing.T) {
 	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("*") }))
-	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "sandbox-sq0idb-DEPLOY")
-	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "LOCDEPLOY")
+	t.Cleanup(processor.EnvSeed{"SQUARE_SANDBOX_APPLICATION_ID": "sandbox-sq0idb-DEPLOY", "SQUARE_SANDBOX_LOCATION_ID": "LOCDEPLOY"}.Apply())
 
 	hasSquare := func(o Org) bool {
 		for _, p := range o.Providers {
@@ -368,12 +363,10 @@ func TestReturnHosts_EachConsoleIsItsBrands(t *testing.T) {
 func TestOrgJSON_PayPalAlongsideSquareByMerchantNotCountry(t *testing.T) {
 	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("*") }))
 	squaretest.Everywhere(t, "US", "usd")
-	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "sandbox-sq0idb-TEST")
-	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "LOCTEST")
+	t.Cleanup(processor.EnvSeed{"SQUARE_SANDBOX_APPLICATION_ID": "sandbox-sq0idb-TEST", "SQUARE_SANDBOX_LOCATION_ID": "LOCTEST"}.Apply())
 	// Square's card form is offered only where commerce can charge Square, which
 	// takes its access token as well as the public ids.
-	t.Setenv("SQUARE_SANDBOX_ACCESS_TOKEN", "sandbox-sq-token")
-	t.Setenv("PAYPAL_SANDBOX_CLIENT_ID", "sb-paypal-client-id")
+	t.Cleanup(processor.EnvSeed{"SQUARE_SANDBOX_ACCESS_TOKEN": "sandbox-sq-token", "PAYPAL_SANDBOX_CLIENT_ID": "sb-paypal-client-id"}.Apply())
 
 	r := NewOrgResolver(nil)
 	run := func(countryHeader, queryCountry string) publicView {
@@ -434,13 +427,7 @@ func TestOrgJSON_PayPalAlongsideSquareByMerchantNotCountry(t *testing.T) {
 func TestOrgJSON_StripeWhereTheMerchantLocationCannot(t *testing.T) {
 	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("*") }))
 	squaretest.Everywhere(t, "US", "usd")
-	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "sandbox-sq0idb-TEST")
-	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "LOCTEST")
-	t.Setenv("SQUARE_SANDBOX_ACCESS_TOKEN", "sandbox-sq-token")
-	t.Setenv("STRIPE_TEST_SECRET_KEY", "sk_test_checkout")
-	t.Setenv("STRIPE_TEST_PUBLISHABLE_KEY", "pk_test_checkout")
-	t.Setenv("PAYPAL_SANDBOX_CLIENT_ID", "sb-paypal-client-id")
-	t.Setenv("PAYPAL_SANDBOX_CLIENT_SECRET", "sb-paypal-secret")
+	t.Cleanup(processor.EnvSeed{"SQUARE_SANDBOX_APPLICATION_ID": "sandbox-sq0idb-TEST", "SQUARE_SANDBOX_LOCATION_ID": "LOCTEST", "SQUARE_SANDBOX_ACCESS_TOKEN": "sandbox-sq-token", "STRIPE_TEST_SECRET_KEY": "sk_test_checkout", "STRIPE_TEST_PUBLISHABLE_KEY": "pk_test_checkout", "PAYPAL_SANDBOX_CLIENT_ID": "sb-paypal-client-id", "PAYPAL_SANDBOX_CLIENT_SECRET": "sb-paypal-secret"}.Apply())
 
 	r := NewOrgResolver(nil)
 	view := func(host, country string) (publicView, string) {
@@ -518,13 +505,7 @@ func TestOrgJSON_StripeWhereTheMerchantLocationCannot(t *testing.T) {
 // however configured.
 func TestOrgJSON_DefaultPolicyIsStripeOnly(t *testing.T) {
 	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool { return processor.ChargeNames("stripe") }))
-	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "sandbox-sq0idb-TEST")
-	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "LOCTEST")
-	t.Setenv("SQUARE_SANDBOX_ACCESS_TOKEN", "sandbox-sq-token")
-	t.Setenv("STRIPE_TEST_SECRET_KEY", "sk_test_checkout")
-	t.Setenv("STRIPE_TEST_PUBLISHABLE_KEY", "pk_test_checkout")
-	t.Setenv("PAYPAL_SANDBOX_CLIENT_ID", "sb-paypal-client-id")
-	t.Setenv("PAYPAL_SANDBOX_CLIENT_SECRET", "sb-paypal-secret")
+	t.Cleanup(processor.EnvSeed{"SQUARE_SANDBOX_APPLICATION_ID": "sandbox-sq0idb-TEST", "SQUARE_SANDBOX_LOCATION_ID": "LOCTEST", "SQUARE_SANDBOX_ACCESS_TOKEN": "sandbox-sq-token", "STRIPE_TEST_SECRET_KEY": "sk_test_checkout", "STRIPE_TEST_PUBLISHABLE_KEY": "pk_test_checkout", "PAYPAL_SANDBOX_CLIENT_ID": "sb-paypal-client-id", "PAYPAL_SANDBOX_CLIENT_SECRET": "sb-paypal-secret"}.Apply())
 
 	ten, err := NewOrgResolver(nil).Resolve("pay.hanzo.ai")
 	if err != nil {

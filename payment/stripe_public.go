@@ -45,7 +45,7 @@ func StripeKeys(org *organization.Organization) stripe.Credentials {
 		}
 		return stripe.Credentials{SecretKey: sk, PublishableKey: kind(strings.TrimSpace(own.PublishableKey), want, "pk")}
 	}
-	return stripe.FromEnv(test)
+	return stripe.Deployment(test)
 }
 
 // StripePublicConfig is the public half of StripeKeys. An org whose account has

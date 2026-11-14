@@ -363,12 +363,12 @@ func squareCheckoutCredentials(org *organization.Organization) (token, locationI
 	// "anonymous env-token / platform-org" lending path is gone. Only SANDBOX
 	// (no money at risk) keeps the env fallback, so the per-org storefront
 	// sandbox demo still mints intents behind authentication, on the sandbox
-	// names only (sqenv.FromEnv).
+	// names only (sqenv.Deployment).
 	if token == "" {
 		if !isSandbox {
 			return "", "", errors.New("square is not configured for this organization")
 		}
-		creds := sqenv.FromEnv(true)
+		creds := sqenv.Deployment(true)
 		token, locationID = creds.AccessToken, creds.LocationID
 	}
 

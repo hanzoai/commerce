@@ -11,13 +11,7 @@ import (
 // sandbox path may read.
 func hostileProduction(t *testing.T) {
 	t.Helper()
-	t.Setenv("SQUARE_ENVIRONMENT", "production")
-	t.Setenv("SQUARE_ACCESS_TOKEN", "EAAA-prod-hostile")
-	t.Setenv("SQUARE_LOCATION_ID", "PRODLOC-hostile")
-	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-hostile")
-	t.Setenv("SQUARE_SANDBOX_ACCESS_TOKEN", "")
-	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "")
-	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "")
+	t.Cleanup(processor.EnvSeed{"SQUARE_ENVIRONMENT": "production", "SQUARE_ACCESS_TOKEN": "EAAA-prod-hostile", "SQUARE_LOCATION_ID": "PRODLOC-hostile", "SQUARE_APPLICATION_ID": "sq0idp-hostile", "SQUARE_SANDBOX_ACCESS_TOKEN": "", "SQUARE_SANDBOX_LOCATION_ID": "", "SQUARE_SANDBOX_APPLICATION_ID": ""}.Apply())
 }
 
 // ceiling caps every org at k for one test.
@@ -54,7 +48,7 @@ func TestProcessorsForOrg_SandboxOrgNeverBorrowsProductionAccount(t *testing.T) 
 	}
 
 	// A sandbox token with no sandbox location is not completed by production's.
-	t.Setenv("SQUARE_SANDBOX_ACCESS_TOKEN", "EAAA-sandbox")
+	t.Cleanup(processor.EnvSeed{"SQUARE_SANDBOX_ACCESS_TOKEN": "EAAA-sandbox"}.Apply())
 	if _, err := ProcessorsForOrg(&organization.Organization{}).Get(processor.Square); err == nil {
 		t.Fatal("a sandbox token was paired with the production location")
 	}

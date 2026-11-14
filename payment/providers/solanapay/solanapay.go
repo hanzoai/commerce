@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -62,22 +62,11 @@ func NewProvider(cfg Config) *Provider {
 }
 
 func init() {
-	rpc := os.Getenv("SOLANA_RPC_URL")
-	if rpc == "" {
-		rpc = defaultRPCURL
-	}
-	recipient := os.Getenv("SOLANA_RECIPIENT_ADDRESS")
-
-	p := &Provider{
-		BaseProcessor:    processor.NewBaseProcessor(processor.SolanaPay, supportedCurrencies()),
-		rpcURL:           rpc,
-		recipientAddress: recipient,
-		client:           &http.Client{Timeout: defaultTimeout},
-	}
-	if recipient != "" {
-		p.SetConfigured(true)
-	}
-	processor.Register(p)
+	processor.Register(&Provider{
+		BaseProcessor: processor.NewBaseProcessor(processor.SolanaPay, supportedCurrencies()),
+		rpcURL:        defaultRPCURL,
+		client:        &http.Client{Timeout: defaultTimeout},
+	})
 }
 
 func supportedCurrencies() []currency.Type {
@@ -426,3 +415,15 @@ var (
 	_ processor.PaymentProcessor = (*Provider)(nil)
 	_ processor.CryptoProcessor  = (*Provider)(nil)
 )
+
+// Reconfigure reads the "default" solanapay account from the routing policy: the RPC
+// endpoint and the recipient address, both plain settings.
+func (p *Provider) Reconfigure() {
+	a := processor.AccountOf(processor.SolanaPay, "default")
+	p.rpcURL = defaultRPCURL
+	if u := strings.TrimSpace(a.Setting("rpcUrl")); u != "" {
+		p.rpcURL = u
+	}
+	p.recipientAddress = strings.TrimSpace(a.Setting("recipient"))
+	p.SetConfigured(p.recipientAddress != "")
+}

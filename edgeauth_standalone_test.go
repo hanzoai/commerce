@@ -21,6 +21,7 @@ package commerce
 
 import (
 	"encoding/json"
+	"github.com/hanzoai/commerce/payment/processor"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -43,7 +44,7 @@ func bootEdgeCommerce(t *testing.T) *App {
 	// require-identity OFF: the binary-edge gate is incompatible with the
 	// service-token money path (no X-Org-Id). This is the deployed default.
 	t.Setenv("COMMERCED_REQUIRE_IDENTITY", "false")
-	t.Setenv("STRIPE_SECRET_KEY", "")
+	t.Cleanup(processor.EnvSeed{"STRIPE_SECRET_KEY": ""}.Apply())
 	t.Setenv("COMMERCE_STRIPE_SEED", "false")
 	t.Setenv("SQL_URL", "")
 

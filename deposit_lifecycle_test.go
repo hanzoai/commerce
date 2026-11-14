@@ -1,6 +1,7 @@
 package commerce
 
 import (
+	"github.com/hanzoai/commerce/payment/processor"
 	"testing"
 
 	"github.com/hanzoai/commerce/billing/depositledger"
@@ -53,7 +54,7 @@ func TestBootstrapFailsClosedOnAnIncoherentWatchTable(t *testing.T) {
 		HTTPAddr: "127.0.0.1:0", QueryTimeout: 30e9,
 	}
 	cfg.IAM.Enabled = false
-	t.Setenv("STRIPE_SECRET_KEY", "")
+	t.Cleanup(processor.EnvSeed{"STRIPE_SECRET_KEY": ""}.Apply())
 	t.Setenv("COMMERCE_STRIPE_SEED", "false")
 	t.Setenv("SQL_URL", "")
 	t.Setenv("COMMERCE_DATA_DIR", cfg.DataDir)

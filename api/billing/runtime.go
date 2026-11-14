@@ -22,6 +22,12 @@ import (
 	"github.com/hanzoai/commerce/thirdparty/mpc"
 )
 
+// BOOTSTRAP EXCEPTION. The environment is read before the policy store exists, and only for
+// what is needed to open it and reach KMS: the store's location (COMMERCE_DATA_DIR,
+// COMMERCE_BASE_URL, COMMERCE_BASE_AUX, store.FromEnv) and the KMS client the host builds
+// (cmd/commerce/kms.go). Nothing about a processor, a deposit rail or a credential is read
+// from the environment after the first run seeded the policy (seedRuntime).
+//
 // The platform routing policy is the one place the processors commerce charges with,
 // and the deposit accounts it watches, are configured. It is applied to what runs the
 // moment it is written on this replica, and picked up by the others on a short refresh:
@@ -88,9 +94,44 @@ func applyRuntime(ctx context.Context, pol routing.Policy, version int) error {
 			first = err
 		}
 	}
+	applyAccounts(ctx, pol)
 	configureMPC(ctx, pol)
 	configureKraken(ctx, pol)
 	return first
+}
+
+// accountedProcessors are the processors given accounts by the last apply, so a processor
+// whose accounts were all removed is cleared.
+var accountedProcessors []processor.ProcessorType
+
+// applyAccounts gives each processor its accounts from the policy: every account that is on
+// and is not a deposit account (no network), with its settings and its secrets read from
+// KMS now. The processors read their configuration from these and from nothing else.
+func applyAccounts(ctx context.Context, pol routing.Policy) {
+	by := map[processor.ProcessorType][]processor.Account{}
+	for _, a := range pol.Accounts {
+		if !a.On || a.Network != "" || a.Processor == "" {
+			continue
+		}
+		acct := processor.Account{ID: a.ID, Settings: map[string]string{}, Secrets: map[string]string{}}
+		for _, n := range a.Settings {
+			acct.Settings[n.Name] = n.Value
+		}
+		for _, n := range a.Secrets {
+			acct.Secrets[n.Name] = secrets.String(ctx, n.Value)
+		}
+		by[processor.ProcessorType(a.Processor)] = append(by[processor.ProcessorType(a.Processor)], acct)
+	}
+	for _, t := range accountedProcessors {
+		if _, still := by[t]; !still {
+			processor.SetAccounts(t, nil)
+		}
+	}
+	accountedProcessors = accountedProcessors[:0]
+	for t, accts := range by {
+		processor.SetAccounts(t, accts)
+		accountedProcessors = append(accountedProcessors, t)
+	}
 }
 
 // configureMPC points the mpc rail at the policy's mpc service account (the one with no
@@ -194,7 +235,7 @@ func seedRuntime(ctx context.Context) error {
 		version = row.Version
 		by = row.By
 	}
-	seedFromEnvironment(&pol, os.Environ())
+	seedFromEnvironment(ctx, &pol, os.Environ())
 	pol = pol.Normal()
 	rows := policyRow(pol, by, version)
 	rows.Rules = markSeeded(rows.Rules)
@@ -248,7 +289,7 @@ func markSeeded(rules string) string {
 
 // seedFromEnvironment reads the deployment's environment into pol. It is the ONLY place
 // commerce reads any of these variables, and it runs once.
-func seedFromEnvironment(pol *routing.Policy, environ []string) {
+func seedFromEnvironment(ctx context.Context, pol *routing.Policy, environ []string) {
 	env := map[string]string{}
 	for _, kv := range environ {
 		if k, v, ok := strings.Cut(kv, "="); ok && strings.TrimSpace(v) != "" {
@@ -302,7 +343,7 @@ func seedFromEnvironment(pol *routing.Policy, environ []string) {
 	if ep := env["MPC_ENDPOINT"]; ep != "" {
 		a := routing.Account{Processor: string(processor.MPC), ID: "service", Endpoint: ep, On: true}
 		if env["MPC_API_KEY"] != "" {
-			a.SecretRef = "/commerce-secrets/MPC_API_KEY"
+			a.SecretRef = kmsPath(ctx, "MPC_API_KEY")
 		}
 		if v := env["MPC_KMS_ENDPOINT"]; v != "" {
 			a.Endpoints = append(a.Endpoints, routing.Named{Name: "kms", Value: v})
@@ -311,7 +352,7 @@ func seedFromEnvironment(pol *routing.Policy, environ []string) {
 			a.Endpoints = append(a.Endpoints, routing.Named{Name: "zap", Value: v})
 		}
 		if env["MPC_WEBHOOK_SECRET"] != "" {
-			a.Secrets = append(a.Secrets, routing.Named{Name: "webhook", Value: "/commerce-secrets/MPC_WEBHOOK_SECRET"})
+			a.Secrets = append(a.Secrets, routing.Named{Name: "webhook", Value: kmsPath(ctx, "MPC_WEBHOOK_SECRET")})
 		}
 		pol.Accounts = append(pol.Accounts, a)
 		mpcOn = true
@@ -324,13 +365,14 @@ func seedFromEnvironment(pol *routing.Policy, environ []string) {
 		}
 	}
 	if env["KRAKEN_API_KEY"] != "" && env["KRAKEN_API_SECRET"] != "" {
-		pol.Accounts = append(pol.Accounts, routing.Account{Processor: string(processor.Kraken), ID: "exchange", Endpoint: env["KRAKEN_API_URL"], On: true, SecretRef: "/commerce-secrets"})
+		pol.Accounts = append(pol.Accounts, routing.Account{Processor: string(processor.Kraken), ID: "exchange", Endpoint: env["KRAKEN_API_URL"], On: true, SecretRef: kmsFolder(ctx, "KRAKEN_API_KEY")})
 		for i := range pol.Processors {
 			if pol.Processors[i].Processor == string(processor.Kraken) {
 				pol.Processors[i].On = allowed[processor.Kraken]
 			}
 		}
 	}
+	seedProcessorAccounts(ctx, pol, env)
 	// The default crypto processor an operator named leads the rails for any asset.
 	if explicit := strings.ToLower(env["COMMERCE_DEFAULT_CRYPTO_PROCESSOR"]); explicit != "" {
 		pol.CryptoRails = append([]routing.CryptoRoute{{Asset: "*", Processor: explicit}}, routing.DefaultCryptoRails()...)
@@ -406,4 +448,77 @@ func resolveRef(ctx context.Context, a routing.Account) string {
 		}
 	}
 	return ""
+}
+
+// kmsFolders are the KMS paths a deployment's processor secrets live at, from the
+// universe manifests that project them: production's are synced from /commerce-secrets
+// (cloud-commerce-kms-sync, cloud-stripe-kms-sync) and testnet's from /cloud
+// (cloud-env-kms-sync, KMS env testnet). Which network this is is the host's KMS reader's
+// concern; the path a secret is at is the one that resolves for it.
+var kmsFolders = []string{"/commerce-secrets", "/cloud"}
+
+// kmsFolder is the folder holding name for this deployment: the first of kmsFolders where
+// it resolves, else the first (the secret is then not found, and the first run says so).
+func kmsFolder(ctx context.Context, name string) string {
+	for _, f := range kmsFolders {
+		if secrets.String(ctx, f+"/"+name) != "" {
+			return f
+		}
+	}
+	log.Warn("routing seed: %s resolves in none of %v; the account will name %s/%s", name, kmsFolders, kmsFolders[0], name)
+	return kmsFolders[0]
+}
+
+// kmsPath is the path name is at for this deployment.
+func kmsPath(ctx context.Context, name string) string { return kmsFolder(ctx, name) + "/" + name }
+
+// seedProcessorAccounts adds an account for every processor the environment configured
+// (processor.Seeds): the plain values as settings, and for each secret the KMS path it
+// lives at (/commerce-secrets/<NAME>), never the value. An account is made only if one of
+// its values was set; Square and PayPal's live and sandbox sets both survive, and the one
+// the environment named is marked as the deployment's.
+func seedProcessorAccounts(ctx context.Context, pol *routing.Policy, env map[string]string) {
+	for _, sp := range processor.Seeds {
+		a := routing.Account{Processor: sp.Processor, ID: sp.ID, On: true}
+		for _, f := range sp.Fields {
+			for _, name := range f.Envs {
+				v := env[name]
+				if v == "" {
+					continue
+				}
+				if f.Secret {
+					a.Secrets = append(a.Secrets, routing.Named{Name: f.Name, Value: kmsPath(ctx, name)})
+				} else {
+					a.Settings = append(a.Settings, routing.Named{Name: f.Name, Value: v})
+				}
+				break
+			}
+		}
+		if len(a.Secrets)+len(a.Settings) == 0 {
+			continue
+		}
+		if sp.Deploys(env) {
+			a.Settings = append(a.Settings, routing.Named{Name: "deployment", Value: "true"})
+		}
+		pol.Accounts = append(pol.Accounts, a)
+	}
+	// Kraken's explicit deposit-method overrides ride on its exchange account.
+	for k, v := range env {
+		rest, ok := strings.CutPrefix(k, "KRAKEN_DEPOSIT_METHOD_")
+		if !ok {
+			continue
+		}
+		parts := strings.Split(strings.ToLower(rest), "_")
+		name := "depositMethod." + strings.Join(parts, ".")
+		found := false
+		for i := range pol.Accounts {
+			if pol.Accounts[i].Processor == string(processor.Kraken) && pol.Accounts[i].ID == "exchange" {
+				pol.Accounts[i].Settings = append(pol.Accounts[i].Settings, routing.Named{Name: name, Value: v})
+				found = true
+			}
+		}
+		if !found {
+			pol.Accounts = append(pol.Accounts, routing.Account{Processor: string(processor.Kraken), ID: "exchange", On: true, Settings: []routing.Named{{Name: name, Value: v}}})
+		}
+	}
 }

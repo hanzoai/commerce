@@ -12,6 +12,7 @@ package commerce
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/hanzoai/commerce/payment/processor"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -41,7 +42,7 @@ func bootTestCommerce(t *testing.T) *App {
 	cfg.IAM.Enabled = false // no JWKS fetch; admin routes still register, caller JWT absent → 401
 
 	// Ensure we do not touch the environment's STRIPE / SQL vars.
-	t.Setenv("STRIPE_SECRET_KEY", "")
+	t.Cleanup(processor.EnvSeed{"STRIPE_SECRET_KEY": ""}.Apply())
 	t.Setenv("COMMERCE_STRIPE_SEED", "false")
 	t.Setenv("SQL_URL", "")
 	t.Setenv("COMMERCE_DATA_DIR", cfg.DataDir)

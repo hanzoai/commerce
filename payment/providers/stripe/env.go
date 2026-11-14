@@ -1,8 +1,9 @@
 package stripe
 
 import (
-	"os"
 	"strings"
+
+	"github.com/hanzoai/commerce/payment/processor"
 )
 
 // Credentials are the deployment's Stripe API keys of one kind (test or live).
@@ -11,24 +12,26 @@ type Credentials struct {
 	PublishableKey string
 }
 
-// FromEnv reads the deployment's Stripe keys of one kind: STRIPE_TEST_SECRET_KEY
-// and STRIPE_TEST_PUBLISHABLE_KEY for test, STRIPE_SECRET_KEY and
-// STRIPE_PUBLISHABLE_KEY for live.
+// Deployment is the deployment's Stripe keys of one kind, from the routing policy's
+// stripe accounts: the "test" account for test, the "live" account for live. An account
+// holds the secret key (read from KMS) and the publishable key.
 //
 // A key of the other kind is dropped rather than used. Stripe names a key's kind
 // in its prefix (sk_test_/rk_test_/pk_test_ versus sk_live_/rk_live_/pk_live_),
 // so a test org can never charge the live account, and a live org never takes
 // test money it would credit as real.
-func FromEnv(test bool) Credentials {
+func Deployment(test bool) Credentials {
 	if test {
+		a := processor.AccountOf(processor.Stripe, "test")
 		return Credentials{
-			SecretKey:      kind(envValue("STRIPE_TEST_SECRET_KEY"), "_test_", "sk", "rk"),
-			PublishableKey: kind(envValue("STRIPE_TEST_PUBLISHABLE_KEY"), "_test_", "pk"),
+			SecretKey:      kind(strings.TrimSpace(a.Secret("secretKey")), "_test_", "sk", "rk"),
+			PublishableKey: kind(strings.TrimSpace(a.Setting("publishableKey")), "_test_", "pk"),
 		}
 	}
+	a := processor.AccountOf(processor.Stripe, "live")
 	return Credentials{
-		SecretKey:      kind(envValue("STRIPE_SECRET_KEY"), "_live_", "sk", "rk"),
-		PublishableKey: kind(envValue("STRIPE_PUBLISHABLE_KEY"), "_live_", "pk"),
+		SecretKey:      kind(strings.TrimSpace(a.Secret("secretKey")), "_live_", "sk", "rk"),
+		PublishableKey: kind(strings.TrimSpace(a.Setting("publishableKey")), "_live_", "pk"),
 	}
 }
 
@@ -43,5 +46,3 @@ func kind(key, want string, prefixes ...string) string {
 	}
 	return ""
 }
-
-func envValue(name string) string { return strings.TrimSpace(os.Getenv(name)) }

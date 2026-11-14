@@ -12,8 +12,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -41,24 +41,11 @@ type Provider struct {
 }
 
 func init() {
-	apiKey := os.Getenv("OPENNODE_API_KEY")
-	env := os.Getenv("OPENNODE_ENVIRONMENT")
-	if env == "" {
-		env = "dev"
-	}
-
-	p := &Provider{
+	processor.Register(&Provider{
 		BaseProcessor: processor.NewBaseProcessor(processor.OpenNode, supportedCurrencies()),
-		apiKey:        apiKey,
-		environment:   env,
+		environment:   "dev",
 		client:        &http.Client{Timeout: defaultTimeout},
-	}
-
-	if apiKey != "" {
-		p.SetConfigured(true)
-	}
-
-	processor.Register(p)
+	})
 }
 
 // NewProvider creates a configured OpenNode provider instance.
@@ -492,3 +479,15 @@ func mapWebhookEventType(status string) string {
 
 // Compile-time interface check.
 var _ processor.PaymentProcessor = (*Provider)(nil)
+
+// Reconfigure reads the "default" opennode account from the routing policy: the API key
+// (from KMS) and the environment.
+func (p *Provider) Reconfigure() {
+	a := processor.AccountOf(processor.OpenNode, "default")
+	p.apiKey = strings.TrimSpace(a.Secret("apiKey"))
+	p.environment = "dev"
+	if e := strings.TrimSpace(a.Setting("environment")); e != "" {
+		p.environment = e
+	}
+	p.SetConfigured(p.apiKey != "")
+}

@@ -1,6 +1,7 @@
 package payment
 
 import (
+	"github.com/hanzoai/commerce/payment/processor"
 	"testing"
 
 	"github.com/hanzoai/commerce/models/organization"
@@ -11,9 +12,8 @@ import (
 // tokenizes against and commerce charges with. The org is the authority;
 // SQUARE_ENVIRONMENT is set to the opposite here and must not participate.
 func TestSquarePublicConfig_LiveOrgGetsProductionPair(t *testing.T) {
-	t.Setenv("SQUARE_ENVIRONMENT", "sandbox") // hostile: ignored
-	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-PROD")
-	t.Setenv("SQUARE_LOCATION_ID", "PRODLOC")
+	// SQUARE_ENVIRONMENT: hostile: ignored
+	t.Cleanup(processor.EnvSeed{"SQUARE_ENVIRONMENT": "sandbox", "SQUARE_APPLICATION_ID": "sq0idp-PROD", "SQUARE_LOCATION_ID": "PRODLOC"}.Apply())
 
 	org := &organization.Organization{}
 	org.Live = true
@@ -30,11 +30,8 @@ func TestSquarePublicConfig_LiveOrgGetsProductionPair(t *testing.T) {
 // org, so the app id never straddles environments — on the same deployment that
 // serves the live org above.
 func TestSquarePublicConfig_TestOrgGetsSandboxPair(t *testing.T) {
-	t.Setenv("SQUARE_ENVIRONMENT", "production") // hostile: ignored
-	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-PROD")
-	t.Setenv("SQUARE_LOCATION_ID", "PRODLOC")
-	t.Setenv("SQUARE_SANDBOX_APPLICATION_ID", "sandbox-sq0idb-SBX")
-	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "SBXLOC")
+	// SQUARE_ENVIRONMENT: hostile: ignored
+	t.Cleanup(processor.EnvSeed{"SQUARE_ENVIRONMENT": "production", "SQUARE_APPLICATION_ID": "sq0idp-PROD", "SQUARE_LOCATION_ID": "PRODLOC", "SQUARE_SANDBOX_APPLICATION_ID": "sandbox-sq0idb-SBX", "SQUARE_SANDBOX_LOCATION_ID": "SBXLOC"}.Apply())
 
 	got := SquarePublicConfig(&organization.Organization{})
 	if got.ApplicationID != "sandbox-sq0idb-SBX" || got.LocationID != "SBXLOC" {
@@ -49,7 +46,8 @@ func TestSquarePublicConfig_TestOrgGetsSandboxPair(t *testing.T) {
 // the deployment env says — so a half-configured org can never silently charge
 // live cards, and it cannot drag other tenants with it either.
 func TestSquarePublicConfig_FailsClosedPerOrg(t *testing.T) {
-	t.Setenv("SQUARE_ENVIRONMENT", "production") // hostile: ignored
+	// SQUARE_ENVIRONMENT: hostile: ignored
+	t.Cleanup(processor.EnvSeed{"SQUARE_ENVIRONMENT": "production"}.Apply())
 	got := SquarePublicConfig(&organization.Organization{})
 	if got.Environment != "sandbox" {
 		t.Errorf("environment = %q, want sandbox (fail-closed)", got.Environment)

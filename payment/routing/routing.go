@@ -136,6 +136,9 @@ type Account struct {
 	// value is a KMS path, like SecretRef.
 	Endpoints []Named `json:"endpoints,omitempty"`
 	Secrets   []Named `json:"secrets,omitempty"`
+	// Settings are the account's other plain configuration (environment, location, public
+	// keys, webhook URL), by name.
+	Settings []Named `json:"settings,omitempty"`
 }
 
 // Named is a name and its value, in a list because the policy holds no maps.

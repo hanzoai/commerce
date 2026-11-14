@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -41,24 +40,11 @@ type Provider struct {
 }
 
 func init() {
-	token := os.Getenv("BITPAY_API_TOKEN")
-	env := os.Getenv("BITPAY_ENVIRONMENT")
-	if env == "" {
-		env = "test"
-	}
-
-	p := &Provider{
+	processor.Register(&Provider{
 		BaseProcessor: processor.NewBaseProcessor(processor.BitPay, supportedCurrencies()),
-		apiToken:      token,
-		environment:   env,
+		environment:   "test",
 		client:        &http.Client{Timeout: defaultTimeout},
-	}
-
-	if token != "" {
-		p.SetConfigured(true)
-	}
-
-	processor.Register(p)
+	})
 }
 
 // NewProvider creates a configured BitPay provider instance.
@@ -481,3 +467,15 @@ func mapWebhookEventType(name string) string {
 
 // Compile-time interface check.
 var _ processor.PaymentProcessor = (*Provider)(nil)
+
+// Reconfigure reads the "default" bitpay account from the routing policy: the API token
+// (from KMS) and the environment.
+func (p *Provider) Reconfigure() {
+	a := processor.AccountOf(processor.BitPay, "default")
+	p.apiToken = strings.TrimSpace(a.Secret("apiToken"))
+	p.environment = "test"
+	if e := strings.TrimSpace(a.Setting("environment")); e != "" {
+		p.environment = e
+	}
+	p.SetConfigured(p.apiToken != "")
+}

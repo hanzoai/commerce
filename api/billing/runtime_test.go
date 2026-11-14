@@ -376,3 +376,135 @@ func TestTheMPCAccountConfiguresTheRailAtRuntime(t *testing.T) {
 		t.Fatal("the account was removed and the rail still takes webhooks")
 	}
 }
+
+// A processor's keys come from its account in the policy, read from KMS when the policy is
+// applied: the secret key reaches the provider, which is configured; the account removed,
+// it is not. No environment is involved, and the policy stores the path, never the key.
+func TestAProcessorIsConfiguredFromItsAccountAndTheSecretStaysInKMS(t *testing.T) {
+	ctx := heldStore(t)
+	installRuntime(t, ctx)
+	useSecrets(t, mapSecrets{"/commerce-secrets/STRIPE_SECRET_KEY": "sk_live_FROMKMS", "/commerce-secrets/STRIPE_WEBHOOK_SECRET": "whsec_x"})
+	p, err := processor.Global().Registered(processor.Stripe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.IsAvailable(ctx) {
+		t.Fatal("Stripe is available before any account holds its key")
+	}
+	pol := routing.Default()
+	pol.Accounts = []routing.Account{{Processor: "stripe", ID: "live", On: true,
+		Settings: []routing.Named{{Name: "publishableKey", Value: "pk_live_PUB"}},
+		Secrets:  []routing.Named{{Name: "secretKey", Value: "/commerce-secrets/STRIPE_SECRET_KEY"}, {Name: "webhook", Value: "/commerce-secrets/STRIPE_WEBHOOK_SECRET"}}}}
+	saved, f := WriteRouting(ctx, "", pol, "z", "stripe keys")
+	if f != nil {
+		t.Fatalf("policy: %v", f.Err)
+	}
+	if !p.IsAvailable(ctx) || !stripeReceivesWebhooks(p) {
+		t.Fatal("the key and the webhook secret in the account did not reach Stripe")
+	}
+	row, _, _ := routingpolicy.Get(ctx, routingpolicy.Platform)
+	if strings.Contains(row.Rules, "sk_live_FROMKMS") || strings.Contains(row.Rules, "whsec_x") || saved.Accounts[0].Secrets[0].Value != "/commerce-secrets/STRIPE_SECRET_KEY" {
+		t.Fatalf("the policy stores a secret, not its path: %s", row.Rules)
+	}
+	// A key that is not in KMS is refused, and the running configuration is untouched.
+	bad := pol
+	bad.Accounts = []routing.Account{pol.Accounts[0]}
+	bad.Accounts[0].Secrets = []routing.Named{{Name: "secretKey", Value: "/commerce-secrets/NOT_THERE"}}
+	if _, f := WriteRouting(ctx, "", bad, "z", ""); f == nil || !p.IsAvailable(ctx) {
+		t.Fatalf("an unresolvable key was accepted or broke the running one: %v", f)
+	}
+	if _, f := WriteRouting(ctx, "", routing.Default(), "z", "no stripe account"); f != nil {
+		t.Fatal(f.Err)
+	}
+	if p.IsAvailable(ctx) {
+		t.Fatal("the account was removed and Stripe still holds its key")
+	}
+}
+
+func stripeReceivesWebhooks(p processor.PaymentProcessor) bool {
+	r, ok := p.(interface{ ReceivesWebhooks() bool })
+	return ok && r.ReceivesWebhooks()
+}
+
+// The first run turns the environment's processor settings into accounts: plain values as
+// settings, each secret as the KMS path it lives at, and Square's and PayPal's live and
+// sandbox sets side by side with the named one marked as the deployment's.
+func TestTheSeedTurnsProcessorEnvironmentIntoAccountsWithSecretPaths(t *testing.T) {
+	pol := routing.Default()
+	seedFromEnvironment(context.Background(), &pol, []string{
+		"STRIPE_SECRET_KEY=sk_live_X", "STRIPE_PUBLISHABLE_KEY=pk_live_X", "STRIPE_TEST_SECRET_KEY=sk_test_X",
+		"SQUARE_ENVIRONMENT=sandbox", "SQUARE_ACCESS_TOKEN=tok", "SQUARE_LOCATION_ID=LOC", "SQUARE_SANDBOX_ACCESS_TOKEN=sbtok", "SQUARE_SANDBOX_LOCATION_ID=SBLOC",
+		"PAYPAL_CLIENT_ID=pp", "PAYPAL_CLIENT_SECRET=pps", "MOONPAY_API_KEY=mp", "OPENNODE_API_KEY=on", "OPENNODE_ENVIRONMENT=live",
+		"SOLANA_RPC_URL=https://rpc.example", "SOLANA_RECIPIENT_ADDRESS=Addr", "KRAKEN_DEPOSIT_METHOD_BASE_USDC=USDC (Base)",
+	})
+	find := func(proc, id string) *routing.Account {
+		for i, a := range pol.Accounts {
+			if a.Processor == proc && a.ID == id {
+				return &pol.Accounts[i]
+			}
+		}
+		return nil
+	}
+	set := func(l []routing.Named, name string) string { return routing.Get(l, name) }
+	stripe := find("stripe", "live")
+	if stripe == nil || set(stripe.Secrets, "secretKey") != "/commerce-secrets/STRIPE_SECRET_KEY" || set(stripe.Settings, "publishableKey") != "pk_live_X" {
+		t.Fatalf("stripe live = %+v", stripe)
+	}
+	if a := find("stripe", "test"); a == nil || set(a.Secrets, "secretKey") != "/commerce-secrets/STRIPE_TEST_SECRET_KEY" {
+		t.Fatalf("stripe test = %+v", a)
+	}
+	live, sandbox := find("square", "live"), find("square", "sandbox")
+	if live == nil || sandbox == nil || set(live.Settings, "deployment") == "true" || set(sandbox.Settings, "deployment") != "true" ||
+		set(sandbox.Secrets, "accessToken") != "/commerce-secrets/SQUARE_SANDBOX_ACCESS_TOKEN" || set(sandbox.Settings, "locationId") != "SBLOC" {
+		t.Fatalf("square = %+v %+v; want both sets, the sandbox marked as the deployment's", live, sandbox)
+	}
+	if a := find("paypal", "live"); a == nil || set(a.Settings, "clientId") != "pp" || set(a.Secrets, "clientSecret") != "/commerce-secrets/PAYPAL_CLIENT_SECRET" || set(a.Settings, "deployment") != "true" {
+		t.Fatalf("paypal = %+v", a)
+	}
+	if a := find("opennode", "default"); a == nil || set(a.Settings, "environment") != "live" || set(a.Secrets, "apiKey") != "/commerce-secrets/OPENNODE_API_KEY" {
+		t.Fatalf("opennode = %+v", a)
+	}
+	if a := find("solanapay", "default"); a == nil || set(a.Settings, "rpcUrl") != "https://rpc.example" || set(a.Settings, "recipient") != "Addr" {
+		t.Fatalf("solanapay = %+v", a)
+	}
+	if a := find("kraken", "exchange"); a == nil || set(a.Settings, "depositMethod.base.usdc") != "USDC (Base)" {
+		t.Fatalf("kraken = %+v", a)
+	}
+	for _, a := range pol.Accounts {
+		for _, n := range append(append([]routing.Named{}, a.Settings...), a.Endpoints...) {
+			if strings.HasPrefix(n.Value, "sk_") || n.Value == "tok" || n.Value == "pps" {
+				t.Errorf("account %s/%s holds a secret value as a setting: %+v", a.Processor, a.ID, n)
+			}
+		}
+	}
+}
+
+// A secret is named at the path it resolves at on this deployment: production's are under
+// /commerce-secrets, testnet's under /cloud (the universe KMS syncs), and the seed finds
+// whichever holds them.
+func TestTheSeedNamesEachSecretAtThePathThatResolvesOnThisDeployment(t *testing.T) {
+	useSecrets(t, mapSecrets{
+		"/cloud/STRIPE_TEST_SECRET_KEY": "x", "/cloud/SQUARE_SANDBOX_ACCESS_TOKEN": "y", "/cloud/PAYPAL_SANDBOX_CLIENT_SECRET": "z",
+		"/commerce-secrets/KRAKEN_API_KEY": "k", "/commerce-secrets/KRAKEN_API_SECRET": "s",
+	})
+	pol := routing.Default()
+	seedFromEnvironment(context.Background(), &pol, []string{
+		"STRIPE_TEST_SECRET_KEY=a", "SQUARE_SANDBOX_ACCESS_TOKEN=b", "PAYPAL_SANDBOX_CLIENT_SECRET=c", "PAYPAL_SANDBOX_CLIENT_ID=id",
+		"KRAKEN_API_KEY=k", "KRAKEN_API_SECRET=s",
+	})
+	want := map[string]string{"stripe/test/secretKey": "/cloud/STRIPE_TEST_SECRET_KEY", "square/sandbox/accessToken": "/cloud/SQUARE_SANDBOX_ACCESS_TOKEN", "paypal/sandbox/clientSecret": "/cloud/PAYPAL_SANDBOX_CLIENT_SECRET"}
+	got := map[string]string{}
+	for _, a := range pol.Accounts {
+		for _, n := range a.Secrets {
+			got[a.Processor+"/"+a.ID+"/"+n.Name] = n.Value
+		}
+		if a.Processor == "kraken" && a.SecretRef != "/commerce-secrets" {
+			t.Errorf("kraken folder = %q, want /commerce-secrets", a.SecretRef)
+		}
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("%s = %q, want %q", k, got[k], v)
+		}
+	}
+}

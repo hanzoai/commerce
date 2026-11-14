@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -40,21 +39,10 @@ type Provider struct {
 }
 
 func init() {
-	apiKey := os.Getenv("COINBASE_COMMERCE_API_KEY")
-	webhookSecret := os.Getenv("COINBASE_COMMERCE_WEBHOOK_SECRET")
-
-	p := &Provider{
+	processor.Register(&Provider{
 		BaseProcessor: processor.NewBaseProcessor(processor.CoinbaseCommerce, supportedCurrencies()),
-		apiKey:        apiKey,
-		webhookSecret: webhookSecret,
 		client:        &http.Client{Timeout: defaultTimeout},
-	}
-
-	if apiKey != "" {
-		p.SetConfigured(true)
-	}
-
-	processor.Register(p)
+	})
 }
 
 // NewProvider creates a configured Coinbase Commerce provider instance.
@@ -434,3 +422,11 @@ func mapWebhookEventType(eventType string) string {
 
 // Compile-time interface check.
 var _ processor.PaymentProcessor = (*Provider)(nil)
+
+// Reconfigure reads the "default" coinbase_commerce account from the routing policy: the
+// API key and the webhook secret, read from KMS.
+func (p *Provider) Reconfigure() {
+	a := processor.AccountOf(processor.CoinbaseCommerce, "default")
+	p.apiKey, p.webhookSecret = strings.TrimSpace(a.Secret("apiKey")), strings.TrimSpace(a.Secret("webhook"))
+	p.SetConfigured(p.apiKey != "")
+}

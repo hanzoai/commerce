@@ -1547,21 +1547,16 @@ func TestGetTransaction_AmountScalesByItsOwnCurrency(t *testing.T) {
 	}
 }
 
-func TestFromEnv_StrictIsolation(t *testing.T) {
-	t.Setenv("PAYPAL_CLIENT_ID", "live-cid")
-	t.Setenv("PAYPAL_CLIENT_SECRET", "live-sec")
-	t.Setenv("PAYPAL_WEBHOOK_ID", "live-wh")
-	t.Setenv("PAYPAL_SANDBOX_CLIENT_ID", "sb-cid")
-	t.Setenv("PAYPAL_SANDBOX_CLIENT_SECRET", "sb-sec")
-	t.Setenv("PAYPAL_SANDBOX_WEBHOOK_ID", "sb-wh")
+func TestDeployment_StrictIsolation(t *testing.T) {
+	t.Cleanup(processor.EnvSeed{"PAYPAL_CLIENT_ID": "live-cid", "PAYPAL_CLIENT_SECRET": "live-sec", "PAYPAL_WEBHOOK_ID": "live-wh", "PAYPAL_SANDBOX_CLIENT_ID": "sb-cid", "PAYPAL_SANDBOX_CLIENT_SECRET": "sb-sec", "PAYPAL_SANDBOX_WEBHOOK_ID": "sb-wh"}.Apply())
 
-	live := FromEnv(false)
+	live := Deployment(false)
 	if live.ClientID != "live-cid" || live.ClientSecret != "live-sec" || live.WebhookID != "live-wh" {
-		t.Fatalf("live FromEnv = %+v", live)
+		t.Fatalf("live Deployment = %+v", live)
 	}
-	sb := FromEnv(true)
+	sb := Deployment(true)
 	if sb.ClientID != "sb-cid" || sb.ClientSecret != "sb-sec" || sb.WebhookID != "sb-wh" {
-		t.Fatalf("sandbox FromEnv = %+v", sb)
+		t.Fatalf("sandbox Deployment = %+v", sb)
 	}
 }
 

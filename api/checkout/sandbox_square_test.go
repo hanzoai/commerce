@@ -1,6 +1,7 @@
 package checkout
 
 import (
+	"github.com/hanzoai/commerce/payment/processor"
 	"testing"
 
 	"github.com/hanzoai/commerce/models/organization"
@@ -10,18 +11,13 @@ import (
 // sandbox account, mints no payment link: the production account is never its
 // fallback, on the sandbox host or any other.
 func TestSquareCheckoutClient_SandboxNeverBorrowsProduction(t *testing.T) {
-	t.Setenv("SQUARE_ENVIRONMENT", "production")
-	t.Setenv("SQUARE_ACCESS_TOKEN", "EAAA-prod-hostile")
-	t.Setenv("SQUARE_LOCATION_ID", "PRODLOC-hostile")
-	t.Setenv("SQUARE_SANDBOX_ACCESS_TOKEN", "")
-	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "")
+	t.Cleanup(processor.EnvSeed{"SQUARE_ENVIRONMENT": "production", "SQUARE_ACCESS_TOKEN": "EAAA-prod-hostile", "SQUARE_LOCATION_ID": "PRODLOC-hostile", "SQUARE_SANDBOX_ACCESS_TOKEN": "", "SQUARE_SANDBOX_LOCATION_ID": ""}.Apply())
 
 	if _, loc, err := squareCheckoutClientForOrg(&organization.Organization{}); err == nil {
 		t.Fatalf("sandbox org given a Square client at %q from production names", loc)
 	}
 
-	t.Setenv("SQUARE_SANDBOX_ACCESS_TOKEN", "EAAA-sandbox")
-	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "SBXLOC")
+	t.Cleanup(processor.EnvSeed{"SQUARE_SANDBOX_ACCESS_TOKEN": "EAAA-sandbox", "SQUARE_SANDBOX_LOCATION_ID": "SBXLOC"}.Apply())
 	_, loc, err := squareCheckoutClientForOrg(&organization.Organization{})
 	if err != nil || loc != "SBXLOC" {
 		t.Fatalf("sandbox org: loc=%q err=%v, want the sandbox location", loc, err)
