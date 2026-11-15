@@ -117,7 +117,7 @@ func TestLiveStripe_AgentTopupWithATokenCreditsOnce(t *testing.T) {
 	}
 	// Stripe's own report of that payment, delivered again and again, adds nothing.
 	pi := l.call("GET", "/payment_intents", url.Values{"limit": {"3"}})["data"].([]any)[0].(map[string]any)
-	body := l.event("payment_intent.succeeded", func(o map[string]any) bool { return str(o["id"]) == str(pi["id"]) })
+	body := l.succeededEvent(str(pi["id"]))
 	for i := 0; i < 3; i++ {
 		if status, _ := l.deliver(body, l.hook); status != 200 {
 			t.Fatalf("delivery %d = %d", i, status)
@@ -225,7 +225,7 @@ func TestLiveStripe_AgentSubscriptionRenewsOnARecurringToken(t *testing.T) {
 	}
 	// Its payment_intent.succeeded, delivered again and again, is one entry.
 	pi := l.call("GET", "/payment_intents", url.Values{"limit": {"5"}})["data"].([]any)[0].(map[string]any)
-	body := l.event("payment_intent.succeeded", func(o map[string]any) bool { return str(o["id"]) == str(pi["id"]) })
+	body := l.succeededEvent(str(pi["id"]))
 	credits := len(l.ledger.credits())
 	for i := 0; i < 3; i++ {
 		if status, _ := l.deliver(body, l.hook); status != 200 {
@@ -408,4 +408,40 @@ func TestLiveStripe_AgentIsWarnedBeforeTheTokenRunsOut(t *testing.T) {
 	if _, aerr, _ := SupplySubscriptionToken(*l.ctx, l.org, l.subject, subID, l.grant(grantSpec{max: 1000, recurring: "month"})); aerr == nil || aerr.Code != "token_over_limit" {
 		t.Fatalf("a token without room = %+v", aerr)
 	}
+}
+
+// succeededEvent is Stripe's payment_intent.succeeded for a payment, as the webhook would carry
+// it. The payment is retrieved until it reads succeeded (up to 180s); the event is then looked
+// for in Stripe's event list for 30s, and when Stripe has not listed it yet the event is built
+// from the retrieved payment, which is what the delivery carries. The test then delivers it to
+// commerce's webhook as often as it likes: what it asserts is that the credit posts once.
+func (l *liveStripe) succeededEvent(id string) []byte {
+	l.t.Helper()
+	var pi map[string]any
+	for deadline := time.Now().Add(180 * time.Second); ; time.Sleep(2 * time.Second) {
+		pi = l.call("GET", "/payment_intents/"+id, nil)
+		if pi["status"] == "succeeded" {
+			break
+		}
+		if time.Now().After(deadline) {
+			l.t.Fatalf("payment %s is %v after 180s; want succeeded", id, pi["status"])
+		}
+	}
+	for deadline := time.Now().Add(30 * time.Second); time.Now().Before(deadline); time.Sleep(2 * time.Second) {
+		list := l.call("GET", "/events", url.Values{"type": {"payment_intent.succeeded"}, "limit": {"50"}})
+		items, _ := list["data"].([]any)
+		for _, it := range items {
+			ev, _ := it.(map[string]any)
+			data, _ := ev["data"].(map[string]any)
+			if obj, _ := data["object"].(map[string]any); str(obj["id"]) == id {
+				body, _ := l.bytes("GET", "/events/"+str(ev["id"]), nil)
+				return body
+			}
+		}
+	}
+	body, _ := json.Marshal(map[string]any{
+		"id": "evt_built_" + id, "object": "event", "type": "payment_intent.succeeded", "livemode": false,
+		"created": time.Now().Unix(), "data": map[string]any{"object": pi},
+	})
+	return body
 }
