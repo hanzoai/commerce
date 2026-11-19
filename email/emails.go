@@ -7,12 +7,10 @@ import (
 	"time"
 
 	"github.com/hanzoai/commerce/log"
-	"github.com/hanzoai/commerce/models/form"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/payment"
 	"github.com/hanzoai/commerce/models/referrer"
-	"github.com/hanzoai/commerce/models/subscriber"
 	"github.com/hanzoai/commerce/models/token"
 	"github.com/hanzoai/commerce/models/types/country"
 	"github.com/hanzoai/commerce/models/user"
@@ -54,20 +52,6 @@ func userMessage(settings email.Setting, usr *user.User, org *organization.Organ
 		"email":     usr.Email,
 	}
 	m.TemplateData["user"] = user
-
-	return m
-}
-
-// Transactional email for subscriber
-func subscriberMessage(settings email.Setting, sub *subscriber.Subscriber, org *organization.Organization) *email.Message {
-	m := message(settings, org)
-	m.AddTos(email.Email{Name: sub.Name(), Address: sub.Email})
-
-	subscriber := map[string]interface{}{
-		"id":   sub.Id(),
-		"name": sub.Name(),
-	}
-	m.TemplateData["subscriber"] = subscriber
 
 	return m
 }
@@ -244,21 +228,6 @@ func SendUserActivated(c context.Context, org *organization.Organization, usr *u
 
 	message := userMessage(settings, usr, org)
 	SendTemplate("user-email-confirmed", c, message, org)
-}
-
-// Send welcome email to subscriber
-func SendSubscriberWelcome(c context.Context, org *organization.Organization, s *subscriber.Subscriber, f *form.Form) {
-	settings := org.Email.Get(email.SubscriberWelcome)
-	if !settings.Enabled {
-		return
-	}
-
-	if f.WelcomeTemplateId != "" {
-		settings.TemplateId = f.WelcomeTemplateId
-	}
-
-	message := subscriberMessage(settings, s, org)
-	SendTemplate("subscriber-welcome", c, message, org)
 }
 
 // Send welcome email to user
