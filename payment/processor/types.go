@@ -26,6 +26,7 @@ const (
 	SolanaPay        ProcessorType = "solanapay"
 	MoonPay          ProcessorType = "moonpay"
 	Kraken           ProcessorType = "kraken"
+	Nano             ProcessorType = "nano"
 )
 
 // PaymentRequest represents a payment to be processed
@@ -233,7 +234,7 @@ func IsCryptoCurrency(c currency.Type) bool {
 // KnownType says name is a processor commerce has.
 func KnownType(name string) bool {
 	switch ProcessorType(name) {
-	case Stripe, Square, PayPal, Adyen, Braintree, Recurly, LemonSqueezy, BitPay, CoinbaseCommerce, OpenNode, Bitcoin, Ethereum, MPC, Wire, SolanaPay, MoonPay, Kraken:
+	case Stripe, Square, PayPal, Adyen, Braintree, Recurly, LemonSqueezy, BitPay, CoinbaseCommerce, OpenNode, Bitcoin, Ethereum, MPC, Wire, SolanaPay, MoonPay, Kraken, Nano:
 		return true
 	}
 	return false

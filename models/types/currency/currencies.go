@@ -160,6 +160,7 @@ const (
 	SOL   Type = "sol"   // Solana, 9 (lamport)
 	TON   Type = "ton"   // Toncoin, 9 (nanoton)
 	XRP   Type = "xrp"   // XRP, 6 (drop)
+	XNO   Type = "xno"   // Nano, priced at 6 (micro-XNO); the chain unit is raw, 30
 	USDC  Type = "usdc"  // USD Coin, 6
 	USDT  Type = "usdt"  // Tether, 6
 	ETH   Type = "eth"   // Ethereum, 18 (wei)

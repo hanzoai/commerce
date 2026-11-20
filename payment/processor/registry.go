@@ -120,7 +120,7 @@ func ChargeNames(names ...string) map[ProcessorType]bool {
 // every processor type that can be named by the policy.
 var allTypes = []ProcessorType{
 	Stripe, Square, PayPal, Adyen, Braintree, Recurly, LemonSqueezy, BitPay,
-	CoinbaseCommerce, OpenNode, Bitcoin, Ethereum, MPC, Wire, SolanaPay, MoonPay, Kraken,
+	CoinbaseCommerce, OpenNode, Bitcoin, Ethereum, MPC, Wire, SolanaPay, MoonPay, Kraken, Nano,
 }
 
 // chargeAllowed is the set of processor types the installed policy allows.

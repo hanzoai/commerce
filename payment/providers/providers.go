@@ -18,6 +18,7 @@ import (
 	_ "github.com/hanzoai/commerce/payment/providers/kraken"
 	_ "github.com/hanzoai/commerce/payment/providers/lemonsqueezy"
 	_ "github.com/hanzoai/commerce/payment/providers/moonpay"
+	_ "github.com/hanzoai/commerce/payment/providers/nano"
 	_ "github.com/hanzoai/commerce/payment/providers/opennode"
 	_ "github.com/hanzoai/commerce/payment/providers/paypal"
 	_ "github.com/hanzoai/commerce/payment/providers/recurly"

@@ -24,6 +24,7 @@ func TestDecimalsIsTheCurrencysOwnScale(t *testing.T) {
 		{DOGE, 8, "satoshi-equivalent"},
 		{SOL, 9, "lamport"},
 		{TON, 9, "nanoton"},
+		{XNO, 6, "micro-XNO (raw, 30, does not fit Cents)"},
 		{ETH, 18, "wei"},
 		{LUX, 18, "wei"},
 		{ZOO, 18, "wei"},

@@ -38,6 +38,10 @@ var decimals = map[Type]int32{
 
 	// Crypto, at the chain's own smallest indivisible unit.
 	XRP: 6, USDC: 6, USDT: 6,
+	// Nano's own unit is the raw, 10^-30 XNO, which no int64 can carry (one
+	// XNO is 10^30 raw). Orders are priced in micro-XNO, and the nano
+	// processor derives the exact raw amount from this scale.
+	XNO: 6,
 	BTC: 8, XBT: 8, BCH: 8, LTC: 8, DOGE: 8,
 	SOL: 9, TON: 9,
 	ETH: 18, MATIC: 18, AVAX: 18, SHIB: 18,
