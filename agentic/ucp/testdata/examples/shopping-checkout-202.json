@@ -1,0 +1,56 @@
+{
+ "ucp": {
+  "version": "2026-08-25",
+  "status": "success",
+  "payment_handlers": {}
+ },
+ "id": "chk_fasteners_1",
+ "status": "incomplete",
+ "currency": "USD",
+ "line_items": [
+  {
+   "id": "li_fasteners",
+   "item": {
+    "id": "var_fasteners",
+    "title": "Stainless Steel Fasteners",
+    "price": 1299,
+    "quantity_unit": {
+     "unit": "KGM",
+     "scale": 2,
+     "display_text": "kg"
+    }
+   },
+   "quantity": 150,
+   "totals": [
+    {
+     "type": "subtotal",
+     "amount": 1949
+    },
+    {
+     "type": "total",
+     "amount": 1949
+    }
+   ]
+  }
+ ],
+ "messages": [
+  {
+   "type": "error",
+   "code": "quantity_unit_mismatch",
+   "severity": "recoverable",
+   "path": "$.line_items[0].item.quantity_unit",
+   "content": "This item is sold by the kilogram, not by the pound. Resubmit the quantity as a count of 0.01-kg steps."
+  }
+ ],
+ "totals": [
+  {
+   "type": "subtotal",
+   "amount": 1949
+  },
+  {
+   "type": "total",
+   "amount": 1949
+  }
+ ],
+ "links": []
+}
