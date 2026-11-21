@@ -18,10 +18,10 @@ type PayKeyResponse struct {
 
 // OrderOf is the order a PayPal pay key was minted for, "" when no payment holds the key.
 func OrderOf(db *datastore.Datastore, payKey string) string {
-	payments := make([]*payment.Payment, 0, 1)
 	if payKey == "" {
 		return ""
 	}
+	var payments []*payment.Payment
 	if _, err := payment.Query(db).Filter("Account.PayKey=", payKey).Limit(1).GetAll(&payments); err != nil || len(payments) == 0 {
 		return ""
 	}

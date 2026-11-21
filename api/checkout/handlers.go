@@ -61,18 +61,13 @@ func getOrganizationAndOrder(c *zip.Ctx) (*organization.Organization, *order.Ord
 	// Create order that's properly namespaced
 	ord := order.New(db)
 
-	// Get order if an existing order was referenced: by id, or for a PayPal
-	// confirm/cancel by the pay key its payment holds.
-	id := c.Param("orderid")
-	payKey := c.Param("payKey")
-	if id == "" && payKey != "" {
+	// An order is referenced by id, or for a PayPal confirm or cancel by the pay
+	// key its payment holds.
+	id, payKey := c.Param("orderid"), c.Param("payKey")
+	if id == "" {
 		id = paypal.OrderOf(db, payKey)
-		if id == "" {
-			http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
-			return nil, nil, OrderDoesNotExist
-		}
 	}
-	if id != "" {
+	if id != "" || payKey != "" {
 		if err := ord.GetById(id); err != nil {
 			http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
 			return nil, nil, OrderDoesNotExist
