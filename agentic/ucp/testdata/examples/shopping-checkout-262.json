@@ -1,0 +1,8 @@
+[
+ {
+  "type": "warning",
+  "code": "quantity_increment_revised",
+  "path": "$.line_items[0].quantity",
+  "content": "This item is sold in 0.25 lb increments. Your requested 1.37 lb was adjusted to 1.25 lb."
+ }
+]

@@ -1,0 +1,57 @@
+{
+ "version": "2026-08-25",
+ "payment_handlers": {
+  "com.google.pay": [
+   {
+    "id": "8c9202bd-63cc-4241-8d24-d57ce69ea31c",
+    "version": "2026-08-25",
+    "config": {
+     "api_version": 2,
+     "api_version_minor": 0,
+     "environment": "TEST",
+     "merchant_info": {
+      "merchant_name": "Example Merchant",
+      "merchant_id": "01234567890123456789",
+      "merchant_origin": "checkout.merchant.com"
+     },
+     "allowed_payment_methods": [
+      {
+       "type": "CARD",
+       "parameters": {
+        "allowed_auth_methods": [
+         "PAN_ONLY"
+        ],
+        "allowed_card_networks": [
+         "VISA",
+         "MASTERCARD"
+        ]
+       },
+       "tokenization_specification": {
+        "type": "PAYMENT_GATEWAY",
+        "parameters": {
+         "gateway": "example",
+         "gatewayMerchantId": "exampleGatewayMerchantId"
+        }
+       }
+      }
+     ]
+    }
+   }
+  ],
+  "dev.shopify.shop_pay": [
+   {
+    "id": "shop_pay_1234",
+    "version": "2026-08-25",
+    "available_instruments": [
+     {
+      "type": "shop_pay"
+     }
+    ],
+    "config": {
+     "shop_id": "shopify-559128571",
+     "environment": "production"
+    }
+   }
+  ]
+ }
+}

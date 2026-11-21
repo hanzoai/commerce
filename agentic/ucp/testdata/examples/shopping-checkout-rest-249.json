@@ -1,0 +1,16 @@
+{
+ "buyer": {
+  "email": "jane@example.com",
+  "first_name": "Jane",
+  "last_name": "Doe"
+ },
+ "line_items": [
+  {
+   "item": {
+    "id": "item_123"
+   },
+   "id": "li_1",
+   "quantity": 2
+  }
+ ]
+}

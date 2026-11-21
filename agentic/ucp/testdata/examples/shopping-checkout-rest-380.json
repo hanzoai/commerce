@@ -1,0 +1,35 @@
+{
+ "buyer": {
+  "email": "jane@example.com",
+  "first_name": "Jane",
+  "last_name": "Doe"
+ },
+ "line_items": [
+  {
+   "item": {
+    "id": "item_123"
+   },
+   "id": "li_1",
+   "quantity": 2
+  }
+ ],
+ "fulfillment": {
+  "methods": [
+   {
+    "type": "shipping",
+    "line_item_ids": [
+     "li_1"
+    ],
+    "destinations": [
+     {
+      "street_address": "123 Main St",
+      "address_locality": "Springfield",
+      "address_region": "IL",
+      "postal_code": "62701",
+      "address_country": "US"
+     }
+    ]
+   }
+  ]
+ }
+}

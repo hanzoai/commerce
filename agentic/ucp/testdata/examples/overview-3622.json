@@ -1,0 +1,15 @@
+{
+ "ucp": {
+  "version": "2026-08-25",
+  "status": "error"
+ },
+ "messages": [
+  {
+   "type": "error",
+   "code": "version_unsupported",
+   "content": "Version 2026-01-12 is not supported. This business implements version 2026-08-25.",
+   "severity": "unrecoverable"
+  }
+ ],
+ "continue_url": "https://merchant.com/"
+}

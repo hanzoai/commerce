@@ -1,0 +1,95 @@
+{
+ "ucp": {
+  "version": "2026-08-25",
+  "capabilities": {
+   "dev.ucp.shopping.order": [
+    {
+     "version": "2026-08-25"
+    }
+   ]
+  }
+ },
+ "id": "order_bananas_2",
+ "checkout_id": "chk_bananas_2",
+ "permalink_url": "https://business.example.com/orders/bananas2",
+ "currency": "USD",
+ "line_items": [
+  {
+   "id": "li_bananas",
+   "item": {
+    "id": "var_bananas",
+    "title": "Bananas",
+    "price": 79,
+    "quantity_unit": {
+     "unit": "LBR",
+     "scale": 2,
+     "display_text": "lb",
+     "increment": 25
+    }
+   },
+   "quantity": {
+    "original": 200,
+    "total": 190,
+    "fulfilled": 190
+   },
+   "totals": [
+    {
+     "type": "subtotal",
+     "amount": 158
+    },
+    {
+     "type": "total",
+     "amount": 158
+    }
+   ],
+   "status": "fulfilled"
+  }
+ ],
+ "fulfillment": {
+  "events": [
+   {
+    "id": "evt_1",
+    "occurred_at": "2026-01-12T09:15:00Z",
+    "type": "shipped",
+    "line_items": [
+     {
+      "id": "li_bananas",
+      "quantity": 190
+     }
+    ],
+    "description": "Picked 1.90 lb"
+   }
+  ]
+ },
+ "adjustments": [
+  {
+   "id": "adj_1",
+   "type": "price_adjustment",
+   "occurred_at": "2026-01-12T09:15:00Z",
+   "status": "completed",
+   "line_items": [
+    {
+     "id": "li_bananas",
+     "quantity": -10
+    }
+   ],
+   "totals": [
+    {
+     "type": "total",
+     "amount": -8
+    }
+   ],
+   "description": "Adjusted to actual picked weight of 1.90 lb"
+  }
+ ],
+ "totals": [
+  {
+   "type": "subtotal",
+   "amount": 158
+  },
+  {
+   "type": "total",
+   "amount": 158
+  }
+ ]
+}
