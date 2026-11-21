@@ -4,21 +4,10 @@
 package x402
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
 )
-
-type admissionKey struct{}
-
-// FromContext returns the Admission of a request the middleware let through,
-// for a handler that wants the payer. It is nil for a request that was not
-// priced.
-func FromContext(ctx context.Context) *Admission {
-	a, _ := ctx.Value(admissionKey{}).(*Admission)
-	return a
-}
 
 // Middleware charges for the resources of g.Table around any http.Handler. name
 // maps a request's method and path to its Table key (whatever the table was filled
@@ -54,7 +43,7 @@ func Middleware(g *Gate, name func(method, path string) string) func(http.Handle
 			}
 			defer adm.Release()
 			pw := &paywall{ResponseWriter: w, r: r, adm: adm}
-			next.ServeHTTP(pw, r.WithContext(context.WithValue(r.Context(), admissionKey{}, adm)))
+			next.ServeHTTP(pw, r)
 			if !pw.started {
 				pw.WriteHeader(http.StatusOK)
 			}
@@ -104,7 +93,6 @@ func (p *paywall) WriteHeader(code int) {
 	}
 	if v, err := EncodeHeader(s); err == nil {
 		p.ResponseWriter.Header().Set(HeaderPaymentResponse, v)
-		expose(p.ResponseWriter.Header())
 	}
 	p.ResponseWriter.WriteHeader(code)
 }
@@ -141,29 +129,10 @@ func writeRefusal(w http.ResponseWriter, ref *Refusal) {
 	for k, v := range headers {
 		h.Set(k, v)
 	}
-	expose(h)
 	h.Set("Content-Type", "application/json")
 	h.Set("Cache-Control", "no-store") // a 402 must stay out of shared caches
 	w.WriteHeader(ref.Status)
 	_ = json.NewEncoder(w).Encode(map[string]any{"x402Version": Version, "error": ref.Reason})
-}
-
-// expose names the two response headers in Access-Control-Expose-Headers,
-// merged with what is already there, so a browser can read them
-// (transports-v2/http.md, browser clients).
-func expose(h http.Header) {
-	have := h.Values("Access-Control-Expose-Headers")
-	for _, name := range []string{HeaderPaymentRequired, HeaderPaymentResponse} {
-		found := false
-		for _, v := range have {
-			for _, part := range strings.Split(v, ",") {
-				found = found || strings.EqualFold(strings.TrimSpace(part), name)
-			}
-		}
-		if !found {
-			h.Add("Access-Control-Expose-Headers", name)
-		}
-	}
 }
 
 // requestURL is the public URL the client asked for: https when the connection
