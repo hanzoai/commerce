@@ -182,19 +182,24 @@ func (g *Gate) Admit(ctx context.Context, resource, url, header string) (*Admiss
 	}
 	g.inflight[a.claim] = struct{}{}
 	g.mu.Unlock()
+	admitted := false
+	defer func() {
+		if !admitted { // a refusal, or a facilitator that panicked: the claim is not left behind
+			a.Release()
+		}
+	}()
 	v, err := g.Facilitator.Verify(ctx, pay, *offered)
 	switch {
 	case err != nil:
-		a.Release()
 		return nil, &Refusal{Status: http.StatusInternalServerError, Reason: ReasonVerifyError}
 	case !v.IsValid:
-		a.Release()
 		reason := v.InvalidReason
 		if reason == "" {
 			reason = ReasonVerifyError
 		}
 		return nil, deny(reason)
 	}
+	admitted = true
 	return a, nil
 }
 

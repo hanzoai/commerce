@@ -4,6 +4,7 @@
 package x402
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -181,5 +182,30 @@ func TestHEADIsPricedAsGETOnNetHTTP(t *testing.T) {
 	resp.Body.Close()
 	if resp.StatusCode != 402 || r.hits != 0 {
 		t.Fatalf("HEAD: %d hits %d", resp.StatusCode, r.hits)
+	}
+}
+
+// A facilitator that panics must not leave the payment claimed: the next request
+// with the same payment is judged on its merits, not refused for ever.
+type panicking struct{ *books }
+
+func (panicking) Verify(context.Context, PaymentPayload, PaymentRequirements) (VerifyResponse, error) {
+	panic("facilitator exploded")
+}
+
+func TestAPanickingFacilitatorLeavesNoClaim(t *testing.T) {
+	r := newRig(t, okHandler)
+	h, _ := EncodeHeader(signed(t, testRequirements(), 0, uint64(r.now.Unix())+60))
+	good := r.gate.Facilitator
+	r.gate.Facilitator = panicking{r.books}
+	func() {
+		defer func() { _ = recover() }()
+		r.gate.Admit(t.Context(), "GET /data", "u", h)
+	}()
+	r.gate.Facilitator = good
+	if adm, ref := r.gate.Admit(t.Context(), "GET /data", "u", h); ref != nil {
+		t.Fatalf("claim leaked: %+v", ref)
+	} else {
+		adm.Release()
 	}
 }
