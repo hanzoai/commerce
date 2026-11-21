@@ -5169,19 +5169,18 @@ a human decision.
 
 ## Agentic commerce: x402 and the agent protocols (HIP-1223)
 
-Five public wires, one checkout model behind them. Each is a Go package serving a plain `http.Handler` (a zip host mounts it with `zip.AdaptNetHTTP`); none is mounted by `commerced` or by the cloud host yet, because each needs values only an operator has (below), and a co-resident host counts every untyped route against its ratchet. The wire of each is its specification's; the package doc names the version and says what is left out.
+Four public wires, one checkout model behind them (UCP is on branch `agentic-ucp`, not merged yet). Each is a Go package serving a plain `http.Handler` (a zip host mounts it with `zip.AdaptNetHTTP`); none is mounted by `commerced` or by the cloud host yet, because each needs values only an operator has (below), and a co-resident host counts every untyped route against its ratchet. The wire of each is its specification's; the package doc names the version and says what is left out.
 
 | Package | Wire | Behind |
 |---|---|---|
 | `payment/x402` | x402 version 2, exact scheme, EIP-3009 | any `Facilitator`; `Table` of prices over configured assets; `Gate`, `Middleware` (net/http), `Paywall` (zip), `Signer`, `Transport`, `Remote` |
 | `agentic/acp` | Agentic Commerce Protocol, API 2026-04-17, seller checkout | `acp.Commerce` over `api/billing` |
-| `agentic/ucp` | Universal Commerce Protocol 2026-08-25: profile, negotiation, checkout REST, RFC 9421 signatures, order | `ucp.Commerce` |
 | `agentic/ap2` | Agent Payments Protocol v0.2 mandates (SD-JWT, ES256) | `ap2.Commerce` through `ap2.Seller` |
 | `agentic/mpp` | "Payment" HTTP authentication scheme (Internet-Draft -01) | `mpp.Commerce`, `mpp.Stripe` method |
 
 - **Commerce model.** `Commerce` adapters call `api/billing` (`CreateCheckout`, `UpdateCheckout`, `CompleteCheckout`, `ReadCheckout`) and move no money themselves: an item id is a catalog id (`credit-<cents>` or a plan slug), the payment is a shared payment token, one unit of one item per checkout, USD. `SubscribeIn.ExpectedCents` binds a plan's charge to the quote: a moved price is `price_changed` before the card is touched.
-- **Operator values, never defaults.** x402: payee, token and its EIP-712 domain, network, timeout, prices. ACP/UCP: the merchant's account at the payment service provider, the order permalink, the identity function, the business signing key (KMS), the trusted platforms, idempotency retention. AP2: issuer and merchant keys, a 32-byte secret. MPP: realm, secret (KMS), a durable `Store`, the price function.
+- **Operator values, never defaults.** x402: payee, token and its EIP-712 domain, network, timeout, prices. ACP: the merchant's account at the payment service provider, the order permalink, the identity function, the business signing key (KMS), the trusted platforms, idempotency retention. AP2: issuer and merchant keys, a 32-byte secret. MPP: realm, secret (KMS), a durable `Store`, the price function.
 - **State.** Idempotency and replay records are behind interfaces; `Memory` is one process, the `Durable` ones ride `models/idempotencykey` and need a scheduled sweep for expired rows (`ucp.Idempotency.Sweep`, `mpp.Durable`).
-- **Shapes the specs left open** (decisions are in each package doc): ACP's `Signature` is verified by a host `Verifier` (the spec fixes no algorithm) that is shown method, path, key, timestamp and body. UCP's default idempotency store is capped and refuses (503) rather than evict. MPP's challenge is bound to the caller and the route.
-- **Not done**: ACP delegate payment (the PSP's), 3DS, cart, product feed, discount; UCP cart/catalog/MCP/A2A and extensions; AP2 transport and the user-credential model; MPP session and subscription intents and chain methods; x402 other schemes. See HIP-1223.
+- **Shapes the specs left open** (decisions are in each package doc): ACP's `Signature` is verified by a host `Verifier` (the spec fixes no algorithm) that is shown method, path, key, timestamp and body. MPP's challenge is bound to the caller and the route.
+- **Not done**: ACP delegate payment (the PSP's), 3DS, cart, product feed, discount; AP2 transport and the user-credential model; MPP session and subscription intents and chain methods; x402 other schemes. See HIP-1223.
 - **Specs** were read from their public repositories at the commits named in each package's `testdata/SOURCE`; their examples are test fixtures.

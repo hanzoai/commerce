@@ -1,8 +1,0 @@
-[
- {
-  "type": "error",
-  "code": "requires_3ds",
-  "content": "bank requires verification.",
-  "severity": "requires_buyer_input"
- }
-]
