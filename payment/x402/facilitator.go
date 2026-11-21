@@ -1,6 +1,3 @@
-// Copyright (c) 2014-present Hanzo AI, Inc.
-// Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
-
 package x402
 
 import (
@@ -9,134 +6,272 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/luxfi/crypto"
+
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/payment/processor"
 )
 
-// Facilitator verifies and settles payments (spec section 7). A resource server
-// delegates the chain, or the ledger, to one: Remote reaches any facilitator
-// that serves the HTTP API of section 7, and a host that settles on its own
-// books implements this interface directly.
-//
-// A refusal of the payment is an answer, not an error: Verify returns
-// IsValid false with a reason, Settle returns Success false with a reason. The
-// returned error is for a facilitator that could not answer at all.
-type Facilitator interface {
-	// Verify checks the payment without committing it. It MUST NOT move funds
-	// or write state (spec 7.1).
-	Verify(ctx context.Context, pay PaymentPayload, offered PaymentRequirements) (VerifyResponse, error)
-	// Settle commits the payment (spec 7.2). A payment settles at most once.
-	Settle(ctx context.Context, pay PaymentPayload, offered PaymentRequirements) (SettlementResponse, error)
+// Facilitator handles payment verification and settlement for x402 transactions.
+// It accepts a signed ERC-3009 transferWithAuthorization, verifies the payer's
+// signature, checks on-chain allowance/balance, and executes the transfer.
+type Facilitator struct {
+	// registry provides access to payment processors (MPC, etc.)
+	registry *processor.Registry
+
+	// httpClient for calling external facilitator service (if remote)
+	httpClient *http.Client
+
+	// remoteURL is the URL of a remote facilitator service (optional).
+	// If empty, the facilitator handles settlement locally via the processor registry.
+	remoteURL string
+
+	// tokenName is the ERC-20 token name for EIP-712 domain (e.g., "USD Coin").
+	tokenName string
+
+	// tokenVersion is the ERC-20 token version for EIP-712 domain (e.g., "2").
+	tokenVersion string
 }
 
-// Remote is a Facilitator served over HTTP: POST {URL}/verify, POST
-// {URL}/settle and GET {URL}/supported, as section 7 defines them.
-type Remote struct {
-	// URL is the facilitator's base URL, without a trailing slash.
-	URL string
-	// Client is the HTTP client; nil means one with a 30 second timeout.
-	Client *http.Client
-	// Authorize adds whatever credential the facilitator requires to a request;
-	// nil adds none. It is given the path being called ("/verify", "/settle",
-	// "/supported").
-	Authorize func(r *http.Request, path string) error
+// FacilitatorConfig holds configuration for creating a Facilitator.
+type FacilitatorConfig struct {
+	// Registry is the processor registry for executing payments.
+	Registry *processor.Registry
+
+	// RemoteURL is the URL of a remote facilitator service.
+	// If set, settlement is delegated to this service.
+	RemoteURL string
+
+	// TokenName is the ERC-20 token name (default: "USD Coin").
+	TokenName string
+
+	// TokenVersion is the ERC-20 token version (default: "2").
+	TokenVersion string
 }
 
-// body is the request of POST /verify and POST /settle (spec 7.1, 7.2).
-type body struct {
-	X402Version         int                 `json:"x402Version"`
-	PaymentPayload      PaymentPayload      `json:"paymentPayload"`
-	PaymentRequirements PaymentRequirements `json:"paymentRequirements"`
-}
-
-// maxBody bounds what is read from a facilitator, so a hostile or broken one
-// cannot exhaust memory.
-const maxBody = 1 << 20
-
-func (f Remote) Verify(ctx context.Context, pay PaymentPayload, offered PaymentRequirements) (VerifyResponse, error) {
-	var out VerifyResponse
-	if err := f.call(ctx, http.MethodPost, "/verify", body{Version, pay, offered}, &out); err != nil {
-		return VerifyResponse{}, err
+// NewFacilitator creates a new Facilitator.
+func NewFacilitator(cfg FacilitatorConfig) *Facilitator {
+	tokenName := cfg.TokenName
+	if tokenName == "" {
+		tokenName = "USD Coin"
 	}
-	return out, nil
+	tokenVersion := cfg.TokenVersion
+	if tokenVersion == "" {
+		tokenVersion = "2"
+	}
+
+	return &Facilitator{
+		registry:     cfg.Registry,
+		httpClient:   &http.Client{Timeout: 30 * time.Second},
+		remoteURL:    strings.TrimRight(cfg.RemoteURL, "/"),
+		tokenName:    tokenName,
+		tokenVersion: tokenVersion,
+	}
 }
 
-func (f Remote) Settle(ctx context.Context, pay PaymentPayload, offered PaymentRequirements) (SettlementResponse, error) {
-	var out SettlementResponse
-	if err := f.call(ctx, http.MethodPost, "/settle", body{Version, pay, offered}, &out); err != nil {
-		return SettlementResponse{}, err
+// Settle verifies and executes a payment authorization.
+// It validates the ERC-3009 signature, checks that the authorization matches
+// the payment request, and either settles locally via MPC or delegates to
+// a remote facilitator service.
+func (f *Facilitator) Settle(ctx context.Context, req *PaymentRequest, auth *PaymentAuthorization) (*PaymentReceipt, error) {
+	// Validate the authorization matches the request.
+	if auth.Value != req.Amount {
+		return nil, fmt.Errorf("x402: payment amount mismatch: auth=%s, request=%s", auth.Value, req.Amount)
 	}
-	return out, nil
+
+	// Verify time bounds.
+	now := time.Now().Unix()
+	if now > auth.ValidBefore {
+		return nil, fmt.Errorf("x402: authorization expired")
+	}
+	if now < auth.ValidAfter {
+		return nil, fmt.Errorf("x402: authorization not yet valid")
+	}
+
+	// If a remote facilitator is configured, delegate to it.
+	if f.remoteURL != "" {
+		return f.settleRemote(ctx, req, auth)
+	}
+
+	// Local settlement: verify signature and execute via processor registry.
+	return f.settleLocal(ctx, req, auth)
 }
 
-// Supported lists the schemes and networks the facilitator settles (spec 7.3).
-func (f Remote) Supported(ctx context.Context) (SupportedResponse, error) {
-	var out SupportedResponse
-	if err := f.call(ctx, http.MethodGet, "/supported", nil, &out); err != nil {
-		return SupportedResponse{}, err
+// settleLocal handles settlement using the local processor registry.
+func (f *Facilitator) settleLocal(ctx context.Context, req *PaymentRequest, auth *PaymentAuthorization) (*PaymentReceipt, error) {
+	// Verify the ERC-3009 signature.
+	if err := f.verifyAuthorization(req, auth); err != nil {
+		return nil, fmt.Errorf("x402: signature verification failed: %w", err)
 	}
-	return out, nil
-}
 
-// call sends one request and decodes the answer. A facilitator may refuse a
-// payment with a 4xx whose body is still the section 7 answer, so a non-2xx
-// body that decodes into out is an answer; one that does not is an error.
-func (f Remote) call(ctx context.Context, method, path string, in, out any) error {
-	var rd io.Reader
-	if in != nil {
-		b, err := json.Marshal(in)
-		if err != nil {
-			return fmt.Errorf("x402: facilitator %s: %w", path, err)
-		}
-		rd = bytes.NewReader(b)
+	// Execute the payment via the MPC crypto processor.
+	if f.registry == nil {
+		return nil, fmt.Errorf("x402: no processor registry configured")
 	}
-	req, err := http.NewRequestWithContext(ctx, method, strings.TrimRight(f.URL, "/")+path, rd)
+
+	cryptoProc, err := f.registry.GetCrypto(processor.MPC)
 	if err != nil {
-		return fmt.Errorf("x402: facilitator %s: %w", path, err)
+		return nil, fmt.Errorf("x402: MPC processor not available: %w", err)
 	}
-	req.Header.Set("Accept", "application/json")
-	if in != nil {
-		req.Header.Set("Content-Type", "application/json")
+
+	// auth.Value is already in USDC's own minor units, and USDC is a 6-decimal
+	// currency in the table, so it IS the minor-unit amount — no rescale.
+	// This used to divide by 10,000 to force the value into two-decimal cents,
+	// which threw away every fraction of a cent and, now that the table carries
+	// USDC's real scale, would under-report the charge by 1e4.
+	amount, ok := new(big.Int).SetString(auth.Value, 10)
+	if !ok {
+		return nil, fmt.Errorf("x402: invalid payment amount: %s", auth.Value)
 	}
-	if f.Authorize != nil {
-		if err := f.Authorize(req, path); err != nil {
-			return fmt.Errorf("x402: facilitator %s: authorize: %w", path, err)
+	if !amount.IsInt64() {
+		return nil, fmt.Errorf("x402: payment amount out of range: %s", auth.Value)
+	}
+
+	// Create a charge request through the MPC processor.
+	result, err := cryptoProc.Charge(ctx, processor.PaymentRequest{
+		Amount:     currency.Cents(amount.Int64()),
+		Currency:   currency.USDC,
+		CustomerID: auth.From,
+		Address:    req.Payee,
+		Chain:      chainFromNetwork(req.Network, req.ChainID),
+		Metadata: map[string]interface{}{
+			"x402":      true,
+			"nonce":     auth.Nonce,
+			"resource":  req.Resource,
+			"signature": auth.Signature,
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("x402: payment execution failed: %w", err)
+	}
+
+	txHash := ""
+	if result.Metadata != nil {
+		if h, ok := result.Metadata["txHash"].(string); ok {
+			txHash = h
 		}
 	}
-	client := f.Client
-	if client == nil {
-		client = &http.Client{Timeout: 30 * time.Second}
+
+	// Compute the request hash for the receipt.
+	requestHash := computeRequestHash(req)
+
+	return &PaymentReceipt{
+		RequestHash: requestHash,
+		Payer:       auth.From,
+		Payee:       req.Payee,
+		Amount:      req.Amount,
+		TxHash:      txHash,
+		Timestamp:   time.Now().Unix(),
+		Success:     result.Success,
+	}, nil
+}
+
+// settleRemote delegates settlement to a remote facilitator service.
+func (f *Facilitator) settleRemote(ctx context.Context, req *PaymentRequest, auth *PaymentAuthorization) (*PaymentReceipt, error) {
+	payload := struct {
+		Request       *PaymentRequest       `json:"request"`
+		Authorization *PaymentAuthorization `json:"authorization"`
+	}{
+		Request:       req,
+		Authorization: auth,
 	}
-	resp, err := client.Do(req)
+
+	body, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("x402: facilitator %s: %w", path, err)
+		return nil, fmt.Errorf("x402: marshal settlement request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, f.remoteURL+"/api/v1/settle", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("x402: build settlement request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := f.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("x402: settlement request failed: %w", err)
 	}
 	defer resp.Body.Close()
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxBody))
+
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("x402: facilitator %s: %w", path, err)
+		return nil, fmt.Errorf("x402: read settlement response: %w", err)
 	}
-	if err := json.Unmarshal(raw, out); err != nil || (resp.StatusCode >= 300 && !answered(raw)) {
-		return fmt.Errorf("x402: facilitator %s: status %d: %s", path, resp.StatusCode, snippet(raw))
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("x402: facilitator returned %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var receipt PaymentReceipt
+	if err := json.Unmarshal(respBody, &receipt); err != nil {
+		return nil, fmt.Errorf("x402: decode settlement response: %w", err)
+	}
+
+	return &receipt, nil
+}
+
+// verifyAuthorization verifies the ERC-3009 transferWithAuthorization signature
+// through the one EIP-3009 implementation (eip3009.go): strict parsing, the
+// token's domain, low-s, and the signer must be auth.From.
+func (f *Facilitator) verifyAuthorization(req *PaymentRequest, auth *PaymentAuthorization) error {
+	digest, err := auth.digest(f.tokenName, f.tokenVersion, req)
+	if err != nil {
+		return err
+	}
+	signer, err := Recover(digest, auth.Signature)
+	if err != nil {
+		return err
+	}
+	from, _ := Address(auth.From) // digest parsed it already
+	if signer != from {
+		return fmt.Errorf("x402: signer mismatch: recovered %s, expected %s", Hex(signer[:]), strings.ToLower(auth.From))
 	}
 	return nil
 }
 
-// answered reports whether a non-2xx body is a section 7 answer: it carries
-// isValid or success.
-func answered(raw []byte) bool {
-	var probe struct {
-		IsValid *bool `json:"isValid"`
-		Success *bool `json:"success"`
-	}
-	return json.Unmarshal(raw, &probe) == nil && (probe.IsValid != nil || probe.Success != nil)
+// computeRequestHash computes a hash of the payment request for receipt tracking.
+func computeRequestHash(req *PaymentRequest) string {
+	data, _ := json.Marshal(req)
+	return Hex(crypto.Keccak256(data))
 }
 
-func snippet(b []byte) string {
-	const n = 200
-	if len(b) > n {
-		b = b[:n]
+// chainFromNetwork maps a network name and chain ID to a chain string for the processor.
+func chainFromNetwork(network string, chainID int64) string {
+	switch network {
+	case "lux":
+		return "lux"
+	case "ethereum":
+		return "ethereum"
+	case "polygon":
+		return "polygon"
+	case "arbitrum":
+		return "arbitrum"
+	case "optimism":
+		return "optimism"
+	case "base":
+		return "base"
+	default:
+		// Fall back to chain ID mapping.
+		switch chainID {
+		case 1:
+			return "ethereum"
+		case 137:
+			return "polygon"
+		case 42161:
+			return "arbitrum"
+		case 10:
+			return "optimism"
+		case 8453:
+			return "base"
+		case 96369:
+			return "lux"
+		default:
+			return "ethereum"
+		}
 	}
-	return strings.TrimSpace(string(b))
 }

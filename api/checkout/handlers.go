@@ -7,7 +7,6 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/api/checkout/ethereum"
-	"github.com/hanzoai/commerce/api/checkout/paypal"
 	"github.com/hanzoai/commerce/api/checkout/wire"
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
@@ -61,18 +60,8 @@ func getOrganizationAndOrder(c *zip.Ctx) (*organization.Organization, *order.Ord
 	// Create order that's properly namespaced
 	ord := order.New(db)
 
-	// Get order if an existing order was referenced: by id, or for a PayPal
-	// confirm/cancel by the pay key its payment holds.
-	id := c.Param("orderid")
-	payKey := c.Param("payKey")
-	if id == "" && payKey != "" {
-		id = paypal.OrderOf(db, payKey)
-		if id == "" {
-			http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
-			return nil, nil, OrderDoesNotExist
-		}
-	}
-	if id != "" {
+	// Get order if an existing order was referenced
+	if id := c.Param("orderid"); id != "" {
 		if err := ord.GetById(id); err != nil {
 			http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
 			return nil, nil, OrderDoesNotExist
