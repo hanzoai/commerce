@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -107,7 +108,9 @@ func newWebhooks(t *testing.T) (*Webhooks, *platformHook) {
 	s.KeyID = "merchant-2026"
 	pub.KID = "merchant-2026"
 	hook, client := hookServer(t, pub)
-	return &Webhooks{Signer: s, Agent: "https://merchant.example/.well-known/ucp", Client: client, Attempts: 4, Backoff: time.Millisecond}, hook
+	w := &Webhooks{Signer: s, Agent: "https://merchant.example/.well-known/ucp", Attempts: 4, Backoff: time.Millisecond}
+	w.setClient(client)
+	return w, hook
 }
 
 // The test server's certificate is valid for example.com.
@@ -301,5 +304,64 @@ func TestGetOrderServesTheOrderAndItsErrors(t *testing.T) {
 	// Negotiation failed before the backend was asked.
 	if h.backend.count("order") != 3 {
 		t.Fatalf("order reads = %d", h.backend.count("order"))
+	}
+}
+
+// The webhook URL is the platform's: a redirect from it must never carry the
+// signed order to another target (overview, "Fetching": no redirects).
+func TestWebhookNeverFollowsARedirect(t *testing.T) {
+	var internal, front atomic.Int32
+	target := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		internal.Add(1)
+		w.WriteHeader(204)
+	}))
+	defer target.Close()
+	redirector := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		front.Add(1)
+		http.Redirect(w, r, "https://internal.example.com/secret", http.StatusTemporaryRedirect)
+	}))
+	defer redirector.Close()
+	tr := target.Client().Transport.(*http.Transport).Clone()
+	tr.DialContext = func(ctx context.Context, _, addr string) (net.Conn, error) {
+		to := redirector.Listener.Addr().String()
+		if strings.HasPrefix(addr, "internal.example.com") {
+			to = target.Listener.Addr().String()
+		}
+		return (&net.Dialer{}).DialContext(ctx, "tcp", to)
+	}
+	s, _ := newKeyPair(t, ES256)
+	w := &Webhooks{Signer: s, Agent: "https://merchant.example/.well-known/ucp", Attempts: 3, Backoff: time.Millisecond}
+	w.setClient(&http.Client{Transport: tr})
+	err := w.Send(context.Background(), "https://example.com/hook", sampleOrder(t), "evt-r", time.Now())
+	if err == nil {
+		t.Fatal("a redirect was taken for an acknowledgement")
+	}
+	if internal.Load() != 0 {
+		t.Fatalf("the signed order was re-posted to the redirect target (%d times)", internal.Load())
+	}
+	if front.Load() != 1 {
+		t.Fatalf("a redirect is final: %d attempts", front.Load())
+	}
+}
+
+// One client, one transport, for every delivery.
+func TestWebhookReusesOneClient(t *testing.T) {
+	w := &Webhooks{}
+	a, b := w.httpClient(), w.httpClient()
+	if a != b {
+		t.Fatal("each delivery built its own client and transport")
+	}
+	if a.CheckRedirect == nil {
+		t.Fatal("the default client must refuse redirects")
+	}
+	// The webhook URL is the platform's: it must not reach an internal address.
+	dial := a.Transport.(*http.Transport).DialContext
+	for _, addr := range []string{"127.0.0.1:9", "169.254.169.254:80", "10.0.0.5:443"} {
+		if c, err := dial(context.Background(), "tcp", addr); err == nil {
+			c.Close()
+			t.Errorf("a delivery could connect to %s", addr)
+		} else if !strings.Contains(err.Error(), "special-use") {
+			t.Errorf("%s: %v", addr, err)
+		}
 	}
 }

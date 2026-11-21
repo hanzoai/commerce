@@ -14,6 +14,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -27,9 +28,10 @@ type Webhooks struct {
 	Signer *Signer
 	// Agent is the URL of the business profile, sent as UCP-Agent.
 	Agent string
-	// Client posts the deliveries; the default is the guarded client of the
-	// profile fetcher, since the URL is the platform's.
-	Client *http.Client
+	// Loopback permits a loopback target, for local development.
+	Loopback bool
+	// Timeout bounds one delivery; default 10 seconds.
+	Timeout time.Duration
 	// Attempts bounds the deliveries tried, 5 by default; a delivery that is not
 	// acknowledged after that is the host's to retry later.
 	Attempts int
@@ -38,6 +40,12 @@ type Webhooks struct {
 	Backoff time.Duration
 	// Now is the clock; it defaults to time.Now.
 	Now func() time.Time
+
+	// The deliveries go through one guarded client, the profile fetcher's: the
+	// URL is the platform's, so a host cannot hand the sender a client that
+	// follows redirects or connects to a special-use address.
+	once   sync.Once
+	client *http.Client
 }
 
 func (w *Webhooks) now() time.Time {
@@ -91,10 +99,7 @@ func (w *Webhooks) Send(ctx context.Context, url string, o *Order, id string, at
 	if err != nil {
 		return err
 	}
-	client := w.Client
-	if client == nil {
-		client = guarded(10*time.Second, false)
-	}
+	client := w.httpClient()
 	attempts, wait := w.Attempts, w.Backoff
 	if attempts <= 0 {
 		attempts = 5
@@ -150,4 +155,27 @@ func (w *Webhooks) attempt(ctx context.Context, client *http.Client, url string,
 		return true, fmt.Errorf("platform answered %d", resp.StatusCode)
 	}
 	return false, fmt.Errorf("platform rejected the event with %d", resp.StatusCode)
+}
+
+// httpClient returns the one client every delivery shares: it never follows a
+// redirect and refuses special-use addresses at connect time (overview,
+// "Fetching", rules 2 and 7).
+func (w *Webhooks) httpClient() *http.Client {
+	w.once.Do(func() {
+		if w.client == nil {
+			timeout := w.Timeout
+			if timeout <= 0 {
+				timeout = 10 * time.Second
+			}
+			w.client = guarded(timeout, w.Loopback)
+		}
+	})
+	return w.client
+}
+
+// setClient replaces the transport the deliveries use, still refusing redirects.
+func (w *Webhooks) setClient(c *http.Client) {
+	cc := *c
+	cc.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	w.client = &cc
 }
