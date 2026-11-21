@@ -16,6 +16,18 @@ type PayKeyResponse struct {
 	PayKey string `json:"payKey"`
 }
 
+// OrderOf is the order a PayPal pay key was minted for, "" when no payment holds the key.
+func OrderOf(db *datastore.Datastore, payKey string) string {
+	payments := make([]*payment.Payment, 0, 1)
+	if payKey == "" {
+		return ""
+	}
+	if _, err := payment.Query(db).Filter("Account.PayKey=", payKey).Limit(1).GetAll(&payments); err != nil || len(payments) == 0 {
+		return ""
+	}
+	return payments[0].OrderId
+}
+
 func Confirm(c *zip.Ctx, org *organization.Organization, ord *order.Order) (err error) {
 	// Per-org store: payments live in the order's org store (Red MED-1). Raw
 	// datastore.New(c) drops the namespace (zip.Ctx → Background) AND binds
