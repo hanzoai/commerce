@@ -159,13 +159,6 @@ func (t *Table) Set(resource string, p Price) error {
 	return nil
 }
 
-// Remove takes a resource off sale.
-func (t *Table) Remove(resource string) {
-	t.mu.Lock()
-	delete(t.rows, resource)
-	t.mu.Unlock()
-}
-
 // Priced reports whether the resource is for sale.
 func (t *Table) Priced(resource string) bool {
 	t.mu.RLock()

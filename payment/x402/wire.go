@@ -159,21 +159,6 @@ type VerifyResponse struct {
 	Extra          json.RawMessage `json:"extra,omitempty"`
 }
 
-// SupportedResponse is a facilitator's answer to GET /supported (spec 7.3).
-type SupportedResponse struct {
-	Kinds      []SupportedKind     `json:"kinds"`
-	Extensions []string            `json:"extensions"`
-	Signers    map[string][]string `json:"signers"`
-}
-
-// SupportedKind is one scheme and network a facilitator settles.
-type SupportedKind struct {
-	X402Version int             `json:"x402Version"`
-	Scheme      string          `json:"scheme"`
-	Network     string          `json:"network"`
-	Extra       json.RawMessage `json:"extra,omitempty"`
-}
-
 // Extensions is the protocol's extension map, carried through verbatim: an
 // unknown extension is preserved, never dropped.
 type Extensions map[string]json.RawMessage

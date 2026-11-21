@@ -44,7 +44,6 @@ func Paywall(g *Gate, name func(method, path string) string) zip.Handler {
 		}
 		if v, err := EncodeHeader(s); err == nil {
 			c.SetHeader(HeaderPaymentResponse, v)
-			exposeZip(c)
 		}
 		return nil
 	}
@@ -59,28 +58,6 @@ func refuseZip(c *zip.Ctx, ref *Refusal) error {
 	for k, v := range headers {
 		c.SetHeader(k, v)
 	}
-	exposeZip(c)
 	c.SetHeader("Cache-Control", "no-store") // a 402 must stay out of shared caches
 	return c.JSON(ref.Status, map[string]any{"x402Version": Version, "error": ref.Reason})
-}
-
-// exposeZip merges the two response headers into Access-Control-Expose-Headers.
-func exposeZip(c *zip.Ctx) {
-	h := http.Header{}
-	if v := c.Fiber().Response().Header.Peek("Access-Control-Expose-Headers"); len(v) > 0 {
-		h.Add("Access-Control-Expose-Headers", string(v))
-	}
-	expose(h)
-	c.SetHeader("Access-Control-Expose-Headers", joinHeader(h.Values("Access-Control-Expose-Headers")))
-}
-
-func joinHeader(vs []string) string {
-	out := ""
-	for i, v := range vs {
-		if i > 0 {
-			out += ", "
-		}
-		out += v
-	}
-	return out
 }

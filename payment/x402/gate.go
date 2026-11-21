@@ -41,6 +41,12 @@ type Gate struct {
 	inflight map[string]struct{}
 }
 
+// within bounds a facilitator call by the time the payer was given to pay: the
+// requirement's own maxTimeoutSeconds, which the operator configured.
+func within(ctx context.Context, offered PaymentRequirements) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, time.Duration(offered.MaxTimeoutSeconds)*time.Second)
+}
+
 func (g *Gate) now() time.Time {
 	if g.Now != nil {
 		return g.Now()
@@ -83,15 +89,6 @@ func (a *Admission) Release() {
 		a.gate.mu.Unlock()
 	}
 }
-
-// Payer is the address that signed the payment.
-func (a *Admission) Payer() string { return a.payer }
-
-// Requirements is the offered requirement the payment satisfied.
-func (a *Admission) Requirements() PaymentRequirements { return a.offered }
-
-// Payload is the payment as the client sent it.
-func (a *Admission) Payload() PaymentPayload { return a.payload }
 
 // Refusal is a request the gate will not serve: the status to answer with, and
 // what rides the response. Status 402 carries the challenge; 400 is a payment
@@ -188,7 +185,9 @@ func (g *Gate) Admit(ctx context.Context, resource, url, header string) (*Admiss
 			a.Release()
 		}
 	}()
-	v, err := g.Facilitator.Verify(ctx, pay, *offered)
+	vctx, cancel := within(ctx, *offered)
+	defer cancel()
+	v, err := g.Facilitator.Verify(vctx, pay, *offered)
 	switch {
 	case err != nil:
 		return nil, &Refusal{Status: http.StatusInternalServerError, Reason: ReasonVerifyError}
@@ -212,7 +211,9 @@ func (g *Gate) Admit(ctx context.Context, resource, url, header string) (*Admiss
 func (a *Admission) Settle(ctx context.Context) (SettlementResponse, *Refusal) {
 	defer a.Release()
 	status := http.StatusPaymentRequired
-	s, err := a.gate.Facilitator.Settle(ctx, a.payload, a.offered)
+	sctx, cancel := within(ctx, a.offered)
+	defer cancel()
+	s, err := a.gate.Facilitator.Settle(sctx, a.payload, a.offered)
 	if err != nil {
 		// The facilitator could not answer: the payment's fate is unknown, which
 		// is a server error and never a success.
