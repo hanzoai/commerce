@@ -197,9 +197,12 @@ func (t *Table) quote(p Price) ([]PaymentRequirements, ResourceInfo) {
 
 // Row is one priced resource as a listing publishes it.
 type Row struct {
-	Resource string                `json:"resource"`
-	Price    string                `json:"price"`
-	Accepts  []PaymentRequirements `json:"accepts"`
+	// Resource is the name the resource is priced under.
+	Resource string `json:"resource"`
+	// Price is the price in whole units of every asset, exactly as configured.
+	Price string `json:"price"`
+	// Accepts is how the resource may be paid for: one requirement per asset.
+	Accepts []PaymentRequirements `json:"accepts"`
 }
 
 // Listing is every resource for sale, ordered by name, never nil.
