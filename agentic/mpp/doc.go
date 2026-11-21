@@ -25,10 +25,12 @@
 //   - Other authentication is verified before a Payment credential is consumed.
 //
 // What the Gate adds where the draft leaves room. The binding does not cover the request
-// being paid for, so the Gate re-prices the request when a credential arrives and accepts
-// it only for the amount, currency and external reference the host now names. The binding
-// is deterministic, so each challenge carries a random nonce in opaque to make its id
-// unique. Payment credentials are removed from the request the resource sees. A challenge
+// being paid for or who pays, so each challenge carries in opaque the route (method and
+// path) and a keyed tag of the caller, and a credential is accepted only for the same
+// route and caller, and for the amount, currency and external reference the host now
+// names. The binding is deterministic, so opaque also carries a random nonce to make
+// every challenge's id unique. Payment credentials are removed from the request the
+// resource sees. A challenge
 // the host's method cannot fit in 8 KiB, or a request the host priced differently from
 // what a method asked, is the host's error and answers 500.
 //

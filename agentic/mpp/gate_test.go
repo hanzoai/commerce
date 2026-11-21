@@ -190,7 +190,7 @@ func TestGateOneTimeCharge(t *testing.T) {
 	}
 	// The id and the opaque nonce that makes it unique are the server's choice.
 	nonce, err := Opaque(got[0].Opaque)
-	if err != nil || len(nonce) != 1 || len(nonce["nonce"]) != 22 {
+	if err != nil || len(nonce) != 3 || len(nonce["nonce"]) != 22 || nonce["route"] != "GET /resource" || len(nonce["caller"]) != 22 {
 		t.Fatalf("opaque %q: %v %v", got[0].Opaque, nonce, err)
 	}
 	want := wantChallenges[0]

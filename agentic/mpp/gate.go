@@ -7,7 +7,9 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -237,7 +239,7 @@ func (g *Gate) body(r *http.Request) ([]byte, *Problem) {
 }
 
 // issue makes a challenge for each method that offers one for the quote.
-func (g *Gate) issue(ctx context.Context, caller Caller, q Quote, body []byte) ([]Challenge, error) {
+func (g *Gate) issue(ctx context.Context, caller Caller, q Quote, body []byte, route string) ([]Challenge, error) {
 	expires := g.c.Now().UTC().Add(g.c.Lifetime).Format(time.RFC3339)
 	var out []Challenge
 	for _, m := range g.c.Methods {
@@ -256,22 +258,29 @@ func (g *Gate) issue(ctx context.Context, caller Caller, q Quote, body []byte) (
 		if g.c.Alternate {
 			c.Header = alternate
 		}
-		// The binding is deterministic, so two clients challenged for the same request in
-		// the same second would share one id and the second to pay would find it spent. A
-		// random member of opaque, which the binding covers and clients return unchanged,
-		// makes every challenge's id unique (section 5.1.1).
+		// The gate keeps three members of opaque, which the binding covers and clients
+		// return unchanged. A random nonce makes every challenge's id unique: the binding
+		// is deterministic, so two clients challenged for the same request in the same
+		// second would otherwise share an id and the second to pay would find it spent
+		// (section 5.1.1). The route and a keyed tag of the caller tie the challenge to
+		// the resource and the caller it was issued to, which the draft's binding of the
+		// payment terms alone does not.
 		opaque := map[string]string{}
 		for k, v := range p.Opaque {
 			opaque[k] = v
 		}
-		if _, taken := opaque["nonce"]; taken {
-			return nil, fmt.Errorf("%s: opaque member nonce belongs to the gate", m.Name())
+		for _, k := range []string{"nonce", "route", "caller"} {
+			if _, taken := opaque[k]; taken {
+				return nil, fmt.Errorf("%s: opaque member %s belongs to the gate", m.Name(), k)
+			}
 		}
 		var nonce [16]byte
 		if _, err := rand.Read(nonce[:]); err != nil {
 			return nil, err
 		}
 		opaque["nonce"] = base64.RawURLEncoding.EncodeToString(nonce[:])
+		opaque["route"] = route
+		opaque["caller"] = tag(g.c.Secret, caller)
 		if c.Opaque, err = Encode(opaque); err != nil {
 			return nil, fmt.Errorf("%s: opaque: %w", m.Name(), err)
 		}
@@ -294,6 +303,17 @@ func (g *Gate) issue(ctx context.Context, caller Caller, q Quote, body []byte) (
 		out = append(out, c)
 	}
 	return out, nil
+}
+
+// route names what a request asks for: its method and path.
+func route(r *http.Request) string { return r.Method + " " + r.URL.Path }
+
+// tag is a keyed, truncated digest of the caller, so that a challenge carries which caller
+// it was issued to without carrying who that is.
+func tag(secret []byte, who Caller) string {
+	mac := hmac.New(sha256.New, secret)
+	mac.Write([]byte("caller\x00" + who.Org + "\x00" + who.Subject))
+	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil)[:16])
 }
 
 // preferred orders challenges by the request's Accept-Payment header (section 7.4). A
@@ -321,7 +341,7 @@ func preferred(r *http.Request, cs []Challenge) []Challenge {
 // challenge answers 402 with a fresh challenge for each method and the problem given,
 // payment-required when none (section 4.2).
 func (g *Gate) challenge(w http.ResponseWriter, r *http.Request, caller Caller, q Quote, body []byte, p *Problem) {
-	cs, err := g.issue(r.Context(), caller, q, body)
+	cs, err := g.issue(r.Context(), caller, q, body, route(r))
 	if err != nil {
 		g.fail(w, err)
 		return
@@ -387,16 +407,17 @@ func (g *Gate) answer(w http.ResponseWriter, err error, again func(*Problem)) {
 	g.write(w, p)
 }
 
-func (g *Gate) known(c Challenge) bool {
+// known returns the secret the challenge's id was bound under, current or retired.
+func (g *Gate) known(c Challenge) (secret []byte, ok bool) {
 	if bound(g.c.Secret, c) {
-		return true
+		return g.c.Secret, true
 	}
 	for _, s := range g.c.Previous {
 		if bound(s, c) {
-			return true
+			return s, true
 		}
 	}
-	return false
+	return nil, false
 }
 
 func (g *Gate) method(name string) Method {
@@ -436,8 +457,14 @@ func (g *Gate) redeem(w http.ResponseWriter, r *http.Request, next http.Handler,
 		again(Refuse(Malformed, err.Error()))
 		return
 	}
-	if c.Realm != g.c.Realm || c.Intent != Charge || !g.known(c) {
+	secret, known := g.known(c)
+	if c.Realm != g.c.Realm || c.Intent != Charge || !known {
 		again(Refuse(Invalid, "The challenge is unknown."))
+		return
+	}
+	members, _ := Opaque(c.Opaque) // Valid has accepted it; the gate always issues it
+	if members["route"] != route(r) || !hmac.Equal([]byte(members["caller"]), []byte(tag(secret, caller))) {
+		again(Refuse(Invalid, "The challenge was issued for another request or caller."))
 		return
 	}
 	if c.Field() != h.field {
