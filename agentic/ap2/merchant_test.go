@@ -25,25 +25,31 @@ type store struct {
 	decline error
 	network string
 	seq     int
+	// pinned is what Honours was last told; refusePinned makes the store refuse such mandates.
+	pinned       bool
+	refusePinned bool
+	// lost makes a charge go through and its answer not arrive; pending marks checkouts whose
+	// payment is under way.
+	lost    bool
+	pending map[string]bool
+	// instrument is the instrument the last charge was told to use.
+	instrument string
 }
 
 func newStore() *store {
-	return &store{prices: map[string]int64{"credit-500": 500, "credit-1000": 1000}, carts: map[string]*Cart{}, owner: map[string]string{}, orders: map[string]string{}, network: "net-1"}
+	return &store{prices: map[string]int64{"credit-500": 500, "credit-1000": 1000}, carts: map[string]*Cart{}, owner: map[string]string{}, orders: map[string]string{}, pending: map[string]bool{}, network: "net-1"}
 }
 
-func (s *store) Open(_ context.Context, who Caller, items []Pick) (*Cart, error) {
+// open starts a checkout of one item for a buyer, as the store's own surface does.
+func (s *store) open(who Caller, item string, qty int64) (*Cart, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.seq++
-	c := &Cart{ID: fmt.Sprintf("chk_%d", s.seq), Currency: "USD"}
-	for _, it := range items {
-		price, ok := s.prices[it.ID]
-		if !ok {
-			return nil, ErrNoItem
-		}
-		c.Lines = append(c.Lines, Line{ID: it.ID, Title: it.ID, Price: price, Quantity: it.Quantity})
-		c.Total += price * it.Quantity
+	price, ok := s.prices[item]
+	if !ok {
+		return nil, ErrNoItem
 	}
+	s.seq++
+	c := &Cart{ID: fmt.Sprintf("chk_%d", s.seq), Currency: "USD", Lines: []Line{{ID: item, Title: item, Price: price, Quantity: qty}}, Total: price * qty}
 	s.carts[c.ID], s.owner[c.ID] = c, who.Subject
 	return c, nil
 }
@@ -52,9 +58,21 @@ func (s *store) Open(_ context.Context, who Caller, items []Pick) (*Cart, error)
 func (s *store) Read(_ context.Context, who Caller, id string) (*Cart, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	c, ok := s.carts[id]
-	if !ok || s.owner[id] != who.Subject {
+	if s.owner[id] != who.Subject {
 		return nil, ErrNotFound
+	}
+	c, ok := s.priced(id)
+	if !ok {
+		return nil, ErrNotFound
+	}
+	return &c, nil
+}
+
+// priced is the cart with its lines priced from the catalog as it is now; the caller holds s.mu.
+func (s *store) priced(id string) (Cart, bool) {
+	c, ok := s.carts[id]
+	if !ok {
+		return Cart{}, false
 	}
 	out := *c
 	out.Lines = nil
@@ -62,7 +80,21 @@ func (s *store) Read(_ context.Context, who Caller, id string) (*Cart, error) {
 		l.Price = s.prices[l.ID]
 		out.Lines = append(out.Lines, l)
 	}
-	return &out, nil
+	_, out.Paid = s.orders[id]
+	out.Pending = s.pending[id]
+	return out, true
+}
+
+func sameCart(a, b Cart) bool {
+	if a.Currency != b.Currency || a.Total != b.Total || len(a.Lines) != len(b.Lines) {
+		return false
+	}
+	for i := range a.Lines {
+		if a.Lines[i] != b.Lines[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *store) Pay(_ context.Context, who Caller, id, key string, pay Payment) (*Paid, error) {
@@ -70,6 +102,9 @@ func (s *store) Pay(_ context.Context, who Caller, id, key string, pay Payment) 
 	defer s.mu.Unlock()
 	if _, ok := s.carts[id]; !ok || s.owner[id] != who.Subject {
 		return nil, ErrNotFound
+	}
+	if cur, _ := s.priced(id); !sameCart(pay.Cart, cur) {
+		return nil, mandate(ErrStale, "the checkout is no longer the one that was verified")
 	}
 	if k, paid := s.orders[id]; paid {
 		if k != key {
@@ -81,13 +116,23 @@ func (s *store) Pay(_ context.Context, who Caller, id, key string, pay Payment) 
 		return nil, s.decline
 	}
 	s.charges++
+	s.instrument = pay.Instrument.ID
 	s.orders[id] = key
+	if s.lost {
+		return nil, ErrUnavailable
+	}
 	return &Paid{Order: "ord_" + id, Payment: "pay_" + id, PSP: "psp_" + id, Network: s.network}, nil
 }
 
-func (s *store) Honours(_ context.Context, _ Caller, in Instrument) error {
-	if in.Type != "card" {
+func (s *store) Honours(_ context.Context, _ Caller, in Instrument, pinned bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.pinned = pinned
+	switch {
+	case in.Type != "card":
 		return &Unsupported{Instrument: in, Why: "only cards are taken"}
+	case pinned && s.refusePinned:
+		return &Unsupported{Instrument: in, Why: "the store cannot tie a token to an instrument"}
 	}
 	return nil
 }
@@ -109,8 +154,7 @@ func newShop(t *testing.T, mutate ...func(*Config)) *shop {
 	cfg := Config{
 		Backend: st, Trust: w.v.Trust, Signer: w.merchant,
 		Identity: Merchant{ID: "merchant_1", Name: "Demo Merchant", Website: "https://demo-merchant.example"},
-		Issuer:   "https://demo-merchant.example", Audience: w.aud, Secret: []byte("0123456789abcdef0123456789abcdef"),
-		Now: w.v.Now, Ledger: &Memory{},
+		Secret:   []byte("0123456789abcdef0123456789abcdef"), Now: w.v.Now, Ledger: &memory{now: w.v.Now},
 	}
 	for _, f := range mutate {
 		f(&cfg)
@@ -125,18 +169,36 @@ func newShop(t *testing.T, mutate ...func(*Config)) *shop {
 // buy is an agent buying one credit-500: the merchant signs the checkout, the agent has the
 // mandates made for it (autonomously) and presents them.
 type purchase struct {
-	issued   *Issued
+	issued   *signed
 	checkout *autonomous
 	payment  *autonomous
 	token    string
 }
 
-func (s *shop) buy(t *testing.T) *purchase {
+// signed is a checkout the store opened and the merchant signed.
+type signed struct {
+	*Issued
+	ID   string
+	Hash string
+}
+
+// issue has the store open a checkout of credit-500 for the buyer and the merchant sign it.
+func (s *shop) issue(t *testing.T) *signed {
 	t.Helper()
-	iss, err := s.m.Open(context.Background(), s.who, []Pick{{ID: "credit-500", Quantity: 1}})
+	cart, err := s.store.open(s.who, "credit-500", 1)
 	if err != nil {
 		t.Fatal(err)
 	}
+	iss, err := s.m.Issue(context.Background(), s.who, cart.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &signed{Issued: iss, ID: cart.ID, Hash: digest(iss.JWT)}
+}
+
+func (s *shop) buy(t *testing.T) *purchase {
+	t.Helper()
+	iss := s.issue(t)
 	s.world.nonce = iss.Nonce
 	s.world.aud = iss.Audience
 	cm := s.checkoutMandate(iss.JWT, iss.Hash)
@@ -180,7 +242,7 @@ func TestACheckoutIsSignedAndCompleted(t *testing.T) {
 	}
 	pub := &s.merchant.Key.PublicKey
 	r, err := ParseCheckoutReceipt(out.Receipt, pub, p.checkout.text())
-	if err != nil || r.Status != Success || r.OrderID != out.Order || r.Issuer != "https://demo-merchant.example" {
+	if err != nil || r.Status != Success || r.OrderID != out.Order || r.Issuer != "merchant_1" {
 		t.Fatalf("receipt = %+v %v", r, err)
 	}
 	pr, err := ParsePaymentReceipt(out.Payment, pub, p.payment.text())
@@ -384,27 +446,120 @@ func TestADeclinedPaymentFreesTheOpenMandate(t *testing.T) {
 	}
 }
 
-// A store that cannot answer has decided nothing: no receipt, and the open mandate is free.
-func TestAnUnavailableStoreDecidesNothing(t *testing.T) {
-	s := newShop(t)
-	p := s.buy(t)
+// A store that cannot answer has decided nothing: no receipt. But a charge whose outcome is not
+// known may have moved money, so the open mandate stays claimed: the same mandates, tried again
+// at once, are told the completion has not ended, and only a claim that is stale, on a checkout
+// the store shows unpaid and not being paid, is given up.
+func TestAnUnavailableStoreDecidesNothingAndKeepsTheClaim(t *testing.T) {
+	s := newShop(t, func(c *Config) { c.Stale = 30 * time.Minute })
+	var open string
+	p := s.buyUnder(t, &open)
 	s.store.decline = ErrUnavailable
 	out, err := s.complete(p)
 	if !errors.Is(err, ErrUnavailable) || out != nil {
 		t.Fatalf("out = %+v err = %v", out, err)
 	}
 	s.store.decline = nil
-	if out, err = s.complete(p); err != nil || out.Order == "" {
-		t.Fatalf("retry = %+v %v", out, err)
+	if _, err = s.complete(p); !errors.Is(err, ErrBusy) {
+		t.Fatalf("at once: %v", err)
 	}
+	if _, err = s.complete(s.buyUnder(t, &open)); !errors.Is(err, ErrBusy) {
+		t.Fatalf("another checkout under the open mandate, at once: %v", err)
+	}
+	later := func() time.Time { return s.now.Add(31 * time.Minute) }
+	s.v.Now, s.m.v.Now = later, later
+	// A payment under way is never given up, however old the claim.
+	s.store.pending[p.issued.ID] = true
+	if _, err = s.complete(p); !errors.Is(err, ErrBusy) {
+		t.Fatalf("a payment under way: %v", err)
+	}
+	s.store.pending[p.issued.ID] = false
+	if out, err = s.complete(p); err != nil || out.Order == "" || s.store.count() != 1 {
+		t.Fatalf("a stale claim on an unpaid checkout: %+v %v, charges %d", out, err, s.store.count())
+	}
+}
+
+// Without a Stale a claim is never released by the clock: the host reconciles.
+func TestAClaimIsNotReleasedByTheClockWithoutAStale(t *testing.T) {
+	s := newShop(t)
+	p := s.buy(t)
+	s.store.decline = ErrUnavailable
+	s.complete(p)
+	s.store.decline = nil
+	later := func() time.Time { return s.now.Add(30 * time.Minute) }
+	s.v.Now, s.m.v.Now = later, later
+	if _, err := s.complete(p); !errors.Is(err, ErrBusy) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+// A charge that went through and whose answer was lost has moved money: no other closed mandate
+// under the open mandate is charged for another checkout, and the same one is the same order.
+func TestAChargeWhoseAnswerWasLostIsNotChargedAgain(t *testing.T) {
+	s := newShop(t)
+	var open string
+	p1 := s.buyUnder(t, &open)
+	s.store.lost = true
+	if _, err := s.complete(p1); !errors.Is(err, ErrUnavailable) || s.store.count() != 1 {
+		t.Fatalf("err = %v, charges %d", err, s.store.count())
+	}
+	s.store.lost = false
+	p2 := s.buyUnder(t, &open)
+	if _, err := s.complete(p2); !errors.Is(err, ErrSpent) || s.store.count() != 1 {
+		t.Fatalf("another checkout under the open mandate: %v, charges %d", err, s.store.count())
+	}
+	out, err := s.complete(p1)
+	if err != nil || out.Order == "" || s.store.count() != 1 {
+		t.Fatalf("the same mandates again: %+v %v, charges %d", out, err, s.store.count())
+	}
+}
+
+// ledgerDown fails to record a completion as kept.
+type ledgerDown struct {
+	Ledger
+	down bool
+}
+
+func (l *ledgerDown) Settle(ctx context.Context, open, ref string, kept bool) error {
+	if kept && l.down {
+		return errors.New("the ledger is down")
+	}
+	return l.Ledger.Settle(ctx, open, ref, kept)
+}
+
+// An order that is placed but cannot be recorded against the open mandate stands, says so, and
+// is found paid when another closed mandate tries.
+func TestAnOrderThatCannotBeRecordedAgainstTheOpenMandateStands(t *testing.T) {
+	var l *ledgerDown
+	s := newShop(t, func(c *Config) { l = &ledgerDown{Ledger: c.Ledger, down: true}; c.Ledger = l })
+	var open string
+	out, err := s.complete(s.buyUnder(t, &open))
+	if err != nil || out.Order == "" || out.Unsettled == nil {
+		t.Fatalf("out = %+v err = %v", out, err)
+	}
+	if _, err := s.complete(s.buyUnder(t, &open)); !errors.Is(err, ErrSpent) || s.store.count() != 1 {
+		t.Fatalf("another checkout: %v, charges %d", err, s.store.count())
+	}
+}
+
+// buyUnder is buy, with an open Checkout Mandate the user signed once and the agent presents
+// every time: *open is empty for the first and holds it after.
+func (s *shop) buyUnder(t *testing.T, open *string) *purchase {
+	t.Helper()
+	iss := s.issue(t)
+	s.world.nonce, s.world.aud = iss.Nonce, iss.Audience
+	cm := s.checkoutMandate(iss.JWT, iss.Hash)
+	if *open == "" {
+		*open = cm.openText()
+	}
+	cm.openOut = *open
+	pm := s.paymentMandate(iss.Hash, 500, cm.openText())
+	return &purchase{issued: iss, checkout: cm, payment: pm, token: "spt_test"}
 }
 
 func TestADirectMandateCompletes(t *testing.T) {
 	s := newShop(t)
-	iss, err := s.m.Open(context.Background(), s.who, []Pick{{ID: "credit-500", Quantity: 1}})
-	if err != nil {
-		t.Fatal(err)
-	}
+	iss := s.issue(t)
 	b1, b2 := s.sd(), s.sd()
 	co := s.rootTok(b1, s.closedCheckoutItem(b1, iss.JWT, iss.Hash))
 	pay := s.rootTok(b2, paymentItem(iss.Hash, 500))
@@ -420,8 +575,9 @@ func TestADirectMandateCompletes(t *testing.T) {
 func TestACheckoutThatExpiredIsRefused(t *testing.T) {
 	s := newShop(t, func(c *Config) { c.Lifetime = time.Minute })
 	p := s.buy(t)
-	if p.issued.Checkout.ExpiresAt != s.now.Add(time.Minute).UTC().Format(time.RFC3339) {
-		t.Fatalf("expires_at %q", p.issued.Checkout.ExpiresAt)
+	j, _ := parseJWS(p.issued.JWT)
+	if co, err := decodeCheckout(j.payload); err != nil || co.ExpiresAt != s.now.Add(time.Minute).UTC().Format(time.RFC3339) {
+		t.Fatalf("expires_at %+v %v", co, err)
 	}
 	s.v.Now = func() time.Time { return s.now.Add(2 * time.Minute) }
 	s.m.v.Now = s.v.Now
@@ -461,7 +617,7 @@ func TestOnlyTheCallersCheckoutIsIssued(t *testing.T) {
 	if _, err := s.m.Issue(context.Background(), s.who, p.issued.ID); err == nil {
 		t.Fatal("a canceled checkout was signed")
 	}
-	if _, err := s.m.Open(context.Background(), s.who, []Pick{{ID: "nope", Quantity: 1}}); !errors.Is(err, ErrNoItem) {
+	if _, err := s.store.open(s.who, "nope", 1); !errors.Is(err, ErrNoItem) {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -485,7 +641,7 @@ func TestAMerchantNeedsWhatItIsMadeOf(t *testing.T) {
 	w := newWorld(t)
 	good := Config{
 		Backend: newStore(), Trust: w.v.Trust, Signer: w.merchant, Identity: Merchant{ID: "m", Name: "M"},
-		Issuer: "iss", Audience: "aud", Secret: make([]byte, 32), Ledger: &Memory{},
+		Secret: make([]byte, 32), Ledger: &memory{},
 	}
 	if _, err := New(good); err != nil {
 		t.Fatal(err)
@@ -495,8 +651,6 @@ func TestAMerchantNeedsWhatItIsMadeOf(t *testing.T) {
 		"no trust":             func(c *Config) { c.Trust = nil },
 		"no ledger":            func(c *Config) { c.Ledger = nil },
 		"no identity":          func(c *Config) { c.Identity = Merchant{} },
-		"no issuer":            func(c *Config) { c.Issuer = "" },
-		"no audience":          func(c *Config) { c.Audience = "" },
 		"a short secret":       func(c *Config) { c.Secret = make([]byte, 31) },
 		"a negative lifetime":  func(c *Config) { c.Lifetime = -1 },
 		"a signer with no kid": func(c *Config) { c.Signer.Kid = "" },
@@ -536,30 +690,38 @@ func TestACompletionNeedsItsParts(t *testing.T) {
 }
 
 func TestTheMemoryLedger(t *testing.T) {
-	var m Memory
+	var m memory
 	ctx := context.Background()
-	v, l, err := m.Begin(ctx, "open", "a")
-	if v != Fresh || l == nil || err != nil {
-		t.Fatalf("%v %v %v", v, l, err)
+	v, c, err := m.Begin(ctx, "open", "a", "chk_a")
+	if v != Fresh || c.Ref != "a" || c.Checkout != "chk_a" || c.At.IsZero() || err != nil {
+		t.Fatalf("%v %+v %v", v, c, err)
 	}
-	if v, _, _ = m.Begin(ctx, "open", "a"); v != Busy {
-		t.Fatalf("a claim in progress: %v", v)
+	if v, c, _ = m.Begin(ctx, "open", "a", "chk_a"); v != Busy || c.Ref != "a" {
+		t.Fatalf("a claim begun and not ended: %v %+v", v, c)
 	}
-	if err := l.Keep(ctx); err != nil {
-		t.Fatal(err)
+	// Only the holder settles a claim.
+	m.Settle(ctx, "open", "b", true)
+	if v, _, _ = m.Begin(ctx, "open", "a", "chk_a"); v != Busy {
+		t.Fatalf("another closed mandate settled the claim: %v", v)
 	}
-	if v, _, _ = m.Begin(ctx, "open", "a"); v != Replay {
+	m.Settle(ctx, "open", "a", true)
+	if v, _, _ = m.Begin(ctx, "open", "a", "chk_a"); v != Replay {
 		t.Fatalf("the same closed mandate: %v", v)
 	}
-	if v, _, _ = m.Begin(ctx, "open", "b"); v != Taken {
-		t.Fatalf("another closed mandate: %v", v)
+	if v, c, _ = m.Begin(ctx, "open", "b", "chk_b"); v != Taken || c.Ref != "a" {
+		t.Fatalf("another closed mandate: %v %+v", v, c)
 	}
-	if v, l, _ = m.Begin(ctx, "other-open", "b"); v != Fresh {
+	// A kept claim is not given up.
+	m.Settle(ctx, "open", "a", false)
+	if v, _, _ = m.Begin(ctx, "open", "b", "chk_b"); v != Taken {
+		t.Fatalf("a kept claim was given up: %v", v)
+	}
+	if v, _, _ = m.Begin(ctx, "other-open", "b", "chk_b"); v != Fresh {
 		t.Fatalf("another open mandate: %v", v)
 	}
-	l.Drop(ctx)
-	if v, _, _ = m.Begin(ctx, "other-open", "c"); v != Fresh {
-		t.Fatalf("a dropped claim: %v", v)
+	m.Settle(ctx, "other-open", "b", false)
+	if v, _, _ = m.Begin(ctx, "other-open", "c", "chk_c"); v != Fresh {
+		t.Fatalf("a given-up claim: %v", v)
 	}
 }
 
@@ -682,5 +844,87 @@ func TestClosedMandatesUnderOneOpenMandateAreCompletedOnce(t *testing.T) {
 	wg.Wait()
 	if done != 1 || refused != n-1 || s.store.count() != 1 {
 		t.Fatalf("completed %d, refused %d, charged %d", done, refused, s.store.count())
+	}
+}
+
+// racy is a Backend whose checkout is changed by its buyer between the merchant's verification
+// and the charge, as UpdateCheckout lets the buyer do in commerce. Honours runs after the cart
+// has been agreed with the mandates and before Pay.
+type racy struct {
+	*store
+	to string
+}
+
+func (r *racy) Honours(ctx context.Context, who Caller, in Instrument, pinned bool) error {
+	r.store.mu.Lock()
+	for _, c := range r.store.carts {
+		c.Lines[0].ID, c.Total = r.to, r.store.prices[r.to]
+	}
+	r.store.mu.Unlock()
+	return r.store.Honours(ctx, who, in, pinned)
+}
+
+// The store is charged for the checkout the mandates were verified against, or not at all.
+func TestACheckoutChangedBetweenVerificationAndChargeIsNotCharged(t *testing.T) {
+	var r *racy
+	s := newShop(t, func(c *Config) { r = &racy{store: c.Backend.(*store), to: "credit-1000"}; c.Backend = r })
+	p := s.buy(t) // mandates for credit-500 at 500
+	out, err := s.complete(p)
+	refusedWith(t, err, InvalidMandate, ErrStale)
+	if out == nil || out.Order != "" || s.store.count() != 0 {
+		t.Fatalf("outcome %+v, charges %d under mandates for 500", out, s.store.count())
+	}
+}
+
+func allowInstruments(t *testing.T, is ...Instrument) func(b *sd) map[string]any {
+	return func(b *sd) map[string]any {
+		var l []any
+		for _, i := range is {
+			l = append(l, b.elem(t, i))
+		}
+		return map[string]any{"type": "payment.allowed_payment_instruments", "allowed": l}
+	}
+}
+
+// A mandate that limits the instrument reaches the store as such: the store may tie its
+// credential to an instrument and honour the limit, and one that cannot refuses the mandate
+// with a typed error rather than ignore it.
+func TestAMandateThatLimitsTheInstrumentIsNotIgnored(t *testing.T) {
+	card := Instrument{ID: "pi_1", Type: "card", Description: "Card 4242"}
+	for _, tc := range []struct {
+		name   string
+		limit  func(a *autonomous)
+		pinned bool
+	}{
+		{"no limit", func(a *autonomous) {}, false},
+		{"allowed_payment_instruments", func(a *autonomous) {
+			a.constraints(func(b *sd) []any {
+				return []any{a.openItem["constraints"].([]any)[0], allowInstruments(t, card)(b)}
+			})
+		}, true},
+		{"a preset instrument", func(a *autonomous) {
+			a.openItem["payment_instrument"] = map[string]any{"id": "pi_1", "type": "card", "description": "Card 4242"}
+		}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := newShop(t)
+			p := s.buy(t)
+			tc.limit(p.payment)
+			if _, err := s.complete(p); err != nil || s.store.pinned != tc.pinned {
+				t.Fatalf("err = %v, the store was told pinned=%v; want %v", err, s.store.pinned, tc.pinned)
+			}
+			// A store that cannot honour a limit refuses it, typed, and charges nothing.
+			if tc.pinned {
+				s = newShop(t)
+				s.store.refusePinned = true
+				p = s.buy(t)
+				tc.limit(p.payment)
+				out, err := s.complete(p)
+				var u *Unsupported
+				if !errors.As(err, &u) || out == nil || out.Order != "" || s.store.count() != 0 {
+					t.Fatalf("out = %+v err = %v charges %d", out, err, s.store.count())
+				}
+			}
+		})
 	}
 }

@@ -76,8 +76,8 @@ func (k JWK) Key() (*ecdsa.PublicKey, error) {
 			return nil, fmt.Errorf("%w: key_ops lacks verify", ErrKey)
 		}
 	}
-	x, errx := b64.DecodeString(k.X)
-	y, erry := b64.DecodeString(k.Y)
+	x, errx := unb64(k.X)
+	y, erry := unb64(k.Y)
 	if errx != nil || erry != nil || len(x) != 32 || len(y) != 32 {
 		return nil, fmt.Errorf("%w: x and y must be 32 bytes, base64url", ErrKey)
 	}
@@ -130,10 +130,10 @@ func parseJWS(compact string) (*jws, error) {
 	if j.header.Alg != "ES256" {
 		return nil, fmt.Errorf("%w: alg %q", ErrAlgorithm, j.header.Alg)
 	}
-	if j.payload, err = b64.DecodeString(p[1]); err != nil {
+	if j.payload, err = unb64(p[1]); err != nil {
 		return nil, fmt.Errorf("%w: JWS payload: %v", ErrMalformed, err)
 	}
-	if j.sig, err = b64.DecodeString(p[2]); err != nil {
+	if j.sig, err = unb64(p[2]); err != nil {
 		return nil, fmt.Errorf("%w: JWS signature: %v", ErrMalformed, err)
 	}
 	j.input = p[0] + "." + p[1]
@@ -190,9 +190,6 @@ func (s Signer) check() error {
 	}
 	return nil
 }
-
-// JWK is the public half, as published for verifiers.
-func (s Signer) JWK() JWK { return NewJWK(&s.Key.PublicKey, s.Kid) }
 
 // Sign makes a compact JWT of claims.
 func (s Signer) Sign(claims any) (string, error) {

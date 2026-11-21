@@ -5,6 +5,7 @@ package ap2
 
 import (
 	"context"
+	"math"
 	"time"
 )
 
@@ -20,14 +21,9 @@ type Usage struct {
 	Last time.Time
 }
 
-// Spent reports the Usage of an open Payment Mandate, named by its hash.
+// Spent reports the Usage of an open Payment Mandate, named by its id: the hash of what the
+// issuer signed.
 type Spent func(ctx context.Context, open string) (Usage, error)
-
-// limits on what an agent-built constraint may ask the verifier to compute.
-const (
-	maxRequirements = 128
-	maxQuantity     = 1 << 31
-)
 
 // check evaluates the constraints of an open Checkout Mandate against the checkout
 // (checkout_mandate.md, "Constraints"). One that fails, or is not known, is
@@ -57,7 +53,7 @@ func unevaluable(k Constraint) *Error {
 	if u, ok := k.(Unknown); ok {
 		return unresolved("constraint %q: %s", u.Type, u.Why)
 	}
-	return unresolved("constraint %q does not apply to this mandate", k.kind())
+	return unresolved("constraint %q does not apply to this mandate", typeOf(k))
 }
 
 func anyMerchant(list []Merchant, m Merchant) bool {
@@ -69,20 +65,22 @@ func anyMerchant(list []Merchant, m Merchant) bool {
 	return false
 }
 
-// fit is the `checkout.line_items` evaluation: the requirements and the checkout's items
-// are matched one to one, as a maximum flow from requirements to items. An item matches a
-// requirement when its id is among the requirement's revealed acceptable items. The
-// constraint holds when the flow equals both the total quantity the requirements ask for and
-// the total quantity in the checkout.
+// fit is the `checkout.line_items` evaluation (checkout_mandate.md): requirements and the
+// checkout's items are matched one to one, as a maximum flow. An item matches a requirement when
+// its id is among the requirement's revealed acceptable items; the constraint holds when the flow
+// equals both the quantity the requirements ask for and the quantity in the checkout.
 func (t LineItems) fit(c *Checkout) *Error {
-	if len(t.Items) == 0 || len(t.Items) > maxRequirements {
-		return unresolved("checkout.line_items holds 1 to %d items", maxRequirements)
+	var asked, carted int64
+	for _, req := range t.Items {
+		if req.Quantity < 1 || req.Quantity > math.MaxInt64-asked {
+			return unresolved("a requirement asks for %d", req.Quantity)
+		}
+		asked += req.Quantity
 	}
 	cart := map[string]int64{}
 	var skus []string
-	var carted int64
 	for _, l := range c.LineItems {
-		if l.Quantity > maxQuantity {
+		if l.Quantity > math.MaxInt64-carted {
 			return unresolved("a quantity beyond what is evaluated")
 		}
 		if _, ok := cart[l.Item.ID]; !ok {
@@ -91,24 +89,19 @@ func (t LineItems) fit(c *Checkout) *Error {
 		cart[l.Item.ID] += l.Quantity
 		carted += l.Quantity
 	}
-	if len(skus) == 0 {
-		return unresolved("an empty checkout does not satisfy checkout.line_items")
+	if len(t.Items) == 0 || len(skus) == 0 {
+		return unresolved("checkout.line_items needs requirements and a checkout with items")
 	}
 	// nodes: 0 source, 1..R requirements, R+1..R+S items, R+S+1 sink.
 	r, s := len(t.Items), len(skus)
 	f := newFlow(r + s + 2)
 	sink := r + s + 1
-	var asked int64
 	for i, req := range t.Items {
-		if req.Quantity < 1 || req.Quantity > maxQuantity {
-			return unresolved("a requirement asks for %d", req.Quantity)
-		}
-		asked += req.Quantity
 		f.add(0, 1+i, req.Quantity)
 		for j, sku := range skus {
 			for _, ok := range req.AcceptableItems {
 				if ok.ID == sku {
-					f.add(1+i, 1+r+j, maxQuantity*maxRequirements)
+					f.add(1+i, 1+r+j, asked)
 					break
 				}
 			}
@@ -123,79 +116,53 @@ func (t LineItems) fit(c *Checkout) *Error {
 	return nil
 }
 
-// flow is a maximum-flow solver (Dinic's algorithm).
+// flow is a flow network: edges in pairs, each followed by its reverse.
 type flow struct {
 	adj   [][]int
 	to    []int
-	cap   []int64
-	level []int
-	next  []int
+	spare []int64
 }
 
-func newFlow(n int) *flow {
-	return &flow{adj: make([][]int, n), level: make([]int, n), next: make([]int, n)}
-}
+func newFlow(n int) *flow { return &flow{adj: make([][]int, n)} }
 
-func (f *flow) add(u, v int, c int64) {
+func (f *flow) add(u, v int, capacity int64) {
 	f.adj[u] = append(f.adj[u], len(f.to))
-	f.to, f.cap = append(f.to, v), append(f.cap, c)
+	f.to, f.spare = append(f.to, v), append(f.spare, capacity)
 	f.adj[v] = append(f.adj[v], len(f.to))
-	f.to, f.cap = append(f.to, u), append(f.cap, 0)
+	f.to, f.spare = append(f.to, u), append(f.spare, 0)
 }
 
-func (f *flow) layers(s, t int) bool {
-	for i := range f.level {
-		f.level[i] = -1
-	}
-	f.level[s] = 0
-	queue := []int{s}
-	for len(queue) > 0 {
-		u := queue[0]
-		queue = queue[1:]
-		for _, e := range f.adj[u] {
-			if f.cap[e] > 0 && f.level[f.to[e]] < 0 {
-				f.level[f.to[e]] = f.level[u] + 1
-				queue = append(queue, f.to[e])
-			}
-		}
-	}
-	return f.level[t] >= 0
-}
-
-func (f *flow) push(u, t int, room int64) int64 {
-	if u == t {
-		return room
-	}
-	for ; f.next[u] < len(f.adj[u]); f.next[u]++ {
-		e := f.adj[u][f.next[u]]
-		v := f.to[e]
-		if f.cap[e] <= 0 || f.level[v] != f.level[u]+1 {
-			continue
-		}
-		if got := f.push(v, t, min(room, f.cap[e])); got > 0 {
-			f.cap[e] -= got
-			f.cap[e^1] += got
-			return got
-		}
-	}
-	return 0
-}
-
+// max is the maximum flow from s to t by shortest augmenting paths (Edmonds-Karp), whose work does
+// not depend on the quantities.
 func (f *flow) max(s, t int) int64 {
 	var total int64
-	for f.layers(s, t) {
-		for i := range f.next {
-			f.next[i] = 0
+	for {
+		via := make([]int, len(f.adj)) // the edge a node was reached by; -1 not yet reached
+		for i := range via {
+			via[i] = -1
 		}
-		for {
-			got := f.push(s, t, 1<<62)
-			if got == 0 {
-				break
+		via[s] = -2
+		for queue := []int{s}; len(queue) > 0 && via[t] == -1; queue = queue[1:] {
+			for _, e := range f.adj[queue[0]] {
+				if f.spare[e] > 0 && via[f.to[e]] == -1 {
+					via[f.to[e]] = e
+					queue = append(queue, f.to[e])
+				}
 			}
-			total += got
 		}
+		if via[t] == -1 {
+			return total
+		}
+		push := int64(math.MaxInt64)
+		for v := t; v != s; v = f.to[via[v]^1] {
+			push = min(push, f.spare[via[v]])
+		}
+		for v := t; v != s; v = f.to[via[v]^1] {
+			f.spare[via[v]] -= push
+			f.spare[via[v]^1] += push
+		}
+		total += push
 	}
-	return total
 }
 
 // payEnv is what the payment constraints are evaluated with, beyond the mandates.
@@ -322,7 +289,7 @@ func (t Budget) hold(a Amount, env payEnv) *Error {
 	if err != nil {
 		return err
 	}
-	if used.Total+a.Amount > max {
+	if used.Total < 0 || a.Amount > max || used.Total > max-a.Amount {
 		return unresolved("%d already spent plus %d exceeds the budget of %d", used.Total, a.Amount, max)
 	}
 	return nil
@@ -350,8 +317,8 @@ func (t Recurrence) hold(env payEnv) *Error {
 	if err != nil {
 		return err
 	}
-	if t.MaxOccurrences != nil && used.Count+1 > *t.MaxOccurrences {
-		return unresolved("occurrence %d is beyond max_occurrences %d", used.Count+1, *t.MaxOccurrences)
+	if used.Count < 0 || (t.MaxOccurrences != nil && used.Count >= *t.MaxOccurrences) {
+		return unresolved("occurrence %d is beyond max_occurrences", used.Count)
 	}
 	if !used.Last.IsZero() && env.now.Before(used.Last.AddDate(step[0], step[1], step[2])) {
 		return unresolved("the last payment was less than one %s ago", t.Frequency)

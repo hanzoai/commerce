@@ -4,11 +4,14 @@
 package ap2
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -37,10 +40,7 @@ func (p party) cnf() map[string]any {
 }
 
 // sd collects the disclosures of one token.
-type sd struct {
-	alg   string
-	discs []string
-}
+type sd struct{ discs []string }
 
 func (b *sd) add(t *testing.T, parts ...any) string {
 	t.Helper()
@@ -52,7 +52,7 @@ func (b *sd) add(t *testing.T, parts ...any) string {
 	}
 	d := b64.EncodeToString(raw)
 	b.discs = append(b.discs, d)
-	dg, _ := digest(b.alg, d)
+	dg := digest(d)
 	return dg
 }
 
@@ -101,8 +101,6 @@ type world struct {
 	v        *Verifier
 	aud      string
 	nonce    string
-	// alg is the `_sd_alg` the tokens are made in.
-	alg string
 }
 
 func newWorld(t *testing.T) *world {
@@ -111,12 +109,12 @@ func newWorld(t *testing.T) *world {
 	now := time.Unix(1777342400, 0)
 	return &world{
 		t: t, now: now, root: root, agent: agent, merchant: Signer{Key: mk.key, Kid: mk.kid},
-		v:   &Verifier{Trust: Keys{root.kid: &root.key.PublicKey}, Now: func() time.Time { return now }},
-		aud: "merchant", nonce: "nonce-1", alg: "sha-256",
+		v:   &Verifier{Trust: keys{root.kid: &root.key.PublicKey}, Now: func() time.Time { return now }},
+		aud: "merchant", nonce: "nonce-1",
 	}
 }
 
-func (w *world) sd() *sd { return &sd{alg: w.alg} }
+func (w *world) sd() *sd { return &sd{} }
 
 func (w *world) unix(d time.Duration) int64 { return w.now.Add(d).Unix() }
 
@@ -134,7 +132,7 @@ func (w *world) checkout(id string, qty int64, price int64) (Checkout, string, s
 	if err != nil {
 		w.t.Fatal(err)
 	}
-	h, _ := digest(w.alg, jwt)
+	h := digest(jwt)
 	return co, jwt, h
 }
 
@@ -147,7 +145,7 @@ func (w *world) closedCheckoutItem(b *sd, jwt, hash string) map[string]any {
 // rootTok is a token signed with the Trusted Agent Provider's key.
 func (w *world) rootTok(b *sd, item map[string]any) *tok {
 	return &tok{hdr: jwsHeader{Alg: "ES256", Typ: "example+sd-jwt", Kid: w.root.kid}, key: w.root.key, disc: b,
-		claims: map[string]any{"delegate_payload": []any{b.elem(w.t, item)}, "_sd_alg": w.alg}}
+		claims: map[string]any{"delegate_payload": []any{b.elem(w.t, item)}, "_sd_alg": "sha-256"}}
 }
 
 // lineItems is a checkout.line_items constraint asking for qty of one of items.
@@ -183,10 +181,10 @@ type autonomous struct {
 func (w *world) autonomous(b1, b2 *sd, openItem, closedItem map[string]any) *autonomous {
 	return &autonomous{
 		w: w, b1: b1, b2: b2, n1: len(b1.discs), n2: len(b2.discs), openItem: openItem, closedItem: closedItem,
-		open:   &tok{hdr: jwsHeader{Alg: "ES256", Typ: "example+sd-jwt", Kid: w.root.kid}, key: w.root.key, disc: b1, claims: map[string]any{"_sd_alg": w.alg}},
-		closed: &tok{hdr: jwsHeader{Alg: "ES256", Typ: "kb+sd-jwt"}, key: w.agent.key, disc: b2, claims: map[string]any{"_sd_alg": w.alg, "iat": w.unix(-time.Minute), "aud": w.aud, "nonce": w.nonce}},
+		open:   &tok{hdr: jwsHeader{Alg: "ES256", Typ: "example+sd-jwt", Kid: w.root.kid}, key: w.root.key, disc: b1, claims: map[string]any{"_sd_alg": "sha-256"}},
+		closed: &tok{hdr: jwsHeader{Alg: "ES256", Typ: "kb+sd-jwt"}, key: w.agent.key, disc: b2, claims: map[string]any{"_sd_alg": "sha-256", "iat": w.unix(-time.Minute), "aud": w.aud, "nonce": w.nonce}},
 		bind: func(c map[string]any, open string) {
-			h, _ := digest(w.alg, open)
+			h := digest(open)
 			c["sd_hash"] = h
 		},
 	}
@@ -270,7 +268,7 @@ func paymentItem(txn string, amount int64) map[string]any {
 // given constraints, closed by the agent, bound to the open Checkout Mandate openCheckout.
 func (w *world) paymentMandate(txn string, amount int64, openCheckout string, more ...func(b *sd) map[string]any) *autonomous {
 	b1, b2 := w.sd(), w.sd()
-	ref, _ := digest(w.alg, openCheckout)
+	ref := digest(openCheckout)
 	cs := []any{map[string]any{"type": "payment.reference", "conditional_transaction_id": ref}}
 	for _, c := range more {
 		cs = append(cs, c(b1))
@@ -279,4 +277,64 @@ func (w *world) paymentMandate(txn string, amount int64, openCheckout string, mo
 	a := w.autonomous(b1, b2, open, paymentItem(txn, amount))
 	a.closed.claims["aud"] = "credential-provider"
 	return a
+}
+
+// keys is a Trust of fixed keys by id.
+type keys map[string]*ecdsa.PublicKey
+
+func (k keys) Key(_ context.Context, kid string) (*ecdsa.PublicKey, error) {
+	if pub := k[kid]; pub != nil {
+		return pub, nil
+	}
+	return nil, errors.New("no such key")
+}
+
+// memory is a Ledger in the process.
+type memory struct {
+	now  func() time.Time
+	mu   sync.Mutex
+	held map[string]*held
+}
+
+type held struct {
+	Claim
+	kept bool
+}
+
+func (m *memory) Begin(_ context.Context, open, ref, checkout string) (Verdict, Claim, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.held == nil {
+		m.held = map[string]*held{}
+	}
+	h, ok := m.held[open]
+	switch {
+	case !ok:
+		now := time.Now()
+		if m.now != nil {
+			now = m.now()
+		}
+		h = &held{Claim: Claim{Ref: ref, Checkout: checkout, At: now}}
+		m.held[open] = h
+		return Fresh, h.Claim, nil
+	case !h.kept:
+		return Busy, h.Claim, nil
+	case h.Ref == ref:
+		return Replay, h.Claim, nil
+	}
+	return Taken, h.Claim, nil
+}
+
+func (m *memory) Settle(_ context.Context, open, ref string, kept bool) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	h, ok := m.held[open]
+	switch {
+	case !ok || h.Ref != ref || h.kept:
+	case kept:
+		h.kept = true
+	default:
+		delete(m.held, open)
+	}
+	return nil
 }

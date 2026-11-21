@@ -14,11 +14,11 @@ func TestCheckoutReceipts(t *testing.T) {
 	_, jwt, hash := w.checkout("chk_1", 1, 500)
 	text := w.checkoutMandate(jwt, hash).text()
 	p, _ := parsePresentation(text)
-	ref, _ := p.reference()
+	ref := p.reference()
 	pub := &w.merchant.Key.PublicKey
 
 	ok := CheckoutReceipt{Status: Success, Issuer: "https://demo-merchant.example", IssuedAt: w.now.Unix(), Reference: ref, OrderID: "ord_1"}
-	signed, err := SignCheckoutReceipt(w.merchant, ok)
+	signed, err := w.merchant.receipt(&ok)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +27,7 @@ func TestCheckoutReceipts(t *testing.T) {
 		t.Fatalf("receipt = %+v %v", r, err)
 	}
 	bad := CheckoutReceipt{Status: Failure, Issuer: ok.Issuer, IssuedAt: ok.IssuedAt, Reference: ref, Error: string(InvalidMandate), ErrorDescription: "no"}
-	signed2, err := SignCheckoutReceipt(w.merchant, bad)
+	signed2, err := w.merchant.receipt(&bad)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,13 +76,13 @@ func TestReceiptShapes(t *testing.T) {
 		"no issuer":                    {Status: Success, IssuedAt: 1, Reference: "ref", OrderID: "o"},
 		"a status nobody defined":      {Status: "Pending", Issuer: "iss", IssuedAt: 1, Reference: "ref", OrderID: "o"},
 	} {
-		if _, err := SignCheckoutReceipt(w.merchant, r); err == nil {
+		if _, err := w.merchant.receipt(&r); err == nil {
 			t.Errorf("%s signed", name)
 		}
 	}
 
 	pay := PaymentReceipt{Status: Success, Issuer: "iss", IssuedAt: 1, Reference: "ref", PaymentID: "p", PSPConfirmationID: "psp", NetworkConfirmationID: "net"}
-	signed, err := SignPaymentReceipt(w.merchant, pay)
+	signed, err := w.merchant.receipt(&pay)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +97,7 @@ func TestReceiptShapes(t *testing.T) {
 		"an error with a confirmation":           {Status: Failure, Issuer: "iss", IssuedAt: 1, Reference: "ref", PaymentID: "p", Error: "e", ErrorDescription: "d", PSPConfirmationID: "psp"},
 		"an error with no code":                  {Status: Failure, Issuer: "iss", IssuedAt: 1, Reference: "ref", PaymentID: "p", ErrorDescription: "d"},
 	} {
-		if _, err := SignPaymentReceipt(w.merchant, r); err == nil {
+		if _, err := w.merchant.receipt(&r); err == nil {
 			t.Errorf("%s signed", name)
 		}
 	}

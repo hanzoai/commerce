@@ -6,7 +6,6 @@ package ap2
 import (
 	"bytes"
 	"crypto/sha256"
-	"crypto/sha512"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -15,22 +14,18 @@ import (
 	"strconv"
 )
 
-// Bounds on what a verifier reads from the wire.
-const (
-	maxPresentation = 1 << 20
-	maxDisclosures  = 512
-	maxDepth        = 32
-)
-
 // b64 is base64url without padding (RFC 4648 section 5), refusing non-canonical encodings.
 var b64 = base64.RawURLEncoding.Strict()
 
 // parse reads one JSON value. Unlike encoding/json it refuses a repeated object member and
 // trailing data, so the bytes a signature covers have one reading. Numbers stay json.Number.
 func parse(data []byte) (any, error) {
+	if !json.Valid(data) { // also bounds the nesting
+		return nil, errors.New("not JSON")
+	}
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.UseNumber()
-	v, err := value(dec, 0)
+	v, err := value(dec)
 	if err != nil {
 		return nil, err
 	}
@@ -40,10 +35,7 @@ func parse(data []byte) (any, error) {
 	return v, nil
 }
 
-func value(dec *json.Decoder, depth int) (any, error) {
-	if depth > maxDepth {
-		return nil, errors.New("JSON nested too deep")
-	}
+func value(dec *json.Decoder) (any, error) {
 	tok, err := dec.Token()
 	if err != nil {
 		return nil, err
@@ -64,7 +56,7 @@ func value(dec *json.Decoder, depth int) (any, error) {
 			if _, dup := m[k]; dup {
 				return nil, fmt.Errorf("repeated member %q", k)
 			}
-			if m[k], err = value(dec, depth+1); err != nil {
+			if m[k], err = value(dec); err != nil {
 				return nil, err
 			}
 		}
@@ -73,7 +65,7 @@ func value(dec *json.Decoder, depth int) (any, error) {
 	case '[':
 		a := []any{}
 		for dec.More() {
-			v, err := value(dec, depth+1)
+			v, err := value(dec)
 			if err != nil {
 				return nil, err
 			}
@@ -98,9 +90,23 @@ func object(data []byte) (map[string]any, error) {
 	return m, nil
 }
 
+// unb64 decodes canonical base64url. encoding/base64 skips a carriage return or a line feed
+// anywhere in its input, even in Strict mode, so a segment could be re-spelled without changing
+// what it decodes to; every byte here must be in the alphabet.
+func unb64(s string) ([]byte, error) {
+	for i := 0; i < len(s); i++ {
+		switch c := s[i]; {
+		case c >= 'A' && c <= 'Z', c >= 'a' && c <= 'z', c >= '0' && c <= '9', c == '-', c == '_':
+		default:
+			return nil, fmt.Errorf("byte %#x is not base64url", c)
+		}
+	}
+	return b64.DecodeString(s)
+}
+
 // segment decodes one base64url JWT segment as a JSON object.
 func segment(s string) (map[string]any, []byte, error) {
-	raw, err := b64.DecodeString(s)
+	raw, err := unb64(s)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -108,24 +114,11 @@ func segment(s string) (map[string]any, []byte, error) {
 	return m, raw, err
 }
 
-// digest is base64url(hash(ASCII(s))) under an SD-JWT `_sd_alg` name (RFC 9901 section 4.1).
-// An empty name is sha-256, the default.
-func digest(alg, s string) (string, error) {
-	var sum []byte
-	switch alg {
-	case "", "sha-256":
-		h := sha256.Sum256([]byte(s))
-		sum = h[:]
-	case "sha-384":
-		h := sha512.Sum384([]byte(s))
-		sum = h[:]
-	case "sha-512":
-		h := sha512.Sum512([]byte(s))
-		sum = h[:]
-	default:
-		return "", fmt.Errorf("%w: _sd_alg %q", ErrAlgorithm, alg)
-	}
-	return b64.EncodeToString(sum), nil
+// digest is base64url(SHA-256(ASCII(s))): the hash AP2 names when a token's `_sd_alg` is absent
+// or sha-256, the only one this package accepts.
+func digest(s string) string {
+	h := sha256.Sum256([]byte(s))
+	return b64.EncodeToString(h[:])
 }
 
 // integer reads a JSON number that must be a whole number.

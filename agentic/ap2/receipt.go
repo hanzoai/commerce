@@ -20,9 +20,8 @@ const (
 )
 
 // CheckoutReceipt is the signed record of what became of a Checkout Mandate
-// (checkout_receipt.json). Result repeats Status in the vocabulary of the general Mandate
-// Receipt (agent_authorization.md), which requires `result` where the checkout schema
-// requires `status`.
+// (checkout_receipt.json). Result repeats Status as the general Mandate Receipt names it
+// (agent_authorization.md), which requires `result` where this schema requires `status`.
 type CheckoutReceipt struct {
 	Status           Status `json:"status"`
 	Result           string `json:"result"`
@@ -34,8 +33,7 @@ type CheckoutReceipt struct {
 	OrderID          string `json:"order_id,omitempty"`
 }
 
-// PaymentReceipt is the signed record of what became of a Payment Mandate
-// (payment_receipt.json).
+// PaymentReceipt is the signed record of what became of a Payment Mandate (payment_receipt.json).
 type PaymentReceipt struct {
 	Status                Status `json:"status"`
 	Result                string `json:"result"`
@@ -49,7 +47,15 @@ type PaymentReceipt struct {
 	NetworkConfirmationID string `json:"network_confirmation_id,omitempty"`
 }
 
-// result is the `result` that goes with a status.
+// receipt is what both receipts are to the code that signs and reads them.
+type receipt interface {
+	finish() error // sets Result, then validates
+	valid() error
+}
+
+func (r *CheckoutReceipt) finish() error { r.Result = result(r.Status); return r.valid() }
+func (r *PaymentReceipt) finish() error  { r.Result = result(r.Status); return r.valid() }
+
 func result(s Status) string {
 	if s == Success {
 		return "success"
@@ -57,13 +63,12 @@ func result(s Status) string {
 	return "error"
 }
 
-// Valid reports whether the receipt is one of the two shapes the schema allows: a success
-// that names its order and carries no error, or an error that carries both error members
-// and no order.
-func (r CheckoutReceipt) Valid() error {
+// valid reports whether the receipt is one of the two shapes the schema allows: a success naming
+// its order and carrying no error, or an error carrying both error members and no order.
+func (r *CheckoutReceipt) valid() error {
 	switch {
-	case r.Issuer == "" || r.Reference == "" || r.IssuedAt == 0:
-		return errors.New("a receipt needs iss, iat and reference")
+	case r.Issuer == "" || r.Reference == "" || r.IssuedAt == 0 || r.Result != result(r.Status):
+		return errors.New("a receipt needs iss, iat, reference and the result of its status")
 	case r.Status == Success && (r.OrderID == "" || r.Error != "" || r.ErrorDescription != ""):
 		return errors.New("a success receipt names its order and has no error")
 	case r.Status == Failure && (r.Error == "" || r.ErrorDescription == "" || r.OrderID != ""):
@@ -74,13 +79,12 @@ func (r CheckoutReceipt) Valid() error {
 	return nil
 }
 
-// Valid reports whether the receipt is one of the two shapes the schema allows: a success
-// that carries both confirmation ids and no error, or an error that carries both error
-// members and no confirmation.
-func (r PaymentReceipt) Valid() error {
+// valid reports whether the receipt is one of the two shapes the schema allows: a success carrying
+// both confirmation ids and no error, or an error carrying both error members and no confirmation.
+func (r *PaymentReceipt) valid() error {
 	switch {
-	case r.Issuer == "" || r.Reference == "" || r.IssuedAt == 0 || r.PaymentID == "":
-		return errors.New("a receipt needs iss, iat, reference and payment_id")
+	case r.Issuer == "" || r.Reference == "" || r.IssuedAt == 0 || r.PaymentID == "" || r.Result != result(r.Status):
+		return errors.New("a receipt needs iss, iat, reference, payment_id and the result of its status")
 	case r.Status == Success && (r.PSPConfirmationID == "" || r.NetworkConfirmationID == "" || r.Error != "" || r.ErrorDescription != ""):
 		return errors.New("a success receipt carries psp_confirmation_id and network_confirmation_id and has no error")
 	case r.Status == Failure && (r.Error == "" || r.ErrorDescription == "" || r.PSPConfirmationID != "" || r.NetworkConfirmationID != ""):
@@ -91,52 +95,40 @@ func (r PaymentReceipt) Valid() error {
 	return nil
 }
 
-// SignCheckoutReceipt signs the receipt as a compact JWT.
-func SignCheckoutReceipt(s Signer, r CheckoutReceipt) (string, error) {
-	r.Result = result(r.Status)
-	if err := r.Valid(); err != nil {
+// receipt signs a receipt as a compact JWT.
+func (s Signer) receipt(r receipt) (string, error) {
+	if err := r.finish(); err != nil {
 		return "", fmt.Errorf("ap2: %w", err)
 	}
 	return s.Sign(r)
 }
 
-// SignPaymentReceipt signs the receipt as a compact JWT.
-func SignPaymentReceipt(s Signer, r PaymentReceipt) (string, error) {
-	r.Result = result(r.Status)
-	if err := r.Valid(); err != nil {
-		return "", fmt.Errorf("ap2: %w", err)
-	}
-	return s.Sign(r)
-}
-
-// ParseCheckoutReceipt verifies a Checkout Receipt under the issuer's key. When mandate is
-// not empty, the presentation of the closed Checkout Mandate the receipt answers, the
-// receipt's `reference` must be the hash of that mandate's final SD-JWT (specification.md,
-// "Dispute").
-func ParseCheckoutReceipt(receipt string, issuer *ecdsa.PublicKey, mandate string) (*CheckoutReceipt, error) {
+// ParseCheckoutReceipt verifies a Checkout Receipt under the issuer's key. When mandate, the
+// presentation of the closed Checkout Mandate, is given, the receipt's `reference` must be the
+// hash of its final SD-JWT (specification.md, "Dispute").
+func ParseCheckoutReceipt(token string, issuer *ecdsa.PublicKey, mandate string) (*CheckoutReceipt, error) {
 	var r CheckoutReceipt
-	if err := parseReceipt(receipt, issuer, mandate, &r, func() error { return r.Valid() }); err != nil {
+	if err := parseReceipt(token, issuer, mandate, &r, &r.Reference); err != nil {
 		return nil, err
 	}
 	return &r, nil
 }
 
-// ParsePaymentReceipt verifies a Payment Receipt under the issuer's key, and against the
-// presentation of the closed Payment Mandate when one is given.
-func ParsePaymentReceipt(receipt string, issuer *ecdsa.PublicKey, mandate string) (*PaymentReceipt, error) {
+// ParsePaymentReceipt is ParseCheckoutReceipt for a Payment Receipt and a Payment Mandate.
+func ParsePaymentReceipt(token string, issuer *ecdsa.PublicKey, mandate string) (*PaymentReceipt, error) {
 	var r PaymentReceipt
-	if err := parseReceipt(receipt, issuer, mandate, &r, func() error { return r.Valid() }); err != nil {
+	if err := parseReceipt(token, issuer, mandate, &r, &r.Reference); err != nil {
 		return nil, err
 	}
 	return &r, nil
 }
 
-func parseReceipt(receipt string, issuer *ecdsa.PublicKey, mandate string, into any, valid func() error) error {
-	j, err := parseJWS(receipt)
-	if err != nil {
-		return err
+func parseReceipt(token string, issuer *ecdsa.PublicKey, mandate string, into receipt, reference *string) error {
+	j, err := parseJWS(token)
+	if err == nil {
+		err = j.verify(issuer)
 	}
-	if err := j.verify(issuer); err != nil {
+	if err != nil {
 		return err
 	}
 	if _, err := object(j.payload); err != nil {
@@ -145,7 +137,7 @@ func parseReceipt(receipt string, issuer *ecdsa.PublicKey, mandate string, into 
 	if err := json.Unmarshal(j.payload, into); err != nil {
 		return fmt.Errorf("%w: receipt: %v", ErrMalformed, err)
 	}
-	if err := valid(); err != nil {
+	if err := into.valid(); err != nil {
 		return fmt.Errorf("%w: receipt: %v", ErrMalformed, err)
 	}
 	if mandate == "" {
@@ -155,18 +147,7 @@ func parseReceipt(receipt string, issuer *ecdsa.PublicKey, mandate string, into 
 	if perr != nil {
 		return perr
 	}
-	ref, err := p.reference()
-	if err != nil {
-		return err
-	}
-	var got string
-	switch r := into.(type) {
-	case *CheckoutReceipt:
-		got = r.Reference
-	case *PaymentReceipt:
-		got = r.Reference
-	}
-	if got != ref {
+	if *reference != p.reference() {
 		return fmt.Errorf("%w: the receipt's reference is not the hash of the mandate", ErrBinding)
 	}
 	return nil

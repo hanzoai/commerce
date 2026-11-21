@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 )
 
@@ -119,9 +120,8 @@ func (c *Constraints) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// A Constraint limits what the closed mandate may contain. The concrete types are the
-// constraints AP2 v0.2 defines; Unknown is any other, which never passes.
-type Constraint interface{ kind() string }
+// A Constraint is one of the constraint types below, or Unknown.
+type Constraint any
 
 // AllowedMerchants is `checkout.allowed_merchants`.
 type AllowedMerchants struct {
@@ -203,138 +203,135 @@ type ExecutionDate struct {
 	NotAfter  string `json:"not_after,omitempty"`
 }
 
-// Unknown is a constraint this verifier cannot evaluate: a type it does not know, or a known
-// type with a member it does not know. It always fails (agent_authorization.md).
+// Unknown is a constraint this verifier cannot evaluate: a type it does not know, or a known type
+// with a member it does not know. It always fails (agent_authorization.md).
 type Unknown struct {
 	Type string
 	Why  string
-	Raw  any
 }
 
-// MarshalJSON writes the constraint as it was read.
-func (u Unknown) MarshalJSON() ([]byte, error) { return json.Marshal(u.Raw) }
-
-func (AllowedMerchants) kind() string   { return "checkout.allowed_merchants" }
-func (LineItems) kind() string          { return "checkout.line_items" }
-func (AllowedPayees) kind() string      { return "payment.allowed_payees" }
-func (AllowedInstruments) kind() string { return "payment.allowed_payment_instruments" }
-func (AllowedPisps) kind() string       { return "payment.allowed_pisps" }
-func (AmountRange) kind() string        { return "payment.amount_range" }
-func (Budget) kind() string             { return "payment.budget" }
-func (Recurrence) kind() string         { return "payment.agent_recurrence" }
-func (Reference) kind() string          { return "payment.reference" }
-func (ExecutionDate) kind() string      { return "payment.execution_date" }
-func (u Unknown) kind() string          { return u.Type }
-
-// members lists the members of each constraint, the whole of its schema. A member beyond
-// them would change what the constraint means, so the constraint is not evaluated.
-var members = map[string][]string{
-	"checkout.allowed_merchants":          {"type", "allowed"},
-	"checkout.line_items":                 {"type", "items"},
-	"payment.allowed_payees":              {"type", "allowed"},
-	"payment.allowed_payment_instruments": {"type", "allowed"},
-	"payment.allowed_pisps":               {"type", "allowed"},
-	"payment.amount_range":                {"type", "currency", "max", "min"},
-	"payment.budget":                      {"type", "max", "currency"},
-	"payment.agent_recurrence":            {"type", "frequency", "max_occurrences"},
-	"payment.reference":                   {"type", "conditional_transaction_id"},
-	"payment.execution_date":              {"type", "not_before", "not_after"},
+// constraintTypes maps each constraint AP2 v0.2 defines to its struct.
+var constraintTypes = map[string]reflect.Type{
+	"checkout.allowed_merchants":          reflect.TypeOf(AllowedMerchants{}),
+	"checkout.line_items":                 reflect.TypeOf(LineItems{}),
+	"payment.allowed_payees":              reflect.TypeOf(AllowedPayees{}),
+	"payment.allowed_payment_instruments": reflect.TypeOf(AllowedInstruments{}),
+	"payment.allowed_pisps":               reflect.TypeOf(AllowedPisps{}),
+	"payment.amount_range":                reflect.TypeOf(AmountRange{}),
+	"payment.budget":                      reflect.TypeOf(Budget{}),
+	"payment.agent_recurrence":            reflect.TypeOf(Recurrence{}),
+	"payment.reference":                   reflect.TypeOf(Reference{}),
+	"payment.execution_date":              reflect.TypeOf(ExecutionDate{}),
 }
 
-func newConstraint(typ string) Constraint {
-	switch typ {
-	case "checkout.allowed_merchants":
-		return &AllowedMerchants{}
-	case "checkout.line_items":
-		return &LineItems{}
-	case "payment.allowed_payees":
-		return &AllowedPayees{}
-	case "payment.allowed_payment_instruments":
-		return &AllowedInstruments{}
-	case "payment.allowed_pisps":
-		return &AllowedPisps{}
-	case "payment.amount_range":
-		return &AmountRange{}
-	case "payment.budget":
-		return &Budget{}
-	case "payment.agent_recurrence":
-		return &Recurrence{}
-	case "payment.reference":
-		return &Reference{}
-	case "payment.execution_date":
-		return &ExecutionDate{}
+// typeOf is the `type` of a constraint.
+func typeOf(c Constraint) string { return reflect.ValueOf(c).FieldByName("Type").String() }
+
+// has says a mandate's constraints include one of type typ, evaluable or not.
+func has(cs Constraints, typ string) bool {
+	for _, c := range cs {
+		if typeOf(c) == typ {
+			return true
+		}
 	}
-	return nil
+	return false
 }
 
-// decodeConstraint reads one constraint of an open mandate. It never fails: what it cannot
-// read is an Unknown, which fails when the constraints are evaluated.
+// decodeConstraint reads one constraint, whose members are the whole of its schema: one beyond
+// them would change what it means. What cannot be read is an Unknown, which fails when the
+// constraints are evaluated.
 func decodeConstraint(v any) Constraint {
 	m, ok := v.(map[string]any)
 	if !ok {
-		return Unknown{Why: "not an object", Raw: v}
+		return Unknown{Why: "not an object"}
 	}
 	typ, _ := m["type"].(string)
-	c := newConstraint(typ)
-	if c == nil {
-		return Unknown{Type: typ, Why: "a constraint this verifier does not know", Raw: m}
+	t, ok := constraintTypes[typ]
+	if !ok {
+		return Unknown{Type: typ, Why: "a constraint this verifier does not know"}
 	}
+	fields := jsonFields(t)
 	for k := range m {
-		known := false
-		for _, name := range members[typ] {
-			known = known || name == k
-		}
-		if !known {
-			return Unknown{Type: typ, Why: fmt.Sprintf("member %q is not in the constraint's schema", k), Raw: m}
+		if _, ok := fields[k]; !ok {
+			return Unknown{Type: typ, Why: fmt.Sprintf("member %q is not in the constraint's schema", k)}
 		}
 	}
-	raw, err := json.Marshal(m)
-	if err == nil {
-		dec := json.NewDecoder(bytes.NewReader(raw))
-		dec.UseNumber()
-		err = dec.Decode(c)
+	raw, _ := json.Marshal(m)
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	c := reflect.New(t)
+	if err := dec.Decode(c.Interface()); err != nil {
+		return Unknown{Type: typ, Why: err.Error()}
 	}
-	if err != nil {
-		return Unknown{Type: typ, Why: err.Error(), Raw: m}
-	}
-	return deref(c)
-}
-
-func deref(c Constraint) Constraint {
-	switch t := c.(type) {
-	case *AllowedMerchants:
-		return *t
-	case *LineItems:
-		return *t
-	case *AllowedPayees:
-		return *t
-	case *AllowedInstruments:
-		return *t
-	case *AllowedPisps:
-		return *t
-	case *AmountRange:
-		return *t
-	case *Budget:
-		return *t
-	case *Recurrence:
-		return *t
-	case *Reference:
-		return *t
-	case *ExecutionDate:
-		return *t
-	}
-	return c
+	return c.Elem().Interface()
 }
 
 // claims decodes a resolved delegate payload into a mandate struct. The mandates allow
 // claims beyond their schema (any SD-JWT VC claim may be used), so unknown members are
-// ignored.
+// ignored; but not one that is a twin of a member of the schema, see exactKeys.
 func claims(m map[string]any, into any) error {
+	if err := exactKeys(m, reflect.TypeOf(into)); err != nil {
+		return err
+	}
 	raw, err := json.Marshal(m)
 	if err != nil {
 		return err
 	}
 	return json.Unmarshal(raw, into)
+}
+
+// jsonFields is a struct's members as encoding/json names them, with their types.
+func jsonFields(t reflect.Type) map[string]reflect.Type {
+	fields := map[string]reflect.Type{}
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		name, _, _ := strings.Cut(f.Tag.Get("json"), ",")
+		switch {
+		case !f.IsExported() || name == "-":
+		case name == "":
+			fields[f.Name] = f.Type
+		default:
+			fields[name] = f.Type
+		}
+	}
+	return fields
+}
+
+// exactKeys refuses a member whose name is not one of the struct's but is a case-folded twin of
+// one. encoding/json matches names case-insensitively, folding Unicode (the long s folds to s),
+// so a mandate carrying both payment_instrument and a twin of it is read by the struct as one
+// thing and by an exact-key comparison, presetClaims, as another.
+func exactKeys(v any, t reflect.Type) error {
+	for t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	switch t.Kind() {
+	case reflect.Slice:
+		if list, ok := v.([]any); ok {
+			for _, e := range list {
+				if err := exactKeys(e, t.Elem()); err != nil {
+					return err
+				}
+			}
+		}
+	case reflect.Struct:
+		m, _ := v.(map[string]any)
+		fields := jsonFields(t)
+		for k, e := range m {
+			if ft, ok := fields[k]; ok {
+				if err := exactKeys(e, ft); err != nil {
+					return err
+				}
+				continue
+			}
+			for name := range fields {
+				if strings.EqualFold(k, name) {
+					return fmt.Errorf("member %q is a case-folded twin of %q", k, name)
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // closedCheckout reads the closed Checkout Mandate of a delegate payload.
@@ -367,6 +364,8 @@ func closedPayment(m map[string]any) (*PaymentMandate, *Error) {
 		return nil, mandate(ErrMandate, "payment mandate payee needs id and name")
 	case p.PaymentAmount.Currency == "":
 		return nil, mandate(ErrMandate, "payment mandate payment_amount needs amount and currency")
+	case p.PaymentAmount.Amount <= 0:
+		return nil, mandate(ErrMandate, "payment mandate payment_amount is %d: an amount is above zero", p.PaymentAmount.Amount)
 	case p.Instrument.ID == "" || p.Instrument.Type == "":
 		return nil, mandate(ErrMandate, "payment mandate payment_instrument needs id and type")
 	}
@@ -409,12 +408,10 @@ func openCheckout(m map[string]any) (*OpenCheckoutMandate, *Error) {
 	if err := claims(m, &o); err != nil {
 		return nil, mandate(ErrMandate, "open checkout mandate: %v", err)
 	}
-	for _, c := range o.Constraints {
-		if c.kind() == "checkout.line_items" {
-			return &o, nil
-		}
+	if !has(o.Constraints, "checkout.line_items") {
+		return nil, mandate(ErrMandate, "an open checkout mandate holds a checkout.line_items constraint")
 	}
-	return nil, mandate(ErrMandate, "an open checkout mandate holds a checkout.line_items constraint")
+	return &o, nil
 }
 
 // openPayment reads an open Payment Mandate. Its constraints must include `payment.reference`.
@@ -426,12 +423,10 @@ func openPayment(m map[string]any) (*OpenPaymentMandate, *Error) {
 	if err := claims(m, &o); err != nil {
 		return nil, mandate(ErrMandate, "open payment mandate: %v", err)
 	}
-	for _, c := range o.Constraints {
-		if c.kind() == "payment.reference" {
-			return &o, nil
-		}
+	if !has(o.Constraints, "payment.reference") {
+		return nil, mandate(ErrMandate, "an open payment mandate holds a payment.reference constraint")
 	}
-	return nil, mandate(ErrMandate, "an open payment mandate holds a payment.reference constraint")
+	return &o, nil
 }
 
 // sameMerchant says two merchants are the same: by id when both have one, otherwise by name
@@ -454,5 +449,3 @@ func presetClaims(open, closed map[string]any, names ...string) *Error {
 	}
 	return nil
 }
-
-func upper(s string) string { return strings.ToUpper(s) }

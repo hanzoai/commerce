@@ -7,26 +7,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
+	"time"
 )
 
-// Caller is who the host says is calling: the merchant organization whose store it is, the
-// buyer the checkout belongs to, and the host name the request came to. The host derives it
-// from its own authentication; this package never reads it from a request.
+// Caller is who the host says is calling: the merchant organization, the buyer the checkout
+// belongs to, and the host name the request came to. The host derives it from its own
+// authentication.
 type Caller struct {
 	Org     string
 	Subject string
 	Host    string
 }
 
-// Pick is a line a checkout is opened for: a store's item id and a quantity.
-type Pick struct {
-	ID       string
-	Quantity int64
-}
-
-// Line is a line of a checkout as the store has it: the item, its title, its unit price in
-// minor units from the store's catalog, and the quantity.
+// Line is a line of a checkout as the store has it: the item, its title, its unit price in minor
+// units from the store's catalog, and the quantity.
 type Line struct {
 	ID       string
 	Title    string
@@ -34,74 +28,76 @@ type Line struct {
 	Quantity int64
 }
 
-// Cart is a checkout as the store has it now.
+// Cart is a checkout as the store has it now. Currency is the ISO 4217 code, upper case; Total is
+// what it charges, in minor units; Canceled, Pending and Paid say where it is: canceled, taken for
+// a payment begun and not ended, or paid.
 type Cart struct {
-	ID string
-	// Currency is the ISO 4217 alphabetic code, upper case.
+	ID       string
 	Currency string
 	Lines    []Line
-	// Total is what the checkout charges, in minor units.
 	Total    int64
 	Canceled bool
+	Pending  bool
+	Paid     bool
 }
 
-// Payment is how a checkout is paid: the payment credential the credential provider
-// released, and the instrument the Payment Mandate authorized it for.
+// Payment is how a checkout is paid: the credential the credential provider released, the
+// instrument the Payment Mandate authorized, and the checkout the mandates were verified against.
 type Payment struct {
 	Token      string
 	Instrument Instrument
+	Cart       Cart
 }
 
-// Paid is what the store answers a completed checkout with.
+// Paid is what the store answers a completed checkout with. Network is the payment network's
+// confirmation id, empty when the store cannot know it.
 type Paid struct {
-	// Order is the order the checkout became.
-	Order string
-	// Payment is the store's id for the payment.
+	Order   string
 	Payment string
-	// PSP is the payment service provider's confirmation id.
-	PSP string
-	// Network is the payment network's confirmation id, "" when the store cannot know it.
+	PSP     string
 	Network string
 }
 
-// Backend is what the merchant role needs from the store behind it. It does the pricing
-// and the charging; this package does neither.
+// Backend is what the merchant role needs from the store behind it, which does the pricing and the
+// charging.
 type Backend interface {
-	// Open starts a checkout for items, priced from the store's catalog.
-	Open(ctx context.Context, who Caller, items []Pick) (*Cart, error)
-	// Read is a checkout as the store has it now, its lines priced from the catalog as it is
-	// now. An unknown checkout, or one that is not the caller's, is ErrNotFound.
+	// Read is a checkout as the store has it now, its lines priced from the catalog as it is now.
+	// An unknown checkout, or one that is not the caller's, is ErrNotFound.
 	Read(ctx context.Context, who Caller, id string) (*Cart, error)
-	// Pay charges the checkout. It is idempotent in key: the same key is the same order.
-	// A payment the store refuses is a *Declined.
+	// Pay charges the checkout, which must still be pay.Cart: its buyer can change it between the
+	// verification and the charge, so the store checks where it takes the checkout for payment,
+	// and otherwise charges nothing and answers ErrStale. It is idempotent in key. A payment the
+	// store refuses is a *Declined.
 	Pay(ctx context.Context, who Caller, id, key string, pay Payment) (*Paid, error)
-	// Honours says whether the store can take payment by the instrument; when it cannot, the
-	// error is an *Unsupported.
-	Honours(ctx context.Context, who Caller, in Instrument) error
+	// Honours says whether the store takes payment by the instrument, else an *Unsupported. pinned
+	// says the mandate limits which instrument may pay; a store that cannot tie its credential to
+	// an instrument refuses that rather than ignore the limit.
+	Honours(ctx context.Context, who Caller, in Instrument, pinned bool) error
 }
 
 // Errors of a Backend.
 var (
-	// ErrNoItem: the store does not sell an item it was asked to open a checkout for.
-	ErrNoItem = errors.New("ap2: the store does not sell that item")
-	// ErrNotFound: no such checkout for this caller.
-	ErrNotFound = errors.New("ap2: no such checkout")
-	// ErrUnavailable: the store cannot answer now; nothing was decided.
-	ErrUnavailable = errors.New("ap2: the store is unavailable")
+	ErrNoItem      = errors.New("ap2: the store does not sell that item")
+	ErrNotFound    = errors.New("ap2: no such checkout")
+	ErrUnavailable = errors.New("ap2: the store is unavailable") // nothing was decided
 )
 
-// Unsupported is the refusal of a payment method the store cannot honour.
+// Unsupported is the refusal of what the store cannot honour: a payment instrument, or an item it
+// does not sell through mandates.
 type Unsupported struct {
 	Instrument Instrument
+	Item       string
 	Why        string
 }
 
 func (u *Unsupported) Error() string {
+	if u.Item != "" {
+		return fmt.Sprintf("ap2: item %q is not sold through mandates: %s", u.Item, u.Why)
+	}
 	return fmt.Sprintf("ap2: payment instrument %q of type %q is not supported: %s", u.Instrument.ID, u.Instrument.Type, u.Why)
 }
 
-// Declined is a payment the store refused: the credential was not usable or the issuer
-// declined. Code is the store's code for it.
+// Declined is a payment the store refused; Code is the store's code for it.
 type Declined struct {
 	Code    string
 	Message string
@@ -111,8 +107,8 @@ func (d *Declined) Error() string {
 	return fmt.Sprintf("ap2: payment declined (%s): %s", d.Code, d.Message)
 }
 
-// CodeOf is the AP2 error code a failure is answered with, and whether it is one to answer:
-// a refusal is, and so is a payment the store declined; a store that could not answer is not.
+// CodeOf is the AP2 error code a failure is answered with, and whether it is one to answer: a
+// refusal and a declined payment are; a store that could not answer is not.
 func CodeOf(err error) (Code, bool) {
 	var e *Error
 	var u *Unsupported
@@ -133,80 +129,29 @@ type Verdict int
 
 // The verdicts of a Ledger.
 const (
-	// Fresh: the open mandate was free and is now claimed.
-	Fresh Verdict = iota
-	// Replay: the same closed mandate already holds the claim and was completed.
-	Replay
-	// Taken: another closed mandate was completed under the open mandate.
-	Taken
-	// Busy: a completion under the open mandate is in progress.
-	Busy
+	Fresh  Verdict = iota // the open mandate was free and is now claimed
+	Replay                // the same closed mandate holds the claim, completed
+	Taken                 // another closed mandate was completed under the open mandate
+	Busy                  // a completion under the open mandate was begun and has not ended
 )
 
-// Ledger is the merchant's record of the open mandates it has completed a checkout under.
-// An open mandate buys one checkout (checkout_mandate.md, "Line Items": it cannot be split
-// across checkouts), and an agent that signs more than one closed mandate under it is
-// refused at the second (security_and_privacy_considerations.md, "Double Spend").
+// Claim is who holds an open mandate: the closed mandate that claimed it, the checkout it was
+// completing, and when.
+type Claim struct {
+	Ref      string
+	Checkout string
+	At       time.Time
+}
+
+// Ledger is the merchant's record of the open mandates it has completed a checkout under. An open
+// mandate buys one checkout (checkout_mandate.md, "Line Items") and a second closed mandate under
+// it is refused (security_and_privacy_considerations.md, "Double Spend"). A claim begun and not
+// settled stays: a charge of unknown outcome may have moved money, so no clock releases it.
 type Ledger interface {
-	// Begin claims the open mandate, named by its hash, for the closed mandate ref.
-	Begin(ctx context.Context, open, ref string) (Verdict, Lease, error)
-}
-
-// Lease is a claim a Ledger granted as Fresh.
-type Lease interface {
-	// Keep records the checkout as completed: the open mandate is spent.
-	Keep(ctx context.Context) error
-	// Drop gives the claim up, the checkout not having been completed.
-	Drop(ctx context.Context) error
-}
-
-// Memory is a Ledger held in the process. It serves one process; a merchant on more than one
-// node needs a Ledger over shared storage.
-type Memory struct {
-	mu   sync.Mutex
-	held map[string]*held
-}
-
-type held struct {
-	ref  string
-	kept bool
-}
-
-// Begin implements Ledger.
-func (m *Memory) Begin(_ context.Context, open, ref string) (Verdict, Lease, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.held == nil {
-		m.held = map[string]*held{}
-	}
-	h, ok := m.held[open]
-	switch {
-	case !ok:
-		m.held[open] = &held{ref: ref}
-		return Fresh, &lease{m: m, open: open}, nil
-	case !h.kept:
-		return Busy, nil, nil
-	case h.ref == ref:
-		return Replay, nil, nil
-	}
-	return Taken, nil, nil
-}
-
-type lease struct {
-	m    *Memory
-	open string
-}
-
-func (l *lease) Keep(context.Context) error {
-	l.m.mu.Lock()
-	defer l.m.mu.Unlock()
-	l.m.held[l.open].kept = true
-	return nil
-}
-
-func (l *lease) Drop(context.Context) error {
-	l.m.mu.Lock()
-	defer l.m.mu.Unlock()
-	delete(l.m.held, l.open)
-	return nil
+	// Begin claims the open mandate, named by its id, for closed mandate ref completing checkout,
+	// and answers with the claim that holds it: this one when Fresh.
+	Begin(ctx context.Context, open, ref, checkout string) (Verdict, Claim, error)
+	// Settle ends the claim ref holds: kept records the checkout completed; otherwise the claim
+	// is given up, nothing having been charged. A claim another closed mandate holds is left alone.
+	Settle(ctx context.Context, open, ref string, kept bool) error
 }

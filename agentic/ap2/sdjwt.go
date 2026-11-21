@@ -15,12 +15,9 @@ type token struct {
 	discs []string
 	// claims is the signed payload, disclosures not yet applied.
 	claims map[string]any
-	// alg is the payload's `_sd_alg`, "" when absent (sha-256).
-	alg string
 }
 
-// text is the token as it is hashed: the JWT, each disclosure, and a final "~"
-// (RFC 9901 section 4.2.3, the input to `sd_hash`). Hashes in AP2 are over this form.
+// text is the token as it is hashed: the JWT, each disclosure, and a final "~" (RFC 9901 4.2.3).
 func (t *token) text() string {
 	if len(t.discs) == 0 {
 		return t.jwt + "~"
@@ -28,9 +25,13 @@ func (t *token) text() string {
 	return t.jwt + "~" + strings.Join(t.discs, "~") + "~"
 }
 
-// hash is the token's hash under its own `_sd_alg`, as `sd_hash` and a receipt's
-// `reference` are calculated.
-func (t *token) hash() (string, error) { return digest(t.alg, t.text()) }
+// hash is the token's hash, as `sd_hash` and a receipt's `reference` are calculated.
+func (t *token) hash() string { return digest(t.text()) }
+
+// id names the mandate the token carries: the hash of what the issuer signed. It leaves out the
+// signature (a signed JWT has more than one valid signature) and the disclosures (the holder
+// chooses which to show), so a holder cannot present one mandate as another.
+func (t *token) id() string { return digest(t.jws.input) }
 
 func newToken(jwt string, discs []string) (*token, error) {
 	j, err := parseJWS(jwt)
@@ -41,29 +42,18 @@ func newToken(jwt string, discs []string) (*token, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: JWT payload: %v", ErrMalformed, err)
 	}
-	t := &token{jws: j, jwt: jwt, discs: discs, claims: claims}
-	if v, ok := claims["_sd_alg"]; ok {
-		if t.alg, _ = v.(string); t.alg == "" {
-			return nil, fmt.Errorf("%w: _sd_alg is not a name", ErrMalformed)
-		}
+	if alg, ok := claims["_sd_alg"]; ok && alg != "sha-256" {
+		return nil, fmt.Errorf("%w: _sd_alg %v", ErrAlgorithm, alg)
 	}
-	if _, err := digest(t.alg, ""); err != nil {
-		return nil, err
-	}
-	return t, nil
+	return &token{jws: j, jwt: jwt, discs: discs, claims: claims}, nil
 }
 
-// presentation is a mandate as it is presented: an issuer-signed token and, when the
-// closed mandate is signed by the agent, the key-bound token that follows it. The tokens are
-// joined by an empty component between them, as "~~" (Delegate SD-JWT).
+// presentation is an issuer-signed token and, when the agent signs the closed mandate, the
+// key-bound token that follows it, joined by an empty component: "~~" (Delegate SD-JWT).
 type presentation struct{ tokens []*token }
 
-// parsePresentation splits a presentation into its tokens. AP2 uses no trailing key-binding
-// JWT: the closed mandate is itself the last key-bound token.
+// parsePresentation splits a presentation into its tokens; AP2 uses no trailing KB-JWT.
 func parsePresentation(s string) (*presentation, *Error) {
-	if len(s) > maxPresentation {
-		return nil, credential(ErrMalformed, "presentation larger than %d bytes", maxPresentation)
-	}
 	parts := strings.Split(s, "~")
 	if len(parts) < 2 || parts[len(parts)-1] != "" {
 		return nil, credential(ErrMalformed, "a presentation ends with ~")
@@ -85,17 +75,14 @@ func parsePresentation(s string) (*presentation, *Error) {
 				return nil, credential(ErrMalformed, "a join with no token after it")
 			}
 		}
-		if len(discs) > maxDisclosures {
-			return nil, credential(ErrMalformed, "more than %d disclosures", maxDisclosures)
+		if len(p.tokens) == 2 {
+			return nil, credential(ErrChain, "delegation between agents is outside AP2 v0.2")
 		}
 		t, err := newToken(jwt, discs)
 		if err != nil {
 			return nil, &Error{Code: InvalidCredential, Err: err}
 		}
 		p.tokens = append(p.tokens, t)
-	}
-	if len(p.tokens) > 2 {
-		return nil, credential(ErrChain, "a delegation of %d tokens: delegation between agents is outside AP2 v0.2", len(p.tokens))
 	}
 	return &p, nil
 }
@@ -106,7 +93,7 @@ func (p *presentation) last() *token { return p.tokens[len(p.tokens)-1] }
 // reference is what a receipt's `reference` names: the hash of the closed mandate's final
 // SD-JWT, disclosures included (specification.md "Dispute", agent_authorization.md "Action
 // Authorization").
-func (p *presentation) reference() (string, error) { return p.last().hash() }
+func (p *presentation) reference() string { return p.last().hash() }
 
 // disclosure is a decoded SD-JWT disclosure: [salt, value] for an array element, or
 // [salt, name, value] for an object member.
@@ -119,14 +106,11 @@ type disclosure struct {
 // digest in an `_sd` array or an array element `{"...": digest}` that matches a disclosure is
 // replaced by its value, one that matches none is dropped. A disclosure no digest names, a
 // digest named twice, and a claim that would overwrite another are refusals.
-func (t *token) resolve() (map[string]any, error) {
-	r := &resolver{alg: t.alg, byDigest: map[string]*disclosure{}, seen: map[string]bool{}}
+func (t *token) resolve() (map[string]any, *Error) {
+	r := &resolver{byDigest: map[string]*disclosure{}, seen: map[string]bool{}}
 	for _, d := range t.discs {
-		dg, err := digest(t.alg, d)
-		if err != nil {
-			return nil, &Error{Code: InvalidCredential, Err: err}
-		}
-		raw, err := b64.DecodeString(d)
+		dg := digest(d)
+		raw, err := unb64(d)
 		if err != nil {
 			return nil, credential(ErrDisclosure, "not base64url: %v", err)
 		}
@@ -146,9 +130,12 @@ func (t *token) resolve() (map[string]any, error) {
 		}
 		r.byDigest[dg] = &disclosure{parts: parts}
 	}
-	out, err := r.object(t.claims, 0)
+	out, err := r.object(t.claims, scope{})
 	if err != nil {
 		return nil, err
+	}
+	if r.withheld {
+		return nil, unresolved("a constraint, or a member of one, was withheld: only the elements of an allowed list may be")
 	}
 	for _, d := range r.byDigest {
 		if !d.used {
@@ -160,9 +147,26 @@ func (t *token) resolve() (map[string]any, error) {
 }
 
 type resolver struct {
-	alg      string
 	byDigest map[string]*disclosure
 	seen     map[string]bool
+	// withheld is set when a digest inside a mandate's constraints names no disclosure and is
+	// not an element of a list the schema makes selectively disclosable. Dropping it would drop
+	// a constraint, or a limit of one, and so widen what the mandate allows.
+	withheld bool
+}
+
+// scope says where in a payload resolution is: inside constraints, and the member that holds the
+// array being resolved.
+type scope struct {
+	constraints bool
+	key         string
+}
+
+// discloses says digests withheld here are the holder's to withhold: the elements of the
+// allowed and acceptable_items lists (open_checkout_mandate.json, open_payment_mandate.json,
+// x-selectively-disclosable-array), and anything outside constraints.
+func (s scope) discloses(member bool) bool {
+	return !s.constraints || (!member && (s.key == "allowed" || s.key == "acceptable_items"))
 }
 
 // claim takes the disclosure a digest names, if one was sent.
@@ -182,16 +186,13 @@ func (r *resolver) claim(dg string, width int) (*disclosure, *Error) {
 	return d, nil
 }
 
-func (r *resolver) object(m map[string]any, depth int) (map[string]any, *Error) {
-	if depth > maxDepth {
-		return nil, credential(ErrMalformed, "payload nested too deep")
-	}
+func (r *resolver) object(m map[string]any, sc scope) (map[string]any, *Error) {
 	out := make(map[string]any, len(m))
 	for k, v := range m {
 		if k == "_sd" {
 			continue
 		}
-		rv, err := r.value(v, depth+1)
+		rv, err := r.value(v, scope{constraints: sc.constraints || k == "constraints", key: k})
 		if err != nil {
 			return nil, err
 		}
@@ -215,6 +216,7 @@ func (r *resolver) object(m map[string]any, depth int) (map[string]any, *Error) 
 			return nil, err
 		}
 		if d == nil {
+			r.withheld = r.withheld || !sc.discloses(true)
 			continue
 		}
 		name, ok := d.parts[1].(string)
@@ -224,17 +226,17 @@ func (r *resolver) object(m map[string]any, depth int) (map[string]any, *Error) 
 		if _, dup := out[name]; dup {
 			return nil, credential(ErrDisclosure, "a disclosure overwrites the claim %q", name)
 		}
-		if out[name], err = r.value(d.parts[2], depth+1); err != nil {
+		if out[name], err = r.value(d.parts[2], scope{constraints: sc.constraints || name == "constraints", key: name}); err != nil {
 			return nil, err
 		}
 	}
 	return out, nil
 }
 
-func (r *resolver) value(v any, depth int) (any, *Error) {
+func (r *resolver) value(v any, sc scope) (any, *Error) {
 	switch t := v.(type) {
 	case map[string]any:
-		return r.object(t, depth)
+		return r.object(t, sc)
 	case []any:
 		out := make([]any, 0, len(t))
 		for _, e := range t {
@@ -249,9 +251,10 @@ func (r *resolver) value(v any, depth int) (any, *Error) {
 						return nil, err
 					}
 					if d == nil {
+						r.withheld = r.withheld || !sc.discloses(false)
 						continue
 					}
-					rv, err := r.value(d.parts[1], depth+1)
+					rv, err := r.value(d.parts[1], sc)
 					if err != nil {
 						return nil, err
 					}
@@ -259,7 +262,7 @@ func (r *resolver) value(v any, depth int) (any, *Error) {
 					continue
 				}
 			}
-			rv, err := r.value(e, depth+1)
+			rv, err := r.value(e, sc)
 			if err != nil {
 				return nil, err
 			}

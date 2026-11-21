@@ -39,9 +39,9 @@ func mustParse(t *testing.T, s string) *presentation {
 	return p
 }
 
-func mustDelegate(t *testing.T, v *Verifier, tk *token, now time.Time) *Delegate {
+func mustDelegate(t *testing.T, v *Verifier, tk *token) map[string]any {
 	t.Helper()
-	d, err := v.delegate(tk, now)
+	d, err := v.delegate(tk)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestSpecCheckoutMandates(t *testing.T) {
 		t.Fatalf("%d tokens", len(chain.tokens))
 	}
 	open, closed := chain.tokens[0], chain.tokens[1]
-	if open.jws.header.Typ != "example+sd-jwt" || open.jws.header.Kid != "agent-provider-key-1" || closed.jws.header.Typ != "kb+sd-jwt" || open.alg != "sha-256" {
+	if open.jws.header.Typ != "example+sd-jwt" || open.jws.header.Kid != "agent-provider-key-1" || closed.jws.header.Typ != "kb+sd-jwt" {
 		t.Fatalf("headers %+v %+v", open.jws.header, closed.jws.header)
 	}
 
@@ -88,10 +88,10 @@ func TestSpecCheckoutMandates(t *testing.T) {
 		t.Fatal("the closed example is not the second token of the chain")
 	}
 
-	vc := &Verifier{}
-	od := mustDelegate(t, vc, open, time.Unix(1777342400, 0))
+	vc := &Verifier{Now: func() time.Time { return time.Unix(1777342400, 0) }}
+	od := mustDelegate(t, vc, open)
 	var om OpenCheckoutMandate
-	strict(t, od.Claims, &om)
+	strict(t, od, &om)
 	if om.VCT != VCTCheckoutOpen || len(om.Constraints) != 2 {
 		t.Fatalf("open mandate %+v", om)
 	}
@@ -112,18 +112,18 @@ func TestSpecCheckoutMandates(t *testing.T) {
 		t.Fatalf("the closed example's signature: %v", err)
 	}
 	// ... and binds to the open token as presented, by sd_hash.
-	if h, _ := open.hash(); closed.claims["sd_hash"] != h || h != "FzLoxbbtgQGYZxoSM2NJYJtkFTSsdfUBoVEQ12k7JN8" {
+	if h := open.hash(); closed.claims["sd_hash"] != h || h != "FzLoxbbtgQGYZxoSM2NJYJtkFTSsdfUBoVEQ12k7JN8" {
 		t.Fatalf("sd_hash %v, hash of the open token %s", closed.claims["sd_hash"], h)
 	}
 
-	cd := mustDelegate(t, vc, closed, time.Unix(1777342400, 0))
+	cd := mustDelegate(t, vc, closed)
 	var cm CheckoutMandate
-	strict(t, cd.Claims, &cm)
+	strict(t, cd, &cm)
 	if cm.VCT != VCTCheckout || cm.CheckoutHash != "NivWhuqfzcvZNapvIEJ2-3tsdQLkiuIcye2g46WVgX8" {
 		t.Fatalf("closed mandate %+v", cm)
 	}
 	// checkout_hash is the hash of checkout_jwt, in the algorithm of the SD-JWT.
-	if h, _ := digest(closed.alg, cm.CheckoutJWT); h != cm.CheckoutHash {
+	if h := digest(cm.CheckoutJWT); h != cm.CheckoutHash {
 		t.Fatalf("hash of checkout_jwt %s, checkout_hash %s", h, cm.CheckoutHash)
 	}
 	// aud, nonce and iat of the key-bound token.
@@ -138,7 +138,7 @@ func TestSpecCheckoutMandates(t *testing.T) {
 
 	// Its signer and the open token's issuer are not published, so a verifier that trusts
 	// other keys refuses the example at its first token, and for that reason.
-	v := &Verifier{Trust: Keys{}, Now: func() time.Time { return time.Unix(1777342400, 0) }}
+	v := &Verifier{Trust: keys{}, Now: func() time.Time { return time.Unix(1777342400, 0) }}
 	_, err = v.Checkout(context.Background(), vector(t, "checkout_chain"), Want{Audience: "merchant", Nonce: "b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4"}, &newParty(t, "m").key.PublicKey)
 	refusedWith(t, err, InvalidCredential, ErrKey)
 }
@@ -153,10 +153,10 @@ func TestSpecPaymentMandates(t *testing.T) {
 		t.Fatal("the closed example is not the second token of the chain")
 	}
 	now := time.Unix(1777342400, 0)
-	vc := &Verifier{}
-	od := mustDelegate(t, vc, open, now)
+	vc := &Verifier{Now: func() time.Time { return time.Unix(1777342400, 0) }}
+	od := mustDelegate(t, vc, open)
 	var om OpenPaymentMandate
-	strict(t, od.Claims, &om)
+	strict(t, od, &om)
 	if om.VCT != VCTPaymentOpen || len(om.Constraints) != 3 {
 		t.Fatalf("open payment mandate %+v", om)
 	}
@@ -170,12 +170,12 @@ func TestSpecPaymentMandates(t *testing.T) {
 	if err := closed.jws.verify(key); err != nil {
 		t.Fatalf("the closed example's signature: %v", err)
 	}
-	if h, _ := open.hash(); closed.claims["sd_hash"] != h {
+	if h := open.hash(); closed.claims["sd_hash"] != h {
 		t.Fatalf("sd_hash %v, hash of the open token %s", closed.claims["sd_hash"], h)
 	}
-	cd := mustDelegate(t, vc, closed, now)
+	cd := mustDelegate(t, vc, closed)
 	var pm PaymentMandate
-	strict(t, cd.Claims, &pm)
+	strict(t, cd, &pm)
 	if pm.VCT != VCTPayment || pm.PaymentAmount != (Amount{Amount: 19900, Currency: "USD"}) || pm.Payee.ID != "merchant_1" {
 		t.Fatalf("closed payment mandate %+v", pm)
 	}
@@ -184,11 +184,11 @@ func TestSpecPaymentMandates(t *testing.T) {
 	// checkout_hash, and the open payment mandate's payment.reference is the hash of the open
 	// checkout mandate.
 	cc := mustParse(t, vector(t, "checkout_chain"))
-	ccd := mustDelegate(t, vc, cc.tokens[1], now)
-	if pm.TransactionID != ccd.Claims["checkout_hash"] {
-		t.Fatalf("transaction_id %s, checkout_hash %v", pm.TransactionID, ccd.Claims["checkout_hash"])
+	ccd := mustDelegate(t, vc, cc.tokens[1])
+	if pm.TransactionID != ccd["checkout_hash"] {
+		t.Fatalf("transaction_id %s, checkout_hash %v", pm.TransactionID, ccd["checkout_hash"])
 	}
-	openCheckoutHash, _ := cc.tokens[0].hash()
+	openCheckoutHash := cc.tokens[0].hash()
 	if ref := om.Constraints[2].(Reference); ref.ConditionalTransactionID != openCheckoutHash {
 		t.Fatalf("payment.reference %s, hash of the open checkout mandate %s", ref.ConditionalTransactionID, openCheckoutHash)
 	}
@@ -211,13 +211,13 @@ func TestSpecPaymentMandates(t *testing.T) {
 func TestSpecExampleCheckoutSatisfiesItsOpenMandate(t *testing.T) {
 	chain := mustParse(t, vector(t, "checkout_chain"))
 	now := time.Unix(1777342400, 0)
-	v := &Verifier{}
-	o, oerr := openCheckout(mustDelegate(t, v, chain.tokens[0], now).Claims)
+	v := &Verifier{Now: func() time.Time { return now }}
+	o, oerr := openCheckout(mustDelegate(t, v, chain.tokens[0]))
 	if oerr != nil {
 		t.Fatal(oerr)
 	}
 	var cm CheckoutMandate
-	claims(mustDelegate(t, v, chain.tokens[1], now).Claims, &cm)
+	claims(mustDelegate(t, v, chain.tokens[1]), &cm)
 	j, err := parseJWS(cm.CheckoutJWT)
 	if err != nil {
 		t.Fatal(err)
@@ -231,13 +231,13 @@ func TestSpecExampleCheckoutSatisfiesItsOpenMandate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if total, _ := co.Total("total"); co.Currency != "USD" || total != 19900 || co.Status != Incomplete || co.Merchant.ID != "merchant_1" {
+	if total, _ := co.Total("total"); co.Currency != "USD" || total != 19900 || co.Status != "incomplete" || co.Merchant.ID != "merchant_1" {
 		t.Fatalf("checkout = %+v", co)
 	}
 	// The payment of the example mandate pays exactly this checkout.
 	pay := mustParse(t, vector(t, "payment_chain"))
 	var pm PaymentMandate
-	claims(mustDelegate(t, v, pay.tokens[1], now).Claims, &pm)
+	claims(mustDelegate(t, v, pay.tokens[1]), &pm)
 	if total, _ := co.Total("total"); pm.PaymentAmount.Amount != total || pm.PaymentAmount.Currency != co.Currency {
 		t.Fatalf("the payment of %+v does not pay the checkout", pm.PaymentAmount)
 	}

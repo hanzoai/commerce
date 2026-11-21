@@ -6,6 +6,8 @@ package ap2
 import (
 	"context"
 	"errors"
+	"math"
+	"strings"
 	"testing"
 	"time"
 )
@@ -77,18 +79,18 @@ func TestLineItemsAreMatchedAsAMaximumFlow(t *testing.T) {
 
 func TestLineItemsRefuseWhatTheyCannotEvaluate(t *testing.T) {
 	for name, c := range map[string]LineItems{
-		"no requirement":        {},
-		"a requirement of none": {Items: []LineRequirement{req(0, "A")}},
-		"no acceptable item":    {Items: []LineRequirement{req(1)}},
-		"too many requirements": {Items: make([]LineRequirement, maxRequirements+1)},
-		"a vast quantity":       {Items: []LineRequirement{req(maxQuantity+1, "A")}},
+		"no requirement":             {},
+		"a requirement of none":      {Items: []LineRequirement{req(0, "A")}},
+		"no acceptable item":         {Items: []LineRequirement{req(1)}},
+		"requirements that overflow": {Items: []LineRequirement{req(math.MaxInt64, "A"), req(1, "A")}},
+		"a requirement below zero":   {Items: []LineRequirement{req(-1, "A")}},
 	} {
 		if err := c.fit(basket(line("A", 1))); err == nil {
 			t.Errorf("%s accepted", name)
 		}
 	}
-	if err := (LineItems{Items: []LineRequirement{req(1, "A")}}).fit(basket(line("A", maxQuantity+1))); err == nil {
-		t.Error("a vast cart accepted")
+	if err := (LineItems{Items: []LineRequirement{req(1, "A")}}).fit(basket(line("A", math.MaxInt64), line("A", 1))); err == nil {
+		t.Error("a cart that overflows accepted")
 	}
 }
 
@@ -133,7 +135,7 @@ func TestConstraintsOfOpenCheckoutMandates(t *testing.T) {
 			co, _, _ := w.checkout("chk_1", 1, 500)
 			co.LineItems[0].Item.ID = "credit-9999"
 			jwt, _ := w.merchant.Sign(co)
-			h, _ := digest("", jwt)
+			h := digest(jwt)
 			a.closing(func(b *sd) map[string]any { return w.closedCheckoutItem(b, jwt, h) })
 		}, UnresolvedConstraint, ErrConstraint},
 		{"a merchant the mandate does not allow", func(w *world, a *autonomous) {
@@ -212,7 +214,7 @@ func TestPaymentMandatesVerify(t *testing.T) {
 	w := newWorld(t)
 	a, want := w.payment(t, 500)
 	p, err := w.verifyPayment(a.text(), want)
-	if err != nil || p.Mandate.PaymentAmount.Amount != 500 || p.Open == nil {
+	if err != nil || p.Mandate.PaymentAmount.Amount != 500 {
 		t.Fatalf("proof = %+v %v", p, err)
 	}
 	// signed by the Trusted Agent Provider directly: no open mandate, no constraints
@@ -220,7 +222,7 @@ func TestPaymentMandatesVerify(t *testing.T) {
 	b := w.sd()
 	direct := w.rootTok(b, paymentItem(hash, 500))
 	p, err = w.verifyPayment(direct.text(t), PayWant{CheckoutJWT: jwt})
-	if err != nil || p.Open != nil {
+	if err != nil {
 		t.Fatalf("direct = %+v %v", p, err)
 	}
 }
@@ -420,7 +422,8 @@ func TestSpentIsAskedAboutTheOpenMandate(t *testing.T) {
 	if _, err := w.verifyPayment(a.text(), want); err != nil {
 		t.Fatal(err)
 	}
-	if h, _ := digest("", a.openText()); asked != h {
-		t.Fatalf("asked about %q, want %q", asked, h)
+	jwt := strings.SplitN(a.openText(), "~", 2)[0]
+	if h := digest(jwt[:strings.LastIndex(jwt, ".")]); asked != h {
+		t.Fatalf("asked about %q, want %q (the hash of what the issuer signed)", asked, h)
 	}
 }

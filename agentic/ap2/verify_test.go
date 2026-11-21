@@ -46,12 +46,12 @@ func TestAutonomousCheckoutMandateVerifies(t *testing.T) {
 		t.Fatal(err)
 	}
 	closed, _ := parsePresentation(text)
-	ref, _ := closed.reference()
+	ref := closed.reference()
 	if p.Reference != ref || p.Mandate.CheckoutHash != hash || p.Checkout.ID != co.ID || p.OpenToken != a.openText() {
 		t.Fatalf("proof = %+v", p)
 	}
 	// The receipt reference is the hash of the final SD-JWT, disclosures included.
-	if want, _ := digest("", closed.last().text()); p.Reference != want {
+	if want := digest(closed.last().text()); p.Reference != want {
 		t.Fatalf("reference %s, want %s", p.Reference, want)
 	}
 }
@@ -60,7 +60,7 @@ func TestDirectCheckoutMandateVerifies(t *testing.T) {
 	w := newWorld(t)
 	_, jwt, hash := w.checkout("chk_1", 1, 500)
 	p, err := w.check(w.directCheckout(jwt, hash).text(t))
-	if err != nil || p.Open != nil || p.OpenToken != "" || p.Checkout.ID != "chk_1" {
+	if err != nil || p.OpenToken != "" || p.Checkout.ID != "chk_1" {
 		t.Fatalf("proof = %+v %v", p, err)
 	}
 }
@@ -89,7 +89,7 @@ func TestChainRefusals(t *testing.T) {
 		{"no sd_hash", func(w *world, a *autonomous) string { a.bind = func(map[string]any, string) {}; return a.text() }, InvalidCredential, ErrBinding},
 		{"issuer_jwt_hash in place of sd_hash", func(w *world, a *autonomous) string {
 			a.bind = func(c map[string]any, open string) {
-				h, _ := digest("", strings.SplitN(open, "~", 2)[0])
+				h := digest(strings.SplitN(open, "~", 2)[0])
 				c["issuer_jwt_hash"] = h
 			}
 			return a.text()
@@ -172,7 +172,6 @@ func TestPresentationShapeRefusals(t *testing.T) {
 		"a token with no JWT":          "~" + good,
 		"not a JWS":                    "abc~",
 		"header that is not JSON":      "AAAA.AAAA.AAAA~",
-		"larger than the bound":        strings.Repeat("a", maxPresentation+1),
 		"a disclosure that is not b64": strings.Replace(good, "~", "~!!!!~", 1),
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -253,7 +252,7 @@ func TestRepeatedJSONMembersAreRefused(t *testing.T) {
 			t.Errorf("%s accepted", bad)
 		}
 	}
-	if _, err := parse([]byte(strings.Repeat("[", maxDepth+2) + strings.Repeat("]", maxDepth+2))); err == nil {
+	if _, err := parse([]byte(strings.Repeat("[", 10001) + strings.Repeat("]", 10001))); err == nil {
 		t.Error("deep nesting accepted")
 	}
 }
@@ -305,27 +304,27 @@ func TestTheCheckoutInsideTheMandate(t *testing.T) {
 	}{
 		{"signed by another key", func(w *world) (string, string) {
 			forged, _ := Signer{Key: other.key, Kid: "merchant-key-1"}.Sign(Checkout{})
-			h, _ := digest("", forged)
+			h := digest(forged)
 			return forged, h
 		}, ErrCheckout},
-		{"not a JWT", func(w *world) (string, string) { h, _ := digest("", "nope"); return "nope", h }, ErrCheckout},
+		{"not a JWT", func(w *world) (string, string) { h := digest("nope"); return "nope", h }, ErrCheckout},
 		{"a checkout that is not a checkout", func(w *world) (string, string) {
 			j, _ := w.merchant.Sign(map[string]any{"id": "x"})
-			h, _ := digest("", j)
+			h := digest(j)
 			return j, h
 		}, ErrCheckout},
 		{"a checkout with two totals", func(w *world) (string, string) {
 			co, _, _ := w.checkout("chk_1", 1, 500)
 			co.Totals = append(co.Totals, Total{Type: "total", Amount: 1})
 			j, _ := w.merchant.Sign(co)
-			h, _ := digest("", j)
+			h := digest(j)
 			return j, h
 		}, ErrCheckout},
 		{"a checkout past its expiry", func(w *world) (string, string) {
 			co, _, _ := w.checkout("chk_1", 1, 500)
 			co.ExpiresAt = w.now.Add(-time.Second).UTC().Format(time.RFC3339)
 			j, _ := w.merchant.Sign(co)
-			h, _ := digest("", j)
+			h := digest(j)
 			return j, h
 		}, ErrExpired},
 	} {
@@ -338,28 +337,14 @@ func TestTheCheckoutInsideTheMandate(t *testing.T) {
 	}
 }
 
-func TestEveryHashAlgorithmTheSpecNamesWorks(t *testing.T) {
-	for _, alg := range []string{"sha-256", "sha-384", "sha-512"} {
-		t.Run(alg, func(t *testing.T) {
-			w := newWorld(t)
-			w.alg = alg
-			_, jwt, hash := w.checkout("chk_1", 1, 500)
-			if _, err := w.check(w.checkoutMandate(jwt, hash).text()); err != nil {
-				t.Fatal(err)
-			}
-			// the checkout hash is in the mandate's algorithm: another algorithm's is refused
-			other := "sha-512"
-			if alg == "sha-512" {
-				other = "sha-256"
-			}
-			wrong, _ := digest(other, jwt)
-			_, err := w.check(w.checkoutMandate(jwt, wrong).text())
-			refusedWith(t, err, InvalidMandate, ErrHash)
-		})
+// sha-256 is the one hash this package accepts; a token that names another is refused.
+func TestAnotherHashAlgorithmIsRefused(t *testing.T) {
+	for _, alg := range []string{"sha-512", "sha-384", "md5", ""} {
+		w := newWorld(t)
+		_, jwt, hash := w.checkout("chk_1", 1, 500)
+		a := w.checkoutMandate(jwt, hash)
+		a.open.claims["_sd_alg"] = alg
+		_, err := w.check(a.text())
+		refusedWith(t, err, InvalidCredential, ErrAlgorithm)
 	}
-	w := newWorld(t)
-	w.alg = "md5"
-	_, jwt, hash := w.checkout("chk_1", 1, 500)
-	_, err := w.check(w.checkoutMandate(jwt, hash).text())
-	refusedWith(t, err, InvalidCredential, ErrAlgorithm)
 }

@@ -23,11 +23,8 @@ const (
 	// InvalidMandate: the mandate is authentic but does not approve the requested action. A
 	// terminal error.
 	InvalidMandate Code = "invalid_mandate"
-	// MandatesNotSupported: the verifier does not support mandates for this action.
-	MandatesNotSupported Code = "mandates_not_supported"
-	// PaymentDeclined is the code of a receipt for a payment the processor refused after the
-	// mandates were accepted. The receipt schemas take any unique string as an error code;
-	// this one extends the four above.
+	// PaymentDeclined is the code of a payment the processor refused after the mandates were
+	// accepted; the receipt schemas take any unique string as an error code.
 	PaymentDeclined Code = "payment_declined"
 )
 

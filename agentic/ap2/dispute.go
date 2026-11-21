@@ -11,36 +11,27 @@ import (
 	"time"
 )
 
-// Evidence is what a dispute brings together: the two mandates as presented and the two
-// receipts that answered them (specification.md, "Dispute Evidence").
+// Evidence is what a dispute brings together: the two mandates as presented, the two receipts that
+// answered them (specification.md, "Dispute Evidence"), the keys of the merchant and the processor,
+// the audience and nonce the Checkout Mandate was bound to, and what had been spent under an open
+// Payment Mandate.
 type Evidence struct {
-	// Checkout and Payment are the presentations of the closed Checkout Mandate and Payment
-	// Mandate, each with its open mandate when it has one: the SD-JWTs as they were stored.
-	Checkout string
-	Payment  string
-	// CheckoutReceipt and PaymentReceipt are the signed receipts.
+	Checkout        string
+	Payment         string
 	CheckoutReceipt string
 	PaymentReceipt  string
-	// Merchant is the key the merchant signed the checkout and its receipt with; Processor is
-	// the key of the payment receipt's issuer.
-	Merchant  *ecdsa.PublicKey
-	Processor *ecdsa.PublicKey
-	// Want is the audience and nonce the Checkout Mandate was bound to.
-	Want Want
-	// Spent is what had been accepted under an open Payment Mandate when this one was, for
-	// the constraints that need it.
-	Spent Spent
+	Merchant        *ecdsa.PublicKey
+	Processor       *ecdsa.PublicKey
+	Want            Want
+	Spent           Spent
 }
 
-// Dispute checks that the mandates and receipts of a purchase are what they claim, so that
-// they can stand as evidence of what the user and each role saw (specification.md,
-// "Dispute"). The mandates are checked as of the time each receipt was issued, since they may
-// have expired since. It follows the steps the spec lists: the Checkout Mandate verifies by the
-// Merchant rules, with the hash of its checkout_jwt computed from the checkout_jwt itself;
-// the Checkout Receipt's reference is the hash of the closed Checkout Mandate; the Payment
-// Mandate verifies by the Merchant Payment Processor rules against that checkout; and the
-// Payment Receipt's reference is the hash of the closed Payment Mandate. Both receipts must be
-// success receipts.
+// Dispute applies the steps of specification.md, "Dispute": the Checkout Mandate verifies by the
+// merchant's rules, with its checkout_hash computed from the checkout_jwt; the Checkout Receipt's
+// reference is the hash of the closed Checkout Mandate; the Payment Mandate verifies by the
+// processor's rules against that checkout; and the Payment Receipt's reference is the hash of the
+// closed Payment Mandate. Both receipts must be success receipts. Each mandate is checked as of
+// the time its receipt was issued: it may have expired since.
 func (v *Verifier) Dispute(ctx context.Context, ev Evidence) error {
 	if ev.Merchant == nil || ev.Processor == nil {
 		return errors.New("ap2: a dispute needs the merchant's key and the processor's")
@@ -56,19 +47,19 @@ func (v *Verifier) Dispute(ctx context.Context, ev Evidence) error {
 	if cr.Status != Success || pr.Status != Success {
 		return fmt.Errorf("%w: a dispute is over a purchase, and a receipt says it did not happen", ErrMandate)
 	}
-	proof, err := v.at(time.Unix(cr.IssuedAt, 0)).Checkout(ctx, ev.Checkout, ev.Want, ev.Merchant)
+	proof, err := v.at(cr.IssuedAt).Checkout(ctx, ev.Checkout, ev.Want, ev.Merchant)
 	if err != nil {
 		return fmt.Errorf("checkout mandate: %w", err)
 	}
-	if _, err := v.at(time.Unix(pr.IssuedAt, 0)).Payment(ctx, ev.Payment, PayWant{CheckoutJWT: proof.Mandate.CheckoutJWT, OpenCheckout: proof.OpenToken, Spent: ev.Spent}); err != nil {
+	if _, err := v.at(pr.IssuedAt).Payment(ctx, ev.Payment, PayWant{CheckoutJWT: proof.Mandate.CheckoutJWT, OpenCheckout: proof.OpenToken, Spent: ev.Spent}); err != nil {
 		return fmt.Errorf("payment mandate: %w", err)
 	}
 	return nil
 }
 
-// at is the verifier with its clock at t.
-func (v *Verifier) at(t time.Time) *Verifier {
+// at is the verifier with its clock at the Unix time t.
+func (v *Verifier) at(t int64) *Verifier {
 	c := *v
-	c.Now = func() time.Time { return t }
+	c.Now = func() time.Time { return time.Unix(t, 0) }
 	return &c
 }
