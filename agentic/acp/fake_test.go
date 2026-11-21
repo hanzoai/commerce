@@ -211,7 +211,7 @@ var (
 
 func newRig(t *testing.T, mut ...func(*Config)) *rig {
 	t.Helper()
-	h, err := TokenizedCard("card_tokenized", "acct_1234567890", "stripe", false, []string{"visa", "mastercard"}, []string{"credit", "debit"})
+	h, err := TokenizedCard("card_tokenized", "stripe", map[string]any{"merchant_id": "acct_1234567890", "environment": "production", "accepted_brands": []string{"visa", "mastercard"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,12 +227,15 @@ func newRig(t *testing.T, mut ...func(*Config)) *rig {
 			}
 			return Caller{}, errors.New("unknown token")
 		},
-		Handlers: func(context.Context, Caller) ([]PaymentHandler, error) { return []PaymentHandler{r.handler}, nil },
-		Order:    func(id string) string { return "https://www.testshop.com/orders/" + id },
-		Links:    []Link{{Type: "terms_of_use", URL: "https://www.testshop.com/legal/terms-of-use"}},
-		Events:   r.ev,
-		Report:   r.rep.add,
-		Now:      func() time.Time { return r.now },
+		Handlers:   func(context.Context, Caller) ([]PaymentHandler, error) { return []PaymentHandler{r.handler}, nil },
+		Order:      func(id string) string { return "https://www.testshop.com/orders/" + id },
+		Links:      []Link{{Type: "terms_of_use", URL: "https://www.testshop.com/legal/terms-of-use"}},
+		Events:     r.ev,
+		Ledger:     newMemory(),
+		RetryAfter: 1,
+		Skew:       300 * time.Second,
+		Report:     r.rep.add,
+		Now:        func() time.Time { return r.now },
 	}
 	for _, m := range mut {
 		m(&r.cfg)
@@ -334,3 +337,54 @@ func (r *rig) create() string {
 const createBody = `{"currency":"usd","line_items":[{"id":"item_123"}],"capabilities":{"interventions":{"supported":["3ds","address_verification"]}}}`
 
 const completeBody = `{"payment_data":{"handler_id":"card_tokenized","instrument":{"type":"card","credential":{"type":"spt","token":"spt_123"}}}}`
+
+// memory is a Ledger held in the process, for tests.
+type memory struct {
+	mu      sync.Mutex
+	entries map[string]*entry
+}
+
+type entry struct {
+	digest string
+	res    *Stored
+}
+
+func newMemory() *memory { return &memory{entries: map[string]*entry{}} }
+
+func (m *memory) Begin(_ context.Context, scope, key, digest string) (Verdict, Stored, Lease, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	id := scope + "\x00" + key
+	if e, ok := m.entries[id]; ok {
+		switch {
+		case e.res == nil:
+			return Busy, Stored{}, nil, nil
+		case e.digest != digest:
+			return Mismatch, Stored{}, nil, nil
+		}
+		return Replay, *e.res, nil, nil
+	}
+	e := &entry{digest: digest}
+	m.entries[id] = e
+	return Fresh, Stored{}, &memoryLease{m: m, id: id, e: e}, nil
+}
+
+type memoryLease struct {
+	m  *memory
+	id string
+	e  *entry
+}
+
+func (l *memoryLease) Settle(_ context.Context, res Stored) error {
+	l.m.mu.Lock()
+	defer l.m.mu.Unlock()
+	l.e.res = &res
+	return nil
+}
+
+func (l *memoryLease) Release(context.Context) error {
+	l.m.mu.Lock()
+	defer l.m.mu.Unlock()
+	delete(l.m.entries, l.id)
+	return nil
+}

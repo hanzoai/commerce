@@ -11,14 +11,15 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 )
 
-// The signature of the webhook specification: Merchant-Signature is t=<unix_seconds>,v1=<64_hex>,
-// the HMAC-SHA256 of timestamp + "." + raw body under the shared secret.
+// Merchant-Signature is t=<unix_seconds>,v1=<64_hex>, the HMAC-SHA256 of timestamp + "." + raw
+// body under the shared secret (openapi.agentic_checkout_webhook.yaml).
 
 // This vector was computed outside Go with Python's hmac and hashlib.
 const (
@@ -32,53 +33,6 @@ var vecTime = time.Unix(1709123456, 0)
 func TestSignMatchesAnIndependentHMAC(t *testing.T) {
 	if got := Sign([]byte(vecSecret), vecTime, []byte(vecBody)); got != vecSig {
 		t.Fatalf("Sign = %s; want %s", got, vecSig)
-	}
-}
-
-func TestVerifyAcceptsTheSignatureAndRefusesEverythingElse(t *testing.T) {
-	secret, body := []byte(vecSecret), []byte(vecBody)
-	if err := Verify(secret, vecSig, body, vecTime, Tolerance); err != nil {
-		t.Fatal(err)
-	}
-	// Hex is accepted in either case (the header pattern is [a-fA-F0-9]{64}).
-	upper := "t=1709123456,v1=" + strings.ToUpper(vecSig[len("t=1709123456,v1="):])
-	if err := Verify(secret, upper, body, vecTime, Tolerance); err != nil {
-		t.Fatalf("uppercase hex: %v", err)
-	}
-	for name, tc := range map[string]struct {
-		secret []byte
-		header string
-		body   string
-		now    time.Time
-		want   error
-	}{
-		"no header":            {secret, "", vecBody, vecTime, ErrMissing},
-		"the wrong secret":     {[]byte("another"), vecSig, vecBody, vecTime, ErrMismatch},
-		"a tampered body":      {secret, vecSig, strings.Replace(vecBody, "created", "shipped", 1), vecTime, ErrMismatch},
-		"a tampered timestamp": {secret, strings.Replace(vecSig, "1709123456", "1709123457", 1), vecBody, vecTime, ErrMismatch},
-		"a flipped bit":        {secret, vecSig[:len(vecSig)-1] + "6", vecBody, vecTime, ErrMismatch},
-		"no t":                 {secret, "v1=338efc7c9418016590773fec50cdde35f0cee854777ea940add20d93175b19b5", vecBody, vecTime, ErrMalformed},
-		"no v1":                {secret, "t=1709123456", vecBody, vecTime, ErrMalformed},
-		"v1 first":             {secret, "v1=338efc7c9418016590773fec50cdde35f0cee854777ea940add20d93175b19b5,t=1709123456", vecBody, vecTime, ErrMalformed},
-		"a short digest":       {secret, "t=1709123456,v1=338efc", vecBody, vecTime, ErrMalformed},
-		"a long digest":        {secret, vecSig + "00", vecBody, vecTime, ErrMalformed},
-		"a non-hex digest":     {secret, "t=1709123456,v1=" + strings.Repeat("g", 64), vecBody, vecTime, ErrMalformed},
-		"a non-numeric t":      {secret, "t=abc,v1=" + strings.Repeat("a", 64), vecBody, vecTime, ErrMalformed},
-		"an empty t":           {secret, "t=,v1=" + strings.Repeat("a", 64), vecBody, vecTime, ErrMalformed},
-		"a signed t":           {secret, "t=-1,v1=" + strings.Repeat("a", 64), vecBody, vecTime, ErrMalformed},
-		"a third field":        {secret, vecSig + ",v0=ab", vecBody, vecTime, ErrMalformed},
-		"a replay after 301s":  {secret, vecSig, vecBody, vecTime.Add(301 * time.Second), ErrExpired},
-		"a clock 301s behind":  {secret, vecSig, vecBody, vecTime.Add(-301 * time.Second), ErrExpired},
-	} {
-		if err := Verify(tc.secret, tc.header, []byte(tc.body), tc.now, Tolerance); !errors.Is(err, tc.want) {
-			t.Errorf("%s: %v; want %v", name, err, tc.want)
-		}
-	}
-	// The tolerance is inclusive.
-	for _, d := range []time.Duration{300 * time.Second, -300 * time.Second} {
-		if err := Verify(secret, vecSig, body, vecTime.Add(d), Tolerance); err != nil {
-			t.Errorf("at %v: %v", d, err)
-		}
 	}
 }
 
@@ -99,27 +53,28 @@ func TestEveryValueSignedIsAcceptedByTheSpecsHeaderPattern(t *testing.T) {
 // Merchant-Signature, answers 200 {"received": true}, and records what it was sent.
 type receiver struct {
 	secret  []byte
-	now     func() time.Time
 	status  int
 	reply   string
 	count   atomic.Int32
 	body    []byte
 	headers http.Header
-	verr    error
+	signed  bool // the signature is the HMAC of the timestamp it carries and the body
 }
 
 func (rc *receiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc.count.Add(1)
 	rc.body, _ = io.ReadAll(r.Body)
 	rc.headers = r.Header.Clone()
-	rc.verr = Verify(rc.secret, r.Header.Get(SignatureHeader), rc.body, rc.now(), Tolerance)
+	t, _, _ := strings.Cut(strings.TrimPrefix(r.Header.Get(SignatureHeader), "t="), ",")
+	unix, _ := strconv.ParseInt(t, 10, 64)
+	rc.signed = r.Header.Get(SignatureHeader) == Sign(rc.secret, time.Unix(unix, 0), rc.body)
 	w.Header().Set("Content-Type", "application/json")
 	if rc.status != 0 {
 		w.WriteHeader(rc.status)
 		io.WriteString(w, rc.reply)
 		return
 	}
-	io.WriteString(w, `{"received":true,"request_id":"`+r.Header.Get("Request-Id")+`"}`)
+	io.WriteString(w, `{"received":true}`)
 }
 
 func order() Order {
@@ -127,7 +82,7 @@ func order() Order {
 }
 
 func TestSendPostsASignedEventTheReceiverVerifies(t *testing.T) {
-	rc := &receiver{secret: []byte("whsec_x"), now: time.Now}
+	rc := &receiver{secret: []byte("whsec_x")}
 	srv := httptest.NewTLSServer(rc)
 	defer srv.Close()
 	w, err := NewWebhook(srv.URL, []byte("whsec_x"), srv.Client())
@@ -137,28 +92,25 @@ func TestSendPostsASignedEventTheReceiverVerifies(t *testing.T) {
 	if err := w.Send(context.Background(), Event{Type: EventOrderCreate, Data: order()}); err != nil {
 		t.Fatal(err)
 	}
-	if rc.verr != nil {
-		t.Fatalf("the receiver could not verify the signature: %v", rc.verr)
+	if !rc.signed {
+		t.Fatalf("the signature does not verify: %q", rc.headers.Get(SignatureHeader))
 	}
-	if rc.headers.Get("Content-Type") != "application/json" || rc.headers.Get("Request-Id") == "" {
+	if rc.headers.Get("Content-Type") != "application/json" {
 		t.Fatalf("headers = %v", rc.headers)
-	}
-	if _, err := time.Parse(time.RFC3339, rc.headers.Get("Timestamp")); err != nil {
-		t.Fatalf("Timestamp = %q", rc.headers.Get("Timestamp"))
 	}
 	var ev Event
 	if err := json.Unmarshal(rc.body, &ev); err != nil || !equal(ev, Event{Type: EventOrderCreate, Data: order()}) {
 		t.Fatalf("body = %s (%v)", rc.body, err)
 	}
-	loadSchema(t).valid(t, "Order", mustJSON(ev.Data))
-	// A receiver with another secret refuses the signature.
-	rc2 := &receiver{secret: []byte("whsec_other"), now: time.Now}
+	loadSchema(t).valid(t, "Order", encode(ev.Data))
+	// A receiver with another secret cannot verify it.
+	rc2 := &receiver{secret: []byte("whsec_other")}
 	srv2 := httptest.NewTLSServer(rc2)
 	defer srv2.Close()
 	w2, _ := NewWebhook(srv2.URL, []byte("whsec_x"), srv2.Client())
 	_ = w2.Send(context.Background(), Event{Type: EventOrderCreate, Data: order()})
-	if !errors.Is(rc2.verr, ErrMismatch) {
-		t.Fatalf("verr = %v", rc2.verr)
+	if rc2.signed {
+		t.Fatal("a receiver with another secret verified the signature")
 	}
 }
 
@@ -171,7 +123,7 @@ func TestSendDeliversTheSpecsWebhookExamplesUnchanged(t *testing.T) {
 	if err := json.Unmarshal(b, &m); err != nil {
 		t.Fatal(err)
 	}
-	rc := &receiver{secret: []byte("whsec_x"), now: time.Now}
+	rc := &receiver{secret: []byte("whsec_x")}
 	srv := httptest.NewTLSServer(rc)
 	defer srv.Close()
 	w, _ := NewWebhook(srv.URL, []byte("whsec_x"), srv.Client())
@@ -186,8 +138,8 @@ func TestSendDeliversTheSpecsWebhookExamplesUnchanged(t *testing.T) {
 		var want, got any
 		_ = json.Unmarshal(raw, &want)
 		_ = json.Unmarshal(rc.body, &got)
-		if rc.verr != nil || !equal(want, got) {
-			t.Errorf("%s: verr=%v\nwant %s\n got %s", name, rc.verr, raw, rc.body)
+		if !rc.signed || !equal(want, got) {
+			t.Errorf("%s: signed=%v\nwant %s\n got %s", name, rc.signed, raw, rc.body)
 		}
 	}
 }
@@ -209,7 +161,7 @@ func TestSendReportsWhatTheReceiverRefusedAndDoesNotRetry(t *testing.T) {
 		{"a 200 that is not JSON", 200, `ok`, 200, "not_received"},
 		{"a redirect", 307, ``, 307, ""},
 	} {
-		rc := &receiver{secret: []byte("s"), now: time.Now, status: tc.status, reply: tc.reply}
+		rc := &receiver{secret: []byte("s"), status: tc.status, reply: tc.reply}
 		srv := httptest.NewTLSServer(rc)
 		w, _ := NewWebhook(srv.URL, []byte("s"), srv.Client())
 		err := w.Send(context.Background(), Event{Type: EventOrderUpdate, Data: order()})
@@ -225,7 +177,7 @@ func TestSendReportsWhatTheReceiverRefusedAndDoesNotRetry(t *testing.T) {
 }
 
 func TestSendRefusesAnEventTheReceiverCouldNotUse(t *testing.T) {
-	rc := &receiver{secret: []byte("s"), now: time.Now}
+	rc := &receiver{secret: []byte("s")}
 	srv := httptest.NewTLSServer(rc)
 	defer srv.Close()
 	w, _ := NewWebhook(srv.URL, []byte("s"), srv.Client())
@@ -269,7 +221,7 @@ func TestNewWebhookRefusesWhatCouldNotBeSentSafely(t *testing.T) {
 }
 
 func TestCompletionDeliversThroughARealWebhook(t *testing.T) {
-	rc := &receiver{secret: []byte("whsec_x"), now: time.Now}
+	rc := &receiver{secret: []byte("whsec_x")}
 	srv := httptest.NewTLSServer(rc)
 	defer srv.Close()
 	wh, err := NewWebhook(srv.URL, []byte("whsec_x"), srv.Client())
@@ -281,8 +233,8 @@ func TestCompletionDeliversThroughARealWebhook(t *testing.T) {
 	if w := r.post("/checkout_sessions/"+id+"/complete", completeBody); w.Code != 200 {
 		t.Fatalf("%d %s", w.Code, w.Body)
 	}
-	if rc.verr != nil || rc.count.Load() != 1 {
-		t.Fatalf("verr=%v count=%d", rc.verr, rc.count.Load())
+	if !rc.signed || rc.count.Load() != 1 {
+		t.Fatalf("signed=%v count=%d", rc.signed, rc.count.Load())
 	}
 	var ev Event
 	if err := json.Unmarshal(rc.body, &ev); err != nil || ev.Type != EventOrderCreate || ev.Data.CheckoutSessionID != id {

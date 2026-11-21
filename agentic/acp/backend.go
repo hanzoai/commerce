@@ -8,29 +8,28 @@ import (
 	"errors"
 )
 
-// Caller is the party a request acts for. The host establishes it from the bearer token the
-// agent presented; nothing in a request body or header names it.
+// Caller is the party a request acts for, established by the host from the bearer token.
 type Caller struct {
 	// Org is the merchant the agent buys from.
 	Org string
 	// Subject is the buyer the agent acts for.
 	Subject string
-	// Host is the host the request addressed; it names the brand whose catalog is sold.
+	// Host is the host the request addressed.
 	Host string
 }
 
-// State is where a checkout stands, in the seller's terms.
+// State is where a checkout stands.
 type State string
 
 // States of a Checkout.
 const (
 	// Open can still be changed and completed.
 	Open State = "open"
-	// Paying has a payment started that waits on the buyer's bank or a deposit.
+	// Paying has a payment started that is not yet settled.
 	Paying State = "paying"
 	// Paid is complete: Receipt names the order.
 	Paid State = "paid"
-	// Failed had a completion refused: Refusal says why, and the checkout can be tried again.
+	// Failed had a completion refused (Refusal); it can be completed again.
 	Failed State = "failed"
 	// Canceled was abandoned.
 	Canceled State = "canceled"
@@ -49,8 +48,7 @@ type Receipt struct {
 	ID string
 }
 
-// Refusal is why a completion was refused, in the spec's message vocabulary
-// (MessageError.code and resolution) so the session can say it to the agent as it is.
+// Refusal is why a completion was refused, as a MessageError code and resolution.
 type Refusal struct {
 	Code       string
 	Param      string
@@ -63,15 +61,13 @@ type Checkout struct {
 	ID    string
 	State State
 	Item  Product
-	// Total is what completing charges, in minor units of the seller's currency, for the one
-	// unit of Item the checkout sells.
+	// Total is what completing charges for the one unit of Item, in minor units.
 	Total   int64
 	Receipt *Receipt
 	Refusal *Refusal
 }
 
-// Charge is the payment an agent submits on completion, after the service has matched it
-// to one of the handlers the session declared.
+// Charge is the payment an agent submits, matched to a handler the session declared.
 type Charge struct {
 	Handler    PaymentHandler
 	Instrument string
@@ -82,12 +78,9 @@ type Charge struct {
 // ErrNoItem is what a Backend returns for an item id it does not sell.
 var ErrNoItem = errors.New("acp: no such item")
 
-// Backend is what the seller's commerce system provides. Every method acts for a Caller.
-// A Backend returns a *Fault for a refusal the agent can act on (Unsupported, Conflict,
-// NotFound, Unavailable); any other error is an unexpected failure the service reports and
-// answers as a processing_error without its text. Open and Change return ErrNoItem for an
-// item the seller does not sell. Pay does not refuse for a payment the bank or token
-// declined: it returns the Checkout in State Failed with a Refusal.
+// Backend is the seller's commerce system. It returns a *Fault for a refusal the agent can act
+// on and ErrNoItem for an unknown item; any other error is reported and answered as a
+// processing_error. Pay returns a declined payment as a Checkout in State Failed.
 type Backend interface {
 	// Currency is the lowercase ISO 4217 code the seller settles in.
 	Currency() string
@@ -97,8 +90,7 @@ type Backend interface {
 	Change(ctx context.Context, who Caller, id, item string) (*Checkout, error)
 	// Read answers where a checkout is.
 	Read(ctx context.Context, who Caller, id string) (*Checkout, error)
-	// Pay completes a checkout. key is the Idempotency-Key the completion arrived with: the
-	// charge is bound to the checkout and the key, so completing twice is one purchase.
+	// Pay completes a checkout; the charge is bound to the checkout and the Idempotency-Key.
 	Pay(ctx context.Context, who Caller, id, key string, pay Charge) (*Checkout, error)
 	// Cancel abandons a checkout that is still open.
 	Cancel(ctx context.Context, who Caller, id string) (*Checkout, error)

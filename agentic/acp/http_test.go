@@ -120,7 +120,7 @@ func TestCreateWithTheMultiItemAndAttributionExamples(t *testing.T) {
 	two := `{"currency":"usd","line_items":[{"id":"item_123","unit_amount":300},{"id":"item_456","unit_amount":500}],"capabilities":{}}`
 	wantErr(t, r.post("/checkout_sessions", two), 400, "invalid_request", "unsupported", "$.line_items")
 
-	// First-touch attribution is accepted and not stored: it is validated, not applied.
+	// First-touch attribution is accepted and not stored.
 	w := r.post("/checkout_sessions", spec(t, "create_checkout_session_request_with_first_touch_attribution"))
 	if w.Code != 201 {
 		t.Fatalf("status = %d: %s", w.Code, w.Body)
@@ -189,17 +189,6 @@ func TestCancelAnswersCanceledAndAgainIs405(t *testing.T) {
 	// A canceled session can be neither updated nor completed.
 	wantErr(t, r.post("/checkout_sessions/"+id, `{"line_items":[{"id":"item_456"}]}`), 409, "invalid_request", "conflict", "")
 	wantErr(t, r.post("/checkout_sessions/"+id+"/complete", completeBody), 409, "invalid_request", "conflict", "")
-}
-
-func TestCancelWithoutABodyAndWithABadIntentTrace(t *testing.T) {
-	r := newRig(t)
-	id := r.create()
-	wantErr(t, r.post("/checkout_sessions/"+id+"/cancel", `{"intent_trace":{"reason_code":"vibes"}}`), 400, "invalid_request", "invalid", "$.intent_trace.reason_code")
-	wantErr(t, r.post("/checkout_sessions/"+id+"/cancel", `{"intent_trace":{"trace_summary":"x"}}`), 400, "invalid_request", "missing_required_field", "$.intent_trace.reason_code")
-	wantErr(t, r.post("/checkout_sessions/"+id+"/cancel", `{"intent_trace":{"reason_code":"other","metadata":{"k":[1]}}}`), 400, "invalid_request", "invalid", "$.intent_trace.metadata.k")
-	if w := r.post("/checkout_sessions/"+id+"/cancel", ``); w.Code != 200 || w.get("status") != "canceled" {
-		t.Fatalf("cancel without a body = %d %s", w.Code, w.Body)
-	}
 }
 
 func TestSessionsOfAnotherCallerAreNotFound(t *testing.T) {
@@ -326,9 +315,6 @@ func TestRequestsAreValidatedAtTheBoundary(t *testing.T) {
 		{"a quantity the schema does not define", "/checkout_sessions", `{"currency":"usd","line_items":[{"id":"item_123","quantity":2}],"capabilities":{}}`, 400, "invalid", ""},
 		{"an unknown field", "/checkout_sessions", `{"currency":"usd","line_items":[{"id":"item_123"}],"capabilities":{},"surprise":1}`, 400, "invalid", ""},
 		{"a wrong type", "/checkout_sessions", `{"currency":"usd","line_items":[{"id":"item_123","unit_amount":"300"}],"capabilities":{}}`, 400, "invalid", "$.line_items[0].unit_amount"},
-		{"buyer without email", "/checkout_sessions", `{"currency":"usd","line_items":[{"id":"item_123"}],"capabilities":{},"buyer":{"first_name":"A"}}`, 400, "missing_required_field", "$.buyer.email"},
-		{"address without a city", "/checkout_sessions", `{"currency":"usd","line_items":[{"id":"item_123"}],"capabilities":{},"fulfillment_details":{"address":{"name":"a","line_one":"b","state":"c","country":"US","postal_code":"1"}}}`, 400, "missing_required_field", "$.fulfillment_details.address.city"},
-		{"order notes too long", "/checkout_sessions", `{"currency":"usd","line_items":[{"id":"item_123"}],"capabilities":{},"order_notes":"` + strings.Repeat("x", 5001) + `"}`, 400, "invalid", "$.order_notes"},
 		{"data after the document", "/checkout_sessions", createBody + ` {}`, 400, "invalid_json", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -347,13 +333,11 @@ func TestUpdateIsValidated(t *testing.T) {
 	wantErr(t, r.post(p, `{"line_items":null}`), 400, "invalid_request", "invalid", "$.line_items")
 	wantErr(t, r.post(p, `{"line_items":[{"id":"item_123"},{"id":"item_456"}]}`), 400, "invalid_request", "unsupported", "$.line_items")
 	wantErr(t, r.post(p, `{"line_items":[{"id":""}]}`), 400, "invalid_request", "missing_required_field", "$.line_items[0].id")
-	// Only the digital option the session offers can be selected (rfc §8: option_id MUST match).
-	wantErr(t, r.post(p, spec(t, "update_checkout_session_request")), 400, "invalid_request", "invalid", "$.selected_fulfillment_options[0].type")
-	wantErr(t, r.post(p, `{"selected_fulfillment_options":[{"type":"digital","option_id":"fulfillment_option_9","item_ids":["item_123"]}]}`), 400, "invalid_request", "invalid", "$.selected_fulfillment_options[0].option_id")
-	wantErr(t, r.post(p, `{"selected_fulfillment_options":[{"type":"digital","option_id":"digital","item_ids":["item_999"]}]}`), 400, "invalid_request", "invalid", "$.selected_fulfillment_options[0].item_ids[0]")
-	w := r.post(p, `{"selected_fulfillment_options":[{"type":"digital","option_id":"digital","item_ids":["item_123"]}],"order_notes":"hi"}`)
+	// The session offers no fulfillment option, so none can be selected (rfc §8: option_id MUST match).
+	wantErr(t, r.post(p, spec(t, "update_checkout_session_request")), 400, "invalid_request", "invalid", "$.selected_fulfillment_options[0].option_id")
+	w := r.post(p, `{"order_notes":"hi"}`)
 	if w.Code != 200 {
-		t.Fatalf("selecting the offered option = %d %s", w.Code, w.Body)
+		t.Fatalf("an update that changes nothing = %d %s", w.Code, w.Body)
 	}
 	validSession(t, w, "CheckoutSession")
 	// An update that changes nothing answers the state as it is.
@@ -370,8 +354,16 @@ func TestMalformedAndMisTypedBodiesAreRefused(t *testing.T) {
 	if w := r.post("/checkout_sessions", createBody, map[string]string{"Content-Type": "application/json; charset=utf-8"}); w.Code != 201 {
 		t.Fatalf("a charset parameter is refused: %d %s", w.Code, w.Body)
 	}
-	big := `{"metadata":{"x":"` + strings.Repeat("a", maxBody) + `"}}`
-	wantErr(t, r.post("/checkout_sessions", big), 413, "invalid_request", "request_too_large", "")
+	// The host bounds the body (http.MaxBytesHandler); the service answers its error as 413.
+	bounded := http.MaxBytesHandler(r.h, 64)
+	req := httptest.NewRequest("POST", "/checkout_sessions", strings.NewReader(createBody))
+	req.Header.Set("Authorization", "Bearer agent_key")
+	req.Header.Set("API-Version", Version)
+	req.Header.Set("Idempotency-Key", "k-big")
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	bounded.ServeHTTP(w, req)
+	wantErr(t, res{w}, 413, "invalid_request", "request_too_large", "")
 }
 
 func TestMalformedJSONDoesNotUseTheIdempotencyKey(t *testing.T) {
@@ -455,8 +447,6 @@ func TestCompleteRefusesPaymentDataTheSellerCannotHonour(t *testing.T) {
 		{"an instrument of another handler", `{"payment_data":{"handler_id":"card_tokenized","instrument":{"handler_id":"seller_pm_123","type":"card","credential":{"type":"spt","token":"spt_1"}}}}`, "invalid", "$.payment_data.instrument.handler_id"},
 		{"an authentication result", spec(t, "complete_session_with_authentication_result_request"), "unsupported", "$.authentication_result"},
 		{"a credential that is not a shared payment token", `{"payment_data":{"handler_id":"card_tokenized","instrument":{"type":"card","credential":{"type":"card_number","token":"4242424242424242"}}}}`, "unsupported", "$.payment_data.instrument"},
-		{"an incomplete attribution", `{"payment_data":{"handler_id":"card_tokenized","instrument":{"type":"card","credential":{"type":"spt","token":"spt_1"}}},"affiliate_attribution":{"touchpoint":"last"}}`, "invalid", "$.affiliate_attribution"},
-		{"a buyer without email", `{"buyer":{"first_name":"J"},"payment_data":{"handler_id":"card_tokenized","instrument":{"type":"card","credential":{"type":"spt","token":"spt_1"}}}}`, "missing_required_field", "$.buyer.email"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			wantErr(t, r.post(p, tc.body), 400, "invalid_request", tc.code, tc.param)
@@ -773,25 +763,6 @@ func TestAClientErrorIsCachedAgainstTheKey(t *testing.T) {
 	}
 }
 
-func TestAKeyIsForgottenAfterRetention(t *testing.T) {
-	mem := NewMemory()
-	clock := time.Date(2026, 4, 17, 10, 0, 0, 0, time.UTC)
-	mem.now = func() time.Time { return clock }
-	r := newRig(t, func(c *Config) { c.Ledger = mem })
-	k := map[string]string{"Idempotency-Key": "k-old"}
-	first := r.post("/checkout_sessions", createBody, k)
-	clock = clock.Add(Retention - time.Second)
-	if w := r.post("/checkout_sessions", createBody, k); w.Header().Get("Idempotent-Replayed") != "true" || !bytes.Equal(w.Body.Bytes(), first.Body.Bytes()) {
-		t.Fatalf("a key within 24 hours was forgotten: %d", w.Code)
-	}
-	clock = clock.Add(2 * time.Second)
-	// After 24 hours a reused key is a new request: no error, even with another body.
-	w := r.post("/checkout_sessions", `{"currency":"usd","line_items":[{"id":"item_456"}],"capabilities":{}}`, k)
-	if w.Code != 201 || w.Header().Get("Idempotent-Replayed") != "" {
-		t.Fatalf("after retention = %d %s", w.Code, w.Body)
-	}
-}
-
 func TestConcurrentRequestsWithOneKeyRunOnce(t *testing.T) {
 	r := newRig(t)
 	k := map[string]string{"Idempotency-Key": "k-race"}
@@ -888,6 +859,10 @@ func TestNewRefusesAConfigThatLacksWhatASessionNeeds(t *testing.T) {
 		"identify": func(c *Config) { c.Identify = nil },
 		"handlers": func(c *Config) { c.Handlers = nil },
 		"order":    func(c *Config) { c.Order = nil },
+		"ledger":   func(c *Config) { c.Ledger = nil },
+		"report":   func(c *Config) { c.Report = nil },
+		"retry":    func(c *Config) { c.RetryAfter = 0 },
+		"skew":     func(c *Config) { c.Verify, c.Skew = &verifier{}, 0 },
 	} {
 		c := base
 		mut(&c)

@@ -14,18 +14,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
-	"time"
 )
-
-// Retention is how long a seller keeps an idempotency key and its response: at least 24 hours
-// (rfc.agentic_checkout.md §6.6).
-const Retention = 24 * time.Hour
 
 // Stored is the response kept against an idempotency key.
 type Stored struct {
-	Status int
-	Body   []byte
+	Status int             `json:"status"`
+	Body   json.RawMessage `json:"body"`
 }
 
 // Verdict is what a Ledger says about a key.
@@ -47,22 +41,20 @@ const (
 type Lease interface {
 	// Settle keeps the response against the key.
 	Settle(ctx context.Context, res Stored) error
-	// Release drops the claim, so the key is free to run again: a 5xx is never kept
-	// (rfc.agentic_checkout.md §6.5).
+	// Release frees the key to run again.
 	Release(ctx context.Context) error
 }
 
-// Ledger is the idempotency store of rfc.agentic_checkout.md §6. scope names the
-// authenticated identity and the endpoint path, so a key on another endpoint is another key;
-// digest is the fingerprint of the request body (Fingerprint).
+// Ledger is the idempotency store of rfc.agentic_checkout.md §6. scope is the authenticated
+// identity and endpoint path (§6.1), digest the fingerprint of the body (§6.2). It keeps a
+// settled key at least 24 hours (§6.6).
 type Ledger interface {
 	Begin(ctx context.Context, scope, key, digest string) (Verdict, Stored, Lease, error)
 }
 
-// Fingerprint is the digest of a JSON body under the equality of §6.2: key order is
-// irrelevant, a number equals the same number written differently (1.0 and 1), an array is
-// ordered, and null differs from an absent key. An empty body has its own digest.
-func Fingerprint(body []byte) (string, error) {
+// fingerprint is the digest of a JSON body under the equality of §6.2: key order and number
+// spelling (1.0 and 1) are irrelevant; arrays are ordered; null differs from absent.
+func fingerprint(body []byte) (string, error) {
 	h := sha256.New()
 	if len(bytes.TrimSpace(body)) > 0 {
 		dec := json.NewDecoder(bytes.NewReader(body))
@@ -115,16 +107,15 @@ func canon(w io.Writer, v any) {
 	}
 }
 
-// number writes a JSON number as sign, significant digits and a power of ten, so 1.0, 1,
-// 10e-1 and 0.1e1 are one value. An exponent too large to normalise is kept as written.
+// number writes a JSON number as sign, significant digits and a power of ten.
 func number(s string) string {
 	orig := s
 	neg := strings.HasPrefix(s, "-")
 	s = strings.TrimPrefix(s, "-")
 	mant, exp := s, int64(0)
 	if i := strings.IndexAny(s, "eE"); i >= 0 {
-		e, err := strconv.ParseInt(s[i+1:], 10, 32)
-		if err != nil || e > 1<<16 || e < -(1<<16) {
+		e, err := strconv.ParseInt(s[i+1:], 10, 64)
+		if err != nil {
 			return orig
 		}
 		mant, exp = s[:i], e
@@ -142,76 +133,4 @@ func number(s string) string {
 		sign = "-"
 	}
 	return sign + trimmed + "e" + strconv.FormatInt(exp, 10)
-}
-
-// Memory is a Ledger held in the process: for tests and a single node. It forgets a key
-// after Retention. A deployment that restarts or runs more than one node uses a durable
-// Ledger (see Commerce).
-type Memory struct {
-	mu      sync.Mutex
-	now     func() time.Time
-	entries map[string]*entry
-	swept   time.Time
-}
-
-type entry struct {
-	digest  string
-	res     *Stored
-	expires time.Time
-}
-
-// NewMemory returns an empty in-process Ledger.
-func NewMemory() *Memory {
-	return &Memory{now: time.Now, entries: map[string]*entry{}}
-}
-
-// Begin implements Ledger.
-func (m *Memory) Begin(_ context.Context, scope, key, digest string) (Verdict, Stored, Lease, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	now := m.now()
-	if now.Sub(m.swept) >= time.Minute {
-		for k, e := range m.entries {
-			if now.After(e.expires) {
-				delete(m.entries, k)
-			}
-		}
-		m.swept = now
-	}
-	id := scope + "\x00" + key
-	if e, ok := m.entries[id]; ok && !now.After(e.expires) {
-		switch {
-		case e.res == nil:
-			return Busy, Stored{}, nil, nil
-		case e.digest != digest:
-			return Mismatch, Stored{}, nil, nil
-		default:
-			return Replay, *e.res, nil, nil
-		}
-	}
-	e := &entry{digest: digest, expires: now.Add(Retention)}
-	m.entries[id] = e
-	return Fresh, Stored{}, &memoryLease{m: m, id: id, e: e}, nil
-}
-
-type memoryLease struct {
-	m  *Memory
-	id string
-	e  *entry
-}
-
-func (l *memoryLease) Settle(_ context.Context, res Stored) error {
-	l.m.mu.Lock()
-	defer l.m.mu.Unlock()
-	l.e.res = &res
-	return nil
-}
-
-func (l *memoryLease) Release(_ context.Context) error {
-	l.m.mu.Lock()
-	defer l.m.mu.Unlock()
-	if l.m.entries[l.id] == l.e {
-		delete(l.m.entries, l.id)
-	}
-	return nil
 }

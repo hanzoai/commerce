@@ -22,39 +22,33 @@ import (
 	"github.com/hanzoai/commerce/util/nscontext"
 )
 
-// Commerce is the Backend over commerce's headless purchase surface (api/billing: the
-// catalog, CreateCheckout, UpdateCheckout, ReadCheckout and CompleteCheckout). It does no
-// pricing and moves no money of its own: an item id is a catalog id (a credit pack,
-// credit-<cents>, or a plan slug), the price is the catalog's, and the payment is the
-// Stripe shared payment token the buyer granted the agent, charged by CompleteCheckout.
-//
-// Commerce sells exactly one unit of one item per checkout, in USD, as digital goods. It
-// refuses what that cannot honour: a second item, another currency, a payment that is not
-// a Stripe shared payment token.
+// Commerce is the Backend over commerce's headless purchase surface (api/billing). An item id is
+// a catalog id (a credit pack, credit-<cents>, or a plan slug); price and charge are the
+// catalog's and CompleteCheckout's. It sells one unit of one item per checkout, in USD, paid
+// with a Stripe shared payment token.
 type Commerce struct{}
+
+const billingDown = "Billing is temporarily unavailable; please retry."
 
 // Currency implements Backend: the catalog is in USD.
 func (Commerce) Currency() string { return "usd" }
 
 // Open implements Backend.
 func (c Commerce) Open(ctx context.Context, who Caller, item string) (*Checkout, error) {
-	org, err := c.org(ctx, who)
-	if err != nil {
-		return nil, err
-	}
-	line, p, err := sold(ctx, org, who.Host, item)
-	if err != nil {
-		return nil, err
-	}
-	v, f := billing.CreateCheckout(ctx, org, who.Subject, who.Host, []billing.ItemIn{line})
-	if f != nil {
-		return nil, refused(f)
-	}
-	return checkout(v, p), nil
+	return c.put(ctx, who, item, func(org *organization.Organization, line billing.ItemIn) (*billing.CheckoutView, *billing.PaymentFault) {
+		return billing.CreateCheckout(ctx, org, who.Subject, who.Host, []billing.ItemIn{line})
+	})
 }
 
 // Change implements Backend.
 func (c Commerce) Change(ctx context.Context, who Caller, id, item string) (*Checkout, error) {
+	return c.put(ctx, who, item, func(org *organization.Organization, line billing.ItemIn) (*billing.CheckoutView, *billing.PaymentFault) {
+		return billing.UpdateCheckout(ctx, org, who.Subject, who.Host, id, []billing.ItemIn{line})
+	})
+}
+
+// put resolves item and writes it with write.
+func (c Commerce) put(ctx context.Context, who Caller, item string, write func(*organization.Organization, billing.ItemIn) (*billing.CheckoutView, *billing.PaymentFault)) (*Checkout, error) {
 	org, err := c.org(ctx, who)
 	if err != nil {
 		return nil, err
@@ -63,7 +57,7 @@ func (c Commerce) Change(ctx context.Context, who Caller, id, item string) (*Che
 	if err != nil {
 		return nil, err
 	}
-	v, f := billing.UpdateCheckout(ctx, org, who.Subject, who.Host, id, []billing.ItemIn{line})
+	v, f := write(org, line)
 	if f != nil {
 		return nil, refused(f)
 	}
@@ -83,8 +77,7 @@ func (c Commerce) Read(ctx context.Context, who Caller, id string) (*Checkout, e
 	return checkout(v, named(ctx, who.Host, v.Items[0])), nil
 }
 
-// Pay implements Backend. The charge is bound to the checkout and the key, so a completion
-// sent twice is one purchase.
+// Pay implements Backend.
 func (c Commerce) Pay(ctx context.Context, who Caller, id, key string, pay Charge) (*Checkout, error) {
 	switch {
 	case pay.Handler.PSP != "stripe":
@@ -100,7 +93,7 @@ func (c Commerce) Pay(ctx context.Context, who Caller, id, key string, pay Charg
 	if err != nil {
 		return nil, err
 	}
-	// A canceled checkout is refused here: completion would take it for one in progress.
+	// CompleteCheckout answers a canceled checkout as one being completed.
 	v, f := billing.ReadCheckout(ctx, org, who.Subject, id)
 	if f != nil {
 		return nil, refused(f)
@@ -112,8 +105,8 @@ func (c Commerce) Pay(ctx context.Context, who Caller, id, key string, pay Charg
 	return outcome(out, named(ctx, who.Host, v.Items[0]))
 }
 
-// Cancel implements Backend. Commerce keeps a canceled status for a session but exposes no
-// call to reach it, so it is set on the model, only on a session that is still open.
+// Cancel implements Backend. api/billing has no cancel, so the model's canceled status is set
+// on a checkout that is still open.
 func (c Commerce) Cancel(ctx context.Context, who Caller, id string) (*Checkout, error) {
 	org, err := c.org(ctx, who)
 	if err != nil {
@@ -131,12 +124,10 @@ func (c Commerce) Cancel(ctx context.Context, who Caller, id string) (*Checkout,
 		return true
 	})
 	switch {
-	case err != nil:
-		return nil, Unavailable("Billing is temporarily unavailable; please retry.")
-	case !changed && got != nil:
-		return nil, NotCancelable("The checkout session is " + got.Status + " and cannot be canceled.")
+	case err != nil || got == nil:
+		return nil, Unavailable(billingDown)
 	case !changed:
-		return nil, Unavailable("Billing is temporarily unavailable; please retry.")
+		return nil, NotCancelable("The checkout session is " + got.Status + " and cannot be canceled.")
 	}
 	v.Status = checkoutsession.Canceled
 	return checkout(v, named(ctx, who.Host, v.Items[0])), nil
@@ -146,15 +137,14 @@ func (Commerce) org(ctx context.Context, who Caller) (*organization.Organization
 	org, err := orgpkg.Resolve(ctx, who.Org)
 	switch {
 	case errors.Is(err, orgpkg.ErrResolveFailed):
-		return nil, Unavailable("Billing is temporarily unavailable; please retry.")
+		return nil, Unavailable(billingDown)
 	case err != nil:
 		return nil, err
 	}
 	return org, nil
 }
 
-// sold resolves an item id to what commerce sells: a credit pack of the catalog by its id,
-// or a plan by its slug. The price is read back from the catalog by CreateCheckout.
+// sold resolves an item id to a catalog credit pack or plan.
 func sold(ctx context.Context, org *organization.Organization, host, item string) (billing.ItemIn, Product, error) {
 	cat, err := billing.ReadCatalog(ctx, org, host)
 	if err != nil {
@@ -177,8 +167,7 @@ func pack(cents int64) Product {
 	return Product{ID: fmt.Sprintf("credit-%d", cents), Name: fmt.Sprintf("$%d.%02d USD credit", cents/100, cents%100)}
 }
 
-// named is the product a checkout line stands for: a credit pack by its cents, a plan by
-// its slug with the name the catalog gives it.
+// named is the product of a checkout line.
 func named(ctx context.Context, host string, l billing.ItemIn) Product {
 	if l.Kind != checkoutsession.Plan {
 		return pack(l.UsdCents)
@@ -218,16 +207,14 @@ func checkout(v *billing.CheckoutView, p Product) *Checkout {
 	return c
 }
 
-// outcome maps what CompleteCheckout answered. A paid checkout is complete; a payment the
-// bank or the token refused leaves the checkout usable and is stated as a refusal; the rest
-// are faults of the request or of the seller's systems.
+// outcome maps CompleteCheckout's answer: paid, a refusal that leaves the checkout usable, or a fault.
 func outcome(out billing.CompleteOut, p Product) (*Checkout, error) {
 	v := out.View
 	if v == nil {
 		return nil, errors.New("acp: CompleteCheckout answered no checkout")
 	}
 	if out.Status >= http.StatusInternalServerError {
-		msg := "Billing is temporarily unavailable; please retry."
+		msg := billingDown
 		if v.Error != nil {
 			msg = v.Error.Message
 		}
@@ -255,9 +242,8 @@ func outcome(out billing.CompleteOut, p Product) (*Checkout, error) {
 	return c, nil
 }
 
-// decline states a refusal of commerce in the spec's message vocabulary: a token that is not
-// a usable shared payment token is invalid, a bank that wants authentication is an
-// intervention this seller cannot run, and every other refusal is a declined payment.
+// decline states a commerce refusal as a MessageError: an invalid token, a price that moved, an
+// authentication this seller cannot run, or a declined payment.
 func decline(e *billing.AgentError) *Refusal {
 	switch e.Code {
 	case "token_invalid":
@@ -272,8 +258,7 @@ func decline(e *billing.AgentError) *Refusal {
 	return &Refusal{Code: "payment_declined", Resolution: "recoverable", Message: e.Message}
 }
 
-// refused states a commerce failure as the fault the agent is answered with. The messages
-// of commerce are written to be shown to the caller.
+// refused states a commerce failure as a Fault.
 func refused(f *billing.PaymentFault) error {
 	switch {
 	case f.Status == http.StatusUnauthorized:
@@ -292,10 +277,8 @@ func refused(f *billing.PaymentFault) error {
 	return Invalid("", f.Message)
 }
 
-// Durable is a Ledger kept in commerce's datastore (models/idempotencykey), so a key is held
-// across restarts and across every node. The record outlives Retention. A claim carries a
-// token of its own: after a guard that stalled past its TTL is reclaimed, the first request
-// can neither release nor settle the guard of the one that reclaimed it.
+// Durable is a Ledger over models/idempotencykey. Each claim carries a token in the row's
+// Holder, so a request whose guard was reclaimed cannot release or settle the new holder's.
 type Durable struct{}
 
 // Begin implements Ledger.
@@ -317,7 +300,6 @@ func (Durable) Begin(ctx context.Context, scope, key, digest string) (Verdict, S
 		case err != nil:
 			return 0, Stored{}, nil, err
 		case !ok:
-			// The row changed under the claim: another request holds it.
 			return Busy, Stored{}, nil, nil
 		}
 		return Fresh, Stored{}, &durable{db: db, scope: scope, key: key, digest: digest, token: token}, nil
@@ -328,14 +310,11 @@ func (Durable) Begin(ctx context.Context, scope, key, digest string) (Verdict, S
 	if rec.Facts != digest {
 		return Mismatch, Stored{}, nil, nil
 	}
-	var kept struct {
-		Status int             `json:"status"`
-		Body   json.RawMessage `json:"body"`
-	}
+	var kept Stored
 	if err := json.Unmarshal([]byte(rec.Response), &kept); err != nil {
 		return 0, Stored{}, nil, fmt.Errorf("acp: the stored response of an idempotency key is unreadable: %w", err)
 	}
-	return Replay, Stored{Status: kept.Status, Body: kept.Body}, nil, nil
+	return Replay, kept, nil, nil
 }
 
 type durable struct {
@@ -344,10 +323,9 @@ type durable struct {
 	digest, token string
 }
 
-// errTakenOver is a settle by a request whose guard another request has reclaimed.
 var errTakenOver = errors.New("acp: the idempotency guard was reclaimed by another request")
 
-// mine reads the guard and reports whether it is still this request's.
+// mine reads the guard and reports whether it is still this lease's.
 func (d *durable) mine() (*idempotencykey.IdempotencyKey, bool) {
 	cur := idempotencykey.New(d.db)
 	if err := cur.Get(d.db.NewKey(cur.Kind(), idempotencykey.DeterministicID(d.scope, d.key), 0, nil)); err != nil {
@@ -357,10 +335,7 @@ func (d *durable) mine() (*idempotencykey.IdempotencyKey, bool) {
 }
 
 func (d *durable) Settle(_ context.Context, res Stored) error {
-	b, err := json.Marshal(struct {
-		Status int             `json:"status"`
-		Body   json.RawMessage `json:"body"`
-	}{res.Status, res.Body})
+	b, err := json.Marshal(res)
 	if err != nil {
 		return err
 	}
@@ -372,7 +347,7 @@ func (d *durable) Settle(_ context.Context, res Stored) error {
 	return idempotencykey.Complete(cur, string(b))
 }
 
-// Release drops the guard, only while it is this request's.
+// Release drops the guard while it is this lease's.
 func (d *durable) Release(_ context.Context) error {
 	if cur, ok := d.mine(); ok {
 		return cur.Delete()

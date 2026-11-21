@@ -18,41 +18,27 @@ import (
 	"time"
 )
 
-// Signed is a request as the agent sent it: everything a signature can cover. The spec says
-// the client signs the canonical JSON body with an accompanying Timestamp and leaves the
-// algorithm, the keys and what else is bound out of band (rfc.agentic_checkout.md §2.1), so
-// the Verifier is the host's. A signature over the body alone replays on any endpoint at any
-// time; a Verifier binds at least the Timestamp, the Method and the Path as well, and the
-// Key on a POST.
+// Signed is a request as the agent sent it. The spec says the client signs the canonical JSON
+// body with a Timestamp and leaves the algorithm and the keys out of band
+// (rfc.agentic_checkout.md §2.1), so the Verifier binds what it needs from here.
 type Signed struct {
 	Method string
-	// Path is the path the agent requested, as received (before the host strips a prefix).
+	// Path is the path as requested, before the host strips a prefix.
 	Path string
-	// Key is the Idempotency-Key of a POST, empty on a GET.
-	Key string
-	// Timestamp is the Timestamp header exactly as sent; the service has already required it
-	// to be an RFC 3339 date-time within the clock skew.
+	// Key is the Idempotency-Key of a POST.
+	Key       string
 	Timestamp string
-	// Signature is the Signature header exactly as sent.
 	Signature string
-	// Body is the raw request body.
-	Body []byte
+	Body      []byte
 }
 
-// Verifier checks the Signature an agent sent over a request.
+// Verifier checks the Signature of a request.
 type Verifier interface {
 	Verify(ctx context.Context, who Caller, req Signed) error
 }
 
-// Request limits and hints the spec states or leaves to the server.
-const (
-	// maxBody bounds a request body: a checkout request is a few kilobytes.
-	maxBody = 1 << 20
-	// maxKey is the longest Idempotency-Key (rfc.agentic_checkout.md §6.1).
-	maxKey = 255
-	// retryAfter is the Retry-After, in seconds, of an idempotency_in_flight answer.
-	retryAfter = 1
-)
+// maxKey is the longest Idempotency-Key (rfc.agentic_checkout.md §6.1).
+const maxKey = 255
 
 type route int
 
@@ -63,9 +49,9 @@ const (
 	rCancel
 )
 
-// API returns the Agentic Checkout REST API as an http.Handler. It answers the paths of
-// openapi.agentic_checkout.yaml relative to the API base URL: the host mounts it under that
-// URL's path and strips the prefix.
+// API returns the Agentic Checkout REST API (openapi.agentic_checkout.yaml) as an http.Handler
+// for the paths below, relative to the API base URL. The host strips its mount prefix and
+// bounds the request body (http.MaxBytesHandler).
 //
 //	POST /checkout_sessions
 //	POST /checkout_sessions/{id}
@@ -77,49 +63,48 @@ func (s *Service) API() http.Handler { return http.HandlerFunc(s.serve) }
 func (s *Service) serve(w http.ResponseWriter, r *http.Request) {
 	h := w.Header()
 	h.Set("Content-Type", "application/json")
-	h.Set("Cache-Control", "no-store")
-	if id := r.Header.Get("Request-Id"); id != "" && len(id) <= maxKey {
+	if id := r.Header.Get("Request-Id"); id != "" {
 		h.Set("Request-Id", id)
 	}
 	key := r.Header.Get("Idempotency-Key")
-	if r.Method == http.MethodPost && key != "" && len(key) <= maxKey {
+	if r.Method == http.MethodPost && key != "" {
 		h.Set("Idempotency-Key", key)
 	}
 
 	rt, id, allow := parse(r.URL.Path)
 	switch {
 	case rt == 0:
-		s.fail(w, fault(http.StatusNotFound, TypeInvalidRequest, "not_found", "No such endpoint.", ""))
+		fail(w, fault(http.StatusNotFound, TypeInvalidRequest, "not_found", "No such endpoint.", ""))
 		return
 	case !slices.Contains(strings.Split(allow, ", "), r.Method):
-		h.Set("Allow", allow)
-		s.fail(w, fault(http.StatusMethodNotAllowed, TypeInvalidRequest, "method_not_allowed", "This endpoint does not take "+r.Method+".", ""))
+		notAllowed(w, allow, r.Method)
 		return
 	}
-
-	// API-Version, then who is asking (rfc.agentic_checkout.md §2.1, §3.1).
 	if f := version(r); f != nil {
-		s.fail(w, f)
+		fail(w, f)
 		return
 	}
 	who, f := s.identify(r)
 	if f != nil {
-		s.fail(w, f)
+		fail(w, f)
 		return
 	}
-	body, f := readBody(w, r)
+	body, f := readBody(r)
 	if f != nil {
-		s.fail(w, f)
+		fail(w, f)
 		return
 	}
 	if f := s.signed(r, who, key, body); f != nil {
-		s.fail(w, f)
+		fail(w, f)
 		return
 	}
-
 	if r.Method == http.MethodGet {
 		out, err := s.Retrieve(r.Context(), who, id)
-		s.answer(w, http.StatusOK, out, err)
+		if err != nil {
+			fail(w, s.refusal(err, "", ""))
+			return
+		}
+		w.Write(encode(out))
 		return
 	}
 	s.post(w, r, rt, id, who, key, body)
@@ -129,25 +114,24 @@ func (s *Service) serve(w http.ResponseWriter, r *http.Request) {
 func (s *Service) post(w http.ResponseWriter, r *http.Request, rt route, id string, who Caller, key string, body []byte) {
 	switch {
 	case key == "":
-		s.fail(w, fault(http.StatusBadRequest, TypeInvalidRequest, "idempotency_key_required", "Idempotency-Key header is required on all POST requests", ""))
+		fail(w, fault(http.StatusBadRequest, TypeInvalidRequest, "idempotency_key_required", "Idempotency-Key header is required on all POST requests", ""))
 		return
 	case len(key) > maxKey:
-		s.fail(w, fault(http.StatusBadRequest, TypeInvalidRequest, "invalid_idempotency_key", "Idempotency-Key is at most 255 characters.", ""))
+		fail(w, fault(http.StatusBadRequest, TypeInvalidRequest, "invalid_idempotency_key", "Idempotency-Key is at most 255 characters.", ""))
 		return
-	}
-	if len(bytes.TrimSpace(body)) == 0 && rt != rCancel {
-		s.fail(w, fault(http.StatusBadRequest, TypeInvalidRequest, "invalid_json", "The request body is required.", ""))
+	case len(bytes.TrimSpace(body)) == 0 && rt != rCancel:
+		fail(w, badJSON("The request body is required."))
 		return
 	}
 	if len(body) > 0 {
 		if mt, _, err := mime.ParseMediaType(r.Header.Get("Content-Type")); err != nil || mt != "application/json" {
-			s.fail(w, fault(http.StatusUnsupportedMediaType, TypeInvalidRequest, "unsupported_media_type", "Content-Type must be application/json.", ""))
+			fail(w, fault(http.StatusUnsupportedMediaType, TypeInvalidRequest, "unsupported_media_type", "Content-Type must be application/json.", ""))
 			return
 		}
 	}
-	digest, err := Fingerprint(body)
+	digest, err := fingerprint(body)
 	if err != nil {
-		s.fail(w, fault(http.StatusBadRequest, TypeInvalidRequest, "invalid_json", "The request body is not valid JSON.", ""))
+		fail(w, badJSON("The request body is not valid JSON."))
 		return
 	}
 
@@ -156,7 +140,7 @@ func (s *Service) post(w http.ResponseWriter, r *http.Request, rt route, id stri
 	verdict, stored, lease, err := s.cfg.Ledger.Begin(ctx, scope, key, digest)
 	if err != nil {
 		s.cfg.Report(err)
-		s.fail(w, Unavailable("The idempotency store is unavailable."))
+		fail(w, Unavailable("The idempotency store is unavailable."))
 		return
 	}
 	switch verdict {
@@ -166,46 +150,37 @@ func (s *Service) post(w http.ResponseWriter, r *http.Request, rt route, id stri
 		w.Write(stored.Body)
 		return
 	case Mismatch:
-		s.fail(w, fault(http.StatusUnprocessableEntity, TypeInvalidRequest, "idempotency_conflict", "Idempotency-Key has already been used with a different request body", ""))
+		fail(w, fault(http.StatusUnprocessableEntity, TypeInvalidRequest, "idempotency_conflict", "Idempotency-Key has already been used with a different request body", ""))
 		return
 	case Busy:
 		f := fault(http.StatusConflict, TypeInvalidRequest, "idempotency_in_flight", "A request with this Idempotency-Key is currently being processed", "")
-		f.RetryAfter = retryAfter
-		s.fail(w, f)
+		f.RetryAfter = s.cfg.RetryAfter
+		fail(w, f)
 		return
 	}
 
-	// The key is held until the request settles or releases it. A panic below leaves neither,
-	// so it releases the key on the way out: the agent's retry runs instead of waiting out a
-	// claim nobody holds.
-	settled := false
+	// The key is kept only by a settled answer below 500 (§6.5); a panic or a 5xx releases it.
+	kept := false
 	defer func() {
-		if !settled {
+		if !kept {
 			if err := lease.Release(context.WithoutCancel(ctx)); err != nil {
 				s.cfg.Report(err)
 			}
 		}
 	}()
 	status, out := s.run(ctx, rt, id, who, key, body)
-	res, err := json.Marshal(out)
-	if err != nil {
-		s.cfg.Report(err)
-		status, res = http.StatusInternalServerError, mustJSON(Internal().Body)
-	}
-	settled = true
-	// Whatever the ledger does from here, the request has run: the answer goes out.
-	if ctx := context.WithoutCancel(ctx); status >= 500 {
-		if err := lease.Release(ctx); err != nil {
+	res := encode(out)
+	if status < http.StatusInternalServerError {
+		if err := lease.Settle(context.WithoutCancel(ctx), Stored{Status: status, Body: res}); err != nil {
 			s.cfg.Report(err)
+		} else {
+			kept = true
 		}
-	} else if err := lease.Settle(ctx, Stored{Status: status, Body: res}); err != nil {
-		s.cfg.Report(err)
 	}
 	w.WriteHeader(status)
 	w.Write(res)
 }
 
-// run decodes and executes one POST, answering the status and the body.
 func (s *Service) run(ctx context.Context, rt route, id string, who Caller, key string, body []byte) (int, any) {
 	var (
 		out *CheckoutSession
@@ -236,13 +211,12 @@ func (s *Service) run(ctx context.Context, rt route, id string, who Caller, key 
 		}
 		out, err = s.Complete(ctx, who, id, key, &req)
 	case rCancel:
-		var req CancelRequest
 		if len(bytes.TrimSpace(body)) > 0 {
-			if f := decode(body, &req); f != nil {
+			if f := decode(body, new(CancelRequest)); f != nil {
 				return f.Status, f.Body
 			}
 		}
-		out, err = s.Cancel(ctx, who, id, &req)
+		out, err = s.Cancel(ctx, who, id)
 	}
 	if err != nil {
 		f := s.refusal(err, "", "")
@@ -251,31 +225,26 @@ func (s *Service) run(ctx context.Context, rt route, id string, who Caller, key 
 	return status, out
 }
 
-// answer writes the outcome of a request that is not kept against an idempotency key.
-func (s *Service) answer(w http.ResponseWriter, status int, out *CheckoutSession, err error) {
-	if err != nil {
-		s.fail(w, s.refusal(err, "", ""))
-		return
-	}
-	w.WriteHeader(status)
-	w.Write(mustJSON(out))
-}
-
 // fail writes a protocol error.
-func (s *Service) fail(w http.ResponseWriter, f *Fault) {
+func fail(w http.ResponseWriter, f *Fault) {
 	if f.RetryAfter > 0 {
 		w.Header().Set("Retry-After", strconv.Itoa(f.RetryAfter))
 	}
 	w.WriteHeader(f.Status)
-	w.Write(mustJSON(f.Body))
+	w.Write(encode(f.Body))
 }
 
-func mustJSON(v any) []byte {
-	b, err := json.Marshal(v)
-	if err != nil {
-		// Every value written here is a plain struct of strings, integers and slices.
-		return []byte(`{"type":"processing_error","code":"internal_error","message":"The request could not be processed."}`)
-	}
+func notAllowed(w http.ResponseWriter, allow, method string) {
+	w.Header().Set("Allow", allow)
+	fail(w, fault(http.StatusMethodNotAllowed, TypeInvalidRequest, "method_not_allowed", "This endpoint does not take "+method+".", ""))
+}
+
+func badJSON(msg string) *Fault {
+	return fault(http.StatusBadRequest, TypeInvalidRequest, "invalid_json", msg, "")
+}
+
+func encode(v any) []byte {
+	b, _ := json.Marshal(v)
 	return b
 }
 
@@ -289,7 +258,7 @@ func parse(path string) (route, string, string) {
 		return rCreate, "", http.MethodPost
 	}
 	parts := strings.Split(strings.TrimPrefix(rest, "/"), "/")
-	if !strings.HasPrefix(rest, "/") || parts[0] == "" || len(parts[0]) > maxKey || len(parts) > 2 {
+	if !strings.HasPrefix(rest, "/") || parts[0] == "" || len(parts) > 2 {
 		return 0, "", ""
 	}
 	switch {
@@ -341,9 +310,8 @@ func invalidSignature(msg string) *Fault {
 	return fault(http.StatusUnauthorized, TypeInvalidRequest, "invalid_signature", msg, "")
 }
 
-// signed verifies the Signature and Timestamp of a request when the host configured a
-// Verifier: both are required then, and the timestamp must be within the skew
-// (rfc.agentic_checkout.md §7).
+// signed verifies Signature and Timestamp when a Verifier is configured: the timestamp must
+// be within the skew of the clock (rfc.agentic_checkout.md §7).
 func (s *Service) signed(r *http.Request, who Caller, key string, body []byte) *Fault {
 	if s.cfg.Verify == nil {
 		return nil
@@ -356,7 +324,6 @@ func (s *Service) signed(r *http.Request, who Caller, key string, body []byte) *
 	if err != nil {
 		return invalidSignature("Timestamp must be an RFC 3339 date-time.")
 	}
-	// Compared as instants, never as a Duration: a timestamp centuries away overflows one.
 	now := s.cfg.Now()
 	if t.Before(now.Add(-s.cfg.Skew)) || t.After(now.Add(s.cfg.Skew)) {
 		return invalidSignature("Timestamp outside allowed window.")
@@ -368,8 +335,7 @@ func (s *Service) signed(r *http.Request, who Caller, key string, body []byte) *
 	return nil
 }
 
-// requested is the path the agent asked for: the request target as received, which a host's
-// prefix stripping does not change.
+// requested is the path of the request target as received.
 func requested(r *http.Request) string {
 	if u, err := url.ParseRequestURI(r.RequestURI); err == nil && u.Path != "" {
 		return u.EscapedPath()
@@ -377,21 +343,19 @@ func requested(r *http.Request) string {
 	return r.URL.EscapedPath()
 }
 
-// readBody reads the request body under the size bound.
-func readBody(w http.ResponseWriter, r *http.Request) ([]byte, *Fault) {
-	b, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBody))
+func readBody(r *http.Request) ([]byte, *Fault) {
+	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		var big *http.MaxBytesError
 		if errors.As(err, &big) {
 			return nil, fault(http.StatusRequestEntityTooLarge, TypeInvalidRequest, "request_too_large", "The request body is too large.", "")
 		}
-		return nil, fault(http.StatusBadRequest, TypeInvalidRequest, "invalid_json", "The request body could not be read.", "")
+		return nil, badJSON("The request body could not be read.")
 	}
 	return b, nil
 }
 
-// decode reads a body into v, refusing a field the schema does not define (every request
-// schema is closed with additionalProperties false) and data after the document.
+// decode reads a body into v, refusing fields the closed request schemas do not define.
 func decode(body []byte, v any) *Fault {
 	dec := json.NewDecoder(bytes.NewReader(body))
 	dec.DisallowUnknownFields()
@@ -403,16 +367,15 @@ func decode(body []byte, v any) *Fault {
 		if msg, ok := strings.CutPrefix(err.Error(), "json: unknown field "); ok {
 			return Invalid("", "The field "+msg+" is not defined.")
 		}
-		return fault(http.StatusBadRequest, TypeInvalidRequest, "invalid_json", "The request body is not valid JSON.", "")
+		return badJSON("The request body is not valid JSON.")
 	}
 	if _, err := dec.Token(); err != io.EOF {
-		return fault(http.StatusBadRequest, TypeInvalidRequest, "invalid_json", "The request body is not valid JSON.", "")
+		return badJSON("The request body is not valid JSON.")
 	}
 	return nil
 }
 
-// path states a field path of encoding/json (line_items.0.unit_amount) as an RFC 9535
-// JSONPath ($.line_items[0].unit_amount).
+// path states an encoding/json field path (line_items.0.unit_amount) as an RFC 9535 JSONPath.
 func path(field string) string {
 	out := "$"
 	for _, seg := range strings.Split(field, ".") {
@@ -427,8 +390,7 @@ func path(field string) string {
 	return out
 }
 
-// clearing refuses an update that sets line_items to null, which means clear the field
-// (rfc.agentic_checkout.md §6.2): a session cannot be left without an item.
+// clearing refuses line_items: null, which means clear the field (rfc.agentic_checkout.md §6.2).
 func clearing(body []byte) *Fault {
 	var raw map[string]json.RawMessage
 	if json.Unmarshal(body, &raw) == nil && bytes.Equal(bytes.TrimSpace(raw["line_items"]), []byte("null")) {
@@ -437,14 +399,13 @@ func clearing(body []byte) *Fault {
 	return nil
 }
 
-// Discover returns the discovery document served at /.well-known/acp.json (rfc.discovery.md)
-// as an http.Handler: the host mounts it at that path on the origin root. base is the API base URL
-// the agent appends the checkout paths to; docs and locales are optional.
+// Discover returns /.well-known/acp.json (rfc.discovery.md) for the host to mount at the origin
+// root. base is the API base URL; docs and locales are optional.
 func (s *Service) Discover(base, docs string, locales []string) (http.Handler, error) {
 	if u, err := url.Parse(base); err != nil || u.Scheme != "https" || u.Host == "" {
 		return nil, errors.New("acp: the API base URL must be an absolute https URL")
 	}
-	doc := mustJSON(Discovery{
+	doc := encode(Discovery{
 		Protocol:   DiscoveryProtocol{Name: "acp", Version: Version, SupportedVersions: []string{Version}, DocumentationURL: docs},
 		APIBaseURL: base,
 		Transports: []string{"rest"},
@@ -458,12 +419,10 @@ func (s *Service) Discover(base, docs string, locales []string) (http.Handler, e
 		h := w.Header()
 		h.Set("Content-Type", "application/json")
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
-			h.Set("Allow", "GET, HEAD")
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write(mustJSON(fault(http.StatusMethodNotAllowed, TypeInvalidRequest, "method_not_allowed", "This endpoint does not take "+r.Method+".", "").Body))
+			notAllowed(w, "GET, HEAD", r.Method)
 			return
 		}
-		// A minimum of one hour (rfc.discovery.md §4.1).
+		// rfc.discovery.md §4.1: at least public, max-age=3600.
 		h.Set("Cache-Control", "public, max-age=3600")
 		w.Write(doc)
 	}), nil

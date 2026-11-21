@@ -8,13 +8,12 @@ import (
 	"strconv"
 )
 
-// Fault is a protocol error with the HTTP status it answers with. A Backend returns Faults
-// for what it refuses; the service turns them into the flat Error object of the spec
-// (rfc.agentic_checkout.md §3.1) without changing them.
+// Fault is a protocol error and the HTTP status it answers with. A Backend returns Faults for
+// what it refuses; the flat Error object of rfc.agentic_checkout.md §3.1 is Body.
 type Fault struct {
 	Status int
 	Body   Error
-	// RetryAfter, in seconds, is sent as Retry-After when positive (idempotency_in_flight).
+	// RetryAfter, in seconds, is sent as Retry-After when positive.
 	RetryAfter int
 }
 
@@ -27,8 +26,7 @@ func fault(status int, typ, code, msg, param string) *Fault {
 	return &Fault{Status: status, Body: Error{Type: typ, Code: code, Message: msg, Param: param}}
 }
 
-// Missing refuses a request that lacks a required field.
-func Missing(param, msg string) *Fault {
+func missing(param, msg string) *Fault {
 	return fault(http.StatusBadRequest, TypeInvalidRequest, "missing_required_field", msg, param)
 }
 
@@ -42,8 +40,7 @@ func Unsupported(param, msg string) *Fault {
 	return fault(http.StatusBadRequest, TypeInvalidRequest, "unsupported", msg, param)
 }
 
-// NoItem refuses an item id the seller does not sell.
-func NoItem(param, id string) *Fault {
+func noItem(param, id string) *Fault {
 	return fault(http.StatusBadRequest, TypeInvalidRequest, "invalid_item_id", "The item ID '"+id+"' does not exist.", param)
 }
 
@@ -57,18 +54,16 @@ func Conflict(msg string) *Fault {
 	return fault(http.StatusConflict, TypeInvalidRequest, "conflict", msg, "")
 }
 
-// NotCancelable refuses to cancel a session that is already completed or canceled
-// (openapi cancelCheckoutSession, 405).
+// NotCancelable refuses to cancel a completed or canceled session (cancelCheckoutSession, 405).
 func NotCancelable(msg string) *Fault {
 	return fault(http.StatusMethodNotAllowed, TypeInvalidRequest, "not_cancelable", msg, "")
 }
 
-// Unavailable answers a failure that may pass: the request is safe to retry.
+// Unavailable answers a failure that may pass; the request is safe to retry.
 func Unavailable(msg string) *Fault {
 	return fault(http.StatusServiceUnavailable, TypeServiceUnavailable, "service_unavailable", msg, "")
 }
 
-// Internal answers an unexpected failure of the seller.
-func Internal() *Fault {
+func internal() *Fault {
 	return fault(http.StatusInternalServerError, TypeProcessingError, "internal_error", "The request could not be processed.", "")
 }

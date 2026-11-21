@@ -257,13 +257,13 @@ func TestTheAPIOverCommerce(t *testing.T) {
 	}
 	cat, _ := billing.ReadCatalog(ctx, org, who.Host)
 	pack := cat.CreditPacks[0]
-	h, _ := TokenizedCard("card_tokenized", "acct_test", "stripe", true, nil, nil)
+	h, _ := TokenizedCard("card_tokenized", "stripe", map[string]any{"merchant_id": "acct_test", "environment": "sandbox"})
 	svc, err := New(Config{
 		Backend:  Commerce{},
 		Identify: func(*http.Request) (Caller, error) { return who, nil },
 		Handlers: func(context.Context, Caller) ([]PaymentHandler, error) { return []PaymentHandler{h}, nil },
 		Order:    func(id string) string { return "https://pay.example/orders/" + id },
-		Ledger:   Durable{},
+		Ledger:   Durable{}, RetryAfter: 1, Report: func(error) {},
 	})
 	if err != nil {
 		t.Fatal(err)

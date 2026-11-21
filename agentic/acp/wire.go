@@ -5,11 +5,9 @@ package acp
 
 import "encoding/json"
 
-// The wire types of the Agentic Checkout API, version 2026-04-17: spec/2026-04-17/json-schema/
-// schema.agentic_checkout.json in the Agentic Commerce Protocol repository. Field names, enums
-// and required fields follow that schema. Optional fields whose zero value is meaningful
-// (empty string, false, 0, an empty array) are pointers or omitzero slices, so a document
-// decodes and encodes to the same JSON.
+// Wire types of the Agentic Checkout API 2026-04-17 (spec/2026-04-17/json-schema/
+// schema.agentic_checkout.json). Optional fields whose zero value is meaningful are pointers or
+// omitzero slices, so a document round-trips.
 
 // Version is the API version this package serves (the API-Version header).
 const Version = "2026-04-17"
@@ -507,17 +505,10 @@ type CheckoutSession struct {
 
 // Session statuses (schema CheckoutSessionBase.status).
 const (
-	StatusIncomplete             = "incomplete"
-	StatusNotReadyForPayment     = "not_ready_for_payment"
-	StatusRequiresEscalation     = "requires_escalation"
-	StatusAuthenticationRequired = "authentication_required"
-	StatusReadyForPayment        = "ready_for_payment"
-	StatusPendingApproval        = "pending_approval"
-	StatusCompleteInProgress     = "complete_in_progress"
-	StatusCompleted              = "completed"
-	StatusCanceled               = "canceled"
-	StatusInProgress             = "in_progress"
-	StatusExpired                = "expired"
+	StatusReadyForPayment    = "ready_for_payment"
+	StatusCompleteInProgress = "complete_in_progress"
+	StatusCompleted          = "completed"
+	StatusCanceled           = "canceled"
 )
 
 // DiscountsRequest carries the discount codes an agent submits (the discount extension).

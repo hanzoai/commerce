@@ -1,58 +1,44 @@
 // Copyright (c) 2014-present Hanzo AI, Inc.
 // Licensed under MIT OR Apache-2.0. See LICENSE-MIT and LICENSE-APACHE.
 
-// Package acp is the merchant (seller) side of the Agentic Commerce Protocol, API version
-// 2026-04-17: the Agentic Checkout REST API (create, update, retrieve, complete and cancel a
-// checkout session), the order webhook the seller sends to the agent, the discovery document
-// at /.well-known/acp.json, and the payment handler declaration, all behind a Backend that
-// the seller's commerce system implements.
-//
-// The package follows the released schema, not the prose of the RFCs where they differ
-// (the RFCs still describe an items[] request with quantity; the schema's request item is
-// {id, name, unit_amount}). What the seller cannot honour it refuses with the spec's error
-// rather than accept in silence. The payment service provider's delegate_payment endpoint is
-// not part of the seller's API and is not implemented.
+// Package acp is the seller side of the Agentic Commerce Protocol, API 2026-04-17: the
+// Agentic Checkout REST API, the order webhook, the discovery document and the payment handler
+// declaration, over a Backend the seller's commerce system implements. It follows the released
+// JSON Schema where the RFC prose differs, and refuses what the seller cannot honour with the
+// spec's error. delegate_payment is the PSP's endpoint and is not implemented.
 package acp
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 )
 
-// Config is what a Service needs from its host. Nothing environmental has a default except
-// the idempotency ledger, the clock, the clock skew and the error report.
+// Config is what a Service needs from its host.
 type Config struct {
-	// Backend is the seller's commerce system.
 	Backend Backend
-	// Identify establishes the caller from the request: it validates the bearer token and
-	// answers the merchant and buyer it stands for. An error answers 401.
+	// Identify validates the bearer token and answers the merchant and buyer it stands for.
 	Identify func(*http.Request) (Caller, error)
-	// Handlers are the payment handlers a session declares for the caller. The host owns
-	// them because they carry the seller's merchant account at its PSP.
+	// Handlers are the payment handlers a session declares for the caller.
 	Handlers func(context.Context, Caller) ([]PaymentHandler, error)
-	// Order is the permanent URL where the buyer views an order.
+	// Order is the URL where the buyer views an order.
 	Order func(id string) string
-	// Links are the seller's policy and support URLs a session lists.
-	Links []Link
-	// Ledger keeps idempotency keys; nil is an in-process Memory.
+	// Links are the policy and support URLs a session lists.
+	Links  []Link
 	Ledger Ledger
+	// RetryAfter is the Retry-After, in seconds, of an idempotency_in_flight answer (§6.4).
+	RetryAfter int
+	// Report receives an unexpected backend error or an undelivered webhook.
+	Report func(error)
 	// Events receives the order webhook; nil sends none.
 	Events Sender
-	// Verify checks the Signature of a request, given the whole of it (Signed); nil does not
-	// verify requests, which the spec only recommends. When set, Signature and a Timestamp
-	// within Skew of the clock are required before it is called.
+	// Verify checks request signatures; nil does not (the spec recommends it). When set, Skew is
+	// how far the Timestamp may be from the clock.
 	Verify Verifier
-	// Skew bounds how far a request Timestamp may be from the clock; zero is 300 seconds,
-	// the tolerance the webhook specification recommends.
-	Skew time.Duration
-	// Report receives what the service could not answer to the agent: an unexpected backend
-	// error, a webhook that was not delivered. Nil writes it to slog.
-	Report func(error)
+	Skew   time.Duration
 	// Now is the clock; nil is time.Now.
 	Now func() time.Time
 }
@@ -62,42 +48,24 @@ type Service struct {
 	cfg Config
 }
 
-// New returns a Service. It refuses a Config that lacks what a session cannot be stated
-// without.
+// New returns a Service.
 func New(cfg Config) (*Service, error) {
 	switch {
-	case cfg.Backend == nil:
-		return nil, errors.New("acp: Config.Backend is required")
-	case cfg.Identify == nil:
-		return nil, errors.New("acp: Config.Identify is required")
-	case cfg.Handlers == nil:
-		return nil, errors.New("acp: Config.Handlers is required")
-	case cfg.Order == nil:
-		return nil, errors.New("acp: Config.Order is required")
-	}
-	if cfg.Ledger == nil {
-		cfg.Ledger = NewMemory()
-	}
-	if cfg.Skew <= 0 {
-		cfg.Skew = 300 * time.Second
+	case cfg.Backend == nil || cfg.Identify == nil || cfg.Handlers == nil || cfg.Order == nil || cfg.Ledger == nil || cfg.Report == nil:
+		return nil, errors.New("acp: Backend, Identify, Handlers, Order, Ledger and Report are required")
+	case cfg.RetryAfter <= 0:
+		return nil, errors.New("acp: RetryAfter is required")
+	case cfg.Verify != nil && cfg.Skew <= 0:
+		return nil, errors.New("acp: Skew is required with Verify")
 	}
 	if cfg.Now == nil {
 		cfg.Now = time.Now
-	}
-	if cfg.Report == nil {
-		cfg.Report = func(err error) { slog.Error("acp", "error", err) }
 	}
 	if cfg.Links == nil {
 		cfg.Links = []Link{}
 	}
 	return &Service{cfg: cfg}, nil
 }
-
-// Digital goods are fulfilled instantly: the one fulfillment option a session offers.
-const (
-	digitalID    = "digital"
-	digitalTitle = "Digital delivery"
-)
 
 // Create opens a checkout session (POST /checkout_sessions).
 func (s *Service) Create(ctx context.Context, who Caller, req *CreateRequest) (*CheckoutSession, error) {
@@ -131,16 +99,9 @@ func (s *Service) Update(ctx context.Context, who Caller, id string, req *Update
 	if c.State != Open && c.State != Failed {
 		return nil, Conflict("The checkout session is " + string(c.State) + " and can no longer be changed.")
 	}
-	item := c.Item.ID
 	if len(req.LineItems) > 0 {
-		item = req.LineItems[0].ID
-	}
-	if f := selected(req.SelectedFulfillmentOptions, item); f != nil {
-		return nil, f
-	}
-	if len(req.LineItems) > 0 {
-		if c, err = s.cfg.Backend.Change(ctx, who, id, item); err != nil {
-			return nil, s.refusal(err, "$.line_items[0].item.id", item)
+		if c, err = s.cfg.Backend.Change(ctx, who, id, req.LineItems[0].ID); err != nil {
+			return nil, s.refusal(err, "$.line_items[0].item.id", req.LineItems[0].ID)
 		}
 	}
 	return s.session(c, hs, advise(req.LineItems, req.Coupons, req.Discounts, c)...), nil
@@ -159,9 +120,9 @@ func (s *Service) Retrieve(ctx context.Context, who Caller, id string) (*Checkou
 	return s.session(c, hs), nil
 }
 
-// Complete pays a session (POST /checkout_sessions/{id}/complete). key is the
-// Idempotency-Key of the request. A payment the bank or token declined is not an error: the
-// session comes back unchanged and ready for payment, with the reason in messages.
+// Complete pays a session (POST /checkout_sessions/{id}/complete). key is the request's
+// Idempotency-Key. A declined payment is not an error: the session comes back ready for payment
+// with the reason in messages.
 func (s *Service) Complete(ctx context.Context, who Caller, id, key string, req *CompleteRequest) (*CheckoutSession, error) {
 	if f := validateComplete(req); f != nil {
 		return nil, f
@@ -195,10 +156,7 @@ func (s *Service) Complete(ctx context.Context, who Caller, id, key string, req 
 }
 
 // Cancel abandons a session (POST /checkout_sessions/{id}/cancel).
-func (s *Service) Cancel(ctx context.Context, who Caller, id string, req *CancelRequest) (*CheckoutSession, error) {
-	if f := validateCancel(req); f != nil {
-		return nil, f
-	}
+func (s *Service) Cancel(ctx context.Context, who Caller, id string) (*CheckoutSession, error) {
 	hs, err := s.handlers(ctx, who)
 	if err != nil {
 		return nil, err
@@ -210,23 +168,21 @@ func (s *Service) Cancel(ctx context.Context, who Caller, id string, req *Cancel
 	return s.session(c, hs), nil
 }
 
-// refusal turns a backend error into the Fault the agent is answered with. A *Fault passes
-// through; ErrNoItem is the item the agent named; anything else is reported and answered
-// without its text.
+// refusal is the Fault a backend error is answered with; an unexpected error is reported and
+// answered without its text.
 func (s *Service) refusal(err error, param, item string) *Fault {
 	var f *Fault
 	switch {
 	case errors.As(err, &f):
 		return f
 	case errors.Is(err, ErrNoItem):
-		return NoItem(param, item)
+		return noItem(param, item)
 	}
 	s.cfg.Report(err)
-	return Internal()
+	return internal()
 }
 
-// handlers are the payment handlers the caller's sessions declare. They are read before a
-// request changes anything, so a session is never opened that cannot be stated.
+// handlers are read before a request changes anything, so no session is opened that cannot be stated.
 func (s *Service) handlers(ctx context.Context, who Caller) ([]PaymentHandler, error) {
 	hs, err := s.cfg.Handlers(ctx, who)
 	if err != nil {
@@ -236,8 +192,7 @@ func (s *Service) handlers(ctx context.Context, who Caller) ([]PaymentHandler, e
 	return hs, nil
 }
 
-// session states a checkout as the session the agent reads. The extra messages are the ones
-// the request itself earned.
+// session states a checkout as a CheckoutSession; extra are the messages the request earned.
 func (s *Service) session(c *Checkout, handlers []PaymentHandler, extra ...Message) *CheckoutSession {
 	line := "line_item_" + c.Item.ID
 	unit := c.Total
@@ -246,9 +201,8 @@ func (s *Service) session(c *Checkout, handlers []PaymentHandler, extra ...Messa
 		Protocol: &ProtocolVersion{Version: Version},
 		Capabilities: Capabilities{
 			Payment: &Payment{Handlers: handlers},
-			// The seller runs none of the interventions in-band, so the intersection with
-			// whatever the agent supports is empty (rfc.capability_negotiation.md §4.5.1).
-			Interventions: &Interventions{Supported: []string{}, Required: []string{}, Enforcement: "conditional"},
+			// No intervention runs in-band: the intersection is empty (rfc.capability_negotiation.md §4.5.1).
+			Interventions: &Interventions{Supported: []string{}},
 		},
 		Status:   status(c.State),
 		Currency: s.cfg.Backend.Currency(),
@@ -260,14 +214,10 @@ func (s *Service) session(c *Checkout, handlers []PaymentHandler, extra ...Messa
 			UnitAmount: &unit,
 			Totals:     breakdown(c.Total, "Base Amount"),
 		}},
-		FulfillmentOptions: []FulfillmentOption{{
-			Type: "digital", ID: digitalID, Title: digitalTitle,
-			Totals: []Total{{Type: "total", DisplayText: digitalTitle, Amount: 0}},
-		}},
-		SelectedFulfillmentOptions: []SelectedFulfillmentOption{{Type: "digital", OptionID: digitalID, ItemIDs: []string{c.Item.ID}}},
-		Totals:                     breakdown(c.Total, "Item(s) total"),
-		Messages:                   append([]Message{}, extra...),
-		Links:                      s.cfg.Links,
+		FulfillmentOptions: []FulfillmentOption{},
+		Totals:             breakdown(c.Total, "Item(s) total"),
+		Messages:           append([]Message{}, extra...),
+		Links:              s.cfg.Links,
 	}
 	switch {
 	case c.State == Canceled:
@@ -283,7 +233,7 @@ func (s *Service) session(c *Checkout, handlers []PaymentHandler, extra ...Messa
 	return out
 }
 
-// status maps a checkout state to the session status the spec names.
+// status maps a checkout state to a session status.
 func status(st State) string {
 	switch st {
 	case Paid:
@@ -296,8 +246,7 @@ func status(st State) string {
 	return StatusReadyForPayment
 }
 
-// breakdown is the totals of one unit with no tax, discount or fulfillment charge: the
-// seller computes none.
+// breakdown is the totals of one unit; the seller computes no tax, discount or fulfillment charge.
 func breakdown(total int64, base string) []Total {
 	return []Total{
 		{Type: "items_base_amount", DisplayText: base, Amount: total},
@@ -306,7 +255,7 @@ func breakdown(total int64, base string) []Total {
 	}
 }
 
-// order states a paid checkout as an order. typ is "order" for a webhook payload.
+// order states a paid checkout as an order, "confirmed" (rfc.orders.md §4.1); typ is "order" in a webhook.
 func (s *Service) order(c *Checkout, typ string) Order {
 	total := c.Total
 	return Order{
@@ -324,7 +273,7 @@ func (s *Service) order(c *Checkout, typ string) Order {
 	}
 }
 
-// emit sends an order event. A failure is reported, never returned: the order exists.
+// emit sends an order event; a failure is reported, not returned, since the order exists.
 func (s *Service) emit(ctx context.Context, typ string, c *Checkout) {
 	if s.cfg.Events == nil || c.Receipt == nil {
 		return
@@ -334,8 +283,8 @@ func (s *Service) emit(ctx context.Context, typ string, c *Checkout) {
 	}
 }
 
-// advise is the warnings a request earned: a price that is not the one the agent expected,
-// and discount codes the seller does not take.
+// advise is the warnings a request earned: a price other than the unit_amount the agent sent
+// (price_change), and discount codes (discount_code_invalid) since no discount extension runs.
 func advise(items []Item, coupons []string, discounts *DiscountsRequest, c *Checkout) []Message {
 	var out []Message
 	if len(items) > 0 && items[0].UnitAmount != nil && *items[0].UnitAmount != c.Total {
@@ -361,117 +310,63 @@ func noDiscount(param string) Message {
 		ContentType: "plain", Content: "This seller does not accept discount codes."}
 }
 
-// selected checks the fulfillment options an agent selects against the one the session
-// offers (rfc.agentic_checkout.md §8: option_id MUST match a fulfillment option).
-func selected(opts []SelectedFulfillmentOption, item string) *Fault {
-	for i, o := range opts {
-		at := fmt.Sprintf("$.selected_fulfillment_options[%d]", i)
-		switch {
-		case o.Type != "digital":
-			return Invalid(at+".type", "Only digital fulfillment is offered.")
-		case o.OptionID != digitalID:
-			return Invalid(at+".option_id", "The fulfillment option '"+o.OptionID+"' is not offered by this session.")
-		}
-		for j, id := range o.ItemIDs {
-			if id != item {
-				return Invalid(fmt.Sprintf("%s.item_ids[%d]", at, j), "The item '"+id+"' is not in this session.")
-			}
-		}
-	}
-	return nil
-}
-
-// ---- validation: the boundary ----
-
-// maxNotes is the schema's maxLength of order_notes.
-const maxNotes = 5000
-
 func (s *Service) validateCreate(r *CreateRequest) *Fault {
 	switch {
 	case len(r.LineItems) == 0:
-		return Missing("$.line_items", "line_items must hold at least one item.")
+		return missing("$.line_items", "line_items must hold at least one item.")
 	case r.Currency == "":
-		return Missing("$.currency", "currency is required.")
+		return missing("$.currency", "currency is required.")
 	case r.Capabilities == nil:
-		return Missing("$.capabilities", "capabilities is required.")
+		return missing("$.capabilities", "capabilities is required.")
 	case len(r.LineItems) > 1:
 		return Unsupported("$.line_items", "This seller sells one item per checkout session.")
 	case !strings.EqualFold(r.Currency, s.cfg.Backend.Currency()):
 		return Unsupported("$.currency", "This seller settles in "+strings.ToUpper(s.cfg.Backend.Currency())+".")
 	}
-	if f := items(r.LineItems); f != nil {
-		return f
-	}
-	if f := parties(r.Buyer, r.FulfillmentDetails, r.OrderNotes); f != nil {
-		return f
-	}
-	return nil
+	return items(r.LineItems)
 }
 
+// validateUpdate refuses any selected fulfillment option: the session offers none
+// (rfc.agentic_checkout.md §8: option_id MUST match a fulfillment option).
 func validateUpdate(r *UpdateRequest) *Fault {
-	if len(r.LineItems) > 1 {
+	switch {
+	case len(r.LineItems) > 1:
 		return Unsupported("$.line_items", "This seller sells one item per checkout session.")
+	case len(r.SelectedFulfillmentOptions) > 0:
+		return Invalid("$.selected_fulfillment_options[0].option_id", "This session offers no fulfillment options.")
 	}
-	if f := items(r.LineItems); f != nil {
-		return f
-	}
-	return parties(r.Buyer, r.FulfillmentDetails, r.OrderNotes)
+	return items(r.LineItems)
 }
 
 func validateComplete(r *CompleteRequest) *Fault {
 	pd := r.PaymentData
-	switch {
-	case pd == nil:
-		return Missing("$.payment_data", "payment_data is required.")
-	case pd.PurchaseOrderNumber != "":
-		return Unsupported("$.payment_data.purchase_order_number", "Purchase orders are not accepted.")
-	case pd.PaymentTerms != "":
-		return Unsupported("$.payment_data.payment_terms", "Payment terms are not accepted.")
-	case pd.DueDate != "":
-		return Unsupported("$.payment_data.due_date", "Payment terms are not accepted.")
-	case pd.ApprovalRequired != nil:
-		return Unsupported("$.payment_data.approval_required", "Payment approval is not supported.")
-	case pd.HandlerID == "":
-		return Missing("$.payment_data.handler_id", "handler_id is required.")
-	case pd.Instrument == nil:
-		return Missing("$.payment_data.instrument", "instrument is required.")
-	case pd.Instrument.Type == "":
-		return Missing("$.payment_data.instrument.type", "instrument.type is required.")
-	case pd.Instrument.Credential.Type == "":
-		return Missing("$.payment_data.instrument.credential.type", "credential.type is required.")
-	case pd.Instrument.Credential.Token == "":
-		return Missing("$.payment_data.instrument.credential.token", "credential.token is required.")
-	case r.AuthenticationResult != nil:
-		return Unsupported("$.authentication_result", "This seller does not take an authentication result: it runs no in-band authentication.")
+	if pd == nil {
+		return missing("$.payment_data", "payment_data is required.")
 	}
-	if a := r.AffiliateAttribution; a != nil && (a.Provider == "" || (a.Token == "" && a.PublisherID == "")) {
-		return Invalid("$.affiliate_attribution", "An attribution needs a provider and a token or a publisher_id.")
-	}
-	return parties(r.Buyer, nil, r.OrderNotes)
-}
-
-func validateCancel(r *CancelRequest) *Fault {
-	t := r.IntentTrace
-	if t == nil {
-		return nil
-	}
-	switch t.ReasonCode {
-	case "price_sensitivity", "shipping_cost", "shipping_speed", "product_fit", "trust_security",
-		"returns_policy", "payment_options", "comparison", "timing_deferred", "other":
-	case "":
-		return Missing("$.intent_trace.reason_code", "reason_code is required.")
-	default:
-		return Invalid("$.intent_trace.reason_code", "reason_code is not one of the defined reasons.")
-	}
-	if len(t.TraceSummary) > 500 {
-		return Invalid("$.intent_trace.trace_summary", "trace_summary is at most 500 characters.")
-	}
-	for k, v := range t.Metadata {
-		switch v.(type) {
-		case string, float64, bool:
-		default:
-			return Invalid("$.intent_trace.metadata."+k, "metadata values are strings, numbers or booleans.")
+	for _, f := range []struct {
+		name string
+		set  bool
+	}{
+		{"purchase_order_number", pd.PurchaseOrderNumber != ""}, {"payment_terms", pd.PaymentTerms != ""},
+		{"due_date", pd.DueDate != ""}, {"approval_required", pd.ApprovalRequired != nil},
+	} {
+		if f.set {
+			return Unsupported("$.payment_data."+f.name, "Purchase orders and payment terms are not accepted.")
 		}
+	}
+	switch {
+	case pd.HandlerID == "":
+		return missing("$.payment_data.handler_id", "handler_id is required.")
+	case pd.Instrument == nil:
+		return missing("$.payment_data.instrument", "instrument is required.")
+	case pd.Instrument.Type == "":
+		return missing("$.payment_data.instrument.type", "instrument.type is required.")
+	case pd.Instrument.Credential.Type == "":
+		return missing("$.payment_data.instrument.credential.type", "credential.type is required.")
+	case pd.Instrument.Credential.Token == "":
+		return missing("$.payment_data.instrument.credential.token", "credential.token is required.")
+	case r.AuthenticationResult != nil:
+		return Unsupported("$.authentication_result", "This seller runs no in-band authentication.")
 	}
 	return nil
 }
@@ -479,30 +374,8 @@ func validateCancel(r *CancelRequest) *Fault {
 func items(its []Item) *Fault {
 	for i, it := range its {
 		if it.ID == "" {
-			return Missing(fmt.Sprintf("$.line_items[%d].id", i), "id is required.")
+			return missing(fmt.Sprintf("$.line_items[%d].id", i), "id is required.")
 		}
-	}
-	return nil
-}
-
-// parties checks the buyer, the fulfillment details and the order notes of a request.
-func parties(b *Buyer, fd *FulfillmentDetails, notes *string) *Fault {
-	if b != nil && b.Email == "" {
-		return Missing("$.buyer.email", "buyer.email is required.")
-	}
-	if fd != nil && fd.Address != nil {
-		a := fd.Address
-		for _, f := range []struct{ name, val string }{
-			{"name", a.Name}, {"line_one", a.LineOne}, {"city", a.City},
-			{"state", a.State}, {"country", a.Country}, {"postal_code", a.PostalCode},
-		} {
-			if f.val == "" {
-				return Missing("$.fulfillment_details.address."+f.name, "address."+f.name+" is required.")
-			}
-		}
-	}
-	if notes != nil && len(*notes) > maxNotes {
-		return Invalid("$.order_notes", "order_notes is at most 5000 characters.")
 	}
 	return nil
 }
