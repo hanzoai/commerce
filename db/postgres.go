@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -1312,8 +1313,9 @@ func (q *postgresQuery) buildWhere(tenant string) (string, []interface{}) {
 				}
 			}
 		}
-		conditions = append(conditions, fmt.Sprintf("%s %s $%d", jsonPath, f.op, argNum))
-		args = append(args, f.value)
+		cond, arg := compare(jsonField, jsonPath, f.op, f.value, argNum)
+		conditions = append(conditions, cond)
+		args = append(args, arg)
 		argNum++
 	}
 
@@ -1322,6 +1324,37 @@ func (q *postgresQuery) buildWhere(tenant string) (string, []interface{}) {
 	}
 
 	return " AND " + strings.Join(conditions, " AND "), args
+}
+
+// compare is the condition that holds field against v, and the argument that carries
+// v. data->>'f' is text, which pgx will not bind a number or a bool to, and which
+// orders "10" before "9": a number compares as a number (a row whose field is not one
+// reads NULL and matches nothing) and a bool as its text.
+func compare(field, text, op string, v any, n int) (string, any) {
+	if b, ok := v.(bool); ok {
+		return fmt.Sprintf("%s %s $%d", text, op, n), strconv.FormatBool(b)
+	}
+	if num, ok := number(v); ok {
+		return fmt.Sprintf("CASE WHEN jsonb_typeof(data->'%s') = 'number' THEN (%s)::numeric END %s $%d", field, text, op, n), num
+	}
+	return fmt.Sprintf("%s %s $%d", text, op, n), v
+}
+
+// number is v as int64 or float64 when it is a Go number, else false.
+func number(v any) (any, bool) {
+	r := reflect.ValueOf(v)
+	switch r.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return r.Int(), true
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		if u := r.Uint(); u <= math.MaxInt64 {
+			return int64(u), true
+		}
+		return strconv.FormatUint(r.Uint(), 10), true
+	case reflect.Float32, reflect.Float64:
+		return r.Float(), true
+	}
+	return nil, false
 }
 
 func (q *postgresQuery) buildOrderBy() string {
