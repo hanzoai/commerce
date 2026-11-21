@@ -447,41 +447,109 @@ func (c *Commerce) refusal(out *Checkout, v *billing.CheckoutView) {
 
 // Idempotency is a Store over commerce's idempotency guard
 // (models/idempotencykey), so duplicates are detected across every replica that
-// shares the datastore. Records live in the system namespace.
-type Idempotency struct{}
+// shares the datastore. Records live in the system namespace and are kept for
+// Keep, the time the specification gives: a key older than that is a new key
+// and is dropped when it is next seen. Sweep removes the ones nothing asks about
+// again, and a host runs it on a schedule.
+type Idempotency struct {
+	// Keep is how long a key is remembered. Zero is the package's Keep (48
+	// hours, the specification's recommendation); less than MinKeep (24 hours,
+	// its minimum) is refused.
+	Keep time.Duration
+	// Now is the clock; it defaults to time.Now.
+	Now func() time.Time
+}
 
-func (Idempotency) db(ctx context.Context) *datastore.Datastore {
+func (s Idempotency) db(ctx context.Context) *datastore.Datastore {
 	return datastore.New(nscontext.WithNamespace(ctx, "system"))
+}
+
+func (s Idempotency) retention() (time.Duration, error) {
+	switch {
+	case s.Keep == 0:
+		return Keep, nil
+	case s.Keep < MinKeep:
+		return 0, errors.New("ucp: idempotency records must be kept at least 24 hours")
+	}
+	return s.Keep, nil
+}
+
+func (s Idempotency) now() time.Time {
+	if s.Now != nil {
+		return s.Now()
+	}
+	return time.Now()
 }
 
 const idempotencyScope = "ucp:"
 
 // Begin implements Store.
 func (s Idempotency) Begin(ctx context.Context, scope, key, digest string) (*Seen, error) {
-	db := s.db(ctx)
-	rec, replay, err := idempotencykey.Begin(db, idempotencyScope+scope, key)
+	keep, err := s.retention()
 	if err != nil {
 		return nil, err
 	}
-	if !replay {
-		rec.Facts = digest
-		if err := rec.Put(); err != nil {
+	db := s.db(ctx)
+	for range 2 {
+		rec, replay, err := idempotencykey.Begin(db, idempotencyScope+scope, key)
+		if err != nil {
 			return nil, err
 		}
-		return nil, nil
-	}
-	seen := &Seen{Digest: rec.Facts, Done: rec.Status == idempotencykey.StatusCompleted}
-	if seen.Digest == "" {
-		// The first request has reserved the key and not yet recorded its body
-		// digest: it is in flight.
-		seen.Digest = digest
-	}
-	if seen.Done {
-		if err := json.Unmarshal([]byte(rec.Response), &seen.Response); err != nil {
-			return nil, err
+		if !replay {
+			rec.Facts = digest
+			if err := rec.Put(); err != nil {
+				return nil, err
+			}
+			return nil, nil
 		}
+		if !rec.CreatedAt.IsZero() && s.now().Sub(rec.CreatedAt) >= keep {
+			// Older than the retention: the key is forgotten and claimed again.
+			if err := rec.Delete(); err != nil {
+				return nil, err
+			}
+			continue
+		}
+		seen := &Seen{Digest: rec.Facts, Done: rec.Status == idempotencykey.StatusCompleted}
+		if seen.Digest == "" {
+			// The first request has reserved the key and not yet recorded its body
+			// digest: it is in flight.
+			seen.Digest = digest
+		}
+		if seen.Done {
+			if err := json.Unmarshal([]byte(rec.Response), &seen.Response); err != nil {
+				return nil, err
+			}
+		}
+		return seen, nil
 	}
-	return seen, nil
+	return nil, errors.New("ucp: an idempotency record kept expiring under the request")
+}
+
+// Sweep deletes up to limit records older than the retention, oldest first, and
+// returns how many it deleted. The age is judged here and not by the query, so
+// it does not depend on how a backend compares times.
+func (s Idempotency) Sweep(ctx context.Context, limit int) (int, error) {
+	keep, err := s.retention()
+	if err != nil {
+		return 0, err
+	}
+	db := s.db(ctx)
+	var recs []*idempotencykey.IdempotencyKey
+	keys, err := idempotencykey.Query(db).Order("CreatedAt").Limit(limit).GetAll(&recs)
+	if err != nil {
+		return 0, err
+	}
+	n := 0
+	for i, rec := range recs {
+		if rec.CreatedAt.IsZero() || s.now().Sub(rec.CreatedAt) < keep {
+			break
+		}
+		if err := db.Delete(keys[i]); err != nil {
+			return n, err
+		}
+		n++
+	}
+	return n, nil
 }
 
 // Finish implements Store.

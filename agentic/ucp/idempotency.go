@@ -4,7 +4,9 @@
 package ucp
 
 import (
+	"container/list"
 	"context"
+	"errors"
 	"sync"
 	"time"
 )
@@ -53,46 +55,80 @@ type Store interface {
 	Release(ctx context.Context, scope, key string) error
 }
 
-// Memory is an in-process Store. A host that runs more than one replica needs a
-// shared store.
+// MinKeep is the least a business stores an idempotency key: 24 hours.
+const MinKeep = 24 * time.Hour
+
+// ErrFull is returned by a store that holds as many keys as it may. The server
+// answers 503, failing closed, rather than serve a request it cannot make
+// repeatable; a live key is never evicted to make room.
+var ErrFull = errors.New("ucp: the idempotency store is full")
+
+// Memory is an in-process Store: an index by key, with records kept in the
+// order they expire so that Begin drops the expired without scanning, and a cap
+// on how many it holds. A host that runs more than one replica needs a shared
+// store (Idempotency).
 type Memory struct {
 	keep time.Duration
+	max  int
 	now  func() time.Time
 	mu   sync.Mutex
 	m    map[string]*memoryRecord
+	// order lists records oldest first; every record lives for the same time, so
+	// that is also the order they expire in.
+	order *list.List
 }
 
 type memoryRecord struct {
+	id      string
 	seen    Seen
 	expires time.Time
+	el      *list.Element
 }
 
-// NewMemory returns a Memory store that keeps records for keep; zero is Keep.
-func NewMemory(keep time.Duration) *Memory {
-	if keep <= 0 {
+// NewMemory returns a Memory store that keeps records for keep (zero is Keep,
+// and not less than MinKeep) and holds at most max of them, which the host
+// chooses: no size is assumed for it.
+func NewMemory(keep time.Duration, max int) (*Memory, error) {
+	if keep == 0 {
 		keep = Keep
 	}
-	return &Memory{keep: keep, now: time.Now, m: map[string]*memoryRecord{}}
+	if keep < MinKeep {
+		return nil, errors.New("ucp: idempotency records must be kept at least 24 hours")
+	}
+	if max <= 0 {
+		return nil, errors.New("ucp: a Memory store needs a cap on its entries")
+	}
+	return &Memory{keep: keep, max: max, now: time.Now, m: map[string]*memoryRecord{}, order: list.New()}, nil
 }
 
+// Begin implements Store.
 func (s *Memory) Begin(_ context.Context, scope, key, digest string) (*Seen, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := s.now()
-	for k, r := range s.m {
-		if now.After(r.expires) {
-			delete(s.m, k)
+	for el := s.order.Front(); el != nil; el = s.order.Front() {
+		r := el.Value.(*memoryRecord)
+		if !now.After(r.expires) {
+			break
 		}
+		s.order.Remove(el)
+		delete(s.m, r.id)
 	}
 	id := scope + "\x00" + key
 	if r, ok := s.m[id]; ok {
 		seen := r.seen
 		return &seen, nil
 	}
-	s.m[id] = &memoryRecord{seen: Seen{Digest: digest}, expires: now.Add(s.keep)}
+	if len(s.m) >= s.max {
+		return nil, ErrFull
+	}
+	r := &memoryRecord{id: id, seen: Seen{Digest: digest}, expires: now.Add(s.keep)}
+	r.el = s.order.PushBack(r)
+	s.m[id] = r
 	return nil, nil
 }
 
+// Finish implements Store.
 func (s *Memory) Finish(_ context.Context, scope, key, _ string, r Stored) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -102,9 +138,14 @@ func (s *Memory) Finish(_ context.Context, scope, key, _ string, r Stored) error
 	return nil
 }
 
+// Release implements Store.
 func (s *Memory) Release(_ context.Context, scope, key string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	delete(s.m, scope+"\x00"+key)
+	id := scope + "\x00" + key
+	if r, ok := s.m[id]; ok {
+		s.order.Remove(r.el)
+		delete(s.m, id)
+	}
 	return nil
 }

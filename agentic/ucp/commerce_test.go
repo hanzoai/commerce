@@ -15,6 +15,7 @@ import (
 	"github.com/hanzoai/commerce/api/billing"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/checkoutsession"
+	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
@@ -447,5 +448,50 @@ func TestCommerceIdempotencyStore(t *testing.T) {
 	}
 	if seen, err := s.Begin(ctx, "other", "key-1", "digest-b"); err != nil || seen != nil {
 		t.Fatalf("after release: %+v %v", seen, err)
+	}
+}
+
+// Records are kept for the time the specification gives (at least 24 hours,
+// 48 recommended) and no longer: an old key is a new key, and Sweep removes
+// what nothing will ask about again.
+func TestCommerceIdempotencyRecordsExpire(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	now := time.Now()
+	s := Idempotency{Now: func() time.Time { return now }}
+	for _, k := range []string{"old-1", "old-2"} {
+		if seen, err := s.Begin(ctx, "scope", k, "d"); seen != nil || err != nil {
+			t.Fatalf("%s: %v %v", k, seen, err)
+		}
+		if err := s.Finish(ctx, "scope", k, "d", Stored{Status: 200, Body: []byte(`{}`)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rows := func() int {
+		n, err := idempotencykey.Query(s.db(ctx)).Count()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	// Inside the retention nothing is forgotten or swept.
+	now = now.Add(Keep - time.Hour)
+	if seen, _ := s.Begin(ctx, "scope", "old-1", "d"); seen == nil || !seen.Done {
+		t.Fatal("a record inside the retention was forgotten")
+	}
+	if n, err := s.Sweep(ctx, 100); err != nil || n != 0 || rows() != 2 {
+		t.Fatalf("Sweep inside the retention: removed %d (%v), %d rows", n, err, rows())
+	}
+	// Past it, the same key is a new request.
+	now = now.Add(2 * time.Hour)
+	if seen, err := s.Begin(ctx, "scope", "old-1", "d"); seen != nil || err != nil {
+		t.Fatalf("an expired key was still remembered: %v %v", seen, err)
+	}
+	// And what nobody asks about again is swept.
+	if n, err := s.Sweep(ctx, 100); err != nil || n < 1 || rows() != 0 {
+		t.Fatalf("Sweep past the retention: removed %d (%v), %d rows left", n, err, rows())
+	}
+	if _, err := (Idempotency{Keep: time.Hour}).Begin(ctx, "scope", "k", "d"); err == nil {
+		t.Fatal("a retention under 24 hours was accepted")
 	}
 }

@@ -52,7 +52,8 @@ type Config struct {
 	// specification recommends it for complete_checkout and leaves the rest
 	// optional, so every response with a body is signed.
 	Signer *Signer
-	// Store keeps idempotency records; the default is an in-process Memory.
+	// Store keeps idempotency records. Required: how many keys it may hold is the
+	// host's to choose.
 	Store Store
 	// Links are shown with every checkout that carries none of its own: privacy
 	// policy, terms of service and so on, which the business must provide for
@@ -117,7 +118,7 @@ func New(cfg Config) (*Server, error) {
 		}
 	}
 	if cfg.Store == nil {
-		cfg.Store = NewMemory(0)
+		return nil, errors.New("ucp: Store is required: NewMemory for one process, Idempotency for replicas that share a datastore")
 	}
 	if cfg.MaxBody <= 0 {
 		cfg.MaxBody = 1 << 20

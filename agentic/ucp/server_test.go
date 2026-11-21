@@ -153,8 +153,12 @@ func newHarness(t *testing.T, handlers map[string][]Handler, mutate ...func(*Con
 		t.Fatal(err)
 	}
 	h.identify = func(*http.Request) (Caller, error) { return Caller{Org: "acme", Subject: "buyer-1"}, nil }
+	mem, err := NewMemory(0, 10000)
+	if err != nil {
+		t.Fatal(err)
+	}
 	cfg := Config{
-		Profile: prof, Backend: h.backend, Profiles: h.peers,
+		Profile: prof, Backend: h.backend, Profiles: h.peers, Store: mem,
 		Identify:   func(r *http.Request) (Caller, error) { return h.identify(r) },
 		Links:      []Link{{Type: "terms_of_service", URL: "https://business.example.com/terms"}},
 		Storefront: "https://merchant.example/",
@@ -719,7 +723,8 @@ func TestRequestIDIsEchoed(t *testing.T) {
 
 func TestNewRefusesAnIncompleteConfiguration(t *testing.T) {
 	prof, _ := NewProfile(ProfileConfig{Endpoint: "https://merchant.example/ucp/v1"})
-	ok := Config{Profile: prof, Backend: &fakeBackend{}, Profiles: &peers{}, Identify: func(*http.Request) (Caller, error) { return Caller{}, nil }}
+	mem, _ := NewMemory(0, 10)
+	ok := Config{Profile: prof, Backend: &fakeBackend{}, Profiles: &peers{}, Store: mem, Identify: func(*http.Request) (Caller, error) { return Caller{}, nil }}
 	if _, err := New(ok); err != nil {
 		t.Fatal(err)
 	}
