@@ -18,11 +18,30 @@ import (
 	"time"
 )
 
-// Verifier checks the Signature an agent sends over a request body. The spec leaves the
-// algorithm and the keys out of band (rfc.agentic_checkout.md §2.1: the server publishes
-// acceptable signature algorithms out of band), so the host supplies them.
+// Signed is a request as the agent sent it: everything a signature can cover. The spec says
+// the client signs the canonical JSON body with an accompanying Timestamp and leaves the
+// algorithm, the keys and what else is bound out of band (rfc.agentic_checkout.md §2.1), so
+// the Verifier is the host's. A signature over the body alone replays on any endpoint at any
+// time; a Verifier binds at least the Timestamp, the Method and the Path as well, and the
+// Key on a POST.
+type Signed struct {
+	Method string
+	// Path is the path the agent requested, as received (before the host strips a prefix).
+	Path string
+	// Key is the Idempotency-Key of a POST, empty on a GET.
+	Key string
+	// Timestamp is the Timestamp header exactly as sent; the service has already required it
+	// to be an RFC 3339 date-time within the clock skew.
+	Timestamp string
+	// Signature is the Signature header exactly as sent.
+	Signature string
+	// Body is the raw request body.
+	Body []byte
+}
+
+// Verifier checks the Signature an agent sent over a request.
 type Verifier interface {
-	Verify(ctx context.Context, who Caller, signature string, body []byte) error
+	Verify(ctx context.Context, who Caller, req Signed) error
 }
 
 // Request limits and hints the spec states or leaves to the server.
@@ -93,7 +112,7 @@ func (s *Service) serve(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, f)
 		return
 	}
-	if f := s.signed(r, who, body); f != nil {
+	if f := s.signed(r, who, key, body); f != nil {
 		s.fail(w, f)
 		return
 	}
@@ -313,7 +332,7 @@ func invalidSignature(msg string) *Fault {
 // signed verifies the Signature and Timestamp of a request when the host configured a
 // Verifier: both are required then, and the timestamp must be within the skew
 // (rfc.agentic_checkout.md §7).
-func (s *Service) signed(r *http.Request, who Caller, body []byte) *Fault {
+func (s *Service) signed(r *http.Request, who Caller, key string, body []byte) *Fault {
 	if s.cfg.Verify == nil {
 		return nil
 	}
@@ -325,13 +344,25 @@ func (s *Service) signed(r *http.Request, who Caller, body []byte) *Fault {
 	if err != nil {
 		return invalidSignature("Timestamp must be an RFC 3339 date-time.")
 	}
-	if d := s.cfg.Now().Sub(t); d > s.cfg.Skew || -d > s.cfg.Skew {
+	// Compared as instants, never as a Duration: a timestamp centuries away overflows one.
+	now := s.cfg.Now()
+	if t.Before(now.Add(-s.cfg.Skew)) || t.After(now.Add(s.cfg.Skew)) {
 		return invalidSignature("Timestamp outside allowed window.")
 	}
-	if err := s.cfg.Verify.Verify(r.Context(), who, sig, body); err != nil {
+	req := Signed{Method: r.Method, Path: requested(r), Key: key, Timestamp: ts, Signature: sig, Body: body}
+	if err := s.cfg.Verify.Verify(r.Context(), who, req); err != nil {
 		return invalidSignature("Signature verification failed.")
 	}
 	return nil
+}
+
+// requested is the path the agent asked for: the request target as received, which a host's
+// prefix stripping does not change.
+func requested(r *http.Request) string {
+	if u, err := url.ParseRequestURI(r.RequestURI); err == nil && u.Path != "" {
+		return u.EscapedPath()
+	}
+	return r.URL.EscapedPath()
 }
 
 // readBody reads the request body under the size bound.

@@ -43,8 +43,9 @@ type Config struct {
 	Ledger Ledger
 	// Events receives the order webhook; nil sends none.
 	Events Sender
-	// Verify checks the Signature of a request; nil does not verify requests, which the
-	// spec only recommends. When set, Signature and Timestamp are required.
+	// Verify checks the Signature of a request, given the whole of it (Signed); nil does not
+	// verify requests, which the spec only recommends. When set, Signature and a Timestamp
+	// within Skew of the clock are required before it is called.
 	Verify Verifier
 	// Skew bounds how far a request Timestamp may be from the clock; zero is 300 seconds,
 	// the tolerance the webhook specification recommends.

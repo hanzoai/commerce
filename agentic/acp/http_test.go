@@ -6,9 +6,13 @@ package acp
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"sync"
@@ -819,13 +823,16 @@ func TestConcurrentRequestsWithOneKeyRunOnce(t *testing.T) {
 // ---- request signatures ----
 
 type verifier struct {
-	want string
-	seen []byte
+	want  string
+	seen  []byte
+	last  Signed
+	calls int
 }
 
-func (v *verifier) Verify(_ context.Context, _ Caller, sig string, body []byte) error {
-	v.seen = body
-	if sig != v.want {
+func (v *verifier) Verify(_ context.Context, _ Caller, req Signed) error {
+	v.calls++
+	v.seen, v.last = req.Body, req
+	if req.Signature != v.want {
 		return fmt.Errorf("bad signature")
 	}
 	return nil
@@ -895,4 +902,114 @@ func TestAFailedHandlerLookupIs503(t *testing.T) {
 		c.Handlers = func(context.Context, Caller) ([]PaymentHandler, error) { return nil, fmt.Errorf("kms down") }
 	})
 	wantErr(t, r.post("/checkout_sessions", createBody), 503, "service_unavailable", "service_unavailable", "")
+}
+
+// A timestamp further from the clock than a time.Duration can hold is outside the window: it
+// is refused before the verifier sees it.
+func TestATimestampBeyondDurationRangeIsRefusedBeforeTheVerifier(t *testing.T) {
+	v := &verifier{want: "c2ln"}
+	r := newRig(t, func(c *Config) { c.Verify = v })
+	for _, ts := range []string{"9999-12-31T23:59:59Z", "0001-01-01T00:00:00Z", "2326-11-20T10:30:00Z", "1726-01-01T00:00:00Z"} {
+		h := map[string]string{"Signature": "c2ln", "Timestamp": ts, "Idempotency-Key": "k-" + ts}
+		wantErr(t, r.post("/checkout_sessions", createBody, h), 401, "invalid_request", "invalid_signature", "")
+		wantErr(t, r.get("/checkout_sessions/x", map[string]string{"Signature": "c2ln", "Timestamp": ts}), 401, "invalid_request", "invalid_signature", "")
+	}
+	if v.calls != 0 || r.be.opens != 0 {
+		t.Fatalf("verifier calls = %d, opens = %d; a timestamp outside the window reached them", v.calls, r.be.opens)
+	}
+}
+
+// The verifier is given the whole request, so a signature can bind what makes it this
+// request: method, path, timestamp and key.
+func TestTheVerifierSeesTheWholeRequest(t *testing.T) {
+	v := &verifier{want: "c2ln"}
+	r := newRig(t, func(c *Config) { c.Verify = v })
+	ts := r.now.Format(time.RFC3339)
+	r.post("/checkout_sessions", createBody, map[string]string{"Signature": "c2ln", "Timestamp": ts, "Idempotency-Key": "k-seen"})
+	want := Signed{Method: "POST", Path: "/checkout_sessions", Key: "k-seen", Timestamp: ts, Signature: "c2ln", Body: []byte(createBody)}
+	if !equal(v.last, want) {
+		t.Fatalf("the verifier saw %+v; want %+v", v.last, want)
+	}
+	r.get("/checkout_sessions/checkout_session_1", map[string]string{"Signature": "c2ln", "Timestamp": ts})
+	if v.last.Method != "GET" || v.last.Path != "/checkout_sessions/checkout_session_1" || v.last.Key != "" || len(v.last.Body) != 0 {
+		t.Fatalf("the verifier saw %+v for a GET", v.last)
+	}
+	// A prefix the host strips is part of what the agent signed.
+	h := http.StripPrefix("/v1/acp", r.svc.API())
+	req := httptest.NewRequest("GET", "/v1/acp/checkout_sessions/checkout_session_1", nil)
+	req.Header.Set("Authorization", "Bearer agent_key")
+	req.Header.Set("API-Version", Version)
+	req.Header.Set("Signature", "c2ln")
+	req.Header.Set("Timestamp", ts)
+	h.ServeHTTP(httptest.NewRecorder(), req)
+	if v.last.Path != "/v1/acp/checkout_sessions/checkout_session_1" {
+		t.Fatalf("path = %q; want the path as requested", v.last.Path)
+	}
+}
+
+// hmacVerifier binds timestamp, method, path, key and body, as a host's Verifier should.
+type hmacVerifier struct{ secret []byte }
+
+func (h hmacVerifier) sign(req Signed) string {
+	m := hmac.New(sha256.New, h.secret)
+	for _, f := range []string{req.Timestamp, req.Method, req.Path, req.Key} {
+		m.Write([]byte(f))
+		m.Write([]byte{0})
+	}
+	m.Write(req.Body)
+	return base64.RawURLEncoding.EncodeToString(m.Sum(nil))
+}
+
+func (h hmacVerifier) Verify(_ context.Context, _ Caller, req Signed) error {
+	if !hmac.Equal([]byte(h.sign(req)), []byte(req.Signature)) {
+		return fmt.Errorf("bad signature")
+	}
+	return nil
+}
+
+// A signed request captured on the wire does not replay with a fresh timestamp, on another
+// session, or under another key: the signature covers them.
+func TestACapturedSignedRequestDoesNotReplay(t *testing.T) {
+	hv := hmacVerifier{secret: []byte("agent-shared-secret")}
+	r := newRig(t, func(c *Config) { c.Verify = hv })
+	a, b := r.createSigned(hv), r.createSigned(hv)
+	ts := r.now.Format(time.RFC3339)
+	signed := Signed{Method: "POST", Path: "/checkout_sessions/" + a + "/cancel", Key: "k-cancel", Timestamp: ts}
+	sig := hv.sign(signed)
+	send := func(path, key, stamp, sg string) res {
+		return r.post(path, ``, map[string]string{"Idempotency-Key": key, "Timestamp": stamp, "Signature": sg})
+	}
+	if w := send("/checkout_sessions/"+a+"/cancel", "k-cancel", ts, sig); w.Code != 200 {
+		t.Fatalf("the signed cancel = %d %s", w.Code, w.Body)
+	}
+	// The empty cancel body signs the same for every session; the path is what differs.
+	wantErr(t, send("/checkout_sessions/"+b+"/cancel", "k-cancel", ts, sig), 401, "invalid_request", "invalid_signature", "")
+	// A fresh timestamp on a captured signature.
+	r.now = r.now.Add(time.Minute)
+	wantErr(t, send("/checkout_sessions/"+a+"/cancel", "k-cancel-2", r.now.Format(time.RFC3339), sig), 401, "invalid_request", "invalid_signature", "")
+	// Another key on a captured signature.
+	wantErr(t, send("/checkout_sessions/"+a+"/cancel", "k-other", ts, sig), 401, "invalid_request", "invalid_signature", "")
+	// The session that was not canceled is untouched.
+	if w := r.get("/checkout_sessions/"+b, hv.headers("GET", "/checkout_sessions/"+b, "", nil, r.now)); w.get("status") != "ready_for_payment" {
+		t.Fatalf("session b = %s", w.Body)
+	}
+}
+
+func (h hmacVerifier) headers(method, path, key string, body []byte, now time.Time) map[string]string {
+	ts := now.Format(time.RFC3339)
+	m := map[string]string{"Timestamp": ts, "Signature": h.sign(Signed{Method: method, Path: path, Key: key, Timestamp: ts, Body: body})}
+	if key != "" {
+		m["Idempotency-Key"] = key
+	}
+	return m
+}
+
+func (r *rig) createSigned(hv hmacVerifier) string {
+	r.t.Helper()
+	key := fmt.Sprint("create-", r.be.n)
+	w := r.post("/checkout_sessions", createBody, hv.headers("POST", "/checkout_sessions", key, []byte(createBody), r.now))
+	if w.Code != http.StatusCreated {
+		r.t.Fatalf("signed create = %d %s", w.Code, w.Body)
+	}
+	return w.get("id").(string)
 }
