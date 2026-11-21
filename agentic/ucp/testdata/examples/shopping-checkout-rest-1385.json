@@ -1,0 +1,15 @@
+{
+ "ucp": {
+  "version": "2026-08-25",
+  "status": "error"
+ },
+ "messages": [
+  {
+   "type": "error",
+   "code": "item_unavailable",
+   "content": "All items are not available for purchase",
+   "severity": "unrecoverable"
+  }
+ ],
+ "continue_url": "https://merchant.com/"
+}

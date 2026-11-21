@@ -1,0 +1,9 @@
+[
+ {
+  "type": "warning",
+  "code": "dev.ucp.shopping.policy.return",
+  "path": "$.line_items[2]",
+  "presentation": "disclosure",
+  "content": "This engraved item is final sale and cannot be returned."
+ }
+]

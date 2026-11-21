@@ -1,0 +1,15 @@
+{
+ "ucp": {
+  "version": "2026-08-25",
+  "status": "error"
+ },
+ "messages": [
+  {
+   "type": "error",
+   "code": "capabilities_incompatible",
+   "content": "No compatible capabilities in the intersection",
+   "severity": "unrecoverable"
+  }
+ ],
+ "continue_url": "https://merchant.com"
+}

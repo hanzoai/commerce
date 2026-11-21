@@ -1,0 +1,27 @@
+{
+ "id": "platform_tokenizer_2345",
+ "version": "2026-08-25",
+ "spec": "https://example.com/ucp/handler",
+ "schema": "https://example.com/ucp/handler/schema.json",
+ "available_instruments": [
+  {
+   "type": "card",
+   "constraints": {
+    "properties": {
+     "brand": {
+      "enum": [
+       "visa",
+       "mastercard",
+       "amex",
+       "discover"
+      ]
+     }
+    }
+   }
+  }
+ ],
+ "config": {
+  "environment": "production",
+  "platform_id": "platform_abc_123"
+ }
+}
