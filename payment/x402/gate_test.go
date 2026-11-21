@@ -65,7 +65,7 @@ func (b *books) Settle(_ context.Context, pay PaymentPayload, offered PaymentReq
 
 type rig struct {
 	books *books
-	gate  Gate
+	gate  *Gate
 	srv   *httptest.Server
 	now   time.Time
 	hits  int
@@ -91,8 +91,8 @@ func newRig(t *testing.T, handler func(*rig) http.Handler, wrap ...func(*books) 
 	if len(wrap) > 0 {
 		fac = wrap[0](r.books)
 	}
-	r.gate = Gate{Table: tab, Facilitator: fac, Now: func() time.Time { return r.now }}
-	mw := Middleware(r.gate, func(q *http.Request) string { return q.Method + " " + q.URL.Path })
+	r.gate = &Gate{Table: tab, Facilitator: fac, Now: func() time.Time { return r.now }}
+	mw := Middleware(r.gate, func(method, path string) string { return method + " " + path })
 	r.srv = httptest.NewServer(mw(handler(r)))
 	t.Cleanup(r.srv.Close)
 	return r

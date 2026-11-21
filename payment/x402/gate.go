@@ -7,6 +7,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -16,18 +19,29 @@ import (
 //
 //	adm, ref := g.Admit(ctx, name, url, r.Header.Get(HeaderPaymentSignature))
 //	if ref != nil { /* write ref and stop */ }
+//	defer adm.Release()
 //	/* serve the resource */
-//	ref = adm.Settle(ctx) // on success
+//	_, ref = adm.Settle(ctx) // only when it succeeded
 //
 // Middleware does exactly this around an http.Handler.
+//
+// A Gate holds the payments it has admitted and not yet settled, and refuses a
+// second request carrying the same authorization while the first is in flight:
+// without that, two concurrent requests with one payment both verify and both run,
+// and only one settles. It does not span processes; across replicas the
+// facilitator's own verify is what must refuse a spent or claimed nonce. A Gate
+// must not be copied after first use.
 type Gate struct {
 	Table       *Table
 	Facilitator Facilitator
 	// Now is the clock; nil means time.Now.
 	Now func() time.Time
+
+	mu       sync.Mutex
+	inflight map[string]struct{}
 }
 
-func (g Gate) now() time.Time {
+func (g *Gate) now() time.Time {
 	if g.Now != nil {
 		return g.Now()
 	}
@@ -37,7 +51,7 @@ func (g Gate) now() time.Time {
 // Required builds the 402 challenge for a priced resource. url is the resource's
 // public URL as the client sees it; message says why payment is asked for. It
 // reports false for a resource that is not for sale.
-func (g Gate) Required(resource, url, message string) (PaymentRequired, bool) {
+func (g *Gate) Required(resource, url, message string) (PaymentRequired, bool) {
 	accepts, info, ok := g.Table.Quote(resource)
 	if !ok {
 		return PaymentRequired{}, false
@@ -49,11 +63,25 @@ func (g Gate) Required(resource, url, message string) (PaymentRequired, bool) {
 // Admission is a payment that checked out: the resource may be served, and the
 // payment is settled once it has been.
 type Admission struct {
-	gate     Gate
+	gate     *Gate
 	payload  PaymentPayload
 	offered  PaymentRequirements
 	payer    string
 	resource ResourceInfo
+	claim    string
+	released atomic.Bool
+}
+
+// Release lets the gate admit this authorization again. Settle releases it; a
+// caller that admits a payment and does not settle it (the resource failed) must
+// release it, so a payment that moved no money can be used for a retry. It is safe
+// to call more than once.
+func (a *Admission) Release() {
+	if a.released.CompareAndSwap(false, true) {
+		a.gate.mu.Lock()
+		delete(a.gate.inflight, a.claim)
+		a.gate.mu.Unlock()
+	}
 }
 
 // Payer is the address that signed the payment.
@@ -108,7 +136,7 @@ func (r *Refusal) Headers() (map[string]string, error) {
 // (Verify); the window holds (InWindow); the facilitator accepts it (Verify,
 // spec 7.1). Each failure is a 402 with a fresh challenge whose `error` is the
 // spec reason.
-func (g Gate) Admit(ctx context.Context, resource, url, header string) (*Admission, *Refusal) {
+func (g *Gate) Admit(ctx context.Context, resource, url, header string) (*Admission, *Refusal) {
 	required, ok := g.Required(resource, url, "")
 	if !ok {
 		return nil, &Refusal{Status: http.StatusInternalServerError, Reason: "resource is not for sale: " + resource}
@@ -142,18 +170,32 @@ func (g Gate) Admit(ctx context.Context, resource, url, header string) (*Admissi
 	if err := InWindow(pay.Payload.Authorization, g.now()); err != nil {
 		return nil, deny(ReasonOf(err, ReasonVerifyError))
 	}
+	a := &Admission{gate: g, payload: pay, offered: *offered, payer: pay.Payload.Authorization.From, resource: required.Resource,
+		claim: strings.ToLower(strings.Join([]string{offered.Network, offered.Asset, pay.Payload.Authorization.From, pay.Payload.Authorization.Nonce}, "|"))}
+	g.mu.Lock()
+	if _, busy := g.inflight[a.claim]; busy {
+		g.mu.Unlock()
+		return nil, deny(ReasonInvalidTransaction)
+	}
+	if g.inflight == nil {
+		g.inflight = map[string]struct{}{}
+	}
+	g.inflight[a.claim] = struct{}{}
+	g.mu.Unlock()
 	v, err := g.Facilitator.Verify(ctx, pay, *offered)
 	switch {
 	case err != nil:
+		a.Release()
 		return nil, &Refusal{Status: http.StatusInternalServerError, Reason: ReasonVerifyError}
 	case !v.IsValid:
+		a.Release()
 		reason := v.InvalidReason
 		if reason == "" {
 			reason = ReasonVerifyError
 		}
 		return nil, deny(reason)
 	}
-	return &Admission{gate: g, payload: pay, offered: *offered, payer: pay.Payload.Authorization.From, resource: required.Resource}, nil
+	return a, nil
 }
 
 // Settle commits the payment once the resource has been served, and answers the
@@ -163,6 +205,7 @@ func (g Gate) Admit(ctx context.Context, resource, url, header string) (*Admissi
 // the failure leg too). Call it only after a successful serve: a failed serve
 // settles nothing.
 func (a *Admission) Settle(ctx context.Context) (SettlementResponse, *Refusal) {
+	defer a.Release()
 	status := http.StatusPaymentRequired
 	s, err := a.gate.Facilitator.Settle(ctx, a.payload, a.offered)
 	if err != nil {

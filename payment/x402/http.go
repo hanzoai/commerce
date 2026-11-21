@@ -21,9 +21,15 @@ func FromContext(ctx context.Context) *Admission {
 }
 
 // Middleware charges for the resources of g.Table around any http.Handler. name
-// maps a request to its Table key (a route pattern, a method and path: whatever
-// the table was filled with); a request whose key is not priced, and every
-// OPTIONS preflight, passes through untouched.
+// maps a request's method and path to its Table key (whatever the table was filled
+// with); an empty or unpriced key, and every OPTIONS preflight, pass through
+// untouched. A HEAD request is looked up as GET, because servers answer HEAD with
+// the GET handler and a paywall that skipped it would give the resource away.
+//
+// name is also where a path is made canonical. A router that ignores case or a
+// trailing slash serves /Data/ with the handler of /data, so a table keyed on the
+// literal path is bypassed by the other spelling unless name folds them the way the
+// router does.
 //
 // A priced request without a payment is answered 402 with the challenge on
 // PAYMENT-REQUIRED. One with a payment is verified (Gate.Admit) before the
@@ -33,10 +39,10 @@ func FromContext(ctx context.Context) *Admission {
 // payment that fails to settle replaces the response with the 402 of spec 5.3.
 // Nothing is buffered, so a streaming handler stays streaming; a handler that
 // fails after committing a success status has been paid for what it sent.
-func Middleware(g Gate, name func(*http.Request) string) func(http.Handler) http.Handler {
+func Middleware(g *Gate, name func(method, path string) string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			key := name(r)
+			key := name(lookupMethod(r.Method), r.URL.Path)
 			if r.Method == http.MethodOptions || !g.Table.Priced(key) {
 				next.ServeHTTP(w, r)
 				return
@@ -46,6 +52,7 @@ func Middleware(g Gate, name func(*http.Request) string) func(http.Handler) http
 				writeRefusal(w, ref)
 				return
 			}
+			defer adm.Release()
 			pw := &paywall{ResponseWriter: w, r: r, adm: adm}
 			next.ServeHTTP(pw, r.WithContext(context.WithValue(r.Context(), admissionKey{}, adm)))
 			if !pw.started {
@@ -53,6 +60,14 @@ func Middleware(g Gate, name func(*http.Request) string) func(http.Handler) http
 			}
 		})
 	}
+}
+
+// lookupMethod is the method a request is priced under: HEAD is GET.
+func lookupMethod(m string) string {
+	if m == http.MethodHead {
+		return http.MethodGet
+	}
+	return m
 }
 
 // paywall holds the response back only until the status is known.
