@@ -1,0 +1,13 @@
+Agentic Commerce Protocol, API version 2026-04-17.
+Repository: https://github.com/agentic-commerce-protocol/agentic-commerce-protocol
+Commit: 7fdd78df677a
+Licence: Apache-2.0 (Copyright 2025 OpenAI, Copyright 2025 Stripe)
+
+examples.agentic_checkout.json     examples/2026-04-17/examples.agentic_checkout.json
+examples.multi_item_checkout.json  examples/2026-04-17/examples.multi_item_checkout.json
+orders/*.json                      examples/2026-04-17/orders/*.json
+discount-extension/*.json          examples/2026-04-17/discount-extension/*.json
+schema.agentic_checkout.json       spec/2026-04-17/json-schema/schema.agentic_checkout.json
+webhook_events.json                the three inline examples of the order_events operation in
+                                   spec/2026-04-17/openapi/openapi.agentic_checkout_webhook.yaml,
+                                   converted from YAML to JSON without change.
