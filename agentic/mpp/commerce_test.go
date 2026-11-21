@@ -7,11 +7,13 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/hanzoai/commerce/api/billing"
+	"github.com/hanzoai/commerce/billing/creditledger"
 	"github.com/hanzoai/commerce/models/organization"
 )
 
@@ -22,8 +24,17 @@ type checkout struct {
 	items     [][]billing.ItemIn
 	subjects  []string
 	completed []completion
+	spent     []spending
+	spendErr  error
 	fault     *billing.PaymentFault
 	out       billing.CompleteOut
+}
+
+// spending is what Commerce drew from the credit it had just granted.
+type spending struct {
+	subject string
+	cents   int64
+	ref     string
 }
 
 type completion struct {
@@ -67,6 +78,15 @@ func (c *checkout) commerce() *Commerce {
 			c.completed = append(c.completed, completion{id, key, pay})
 			return c.out
 		},
+		Spend: func(_ context.Context, org *organization.Organization, subject string, cents int64, ref string) error {
+			c.mu.Lock()
+			defer c.mu.Unlock()
+			if org != c.org {
+				return errors.New("wrong org")
+			}
+			c.spent = append(c.spent, spending{subject, cents, ref})
+			return c.spendErr
+		},
 	}
 }
 
@@ -81,14 +101,18 @@ func TestCommerceProfile(t *testing.T) {
 		who Caller
 		q   Quote
 	}{
-		"anonymous":  {Caller{Org: "acme"}, Quote{Amount: "1", Currency: "usd"}},
-		"no org":     {Caller{Subject: "agent"}, Quote{Amount: "1", Currency: "usd"}},
-		"euros":      {who, Quote{Amount: "1", Currency: "eur"}},
-		"no account": {who, Quote{Amount: "1", Currency: "usd"}},
+		"anonymous":                  {Caller{Org: "acme"}, Quote{Amount: "1", Currency: "usd"}},
+		"no org":                     {Caller{Subject: "agent"}, Quote{Amount: "1", Currency: "usd"}},
+		"euros":                      {who, Quote{Amount: "1", Currency: "eur"}},
+		"no account":                 {who, Quote{Amount: "1", Currency: "usd"}},
+		"no way to spend the credit": {who, Quote{Amount: "1", Currency: "usd"}},
 	} {
 		s := newCheckout().commerce()
 		if name == "no account" {
 			s.Account = nil
+		}
+		if name == "no way to spend the credit" {
+			s.Spend = nil // and no ledger is injected
 		}
 		if _, err := s.Profile(ctx, c.who, c.q); !errors.Is(err, ErrSkip) {
 			t.Errorf("%s: %v", name, err)
@@ -111,6 +135,10 @@ func TestCommerceTake(t *testing.T) {
 	}
 	if len(k.completed) != 1 || k.completed[0] != (completion{"chk_1", "ch_1", billing.PaymentIn{Type: "shared_payment_token", Token: "spt_1"}}) {
 		t.Fatalf("completed %+v", k.completed)
+	}
+	// The resource's price is spent from the credit the checkout granted, under the challenge.
+	if len(k.spent) != 1 || k.spent[0] != (spending{"agent", 5000, "ch_1"}) {
+		t.Fatalf("spent %+v", k.spent)
 	}
 	// An order with no ledger transaction is referenced by its own id.
 	k.out.View.Order.PaymentID = ""
@@ -148,6 +176,10 @@ func TestCommerceTakeRefusals(t *testing.T) {
 		isProblem := errors.As(err, &p)
 		if err == nil || (c.code == "") == isProblem || (isProblem && p.Code() != c.code) {
 			t.Errorf("%s: %v", name, err)
+		}
+		// Nothing is spent for a payment that did not complete.
+		if len(k.spent) != 0 {
+			t.Errorf("%s: spent %+v", name, k.spent)
 		}
 	}
 	// Refused before the checkout: the currency, the amount, the organization; and a
@@ -221,5 +253,61 @@ func TestCommerceThroughTheGate(t *testing.T) {
 	}
 	if len(k.items) != 1 || k.items[0][0].UsdCents != 5000 || k.subjects[0] != "agent-1" || k.completed[0].key != ch.ID || k.completed[0].pay.Token != "spt_1N4Zv32eZvKYlo2CPhVPkJlW" {
 		t.Fatalf("checkout %+v %v %+v", k.items, k.subjects, k.completed)
+	}
+	if len(k.spent) != 1 || k.spent[0] != (spending{"agent-1", 5000, ch.ID}) {
+		t.Fatalf("the credit was not spent on the resource: %+v", k.spent)
+	}
+}
+
+// A charge whose credit cannot be spent serves nothing: the host is told, the credit stays
+// with the buyer.
+func TestCommerceSpendFailure(t *testing.T) {
+	k := newCheckout()
+	k.spendErr = errors.New("ledger down")
+	_, err := k.commerce().Take(context.Background(), Sale{Caller: Caller{Org: "acme", Subject: "agent"}, Token: "spt_1", Amount: "5000", Currency: "usd", Challenge: "ch_1"})
+	if err == nil || errors.As(err, new(*Problem)) {
+		t.Fatalf("%v", err)
+	}
+	if !strings.Contains(err.Error(), "not spent") || !strings.Contains(err.Error(), "ch_1") {
+		t.Errorf("the host is not told what happened: %v", err)
+	}
+}
+
+// ledger is the credit ledger a host injects; only the debit is asked of it here.
+type ledger struct {
+	creditledger.CreditLedger
+	debits []creditledger.DebitInput
+	err    error
+}
+
+func (l *ledger) Debit(_ context.Context, in creditledger.DebitInput) (string, int64, error) {
+	l.debits = append(l.debits, in)
+	return "dbt_1", 0, l.err
+}
+
+// With no Spend of the host's, the credit is drawn through the ledger api/billing credited:
+// the org's name as the ledger keys it, the subject, USD, once per challenge.
+func TestCommerceSpendsThroughTheLedger(t *testing.T) {
+	l := &ledger{}
+	creditledger.Set(l)
+	t.Cleanup(func() { creditledger.Set(nil) })
+	k := newCheckout()
+	k.org.Name = " Acme "
+	c := k.commerce()
+	c.Spend = nil
+	if _, err := c.Profile(context.Background(), Caller{Org: "acme", Subject: "agent"}, Quote{Amount: "5000", Currency: "usd"}); err != nil {
+		t.Fatalf("a ledger is injected, so it is offered: %v", err)
+	}
+	if _, err := c.Take(context.Background(), Sale{Caller: Caller{Org: "acme", Subject: "agent"}, Token: "spt_1", Amount: "5000", Currency: "usd", Challenge: "ch_1"}); err != nil {
+		t.Fatal(err)
+	}
+	want := creditledger.DebitInput{Org: "acme", Subject: "agent", Currency: "usd", Reason: "mpp ch_1", Ref: "ch_1", AmountCents: 5000, Test: k.org.TestMode()}
+	if len(l.debits) != 1 || l.debits[0] != want {
+		t.Fatalf("debits %+v, want %+v", l.debits, want)
+	}
+	// A ledger that cannot cover it serves nothing.
+	l.err = creditledger.ErrShort
+	if _, err := c.Take(context.Background(), Sale{Caller: Caller{Org: "acme", Subject: "agent"}, Token: "spt_2", Amount: "5000", Currency: "usd", Challenge: "ch_2"}); err == nil {
+		t.Fatal("served without the credit being spent")
 	}
 }
