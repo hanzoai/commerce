@@ -225,6 +225,13 @@ type SubscribeIn struct {
 	Country        string
 	QuotedAmount   int64
 	QuotedCurrency string
+	// ExpectedCents, when positive, is the USD the buyer was quoted for the first charge
+	// (the plan's price for its seats, and BalanceCents). The sale is refused with the
+	// "price_changed" code, before the idempotency guard is taken and before the card is
+	// touched, when what the catalog and the offers charge now is another amount. A checkout
+	// that quoted its buyer a price once, and completes later, binds the charge to that
+	// quote with it. Zero asks for no check.
+	ExpectedCents int64
 }
 
 // armSale is what a paid sale of slug does to the buying payer's auto-recharge
@@ -542,6 +549,10 @@ func subscribe(ctx context.Context, org *organization.Organization, in Subscribe
 	bal, seatMult, seats, chargeCents := q.balance, q.seatMult, q.seats, q.charge
 	promoPercent, promoName := q.promoPercent, q.promoName
 	customer := q.customer
+	if in.ExpectedCents > 0 && chargeCents+bal != in.ExpectedCents {
+		return nil, coded(saleRefused, "price_changed",
+			fmt.Sprintf("the price is now %d (minor units) and the quote was %d; ask for the price again to confirm it", chargeCents+bal, in.ExpectedCents))
+	}
 
 	// A coupon's request shape is checked here, before anything is held. Whether
 	// the coupon stands, covers this plan and is still this org's to redeem is

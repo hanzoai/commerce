@@ -1,0 +1,165 @@
+{
+  "order_created": {
+    "type": "order_create",
+    "data": {
+      "type": "order",
+      "id": "ord_123",
+      "checkout_session_id": "checkout_session_123",
+      "permalink_url": "https://example.com/orders/123",
+      "status": "created",
+      "line_items": [
+        {
+          "id": "li_shoes",
+          "title": "Running Shoes",
+          "quantity": {
+            "ordered": 1,
+            "current": 1,
+            "fulfilled": 0
+          },
+          "unit_price": 9900,
+          "subtotal": 9900
+        }
+      ],
+      "totals": [
+        {
+          "type": "subtotal",
+          "display_text": "Subtotal",
+          "amount": 9900
+        },
+        {
+          "type": "fulfillment",
+          "display_text": "Shipping",
+          "amount": 500
+        },
+        {
+          "type": "tax",
+          "display_text": "Tax",
+          "amount": 860
+        },
+        {
+          "type": "total",
+          "display_text": "Total",
+          "amount": 11260
+        }
+      ]
+    }
+  },
+  "order_shipped": {
+    "type": "order_update",
+    "data": {
+      "type": "order",
+      "id": "ord_123",
+      "checkout_session_id": "checkout_session_123",
+      "permalink_url": "https://example.com/orders/123",
+      "status": "shipped",
+      "line_items": [
+        {
+          "id": "li_shoes",
+          "title": "Running Shoes",
+          "quantity": {
+            "ordered": 1,
+            "current": 1,
+            "fulfilled": 1
+          },
+          "unit_price": 9900,
+          "subtotal": 9900,
+          "status": "fulfilled"
+        }
+      ],
+      "fulfillments": [
+        {
+          "id": "ful_1",
+          "type": "shipping",
+          "status": "shipped",
+          "line_items": [
+            {
+              "id": "li_shoes",
+              "quantity": 1
+            }
+          ],
+          "carrier": "USPS",
+          "tracking_number": "9400111899223456789012",
+          "tracking_url": "https://tools.usps.com/go/TrackConfirmAction?tLabels=9400111899223456789012",
+          "events": [
+            {
+              "id": "evt_1",
+              "type": "shipped",
+              "occurred_at": "2026-02-05T10:00:00Z"
+            }
+          ]
+        }
+      ],
+      "adjustments": [],
+      "totals": [
+        {
+          "type": "subtotal",
+          "display_text": "Subtotal",
+          "amount": 9900
+        },
+        {
+          "type": "fulfillment",
+          "display_text": "Shipping",
+          "amount": 500
+        },
+        {
+          "type": "tax",
+          "display_text": "Tax",
+          "amount": 860
+        },
+        {
+          "type": "total",
+          "display_text": "Total",
+          "amount": 11260
+        }
+      ]
+    }
+  },
+  "order_with_refund": {
+    "type": "order_update",
+    "data": {
+      "type": "order",
+      "id": "ord_456",
+      "checkout_session_id": "checkout_session_456",
+      "permalink_url": "https://example.com/orders/456",
+      "status": "completed",
+      "adjustments": [
+        {
+          "id": "adj_1",
+          "type": "refund",
+          "occurred_at": "2026-02-10T14:30:00Z",
+          "status": "completed",
+          "amount": 10760,
+          "currency": "usd",
+          "description": "Defective item refund (inclusive of tax)"
+        }
+      ],
+      "totals": [
+        {
+          "type": "subtotal",
+          "display_text": "Subtotal",
+          "amount": 9900
+        },
+        {
+          "type": "fulfillment",
+          "display_text": "Shipping",
+          "amount": 500
+        },
+        {
+          "type": "tax",
+          "display_text": "Tax",
+          "amount": 860
+        },
+        {
+          "type": "total",
+          "display_text": "Total",
+          "amount": 11260
+        },
+        {
+          "type": "amount_refunded",
+          "display_text": "Refunded",
+          "amount": 10760
+        }
+      ]
+    }
+  }
+}
