@@ -60,6 +60,7 @@ type fakeBackend struct {
 	completeKey string
 	completed   *CompleteRequest
 	created     *CreateRequest
+	who         Caller
 }
 
 func (b *fakeBackend) answer(op string) (*Checkout, error) {
@@ -74,8 +75,8 @@ func (b *fakeBackend) answer(op string) (*Checkout, error) {
 	return &c, nil
 }
 
-func (b *fakeBackend) Create(_ context.Context, _ Caller, in *CreateRequest) (*Checkout, error) {
-	b.created = in
+func (b *fakeBackend) Create(_ context.Context, who Caller, in *CreateRequest) (*Checkout, error) {
+	b.created, b.who = in, who
 	return b.answer("create")
 }
 func (b *fakeBackend) Read(_ context.Context, _ Caller, _ string) (*Checkout, error) {
@@ -835,3 +836,49 @@ func TestServerEnforcesAndProducesSignatures(t *testing.T) {
 type nopCloser struct{ *bytes.Reader }
 
 func (nopCloser) Close() error { return nil }
+
+// Businesses may keep a registry of pre-approved platforms (overview,
+// "Fetching"): a platform outside it is profile_not_trusted (403) and its
+// profile is never fetched. The platform whose signature verified is named in
+// the Caller the backend sees; an unsigned request names none.
+func TestTrustedPlatformsAndTheVerifiedIdentity(t *testing.T) {
+	h := newHarness(t, shopPay())
+	h.backend.next = fixtureCheckout(t, "shopping-checkout-rest-115.json")
+	create := call{method: "POST", path: "/checkout-sessions", body: fixture(t, "shopping-checkout-rest-95.json")}
+
+	// Unsigned: the backend is told of no verified platform.
+	if w := h.do(create); w.Code != 201 || h.backend.who.Platform != "" {
+		t.Fatalf("unsigned: %d, platform %q", w.Code, h.backend.who.Platform)
+	}
+
+	plat, pub := newKeyPair(t, ES256)
+	pp := platform(Version, CapCheckout)
+	pp.Keys = []Key{pub}
+	h.peers.m[platformURL] = pp
+	h.srv.cfg.Verifier = &Verifier{Keys: AgentKeys{Profiles: h.peers}}
+	h.srv.cfg.Trusted = func(p string) bool { return p == platformURL }
+	signed := func(agent string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest("POST", "https://merchant.example/ucp/v1/checkout-sessions", bytes.NewReader(create.body))
+		r.Header.Set("Content-Type", "application/json")
+		r.Header.Set("UCP-Agent", `profile="`+agent+`"`)
+		r.Header.Set("Idempotency-Key", "6f1c1d5e-0f0a-4c55-9b61-9a1f1f9c9d10")
+		if err := plat.SignRequest(r, create.body, Options{}); err != nil {
+			t.Fatal(err)
+		}
+		w := httptest.NewRecorder()
+		h.srv.ServeHTTP(w, r)
+		return w
+	}
+	if w := signed(platformURL); w.Code != 201 || h.backend.who.Platform != platformURL || h.backend.who.Subject != "buyer-1" {
+		t.Fatalf("signed by a trusted platform: %d, caller %+v", w.Code, h.backend.who)
+	}
+
+	h.peers.calls, h.backend.calls = 0, nil
+	w := signed("https://stranger.example/profile")
+	if w.Code != 403 || problemOf(t, w).Code != CodeProfileNotTrusted {
+		t.Fatalf("an unlisted platform: %d %s", w.Code, w.Body)
+	}
+	if h.peers.calls != 0 || len(h.backend.calls) != 0 {
+		t.Fatalf("an untrusted platform's profile was fetched (%d) or the backend called (%v)", h.peers.calls, h.backend.calls)
+	}
+}

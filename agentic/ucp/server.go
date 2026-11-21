@@ -27,15 +27,25 @@ type Config struct {
 	Profile *Profile
 	// Backend sells.
 	Backend Backend
-	// Identify says who a request acts for. It returns ErrUnauthorized when the
-	// request is not authenticated and ErrForbidden when it may not act.
+	// Identify says who a request acts for: the buyer and the merchant. It runs
+	// before the platform is authenticated, so that a caller who is not
+	// authenticated costs no profile fetch, and it never sees the verified
+	// platform. It returns ErrUnauthorized when the request is not authenticated
+	// and ErrForbidden when it may not act. The platform that signed the request
+	// reaches the Backend as Caller.Platform; Trusted limits which platforms are
+	// served at all.
 	Identify func(*http.Request) (Caller, error)
 	// Profiles resolves platform profiles from UCP-Agent (NewFetcher).
 	Profiles Profiles
+	// Trusted, when set, is the registry of pre-approved platforms ("Fetching"):
+	// it is asked about the profile URL in UCP-Agent, and a platform it refuses
+	// is answered profile_not_trusted (403) before its profile is fetched.
+	Trusted func(profile string) bool
 	// Verifier verifies request signatures. When set, a request that carries a
 	// signature must verify; Require makes a signature mandatory. Without a
 	// Verifier no signature is checked and the platform is authenticated by
-	// whatever Identify does.
+	// whatever Identify does. See Verifier.Window for how long a signature
+	// stays valid.
 	Verifier *Verifier
 	Require  bool
 	// Signer signs responses (signatures, "REST Response Signing"); the
@@ -311,10 +321,15 @@ func (s *Server) handle(r *http.Request) reply {
 	if e != nil {
 		return errorReply(e)
 	}
+	if s.cfg.Trusted != nil && !s.cfg.Trusted(agent) {
+		return errorReply(fail(CodeProfileNotTrusted, "the platform profile is not in this business's registry of pre-approved platforms"))
+	}
 	if s.cfg.Verifier != nil && (s.cfg.Require || r.Header.Get("Signature") != "" || r.Header.Get("Signature-Input") != "") {
-		if _, err := s.cfg.Verifier.Request(r.Context(), r, body); err != nil {
+		signed, err := s.cfg.Verifier.Request(r.Context(), r, body)
+		if err != nil {
 			return s.protocol(err)
 		}
+		who.Platform = signed.Identity
 	}
 	peer, err := s.cfg.Profiles.Platform(r.Context(), agent, false)
 	if err != nil {

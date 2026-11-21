@@ -83,14 +83,21 @@ func (s sigInput) paramsLine() (string, error) {
 	return in.String()
 }
 
-func (s sigInput) int(key string) (int64, bool) {
+// intParam reads an integer signature parameter. present reports whether the
+// parameter appears; a parameter that is not an integer is an error, so that a
+// value such as expires=100.0 cannot be skipped as if it were absent.
+func (s sigInput) intParam(key string) (n int64, present bool, err error) {
 	for _, p := range s.params {
-		if p.key == key {
-			n, ok := p.value.(int64)
-			return n, ok
+		if p.key != key {
+			continue
 		}
+		v, ok := p.value.(int64)
+		if !ok {
+			return 0, true, fmt.Errorf("signature parameter %s must be an integer", key)
+		}
+		return v, true, nil
 	}
-	return 0, false
+	return 0, false, nil
 }
 
 func (s sigInput) str(key string) (string, bool) {

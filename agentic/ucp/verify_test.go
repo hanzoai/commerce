@@ -515,3 +515,41 @@ func TestThumbprintOfAnECKey(t *testing.T) {
 		t.Fatal("RFC 7638 canonical members are crv, kty, x, y")
 	}
 }
+
+// created and expires are integers (RFC 9421 section 2.3). A value that is not
+// one, such as expires=100.0, must not make the signature immortal.
+func TestNonIntegerCreatedAndExpiresAreRefused(t *testing.T) {
+	s, pub := newKeyPair(t, ES256)
+	clock(s, t0)
+	v, _ := verifier(pub)
+	for name, params := range map[string][]param{
+		"expires as a decimal": {{"created", t0.Unix()}, {"expires", float64(100)}, {"keyid", s.KeyID}},
+		"created as a decimal": {{"created", float64(t0.Unix()) + 0.5}, {"keyid", s.KeyID}},
+		"expires as a string":  {{"created", t0.Unix()}, {"expires", "soon"}, {"keyid", s.KeyID}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := httptest.NewRequest("POST", "https://merchant.example/ucp/v1/checkout-sessions", strings.NewReader(body))
+			r.Header.Set("Content-Type", "application/json")
+			r.Header.Set("UCP-Agent", `profile="https://platform.example/.well-known/ucp"`)
+			r.Header.Set("Idempotency-Key", goodKey)
+			r.Header.Set("Content-Digest", ContentDigest([]byte(body)))
+			si := sigInput{label: "sig1", params: params}
+			for _, c := range []string{"@method", "@authority", "@path", "ucp-agent", "idempotency-key", "content-digest", "content-type"} {
+				si.items = append(si.items, covered{name: c})
+			}
+			base, err := si.base(requestMessage(r, ""))
+			if err != nil {
+				t.Fatal(err)
+			}
+			sig, err := s.sign(base)
+			if err != nil {
+				t.Fatal(err)
+			}
+			line, _ := si.paramsLine()
+			r.Header.Set("Signature-Input", "sig1="+line)
+			r.Header.Set("Signature", "sig1=:"+base64.StdEncoding.EncodeToString(sig)+":")
+			_, err = v.Request(context.Background(), r, []byte(body))
+			mustReject(t, err, CodeSignatureInvalid, 401)
+		})
+	}
+}

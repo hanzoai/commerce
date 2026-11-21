@@ -18,10 +18,16 @@ type Caller struct {
 	// Host is the brand host the request addressed, for a backend that prices
 	// by brand.
 	Host string
+	// Platform is the profile URL of the platform whose request signature
+	// verified, set by the server and never by Identify. It is empty when the
+	// request was not signed, in which case nothing has authenticated the
+	// platform and the UCP-Agent header is only a claim.
+	Platform string
 }
 
-// key scopes idempotency and ownership to one buyer of one merchant.
-func (c Caller) key() string { return c.Org + "\x00" + c.Subject }
+// key scopes idempotency and ownership to one buyer of one merchant through one
+// verified platform: a key is unique per client (signatures, "Replay Protection").
+func (c Caller) key() string { return c.Org + "\x00" + c.Subject + "\x00" + c.Platform }
 
 // Sentinel errors a Backend or Identify function returns.
 var (

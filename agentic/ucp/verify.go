@@ -37,6 +37,12 @@ type Verifier struct {
 	// business-layer Idempotency-Key; created is optional on default UCP
 	// signatures and enforcing a window is application-defined (signatures,
 	// "Replay Protection"; RFC 9421 section 3.2.1).
+	//
+	// With Window zero a signature that carries no expires parameter never
+	// expires: a captured request verifies for as long as its key is published,
+	// and what stops its replay is the Idempotency-Key, which a business keeps
+	// for a bounded time (Keep). A business that cannot accept that sets Window
+	// to no more than the time it keeps idempotency records.
 	Window time.Duration
 	// Skew is the clock difference tolerated on created and expires.
 	Skew time.Duration
@@ -238,8 +244,14 @@ func (v *Verifier) key(ctx context.Context, r *http.Request, keyid string) (stri
 // signature must carry both (signatures, "WBA Interop", item 5).
 func (v *Verifier) fresh(c sigInput, tag string) (time.Time, *skip) {
 	now := v.now()
-	cr, hasCreated := c.int("created")
-	ex, hasExpires := c.int("expires")
+	cr, hasCreated, err := c.intParam("created")
+	if err != nil {
+		return time.Time{}, skipf(CodeSignatureInvalid, "%v", err)
+	}
+	ex, hasExpires, err := c.intParam("expires")
+	if err != nil {
+		return time.Time{}, skipf(CodeSignatureInvalid, "%v", err)
+	}
 	if tag == "web-bot-auth" && (!hasCreated || !hasExpires) {
 		return time.Time{}, skipf(CodeSignatureInvalid, "a web-bot-auth signature must carry created and expires")
 	}
