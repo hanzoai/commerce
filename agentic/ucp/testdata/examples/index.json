@@ -1,0 +1,662 @@
+[
+ {
+  "file": "overview-282.json",
+  "source": "docs/specification/overview/index.md:282",
+  "schema": "profile",
+  "op": "",
+  "direction": "",
+  "def": "business_schema",
+  "target": "$.ucp.capabilities",
+  "http": ""
+ },
+ {
+  "file": "overview-300.json",
+  "source": "docs/specification/overview/index.md:300",
+  "schema": "profile",
+  "op": "",
+  "direction": "",
+  "def": "business_schema",
+  "target": "$.ucp.capabilities",
+  "http": ""
+ },
+ {
+  "file": "overview-513.json",
+  "source": "docs/specification/overview/index.md:513",
+  "schema": "profile",
+  "op": "",
+  "direction": "",
+  "def": "business_schema",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "overview-686.json",
+  "source": "docs/specification/overview/index.md:686",
+  "schema": "profile",
+  "op": "",
+  "direction": "",
+  "def": "platform_schema",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "overview-1251.json",
+  "source": "docs/specification/overview/index.md:1251",
+  "schema": "common/types/error_response",
+  "op": "",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "overview-1833.json",
+  "source": "docs/specification/overview/index.md:1833",
+  "schema": "shopping/checkout",
+  "op": "",
+  "direction": "",
+  "def": "",
+  "target": "$.ucp",
+  "http": ""
+ },
+ {
+  "file": "overview-1896.json",
+  "source": "docs/specification/overview/index.md:1896",
+  "schema": "shopping/checkout",
+  "op": "complete",
+  "direction": "request",
+  "def": "",
+  "target": "",
+  "http": "POST /checkout-sessions/{id}/complete"
+ },
+ {
+  "file": "overview-1945.json",
+  "source": "docs/specification/overview/index.md:1945",
+  "schema": "shopping/checkout",
+  "op": "",
+  "direction": "",
+  "def": "",
+  "target": "$.ucp",
+  "http": ""
+ },
+ {
+  "file": "overview-1982.json",
+  "source": "docs/specification/overview/index.md:1982",
+  "schema": "shopping/checkout",
+  "op": "complete",
+  "direction": "request",
+  "def": "",
+  "target": "",
+  "http": "POST /checkout-sessions/{id}/complete"
+ },
+ {
+  "file": "overview-2009.json",
+  "source": "docs/specification/overview/index.md:2009",
+  "schema": "shopping/checkout",
+  "op": "",
+  "direction": "",
+  "def": "",
+  "target": "$.messages",
+  "http": "HTTP/1.1 200 OK"
+ },
+ {
+  "file": "overview-2035.json",
+  "source": "docs/specification/overview/index.md:2035",
+  "schema": "shopping/checkout",
+  "op": "",
+  "direction": "",
+  "def": "",
+  "target": "$.ucp",
+  "http": ""
+ },
+ {
+  "file": "overview-2062.json",
+  "source": "docs/specification/overview/index.md:2062",
+  "schema": "shopping/checkout",
+  "op": "complete",
+  "direction": "request",
+  "def": "",
+  "target": "",
+  "http": "POST /checkout-sessions/{id}/complete"
+ },
+ {
+  "file": "overview-3250.json",
+  "source": "docs/specification/overview/index.md:3250",
+  "schema": "shopping/checkout",
+  "op": "",
+  "direction": "",
+  "def": "",
+  "target": "$.policies",
+  "http": ""
+ },
+ {
+  "file": "overview-3266.json",
+  "source": "docs/specification/overview/index.md:3266",
+  "schema": "shopping/checkout",
+  "op": "",
+  "direction": "",
+  "def": "",
+  "target": "$.messages",
+  "http": ""
+ },
+ {
+  "file": "overview-3293.json",
+  "source": "docs/specification/overview/index.md:3293",
+  "schema": "shopping/checkout",
+  "op": "",
+  "direction": "",
+  "def": "",
+  "target": "$.policies",
+  "http": ""
+ },
+ {
+  "file": "overview-3393.json",
+  "source": "docs/specification/overview/index.md:3393",
+  "schema": "shopping/checkout",
+  "op": "",
+  "direction": "",
+  "def": "",
+  "target": "$.messages",
+  "http": ""
+ },
+ {
+  "file": "overview-3425.json",
+  "source": "docs/specification/overview/index.md:3425",
+  "schema": "shopping/checkout",
+  "op": "create",
+  "direction": "request",
+  "def": "",
+  "target": "$.attribution",
+  "http": ""
+ },
+ {
+  "file": "overview-3536.json",
+  "source": "docs/specification/overview/index.md:3536",
+  "schema": "profile",
+  "op": "",
+  "direction": "",
+  "def": "business_schema",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "overview-3622.json",
+  "source": "docs/specification/overview/index.md:3622",
+  "schema": "common/types/error_response",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "payment-guide-235.json",
+  "source": "docs/specification/payment/guide.md:235",
+  "schema": "payment_handler",
+  "op": "",
+  "direction": "",
+  "def": "business_schema",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "payment-guide-287.json",
+  "source": "docs/specification/payment/guide.md:287",
+  "schema": "payment_handler",
+  "op": "",
+  "direction": "",
+  "def": "business_schema",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "payment-guide-311.json",
+  "source": "docs/specification/payment/guide.md:311",
+  "schema": "payment_handler",
+  "op": "",
+  "direction": "",
+  "def": "platform_schema",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "payment-guide-335.json",
+  "source": "docs/specification/payment/guide.md:335",
+  "schema": "payment_handler",
+  "op": "",
+  "direction": "",
+  "def": "response_schema",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "shopping-checkout-138.json",
+  "source": "docs/specification/shopping/checkout/index.md:138",
+  "schema": "shopping/checkout",
+  "op": "update",
+  "direction": "request",
+  "def": "",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "shopping-checkout-159.json",
+  "source": "docs/specification/shopping/checkout/index.md:159",
+  "schema": "shopping/checkout",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "shopping-checkout-202.json",
+  "source": "docs/specification/shopping/checkout/index.md:202",
+  "schema": "shopping/checkout",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "shopping-checkout-262.json",
+  "source": "docs/specification/shopping/checkout/index.md:262",
+  "schema": "shopping/checkout",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "$.messages",
+  "http": ""
+ },
+ {
+  "file": "shopping-checkout-309.json",
+  "source": "docs/specification/shopping/checkout/index.md:309",
+  "schema": "shopping/checkout",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "shopping-checkout-516.json",
+  "source": "docs/specification/shopping/checkout/index.md:516",
+  "schema": "common/types/error_response",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "shopping-checkout-549.json",
+  "source": "docs/specification/shopping/checkout/index.md:549",
+  "schema": "shopping/checkout",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "$.messages",
+  "http": ""
+ },
+ {
+  "file": "shopping-checkout-1400.json",
+  "source": "docs/specification/shopping/checkout/index.md:1400",
+  "schema": "shopping/checkout",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "$.totals",
+  "http": ""
+ },
+ {
+  "file": "shopping-checkout-1413.json",
+  "source": "docs/specification/shopping/checkout/index.md:1413",
+  "schema": "shopping/checkout",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "$.totals",
+  "http": ""
+ },
+ {
+  "file": "shopping-checkout-1425.json",
+  "source": "docs/specification/shopping/checkout/index.md:1425",
+  "schema": "shopping/checkout",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "$.totals",
+  "http": ""
+ },
+ {
+  "file": "shopping-checkout-1443.json",
+  "source": "docs/specification/shopping/checkout/index.md:1443",
+  "schema": "shopping/checkout",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "$.totals",
+  "http": ""
+ },
+ {
+  "file": "shopping-checkout-rest-29.json",
+  "source": "docs/specification/shopping/checkout/rest.md:29",
+  "schema": "profile",
+  "op": "",
+  "direction": "",
+  "def": "business_schema",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "shopping-checkout-rest-95.json",
+  "source": "docs/specification/shopping/checkout/rest.md:95",
+  "schema": "shopping/checkout",
+  "op": "create",
+  "direction": "request",
+  "def": "",
+  "target": "",
+  "http": "POST /checkout-sessions HTTP/1.1"
+ },
+ {
+  "file": "shopping-checkout-rest-115.json",
+  "source": "docs/specification/shopping/checkout/rest.md:115",
+  "schema": "shopping/checkout",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": "HTTP/1.1 201 Created"
+ },
+ {
+  "file": "shopping-checkout-rest-210.json",
+  "source": "docs/specification/shopping/checkout/rest.md:210",
+  "schema": "common/types/error_response",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": "HTTP/1.1 200 OK"
+ },
+ {
+  "file": "shopping-checkout-rest-249.json",
+  "source": "docs/specification/shopping/checkout/rest.md:249",
+  "schema": "shopping/checkout",
+  "op": "update",
+  "direction": "request",
+  "def": "",
+  "target": "",
+  "http": "PUT /checkout-sessions/{id} HTTP/1.1"
+ },
+ {
+  "file": "shopping-checkout-rest-275.json",
+  "source": "docs/specification/shopping/checkout/rest.md:275",
+  "schema": "shopping/checkout",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": "HTTP/1.1 200 OK"
+ },
+ {
+  "file": "shopping-checkout-rest-380.json",
+  "source": "docs/specification/shopping/checkout/rest.md:380",
+  "schema": "shopping/checkout",
+  "op": "update",
+  "direction": "request",
+  "def": "",
+  "target": "",
+  "http": "PUT /checkout-sessions/{id} HTTP/1.1"
+ },
+ {
+  "file": "shopping-checkout-rest-423.json",
+  "source": "docs/specification/shopping/checkout/rest.md:423",
+  "schema": "shopping/checkout",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": "HTTP/1.1 200 OK"
+ },
+ {
+  "file": "shopping-checkout-rest-583.json",
+  "source": "docs/specification/shopping/checkout/rest.md:583",
+  "schema": "shopping/checkout",
+  "op": "update",
+  "direction": "request",
+  "def": "",
+  "target": "",
+  "http": "PUT /checkout-sessions/{id} HTTP/1.1"
+ },
+ {
+  "file": "shopping-checkout-rest-635.json",
+  "source": "docs/specification/shopping/checkout/rest.md:635",
+  "schema": "shopping/checkout",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": "HTTP/1.1 200 OK"
+ },
+ {
+  "file": "shopping-checkout-rest-786.json",
+  "source": "docs/specification/shopping/checkout/rest.md:786",
+  "schema": "shopping/checkout",
+  "op": "complete",
+  "direction": "request",
+  "def": "",
+  "target": "",
+  "http": "POST /checkout-sessions/{id}/complete"
+ },
+ {
+  "file": "shopping-checkout-rest-829.json",
+  "source": "docs/specification/shopping/checkout/rest.md:829",
+  "schema": "shopping/checkout",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": "HTTP/1.1 200 OK"
+ },
+ {
+  "file": "shopping-checkout-rest-982.json",
+  "source": "docs/specification/shopping/checkout/rest.md:982",
+  "schema": "shopping/checkout",
+  "op": "read",
+  "direction": "request",
+  "def": "",
+  "target": "",
+  "http": "GET /checkout-sessions/{id}"
+ },
+ {
+  "file": "shopping-checkout-rest-993.json",
+  "source": "docs/specification/shopping/checkout/rest.md:993",
+  "schema": "shopping/checkout",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": "HTTP/1.1 200 OK"
+ },
+ {
+  "file": "shopping-checkout-rest-1140.json",
+  "source": "docs/specification/shopping/checkout/rest.md:1140",
+  "schema": "shopping/checkout",
+  "op": "cancel",
+  "direction": "request",
+  "def": "",
+  "target": "",
+  "http": "POST /checkout-sessions/{id}/cancel"
+ },
+ {
+  "file": "shopping-checkout-rest-1151.json",
+  "source": "docs/specification/shopping/checkout/rest.md:1151",
+  "schema": "shopping/checkout",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": "HTTP/1.1 200 OK"
+ },
+ {
+  "file": "shopping-checkout-rest-1385.json",
+  "source": "docs/specification/shopping/checkout/rest.md:1385",
+  "schema": "common/types/error_response",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "shopping-order-207.json",
+  "source": "docs/specification/shopping/order/index.md:207",
+  "schema": "shopping/order",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "shopping-order-318.json",
+  "source": "docs/specification/shopping/order/index.md:318",
+  "schema": "shopping/order",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "shopping-order-397.json",
+  "source": "docs/specification/shopping/order/index.md:397",
+  "schema": "shopping/order",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "shopping-order-487.json",
+  "source": "docs/specification/shopping/order/index.md:487",
+  "schema": "shopping/order",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "shopping-order-619.json",
+  "source": "docs/specification/shopping/order/index.md:619",
+  "schema": "common/types/error_response",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "shopping-order-642.json",
+  "source": "docs/specification/shopping/order/index.md:642",
+  "schema": "common/types/error_response",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "shopping-order-716.json",
+  "source": "docs/specification/shopping/order/index.md:716",
+  "schema": "profile",
+  "op": "",
+  "direction": "",
+  "def": "platform_schema",
+  "target": "$.ucp.capabilities",
+  "http": ""
+ },
+ {
+  "file": "shopping-order-rest-28.json",
+  "source": "docs/specification/shopping/order/rest.md:28",
+  "schema": "profile",
+  "op": "",
+  "direction": "",
+  "def": "business_schema",
+  "target": "",
+  "http": ""
+ },
+ {
+  "file": "shopping-order-rest-110.json",
+  "source": "docs/specification/shopping/order/rest.md:110",
+  "schema": "shopping/order",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": "HTTP/1.1 200 OK"
+ },
+ {
+  "file": "shopping-order-rest-178.json",
+  "source": "docs/specification/shopping/order/rest.md:178",
+  "schema": "common/types/error_response",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": "HTTP/1.1 200 OK"
+ },
+ {
+  "file": "shopping-order-rest-204.json",
+  "source": "docs/specification/shopping/order/rest.md:204",
+  "schema": "common/types/error_response",
+  "op": "read",
+  "direction": "",
+  "def": "",
+  "target": "",
+  "http": "HTTP/1.1 200 OK"
+ },
+ {
+  "file": "signatures-175.json",
+  "source": "docs/specification/signatures.md:175",
+  "schema": "profile",
+  "op": "",
+  "direction": "",
+  "def": "",
+  "target": "$.keys[0]",
+  "http": ""
+ },
+ {
+  "file": "signatures-190.json",
+  "source": "docs/specification/signatures.md:190",
+  "schema": "profile",
+  "op": "",
+  "direction": "",
+  "def": "",
+  "target": "$.keys[0]",
+  "http": ""
+ },
+ {
+  "file": "signatures-261.json",
+  "source": "docs/specification/signatures.md:261",
+  "schema": "shopping/checkout",
+  "op": "create",
+  "direction": "request",
+  "def": "",
+  "target": "",
+  "http": "POST /checkout-sessions HTTP/1.1"
+ },
+ {
+  "file": "signatures-521.json",
+  "source": "docs/specification/signatures.md:521",
+  "schema": "shopping/checkout",
+  "op": "create",
+  "direction": "request",
+  "def": "",
+  "target": "",
+  "http": "POST /checkout-sessions HTTP/1.1"
+ }
+]
