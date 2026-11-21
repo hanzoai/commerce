@@ -919,6 +919,25 @@ func TestATimestampBeyondDurationRangeIsRefusedBeforeTheVerifier(t *testing.T) {
 	}
 }
 
+// A backend that panics must not leave the key claimed: the retry with the same key runs.
+func TestAPanicDoesNotLeaveTheKeyInFlight(t *testing.T) {
+	r := newRig(t)
+	k := map[string]string{"Idempotency-Key": "k-panic"}
+	r.be.boom = true
+	func() {
+		defer func() {
+			if recover() == nil {
+				t.Fatal("the panic was swallowed")
+			}
+		}()
+		r.post("/checkout_sessions", createBody, k)
+	}()
+	r.be.boom = false
+	if w := r.post("/checkout_sessions", createBody, k); w.Code != 201 {
+		t.Fatalf("retry after a panic = %d %s", w.Code, w.Body)
+	}
+}
+
 // The verifier is given the whole request, so a signature can bind what makes it this
 // request: method, path, timestamp and key.
 func TestTheVerifierSeesTheWholeRequest(t *testing.T) {

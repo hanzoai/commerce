@@ -11,8 +11,11 @@ import (
 	"testing"
 
 	"github.com/hanzoai/commerce/api/billing"
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/checkoutsession"
+	"github.com/hanzoai/commerce/models/idempotencykey"
 	orgpkg "github.com/hanzoai/commerce/pkg/org"
+	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
@@ -340,5 +343,51 @@ func TestDurableLedger(t *testing.T) {
 	}
 	if v, _, _, _ := l.Begin(ctx, "s", "k2", "p"); v != Fresh {
 		t.Fatalf("released: %v", v)
+	}
+}
+
+// A request whose guard was reclaimed after the stale interval must not free or settle the
+// guard of the request that reclaimed it.
+func TestDurableLeaseFreesAndSettlesOnlyItsOwnGuard(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	var l Durable
+	scope, key := "acme\x00u\x00POST /checkout_sessions", "k-stale"
+	_, _, first, err := l.Begin(ctx, scope, key, "p")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The first request stalls; its guard is reclaimed by a second one. The reclaim replaces
+	// the row under the same id, as idempotencykey.Begin does for a guard past its TTL.
+	db := datastore.New(nscontext.WithNamespace(ctx, "system"))
+	old := idempotencykey.New(db)
+	if err := old.Get(db.NewKey(old.Kind(), idempotencykey.DeterministicID(scope, key), 0, nil)); err != nil {
+		t.Fatal(err)
+	}
+	if err := old.Delete(); err != nil {
+		t.Fatal(err)
+	}
+	v, _, second, err := l.Begin(ctx, scope, key, "p")
+	if err != nil || v != Fresh {
+		t.Fatalf("reclaim = %v %v", v, err)
+	}
+	// The first request finishes late: its release and its settle touch nothing of the second's.
+	_ = first.Release(ctx)
+	if v, _, _, _ := l.Begin(ctx, scope, key, "p"); v != Busy {
+		t.Fatalf("a release by the first request freed the second's guard: %v", v)
+	}
+	if err := first.Settle(ctx, Stored{Status: 201, Body: []byte(`{"id":"late"}`)}); err == nil {
+		t.Fatal("a stale lease settled a guard it no longer holds")
+	}
+	if v, _, _, _ := l.Begin(ctx, scope, key, "p"); v != Busy {
+		t.Fatalf("a settle by the first request completed the second's guard: %v", v)
+	}
+	// The holder settles and releases its own.
+	if err := second.Settle(ctx, Stored{Status: 201, Body: []byte(`{"id":"mine"}`)}); err != nil {
+		t.Fatal(err)
+	}
+	v, got, _, _ := l.Begin(ctx, scope, key, "p")
+	if v != Replay || string(got.Body) != `{"id":"mine"}` {
+		t.Fatalf("after the holder settled: %v %+v", v, got)
 	}
 }

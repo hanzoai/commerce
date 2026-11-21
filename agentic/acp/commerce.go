@@ -5,6 +5,8 @@ package acp
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -288,7 +290,9 @@ func refused(f *billing.PaymentFault) error {
 }
 
 // Durable is a Ledger kept in commerce's datastore (models/idempotencykey), so a key is held
-// across restarts and across every node. The record outlives Retention.
+// across restarts and across every node. The record outlives Retention. A claim carries a
+// token of its own: after a guard that stalled past its TTL is reclaimed, the first request
+// can neither release nor settle the guard of the one that reclaimed it.
 type Durable struct{}
 
 // Begin implements Ledger.
@@ -299,7 +303,21 @@ func (Durable) Begin(ctx context.Context, scope, key, digest string) (Verdict, S
 		return 0, Stored{}, nil, err
 	}
 	if !replay {
-		return Fresh, Stored{}, &durable{rec: rec, digest: digest}, nil
+		var b [12]byte
+		if _, err := rand.Read(b[:]); err != nil {
+			_ = rec.Delete()
+			return 0, Stored{}, nil, err
+		}
+		token := hex.EncodeToString(b[:])
+		rec.Holder = token
+		switch ok, err := rec.Swap(); {
+		case err != nil:
+			return 0, Stored{}, nil, err
+		case !ok:
+			// The row changed under the claim: another request holds it.
+			return Busy, Stored{}, nil, nil
+		}
+		return Fresh, Stored{}, &durable{db: db, scope: scope, key: key, digest: digest, token: token}, nil
 	}
 	if rec.Status != idempotencykey.StatusCompleted {
 		return Busy, Stored{}, nil, nil
@@ -318,8 +336,21 @@ func (Durable) Begin(ctx context.Context, scope, key, digest string) (Verdict, S
 }
 
 type durable struct {
-	rec    *idempotencykey.IdempotencyKey
-	digest string
+	db            *datastore.Datastore
+	scope, key    string
+	digest, token string
+}
+
+// errTakenOver is a settle by a request whose guard another request has reclaimed.
+var errTakenOver = errors.New("acp: the idempotency guard was reclaimed by another request")
+
+// mine reads the guard and reports whether it is still this request's.
+func (d *durable) mine() (*idempotencykey.IdempotencyKey, bool) {
+	cur := idempotencykey.New(d.db)
+	if err := cur.Get(d.db.NewKey(cur.Kind(), idempotencykey.DeterministicID(d.scope, d.key), 0, nil)); err != nil {
+		return nil, false
+	}
+	return cur, cur.Holder == d.token
 }
 
 func (d *durable) Settle(_ context.Context, res Stored) error {
@@ -330,8 +361,18 @@ func (d *durable) Settle(_ context.Context, res Stored) error {
 	if err != nil {
 		return err
 	}
-	d.rec.Facts = d.digest
-	return idempotencykey.Complete(d.rec, string(b))
+	cur, ok := d.mine()
+	if !ok {
+		return errTakenOver
+	}
+	cur.Facts = d.digest
+	return idempotencykey.Complete(cur, string(b))
 }
 
-func (d *durable) Release(_ context.Context) error { return d.rec.Delete() }
+// Release drops the guard, only while it is this request's.
+func (d *durable) Release(_ context.Context) error {
+	if cur, ok := d.mine(); ok {
+		return cur.Delete()
+	}
+	return nil
+}

@@ -34,6 +34,7 @@ type fake struct {
 	entered  chan struct{} // signalled when Open is waiting at the gate
 	openErr  error         // returned by the next Open, once
 	refuse   *Refusal      // the next Pay is refused with this
+	boom     bool          // Open panics
 }
 
 func newFake() *fake {
@@ -67,6 +68,9 @@ func (f *fake) Open(_ context.Context, who Caller, item string) (*Checkout, erro
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.opens++
+	if f.boom {
+		panic("backend exploded")
+	}
 	if err := f.openErr; err != nil {
 		f.openErr = nil
 		return nil, err

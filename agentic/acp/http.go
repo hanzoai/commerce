@@ -175,12 +175,24 @@ func (s *Service) post(w http.ResponseWriter, r *http.Request, rt route, id stri
 		return
 	}
 
+	// The key is held until the request settles or releases it. A panic below leaves neither,
+	// so it releases the key on the way out: the agent's retry runs instead of waiting out a
+	// claim nobody holds.
+	settled := false
+	defer func() {
+		if !settled {
+			if err := lease.Release(context.WithoutCancel(ctx)); err != nil {
+				s.cfg.Report(err)
+			}
+		}
+	}()
 	status, out := s.run(ctx, rt, id, who, key, body)
 	res, err := json.Marshal(out)
 	if err != nil {
 		s.cfg.Report(err)
 		status, res = http.StatusInternalServerError, mustJSON(Internal().Body)
 	}
+	settled = true
 	// Whatever the ledger does from here, the request has run: the answer goes out.
 	if ctx := context.WithoutCancel(ctx); status >= 500 {
 		if err := lease.Release(ctx); err != nil {
