@@ -720,6 +720,8 @@ func completeWithToken(ctx context.Context, org *organization.Organization, subj
 	sale, err := Subscribe(ctx, org, SubscribeIn{
 		MethodID: pm.Id(), PlanID: s.Plan, Subject: subject, Provider: string(processor.Stripe),
 		IdempotencyKey: bound, Interval: types.Interval(""),
+		// The first charge is the total the checkout quoted, or no charge.
+		ExpectedCents: s.TotalCents,
 	})
 	if err != nil {
 		_ = pm.Delete()
@@ -790,6 +792,12 @@ func refusedPayment(release func(int, string, string) CompleteOut, f *PaymentFau
 }
 
 func releaseSale(release func(int, string, string) CompleteOut, err error) CompleteOut {
+	var moved *Refusal
+	if errors.As(err, &moved) && moved.Code == "price_changed" {
+		// The catalog moved after the quote: nothing was charged, and updating the checkout
+		// quotes the price now.
+		return release(409, "price_changed", err.Error())
+	}
 	var pe *processor.PaymentError
 	if errors.As(err, &pe) && strings.HasPrefix(pe.Code, "token_") {
 		return release(402, pe.Code, pe.Message)

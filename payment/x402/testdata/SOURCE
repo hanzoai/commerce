@@ -1,8 +1,0 @@
-Examples copied from the x402 specification (Apache-2.0):
-  repo:   github.com/x402-foundation/x402
-  commit: e35bf8846f3e
-  path:   specs/transports-v2/http.md
-  *.b64   the header values printed in the spec's HTTP examples
-  *.json  the JSON those headers decode to, as the spec prints it
-The spec's PaymentPayload example also carries a real EIP-3009 signature
-(USDC domain on eip155:84532); TestSpecSignatureRecovers verifies it.
