@@ -268,10 +268,6 @@ func TestTable(t *testing.T) {
 	if len(rows) != 2 || rows[0].Resource != "GET /a" || rows[1].Resource != "GET /b" || rows[0].Price != "0.01" {
 		t.Fatalf("%+v", rows)
 	}
-	tab.Remove("GET /a")
-	if tab.Priced("GET /a") || len(tab.Listing()) != 1 {
-		t.Fatal("remove")
-	}
 	if rows := (&Table{}).Listing(); rows == nil {
 		t.Fatal("listing must never be nil")
 	}

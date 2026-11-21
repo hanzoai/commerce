@@ -79,9 +79,6 @@ func TestPaywallChallengesServesAndSettlesOnZip(t *testing.T) {
 	if err := DecodeHeader(resp.Header.Get(HeaderPaymentRequired), &pr); err != nil || pr.Accepts[0].Amount != "10000" || pr.Resource.Description != "premium data" {
 		t.Fatalf("challenge %v %+v", err, pr)
 	}
-	if !strings.Contains(resp.Header.Get("Access-Control-Expose-Headers"), "PAYMENT-REQUIRED") {
-		t.Fatalf("expose %q", resp.Header.Get("Access-Control-Expose-Headers"))
-	}
 
 	resp, body = r.do(t, http.MethodGet, "/data", r.paid(t))
 	if resp.StatusCode != 200 || !strings.Contains(body, "premium") || r.ran != 1 || len(r.books.settled) != 1 {

@@ -23,12 +23,10 @@ const (
 	ReasonInvalidPayload      = "invalid_payload"
 	ReasonInvalidRequirements = "invalid_payment_requirements"
 	ReasonInvalidScheme       = "invalid_scheme"
-	ReasonUnsupportedScheme   = "unsupported_scheme"
 	ReasonInvalidVersion      = "invalid_x402_version"
 	ReasonInvalidTransaction  = "invalid_transaction_state"
 	ReasonVerifyError         = "unexpected_verify_error"
 	ReasonSettleError         = "unexpected_settle_error"
-	ReasonSettlementPending   = "settlement_pending"
 )
 
 // Error is a refusal that carries the specification's own reason, which is what
