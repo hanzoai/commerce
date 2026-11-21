@@ -1,0 +1,27 @@
+[
+ {
+  "type": "subtotal",
+  "display_text": "Subtotal",
+  "amount": 5750
+ },
+ {
+  "type": "fulfillment",
+  "display_text": "Shipping",
+  "amount": 899
+ },
+ {
+  "type": "tax",
+  "display_text": "Federal Tax",
+  "amount": 332
+ },
+ {
+  "type": "tax",
+  "display_text": "State Tax",
+  "amount": 465
+ },
+ {
+  "type": "total",
+  "display_text": "Total",
+  "amount": 7446
+ }
+]

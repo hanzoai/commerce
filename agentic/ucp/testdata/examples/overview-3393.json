@@ -1,0 +1,15 @@
+[
+ {
+  "type": "error",
+  "code": "signal",
+  "path": "$.signals['dev.ucp.buyer_ip']",
+  "content": "Buyer IP is required to proceed.",
+  "severity": "recoverable"
+ },
+ {
+  "type": "info",
+  "code": "signal",
+  "path": "$.signals['dev.ucp.user_agent']",
+  "content": "Providing user agent may improve checkout outcomes."
+ }
+]

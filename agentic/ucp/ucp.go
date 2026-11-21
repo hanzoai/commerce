@@ -34,11 +34,11 @@ const Source = "Universal-Commerce-Protocol/ucp@c20aa35c2c91 (Apache-2.0)"
 // Names the specification defines (overview, "Standard Capabilities";
 // shopping/checkout, shopping/order).
 const (
-	Shopping   = "dev.ucp.shopping"
-	Checkout   = "dev.ucp.shopping.checkout"
-	OrderCap   = "dev.ucp.shopping.order"
-	WellKnown  = "/.well-known/ucp"
-	TransportR = "rest"
+	ServiceShopping = "dev.ucp.shopping"
+	CapCheckout     = "dev.ucp.shopping.checkout"
+	CapOrder        = "dev.ucp.shopping.order"
+	WellKnown       = "/.well-known/ucp"
+	TransportREST   = "rest"
 )
 
 // Request headers (shopping/rest.openapi.json, components.parameters).

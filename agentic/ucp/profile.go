@@ -534,8 +534,6 @@ func ucpURL(kind, path string) string {
 	return "https://ucp.dev/" + Version + "/" + kind + "/" + path
 }
 
-func ucpEntity() Entity { return Entity{Version: Version} }
-
 // ProfileConfig is what a host states about its business.
 type ProfileConfig struct {
 	// Endpoint is the base URL of the REST binding: https, no trailing slash.
@@ -556,13 +554,13 @@ type ProfileConfig struct {
 // NewProfile builds the business profile for cfg and validates it.
 func NewProfile(cfg ProfileConfig) (*Profile, error) {
 	svc := Service{Entity: Entity{Version: Version, Spec: ucpURL("specification", "overview/"),
-		Schema: ucpURL("services", "shopping/rest.openapi.json")}, Transport: TransportR, Endpoint: cfg.Endpoint}
+		Schema: ucpURL("services", "shopping/rest.openapi.json")}, Transport: TransportREST, Endpoint: cfg.Endpoint}
 	caps := map[string][]Capability{
-		Checkout: {{Entity: Entity{Version: Version, Spec: ucpURL("specification", "shopping/checkout"),
+		CapCheckout: {{Entity: Entity{Version: Version, Spec: ucpURL("specification", "shopping/checkout"),
 			Schema: ucpURL("schemas", "shopping/checkout.json")}}},
 	}
 	if cfg.Order {
-		caps[OrderCap] = []Capability{{Entity: Entity{Version: Version, Spec: ucpURL("specification", "shopping/order"),
+		caps[CapOrder] = []Capability{{Entity: Entity{Version: Version, Spec: ucpURL("specification", "shopping/order"),
 			Schema: ucpURL("schemas", "shopping/order.json")}}}
 	}
 	handlers := cfg.Handlers
@@ -570,7 +568,7 @@ func NewProfile(cfg ProfileConfig) (*Profile, error) {
 		handlers = map[string][]Handler{}
 	}
 	p := &Profile{
-		UCP:  Meta{Version: Version, Services: map[string][]Service{Shopping: {svc}}, Capabilities: caps, PaymentHandlers: handlers},
+		UCP:  Meta{Version: Version, Services: map[string][]Service{ServiceShopping: {svc}}, Capabilities: caps, PaymentHandlers: handlers},
 		Keys: cfg.Keys,
 	}
 	if len(cfg.HandlerOrder) > 0 {

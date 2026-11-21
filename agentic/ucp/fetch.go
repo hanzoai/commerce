@@ -86,20 +86,13 @@ func NewFetcher(cfg FetcherConfig) *Fetcher {
 		cfg.Timeout = 10 * time.Second
 	}
 	f := &Fetcher{cfg: cfg, order: list.New(), entries: map[string]*list.Element{}, forced: map[string]time.Time{}}
-	f.client = cfg.Client
-	if f.client == nil {
-		d := &net.Dialer{Timeout: cfg.Timeout, Control: f.control}
-		f.client = &http.Client{
-			Timeout: cfg.Timeout,
-			Transport: &http.Transport{
-				DialContext:         d.DialContext,
-				TLSClientConfig:     &tls.Config{MinVersion: tls.VersionTLS12},
-				TLSHandshakeTimeout: cfg.Timeout,
-				MaxIdleConns:        16,
-				IdleConnTimeout:     30 * time.Second,
-			},
-			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-		}
+	if cfg.Client != nil {
+		// The no-redirect rule is the specification's, not the host's choice.
+		c := *cfg.Client
+		c.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+		f.client = &c
+	} else {
+		f.client = guarded(cfg.Timeout, cfg.Loopback)
 	}
 	return f
 }
@@ -113,15 +106,40 @@ func (f *Fetcher) now() time.Time {
 
 // control refuses a connection to a special-use address, on the address the
 // dialer actually resolved.
-func (f *Fetcher) control(network, address string, _ syscall.RawConn) error {
-	ap, err := netip.ParseAddrPort(address)
-	if err != nil {
-		return err
+func (f *Fetcher) control(network, address string, c syscall.RawConn) error {
+	return refuse(f.cfg.Loopback)(network, address, c)
+}
+
+func refuse(loopback bool) func(network, address string, _ syscall.RawConn) error {
+	return func(_, address string, _ syscall.RawConn) error {
+		ap, err := netip.ParseAddrPort(address)
+		if err != nil {
+			return err
+		}
+		if special(ap.Addr()) && !(loopback && ap.Addr().Unmap().IsLoopback()) {
+			return fmt.Errorf("refusing to connect to special-use address %s", ap.Addr())
+		}
+		return nil
 	}
-	if special(ap.Addr()) && !(f.cfg.Loopback && ap.Addr().Unmap().IsLoopback()) {
-		return fmt.Errorf("refusing to connect to special-use address %s", ap.Addr())
+}
+
+// guarded returns an HTTP client for URLs that a counterparty supplied: it
+// never follows a redirect, connects only to addresses that are not
+// special-use (judged on the connected address, so DNS rebinding does not get
+// around it), uses no proxy, and bounds the time of a request.
+func guarded(timeout time.Duration, loopback bool) *http.Client {
+	d := &net.Dialer{Timeout: timeout, Control: refuse(loopback)}
+	return &http.Client{
+		Timeout: timeout,
+		Transport: &http.Transport{
+			DialContext:         d.DialContext,
+			TLSClientConfig:     &tls.Config{MinVersion: tls.VersionTLS12},
+			TLSHandshakeTimeout: timeout,
+			MaxIdleConns:        16,
+			IdleConnTimeout:     30 * time.Second,
+		},
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}
-	return nil
 }
 
 var specialPrefixes = func() []netip.Prefix {
