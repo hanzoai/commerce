@@ -1,0 +1,16 @@
+{
+ "line_items": [
+  {
+   "id": "li_fasteners",
+   "item": {
+    "id": "var_fasteners",
+    "quantity_unit": {
+     "unit": "LBR",
+     "scale": 2,
+     "display_text": "lb"
+    }
+   },
+   "quantity": 275
+  }
+ ]
+}

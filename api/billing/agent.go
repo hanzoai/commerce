@@ -551,6 +551,28 @@ type PaymentIn struct {
 	Type    string `json:"type"` // "shared_payment_token" | "stablecoin"
 	Token   string `json:"token,omitempty"`
 	Network string `json:"network,omitempty"`
+	// Quote, when set, is the checkout the caller verified before completing: the completion
+	// charges that line at that total, or it is refused as checkout_changed. A checkout can be
+	// changed by its buyer between the caller's check and the charge, and only a check made
+	// where the checkout is taken for payment holds against that. The zero Quote checks
+	// nothing. It is not part of the request body.
+	Quote Quote `json:"-"`
+}
+
+// Quote is the one line of a checkout and its total, as a caller saw them.
+type Quote struct {
+	Kind       string // "credit" | "plan"
+	UsdCents   int64  // the credit's amount; zero for a plan
+	Plan       string // the plan's slug; empty for credit
+	TotalCents int64
+}
+
+// holds says the session is the checkout the quote names. The zero Quote holds for any session.
+func (q Quote) holds(s *checkoutsession.Session) bool {
+	if q == (Quote{}) {
+		return true
+	}
+	return strings.EqualFold(q.Kind, s.Line) && q.UsdCents == s.UsdCents && q.Plan == s.Plan && q.TotalCents == s.TotalCents
 }
 
 // CompleteOut is the result of a completion: the checkout, and the HTTP status to answer.
@@ -602,9 +624,16 @@ func CompleteCheckout(ctx context.Context, org *organization.Organization, subje
 		return fail(409, s, "already_completed", "this checkout was completed under another idempotency key")
 	}
 
-	// Take the checkout: one completion at a time wins it.
+	// Take the checkout: one completion at a time wins it, and only if it is still the
+	// checkout the caller quoted.
+	var changed bool
 	taken, won, err := checkoutsession.Change(id, func(x *checkoutsession.Session) bool {
+		changed = false
 		if x.Status != checkoutsession.Open && x.Status != checkoutsession.Failed {
+			return false
+		}
+		if !pay.Quote.holds(x) {
+			changed = true
 			return false
 		}
 		x.Status, x.Key, x.Payment, x.Reason = checkoutsession.Pending, key, strings.ToLower(pay.Type), ""
@@ -612,6 +641,9 @@ func CompleteCheckout(ctx context.Context, org *organization.Organization, subje
 	})
 	if err != nil {
 		return fail(503, nil, "unavailable", "billing is temporarily unavailable; please retry")
+	}
+	if changed {
+		return fail(409, s, "checkout_changed", "this checkout is no longer the one that was quoted; read it again")
 	}
 	if !won {
 		return fail(409, s, "in_progress", "this checkout is being completed")
@@ -720,6 +752,8 @@ func completeWithToken(ctx context.Context, org *organization.Organization, subj
 	sale, err := Subscribe(ctx, org, SubscribeIn{
 		MethodID: pm.Id(), PlanID: s.Plan, Subject: subject, Provider: string(processor.Stripe),
 		IdempotencyKey: bound, Interval: types.Interval(""),
+		// The first charge is the total the checkout quoted, or no charge.
+		ExpectedCents: s.TotalCents,
 	})
 	if err != nil {
 		_ = pm.Delete()
@@ -790,6 +824,12 @@ func refusedPayment(release func(int, string, string) CompleteOut, f *PaymentFau
 }
 
 func releaseSale(release func(int, string, string) CompleteOut, err error) CompleteOut {
+	var moved *Refusal
+	if errors.As(err, &moved) && moved.Code == "price_changed" {
+		// The catalog moved after the quote: nothing was charged, and updating the checkout
+		// quotes the price now.
+		return release(409, "price_changed", err.Error())
+	}
 	var pe *processor.PaymentError
 	if errors.As(err, &pe) && strings.HasPrefix(pe.Code, "token_") {
 		return release(402, pe.Code, pe.Message)
