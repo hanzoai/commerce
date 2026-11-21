@@ -28,7 +28,10 @@ type Store interface {
 	Load(ctx context.Context, key string) (value []byte, found bool, err error)
 }
 
-// Memory is a Store held in the memory of one process. Entries are forgotten at the
+// Memory is a Store held in the memory of one process, for tests and a resource served by
+// one process that never restarts within a challenge's life. It is not shared: a
+// credential replayed on another replica, or after a restart, is not seen as spent and
+// settles again. Durable is the Store for anything else. Entries are forgotten at the
 // instant they were kept until.
 type Memory struct {
 	// Now is the clock; time.Now when nil.

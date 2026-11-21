@@ -51,6 +51,7 @@ func newCheckout() *checkout {
 
 func (c *checkout) commerce() *Commerce {
 	return &Commerce{
+		Store: &Memory{Now: func() time.Time { return epoch }},
 		Account: func(context.Context, Caller) (*Profile, error) {
 			return &Profile{Network: "profile_1MqDcVKA5fEO2tZvKQm9g8Yj", Types: []string{"card", "link"}}, nil
 		},
@@ -310,4 +311,49 @@ func TestCommerceSpendsThroughTheLedger(t *testing.T) {
 	if _, err := c.Take(context.Background(), Sale{Caller: Caller{Org: "acme", Subject: "agent"}, Token: "spt_2", Amount: "5000", Currency: "usd", Challenge: "ch_2"}); err == nil {
 		t.Fatal("served without the credit being spent")
 	}
+}
+
+// The checkout is the challenge's: an attempt after the first, on this process or another,
+// completes the checkout the first opened, under the same key, and opens none (api/billing
+// binds the charge to checkout:<id>:<key>, so the card is charged once).
+func TestCommerceCheckoutIsTheChallenges(t *testing.T) {
+	k := newCheckout()
+	c := k.commerce()
+	sale := Sale{Caller: Caller{Org: "acme", Subject: "agent"}, Token: "spt_1", Amount: "5000", Currency: "usd", Challenge: "ch_1", Until: epoch.Add(10 * time.Minute)}
+	first, err := c.Take(context.Background(), sale)
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := c.Take(context.Background(), sale)
+	if err != nil || again != first {
+		t.Fatalf("%q %v", again, err)
+	}
+	if len(k.items) != 1 {
+		t.Fatalf("%d checkouts were opened for one challenge", len(k.items))
+	}
+	want := completion{"chk_1", "ch_1", billing.PaymentIn{Type: "shared_payment_token", Token: "spt_1"}}
+	if len(k.completed) != 2 || k.completed[0] != want || k.completed[1] != want {
+		t.Fatalf("completed %+v", k.completed)
+	}
+	// Another challenge opens its own.
+	other := sale
+	other.Challenge = "ch_2"
+	if _, err := c.Take(context.Background(), other); err != nil || len(k.items) != 2 {
+		t.Fatalf("%v, %d checkouts", err, len(k.items))
+	}
+	// The record of an opened checkout that could not be kept is the host's to see.
+	c.Store = brokenStore{&Memory{}}
+	if _, err := c.Take(context.Background(), Sale{Caller: sale.Caller, Token: "spt_3", Amount: "5000", Currency: "usd", Challenge: "ch_3"}); err == nil {
+		t.Error("a checkout opened and not recorded was not reported")
+	}
+	if _, err := (&Commerce{Account: c.Account}).Profile(context.Background(), sale.Caller, Quote{Amount: "1", Currency: "usd"}); err == nil || errors.Is(err, ErrSkip) {
+		t.Errorf("a Commerce with no Store: %v", err)
+	}
+}
+
+type brokenStore struct{ *Memory }
+
+func (brokenStore) Load(context.Context, string) ([]byte, bool, error) { return nil, false, nil }
+func (brokenStore) Save(context.Context, string, []byte, time.Time) error {
+	return errors.New("store down")
 }

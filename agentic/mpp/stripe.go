@@ -60,6 +60,8 @@ type Sale struct {
 	Key string
 	// Metadata is the request's methodDetails.metadata with challenge_id added.
 	Metadata map[string]string
+	// Until is the instant the Seller may forget what it recorded for the challenge.
+	Until time.Time
 }
 
 // Seller is the merchant side of the stripe method.
@@ -177,7 +179,7 @@ func (s Stripe) Settle(ctx context.Context, c Claim) (*Receipt, error) {
 	meta["challenge_id"] = c.Challenge.ID
 	ref, err := s.Seller.Take(ctx, Sale{
 		Caller: c.Caller, Token: pay.SPT, Amount: req.Amount, Currency: req.Currency, Description: req.Description,
-		External: req.ExternalID, Challenge: c.Challenge.ID, Key: c.Challenge.ID + "_" + pay.SPT, Metadata: meta,
+		External: req.ExternalID, Challenge: c.Challenge.ID, Key: c.Challenge.ID + "_" + pay.SPT, Metadata: meta, Until: c.Until,
 	})
 	if err != nil {
 		return nil, err

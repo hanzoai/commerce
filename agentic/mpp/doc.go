@@ -43,12 +43,14 @@
 //   - Client: an http.RoundTripper that answers a 402 through a Payer.
 //   - Method: the plug-in a payment method implements. Stripe is the one implemented
 //     (shared payment tokens, charge intent), and Commerce settles it through the
-//     api/billing checkout.
+//     api/billing checkout and spends the credit that checkout grants on the resource.
 //   - Info: the x-payment-info OpenAPI discovery extension.
 //
 // What it does not provide. The session and subscription intents, and the tempo, evm,
 // solana, lightning, card and other method drafts, need a chain, a channel, a card
 // network or a facilitator that this repository does not run, and are not implemented.
-// Rate limiting (section 11.12) belongs to the host, and so does a durable, shared
-// Store: Memory is for tests and a single process.
+// Rate limiting (section 11.12) belongs to the host. Durable keeps the Store in commerce's
+// datastore, shared by every replica and surviving restarts; Memory is for tests and one
+// process, and a credential replayed on another replica or after a restart would settle
+// again under it.
 package mpp

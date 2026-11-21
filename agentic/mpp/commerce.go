@@ -58,6 +58,12 @@ type Commerce struct {
 	// nothing and at most once per ref. Nil draws through the credit ledger the host
 	// injected with creditledger.Set.
 	Spend func(ctx context.Context, org *organization.Organization, subject string, cents int64, ref string) error
+	// Store records which checkout a challenge opened, so that a retry, another replica or
+	// a restart completes that checkout under the same key rather than opening another:
+	// api/billing binds a charge to checkout:<id>:<key>, which makes the checkout the
+	// challenge's and the charge once. It should be the Gate's Store, and Durable when the
+	// resource is served by more than one process.
+	Store Store
 }
 
 // errLedger says there is no ledger to spend the credit from.
@@ -86,6 +92,9 @@ var _ Seller = (*Commerce)(nil)
 // Profile implements Seller. It offers USD to a caller with an Org and a Subject, when
 // the credit the checkout grants can be spent on the resource.
 func (c *Commerce) Profile(ctx context.Context, who Caller, q Quote) (*Profile, error) {
+	if c.Store == nil {
+		return nil, errors.New("commerce: Store is required")
+	}
 	if q.Currency != "usd" || who.Org == "" || who.Subject == "" || c.Account == nil {
 		return nil, ErrSkip
 	}
@@ -126,11 +135,28 @@ func (c *Commerce) Take(ctx context.Context, s Sale) (string, error) {
 	if complete == nil {
 		complete = billing.CompleteCheckout
 	}
-	view, fault := create(ctx, org, s.Caller.Subject, "", []billing.ItemIn{{Kind: "credit", UsdCents: cents}})
-	if fault != nil {
-		return "", fmt.Errorf("commerce: checkout not created: %d %s", fault.Status, fault.Message)
+	if c.Store == nil {
+		return "", errors.New("commerce: Store is required")
 	}
-	out := complete(ctx, org, s.Caller.Subject, "", view.ID, s.Challenge, billing.PaymentIn{Type: "shared_payment_token", Token: s.Token})
+	// The checkout is the challenge's: one is opened the first time and the same one is
+	// completed, under the same key, on every attempt after it.
+	slot := "commerce/checkout/" + s.Challenge
+	opened, found, err := c.Store.Load(ctx, slot)
+	if err != nil {
+		return "", fmt.Errorf("commerce: %w", err)
+	}
+	id := string(opened)
+	if !found {
+		view, fault := create(ctx, org, s.Caller.Subject, "", []billing.ItemIn{{Kind: "credit", UsdCents: cents}})
+		if fault != nil {
+			return "", fmt.Errorf("commerce: checkout not created: %d %s", fault.Status, fault.Message)
+		}
+		id = view.ID
+		if err := c.Store.Save(ctx, slot, []byte(id), s.Until); err != nil {
+			return "", fmt.Errorf("commerce: checkout %s was opened and not recorded: %w", id, err)
+		}
+	}
+	out := complete(ctx, org, s.Caller.Subject, "", id, s.Challenge, billing.PaymentIn{Type: "shared_payment_token", Token: s.Token})
 	if out.Status == 200 && out.View != nil && out.View.Order != nil {
 		// The token was charged and the credit posted. Spend the resource's price from it
 		// before anything is served; if that fails the credit stays with the buyer, and
@@ -158,5 +184,5 @@ func (c *Commerce) Take(ctx context.Context, s Sale) (string, error) {
 		}
 		return "", Refuse(Failed, e.Message)
 	}
-	return "", errors.New("commerce: checkout " + view.ID + " is not complete: status " + strconv.Itoa(out.Status))
+	return "", errors.New("commerce: checkout " + id + " is not complete: status " + strconv.Itoa(out.Status))
 }
