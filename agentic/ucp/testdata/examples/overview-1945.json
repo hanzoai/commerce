@@ -1,0 +1,32 @@
+{
+ "version": "2026-08-25",
+ "payment_handlers": {
+  "com.example.tokenizer": [
+   {
+    "id": "merchant_tokenizer",
+    "version": "2026-08-25",
+    "spec": "https://example.com/specs/tokenizer",
+    "schema": "https://example.com/schemas/tokenizer.json",
+    "available_instruments": [
+     {
+      "type": "card",
+      "constraints": {
+       "properties": {
+        "brand": {
+         "enum": [
+          "visa",
+          "mastercard"
+         ]
+        }
+       }
+      }
+     }
+    ],
+    "config": {
+     "token_url": "https://api.psp.com/tokens",
+     "public_key": "pk_123"
+    }
+   }
+  ]
+ }
+}

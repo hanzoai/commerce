@@ -1,0 +1,34 @@
+{
+ "payment": {
+  "instruments": [
+   {
+    "id": "pm_1234567890abc",
+    "handler_id": "8c9202bd-63cc-4241-8d24-d57ce69ea31c",
+    "type": "card",
+    "selected": true,
+    "display": {
+     "brand": "visa",
+     "last_digits": "4242"
+    },
+    "billing_address": {
+     "street_address": "123 Main Street",
+     "extended_address": "Suite 400",
+     "address_locality": "Charleston",
+     "address_region": "SC",
+     "postal_code": "29401",
+     "address_country": "US",
+     "first_name": "Jane",
+     "last_name": "Smith"
+    },
+    "credential": {
+     "type": "PAYMENT_GATEWAY",
+     "token": "{\"signature\":\"...\",\"protocolVersion\":\"ECv2\"...}"
+    }
+   }
+  ]
+ },
+ "signals": {
+  "dev.ucp.buyer_ip": "203.0.113.42",
+  "dev.ucp.user_agent": "Mozilla/5.0 ..."
+ }
+}
