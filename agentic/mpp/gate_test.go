@@ -31,6 +31,7 @@ type rig struct {
 	mu       sync.Mutex
 	reported []error
 	h        http.Handler
+	ctx      context.Context
 }
 
 func newRig(t *testing.T, mods ...func(*Config)) *rig {
@@ -80,6 +81,9 @@ func (r *rig) do(method, path string, hdr http.Header, body string) *http.Respon
 		rd = strings.NewReader(body)
 	}
 	req := httptest.NewRequest(method, "https://api.example.com"+path, rd)
+	if r.ctx != nil {
+		req = req.WithContext(r.ctx)
+	}
 	for k, v := range hdr {
 		req.Header[k] = v
 	}
@@ -896,5 +900,57 @@ func TestGateChallengeSize(t *testing.T) {
 	if _, err := New(Config{Realm: "r", Secret: testSecret, Store: &Memory{}, Methods: []Method{&invoice{}}, Limit: 1024,
 		Price: func(*http.Request) (*Quote, error) { return nil, nil }}); err == nil {
 		t.Error("a credential limit under 4096 was accepted")
+	}
+}
+
+// A resource that writes nothing has answered 200: the payment is delivered, the receipt
+// rides on that answer, and a retry does not run the resource again (section 11.4).
+func TestGateEmptyResponseIsDelivered(t *testing.T) {
+	for name, replay := range map[string]int64{"without replay": 0, "with replay": 1 << 20} {
+		t.Run(name, func(t *testing.T) {
+			r := newRig(t, func(c *Config) { c.Replay = replay })
+			r.serve = func(http.ResponseWriter, *http.Request) {} // writes nothing
+			ch := r.challenge("POST", "/resource", nil, "")[0]
+			h := http.Header{"Authorization": {credential(ch, proof).String()}, "Idempotency-Key": {"k"}}
+			first := r.do("POST", "/resource", h, "")
+			if first.StatusCode != 200 || first.Header.Get("Payment-Receipt") == "" {
+				t.Fatalf("first: %d %v", first.StatusCode, first.Header)
+			}
+			for i := 0; i < 3; i++ {
+				again := r.do("POST", "/resource", h, "")
+				if replay > 0 {
+					if again.StatusCode != 200 || again.Header.Get("Payment-Receipt") != first.Header.Get("Payment-Receipt") {
+						t.Fatalf("replay: %d %v", again.StatusCode, again.Header)
+					}
+				} else {
+					wantProblem(t, again, 402, Invalid)
+				}
+			}
+			if r.hits.Load() != 1 || r.invoice.count() != 1 {
+				t.Fatalf("one payment ran the resource %d times, settled %d", r.hits.Load(), r.invoice.count())
+			}
+		})
+	}
+}
+
+// A resource that panics has delivered nothing: the retry runs it again without a second charge.
+func TestGatePanicFreesDelivery(t *testing.T) {
+	r := newRig(t)
+	var calls atomic.Int32
+	r.serve = func(w http.ResponseWriter, _ *http.Request) {
+		if calls.Add(1) == 1 {
+			panic("boom")
+		}
+		_, _ = io.WriteString(w, "ok")
+	}
+	ch := r.challenge("POST", "/resource", nil, "")[0]
+	h := http.Header{"Authorization": {credential(ch, proof).String()}, "Idempotency-Key": {"k"}}
+	func() {
+		defer func() { _ = recover() }()
+		r.do("POST", "/resource", h, "")
+	}()
+	resp := r.do("POST", "/resource", h, "")
+	if resp.StatusCode != 200 || resp.Header.Get("Payment-Receipt") == "" || r.invoice.count() != 1 || r.hits.Load() != 2 {
+		t.Fatalf("retry: %d, settled %d, hits %d", resp.StatusCode, r.invoice.count(), r.hits.Load())
 	}
 }

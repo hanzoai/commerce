@@ -4,6 +4,7 @@
 package mpp
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/rand"
@@ -12,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -586,11 +588,13 @@ func (g *Gate) resend(w http.ResponseWriter, r *http.Request, next http.Handler,
 func (g *Gate) deliver(w http.ResponseWriter, r *http.Request, next http.Handler, id, field string, rec record, until time.Time) {
 	t := &tee{ResponseWriter: w, receipt: rec.Receipt, field: field, limit: g.c.Replay}
 	free := context.WithoutCancel(r.Context())
+	returned := false
 	defer func() {
 		switch {
-		case !t.paid():
+		case !returned || (t.code != 0 && !t.paid()):
+			// The resource panicked or answered with an error: nothing was delivered.
 			_ = g.c.Store.Drop(free, "deliver/"+id)
-		case g.c.Replay > 0 && !t.over:
+		case g.c.Replay > 0 && !t.over && t.code != 0:
 			rec.Status, rec.Header, rec.Body = t.code, t.sent, t.kept.Bytes()
 			if err := g.save(free, id, rec, until); err != nil {
 				g.c.Report(fmt.Errorf("challenge %s: the response was not kept for replay: %w", id, err))
@@ -598,6 +602,12 @@ func (g *Gate) deliver(w http.ResponseWriter, r *http.Request, next http.Handler
 		}
 	}()
 	next.ServeHTTP(t, withoutPayment(r))
+	if t.code == 0 && !t.hijacked {
+		// The resource returned without writing: net/http answers 200, and the receipt
+		// rides on that answer.
+		t.WriteHeader(http.StatusOK)
+	}
+	returned = true
 }
 
 // withoutPayment is the request with its Payment credentials removed, so that the
@@ -642,6 +652,8 @@ type tee struct {
 	sent    http.Header
 	kept    bytes.Buffer
 	over    bool
+	// hijacked says the resource took the connection over, which answers for it.
+	hijacked bool
 }
 
 func (t *tee) paid() bool { return t.code >= 200 && t.code < 300 }
@@ -686,6 +698,15 @@ func (t *tee) Flush() {
 		t.WriteHeader(http.StatusOK)
 	}
 	_ = http.NewResponseController(t.ResponseWriter).Flush()
+}
+
+// Hijack lets a resource take the connection over, and notes that it did.
+func (t *tee) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	c, rw, err := http.NewResponseController(t.ResponseWriter).Hijack()
+	if err == nil {
+		t.hijacked = true
+	}
+	return c, rw, err
 }
 
 func (t *tee) Unwrap() http.ResponseWriter { return t.ResponseWriter }
