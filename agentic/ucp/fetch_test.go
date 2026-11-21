@@ -6,10 +6,14 @@ package ucp
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -28,7 +32,24 @@ func fetcherFor(t *testing.T, h http.Handler, cfg FetcherConfig) *Fetcher {
 		return (&net.Dialer{}).DialContext(ctx, "tcp", srv.Listener.Addr().String())
 	}
 	cfg.Client = &http.Client{Transport: tr}
-	return NewFetcher(cfg)
+	return newFetcher(t, cfg)
+}
+
+// newFetcher builds a Fetcher, stating the limits NewFetcher requires unless the
+// test sets them.
+func newFetcher(t *testing.T, cfg FetcherConfig) *Fetcher {
+	t.Helper()
+	if cfg.Concurrent == 0 {
+		cfg.Concurrent = 8
+	}
+	if cfg.MaxTTL == 0 {
+		cfg.MaxTTL = 24 * time.Hour
+	}
+	f, err := NewFetcher(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return f
 }
 
 func profileJSON(t *testing.T, p *Profile) []byte {
@@ -150,13 +171,13 @@ func TestFetcherFailuresAreTheRegisteredErrors(t *testing.T) {
 		})
 	}
 	// An unreachable host.
-	f := NewFetcher(FetcherConfig{Timeout: 2 * time.Second})
+	f := newFetcher(t, FetcherConfig{Timeout: 2 * time.Second})
 	_, err := f.Platform(context.Background(), "https://nonexistent.invalid/.well-known/ucp", false)
 	mustReject(t, err, CodeProfileUnreachable, 424)
 }
 
 func TestProfileURLsAreValidatedBeforeAnythingIsFetched(t *testing.T) {
-	f := NewFetcher(FetcherConfig{})
+	f := newFetcher(t, FetcherConfig{})
 	for _, u := range []string{
 		"", "http://platform.example/profile", "https://user:pw@platform.example/profile", "https://203.0.113.10/profile",
 		"https://[::1]/profile", "https://localhost/profile", "ftp://platform.example/p", "platform.example/profile", "https:///profile",
@@ -205,7 +226,7 @@ func TestSpecialUseAddressesAreRefused(t *testing.T) {
 }
 
 func TestDialerRefusesTheResolvedAddress(t *testing.T) {
-	f := NewFetcher(FetcherConfig{})
+	f := newFetcher(t, FetcherConfig{})
 	for _, a := range []string{"127.0.0.1:443", "[::1]:443", "169.254.169.254:80", "10.0.0.5:443", "[fe80::1]:443"} {
 		if err := f.control("tcp", a, nil); err == nil {
 			t.Errorf("connect to %s was allowed", a)
@@ -214,7 +235,7 @@ func TestDialerRefusesTheResolvedAddress(t *testing.T) {
 	if err := f.control("tcp", "93.184.216.34:443", nil); err != nil {
 		t.Errorf("a public address was refused: %v", err)
 	}
-	dev := NewFetcher(FetcherConfig{Loopback: true})
+	dev := newFetcher(t, FetcherConfig{Loopback: true})
 	if err := dev.control("tcp", "127.0.0.1:8443", nil); err != nil {
 		t.Errorf("loopback with Loopback set: %v", err)
 	}
@@ -232,7 +253,157 @@ func TestHostClientIsStillNotAllowedToFollowRedirects(t *testing.T) {
 	defer srv.Close()
 	client := srv.Client()
 	client.CheckRedirect = nil // the host's client would follow
-	f := NewFetcher(FetcherConfig{Client: client})
+	f := newFetcher(t, FetcherConfig{Client: client})
 	_, err := f.Platform(context.Background(), "https://example.com/x", false)
 	mustReject(t, err, CodeProfileUnreachable, 424)
+}
+
+func TestFetcherNeedsItsLimitsStated(t *testing.T) {
+	for name, cfg := range map[string]FetcherConfig{
+		"no ceiling on the cache lifetime": {Concurrent: 4},
+		"no concurrency cap":               {MaxTTL: time.Hour},
+		"ceiling under the floor":          {Concurrent: 4, MaxTTL: time.Second, TTL: time.Minute},
+	} {
+		if _, err := NewFetcher(cfg); err == nil {
+			t.Errorf("%s: accepted", name)
+		}
+	}
+	if _, err := NewFetcher(FetcherConfig{Concurrent: 4, MaxTTL: time.Hour}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// A profile cannot outlive the ceiling whatever its Cache-Control says: a
+// revoked key must stop verifying.
+func TestCacheLifetimeHasACeiling(t *testing.T) {
+	p := platformWithSpec(t)
+	var hits atomic.Int32
+	clk := &fakeClock{now: t0}
+	f := fetcherFor(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		w.Header().Set("Cache-Control", "public, max-age=31536000")
+		w.Write(profileJSON(t, p))
+	}), FetcherConfig{Now: clk.Now, MaxTTL: time.Hour})
+	f.Platform(context.Background(), profileURL, false)
+	clk.now = t0.Add(59 * time.Minute)
+	f.Platform(context.Background(), profileURL, false)
+	if hits.Load() != 1 {
+		t.Fatalf("%d fetches inside the ceiling", hits.Load())
+	}
+	clk.now = t0.Add(61 * time.Minute)
+	f.Platform(context.Background(), profileURL, false)
+	if hits.Load() != 2 {
+		t.Fatalf("%d fetches; a year-long max-age must not outlive the ceiling", hits.Load())
+	}
+}
+
+// Concurrent requests for one profile share one fetch.
+func TestConcurrentFetchesOfOneProfileAreCoalesced(t *testing.T) {
+	p := platformWithSpec(t)
+	var hits atomic.Int32
+	release := make(chan struct{})
+	f := fetcherFor(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		<-release
+		w.Write(profileJSON(t, p))
+	}), FetcherConfig{})
+	var wg sync.WaitGroup
+	errs := make(chan error, 20)
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := f.Platform(context.Background(), profileURL, false)
+			errs <- err
+		}()
+	}
+	time.Sleep(100 * time.Millisecond)
+	close(release)
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if hits.Load() != 1 {
+		t.Fatalf("%d fetches for one profile", hits.Load())
+	}
+}
+
+// Fetches of different profiles are capped; past the cap a request is told to
+// retry (503 with Retry-After), so discovery of unrecognised platforms has a
+// fixed footprint.
+func TestProfileFetchesAreCapped(t *testing.T) {
+	p := platformWithSpec(t)
+	var running, peak atomic.Int32
+	release := make(chan struct{})
+	f := fetcherFor(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := running.Add(1)
+		for {
+			old := peak.Load()
+			if n <= old || peak.CompareAndSwap(old, n) {
+				break
+			}
+		}
+		<-release
+		running.Add(-1)
+		w.Write(profileJSON(t, p))
+	}), FetcherConfig{Concurrent: 2})
+	results := make(chan error, 6)
+	for i := 0; i < 6; i++ {
+		go func(i int) {
+			_, err := f.Platform(context.Background(), fmt.Sprintf("https://p%d.example.com/profile", i), false)
+			results <- err
+		}(i)
+	}
+	var refused int
+	for i := 0; i < 4; i++ { // the four beyond the cap answer at once
+		err := <-results
+		var e *Error
+		if !errors.As(err, &e) || e.Status != 503 || e.RetryAfter == 0 {
+			t.Fatalf("beyond the cap: %v", err)
+		}
+		refused++
+	}
+	close(release)
+	for i := 0; i < 2; i++ {
+		if err := <-results; err != nil {
+			t.Fatal(err)
+		}
+	}
+	if peak.Load() > 2 || refused != 4 {
+		t.Fatalf("peak %d concurrent fetches, %d refused; the cap is 2", peak.Load(), refused)
+	}
+}
+
+// The record of forced refreshes does not grow with every origin seen.
+func TestForcedRefreshRecordIsPruned(t *testing.T) {
+	p := platformWithSpec(t)
+	clk := &fakeClock{now: t0}
+	f := fetcherFor(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write(profileJSON(t, p)) }),
+		FetcherConfig{Now: clk.Now, Entries: 4})
+	for i := 0; i < 50; i++ {
+		f.Platform(context.Background(), fmt.Sprintf("https://o%d.example.com/p", i), true)
+		clk.now = clk.now.Add(30 * time.Second)
+	}
+	f.mu.Lock()
+	n := len(f.forced)
+	f.mu.Unlock()
+	if n > 4 {
+		t.Fatalf("%d forced-refresh records for 4 cache entries", n)
+	}
+}
+
+// Response headers are bounded: a profile's are a few hundred bytes.
+func TestResponseHeadersAreBounded(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Big", strings.Repeat("a", 4<<20))
+	}))
+	defer srv.Close()
+	c := guarded(5*time.Second, true)
+	if resp, err := c.Get(srv.URL); err == nil {
+		resp.Body.Close()
+		t.Fatal("a 4 MiB response header was accepted")
+	}
 }
