@@ -55,45 +55,67 @@ const (
 	HeaderPaymentResponse = "PAYMENT-RESPONSE"
 )
 
-// PaymentRequired is the 402 challenge: the resource, and every way it may be
-// paid for (spec 5.1).
+// PaymentRequired is the 402 challenge: the resource, and every way it may be paid for
+// (spec 5.1).
 type PaymentRequired struct {
-	X402Version int                   `json:"x402Version"`
-	Error       string                `json:"error,omitempty"`
-	Resource    ResourceInfo          `json:"resource"`
-	Accepts     []PaymentRequirements `json:"accepts"`
-	Extensions  Extensions            `json:"extensions,omitempty"`
+	X402Version int `json:"x402Version"`
+	// Error says why payment is asked for, or why the last one was refused.
+	Error string `json:"error,omitempty"`
+	// Resource is what is being paid for.
+	Resource ResourceInfo `json:"resource"`
+	// Accepts is every way the resource may be paid for; the client picks one.
+	Accepts []PaymentRequirements `json:"accepts"`
+	// Extensions are the protocol extensions on offer, carried through verbatim.
+	Extensions Extensions `json:"extensions,omitempty"`
 }
 
 // ResourceInfo describes the protected resource (spec 5.1.2).
 type ResourceInfo struct {
-	URL         string   `json:"url"`
-	Description string   `json:"description,omitempty"`
-	MimeType    string   `json:"mimeType,omitempty"`
-	ServiceName string   `json:"serviceName,omitempty"`
-	Tags        []string `json:"tags,omitempty"`
-	IconURL     string   `json:"iconUrl,omitempty"`
+	// URL is the resource's address.
+	URL string `json:"url"`
+	// Description says what one payment buys.
+	Description string `json:"description,omitempty"`
+	// MimeType is the media type of the answer.
+	MimeType string `json:"mimeType,omitempty"`
+	// ServiceName is the human-readable name of the service hosting the resource.
+	ServiceName string `json:"serviceName,omitempty"`
+	// Tags are topical tags for the service.
+	Tags []string `json:"tags,omitempty"`
+	// IconURL is an absolute http(s) URL of an icon for the service.
+	IconURL string `json:"iconUrl,omitempty"`
 }
 
-// PaymentRequirements is one acceptable way to pay: the exact amount of the
-// exact asset on the exact network that must reach exactly this payee.
+// PaymentRequirements is one acceptable way to pay: the exact amount of the exact
+// asset on the exact network that must reach exactly this payee.
 type PaymentRequirements struct {
-	Scheme            string `json:"scheme"`
-	Network           string `json:"network"` // CAIP-2, e.g. "eip155:8453"
-	Amount            string `json:"amount"`  // atomic units of Asset, decimal
-	Asset             string `json:"asset"`   // token contract address
-	PayTo             string `json:"payTo"`
-	MaxTimeoutSeconds int64  `json:"maxTimeoutSeconds"`
-	Extra             *Extra `json:"extra,omitempty"`
+	// Scheme is how the payment is made: "exact", the buyer authorizing exactly
+	// Amount. It is the only scheme implemented.
+	Scheme string `json:"scheme"`
+	// Network is the CAIP-2 identifier of the chain, e.g. "eip155:8453".
+	Network string `json:"network"`
+	// Amount is the price in atomic units of Asset, as a decimal string.
+	Amount string `json:"amount"`
+	// Asset is the token contract address, which must implement EIP-3009.
+	Asset string `json:"asset"`
+	// PayTo is the recipient address.
+	PayTo string `json:"payTo"`
+	// MaxTimeoutSeconds is how long the client has to complete the payment.
+	MaxTimeoutSeconds int64 `json:"maxTimeoutSeconds"`
+	// Extra is the token's EIP-712 domain the authorization is signed over.
+	Extra *Extra `json:"extra,omitempty"`
 }
 
 // Extra is the exact-scheme EVM `extra`: the token's EIP-712 domain name and
 // version, which is what makes a signature verifiable at all, and the transfer
 // method it was signed for (scheme_exact_evm.md, eip3009).
 type Extra struct {
+	// AssetTransferMethod is how the token moves: "eip3009", its own
+	// transferWithAuthorization. Absent means eip3009.
 	AssetTransferMethod string `json:"assetTransferMethod,omitempty"`
-	Name                string `json:"name"`
-	Version             string `json:"version"`
+	// Name is the token's EIP-712 domain name, e.g. "USD Coin".
+	Name string `json:"name"`
+	// Version is the token's EIP-712 domain version, e.g. "2".
+	Version string `json:"version"`
 }
 
 // PaymentPayload is the client's payment (spec 5.2). Accepted echoes which of
