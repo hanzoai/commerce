@@ -6,6 +6,7 @@ package x402
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -273,5 +274,35 @@ func TestTable(t *testing.T) {
 	}
 	if rows := (&Table{}).Listing(); rows == nil {
 		t.Fatal("listing must never be nil")
+	}
+}
+
+// An operator's config file is JSON, and decoding it into Asset and Price is the
+// whole configuration surface: nothing else in the package names a token, a payee
+// or a price.
+func TestConfigDecodesFromJSON(t *testing.T) {
+	const cfg = `{
+		"assets": [{"network":"eip155:84532","address":"` + testToken + `","name":"Test Dollar","version":"2","decimals":6,"payTo":"` + testPayee + `","maxTimeoutSeconds":60}],
+		"prices": {"GET /v1/data": {"amount":"0.01","description":"data","mimeType":"application/json"}}
+	}`
+	var in struct {
+		Assets []Asset          `json:"assets"`
+		Prices map[string]Price `json:"prices"`
+	}
+	if err := json.Unmarshal([]byte(cfg), &in); err != nil {
+		t.Fatal(err)
+	}
+	tab, err := NewTable(in.Assets...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for k, p := range in.Prices {
+		if err := tab.Set(k, p); err != nil {
+			t.Fatal(err)
+		}
+	}
+	accepts, info, ok := tab.Quote("GET /v1/data")
+	if !ok || accepts[0].Amount != "10000" || accepts[0].PayTo != testPayee || info.MimeType != "application/json" {
+		t.Fatalf("%v %+v %+v", ok, accepts, info)
 	}
 }

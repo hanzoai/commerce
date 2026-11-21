@@ -17,19 +17,19 @@ import (
 // a default token or payee would be a value this package invented.
 type Asset struct {
 	// Network is the CAIP-2 identifier, e.g. "eip155:8453".
-	Network string
+	Network string `json:"network"`
 	// Address is the token contract. It must implement EIP-3009.
-	Address string
+	Address string `json:"address"`
 	// Name and Version are the token's EIP-712 domain name() and version(): the
 	// payer signs over them, so they must be what the token itself answers.
-	Name    string
-	Version string
+	Name    string `json:"name"`
+	Version string `json:"version"`
 	// Decimals is the token's decimals(), the scale of Price amounts.
-	Decimals int
+	Decimals int `json:"decimals"`
 	// PayTo is the payee address.
-	PayTo string
+	PayTo string `json:"payTo"`
 	// MaxTimeoutSeconds is how long the payer has to complete the payment.
-	MaxTimeoutSeconds int64
+	MaxTimeoutSeconds int64 `json:"maxTimeoutSeconds"`
 }
 
 // Validate checks an Asset at the boundary, so a bad configuration fails at
@@ -107,11 +107,11 @@ func digitsOnly(s string) bool {
 // Price is what one resource costs, in whole units of every asset the Table
 // accepts: "0.01" is a cent when the assets are dollar stablecoins.
 type Price struct {
-	Amount      string
-	Description string
-	MimeType    string
+	Amount      string `json:"amount"`
+	Description string `json:"description,omitempty"`
+	MimeType    string `json:"mimeType,omitempty"`
 	// PayTo overrides the asset's payee for this resource; empty keeps it.
-	PayTo string
+	PayTo string `json:"payTo,omitempty"`
 }
 
 // Table is the resource price table: which resources are for sale, at what
