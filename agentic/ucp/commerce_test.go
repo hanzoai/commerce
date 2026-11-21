@@ -495,3 +495,55 @@ func TestCommerceIdempotencyRecordsExpire(t *testing.T) {
 		t.Fatal("a retention under 24 hours was accepted")
 	}
 }
+
+// A plan is charged at the live catalog price when the subscription is created,
+// which can differ from the total the checkout quoted. Completion must refuse
+// to charge a price the buyer's platform was not shown.
+func TestPlanQuoteIsBoundToTheCharge(t *testing.T) {
+	h := newCommerceHarness(t)
+	plans, err := billing.ReadPlans(h.ctx, "", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var slug string
+	var price int64
+	for _, p := range plans {
+		if p.Price > 100 && !p.ContactSales {
+			slug, price = p.Slug, p.Price
+			break
+		}
+	}
+	if slug == "" {
+		t.Skip("the catalog sells no paid plan on the default host")
+	}
+	id := h.req("POST", "/checkout-sessions", CreateRequest{LineItems: line("plan-"+slug, 1)}, nthKey(1)).checkout().ID
+	// The catalog has moved since the quote: the session holds an older total.
+	if _, _, err := checkoutsession.Change(id, func(s *checkoutsession.Session) bool { s.TotalCents = price - 100; return true }); err != nil {
+		t.Fatal(err)
+	}
+	r := h.req("POST", "/checkout-sessions/"+id+"/complete", payment(sptHandler, "spt_1"), nthKey(2))
+	c := r.checkout()
+	if len(c.Messages) == 0 {
+		t.Fatalf("a stale quote was completed: %d %s", r.code, r.raw)
+	}
+	m := c.Messages[len(c.Messages)-1]
+	if r.code != 200 || c.Status != Incomplete || m.Code != "totals_changed" || m.Severity != Recoverable || m.Path != "$.totals" {
+		t.Fatalf("a stale quote: %d %s", r.code, r.raw)
+	}
+	if c.Totals[1].Amount != price-100 {
+		t.Fatalf("the response must still show what was quoted: %+v", c.Totals)
+	}
+	if len(h.pays) != 0 {
+		t.Fatalf("%d charges were made at a price the buyer was not shown", len(h.pays))
+	}
+	// Update re-quotes at the live price; the buyer's platform sees it, and then
+	// the completion is the same price it was shown.
+	r = h.req("PUT", "/checkout-sessions/"+id, UpdateRequest{LineItems: line("plan-"+slug, 1)}, nthKey(3))
+	if u := r.checkout(); u.Totals[1].Amount != price || u.Status != ReadyForComplete {
+		t.Fatalf("update: %s", r.raw)
+	}
+	r = h.req("POST", "/checkout-sessions/"+id+"/complete", payment(sptHandler, "spt_1"), nthKey(4))
+	if r.checkout().Status != Completed || len(h.pays) != 1 {
+		t.Fatalf("complete at the quoted price: %s", r.raw)
+	}
+}

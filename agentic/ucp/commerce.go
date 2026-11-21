@@ -58,7 +58,13 @@ type Commerce struct {
 	update   func(ctx context.Context, org *organization.Organization, subject, host, id string, items []billing.ItemIn) (*billing.CheckoutView, *billing.PaymentFault)
 	complete func(ctx context.Context, org *organization.Organization, subject, host, id, key string, pay billing.PaymentIn) billing.CompleteOut
 	order    func(ctx context.Context, org *organization.Organization, subject, id string) (*billing.OrderView, *billing.PaymentFault)
-	plans    func(ctx context.Context, host string) (map[string]string, error)
+	plans    func(ctx context.Context, host string) (map[string]planInfo, error)
+}
+
+// planInfo is what the live catalog says of a plan.
+type planInfo struct {
+	Name  string
+	Price int64
 }
 
 // NewCommerce returns c with its api/billing operations bound.
@@ -70,14 +76,14 @@ func NewCommerce(c Commerce) (*Commerce, error) {
 		c.Orgs = orgpkg.Resolve
 	}
 	c.create, c.read, c.update, c.complete, c.order = billing.CreateCheckout, billing.ReadCheckout, billing.UpdateCheckout, billing.CompleteCheckout, billing.ReadOrder
-	c.plans = func(ctx context.Context, host string) (map[string]string, error) {
+	c.plans = func(ctx context.Context, host string) (map[string]planInfo, error) {
 		ps, err := billing.ReadPlans(ctx, host, "", nil)
 		if err != nil {
 			return nil, err
 		}
-		out := make(map[string]string, len(ps))
+		out := make(map[string]planInfo, len(ps))
 		for _, p := range ps {
-			out[p.Slug] = p.Name
+			out[p.Slug] = planInfo{Name: p.Name, Price: p.Price}
 		}
 		return out, nil
 	}
@@ -267,11 +273,50 @@ func (c *Commerce) Complete(ctx context.Context, who Caller, id, key string, in 
 	if inst.Credential == nil || inst.Credential.Token == "" {
 		return nil, refuse("$.payment.instruments[0].credential", "The instrument carries no shared payment token")
 	}
+	if err := c.requote(ctx, who, cur); err != nil {
+		return nil, err
+	}
 	out := c.complete(ctx, org, who.Subject, who.Host, id, key, billing.PaymentIn{Type: "shared_payment_token", Token: inst.Credential.Token})
 	if out.View == nil {
 		return nil, &Unavailable{}
 	}
 	return c.outcome(ctx, who, out)
+}
+
+// requote refuses to complete a plan checkout whose quoted total is not the
+// live catalog price. The subscription is charged at the live price, so a
+// completion after the price moved would charge an amount the buyer's platform
+// was never shown; Complete Checkout is a command that changes no purchase
+// term, so the checkout is left as it was and the platform is told to update it,
+// which quotes the current price. Credit is priced by the amount in its item id
+// and has nothing to compare. The binding of the charge itself is in
+// api/billing; this is the check on this side of it.
+func (c *Commerce) requote(ctx context.Context, who Caller, cur *Checkout) error {
+	if len(cur.LineItems) != 1 || !strings.HasPrefix(cur.LineItems[0].Item.ID, planPrefix) {
+		return nil
+	}
+	slug := strings.TrimPrefix(cur.LineItems[0].Item.ID, planPrefix)
+	live, err := c.plans(ctx, who.Host)
+	if err != nil {
+		return &Unavailable{}
+	}
+	var quoted int64
+	for _, t := range cur.Totals {
+		if t.Type == "total" {
+			quoted = t.Amount
+		}
+	}
+	p, ok := live[slug]
+	cur.Status = Incomplete
+	switch {
+	case !ok:
+		return &Refusal{Current: cur, Messages: []Message{Err("item_unavailable", Recoverable, "$.line_items[0].item.id", "plan %s is no longer sold", slug)}}
+	case p.Price != quoted:
+		return &Refusal{Current: cur, Messages: []Message{Err("totals_changed", Recoverable, "$.totals",
+			"the price of %s is now %d, not the %d quoted; update the checkout to quote the current price", slug, p.Price, quoted)}}
+	}
+	cur.Status = ReadyForComplete
+	return nil
 }
 
 // outcome maps what CompleteCheckout answered. A refusal of the payment leaves
@@ -375,8 +420,8 @@ func (c *Commerce) orderOf(ctx context.Context, who Caller, ov *billing.OrderVie
 // title names an item for the buyer.
 func (c *Commerce) title(ctx context.Context, who Caller, it billing.ItemIn) string {
 	if it.Kind == checkoutsession.Plan {
-		if names, err := c.plans(ctx, who.Host); err == nil && names[it.Plan] != "" {
-			return names[it.Plan]
+		if live, err := c.plans(ctx, who.Host); err == nil && live[it.Plan].Name != "" {
+			return live[it.Plan].Name
 		}
 		return it.Plan
 	}
