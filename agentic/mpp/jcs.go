@@ -15,12 +15,9 @@ import (
 	"unicode/utf16"
 )
 
-// Canonical serializes v with the JSON Canonicalization Scheme, RFC 8785: members sorted
-// by their UTF-16 code units, no insignificant white space, strings escaped the way
-// ECMAScript's JSON.stringify escapes them, numbers in ECMAScript form. The draft
-// requires it for the request and opaque parameters (section 5.1.1), because the
-// challenge binding hashes their base64url text as it appears on the wire.
-func Canonical(v any) ([]byte, error) {
+// canonical serializes v with the JSON Canonicalization Scheme (RFC 8785), which the draft
+// requires for request and opaque (section 5.1.1).
+func canonical(v any) ([]byte, error) {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return nil, err
@@ -91,7 +88,7 @@ func emit(out *bytes.Buffer, x any) error {
 	return nil
 }
 
-// units orders two strings by UTF-16 code unit, the order RFC 8785 section 3.2.3 names.
+// units orders two strings by UTF-16 code unit (RFC 8785 section 3.2.3).
 func units(a, b string) bool {
 	x, y := utf16.Encode([]rune(a)), utf16.Encode([]rune(b))
 	for i := 0; i < len(x) && i < len(y); i++ {
@@ -102,8 +99,7 @@ func units(a, b string) bool {
 	return len(x) < len(y)
 }
 
-// text writes a JSON string with the escapes RFC 8785 section 3.2.2.2 allows and no
-// others: the quote, the backslash and the control characters.
+// text writes a JSON string with the escapes RFC 8785 section 3.2.2.2 allows.
 func text(out *bytes.Buffer, s string) {
 	const hex = "0123456789abcdef"
 	out.WriteByte('"')
@@ -138,7 +134,7 @@ func text(out *bytes.Buffer, s string) {
 
 var errNumber = errors.New("number is not finite")
 
-// number formats f the way ECMAScript's Number-to-String does, RFC 8785 section 3.2.2.3.
+// number formats f as ECMAScript's Number-to-String does (RFC 8785 section 3.2.2.3).
 func number(f float64) (string, error) {
 	if math.IsNaN(f) || math.IsInf(f, 0) {
 		return "", errNumber
@@ -150,7 +146,6 @@ func number(f float64) (string, error) {
 	if f < 0 {
 		sign, f = "-", -f
 	}
-	// The shortest digits that round-trip, as d.ddde±xx: the value is 0.digits × 10^n.
 	mant, exp, _ := strings.Cut(strconv.FormatFloat(f, 'e', -1, 64), "e")
 	digits := strings.Replace(mant, ".", "", 1)
 	e, err := strconv.Atoi(exp)

@@ -51,7 +51,7 @@ func newCheckout() *checkout {
 
 func (c *checkout) commerce() *Commerce {
 	return &Commerce{
-		Store: &Memory{Now: func() time.Time { return epoch }},
+		Store: &memory{},
 		Account: func(context.Context, Caller) (*Profile, error) {
 			return &Profile{Network: "profile_1MqDcVKA5fEO2tZvKQm9g8Yj", Types: []string{"card", "link"}}, nil
 		},
@@ -175,7 +175,7 @@ func TestCommerceTakeRefusals(t *testing.T) {
 		_, err := k.commerce().Take(context.Background(), sale)
 		var p *Problem
 		isProblem := errors.As(err, &p)
-		if err == nil || (c.code == "") == isProblem || (isProblem && p.Code() != c.code) {
+		if err == nil || (c.code == "") == isProblem || (isProblem && codeOf(p) != c.code) {
 			t.Errorf("%s: %v", name, err)
 		}
 		// Nothing is spent for a payment that did not complete.
@@ -214,7 +214,7 @@ func TestCommerceTakeRefusals(t *testing.T) {
 
 func isCode(err error, c Code) bool {
 	var p *Problem
-	return errors.As(err, &p) && (c == "" || p.Code() == c)
+	return errors.As(err, &p) && (c == "" || codeOf(p) == c)
 }
 
 // The whole path: a request is challenged at the host's price, the credential is
@@ -223,7 +223,7 @@ func isCode(err error, c Code) bool {
 func TestCommerceThroughTheGate(t *testing.T) {
 	k := newCheckout()
 	r := newRig(t, func(c *Config) {
-		c.Methods = []Method{Stripe{Seller: k.commerce(), Store: &Memory{Now: func() time.Time { return epoch }}}}
+		c.Methods = []Method{Stripe{Seller: k.commerce(), Store: &memory{}}}
 		c.Caller = func(req *http.Request) (Caller, error) {
 			if req.Header.Get("X-Subject") == "" {
 				return Caller{Org: "acme"}, nil
@@ -342,7 +342,7 @@ func TestCommerceCheckoutIsTheChallenges(t *testing.T) {
 		t.Fatalf("%v, %d checkouts", err, len(k.items))
 	}
 	// The record of an opened checkout that could not be kept is the host's to see.
-	c.Store = brokenStore{&Memory{}}
+	c.Store = brokenStore{&memory{}}
 	if _, err := c.Take(context.Background(), Sale{Caller: sale.Caller, Token: "spt_3", Amount: "5000", Currency: "usd", Challenge: "ch_3"}); err == nil {
 		t.Error("a checkout opened and not recorded was not reported")
 	}
@@ -351,7 +351,7 @@ func TestCommerceCheckoutIsTheChallenges(t *testing.T) {
 	}
 }
 
-type brokenStore struct{ *Memory }
+type brokenStore struct{ *memory }
 
 func (brokenStore) Load(context.Context, string) ([]byte, bool, error) { return nil, false, nil }
 func (brokenStore) Save(context.Context, string, []byte, time.Time) error {

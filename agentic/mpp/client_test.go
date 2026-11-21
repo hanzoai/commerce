@@ -42,9 +42,9 @@ type e2e struct {
 func newE2E(t *testing.T, mods ...func(*Config)) *e2e {
 	t.Helper()
 	e := &e2e{t: t, seller: newSeller(), clock: &clock{at: epoch}, max: 10000}
-	store := &Memory{Now: e.clock.now}
+	store := &memory{}
 	cfg := Config{
-		Realm: "api.example.com", Secret: testSecret, Store: store, Now: e.clock.now,
+		Realm: "api.example.com", Secret: testSecret, Store: store, Now: e.clock.now, Lifetime: 5 * time.Minute, Report: func(error) {},
 		Methods: []Method{Stripe{Seller: e.seller, Store: store}},
 		Price: func(*http.Request) (*Quote, error) {
 			return &Quote{Amount: "5000", Currency: "usd", Description: "AI generation"}, nil
@@ -139,7 +139,7 @@ func TestClientPaysAChallenge(t *testing.T) {
 		sales[0].Metadata["challenge_id"] == "" || sales[0].Key != sales[0].Challenge+"_spt_test_1" {
 		t.Fatalf("sales %+v", sales)
 	}
-	if len(e.issued) != 1 || e.issued[0].Network != "profile_1MqDcVKA5fEO2tZvKQm9g8Yj" || e.issued[0].Description != "AI generation" {
+	if len(e.issued) != 1 || e.issued[0].Network != "profile_1MqDcVKA5fEO2tZvKQm9g8Yj" || e.issued[0].Amount != "5000" {
 		t.Fatalf("limits %+v", e.issued)
 	}
 	// Two requests: the unpaid one declared what the client accepts, the paid one carried
@@ -154,8 +154,8 @@ func TestClientPaysAChallenge(t *testing.T) {
 	}
 }
 
-// A paid POST keeps its body and its Idempotency-Key across the retry, and a challenge
-// that binds the body is answered with it (sections 5.1.3 and 11.4).
+// A paid POST keeps its body across the retry, and a challenge that binds the body is
+// answered with it (section 5.1.3).
 func TestClientPostWithDigest(t *testing.T) {
 	e := newE2E(t, func(c *Config) { c.Digest = 1 << 16 })
 	resp, err := e.client(e.wallet).Post(e.srv.URL+"/api/generate", "application/json", strings.NewReader(`{"prompt":"hi"}`))
@@ -166,56 +166,13 @@ func TestClientPostWithDigest(t *testing.T) {
 		t.Fatalf("status %d, body %q", resp.StatusCode, got)
 	}
 	tr := e.trips()
-	if len(tr) != 2 || tr[0].key == "" || tr[0].key != tr[1].key || tr[0].body != tr[1].body || tr[1].body != `{"prompt":"hi"}` {
+	if len(tr) != 2 || tr[0].body != tr[1].body || tr[1].body != `{"prompt":"hi"}` {
 		t.Fatalf("trips %+v", tr)
 	}
 	cred, _ := ParseCredential(tr[1].auth)
 	if cred.Challenge.Digest != digestOf([]byte(`{"prompt":"hi"}`)) {
 		t.Errorf("digest %q", cred.Challenge.Digest)
 	}
-}
-
-// The same key and credential retried after the response was lost are answered from what
-// the server kept, with no second charge (section 11.4).
-func TestClientRetryAfterLostResponse(t *testing.T) {
-	e := newE2E(t, func(c *Config) { c.Replay = 1 << 16 })
-	var sent *http.Request
-	lose := &lossy{base: e.srv.Client().Transport, keep: func(r *http.Request) { sent = r }}
-	cl := &http.Client{Transport: &Client{Base: lose, Payer: e.wallet, Now: e.clock.now}}
-	resp, err := cl.Post(e.srv.URL+"/api/generate", "text/plain", strings.NewReader("hi"))
-	if err != nil || resp.StatusCode != 200 {
-		t.Fatalf("%v", err)
-	}
-	read(t, resp)
-	// The paid request is sent again exactly as it went the first time.
-	again, err := http.NewRequest("POST", e.srv.URL+"/api/generate", strings.NewReader("hi"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	again.Header = sent.Header.Clone()
-	resp2, err := e.srv.Client().Do(again)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := read(t, resp2); resp2.StatusCode != 200 || got != "generated:hi" || resp2.Header.Get("Payment-Receipt") != resp.Header.Get("Payment-Receipt") {
-		t.Fatalf("replay: %d %q", resp2.StatusCode, got)
-	}
-	if len(e.seller.taken()) != 1 || e.hits.Load() != 1 {
-		t.Fatalf("charged %d, delivered %d", len(e.seller.taken()), e.hits.Load())
-	}
-}
-
-// lossy records the last request that carried a credential.
-type lossy struct {
-	base http.RoundTripper
-	keep func(*http.Request)
-}
-
-func (l *lossy) RoundTrip(r *http.Request) (*http.Response, error) {
-	if strings.HasPrefix(r.Header.Get("Authorization"), "Payment ") {
-		l.keep(r.Clone(r.Context()))
-	}
-	return l.base.RoundTrip(r)
 }
 
 // What the client must not pay, it returns as the 402 it is: an amount the policy
@@ -261,9 +218,14 @@ func TestClientDoesNotPay(t *testing.T) {
 	})
 	t.Run("authorization already in use", func(t *testing.T) {
 		e := newE2E(t)
+		wire, _ := Encode(request{Amount: "5000", Currency: "usd", MethodDetails: &details{NetworkID: "p", PaymentMethodTypes: []string{"card"}}})
+		ch := Challenge{ID: "a", Realm: "r", Method: "stripe", Intent: Charge, Request: wire} // no header: Authorization
+		stub := roundTrip(func(*http.Request) (*http.Response, error) {
+			return &http.Response{StatusCode: 402, Header: http.Header{"Www-Authenticate": {ch.String()}}, Body: http.NoBody}, nil
+		})
 		req, _ := http.NewRequest("GET", e.srv.URL+"/", nil)
 		req.Header.Set("Authorization", "Bearer abc")
-		resp, err := e.client(e.wallet).Do(req)
+		resp, err := (&Client{Base: stub, Payer: e.wallet}).RoundTrip(req)
 		if err != nil || resp.StatusCode != 402 || e.tokensIssued() != 0 {
 			t.Fatalf("%v %v", resp, err)
 		}
@@ -296,11 +258,11 @@ func (nopayer) Pay(context.Context, Challenge, json.RawMessage) (*Answer, error)
 	return nil, errors.New("not reached")
 }
 
-// When Authorization carries the host's own authentication the server selects
+// When the request carries other authentication in Authorization the server selects
 // Payment-Authorization, the client pays in it, and both credentials go together
-// (sections 4.4.3 and 5.2).
+// (sections 4.4.3, 5.2).
 func TestClientAlternateField(t *testing.T) {
-	e := newE2E(t, func(c *Config) { c.Alternate = true })
+	e := newE2E(t)
 	req, _ := http.NewRequest("GET", e.srv.URL+"/", nil)
 	req.Header.Set("Authorization", "Bearer abc")
 	resp, err := e.client(e.wallet).Do(req)
@@ -352,10 +314,15 @@ func TestClientPaysOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 	p := problem(t, resp)
-	if resp.StatusCode != 402 || p.Code() != Failed || e.tokensIssued() != 1 || len(e.trips()) != 2 {
+	if resp.StatusCode != 402 || codeOf(&p) != Failed || e.tokensIssued() != 1 || len(e.trips()) != 2 {
 		t.Fatalf("%d %+v issued %d trips %d", resp.StatusCode, p, e.tokensIssued(), len(e.trips()))
 	}
 	if e.hits.Load() != 0 {
 		t.Fatal("delivered after a refusal")
 	}
 }
+
+// roundTrip is a transport that answers by a function.
+type roundTrip func(*http.Request) (*http.Response, error)
+
+func (f roundTrip) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }

@@ -6,7 +6,6 @@ package mpp
 import (
 	"bytes"
 	"fmt"
-	"net/http"
 	"testing"
 	"time"
 
@@ -90,22 +89,4 @@ func TestDurableStoreIsSharedByReplicas(t *testing.T) {
 	if a.invoice.count()+b.invoice.count() != 1 || a.hits.Load()+b.hits.Load() != 1 {
 		t.Fatalf("settled %d, delivered %d", a.invoice.count()+b.invoice.count(), a.hits.Load()+b.hits.Load())
 	}
-	// The idempotent retry of a settled payment is served by whichever replica gets it.
-	r1 := newRig(t, func(c *Config) { c.Store, c.Replay = Durable{}, 1<<20 })
-	r2 := newRig(t, func(c *Config) { c.Store, c.Replay = Durable{}, 1<<20 })
-	r1.ctx, r2.ctx = ctx, ctx
-	ch = r1.challenge("POST", "/resource", nil, "")[0]
-	h := http1(credential(ch, proof).String(), "k")
-	first := r1.do("POST", "/resource", h, "")
-	again := r2.do("POST", "/resource", h, "")
-	if first.StatusCode != 200 || again.StatusCode != 200 || again.Header.Get("Payment-Receipt") != first.Header.Get("Payment-Receipt") {
-		t.Fatalf("%d then %d", first.StatusCode, again.StatusCode)
-	}
-	if r1.invoice.count()+r2.invoice.count() != 1 || r1.hits.Load()+r2.hits.Load() != 1 {
-		t.Fatalf("settled %d, delivered %d", r1.invoice.count()+r2.invoice.count(), r1.hits.Load()+r2.hits.Load())
-	}
-}
-
-func http1(credential, key string) http.Header {
-	return http.Header{"Authorization": {credential}, "Idempotency-Key": {key}}
 }

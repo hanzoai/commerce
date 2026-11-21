@@ -135,7 +135,7 @@ func TestSpecChallenges(t *testing.T) {
 				if err := json.Unmarshal(decoded, &v); err != nil {
 					t.Fatalf("%s:%d: request is not JSON: %v", f, b.line, err)
 				}
-				canon, err := Canonical(v)
+				canon, err := canonical(v)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -316,12 +316,12 @@ func TestProblemTable(t *testing.T) {
 			t.Errorf("%s: status %d, draft says %d", r[1], status[Code(r[1])], n)
 		}
 		p := Refuse(Code(r[1]), "d")
-		if p.Type != "https://paymentauth.org/problems/"+r[1] || p.Code() != Code(r[1]) || p.Status != n || p.Title == "" {
+		if p.Type != "https://paymentauth.org/problems/"+r[1] || codeOf(p) != Code(r[1]) || p.Status != n || p.Title == "" {
 			t.Errorf("problem %+v", p)
 		}
 	}
-	if p := Refuse("no-such-code", "d"); p.Code() != Internal {
-		t.Errorf("an unknown code is %s", p.Code())
+	if p := Refuse("no-such-code", "d"); codeOf(p) != Internal {
+		t.Errorf("an unknown code is %s", codeOf(p))
 	}
 	// The titles the draft's examples spell out.
 	if title(Required) != "Payment Required" || title(Failed) != "Payment Verification Failed" || title(Invalid) != "Invalid Challenge" {
@@ -390,7 +390,7 @@ func TestChallengeQuoting(t *testing.T) {
 // Credentials: another scheme is not a credential, a credential must be base64url
 // without padding holding a challenge and a payload object.
 func TestParseCredentialRejects(t *testing.T) {
-	if _, err := ParseCredential("Bearer abc"); err != errNotPayment {
+	if _, err := ParseCredential("Bearer abc"); err == nil {
 		t.Errorf("Bearer: %v", err)
 	}
 	enc := func(s string) string { return "Payment " + rawEncode(s) }

@@ -13,25 +13,19 @@ import (
 	"time"
 )
 
-// Credential is the payment a client submits for a challenge (section 5.2): the
-// challenge it echoes, optionally who pays, and the method's proof.
+// Credential is what a client submits for a challenge (section 5.2).
 type Credential struct {
 	Challenge Challenge       `json:"challenge"`
 	Source    string          `json:"source,omitempty"`
 	Payload   json.RawMessage `json:"payload"`
 }
 
-// errNotPayment says a field value carries another authentication scheme.
-var errNotPayment = errors.New("not a Payment credential")
-
-// ParseCredential reads the value of an Authorization or Payment-Authorization field:
-// the scheme Payment, white space, and a base64url object without padding that holds
-// the echoed challenge, an optional source and a payload object (section 5.2). Unknown
-// fields are ignored (section 9.2.1).
+// ParseCredential reads an Authorization or Payment-Authorization value (section 5.2).
+// Unknown fields are ignored (section 9.2.1).
 func ParseCredential(value string) (*Credential, error) {
 	scheme, token, found := strings.Cut(strings.TrimSpace(value), " ")
 	if !strings.EqualFold(scheme, Scheme) {
-		return nil, errNotPayment
+		return nil, errors.New("not a Payment credential")
 	}
 	token = strings.TrimLeft(token, " ")
 	if !found || token == "" {
@@ -64,7 +58,7 @@ func ParseCredential(value string) (*Credential, error) {
 	return &Credential{Challenge: *in.Challenge, Source: in.Source, Payload: in.Payload}, nil
 }
 
-// String is the credential as the value of its header field.
+// String is the credential as a field value.
 func (c Credential) String() string {
 	b, err := json.Marshal(c)
 	if err != nil {
@@ -73,9 +67,7 @@ func (c Credential) String() string {
 	return Scheme + " " + base64.RawURLEncoding.EncodeToString(b)
 }
 
-// Receipt is the server's acknowledgment of a settled payment, the Payment-Receipt
-// header (section 5.3). Fields are the additional members a method specification
-// defines, such as the Stripe charge draft's externalId.
+// Receipt is the Payment-Receipt (section 5.3). Fields are the members a method adds.
 type Receipt struct {
 	Status    string
 	Method    string
@@ -84,18 +76,17 @@ type Receipt struct {
 	Fields    map[string]any
 }
 
-// MarshalJSON writes the four members of table 5 and then Fields; a field cannot shadow
-// one of the four.
+// MarshalJSON writes the four members of table 5 and Fields.
 func (r Receipt) MarshalJSON() ([]byte, error) {
 	m := map[string]any{}
 	for k, v := range r.Fields {
 		m[k] = v
 	}
 	m["status"], m["method"], m["timestamp"], m["reference"] = r.Status, r.Method, r.Timestamp, r.Reference
-	return Canonical(m)
+	return canonical(m)
 }
 
-// UnmarshalJSON reads the four members and keeps every other in Fields.
+// UnmarshalJSON reads the four members and keeps the rest in Fields.
 func (r *Receipt) UnmarshalJSON(b []byte) error {
 	var m map[string]any
 	if err := json.Unmarshal(b, &m); err != nil {
@@ -123,7 +114,7 @@ func (r *Receipt) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// String is the receipt as the value of the Payment-Receipt field.
+// String is the receipt as a Payment-Receipt value.
 func (r Receipt) String() string {
 	b, err := json.Marshal(r)
 	if err != nil {
@@ -132,8 +123,7 @@ func (r Receipt) String() string {
 	return base64.RawURLEncoding.EncodeToString(b)
 }
 
-// ParseReceipt reads a Payment-Receipt value. The status must be "success", the only
-// value a receipt carries (section 5.3.1).
+// ParseReceipt reads a Payment-Receipt value; its status is "success" (section 5.3.1).
 func ParseReceipt(value string) (*Receipt, error) {
 	b, err := raw.DecodeString(strings.TrimSpace(value))
 	if err != nil {

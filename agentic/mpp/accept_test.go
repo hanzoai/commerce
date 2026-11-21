@@ -28,7 +28,7 @@ func TestAcceptPaymentExamples(t *testing.T) {
 			continue
 		}
 		req := readRequest(t, b.text)
-		ranges, err := ParseAccept(req.Header.Values("Accept-Payment"))
+		ranges, err := parseAccept(req.Header.Values("Accept-Payment"))
 		if err != nil {
 			t.Fatalf("line %d: %v", b.line, err)
 		}
@@ -55,19 +55,19 @@ func TestAcceptPaymentExamples(t *testing.T) {
 	}
 }
 
-func TestParseAccept(t *testing.T) {
-	got, err := ParseAccept([]string{"tempo/*, solana/*;q=0.6", "*/session;q=0.3, stripe/charge ; q=1.000"})
+func TestAcceptRanges(t *testing.T) {
+	got, err := parseAccept([]string{"tempo/*, solana/*;q=0.6", "*/session;q=0.3, stripe/charge ; q=1.000"})
 	want := []Range{{"tempo", "*", 1000}, {"solana", "*", 600}, {"*", "session", 300}, {"stripe", "charge", 1000}}
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("%v %v", got, err)
 	}
 	for _, bad := range []string{"tempo", "tempo/", "/charge", "Tempo/charge", "tempo/charge;q=1.5", "tempo/charge;q=0.5555", "tempo/charge;q=-1", "tempo/charge;x=1", "tempo/ch arge", "tempo/charge;q=a"} {
-		if _, err := ParseAccept([]string{bad}); err == nil {
+		if _, err := parseAccept([]string{bad}); err == nil {
 			t.Errorf("%q accepted", bad)
 		}
 	}
 	for _, r := range want {
-		back, err := ParseAccept([]string{r.String()})
+		back, err := parseAccept([]string{r.String()})
 		if err != nil || len(back) != 1 || back[0] != r {
 			t.Errorf("%v does not round-trip: %v %v", r, back, err)
 		}

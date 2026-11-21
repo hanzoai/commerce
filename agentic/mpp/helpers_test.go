@@ -193,3 +193,53 @@ func (i *invoice) count() int {
 	defer i.mu.Unlock()
 	return i.settled
 }
+
+// memory is a Store held in one process.
+type memory struct {
+	mu    sync.Mutex
+	taken map[string]bool
+	saved map[string][]byte
+}
+
+func (m *memory) Take(_ context.Context, key string, _ time.Time) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.taken == nil {
+		m.taken = map[string]bool{}
+	}
+	if m.taken[key] {
+		return false, nil
+	}
+	m.taken[key] = true
+	return true, nil
+}
+
+func (m *memory) Drop(_ context.Context, key string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.taken, key)
+	return nil
+}
+
+func (m *memory) Save(_ context.Context, key string, value []byte, _ time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.saved == nil {
+		m.saved = map[string][]byte{}
+	}
+	m.saved[key] = append([]byte(nil), value...)
+	return nil
+}
+
+func (m *memory) Load(_ context.Context, key string) ([]byte, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	v, ok := m.saved[key]
+	return append([]byte(nil), v...), ok, nil
+}
+
+// codeOf is the problem type's code, "" when it is not one of the draft's.
+func codeOf(p *Problem) Code {
+	c, _ := strings.CutPrefix(p.Type, base)
+	return Code(c)
+}

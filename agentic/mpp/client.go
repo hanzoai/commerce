@@ -5,8 +5,6 @@ package mpp
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,36 +13,30 @@ import (
 	"time"
 )
 
-// Answer is what a Payer returns for a challenge: the payer's identifier, optionally
-// (a DID is recommended, section 5.2), and the method's proof, which is JSON-encoded
-// into the credential's payload.
+// Answer is a Payer's answer to a challenge: the payer's identifier (section 5.2) and the
+// method's proof, JSON-encoded as the credential's payload.
 type Answer struct {
 	Source  string
 	Payload any
 }
 
-// Payer is the client's side of a payment method: it can say which challenges it
-// answers, and pays one.
+// Payer is the client side of a payment method.
 type Payer interface {
-	// Accepts lists the method and intent ranges the payer answers, with weights. They
-	// are sent as Accept-Payment (section 7.4) and rank the challenges a server offers.
+	// Accepts lists the method and intent ranges the payer answers. They are sent as
+	// Accept-Payment and rank the challenges offered (section 7.4).
 	Accepts() []Range
-	// Pay authorizes one challenge, whose request is decoded JSON. It must verify the
-	// amount, the recipient, the currency and the validity window before paying, and
-	// must not rely on the description (section 11.6): a payer that pays what a server
-	// asks is the loss the draft warns of. An error refuses the payment.
+	// Pay authorizes one challenge, given its decoded request. It verifies the amount,
+	// recipient, currency and validity window, never the description (section 11.6); an
+	// error refuses the payment.
 	Pay(ctx context.Context, c Challenge, request json.RawMessage) (*Answer, error)
 }
 
-// Client is an http.RoundTripper that answers a 402 with a Payment credential.
-//
-// A request that comes back 402 with a Payment challenge the Payer answers is sent once
-// more with a credential, in the field the challenge selects. It never pays over
-// unencrypted HTTP (section 11.2), never answers a challenge that has expired, never
-// sends more than one credential, and sends the request again only when its body can
-// be read again. Any other response is returned as it is.
+// Client is an http.RoundTripper that answers a 402 with a Payment credential: it sends the
+// request once more with one credential, in the field the challenge selects. It does not
+// pay over unencrypted HTTP (section 11.2), answer an expired challenge (section 5.1.2),
+// or retry a body it cannot read again; any other response is returned as it is.
 type Client struct {
-	// Base is the transport that carries the requests; http.DefaultTransport when nil.
+	// Base carries the requests; http.DefaultTransport when nil.
 	Base  http.RoundTripper
 	Payer Payer
 	// Now is the clock; time.Now when nil.
@@ -69,22 +61,13 @@ func (c *Client) now() time.Time {
 func (c *Client) RoundTrip(req *http.Request) (*http.Response, error) {
 	first := req.Clone(req.Context())
 	if len(first.Header.Values(accepting)) == 0 {
-		if ranges := c.Payer.Accepts(); len(ranges) > 0 {
-			parts := make([]string, len(ranges))
-			for i, r := range ranges {
-				parts[i] = r.String()
-			}
-			first.Header.Set(accepting, strings.Join(parts, ", "))
+		var ranges []string
+		for _, r := range c.Payer.Accepts() {
+			ranges = append(ranges, r.String())
 		}
-	}
-	if mutating(req.Method) && first.Header.Get(idempotency) == "" {
-		// The same key rides the paid retry, so a response lost after paying can be
-		// asked for again without paying twice (section 11.4).
-		var b [16]byte
-		if _, err := rand.Read(b[:]); err != nil {
-			return nil, err
+		if len(ranges) > 0 {
+			first.Header.Set(accepting, strings.Join(ranges, ", "))
 		}
-		first.Header.Set(idempotency, base64.RawURLEncoding.EncodeToString(b[:]))
 	}
 	resp, err := c.base().RoundTrip(first)
 	if err != nil || resp.StatusCode != http.StatusPaymentRequired {
@@ -98,34 +81,22 @@ func (c *Client) RoundTrip(req *http.Request) (*http.Response, error) {
 	if paid == nil {
 		return resp, nil
 	}
-	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<16))
 	_ = resp.Body.Close()
 	return c.base().RoundTrip(paid)
 }
 
-// mutating says the method may change state, so a retry wants an Idempotency-Key.
-func mutating(method string) bool {
-	switch method {
-	case "", http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodTrace:
-		return false
-	}
-	return true
-}
-
-// pay builds the request that answers resp, or nil when the challenge cannot or should
-// not be answered.
+// pay builds the request that answers resp, or nil when the challenge is not to be answered.
 func (c *Client) pay(orig, first *http.Request, resp *http.Response) (*http.Request, error) {
 	if orig.URL.Scheme != "https" {
-		return nil, nil // credentials never travel over unencrypted HTTP
+		return nil, nil
 	}
 	found, _ := Parse(resp.Header.Values(authenticate))
 	now := c.now()
 	var open []Challenge
 	for _, ch := range found {
-		if at, ok := ch.Expiry(); ok && !now.Before(at) {
-			continue // clients must not answer an expired challenge (section 5.1.2)
+		if at, ok := ch.Expiry(); !ok || now.Before(at) {
+			open = append(open, ch)
 		}
-		open = append(open, ch)
 	}
 	offers := make([][2]string, len(open))
 	for i, ch := range open {
@@ -138,19 +109,16 @@ func (c *Client) pay(orig, first *http.Request, resp *http.Response) (*http.Requ
 	ch := open[order[0]]
 
 	retry := first.Clone(first.Context())
+	var sent []byte
 	if orig.Body != nil && orig.Body != http.NoBody {
 		if orig.GetBody == nil {
-			return nil, nil // the body cannot be sent again
+			return nil, nil
 		}
-		body, err := orig.GetBody()
-		if err != nil {
+		var err error
+		if retry.Body, err = orig.GetBody(); err != nil {
 			return nil, err
 		}
-		retry.Body = body
-	}
-	if ch.Digest != "" {
-		var sent []byte
-		if retry.Body != nil && retry.Body != http.NoBody {
+		if ch.Digest != "" {
 			body, err := orig.GetBody()
 			if err != nil {
 				return nil, err
@@ -161,13 +129,13 @@ func (c *Client) pay(orig, first *http.Request, resp *http.Response) (*http.Requ
 				return nil, err
 			}
 		}
-		if !digestMatches(ch.Digest, sent) {
-			return nil, nil // the credential must go with the body the challenge names
-		}
+	}
+	if ch.Digest != "" && !digestMatches(ch.Digest, sent) {
+		return nil, nil // the credential goes with the body the challenge names (section 5.1.3)
 	}
 	field := ch.Field()
 	if retry.Header.Get(field) != "" {
-		return nil, nil // the field is taken by another authentication; no other may carry it
+		return nil, nil // the field is taken by other authentication
 	}
 
 	request, _ := raw.DecodeString(ch.Request)

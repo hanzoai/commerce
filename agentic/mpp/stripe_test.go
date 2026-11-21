@@ -65,7 +65,7 @@ func TestStripeRequestExample(t *testing.T) {
 	sameJSON(t, round, []byte(example))
 
 	s := newSeller()
-	p, err := Stripe{Seller: s, Store: &Memory{}}.Propose(context.Background(), Caller{}, Quote{
+	p, err := Stripe{Seller: s, Store: &memory{}}.Propose(context.Background(), Caller{}, Quote{
 		Amount: "5000", Currency: "usd", Description: "Premium API access for 1 month", External: "order_12345",
 	})
 	if err != nil {
@@ -82,24 +82,24 @@ func TestStripeRequestExample(t *testing.T) {
 		t.Fatal(err)
 	}
 	decoded, _ := raw.DecodeString(wire)
-	if canon, _ := Canonical(req); string(canon) != string(decoded) {
+	if canon, _ := canonical(req); string(canon) != string(decoded) {
 		t.Errorf("request on the wire is not JCS: %s", decoded)
 	}
 }
 
-// The request examples of the charge intent draft (section 5.4) decode into Terms.
+// The request examples of the charge intent draft (section 5.4) decode into terms.
 func TestChargeIntentExamples(t *testing.T) {
 	n := 0
 	for _, b := range fences(t, "intent-charge.md") {
 		if b.lang != "json" || !strings.Contains(b.text, `"amount"`) {
 			continue
 		}
-		var terms Terms
-		strict(t, []byte(b.text), &terms)
-		if !isAmount(terms.Amount) || terms.Currency == "" {
-			t.Errorf("line %d: %+v", b.line, terms)
+		var shared terms
+		strict(t, []byte(b.text), &shared)
+		if !isAmount(shared.Amount) || shared.Currency == "" {
+			t.Errorf("line %d: %+v", b.line, shared)
 		}
-		round, err := json.Marshal(terms)
+		round, err := json.Marshal(shared)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -127,20 +127,19 @@ func TestStripePayloadExample(t *testing.T) {
 }
 
 func TestStripeVerify(t *testing.T) {
-	s := Stripe{Seller: newSeller(), Store: &Memory{}}
+	s := Stripe{Seller: newSeller(), Store: &memory{}}
 	for name, p := range map[string]string{
 		"no token":        `{}`,
 		"empty token":     `{"spt":""}`,
 		"not a token":     `{"spt":"pm_card_visa"}`,
 		"token is number": `{"spt":1}`,
 		"odd characters":  `{"spt":"spt_a b"}`,
-		"too long":        `{"spt":"spt_` + strings.Repeat("a", 300) + `"}`,
 		"external number": `{"spt":"spt_1","externalId":7}`,
 		"not an object":   `[]`,
 	} {
 		err := s.Verify(context.Background(), Claim{Payload: json.RawMessage(p)})
 		var pr *Problem
-		if !errors.As(err, &pr) || pr.Code() != Payload || pr.Status != 402 {
+		if !errors.As(err, &pr) || codeOf(pr) != Payload || pr.Status != 402 {
 			t.Errorf("%s: %v", name, err)
 		}
 	}
@@ -164,29 +163,15 @@ func TestStripePropose(t *testing.T) {
 		"not three letters": {ok, Quote{Amount: "1", Currency: "usdc"}, true},
 		"not offered":       {&seller{}, q, true},
 	} {
-		_, err := Stripe{Seller: c.s, Store: &Memory{}}.Propose(ctx, Caller{}, c.q)
+		_, err := Stripe{Seller: c.s, Store: &memory{}}.Propose(ctx, Caller{}, c.q)
 		if c.skip != errors.Is(err, ErrSkip) || (!c.skip && err != nil) {
 			t.Errorf("%s: %v", name, err)
 		}
 	}
 	// A profile without the members the draft requires is the host's error, not a skip.
-	_, err := Stripe{Seller: &seller{profile: &Profile{Network: "p"}}, Store: &Memory{}}.Propose(ctx, Caller{}, q)
+	_, err := Stripe{Seller: &seller{profile: &Profile{Network: "p"}}, Store: &memory{}}.Propose(ctx, Caller{}, q)
 	if err == nil || errors.Is(err, ErrSkip) {
 		t.Errorf("profile without types: %v", err)
-	}
-	// Decimals ride along only when the seller states them.
-	two := 2
-	withDecimals := newSeller()
-	withDecimals.profile.Decimals = &two
-	p, _ := Stripe{Seller: withDecimals, Store: &Memory{}}.Propose(ctx, Caller{}, q)
-	b, _ := json.Marshal(p.Request)
-	if !strings.Contains(string(b), `"decimals":2`) {
-		t.Errorf("%s", b)
-	}
-	p, _ = Stripe{Seller: ok, Store: &Memory{}}.Propose(ctx, Caller{}, q)
-	b, _ = json.Marshal(p.Request)
-	if strings.Contains(string(b), "decimals") {
-		t.Errorf("%s", b)
 	}
 }
 
@@ -212,7 +197,7 @@ func stripeClaim(t *testing.T, id, spt, external string) Claim {
 func TestStripeSettle(t *testing.T) {
 	ctx := context.Background()
 	s := newSeller()
-	m := Stripe{Seller: s, Store: &Memory{Now: func() time.Time { return epoch }}}
+	m := Stripe{Seller: s, Store: &memory{}}
 	r, err := m.Settle(ctx, stripeClaim(t, "ch_1", "spt_1N4Zv32eZvKYlo2CPhVPkJlW", "client_order_789"))
 	if err != nil {
 		t.Fatal(err)
@@ -245,13 +230,13 @@ func TestStripeSettle(t *testing.T) {
 // another challenge.
 func TestStripeTokenSpentOnce(t *testing.T) {
 	s := newSeller()
-	m := Stripe{Seller: s, Store: &Memory{Now: func() time.Time { return epoch }}}
+	m := Stripe{Seller: s, Store: &memory{}}
 	if _, err := m.Settle(context.Background(), stripeClaim(t, "ch_1", "spt_same", "")); err != nil {
 		t.Fatal(err)
 	}
 	_, err := m.Settle(context.Background(), stripeClaim(t, "ch_2", "spt_same", ""))
 	var p *Problem
-	if !errors.As(err, &p) || p.Code() != Failed {
+	if !errors.As(err, &p) || codeOf(p) != Failed {
 		t.Fatalf("%v", err)
 	}
 	if len(s.taken()) != 1 {
@@ -274,10 +259,10 @@ func TestStripeSellerErrors(t *testing.T) {
 	} {
 		s := newSeller()
 		s.err = c.err
-		_, err := Stripe{Seller: s, Store: &Memory{Now: func() time.Time { return epoch }}}.Settle(context.Background(), stripeClaim(t, "ch_"+name, "spt_"+strings.ReplaceAll(name, " ", "_"), ""))
+		_, err := Stripe{Seller: s, Store: &memory{}}.Settle(context.Background(), stripeClaim(t, "ch_"+name, "spt_"+strings.ReplaceAll(name, " ", "_"), ""))
 		var p *Problem
 		isProblem := errors.As(err, &p)
-		if (c.code == "") == isProblem || (isProblem && p.Code() != c.code) {
+		if (c.code == "") == isProblem || (isProblem && codeOf(p) != c.code) {
 			t.Errorf("%s: %v", name, err)
 		}
 	}
@@ -286,8 +271,8 @@ func TestStripeSellerErrors(t *testing.T) {
 func TestWallet(t *testing.T) {
 	ctx := context.Background()
 	s := newSeller()
-	p, _ := Stripe{Seller: s, Store: &Memory{}}.Propose(ctx, Caller{}, Quote{Amount: "5000", Currency: "usd", Description: "AI", External: "order_9"})
-	req, _ := Canonical(p.Request)
+	p, _ := Stripe{Seller: s, Store: &memory{}}.Propose(ctx, Caller{}, Quote{Amount: "5000", Currency: "usd", Description: "AI", External: "order_9"})
+	req, _ := canonical(p.Request)
 	ch := Challenge{ID: "a", Realm: "r", Method: "stripe", Intent: "charge", Expires: "2025-01-15T12:05:00Z"}
 
 	var issued []Limits
@@ -309,11 +294,9 @@ func TestWallet(t *testing.T) {
 	}
 	b, _ := json.Marshal(ans.Payload)
 	sameJSON(t, b, []byte(`{"spt":"spt_1N4Zv32eZvKYlo2CPhVPkJlW"}`))
-	want := Limits{Amount: "5000", Currency: "usd", Expires: time.Date(2025, 1, 15, 12, 5, 0, 0, time.UTC), Network: s.profile.Network,
-		Types: s.profile.Types, Description: "AI", External: "order_9"}
-	if len(issued) != 1 || issued[0].Amount != want.Amount || issued[0].Currency != want.Currency || !issued[0].Expires.Equal(want.Expires) ||
-		issued[0].Network != want.Network || len(issued[0].Types) != 2 || issued[0].External != "order_9" || issued[0].Description != "AI" {
-		t.Fatalf("limits %+v", issued)
+	want := Limits{Amount: "5000", Currency: "usd", Expires: time.Date(2025, 1, 15, 12, 5, 0, 0, time.UTC), Network: s.profile.Network}
+	if len(issued) != 1 || issued[0] != want {
+		t.Fatalf("limits %+v, want %+v", issued, want)
 	}
 	if r := w.Accepts(); len(r) != 1 || r[0].String() != "stripe/charge" {
 		t.Errorf("accepts %v", r)

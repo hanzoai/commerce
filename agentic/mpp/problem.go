@@ -9,12 +9,10 @@ import (
 	"strings"
 )
 
-// Code names a problem type of the draft's error table (section 8.2): the last path
-// segment of its type URI.
+// Code is a problem type of the error table (section 8.2): the last segment of its URI.
 type Code string
 
-// The problem types. The last four are in the editors' working copy and not in the
-// published draft-01 table.
+// The problem types; the last four are in the working copy, not published draft-01.
 const (
 	Required     Code = "payment-required"
 	Insufficient Code = "payment-insufficient"
@@ -29,17 +27,17 @@ const (
 	Action       Code = "payment-action-required"
 )
 
-// base is the canonical base URI of the problem types (section 8.1).
+// base is the base URI of the problem types (section 8.1).
 const base = "https://paymentauth.org/problems/"
 
-// status is the HTTP status each problem type carries (section 8.2).
+// status is the HTTP status of each problem type (section 8.2).
 var status = map[Code]int{
 	Required: 402, Insufficient: 402, Expired: 402, Failed: 402, Unsupported: 400,
 	Malformed: 402, Invalid: 402, Bad: 400, Payload: 402, Internal: 500, Action: 402,
 }
 
-// title is the short summary of each type. The two the draft's examples spell out are
-// used as written; the rest are the code in words.
+// title is the problem's title: the two the draft's examples spell out (section 8.1,
+// appendix B.5), else the code in words.
 func title(c Code) string {
 	switch c {
 	case Required:
@@ -54,20 +52,19 @@ func title(c Code) string {
 	return strings.Join(words, " ")
 }
 
-// Problem is an RFC 9457 problem details object, the body of a payment error
-// (section 8.1). A Method returns one as an error to say the payment was refused and
-// that nothing was charged; any other error means the outcome is not known.
+// Problem is an RFC 9457 problem details object (section 8.1). A Method returns one as
+// an error to say the payment was refused and nothing charged; any other error means the
+// outcome is not known.
 type Problem struct {
 	Type   string `json:"type"`
 	Title  string `json:"title"`
 	Status int    `json:"status"`
 	Detail string `json:"detail,omitempty"`
-	// Challenge names the challenge the problem answers; the draft's one-time charge
-	// example carries it as the extension member challengeId.
+	// Challenge is the challengeId extension member (appendix B.1).
 	Challenge string `json:"challengeId,omitempty"`
 }
 
-// Refuse is the problem of a type with a human-readable explanation.
+// Refuse is the problem of a type, with an explanation.
 func Refuse(c Code, detail string) *Problem {
 	s, ok := status[c]
 	if !ok {
@@ -80,16 +77,7 @@ func (p *Problem) Error() string {
 	return p.Title + ": " + p.Detail
 }
 
-// Code is the problem type's name, "" when its type is not one of the draft's.
-func (p *Problem) Code() Code {
-	c, ok := strings.CutPrefix(p.Type, base)
-	if !ok {
-		return ""
-	}
-	return Code(c)
-}
-
-// write sends the problem as application/problem+json with its status.
+// write sends the problem as application/problem+json.
 func (p *Problem) write(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(p.Status)

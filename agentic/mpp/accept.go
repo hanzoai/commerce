@@ -11,16 +11,15 @@ import (
 	"strings"
 )
 
-// Range is one payment-range of an Accept-Payment header (section 7.4): a method and an
-// intent, either of which may be "*", and a weight in thousandths, 1000 being q=1 and 0
-// meaning "do not use".
+// Range is a payment-range of Accept-Payment (section 7.4): a method and an intent, either
+// "*", and a weight in thousandths (1000 is q=1, 0 is "do not use").
 type Range struct {
 	Method string
 	Intent string
 	Weight int
 }
 
-// String is the range as it is written in the header.
+// String is the range as written in the header.
 func (r Range) String() string {
 	s := r.Method + "/" + r.Intent
 	if r.Weight == 1000 {
@@ -31,8 +30,8 @@ func (r Range) String() string {
 	return s + ";q=" + q
 }
 
-// specific says how exactly the range names a method and intent: 2 for both, 1 for one
-// and a wildcard, 0 for two wildcards; ok is false when it does not match at all.
+// specific says how many of method and intent the range names exactly; ok is false when it
+// does not match.
 func (r Range) specific(method, intent string) (n int, ok bool) {
 	if r.Method != "*" {
 		if r.Method != method {
@@ -49,9 +48,9 @@ func (r Range) specific(method, intent string) (n int, ok bool) {
 	return n, true
 }
 
-// ParseAccept reads Accept-Payment field values. A malformed header is an error, which
-// a server may ignore (section 7.4).
-func ParseAccept(values []string) ([]Range, error) {
+// parseAccept reads Accept-Payment values; a malformed one is an error, which a server may
+// ignore (section 7.4).
+func parseAccept(values []string) ([]Range, error) {
 	var out []Range
 	for _, v := range values {
 		for _, item := range strings.Split(v, ",") {
@@ -91,7 +90,7 @@ func parseRange(item string) (Range, error) {
 	return r, nil
 }
 
-// weight reads an RFC 9110 qvalue: 0 to 1 with at most three decimals.
+// weight reads an RFC 9110 qvalue in thousandths.
 func weight(q string) (int, error) {
 	whole, frac, _ := strings.Cut(q, ".")
 	if (whole != "0" && whole != "1") || len(frac) > 3 {
@@ -121,12 +120,10 @@ func weight(q string) (int, error) {
 // errNoMatch says no offer matched a range with a weight above zero.
 var errNoMatch = errors.New("accept-payment: no offer matches")
 
-// rank orders offers, given as method and intent, by the client's ranges (section 7.4): an
-// offer is judged by the most specific range that matches it (the first listed among
-// equals), dropped when that range's weight is zero, and the rest are stably ordered by
-// descending weight, so equal weights keep the server's order. It returns the indexes
-// into the offers, or errNoMatch when none survives, in which case the server may ignore
-// the header.
+// rank orders offers (method, intent) by ranges (section 7.4): each is judged by the most
+// specific range matching it, the first listed among equals, and dropped at weight zero;
+// the rest keep their order within equal weights. It returns indexes into offers, or
+// errNoMatch when none survives.
 func rank(offers [][2]string, ranges []Range) ([]int, error) {
 	type scored struct{ index, weight int }
 	var kept []scored

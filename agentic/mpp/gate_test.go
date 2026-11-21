@@ -16,6 +16,9 @@ import (
 	"time"
 )
 
+// bearer is a request carrying other authentication in Authorization (section 4.4.3).
+var bearer = http.Header{"Authorization": {"Bearer mF_9.B5f-4.1JqM"}}
+
 var testSecret = []byte("0123456789abcdef0123456789abcdef")
 
 // rig is a Gate in front of a counting resource, with the draft's example price: 1000
@@ -23,7 +26,6 @@ var testSecret = []byte("0123456789abcdef0123456789abcdef")
 type rig struct {
 	t        *testing.T
 	cfg      Config
-	store    *Memory
 	clock    *clock
 	invoice  *invoice
 	hits     atomic.Int32
@@ -37,9 +39,8 @@ type rig struct {
 func newRig(t *testing.T, mods ...func(*Config)) *rig {
 	t.Helper()
 	r := &rig{t: t, clock: &clock{at: epoch}, invoice: &invoice{}}
-	r.store = &Memory{Now: r.clock.now}
 	r.cfg = Config{
-		Realm: "api.example.com", Secret: testSecret, Store: r.store, Methods: []Method{r.invoice},
+		Realm: "api.example.com", Secret: testSecret, Store: &memory{}, Methods: []Method{r.invoice}, Lifetime: 5 * time.Minute,
 		Price: func(*http.Request) (*Quote, error) { return &Quote{Amount: "1000", Currency: "usd"}, nil },
 		Now:   r.clock.now,
 		Report: func(err error) {
@@ -133,7 +134,7 @@ func wantProblem(t *testing.T, resp *http.Response, status int, code Code) {
 	if resp.StatusCode != status {
 		t.Fatalf("status %d, want %d", resp.StatusCode, status)
 	}
-	if p := problem(t, resp); p.Code() != code || p.Status != status {
+	if p := problem(t, resp); codeOf(&p) != code || p.Status != status {
 		t.Fatalf("problem %+v, want %s", p, code)
 	}
 	if status == 402 {
@@ -190,7 +191,7 @@ func TestGateOneTimeCharge(t *testing.T) {
 	}
 	// The id and the opaque nonce that makes it unique are the server's choice.
 	nonce, err := Opaque(got[0].Opaque)
-	if err != nil || len(nonce) != 3 || len(nonce["nonce"]) != 22 || nonce["route"] != "GET /resource" || len(nonce["caller"]) != 22 {
+	if err != nil || len(nonce) != 3 || len(nonce["nonce"]) != 43 || nonce["route"] != "GET /resource" || len(nonce["caller"]) != 43 {
 		t.Fatalf("opaque %q: %v %v", got[0].Opaque, nonce, err)
 	}
 	want := wantChallenges[0]
@@ -306,12 +307,6 @@ func TestGateRefusesBadCredentials(t *testing.T) {
 	}
 }
 
-func TestGateOversizedCredential(t *testing.T) {
-	r := newRig(t, func(c *Config) { c.Limit = 4096 })
-	big := "Payment " + strings.Repeat("A", 5000)
-	wantProblem(t, r.do("GET", "/resource", auth(big), ""), 402, Malformed)
-}
-
 // Section 5.1.2: a client must not submit for an expired challenge, and the server refuses it.
 func TestGateExpired(t *testing.T) {
 	r := newRig(t)
@@ -341,27 +336,25 @@ func TestGateField(t *testing.T) {
 		}
 	})
 	t.Run("alternate", func(t *testing.T) {
-		r := newRig(t, func(c *Config) { c.Alternate = true })
-		ch := r.challenge("GET", "/resource", nil, "")[0]
+		r := newRig(t)
+		ch := r.challenge("GET", "/resource", bearer, "")[0]
 		if ch.Header != alternate {
 			t.Fatalf("header %q", ch.Header)
 		}
 		c := credential(ch, proof).String()
 		wantProblem(t, r.do("GET", "/resource", auth(c), ""), 402, Malformed)
-		// The ordinary authentication stays in Authorization beside the payment.
-		h := http.Header{"Authorization": {"Bearer mF_9.B5f-4.1JqM"}, "Payment-Authorization": {c}}
+		h := http.Header{"Authorization": bearer["Authorization"], "Payment-Authorization": {c}}
 		resp := r.do("GET", "/resource", h, "")
 		if resp.StatusCode != 200 {
 			t.Fatalf("status %d", resp.StatusCode)
 		}
-		// Section 11.10: this field has no shared-cache protection of its own.
 		if cc := resp.Header.Get("Cache-Control"); cc != "private" {
 			t.Errorf("Cache-Control %q", cc)
 		}
 	})
 	t.Run("alternate error responses are not cacheable", func(t *testing.T) {
-		r := newRig(t, func(c *Config) { c.Alternate = true })
-		ch := r.challenge("GET", "/resource", nil, "")[0]
+		r := newRig(t)
+		ch := r.challenge("GET", "/resource", bearer, "")[0]
 		r.serve = func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(500) }
 		resp := r.do("GET", "/resource", http.Header{"Payment-Authorization": {credential(ch, proof).String()}}, "")
 		if resp.StatusCode != 500 || resp.Header.Get("Cache-Control") != "private" || resp.Header.Get("Payment-Receipt") != "" {
@@ -726,37 +719,6 @@ func TestGateReceiptOnSuccessOnly(t *testing.T) {
 	}
 }
 
-// Section 11.4: a retry of a paid request carrying the same Idempotency-Key and credential
-// gets the response again, without paying and without running the resource a second time.
-func TestGateIdempotentReplay(t *testing.T) {
-	r := newRig(t, func(c *Config) { c.Replay = 1 << 20 })
-	r.serve = func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("X-Run", "1")
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(201)
-		_, _ = io.WriteString(w, "created")
-	}
-	ch := r.challenge("POST", "/resource", nil, "")[0]
-	c := credential(ch, proof).String()
-	hdr := func(key string) http.Header { return http.Header{"Authorization": {c}, "Idempotency-Key": {key}} }
-	first := r.do("POST", "/resource", hdr("k1"), "")
-	if first.StatusCode != 201 {
-		t.Fatalf("first %d", first.StatusCode)
-	}
-	again := r.do("POST", "/resource", hdr("k1"), "")
-	body, _ := io.ReadAll(again.Body)
-	if again.StatusCode != 201 || string(body) != "created" || again.Header.Get("X-Run") != "1" ||
-		again.Header.Get("Payment-Receipt") != first.Header.Get("Payment-Receipt") || again.Header.Get("Payment-Receipt") == "" {
-		t.Fatalf("replay: %d %q %v", again.StatusCode, body, again.Header)
-	}
-	if r.hits.Load() != 1 || r.invoice.count() != 1 {
-		t.Fatalf("hits %d, settled %d", r.hits.Load(), r.invoice.count())
-	}
-	// Another key, or none, is a second use of a spent credential.
-	wantProblem(t, r.do("POST", "/resource", hdr("k2"), ""), 402, Invalid)
-	wantProblem(t, r.do("POST", "/resource", http.Header{"Authorization": {c}}, ""), 402, Invalid)
-}
-
 // A paid request whose response failed is retried without a second charge.
 func TestGateRetryAfterFailedDelivery(t *testing.T) {
 	r := newRig(t)
@@ -780,8 +742,7 @@ func TestGateRetryAfterFailedDelivery(t *testing.T) {
 	if r.invoice.count() != 1 || r.hits.Load() != 2 {
 		t.Fatalf("settled %d, hits %d", r.invoice.count(), r.hits.Load())
 	}
-	// Delivered now: the replay is of a settled payment with nothing kept (Replay is off),
-	// and the resource is not run a third time.
+	// Delivered now: the resource is not run a third time.
 	wantProblem(t, r.do("POST", "/resource", h, ""), 402, Invalid)
 	if r.hits.Load() != 2 {
 		t.Fatal("ran a third time")
@@ -790,8 +751,8 @@ func TestGateRetryAfterFailedDelivery(t *testing.T) {
 
 func TestNewRejectsBadConfig(t *testing.T) {
 	ok := func() Config {
-		return Config{Realm: "r", Secret: testSecret, Store: &Memory{}, Methods: []Method{&invoice{}},
-			Price: func(*http.Request) (*Quote, error) { return nil, nil }}
+		return Config{Realm: "r", Secret: testSecret, Store: &memory{}, Methods: []Method{&invoice{}}, Lifetime: time.Minute,
+			Report: func(error) {}, Price: func(*http.Request) (*Quote, error) { return nil, nil }}
 	}
 	if _, err := New(ok()); err != nil {
 		t.Fatal(err)
@@ -803,7 +764,8 @@ func TestNewRejectsBadConfig(t *testing.T) {
 		"no store":         func(c *Config) { c.Store = nil },
 		"no methods":       func(c *Config) { c.Methods = nil },
 		"no price":         func(c *Config) { c.Price = nil },
-		"negative life":    func(c *Config) { c.Lifetime = -1 },
+		"no report":        func(c *Config) { c.Report = nil },
+		"no lifetime":      func(c *Config) { c.Lifetime = 0 },
 		"negative digest":  func(c *Config) { c.Digest = -1 },
 		"duplicate method": func(c *Config) { c.Methods = []Method{&invoice{}, &invoice{}} },
 		"bad method name":  func(c *Config) { c.Methods = []Method{&invoice{name: "Stripe"}} },
@@ -849,33 +811,20 @@ func TestGateChallengesAreUnique(t *testing.T) {
 	if r.invoice.count() != 2 {
 		t.Fatalf("settled %d", r.invoice.count())
 	}
-	// A method cannot use the member the gate keeps for itself.
-	r2 := newRig(t, func(c *Config) { c.Methods = []Method{&nonced{invoice: &invoice{}}} })
-	wantProblem(t, r2.do("GET", "/resource", nil, ""), 500, Internal)
-}
-
-type nonced struct{ *invoice }
-
-func (n *nonced) Propose(ctx context.Context, c Caller, q Quote) (*Proposal, error) {
-	p, err := n.invoice.Propose(ctx, c, q)
-	if p != nil {
-		p.Opaque = map[string]string{"nonce": "x"}
-	}
-	return p, err
 }
 
 // The resource never holds a Payment credential (section 11.2.1); other authentication
 // reaches it.
 func TestGateStripsCredentials(t *testing.T) {
-	r := newRig(t, func(c *Config) { c.Alternate = true })
+	r := newRig(t)
 	var seen http.Header
 	r.serve = func(w http.ResponseWriter, req *http.Request) { seen = req.Header.Clone() }
-	ch := r.challenge("GET", "/resource", nil, "")[0]
-	h := http.Header{"Authorization": {"Bearer mF_9.B5f-4.1JqM"}, "Payment-Authorization": {credential(ch, proof).String()}}
+	ch := r.challenge("GET", "/resource", bearer, "")[0]
+	h := http.Header{"Authorization": bearer["Authorization"], "Payment-Authorization": {credential(ch, proof).String()}}
 	if resp := r.do("GET", "/resource", h, ""); resp.StatusCode != 200 {
 		t.Fatalf("status %d", resp.StatusCode)
 	}
-	if seen.Get("Payment-Authorization") != "" || seen.Get("Authorization") != "Bearer mF_9.B5f-4.1JqM" {
+	if seen.Get("Payment-Authorization") != "" || seen.Get("Authorization") != bearer.Get("Authorization") {
 		t.Fatalf("the resource saw %v", seen)
 	}
 	r2 := newRig(t)
@@ -897,39 +846,24 @@ func TestGateChallengeSize(t *testing.T) {
 		}
 	})
 	wantProblem(t, r.do("GET", "/resource", nil, ""), 500, Internal)
-	if _, err := New(Config{Realm: "r", Secret: testSecret, Store: &Memory{}, Methods: []Method{&invoice{}}, Limit: 1024,
-		Price: func(*http.Request) (*Quote, error) { return nil, nil }}); err == nil {
-		t.Error("a credential limit under 4096 was accepted")
-	}
 }
 
 // A resource that writes nothing has answered 200: the payment is delivered, the receipt
-// rides on that answer, and a retry does not run the resource again (section 11.4).
+// rides on that answer, and a retry does not run the resource again.
 func TestGateEmptyResponseIsDelivered(t *testing.T) {
-	for name, replay := range map[string]int64{"without replay": 0, "with replay": 1 << 20} {
-		t.Run(name, func(t *testing.T) {
-			r := newRig(t, func(c *Config) { c.Replay = replay })
-			r.serve = func(http.ResponseWriter, *http.Request) {} // writes nothing
-			ch := r.challenge("POST", "/resource", nil, "")[0]
-			h := http.Header{"Authorization": {credential(ch, proof).String()}, "Idempotency-Key": {"k"}}
-			first := r.do("POST", "/resource", h, "")
-			if first.StatusCode != 200 || first.Header.Get("Payment-Receipt") == "" {
-				t.Fatalf("first: %d %v", first.StatusCode, first.Header)
-			}
-			for i := 0; i < 3; i++ {
-				again := r.do("POST", "/resource", h, "")
-				if replay > 0 {
-					if again.StatusCode != 200 || again.Header.Get("Payment-Receipt") != first.Header.Get("Payment-Receipt") {
-						t.Fatalf("replay: %d %v", again.StatusCode, again.Header)
-					}
-				} else {
-					wantProblem(t, again, 402, Invalid)
-				}
-			}
-			if r.hits.Load() != 1 || r.invoice.count() != 1 {
-				t.Fatalf("one payment ran the resource %d times, settled %d", r.hits.Load(), r.invoice.count())
-			}
-		})
+	r := newRig(t)
+	r.serve = func(http.ResponseWriter, *http.Request) {} // writes nothing
+	ch := r.challenge("POST", "/resource", nil, "")[0]
+	h := http.Header{"Authorization": {credential(ch, proof).String()}, "Idempotency-Key": {"k"}}
+	first := r.do("POST", "/resource", h, "")
+	if first.StatusCode != 200 || first.Header.Get("Payment-Receipt") == "" {
+		t.Fatalf("first: %d %v", first.StatusCode, first.Header)
+	}
+	for i := 0; i < 3; i++ {
+		wantProblem(t, r.do("POST", "/resource", h, ""), 402, Invalid)
+	}
+	if r.hits.Load() != 1 || r.invoice.count() != 1 {
+		t.Fatalf("one payment ran the resource %d times, settled %d", r.hits.Load(), r.invoice.count())
 	}
 }
 

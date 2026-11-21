@@ -18,23 +18,21 @@ import (
 )
 
 const (
-	// Scheme is the authentication scheme name (section 5).
+	// Scheme is the authentication scheme (section 5).
 	Scheme = "Payment"
-	// Charge is the one-time payment intent, draft-payment-intent-charge-00.
+	// Charge is the one-time payment intent (draft-payment-intent-charge-00).
 	Charge = "charge"
 
-	// alternate is the field a challenge selects with the header parameter (section 5.2).
-	alternate    = "Payment-Authorization"
-	authorize    = "Authorization"
-	receipted    = "Payment-Receipt"
-	accepting    = "Accept-Payment"
-	authenticate = "WWW-Authenticate"
+	authorization = "Authorization"
+	alternate     = "Payment-Authorization" // section 5.2
+	receipted     = "Payment-Receipt"       // section 5.3
+	accepting     = "Accept-Payment"        // section 7.4
+	authenticate  = "WWW-Authenticate"
+	idempotency   = "Idempotency-Key" // section 11.4
 )
 
-// Challenge is a Payment challenge: the parameters of a WWW-Authenticate header
-// (section 5.1) and, by the same names, the object a credential echoes (section 5.2,
-// table 4). Request and Opaque are base64url text exactly as they appear on the wire;
-// the binding hashes them in that form.
+// Challenge is a Payment challenge (section 5.1) and its echo in a credential (section
+// 5.2). Request and Opaque are base64url text as sent.
 type Challenge struct {
 	ID          string `json:"id"`
 	Realm       string `json:"realm"`
@@ -56,17 +54,16 @@ var (
 	raw = base64.RawURLEncoding.Strict()
 )
 
-// Field is the HTTP field a credential for this challenge travels in: Authorization by
-// default, Payment-Authorization when the challenge carries the header parameter
-// (section 5.2).
+// Field is the field the credential travels in: Authorization, or Payment-Authorization
+// when header is set (section 5.2).
 func (c Challenge) Field() string {
 	if c.Header != "" {
 		return alternate
 	}
-	return authorize
+	return authorization
 }
 
-// Expiry is the instant the challenge expires; ok is false when it carries none.
+// Expiry is the expires parameter; ok is false when absent or malformed.
 func (c Challenge) Expiry() (at time.Time, ok bool) {
 	if c.Expires == "" {
 		return time.Time{}, false
@@ -75,9 +72,7 @@ func (c Challenge) Expiry() (at time.Time, ok bool) {
 	return at, err == nil
 }
 
-// Valid reports whether the challenge is well formed under sections 5.1, 6.1 and 7.1: a
-// non-empty id, a realm, a lowercase method, an intent token, a base64url request
-// without padding, and each optional parameter in its stated form.
+// Valid checks the form of each parameter (sections 5.1, 6.1, 7.1).
 func (c Challenge) Valid() error {
 	switch {
 	case c.ID == "":
@@ -113,8 +108,7 @@ func (c Challenge) Valid() error {
 	return nil
 }
 
-// Opaque decodes an opaque parameter: base64url JSON that is a flat object of strings
-// (section 5.1.2).
+// Opaque decodes an opaque parameter: base64url JSON, a flat object of strings (section 5.1.2).
 func Opaque(s string) (map[string]string, error) {
 	b, err := raw.DecodeString(s)
 	if err != nil {
@@ -135,22 +129,20 @@ func Opaque(s string) (map[string]string, error) {
 	return out, nil
 }
 
-// Encode is the wire form of a request or opaque value: its JCS serialization,
-// base64url without padding (section 5.1.1).
+// Encode is the wire form of a request or opaque value: JCS, then base64url without
+// padding (section 5.1.1).
 func Encode(v any) (string, error) {
-	b, err := Canonical(v)
+	b, err := canonical(v)
 	if err != nil {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
-// Bind computes the challenge id the draft recommends, HMAC-SHA256 over the pipe-joined
-// slots realm, method, intent, request, expires, digest, [header,] opaque, an absent
-// optional parameter being the empty string and the header slot present only when the
-// header parameter is (section 5.1.2.1.1). The id of the challenge passed in is
-// ignored. The layout is the editors' working copy's, which carries test vectors; see
-// the package documentation for how it differs from the published draft.
+// Bind is the challenge id: HMAC-SHA256 over realm, method, intent, request, expires,
+// digest, [header,] opaque joined by "|", an absent parameter being empty and the header
+// slot present only with the header parameter, base64url without padding (section
+// 5.1.2.1.1, in the working copy's slot order).
 func Bind(secret []byte, c Challenge) string {
 	slots := []string{c.Realm, c.Method, c.Intent, c.Request, c.Expires, c.Digest}
 	if c.Header != "" {
@@ -162,8 +154,7 @@ func Bind(secret []byte, c Challenge) string {
 	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 }
 
-// bound reports, in constant time, whether the challenge's id is the binding of its other
-// parameters under the secret.
+// bound says, in constant time, whether the id is the binding of the other parameters.
 func bound(secret []byte, c Challenge) bool {
 	return subtle.ConstantTimeCompare([]byte(Bind(secret, c)), []byte(c.ID)) == 1
 }
@@ -194,8 +185,7 @@ func (c Challenge) String() string {
 	return b.String()
 }
 
-// quote is an RFC 9110 quoted-string. A control character cannot be carried in a header
-// field and would let a value end its line, so each is replaced by a space.
+// quote is an RFC 9110 quoted-string; control characters become spaces.
 func quote(s string) string {
 	var b strings.Builder
 	b.WriteByte('"')
@@ -214,10 +204,9 @@ func quote(s string) string {
 	return b.String()
 }
 
-// Parse reads the Payment challenges out of WWW-Authenticate field values. Challenges of
-// other schemes are skipped. found holds every well-formed Payment challenge, in the
-// order sent; err reports, joined, each one that was rejected, which a client treats as
-// unsupported (sections 5.1.1 and 5.2). Unknown parameters are ignored (section 5.1.2).
+// Parse reads the Payment challenges in WWW-Authenticate values, skipping other schemes.
+// found holds the well-formed ones in order; err joins the reasons for the rest, which a
+// client treats as unsupported (sections 5.1.1, 5.2). Unknown parameters are ignored.
 func Parse(values []string) (found []Challenge, err error) {
 	var bad []error
 	for _, v := range values {
@@ -239,7 +228,7 @@ func Parse(values []string) (found []Challenge, err error) {
 	return found, errors.Join(bad...)
 }
 
-// group is one challenge as scanned: a scheme and its auth-params.
+// group is a scanned challenge: a scheme and its auth-params.
 type group struct {
 	scheme string
 	params map[string]string
@@ -265,10 +254,8 @@ func tchar(c byte) bool {
 	return strings.IndexByte("!#$%&'*+-.^_`|~", c) >= 0
 }
 
-// scan splits a field value into its challenges, RFC 9110 section 11.6.1: a token that is
-// not followed by "=" and follows a comma (or begins the value) names a scheme, and a
-// token followed by "=" is an auth-param of the current scheme. Parameter names are
-// compared without case, and a name given twice rejects the challenge.
+// scan splits a field value into challenges (RFC 9110 section 11.6.1). A parameter name
+// given twice rejects its challenge.
 func scan(s string) []group {
 	var out []group
 	i, comma := 0, true
@@ -287,7 +274,7 @@ func scan(s string) []group {
 			i++
 		}
 		if i == start {
-			i++ // a byte no token holds: step over it
+			i++
 			continue
 		}
 		tok := s[start:i]
@@ -296,7 +283,6 @@ func scan(s string) []group {
 			j++
 		}
 		if j < len(s) && s[j] == '=' && len(out) > 0 {
-			// The current challenge's auth-param: name, then a token or a quoted-string.
 			j++
 			for j < len(s) && (s[j] == ' ' || s[j] == '\t') {
 				j++
@@ -316,7 +302,7 @@ func scan(s string) []group {
 					k++
 				}
 				val, j = s[j:k], k
-				if val == "" { // token68 padding, not a parameter
+				if val == "" { // token68 padding
 					for j < len(s) && s[j] == '=' {
 						j++
 					}
@@ -337,7 +323,6 @@ func scan(s string) []group {
 			out = append(out, group{scheme: tok, params: map[string]string{}})
 			comma = false
 		}
-		// else: a token68 after a scheme; Payment has none and other schemes are skipped.
 		i = j
 		if j < len(s) && s[j] == '=' { // its padding
 			for i < len(s) && s[i] == '=' {
@@ -348,8 +333,7 @@ func scan(s string) []group {
 	return out
 }
 
-// unquote reads the quoted-string that starts at s[i], returning its value and the index
-// after the closing quote.
+// unquote reads the quoted-string at s[i], returning its value and the index after it.
 func unquote(s string, i int) (string, int, bool) {
 	var b strings.Builder
 	for i++; i < len(s); i++ {
@@ -369,15 +353,14 @@ func unquote(s string, i int) (string, int, bool) {
 	return "", i, false
 }
 
-// digestOf is the RFC 9530 value for a body: sha-256 as a structured-field byte sequence.
+// digestOf is the RFC 9530 sha-256 value of a body.
 func digestOf(body []byte) string {
 	sum := sha256.Sum256(body)
 	return "sha-256=:" + base64.StdEncoding.EncodeToString(sum[:]) + ":"
 }
 
-// digestMatches reports, in constant time, whether body has the digest a challenge
-// states. sha-256 and sha-512 are the algorithms RFC 9530 registers as recommended; any
-// other does not match.
+// digestMatches says, in constant time, whether body has the digest want (sha-256 or
+// sha-512, RFC 9530).
 func digestMatches(want string, body []byte) bool {
 	algo, rest, ok := strings.Cut(want, "=:")
 	if !ok || !strings.HasSuffix(rest, ":") {

@@ -4,18 +4,15 @@
 package mpp
 
 import (
-	"context"
 	"net/http"
 	"strings"
 	"testing"
 )
 
-// A challenge is for the caller and the resource it was issued to: the route and a keyed
-// tag of the caller ride in opaque, which the binding covers, and are checked when the
-// credential comes back.
+// A challenge is bound to the route and the caller it was issued to: both ride in opaque,
+// which the binding covers, and are checked when the credential comes back.
 func TestGateBindsRouteAndCaller(t *testing.T) {
 	r := newRig(t, func(c *Config) {
-		c.Replay = 1 << 20
 		c.Caller = func(req *http.Request) (Caller, error) {
 			return Caller{Org: "acme", Subject: req.Header.Get("X-Subject")}, nil
 		}
@@ -26,7 +23,7 @@ func TestGateBindsRouteAndCaller(t *testing.T) {
 	}
 	ch := r.challenge("GET", "/a", as("alice", http.Header{}), "")[0]
 	members, err := Opaque(ch.Opaque)
-	if err != nil || members["route"] != "GET /a" || len(members["nonce"]) != 22 || len(members["caller"]) != 22 {
+	if err != nil || members["route"] != "GET /a" || len(members["nonce"]) != 43 || len(members["caller"]) != 43 {
 		t.Fatalf("opaque %v %v", members, err)
 	}
 	if strings.Contains(ch.Opaque, "alice") || strings.Contains(rawDecode(t, ch.Opaque), "alice") {
@@ -55,24 +52,6 @@ func TestGateBindsRouteAndCaller(t *testing.T) {
 	// Nor does another caller get the kept response by echoing the challenge and the key.
 	h = as("bob", http.Header{"Authorization": {c}, "Idempotency-Key": {"k"}})
 	wantProblem(t, r.do("GET", "/a", h, ""), 402, Invalid)
-	// The members are the gate's.
-	for _, key := range []string{"nonce", "route", "caller"} {
-		r2 := newRig(t, func(c *Config) { c.Methods = []Method{&reserved{invoice: &invoice{}, key: key}} })
-		wantProblem(t, r2.do("GET", "/resource", nil, ""), 500, Internal)
-	}
-}
-
-type reserved struct {
-	*invoice
-	key string
-}
-
-func (n *reserved) Propose(ctx context.Context, c Caller, q Quote) (*Proposal, error) {
-	p, err := n.invoice.Propose(ctx, c, q)
-	if p != nil {
-		p.Opaque = map[string]string{n.key: "x"}
-	}
-	return p, err
 }
 
 func rawDecode(t *testing.T, s string) string {

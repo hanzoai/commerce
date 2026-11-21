@@ -20,7 +20,7 @@ func TestCanonicalRFC8785Example(t *testing.T) {
 	if err := d.Decode(&v); err != nil {
 		t.Fatal(err)
 	}
-	got, err := Canonical(v)
+	got, err := canonical(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +34,7 @@ func TestCanonicalRFC8785Example(t *testing.T) {
 // basic plane sorts before U+FB33 although its code point is larger.
 func TestCanonicalSortsByUTF16(t *testing.T) {
 	m := map[string]int{"\u20ac": 1, "\r": 2, "\ufb33": 3, "1": 4, "\U0001F600": 5, "\u0080": 6, "\u00f6": 7}
-	got, err := Canonical(m)
+	got, err := canonical(m)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestCanonicalNumbers(t *testing.T) {
 
 // A request is hashed as the text of its base64url, so html-escaping must not leak in.
 func TestCanonicalDoesNotEscapeMarkup(t *testing.T) {
-	got, err := Canonical(map[string]string{"description": "a<b>&c"})
+	got, err := canonical(map[string]string{"description": "a<b>&c"})
 	if err != nil {
 		t.Fatal(err)
 	}
