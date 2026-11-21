@@ -262,6 +262,9 @@ func decline(e *billing.AgentError) *Refusal {
 	switch e.Code {
 	case "token_invalid":
 		return &Refusal{Code: "invalid", Param: "$.payment_data.instrument.credential.token", Resolution: "recoverable", Message: e.Message}
+	case "price_changed":
+		return &Refusal{Code: "conflict", Resolution: "requires_buyer_review",
+			Message: "The price changed since the checkout session was quoted. Update the session to see the new price."}
 	case "authentication_required":
 		return &Refusal{Code: "intervention_required", Resolution: "requires_buyer_input",
 			Message: "The card's bank requires authentication that this seller cannot complete for an agent. The buyer must pay on the seller's site."}

@@ -49,6 +49,7 @@ func TestCommerceRefusalsAreStatedInTheSpecsVocabulary(t *testing.T) {
 		{"a bank that wants authentication", billing.CompleteOut{Status: 402, View: view("failed", &billing.AgentError{Code: "authentication_required", Message: "3ds"})}, 0, "", "intervention_required", ""},
 		{"payments that are not available", billing.CompleteOut{Status: 402, View: view("failed", &billing.AgentError{Code: "payments_unavailable", Message: "cannot accept tokens"})}, 0, "", "payment_declined", ""},
 		{"a sale that was refused", billing.CompleteOut{Status: 422, View: view("failed", &billing.AgentError{Code: "sale_refused", Message: "the plan is not sold"})}, 0, "", "payment_declined", ""},
+		{"a quote the catalog has moved past", billing.CompleteOut{Status: 409, View: view("failed", &billing.AgentError{Code: "price_changed", Message: "the price is now 900"})}, 0, "", "conflict", ""},
 		{"a checkout completed under another key", billing.CompleteOut{Status: 409, View: view("complete", &billing.AgentError{Code: "already_completed", Message: "another key"})}, 409, "conflict", "", ""},
 		{"a checkout being completed", billing.CompleteOut{Status: 409, View: view("pending", &billing.AgentError{Code: "in_progress", Message: "being completed"})}, 409, "conflict", "", ""},
 		{"a checkout that is gone", billing.CompleteOut{Status: 404, View: view("failed", &billing.AgentError{Code: "not_found", Message: "checkout not found"})}, 404, "not_found", "", ""},
