@@ -1,0 +1,10 @@
+Repo:    https://github.com/google-agentic-commerce/AP2
+Commit:  e1ea56db72a6
+Licence: Apache-2.0
+Files:   docs/ap2/checkout_mandate.md and docs/ap2/payment_mandate.md, the "#### Encoded Token" blocks, in document order:
+  checkout_open.token    Open Checkout Mandate SD-JWT plus disclosures
+  checkout_closed.token  Closed Checkout Mandate SD-JWT plus disclosures
+  checkout_chain.token   Open Checkout Mandate chained with a Closed Checkout Mandate
+  payment_open.token     Open Payment Mandate SD-JWT plus disclosures
+  payment_closed.token   Closed Payment Mandate SD-JWT plus disclosures
+  payment_chain.token    Open Payment Mandate chained with a closed Payment Mandate
