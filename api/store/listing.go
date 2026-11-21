@@ -154,7 +154,6 @@ func patchListing(c *zip.Ctx) error {
 	if err := json.DecodeBytes(c.Body(), &listing); err != nil {
 		return http.Fail(c, 400, "Failed decode request body", err)
 	}
-	stor.Listings[key] = listing
 
 	// Try to save store
 	if err := stor.Put(); err != nil {
