@@ -417,6 +417,14 @@ func (c *Commerce) refusal(out *Checkout, v *billing.CheckoutView) {
 // Idempotency is a Store over commerce's idempotency guard
 // (models/idempotencykey) with records kept for Keep: an older key is a new key,
 // and Sweep deletes the ones nothing asks about.
+//
+// The guards live in the system namespace beside other packages' — billing's
+// payment-webhook and intent guards, the ACP, AP2 and MPP ledgers — and a webhook
+// guard deleted is a processor's retry processed twice. So every UCP record is
+// kept under the one scope idempotencyScope, with the request's own scope folded
+// into its key (guard), and Sweep asks for that scope by equality: the same answer
+// on every engine and collation, where a prefix range over the request scopes
+// would sort by the database's collation.
 type Idempotency struct {
 	clock func() time.Time
 }
@@ -432,13 +440,19 @@ func (s Idempotency) now() time.Time {
 	return time.Now()
 }
 
-const idempotencyScope = "ucp:"
+// idempotencyScope is the scope every UCP record is kept under, and the only one
+// Sweep reads.
+const idempotencyScope = "ucp"
+
+// guard is the key a UCP record is kept under: the request's scope and its
+// Idempotency-Key, so a key is still unique per scope.
+func guard(scope, key string) string { return scope + "\x00" + key }
 
 // Begin implements Store.
 func (s Idempotency) Begin(ctx context.Context, scope, key, digest string) (*Seen, error) {
 	db := s.db(ctx)
 	for range 2 {
-		rec, replay, err := idempotencykey.Begin(db, idempotencyScope+scope, key)
+		rec, replay, err := idempotencykey.Begin(db, idempotencyScope, guard(scope, key))
 		if err != nil {
 			return nil, err
 		}
@@ -467,17 +481,22 @@ func (s Idempotency) Begin(ctx context.Context, scope, key, digest string) (*See
 	return nil, errors.New("ucp: an idempotency record kept expiring under the request")
 }
 
-// Sweep deletes up to limit records older than Keep, oldest first, and returns
-// how many it deleted.
+// Sweep deletes up to limit UCP records older than Keep, oldest first, and returns
+// how many it deleted. It reads UCP's records alone: another package's guard in
+// the namespace is never deleted, and never takes a place under limit.
 func (s Idempotency) Sweep(ctx context.Context, limit int) (int, error) {
 	db := s.db(ctx)
 	var recs []*idempotencykey.IdempotencyKey
-	keys, err := idempotencykey.Query(db).Order("CreatedAt").Limit(limit).GetAll(&recs)
+	keys, err := idempotencykey.Query(db).Filter("Scope=", idempotencyScope).Order("CreatedAt").Limit(limit).GetAll(&recs)
 	if err != nil {
 		return 0, err
 	}
 	n := 0
 	for i, rec := range recs {
+		if rec.Scope != idempotencyScope {
+			// The filter already said so; a row of another scope is never ours to delete.
+			continue
+		}
 		if rec.CreatedAt.IsZero() || s.now().Sub(rec.CreatedAt) < Keep {
 			break
 		}
@@ -496,7 +515,7 @@ func (s Idempotency) Finish(ctx context.Context, scope, key, digest string, r St
 		return err
 	}
 	rec := idempotencykey.New(s.db(ctx))
-	rec.Scope, rec.IdemKey, rec.Facts = idempotencyScope+scope, key, digest
+	rec.Scope, rec.IdemKey, rec.Facts = idempotencyScope, guard(scope, key), digest
 	return idempotencykey.Complete(rec, string(b))
 }
 
@@ -504,7 +523,7 @@ func (s Idempotency) Finish(ctx context.Context, scope, key, digest string, r St
 func (s Idempotency) Release(ctx context.Context, scope, key string) error {
 	db := s.db(ctx)
 	rec := idempotencykey.New(db)
-	err := rec.Get(db.NewKey(rec.Kind(), idempotencykey.DeterministicID(idempotencyScope+scope, key), 0, nil))
+	err := rec.Get(db.NewKey(rec.Kind(), idempotencykey.DeterministicID(idempotencyScope, guard(scope, key)), 0, nil))
 	switch {
 	case errors.Is(err, datastore.ErrNoSuchEntity):
 		return nil

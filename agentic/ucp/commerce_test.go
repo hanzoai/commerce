@@ -489,6 +489,55 @@ func TestCommerceIdempotencyRecordsExpire(t *testing.T) {
 	}
 }
 
+// The namespace the records live in is shared: billing keeps its payment-webhook and
+// intent guards there, and a guard swept is a processor's retry processed twice. Sweep
+// deletes UCP's expired records and nothing else, and other packages' guards, older
+// than every UCP record, neither get deleted nor keep UCP's from being swept.
+func TestSweepTouchesOnlyUCPRecords(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	now := time.Now()
+	s := Idempotency{clock: func() time.Time { return now }}
+	db := s.db(ctx)
+	others := [][2]string{{"webhook", "stripe:evt_1"}, {"billing-intent", "pi_1"}}
+	for _, o := range others {
+		rec, replay, err := idempotencykey.Begin(db, o[0], o[1])
+		if err != nil || replay {
+			t.Fatalf("%s guard: replay %v, %v", o[0], replay, err)
+		}
+		if err := idempotencykey.Complete(rec, ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The UCP records come after, so the oldest rows of the namespace are billing's.
+	time.Sleep(20 * time.Millisecond)
+	for _, k := range []string{"ucp-1", "ucp-2"} {
+		if seen, err := s.Begin(ctx, "scope", k, "d"); seen != nil || err != nil {
+			t.Fatalf("%s: %v %v", k, seen, err)
+		}
+		if err := s.Finish(ctx, "scope", k, "d", Stored{Status: 200, Body: []byte(`{}`)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	now = now.Add(Keep + time.Hour)
+	if n, err := s.Sweep(ctx, len(others)); err != nil || n != 2 {
+		t.Fatalf("Sweep with room for two: removed %d (%v), want both UCP records", n, err)
+	}
+	for _, o := range others {
+		rec := idempotencykey.New(db)
+		if err := rec.Get(db.NewKey(rec.Kind(), idempotencykey.DeterministicID(o[0], o[1]), 0, nil)); err != nil {
+			t.Errorf("billing's %s guard was swept: %v", o[0], err)
+		}
+	}
+	if n, err := idempotencykey.Query(db).Count(); err != nil || n != len(others) {
+		t.Fatalf("%d rows left (%v), want only billing's %d", n, err, len(others))
+	}
+	if n, err := s.Sweep(ctx, 100); err != nil || n != 0 {
+		t.Fatalf("a second sweep removed %d (%v): nothing left is UCP's", n, err)
+	}
+}
+
 // api/billing refuses a charge at a price other than the quoted one; UCP reports it
 // as a recoverable change of the totals.
 func TestAMovedPriceIsATotalsChange(t *testing.T) {
