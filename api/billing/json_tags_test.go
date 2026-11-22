@@ -38,8 +38,12 @@ func TestEveryExportedFieldOfTheAgenticAndBankResponsesIsTagged(t *testing.T) {
 				walk(f.Type, path)
 				continue
 			}
-			if _, ok := f.Tag.Lookup("json"); !ok {
+			tag, ok := f.Tag.Lookup("json")
+			if !ok {
 				t.Errorf("%s.%s has no json tag", path, f.Name)
+				continue
+			}
+			if tag == "-" {
 				continue
 			}
 			walk(f.Type, path+"."+f.Name)
