@@ -1204,3 +1204,28 @@ func TestASavedCardOnlyHoldsTheBuyerWhereItsProcessorCanCharge(t *testing.T) {
 		t.Fatalf("with Square switched off, a saved Square card holder routed to %+v %v; want Stripe", d, f)
 	}
 }
+
+func TestReadRoutingViewReportsHealthySwitchedOffSquareAvailable(t *testing.T) {
+	ctx := heldStore(t)
+	org := routingOrg(ctx, t)
+	useRails(t, true, true)
+	t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool {
+		return processor.ChargeNames("stripe,paypal")
+	}))
+	v, f := ReadRoutingView(ctx, org, org.Name)
+	if f != nil {
+		t.Fatal(f.Err)
+	}
+	found := false
+	for _, st := range v.Processor {
+		if st.Processor == "square" {
+			found = true
+			if !st.Available {
+				t.Fatalf("expected healthy registered Square processor to report available=true even when switched off in charge policy")
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("square processor missing from ReadRoutingView: %+v", v.Processor)
+	}
+}

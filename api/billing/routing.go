@@ -1004,16 +1004,20 @@ func ReadRoutingView(ctx context.Context, org *organization.Organization, scope 
 		case routing.CryptoRail:
 			ok = cryptoServes(ctx)
 		case processor.PayPal:
+			// Report whether credentials and processor health are ready; the On/Off switch
+			// separately reflects whether routing currently sends new checkouts here.
 			p, perr := reg.Registered(t)
-			ok = perr == nil && p.IsAvailable(ctx) && !processor.DisabledByPolicy(t)
+			ok = perr == nil && p.IsAvailable(ctx)
 		case processor.Kraken, processor.MPC:
 			// Not card processors: available as the deposit rail reads them, configured with
 			// credentials that resolved.
 			p, perr := processor.Global().Registered(t)
 			ok = perr == nil && p.IsAvailable(ctx)
 		default:
-			_, ferr := reg.Fiat(ctx, processor.Need{Currency: currency.USD, Method: "card", Want: t})
-			ok = ferr == nil
+			// Report whether the card processor is registered and healthy (credentials &
+			// location active), even if currently switched off in the routing policy.
+			p, perr := reg.Registered(t)
+			ok = perr == nil && p.IsAvailable(ctx)
 		}
 		v.Processor = append(v.Processor, ProcessorState{r.Processor, ok})
 	}
