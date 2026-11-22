@@ -69,7 +69,7 @@ func TestAnOrgAdminCannotChangeRouting(t *testing.T) {
 	if resp.StatusCode != 403 {
 		t.Fatalf("an org admin changing the routing got %d, want 403", resp.StatusCode)
 	}
-	if p, err := ReadRouting(ctx, "acme"); err != nil || squareWeightOf(p) != 50 {
+	if p, err := ReadRouting(ctx, "acme"); err != nil || squareWeightOf(p) != 0 {
 		t.Fatalf("the refused write changed the policy: %+v %v", p, err)
 	}
 }
@@ -178,7 +178,7 @@ func routingOrg(ctx context.Context, t *testing.T) *organization.Organization {
 func TestAProcessorThatIsDownHandsBuyersToTheOtherAndASavedCardIsNotOffered(t *testing.T) {
 	ctx := heldStore(t)
 	org := routingOrg(ctx, t)
-	if _, f := WriteRouting(ctx, org.Name, func() routing.Policy { q := withWeight(100); return q }(), "z", ""); f != nil {
+	if _, f := WriteRouting(ctx, org.Name, func() routing.Policy { q := withWeight(100); q.CountryRules = nil; return q }(), "z", ""); f != nil {
 		t.Fatal(f.Err)
 	}
 
@@ -339,7 +339,7 @@ func (d *profileDouble) ProfileCustomer(context.Context, string, processor.Payer
 func TestACardIsSquaresOnlyWhereTheMerchantLocationCanTakeIt(t *testing.T) {
 	ctx := heldStore(t)
 	org := routingOrg(ctx, t)
-	if _, f := WriteRouting(ctx, org.Name, func() routing.Policy { q := withWeight(100); return q }(), "z", ""); f != nil {
+	if _, f := WriteRouting(ctx, org.Name, func() routing.Policy { q := withWeight(100); q.CountryRules = nil; return q }(), "z", ""); f != nil {
 		t.Fatal(f.Err)
 	}
 	useRails(t, true, true)
@@ -516,8 +516,8 @@ func TestEachRuleChangesRoutingAsConfigured(t *testing.T) {
 		}
 		return d
 	}
-	// The weight alone: Square.
-	save(func(*routing.Policy) {})
+	// The weight alone (outside country rules): Square.
+	save(func(p *routing.Policy) { p.CountryRules = nil })
 	if d := who("a", RouteIn{Country: "FR"}); d.Processor != processor.Square || d.Rule != "split" {
 		t.Fatalf("weight: %+v", d)
 	}
@@ -546,6 +546,7 @@ func TestEachRuleChangesRoutingAsConfigured(t *testing.T) {
 	}
 	// Card rules apply where the metadata is known: a preview names it, a live new card has none.
 	save(func(p *routing.Policy) {
+		p.CountryRules = nil
 		p.IssuerCountryRules = []routing.IssuerRule{{Country: "GB", Processor: "stripe"}}
 		p.BrandRules = []routing.BrandRule{{Brand: "amex", Processor: "stripe"}}
 	})
@@ -722,14 +723,26 @@ func TestTheFallbackOrderIsTheAdminsAndIsUsedOnlyBeforePayment(t *testing.T) {
 
 func TestTheDefaultPolicyIsTodaysBehaviour(t *testing.T) {
 	p := routing.Default()
-	if squareWeightOf(p) != 50 || !p.On(processor.Square) || !p.On(processor.Stripe) || !p.LocalOn || !p.Sticky || !p.On(processor.PayPal) || !p.On(routing.CryptoRail) {
+	if squareWeightOf(p) != 0 || !p.On(processor.Square) || !p.On(processor.Stripe) || !p.LocalOn || !p.Sticky || !p.On(processor.PayPal) || !p.On(routing.CryptoRail) {
 		t.Fatalf("defaults: %+v", p)
 	}
-	if len(p.CurrencyRules)+len(p.CountryRules)+len(p.BrandRules)+len(p.IssuerCountryRules)+len(p.Fallback)+len(p.LocalMethods) != 0 || len(p.Off()) != 0 {
-		t.Fatalf("the default carries rules: %+v", p)
+	if len(p.CountryRules) != len(routing.SquareCountries) || len(p.LocalCurrencies) != len(routing.SquareCountries)-1 {
+		t.Fatalf("default Square market rules: %+v", p)
 	}
-	// An eligible dollar checkout is the split; an ineligible one is Stripe's.
-	if d := p.Decide(routing.Input{Org: "o", Key: "k", Currency: "usd", Capable: []routing.Capability{{Processor: processor.Square, OK: false}}}); d.Processor != processor.Stripe || d.Rule != "merchant" {
+	if len(p.CurrencyRules)+len(p.BrandRules)+len(p.IssuerCountryRules)+len(p.Fallback)+len(p.LocalMethods) != 0 || len(p.Off()) != 0 {
+		t.Fatalf("the default carries extra rules: %+v", p)
+	}
+	// All eight Square markets route to Square; non-Square countries route to Stripe.
+	for _, c := range routing.SquareCountries {
+		if d := p.Decide(routing.Input{Org: "o", Key: "k", Country: c, Currency: "usd", Capable: []routing.Capability{{Processor: processor.Square, OK: true}}}); d.Processor != processor.Square || d.Rule != "country" {
+			t.Fatalf("%s: %+v", c, d)
+		}
+	}
+	if d := p.Decide(routing.Input{Org: "o", Key: "k", Country: "DE", Currency: "usd", Capable: []routing.Capability{{Processor: processor.Square, OK: true}}}); d.Processor != processor.Stripe {
+		t.Fatalf("DE: %+v", d)
+	}
+	// An ineligible Square checkout falls through to Stripe.
+	if d := p.Decide(routing.Input{Org: "o", Key: "k", Country: "US", Currency: "usd", Capable: []routing.Capability{{Processor: processor.Square, OK: false}}}); d.Processor != processor.Stripe || d.Rule != "merchant" {
 		t.Fatalf("%+v", d)
 	}
 	// Every method is on, and switching one off is visible to the Payment Element.
@@ -770,17 +783,17 @@ func TestTheDefaultPolicyChargesExactlyTheConvertedAmountRoundedUpToTheIncrement
 	if q, f = quoteFor(ctx, reg, p, 800, "IN", "", "", false); f != nil || q.Amount != 75400 || q.Increment != 100 || q.Decimals != 2 {
 		t.Fatalf("IN: %+v %v", q, f)
 	}
-	// Yen round up to ten: $20 is 3008 yen, charged 3010.
-	if q, f = quoteFor(ctx, reg, p, 2000, "JP", "", "", false); f != nil || q.Amount != 3010 || q.Increment != 10 || q.Decimals != 0 {
+	// Yen round up to ten when quoted in JPY: $20 is 3008 yen, charged 3010.
+	if q, f = quoteFor(ctx, reg, p, 2000, "JP", "jpy", "", false); f != nil || q.Amount != 3010 || q.Increment != 10 || q.Decimals != 0 {
 		t.Fatalf("JP: %+v %v", q, f)
 	}
 	// The increment is the admin's to set, and rounding can be turned off.
 	p.RoundingIncrements = []routing.RoundingIncrement{{Currency: "jpy", Increment: 100}}
-	if q, _ = quoteFor(ctx, reg, p, 2000, "JP", "", "", false); q.Amount != 3100 {
+	if q, _ = quoteFor(ctx, reg, p, 2000, "JP", "jpy", "", false); q.Amount != 3100 {
 		t.Fatalf("a 100 yen increment: %+v", q)
 	}
 	p.RoundingIncrements, p.NoRounding = nil, true
-	if q, _ = quoteFor(ctx, reg, p, 2000, "JP", "", "", false); q.Amount != 3008 {
+	if q, _ = quoteFor(ctx, reg, p, 2000, "JP", "jpy", "", false); q.Amount != 3008 {
 		t.Fatalf("rounding off: %+v", q)
 	}
 	for _, bad := range []routing.RoundingIncrement{{Currency: "kwd", Increment: 0.005}, {Currency: "inr", Increment: 0}, {Currency: "isk", Increment: 0.5}} {
@@ -891,6 +904,7 @@ func TestAQuoteCountsInTheCurrencysOwnMinorUnitAndKeepsTheCreditExact(t *testing
 	stubRates(t, map[string]float64{"jpy": 150, "krw": 1400, "inr": 83.5, "huf": 360, "aed": 3.6725})
 	reg := processorsForOrg(&organization.Organization{})
 	p := routing.Default()
+	p.LocalCurrencies = nil
 	for _, c := range []struct {
 		country, cur string
 		amount       int64

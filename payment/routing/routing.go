@@ -214,12 +214,58 @@ func (p Policy) CryptoProcessors(asset string, able func(processor.ProcessorType
 	return out
 }
 
-// DefaultProcessors is the platform split: Square and Stripe half and half, with PayPal
-// and crypto on as the other ways to pay.
+// SquareCountries are the eight markets where Square operates and takes checkouts
+// by default instead of Stripe: US, CA, AU, GB, JP, FR, IE and ES.
+var SquareCountries = []string{"US", "CA", "AU", "GB", "JP", "FR", "IE", "ES"}
+
+// IsSquareCountry says code is one of Square's eight markets.
+func IsSquareCountry(code string) bool {
+	return in(SquareCountries, strings.ToUpper(strings.TrimSpace(code)))
+}
+
+// DefaultCountryRules sends buyers in all eight Square markets to Square so Stripe
+// is not used there by default; the rest of the globe routes to Stripe by weight.
+func DefaultCountryRules() []CountryRule {
+	out := make([]CountryRule, len(SquareCountries))
+	for i, c := range SquareCountries {
+		out[i] = CountryRule{Country: c, Processor: string(processor.Square)}
+	}
+	return out
+}
+
+// DefaultLocalCurrencies keeps non-US Square markets in USD by default so a US USD
+// Square merchant location can process checkouts in CA, AU, GB, JP, FR, IE and ES
+// without falling through to Stripe for local-currency presentment. When a local-currency
+// Square location is configured for a market, an admin can override its currency.
+func DefaultLocalCurrencies() []LocalCurrencyRule {
+	out := make([]LocalCurrencyRule, 0, len(SquareCountries)-1)
+	for _, c := range SquareCountries {
+		if c == "US" {
+			continue
+		}
+		out = append(out, LocalCurrencyRule{Country: c, Currency: "usd"})
+	}
+	return out
+}
+
+// CountryProcessor is the processor a buyer-country rule names for country, or "" if none.
+func (p Policy) CountryProcessor(country string) processor.ProcessorType {
+	c := strings.ToUpper(strings.TrimSpace(country))
+	for _, r := range p.CountryRules {
+		if strings.EqualFold(r.Country, c) {
+			return processor.ProcessorType(r.Processor)
+		}
+	}
+	return ""
+}
+
+// DefaultProcessors routes Square's eight markets (US, CA, AU, GB, JP, FR, IE, ES)
+// via DefaultCountryRules and sends the rest of the globe to Stripe (weight 100),
+// with PayPal and crypto on as the other ways to pay.
 func DefaultProcessors() []ProcessorRule {
 	return []ProcessorRule{
-		{string(processor.Square), true, 50},
-		{string(processor.Stripe), true, 50},
+		{string(processor.Square), true, 0},
+		{string(processor.Stripe), true, 100},
 		{string(processor.PayPal), true, 0},
 		{CryptoRail, true, 0},
 		// Crypto custody and trading: they never take a buyer's card charge (weight 0),
@@ -454,10 +500,26 @@ func (p Policy) Off() []string {
 	return out
 }
 
-// Default is the platform policy: half and half across Square's eight countries.
+// Default is the platform policy: Square across its eight markets (US, CA, AU, GB, JP,
+// FR, IE, ES) and Stripe for the rest of the globe.
 func Default() Policy {
-	return Policy{Processors: DefaultProcessors(), Accounts: []Account{}, CryptoRails: DefaultCryptoRails(), LocalOn: true, Sticky: true, FXSource: FXProcessor, FXFee: FXPass, RoundingIncrements: []RoundingIncrement{}, LocalCurrencies: []LocalCurrencyRule{},
-		CurrencyRules: []CurrencyRule{}, CountryRules: []CountryRule{}, BrandRules: []BrandRule{}, IssuerCountryRules: []IssuerRule{}, Fallback: []string{}, LocalMethods: []MethodRule{}}
+	return Policy{
+		Processors:         DefaultProcessors(),
+		Accounts:           []Account{},
+		CryptoRails:        DefaultCryptoRails(),
+		LocalOn:            true,
+		Sticky:             true,
+		FXSource:           FXProcessor,
+		FXFee:              FXPass,
+		RoundingIncrements: []RoundingIncrement{},
+		LocalCurrencies:    DefaultLocalCurrencies(),
+		CurrencyRules:      []CurrencyRule{},
+		CountryRules:       DefaultCountryRules(),
+		BrandRules:         []BrandRule{},
+		IssuerCountryRules: []IssuerRule{},
+		Fallback:           []string{},
+		LocalMethods:       []MethodRule{},
+	}
 }
 
 // Normal is p with its weight inside 0-100.

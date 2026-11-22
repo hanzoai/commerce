@@ -74,12 +74,22 @@ func routingISO(t *testing.T) string {
 }
 
 func TestCountriesLandOnTheirOwnMoney(t *testing.T) {
-	want := map[string]string{"IN": "inr", "KR": "krw", "CN": "cny", "JP": "jpy", "BR": "brl", "MX": "mxn", "GB": "gbp",
+	// Square's eight markets default to USD under the default policy so a US USD
+	// Square merchant location can serve them without falling through to Stripe.
+	// The built-in DefaultLocalCurrency table still holds every country's native currency.
+	native := map[string]string{"IN": "inr", "KR": "krw", "CN": "cny", "JP": "jpy", "BR": "brl", "MX": "mxn", "GB": "gbp",
 		"AU": "aud", "CA": "cad", "AE": "aed", "ZA": "zar", "ID": "idr", "VN": "vnd", "TR": "try", "DE": "eur", "FR": "eur",
-		"ES": "eur", "PL": "pln", "US": "usd", "RU": "usd", "IR": "usd", "KW": "usd", "PA": "pab"}
-	for c, cur := range want {
-		if got := routing.Default().LocalCurrency(c); got != cur {
-			t.Errorf("%s = %s, want %s", c, got, cur)
+		"ES": "eur", "IE": "eur", "PL": "pln", "US": "usd", "RU": "usd", "IR": "usd", "KW": "usd", "PA": "pab"}
+	for c, cur := range native {
+		if got := routing.DefaultLocalCurrency(c); got != cur {
+			t.Errorf("DefaultLocalCurrency(%s) = %s, want %s", c, got, cur)
+		}
+		wantPolicy := cur
+		if routing.IsSquareCountry(c) {
+			wantPolicy = "usd"
+		}
+		if got := routing.Default().LocalCurrency(c); got != wantPolicy {
+			t.Errorf("Default().LocalCurrency(%s) = %s, want %s", c, got, wantPolicy)
 		}
 	}
 }

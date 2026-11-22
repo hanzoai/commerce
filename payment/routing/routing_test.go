@@ -45,8 +45,36 @@ func TestTheSameBuyerAlwaysLandsOnTheSameProcessor(t *testing.T) {
 	}
 }
 
+func TestDefaultRoutesEightSquareMarketsToSquareAndRestOfGlobeToStripe(t *testing.T) {
+	p := Default()
+	if why := p.Valid(); why != "" {
+		t.Fatalf("default policy invalid: %s", why)
+	}
+	for _, c := range []string{"US", "CA", "AU", "GB", "JP", "FR", "IE", "ES"} {
+		for i := 0; i < 50; i++ {
+			d := p.Decide(Input{Org: "hanzo", Key: fmt.Sprintf("u%d", i), Country: c, Currency: "usd", Capable: squareCan(true)})
+			if d.Processor != processor.Square || d.Rule != "country" {
+				t.Fatalf("%s buyer u%d went to %s (%s), want square (country)", c, i, d.Processor, d.Rule)
+			}
+		}
+		if cur := p.LocalCurrency(c); cur != "usd" {
+			t.Fatalf("%s default local currency = %q, want usd", c, cur)
+		}
+	}
+	for _, c := range []string{"DE", "BR", "IN", "KR", "MX", "NL", "SG", "ZA"} {
+		for i := 0; i < 50; i++ {
+			d := p.Decide(Input{Org: "hanzo", Key: fmt.Sprintf("u%d", i), Country: c, Currency: "usd", Capable: squareCan(true)})
+			if d.Processor != processor.Stripe {
+				t.Fatalf("%s buyer u%d went to %s (%s), want stripe", c, i, d.Processor, d.Rule)
+			}
+		}
+	}
+}
+
 func TestTheSplitIsAboutFiftyFiftyOverTenThousandKeys(t *testing.T) {
 	p := Default()
+	p.CountryRules = nil
+	split(&p, 50, 50)
 	sq := 0
 	for i := 0; i < 10000; i++ {
 		if p.Decide(Input{Org: "hanzo", Key: fmt.Sprintf("u%d", i), Country: "GB", Capable: squareCan(true)}).Processor == processor.Square {
@@ -174,16 +202,18 @@ func TestAnAssignmentIsAPreferenceNotARoute(t *testing.T) {
 	if d.Processor != processor.Square {
 		t.Fatalf("the assignment did not apply again at the next eligible checkout: %+v", d)
 	}
-	// A Stripe-assigned customer stays on Stripe whatever the weight now is.
+	// A Stripe-assigned customer stays on Stripe whatever the weight now is (when no country rule overrides).
+	p.CountryRules = nil
 	split(&p, 100, 0)
 	if d := p.Decide(Input{Org: "hanzo", Key: "k", Country: "US", Assigned: processor.Stripe, Capable: squareCan(true)}); d.Processor != processor.Stripe {
 		t.Fatalf("a Stripe-assigned customer was re-randomized: %+v", d)
 	}
 }
 
-// three is the default policy with three card processors at 50/30/20.
+// three is the default policy with three card processors at 50/30/20 and no country overrides.
 func three() Policy {
 	p := Default()
+	p.CountryRules = nil
 	p.Processors = []ProcessorRule{
 		{string(processor.Square), true, 50}, {string(processor.Stripe), true, 30}, {string(processor.Adyen), true, 20},
 		{string(processor.PayPal), true, 0}, {CryptoRail, true, 0},

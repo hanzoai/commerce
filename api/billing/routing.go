@@ -267,7 +267,7 @@ func nativeQuote(usdCents int64) *routing.Quote {
 
 // takesCurrency says the processor via can charge in cur on this account now.
 func takesCurrency(ctx context.Context, reg *processor.Registry, via processor.ProcessorType, cur string) bool {
-	table, _ := eligibility(ctx, reg)
+	table, _, _ := eligibility(ctx, reg)
 	for _, e := range table {
 		if e.Currency == cur {
 			for _, x := range e.Processors {
@@ -361,10 +361,12 @@ type CurrencyEligibility struct {
 	Processors []string `json:"processors"`
 }
 
-func eligibility(ctx context.Context, reg *processor.Registry) ([]CurrencyEligibility, bool) {
+func eligibility(ctx context.Context, reg *processor.Registry) ([]CurrencyEligibility, bool, bool) {
 	by := map[string][]string{}
+	squareUp := false
 	squareAny := false
 	if sq, err := reg.Registered(processor.Square); err == nil && sq.IsAvailable(ctx) {
+		squareUp = true
 		for _, c := range sq.SupportedCurrencies() {
 			by[string(c)] = append(by[string(c)], "square")
 			squareAny = true
@@ -380,7 +382,7 @@ func eligibility(ctx context.Context, reg *processor.Registry) ([]CurrencyEligib
 		out = append(out, CurrencyEligibility{c, ps})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Currency < out[j].Currency })
-	return out, squareAny
+	return out, squareUp, squareAny
 }
 
 // ValidateRouting refuses a policy that routes to a processor that cannot take the
@@ -395,7 +397,11 @@ func ValidateRouting(ctx context.Context, scope string, p routing.Policy) string
 	if why := validateAccounts(ctx, p); why != "" {
 		return why
 	}
-	table, squareAny := eligibility(ctx, registryFor(ctx, scope))
+	table, squareUp, squareAny := eligibility(ctx, registryFor(ctx, scope))
+	// Only refuse Square-targeting rules when Square is live and explicitly lacks any
+	// card-taking location. When Square is unregistered or temporarily down, allow saving
+	// the policy (Decide already skips unavailable processors cleanly).
+	squareLacksCards := squareUp && !squareAny && p.On(processor.Square)
 	takes := func(cur, proc string) bool {
 		for _, e := range table {
 			if e.Currency == cur {
@@ -436,22 +442,22 @@ func ValidateRouting(ctx context.Context, scope string, p routing.Policy) string
 		}
 	}
 	for _, r := range p.BrandRules {
-		if r.Processor == "square" && !squareAny {
+		if r.Processor == "square" && squareLacksCards {
 			return "brandRules: square has no merchant location that takes cards, so " + r.Brand + " cannot go there"
 		}
 	}
 	for _, r := range p.CountryRules {
-		if r.Processor == "square" && !squareAny {
+		if r.Processor == "square" && squareLacksCards {
 			return "countryRules: square has no merchant location that takes cards, so buyers in " + r.Country + " cannot go there"
 		}
 	}
 	for _, r := range p.IssuerCountryRules {
-		if r.Processor == "square" && !squareAny {
+		if r.Processor == "square" && squareLacksCards {
 			return "issuerCountryRules: square has no merchant location that takes cards, so cards issued in " + r.Country + " cannot go there"
 		}
 	}
 	for _, f := range p.Fallback {
-		if f == "square" && !squareAny {
+		if f == "square" && squareLacksCards {
 			return "fallback: square has no merchant location that takes cards"
 		}
 	}
@@ -1011,7 +1017,7 @@ func ReadRoutingView(ctx context.Context, org *organization.Organization, scope 
 		}
 		v.Processor = append(v.Processor, ProcessorState{r.Processor, ok})
 	}
-	v.Eligibility, _ = eligibility(ctx, registryFor(ctx, scope))
+	v.Eligibility, _, _ = eligibility(ctx, registryFor(ctx, scope))
 	v.Brands, v.Methods, v.MethodNotes = routing.Brands, routing.MethodNames, routing.MethodNotes
 	v.Problems = append(chargeProblems(ctx, pol), settlementProblems(ctx, pol)...)
 	if v.Problems == nil {
@@ -1207,7 +1213,16 @@ func RestoreRoutingHandler(c *zip.Ctx) error {
 // and the policy has it on, and "wire" where the org holds receiving details.
 func bankAlternatives(ctx context.Context, org *organization.Organization, reg *processor.Registry, pol routing.Policy, country, cur string) []string {
 	var out []string
-	if pol.On(processor.Stripe) {
+	// Do not surface Stripe bank rails in countries routed to Square. In the US,
+	// Square takes ACH directly via Web Payments SDK (`payments.ach()`).
+	squareOwnsCountry := pol.On(processor.Square) && pol.CountryProcessor(country) == processor.Square
+	if squareOwnsCountry {
+		if strings.EqualFold(strings.TrimSpace(country), "US") && pol.MethodOn("us_bank_account") && routing.MethodViable("us_bank_account", cur) {
+			if sq, err := reg.Registered(processor.Square); err == nil && sq.IsAvailable(ctx) {
+				out = append(out, "ach")
+			}
+		}
+	} else if pol.On(processor.Stripe) {
 		if p, err := reg.Registered(processor.Stripe); err == nil && p.IsAvailable(ctx) {
 			if c, ok := p.(processor.Capable); ok {
 				have := c.Methods(ctx)
