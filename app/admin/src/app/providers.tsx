@@ -1,12 +1,8 @@
 'use client'
 
 /**
- * Root client providers — Hanzo GUI theme + IAM session + the `@hanzo/ui/product`
- * host seam.
- *
- * The product layer is presentational and never imports a router or an auth
- * module, so the two effects its honest-state cards can offer (re-auth on 401,
- * top-up on 402) are injected here, once.
+ * Root client providers — Hanzo GUI theme + IAM session + multi-org context +
+ * the `@hanzo/ui/product` host seam.
  */
 import { useEffect, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
@@ -15,8 +11,8 @@ import { IamProvider } from '@hanzo/iam/react'
 import { HostProvider } from '@hanzo/ui/product'
 
 import config from '../../gui.config'
-import { BASE_PATH } from '@/lib/basepath'
 import { iamConfig } from '@/lib/iam'
+import { ActiveOrgProvider } from '@/lib/org'
 
 export function Providers({ children }: { children: ReactNode }) {
   const router = useRouter()
@@ -29,18 +25,16 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <GuiProvider config={config} defaultTheme="dark">
       <IamProvider config={iamConfig()}>
-        <HostProvider
-          actions={{
-            // A route of this export — the router applies basePath.
-            signIn: () => router.push('/login'),
-            // NOT a route of this export: `<base>/billing` is the hanzoai/billing
-            // bundle the Go binary mounts alongside us, so this is a real
-            // navigation and has to spell the mount point.
-            addCredits: () => window.location.assign(`${BASE_PATH}/billing`),
-          }}
-        >
-          {children}
-        </HostProvider>
+        <ActiveOrgProvider>
+          <HostProvider
+            actions={{
+              signIn: () => router.push('/login'),
+              addCredits: () => window.location.assign('https://hanzo.ai/pay'),
+            }}
+          >
+            {children}
+          </HostProvider>
+        </ActiveOrgProvider>
       </IamProvider>
     </GuiProvider>
   )

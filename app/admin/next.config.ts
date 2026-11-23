@@ -55,6 +55,8 @@ const config: NextConfig = {
     config.resolve.alias = {
       ...config.resolve.alias,
       'react-native$': 'react-native-web',
+      'react-native-svg$': '@hanzogui/react-native-svg',
+      'react-hook-form': false,
       ...Object.fromEntries(SINGLETONS.map((p) => [p, path.join(config.context, 'node_modules', p)])),
     }
     config.resolve.extensions = ['.web.tsx', '.web.ts', '.web.jsx', '.web.js', ...config.resolve.extensions]

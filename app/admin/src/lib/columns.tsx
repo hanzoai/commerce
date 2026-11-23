@@ -35,8 +35,12 @@ const Dash = () => (
 const money = (r: Row, k: string): ReactNode => {
   const v = r[k]
   if (typeof v !== 'number') return <Dash />
-  const currency = str(r, 'currency') || str(r, 'currencyCode') || 'USD'
-  return <Muted>{new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(v / 100)}</Muted>
+  const currency = (str(r, 'currency') || str(r, 'currencyCode') || 'USD').toUpperCase()
+  try {
+    return <Muted>{new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(v / 100)}</Muted>
+  } catch {
+    return <Muted>{`${(v / 100).toFixed(2)} ${currency}`}</Muted>
+  }
 }
 
 export function toColumn(c: ColumnSpec): Column<Row> {

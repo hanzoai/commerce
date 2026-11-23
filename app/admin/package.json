@@ -4,8 +4,8 @@
   "private": true,
   "license": "MIT OR Apache-2.0",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
     "start": "next start",
     "typecheck": "../node_modules/tsgo/bin/tsc --noEmit --incremental false"
   },
