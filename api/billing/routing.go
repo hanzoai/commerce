@@ -970,10 +970,38 @@ type RoutingRecent struct {
 	Reason    string `json:"reason"`
 }
 
-// ProcessorState says whether a processor can take a payment here now.
+// ProcessorState says what role a processor fills, whether it can take a payment now,
+// and which currencies its live integration currently supports.
 type ProcessorState struct {
-	Processor string `json:"processor"`
-	Available bool   `json:"available"`
+	Processor  string   `json:"processor"`
+	Available  bool     `json:"available"`
+	Kind       string   `json:"kind,omitempty"`
+	Currencies []string `json:"currencies,omitempty"`
+}
+
+func processorCurrencies(p interface{ SupportedCurrencies() []currency.Type }) []string {
+	if p == nil {
+		return nil
+	}
+	raw := p.SupportedCurrencies()
+	if len(raw) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(raw))
+	out := make([]string, 0, len(raw))
+	for _, c := range raw {
+		code := strings.ToLower(strings.TrimSpace(string(c)))
+		if code == "" {
+			continue
+		}
+		if _, dup := seen[code]; dup {
+			continue
+		}
+		seen[code] = struct{}{}
+		out = append(out, code)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // ReadRoutingView assembles the admin's page for scope (an org, or "" for the platform).
@@ -1000,26 +1028,38 @@ func ReadRoutingView(ctx context.Context, org *organization.Organization, scope 
 		v.Counts = append(v.Counts, RoutingCount{r.Processor, counts[r.Processor]})
 		t := processor.ProcessorType(r.Processor)
 		var ok bool
+		var kind string
+		var curs []string
 		switch t {
 		case routing.CryptoRail:
+			kind = "alternative"
 			ok = cryptoServes(ctx)
 		case processor.PayPal:
 			// Report whether credentials and processor health are ready; the On/Off switch
 			// separately reflects whether routing currently sends new checkouts here.
-			p, perr := reg.Registered(t)
-			ok = perr == nil && p.IsAvailable(ctx)
+			kind = "alternative"
+			if p, perr := reg.Registered(t); perr == nil {
+				ok = p.IsAvailable(ctx)
+				curs = processorCurrencies(p)
+			}
 		case processor.Kraken, processor.MPC:
 			// Not card processors: available as the deposit rail reads them, configured with
 			// credentials that resolved.
-			p, perr := processor.Global().Registered(t)
-			ok = perr == nil && p.IsAvailable(ctx)
+			kind = "custody"
+			if p, perr := processor.Global().Registered(t); perr == nil {
+				ok = p.IsAvailable(ctx)
+				curs = processorCurrencies(p)
+			}
 		default:
 			// Report whether the card processor is registered and healthy (credentials &
 			// location active), even if currently switched off in the routing policy.
-			p, perr := reg.Registered(t)
-			ok = perr == nil && p.IsAvailable(ctx)
+			kind = "card"
+			if p, perr := reg.Registered(t); perr == nil {
+				ok = p.IsAvailable(ctx)
+				curs = processorCurrencies(p)
+			}
 		}
-		v.Processor = append(v.Processor, ProcessorState{r.Processor, ok})
+		v.Processor = append(v.Processor, ProcessorState{Processor: r.Processor, Available: ok, Kind: kind, Currencies: curs})
 	}
 	v.Eligibility, _, _ = eligibility(ctx, registryFor(ctx, scope))
 	v.Brands, v.Methods, v.MethodNotes = routing.Brands, routing.MethodNames, routing.MethodNotes
