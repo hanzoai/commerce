@@ -166,18 +166,29 @@ func TestThePublicCatalogServesTheReloadTerms(t *testing.T) {
 	if strings.Contains(string(raw), `"reloadsPerDay"`) {
 		t.Error("the public catalog serves the row's raw reloadsPerDay")
 	}
-	if n := strings.Count(string(raw), `"reload":`); n != 1 {
-		t.Errorf("%d plans carry reload terms, want only ultra", n)
+	// Every other paid plan states no reload of its own and serves the default,
+	// at the package's daily bound; a plan that charges nothing serves none.
+	def := Recharge{ThresholdCents: DefaultReload.ThresholdCents, AmountCents: DefaultReload.AmountCents, PerDay: ReloadsPerDay}
+	for _, p := range plans {
+		switch {
+		case p.Slug == "ultra":
+		case p.Price <= 0:
+			if p.Reload != nil {
+				t.Errorf("%s charges nothing and serves the reload %+v", p.Slug, *p.Reload)
+			}
+		case p.Reload == nil || *p.Reload != def:
+			t.Errorf("%s serves the reload %+v, want the default %+v", p.Slug, p.Reload, def)
+		}
 	}
 }
 
-// Buying a paid plan whose row states a reload switches it on unless the buyer
-// turns it off at checkout (declineReload), which switches nothing on and says so.
-func TestBuyingAPaidPlanWithDeclineReload(t *testing.T) {
-	want := plan.Reload{ThresholdCents: 1000, AmountCents: 5000}
+// Buying a paid plan whose row states no reload switches the default on — $50
+// whenever the balance falls below $10, at the package's daily bound — unless the
+// buyer turns it off at checkout, which switches nothing on and says so.
+func TestBuyingAPaidPlanSwitchesTheDefaultReloadOn(t *testing.T) {
 	for _, decline := range []bool{false, true} {
 		ctx := ae.NewContext()
-		reloadPlan(t, ctx, "steady", 2000, nil, &want)
+		reloadPlan(t, ctx, "steady", 2000, nil, nil)
 		name := map[bool]string{false: "reload-default", true: "reload-declined"}[decline]
 		org := moneyOrg(name)
 		withFakeSquare(t, squareMock("cust_"+name, "ccof_"+name, "sqpay_"+name))
@@ -193,11 +204,11 @@ func TestBuyingAPaidPlanWithDeclineReload(t *testing.T) {
 				t.Errorf("a declined reload: receipt %q, rule %+v; want declined and no rule", reloadState(out), cfg)
 			}
 		case reloadState(out) != armed || cfg == nil || !cfg.Enabled ||
-			cfg.ThresholdCents != want.ThresholdCents || cfg.AmountCents != want.AmountCents || cfg.Plan != "steady":
-			t.Errorf("the reload: receipt %q, rule %+v; want armed at $50 below $10 for steady", reloadState(out), cfg)
+			cfg.ThresholdCents != DefaultReload.ThresholdCents || cfg.AmountCents != DefaultReload.AmountCents || cfg.Plan != "steady":
+			t.Errorf("the default reload: receipt %q, rule %+v; want armed at $50 below $10 for steady", reloadState(out), cfg)
 		default:
 			if v, err := ReadAutoRecharge(ctx, org, ""); err != nil || v.PerDay != ReloadsPerDay {
-				t.Errorf("the reload reads %+v (%v), want %d reloads a day", v, err, ReloadsPerDay)
+				t.Errorf("the default reload reads %+v (%v), want %d reloads a day", v, err, ReloadsPerDay)
 			}
 		}
 		ctx.Close()
@@ -239,14 +250,14 @@ func TestBuyingAPlanWithAReloadSwitchesItOn(t *testing.T) {
 	}
 }
 
-// A plan that states no reload leaves the org with no rule, and so does a plan
-// whose row switches the reload off (an amount of 0) or that charges nothing.
+// A plan whose row switches the reload off (an amount of 0) leaves the org with no
+// rule, and so does a plan that charges nothing.
 func TestBuyingAPlanWithoutAReloadSwitchesNothingOn(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
-	reloadPlan(t, ctx, "plain", 2000, nil, nil)
-	if planReload(0, nil) != nil || planReload(2000, nil) != nil || planReload(2000, &plan.Limits{Reload: &plan.Reload{}}) != nil {
-		t.Fatal("a plan without a positive reload switches a reload on")
+	reloadPlan(t, ctx, "plain", 2000, nil, &plan.Reload{})
+	if planReload(0, nil) != nil {
+		t.Fatal("a plan that charges nothing switches a reload on")
 	}
 	org := moneyOrg("reload-plain")
 	withFakeSquare(t, squareMock("cust_plain", "ccof_plain", "sqpay_plain"))

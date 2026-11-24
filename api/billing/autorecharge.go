@@ -227,16 +227,31 @@ func rowOf(ctx context.Context, slug string) *plan.Plan {
 	return row
 }
 
+// DefaultReload is the automatic reload every paid plan switches on when its row
+// states none of its own: the buyer's card is charged $50 whenever the prepaid
+// balance falls below $10 (owner, 2026-11-12; the figures cloud's
+// scripts/ladder-writes.sh ultra step states). It is the one place the default
+// lives: no catalog rung and no row restates it.
+var DefaultReload = plan.Reload{ThresholdCents: 1000, AmountCents: 5000}
+
 // planReload is the reload buying a plan priced at price, whose row's limits are
-// l, switches on: the row's own when it states one (AmountCents > 0), and none
-// when the row states none, switches it off (AmountCents == 0), or when the plan
-// charges nothing. A checkout shows it (PlanView.Reload), a paid sale arms it
-// (armForPlan), and the buyer may decline it (SubscribeIn.DeclineReload).
+// l, switches on: the row's own when it states one, none when it states an amount
+// of 0 (the row switches the default off) or when the plan charges nothing, and
+// DefaultReload for every other paid plan. A checkout shows it (PlanView.Reload),
+// a paid sale arms it (armForPlan), and the buyer may decline it
+// (SubscribeIn.DeclineReload).
 func planReload(price currency.Cents, l *plan.Limits) *plan.Reload {
-	if price <= 0 || l == nil || l.Reload == nil || l.Reload.AmountCents == 0 {
+	if l != nil && l.Reload != nil {
+		if l.Reload.AmountCents == 0 {
+			return nil
+		}
+		r := *l.Reload
+		return &r
+	}
+	if price <= 0 {
 		return nil
 	}
-	r := *l.Reload
+	r := DefaultReload
 	return &r
 }
 

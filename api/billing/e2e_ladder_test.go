@@ -48,8 +48,8 @@ func TestE2E_TheLadderIsSoldReloadedAndMigrated(t *testing.T) {
 		if !ok || p.Price != r.cents {
 			t.Fatalf("the catalog lists %s at %d (listed %v), want %d: %v", r.slug, p.Price, ok, r.cents, order)
 		}
-		if p.Reload != nil {
-			t.Fatalf("%s shows the reload %+v, want none by default", r.slug, p.Reload)
+		if p.Reload == nil || p.Reload.ThresholdCents != 1000 || p.Reload.AmountCents != 5000 {
+			t.Fatalf("%s shows the reload %+v, want $50 below $10", r.slug, p.Reload)
 		}
 		if i > 0 && p.Price <= listed[ladder[i-1].slug].Price {
 			t.Fatalf("the ladder does not climb at %s", r.slug)
@@ -61,8 +61,8 @@ func TestE2E_TheLadderIsSoldReloadedAndMigrated(t *testing.T) {
 		}
 	}
 
-	// Every rung is bought by card at its list price and opens an active, paid
-	// period without switching on an unexpected reload.
+	// Every rung is bought by card at its list price, opens an active, paid
+	// period, and switches the default reload on.
 	for _, r := range ladder {
 		org := payerOrg(t, ctx, "e2e-"+r.slug)
 		m := squareMock("cust_"+r.slug, "ccof_"+r.slug, "sqpay_"+r.slug)
@@ -75,8 +75,8 @@ func TestE2E_TheLadderIsSoldReloadedAndMigrated(t *testing.T) {
 		if m.chargeCalls != 1 || m.lastChargeAmount != r.cents || out["amountCents"] != float64(r.cents) {
 			t.Fatalf("%s charged %d time(s), last %d, receipt %v; want once at %d", r.slug, m.chargeCalls, m.lastChargeAmount, out["amountCents"], r.cents)
 		}
-		if reloadState(out) != "" {
-			t.Fatalf("%s receipt reload %v, want none", r.slug, out["reload"])
+		if reloadState(out) != armed {
+			t.Fatalf("%s receipt reload %v, want armed", r.slug, out["reload"])
 		}
 		db := datastore.New(org.Namespaced(ctx))
 		sub := parentSub(t, db, org.Name, r.slug)
@@ -87,9 +87,44 @@ func TestE2E_TheLadderIsSoldReloadedAndMigrated(t *testing.T) {
 		if len(invs) != 1 || invs[0].Status != billinginvoice.Paid || invs[0].AmountPaid != r.cents {
 			t.Fatalf("%s first invoice %+v, want one paid at %d", r.slug, invs, r.cents)
 		}
-		if c := storedRule(t, ctx, org); c != nil && c.Enabled {
-			t.Fatalf("%s left the rule %+v, want none switched on", r.slug, c)
+		if c := storedRule(t, ctx, org); c == nil || !c.Enabled || c.Plan != r.slug || c.ThresholdCents != 1000 || c.AmountCents != 5000 {
+			t.Fatalf("%s left the rule %+v, want it on at $50 below $10", r.slug, c)
 		}
+	}
+
+	// The reload: every buyer's balance is $0, below the $10 threshold, so one
+	// sweep charges each buyer's card $50 and credits it; a second sweep finds every
+	// balance funded and charges nothing; spent below $10 again, the next sweep
+	// reloads that buyer alone. One card rail answers every org from here on.
+	goOrg := payerOrg(t, ctx, "e2e-reload")
+	m := squareMock("cust_reload", "ccof_reload", "sqpay_reload")
+	withFakeSquare(t, m)
+	if r := invokeSubscribeCard(goOrg, ctx, `{"sourceId":"cnon:ok","planId":"go"}`, nil); r.StatusCode != http.StatusCreated {
+		t.Fatalf("go for the reload: %d %s", r.StatusCode, bodyOf(r))
+	}
+	buyers := []string{goOrg.Name}
+	for _, r := range ladder {
+		buyers = append(buyers, "e2e-"+r.slug)
+	}
+	charges := m.chargeCalls
+	if run := rechargeRun(t, ctx); run.Charged != len(buyers) || m.chargeCalls != charges+len(buyers) || m.lastChargeAmount != 5000 {
+		t.Fatalf("the first sweep charged %d card(s) (%d calls, last %d), want each of the %d buyers once at $50",
+			run.Charged, m.chargeCalls-charges, m.lastChargeAmount, len(buyers))
+	}
+	for _, name := range buyers {
+		if b := walletOf(t, ctx, moneyOrg(name), name); b != 5000 {
+			t.Fatalf("%s holds %d after the sweep, want the $50 reload credited", name, b)
+		}
+	}
+	charges = m.chargeCalls
+	if run := rechargeRun(t, ctx); run.Charged != 0 || m.chargeCalls != charges {
+		t.Fatalf("funded balances were reloaded: %d charges", m.chargeCalls-charges)
+	}
+	spend(datastore.New(goOrg.Namespaced(ctx)), goOrg.Name, 4200, "usage")
+	m.chargeRef = "sqpay_reload_2" // each charge Square answers names its own payment
+	if run := rechargeRun(t, ctx); run.Charged != 1 || m.chargeCalls != charges+1 || walletOf(t, ctx, goOrg, goOrg.Name) != 5800 {
+		t.Fatalf("spent to $8, the sweep charged %d card(s) and left %d; want one second $50 reload, $58",
+			m.chargeCalls-charges, walletOf(t, ctx, goOrg, goOrg.Name))
 	}
 
 	// A holder of a retired rung — Pro at $20, archived — is moved by the next boot

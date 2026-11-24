@@ -195,9 +195,9 @@ type PlanView struct {
 	staticPlan
 	Limits *Capacity `json:"limits,omitempty"`
 	// Reload is the automatic reload buying the plan switches on (planReload): the
-	// row's own when it states one, absent for a plan that states none or charges
-	// nothing. These are the terms a checkout shows the buyer before they pay, and
-	// the buyer may decline them.
+	// row's own, or DefaultReload for a paid plan whose row states none, absent for
+	// a plan that charges nothing or whose row switches it off. These are the terms
+	// a checkout shows the buyer before they pay, and the buyer may decline them.
 	Reload *Recharge `json:"reload,omitempty"`
 	// The coupon quote, present only when the catalog was read with a coupon
 	// code (QuoteCoupon). A paid plan the coupon covers carries its code, its

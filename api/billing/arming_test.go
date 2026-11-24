@@ -142,14 +142,14 @@ func TestCancellingAPlanStopsItsReload(t *testing.T) {
 	})
 }
 
-// Moving to a plan whose row states no reload — buying it, or moving the
+// Moving to a plan whose row switches the reload off — buying it, or moving the
 // subscription onto it — switches off the reload the plan left switched on.
 func TestMovingOffAPlanStopsItsReload(t *testing.T) {
 	t.Run("a sale of the next plan", func(t *testing.T) {
 		ctx := ae.NewContext()
 		defer ctx.Close()
 		reloadPlan(t, ctx, "ultra", 19500, nil, ultraReload)
-		reloadPlan(t, ctx, "plain", 2000, nil, nil)
+		reloadPlan(t, ctx, "plain", 2000, nil, &plan.Reload{})
 		org := moneyOrg("move-sale")
 		withFakeSquare(t, squareMock("cust_ms", "ccof_ms", "sqpay_ms"))
 		subscribeAs(t, ctx, org, `{"sourceId":"cnon:ok","planId":"ultra"}`, nil)
@@ -165,7 +165,7 @@ func TestMovingOffAPlanStopsItsReload(t *testing.T) {
 		ctx := ae.NewContext()
 		defer ctx.Close()
 		reloadPlan(t, ctx, "ultra", 19500, nil, ultraReload)
-		reloadPlan(t, ctx, "plain", 2000, nil, nil)
+		reloadPlan(t, ctx, "plain", 2000, nil, &plan.Reload{})
 		org := moneyOrg("acme")
 		withFakeSquare(t, squareMock("cust_mm", "ccof_mm", "sqpay_mm"))
 		subscribeAs(t, ctx, org, `{"sourceId":"cnon:ok","planId":"ultra"}`, nil)
@@ -186,7 +186,7 @@ func TestAMoveOntoAReloadPlanKeepsTheRuleForIt(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	reloadPlan(t, ctx, "ultra", 19500, nil, ultraReload)
-	reloadPlan(t, ctx, "steady", 2000, nil, ultraReload)
+	reloadPlan(t, ctx, "steady", 2000, nil, nil)
 	org := moneyOrg("acme")
 	withFakeSquare(t, squareMock("cust_mk", "ccof_mk", "sqpay_mk"))
 	subscribeAs(t, ctx, org, `{"sourceId":"cnon:ok","planId":"ultra"}`, nil)
