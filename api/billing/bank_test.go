@@ -277,11 +277,14 @@ func TestEachBankMethodIsListedOnlyInItsOwnCountriesAndCurrency(t *testing.T) {
 	if got := bankAlternatives(ctx, nil, off, pol, "US", "usd"); len(got) != 0 {
 		t.Errorf("a US buyer on an account with no bank capability is offered %v", got)
 	}
-	// Under the default Square-first policy, Stripe bank methods are never surfaced in
-	// any of Square's eight markets (US, CA, AU, GB, JP, FR, IE, ES), while Square ACH
-	// is surfaced in the US when Square is available.
+	// Under the default Square-first policy, Stripe ACH is surfaced in the US whenever
+	// Stripe's us_bank_account capability is active (even when Square handles cards),
+	// while non-US Square markets paying in USD do not surface non-USD Stripe bank rails.
 	defPol := routing.Default()
-	for _, c := range routing.SquareCountries {
+	if got := bankAlternatives(ctx, nil, reg, defPol, "US", defPol.CheckoutCurrency("US", "")); strings.Join(got, ",") != "ach" {
+		t.Errorf("US with Stripe us_bank_account capability listed %v; want [ach]", got)
+	}
+	for _, c := range []string{"CA", "AU", "GB", "JP", "FR", "IE", "ES"} {
 		if got := bankAlternatives(ctx, nil, reg, defPol, c, defPol.CheckoutCurrency(c, "")); len(got) != 0 {
 			t.Errorf("default Square policy surfaced Stripe bank methods %v in %s", got, c)
 		}
@@ -290,7 +293,7 @@ func TestEachBankMethodIsListedOnlyInItsOwnCountriesAndCurrency(t *testing.T) {
 	regWithSquare.Register(newRail(processor.Square, true))
 	regWithSquare.Register(&capableStripe{stripeDouble: stripeDouble{}, have: all})
 	if got := bankAlternatives(ctx, nil, regWithSquare, defPol, "US", "usd"); strings.Join(got, ",") != "ach" {
-		t.Errorf("US with Square available listed %v; want [ach]", got)
+		t.Errorf("US with Square+Stripe available listed %v; want [ach]", got)
 	}
 	for _, c := range []string{"CA", "AU", "GB", "JP", "FR", "IE", "ES"} {
 		if got := bankAlternatives(ctx, nil, regWithSquare, defPol, c, "usd"); len(got) != 0 {

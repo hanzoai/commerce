@@ -807,6 +807,34 @@ type setDefaultRequest struct {
 	PaymentMethodId string `json:"paymentMethodId"`
 }
 
+// SetDefaultPaymentMethodByID sets the default payment method by method ID.
+//
+//	POST /v1/billing/methods/:id/default
+func SetDefaultPaymentMethodByID(c *zip.Ctx) error {
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		return http.Fail(c, 401, "sign in to choose a default payment method", nil)
+	}
+	if !mayChangeWallet(c) {
+		return http.Fail(c, 403, askAnAdmin(c, "change its default card"), nil)
+	}
+	subject := orgBillingKey(c)
+	if subject == "" {
+		return http.Fail(c, 401, "sign in to choose a default payment method", nil)
+	}
+	ch, err := SetDefaultMethod(c.Context(), org, c.Param("id"), subject)
+	switch {
+	case IsMethodNotFound(err):
+		return http.Fail(c, 404, "payment method not found", nil)
+	case IsMethodUnchargeable(err):
+		return http.Fail(c, 422, err.Error(), nil)
+	case err != nil:
+		log.Error("Failed to set default payment method: %v", err, c)
+		return http.Fail(c, 500, "failed to set default", err)
+	}
+	return c.JSON(200, ch.Method)
+}
+
 // SetDefaultPaymentMethod sets the default payment method for a customer.
 //
 //	POST /v1/billing/customers/:id/default-payment-method

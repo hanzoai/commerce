@@ -603,7 +603,7 @@ func CreateCryptoDeposit(ctx context.Context, org *organization.Organization, pa
 					cancelDeposit(ctx, org, dep.ID)
 					return CryptoDeposit{}, rerr
 				}
-				_ = pendingintent.Bind(dep.ID, pendingintent.Terms{Delayed: true})
+				_ = pendingintent.Bind(dep.ID, pendingintent.Terms{Delayed: true, Network: net})
 				return CryptoDeposit{
 					ID:             dep.ID,
 					Status:         string(cryptopaymentintent.Pending),
@@ -822,7 +822,7 @@ func CreateCryptoDepositForPlan(ctx context.Context, org *organization.Organizat
 					cancelDeposit(ctx, org, dep.ID)
 					return CryptoDeposit{}, rerr
 				}
-				_ = pendingintent.Bind(dep.ID, pendingintent.Terms{Delayed: true})
+				_ = pendingintent.Bind(dep.ID, pendingintent.Terms{Delayed: true, Network: net})
 				return CryptoDeposit{
 					ID:             dep.ID,
 					Status:         string(cryptopaymentintent.Pending),
@@ -1098,10 +1098,14 @@ func GetCryptoDeposit(ctx context.Context, org *organization.Organization, payer
 				planID, subID = s.Plan, s.SubscriptionID
 			}
 		}
+		chain := strings.TrimSpace(p.Network)
+		if chain == "" {
+			chain = "base"
+		}
 		return CryptoDeposit{
 			ID:             p.Id(),
 			Status:         st,
-			Chain:          "base",
+			Chain:          chain,
 			Token:          "usdc",
 			AmountCents:    p.Cents,
 			PlanID:         planID,

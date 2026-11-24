@@ -49,6 +49,8 @@ type Session struct {
 	Line     string `json:"line"`
 	UsdCents int64  `json:"usdCents"`
 	Plan     string `json:"plan,omitempty"`
+	Level    int    `json:"level,omitempty"`
+	Quantity int    `json:"quantity,omitempty"`
 	Interval string `json:"interval,omitempty"`
 	Coupon   string `json:"coupon,omitempty"`
 	// TotalCents is what completing charges, in USD cents, fixed from the catalog when the

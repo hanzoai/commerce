@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hanzoai/commerce/api/promo"
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -224,7 +225,11 @@ func finishPlanDeposit(ctx context.Context, org *organization.Organization, p *p
 				} else {
 					saved := paymentmethod.New(db)
 					saved.CustomerId, saved.UserId = s.Subject, s.Subject
-					saved.Type = "card"
+					if card.ExpMonth == 0 && card.ExpYear == 0 && card.Brand != "cashapp" {
+						saved.Type = "bank_account"
+					} else {
+						saved.Type = "card"
+					}
 					saved.ProviderRef, saved.ProviderType = pmRef, string(processor.Stripe)
 					saved.Metadata = map[string]interface{}{"customerId": tx.CustomerID, "cardId": pmRef, "verified": true}
 					stampCard(saved, card)
@@ -252,19 +257,29 @@ func finishPlanDeposit(ctx context.Context, org *organization.Organization, p *p
 	if s.Interval == string(types.Yearly) || s.Interval == "year" {
 		interval = types.Yearly
 	}
-	if pl, err = planAt(pl, 0, interval); err != nil {
+	if pl, err = planAt(pl, s.Level, interval); err != nil {
 		return fail(err)
 	}
 	lines, err := linesAt(db, pl, nil, pl.Interval, currency.USD)
 	if err != nil {
 		return fail(err)
 	}
+	qty := s.Quantity
+	if qty < 1 {
+		qty = 1
+	}
 	sub, err := createSubscription(db, pl, &createSubscriptionRequest{
-		UserId: s.Subject, PlanId: s.Plan, DefaultPaymentMethod: pm.Id(), Quantity: 1,
+		UserId: s.Subject, PlanId: s.Plan, DefaultPaymentMethod: pm.Id(), Quantity: qty,
 		Metadata: map[string]interface{}{"source": source, "payment": p.Id()}, Test: org.TestMode(), priced: lines,
 	})
 	if err != nil {
 		return fail(err)
+	}
+	if code := promo.CouponCode(s.Coupon); code != "" {
+		if offer, reason := promo.FindCoupon(ctx, code, time.Now()); reason == "" {
+			engine.Grant(sub, offer.Coupon(), offer.Plans, sub.PeriodStart)
+			_ = sub.Update()
+		}
 	}
 	if source == "subscribe/ach" {
 		sub.ProviderType = string(processor.Stripe)

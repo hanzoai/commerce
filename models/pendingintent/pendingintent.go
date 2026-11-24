@@ -91,6 +91,8 @@ type Intent struct {
 	// Delayed says the method settles after the buyer has left (a voucher, a bank
 	// transfer, Pix): the attempt waits for it past the rate lock. A card's does not.
 	Delayed bool `json:"delayed,omitempty"`
+	// Network records the blockchain network ("base", "solana", "tempo") for Stripe stablecoin deposits.
+	Network string `json:"network,omitempty"`
 	// Done says the intent was settled — credited, finished by its sale, or
 	// refunded — and is never settled again.
 	Done bool `json:"done,omitempty"`
@@ -164,6 +166,7 @@ type Terms struct {
 	FXFee             string
 	LockExpiresAt     int64
 	Delayed           bool
+	Network           string
 }
 
 // Bind records the terms the intent's quote was made on. They are written once, when the
@@ -177,7 +180,7 @@ func Bind(id string, t Terms) error {
 		return nil
 	}
 	i.Rate, i.RateSource, i.QuoteID, i.BaseRate, i.FeeRate, i.Premium = t.Rate, t.RateSource, t.QuoteID, t.BaseRate, t.FeeRate, t.Premium
-	i.ExchangeRate, i.ReferenceRate, i.ReferenceProvider, i.FXFee, i.LockExpiresAt, i.Delayed = t.ExchangeRate, t.ReferenceRate, t.ReferenceProvider, t.FXFee, t.LockExpiresAt, t.Delayed
+	i.ExchangeRate, i.ReferenceRate, i.ReferenceProvider, i.FXFee, i.LockExpiresAt, i.Delayed, i.Network = t.ExchangeRate, t.ReferenceRate, t.ReferenceProvider, t.FXFee, t.LockExpiresAt, t.Delayed, t.Network
 	return i.Put()
 }
 

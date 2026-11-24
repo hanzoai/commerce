@@ -554,6 +554,9 @@ func seedFromEnvironment(ctx context.Context, pol *routing.Policy, environ []str
 	switch raw, set := env["COMMERCE_CHARGE_PROCESSORS"]; {
 	case set:
 		allowed = processor.ChargeNames(raw)
+	case (env["STRIPE_SECRET_KEY"] != "" || env["STRIPE_TEST_SECRET_KEY"] != "") &&
+		(env["SQUARE_ACCESS_TOKEN"] != "" || env["SQUARE_SANDBOX_ACCESS_TOKEN"] != ""):
+		allowed = processor.ChargeNames("square,stripe")
 	case env["STRIPE_SECRET_KEY"] != "" || env["STRIPE_TEST_SECRET_KEY"] != "":
 		allowed = processor.ChargeNames("stripe")
 	default:

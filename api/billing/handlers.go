@@ -437,6 +437,7 @@ func Route(r *zip.Group, args ...zip.Handler) {
 	user.Raw(http.MethodGet, "/methods", ListPaymentMethods)
 	user.Raw(http.MethodGet, "/methods/:id", GetPaymentMethod)
 	user.Raw(http.MethodPatch, "/methods/:id", UpdatePaymentMethod)
+	user.Raw(http.MethodPost, "/methods/:id/default", SetDefaultPaymentMethodByID)
 	user.Raw(http.MethodDelete, "/methods/:id", DetachPaymentMethod)
 	user.Raw(http.MethodPost, "/customers/:id/default-payment-method", SetDefaultPaymentMethod)
 

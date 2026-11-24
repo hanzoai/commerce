@@ -293,7 +293,8 @@ func OpenTopupIntent(ctx context.Context, org *organization.Organization, in Top
 		sess := new(checkoutsession.Session)
 		sess.SetId(newSessionID())
 		sess.Org, sess.Subject, sess.Test, sess.Status = org.Name, strings.ToLower(in.Subject), org.TestMode(), checkoutsession.Pending
-		sess.Line, sess.Plan, sess.Interval, sess.TotalCents, sess.Intent = checkoutsession.Plan, planSlug, string(planInterval), in.AmountCents, out.ID
+		sess.Line, sess.Plan, sess.Level, sess.Quantity, sess.Interval, sess.Coupon, sess.TotalCents, sess.Intent =
+			checkoutsession.Plan, planSlug, in.Level, in.Quantity, string(planInterval), strings.TrimSpace(in.Coupon), in.AmountCents, out.ID
 		if serr := checkoutsession.Put(sess); serr != nil {
 			if c, ok := sp.(interface{ CancelIntent(context.Context, string) error }); ok {
 				_ = c.CancelIntent(ctx, out.ID)

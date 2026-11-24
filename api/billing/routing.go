@@ -1257,16 +1257,11 @@ func RestoreRoutingHandler(c *zip.Ctx) error {
 // and the policy has it on, and "wire" where the org holds receiving details.
 func bankAlternatives(ctx context.Context, org *organization.Organization, reg *processor.Registry, pol routing.Policy, country, cur string) []string {
 	var out []string
-	// Do not surface Stripe bank rails in countries routed to Square. In the US,
-	// Square takes ACH directly via Web Payments SDK (`payments.ach()`).
-	squareOwnsCountry := pol.On(processor.Square) && pol.CountryProcessor(country) == processor.Square
-	if squareOwnsCountry {
-		if strings.EqualFold(strings.TrimSpace(country), "US") && pol.MethodOn("us_bank_account") && routing.MethodViable("us_bank_account", cur) {
-			if sq, err := reg.Registered(processor.Square); err == nil && sq.IsAvailable(ctx) {
-				out = append(out, "ach")
-			}
-		}
-	} else if pol.On(processor.Stripe) {
+	hasACH := false
+	// Bank debits (US ACH via Financial Connections, SEPA, Bacs, ACSS, BECS, iDEAL, Pix, UPI)
+	// run through Stripe wherever Stripe is enabled and the capability is active on the account,
+	// including in Square card markets (CA, GB, AU, FR, IE, ES, US).
+	if pol.On(processor.Stripe) {
 		if p, err := reg.Registered(processor.Stripe); err == nil && p.IsAvailable(ctx) {
 			if c, ok := p.(processor.Capable); ok {
 				have := c.Methods(ctx)
@@ -1276,10 +1271,19 @@ func bankAlternatives(ctx context.Context, org *organization.Organization, reg *
 					}
 					if m == "us_bank_account" {
 						m = "ach"
+						hasACH = true
 					}
 					out = append(out, m)
 				}
 			}
+		}
+	}
+	if !hasACH && strings.EqualFold(strings.TrimSpace(country), "US") &&
+		pol.On(processor.Square) && pol.CountryProcessor(country) == processor.Square &&
+		pol.MethodOn("us_bank_account") && routing.MethodViable("us_bank_account", cur) &&
+		!pol.On(processor.Stripe) {
+		if sq, err := reg.Registered(processor.Square); err == nil && sq.IsAvailable(ctx) {
+			out = append(out, "ach")
 		}
 	}
 	if org != nil && wireConfigured(ctx, org) {
