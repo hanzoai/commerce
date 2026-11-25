@@ -197,6 +197,12 @@ type Plan struct {
 	Bundles    []string `json:"bundles,omitempty" datastore:"-"`
 	IncludedIn []string `json:"includedIn,omitempty" datastore:"-"`
 	Limits     *Limits  `json:"limits,omitempty" datastore:"-"`
+	// Multiplier is the plan's usage multiple relative to the 1× Pro baseline
+	// (1 for Pro, 5 for Max, 10 for Ultra, 25 for Ultimate; nil for Free and
+	// Unlimited). UsagePolicy distinguishes Free ("daily") from Unlimited
+	// ("unlimited") so nil multiplier is never ambiguous.
+	Multiplier  *int   `json:"multiplier,omitempty" datastore:"-"`
+	UsagePolicy string `json:"usagePolicy,omitempty" datastore:"-"`
 
 	// Licensing is what this tier LICENSES — see the type. It rides the envelope
 	// with the fields above, but it is NOT display: it decides whether a paying
@@ -469,12 +475,14 @@ const EnvelopeKey = "envelope"
 // nothing outside this file should construct one: the typed fields on Plan are
 // the interface, and this is only how they are written down.
 type envelope struct {
-	Features   []string         `json:"features,omitempty"`
-	Bundles    []string         `json:"bundles,omitempty"`
-	IncludedIn []string         `json:"includedIn,omitempty"`
-	Limits     *Limits          `json:"limits,omitempty"`
-	Licensing  *Licensing       `json:"licensing,omitempty"`
-	Prices     []currency.Cents `json:"prices,omitempty"`
+	Features    []string         `json:"features,omitempty"`
+	Bundles     []string         `json:"bundles,omitempty"`
+	IncludedIn  []string         `json:"includedIn,omitempty"`
+	Limits      *Limits          `json:"limits,omitempty"`
+	Licensing   *Licensing       `json:"licensing,omitempty"`
+	Prices      []currency.Cents `json:"prices,omitempty"`
+	Multiplier  *int             `json:"multiplier,omitempty"`
+	UsagePolicy string           `json:"usagePolicy,omitempty"`
 	// Entitlements is written even when empty: null is "never recorded", {} is
 	// "grants nothing", and Fill tells them apart.
 	Entitlements map[string]any `json:"entitlements"`
@@ -501,6 +509,7 @@ func (p *Plan) Load(ps []datastore.Property) (err error) {
 		if err := json.DecodeBytes([]byte(s), &env); err == nil {
 			p.Features, p.Bundles, p.IncludedIn, p.Limits = env.Features, env.Bundles, env.IncludedIn, env.Limits
 			p.Licensing, p.Prices = env.Licensing, env.Prices
+			p.Multiplier, p.UsagePolicy = env.Multiplier, env.UsagePolicy
 			p.Entitlements, p.Replaces = env.Entitlements, env.Replaces
 		}
 	}
@@ -516,8 +525,10 @@ func (p *Plan) Save() (ps []datastore.Property, err error) {
 	// `json:"-"`. Metadata_ is the older datastore-property path, kept because
 	// Load still honors it, but a value written only there does not survive.
 	env := envelope{Features: p.Features, Bundles: p.Bundles, IncludedIn: p.IncludedIn, Limits: p.Limits, Licensing: p.Licensing, Prices: p.Prices,
+		Multiplier: p.Multiplier, UsagePolicy: p.UsagePolicy,
 		Entitlements: p.Entitlements, Replaces: p.Replaces}
 	if len(env.Features) > 0 || len(env.Bundles) > 0 || len(env.IncludedIn) > 0 || env.Limits != nil || env.Licensing != nil || len(env.Prices) > 0 ||
+		env.Multiplier != nil || env.UsagePolicy != "" ||
 		env.Entitlements != nil || len(env.Replaces) > 0 {
 		if p.Metadata == nil {
 			p.Metadata = Map{}
@@ -707,6 +718,8 @@ func planEqual(a, b *Plan) bool {
 		slices.Equal(a.IncludedIn, b.IncludedIn) &&
 		slices.Equal(a.Prices, b.Prices) &&
 		slices.Equal(a.Replaces, b.Replaces) &&
+		eqInt(a.Multiplier, b.Multiplier) &&
+		a.UsagePolicy == b.UsagePolicy &&
 		reflect.DeepEqual(a.Entitlements, b.Entitlements) &&
 		limitsEqual(a.Limits, b.Limits) &&
 		licensingEqual(a.Licensing, b.Licensing)
@@ -799,6 +812,8 @@ func copyInto(dst, src *Plan) {
 	dst.IncludedIn = src.IncludedIn
 	dst.Limits = src.Limits
 	dst.Licensing = src.Licensing
+	dst.Multiplier = src.Multiplier
+	dst.UsagePolicy = src.UsagePolicy
 	dst.Entitlements = src.Entitlements
 	dst.Replaces = src.Replaces
 }

@@ -74,7 +74,9 @@ type canonicalPlan struct {
 	// holder may be moved onto (migrateRetired); the figures are cloud's usage
 	// policy, not commerce's. A rung with no caps states no multiple.
 	Usage *struct {
-		Multiple *int `json:"multiple"`
+		Multiple  *int   `json:"multiple"`
+		Policy    string `json:"policy,omitempty"`
+		Unlimited bool   `json:"unlimited,omitempty"`
 	} `json:"usage,omitempty"`
 	Bundles    []string    `json:"bundles,omitempty"`    // slugs of plans whose entitlement this plan also grants
 	IncludedIn []string    `json:"includedIn,omitempty"` // slugs of plans that include this plan as a bundle
@@ -173,8 +175,12 @@ type staticPlan struct {
 	// Licensing is what the tier licenses — carried so the seed can persist it onto
 	// the row, where it survives the tier's retirement.
 	Licensing *plan.Licensing `json:"licensing,omitempty"`
-	// Multiple is the rung's usage multiple of Go as the catalog states it, 0 for a
-	// plan that is no rung of the ladder or has no caps. It is never served.
+	// Multiplier is the plan's usage multiple relative to Pro (1, 5, 10, 25; nil for Free and Unlimited).
+	// UsagePolicy distinguishes Free ("daily") from Unlimited ("unlimited") and metered tiers ("metered").
+	Multiplier  *int   `json:"multiplier,omitempty"`
+	UsagePolicy string `json:"usagePolicy,omitempty"`
+	// Multiple is the rung's usage multiple as the catalog states it, 0 for a
+	// plan that is no rung of the ladder or has no caps. Internal to migrateRetired.
 	Multiple int `json:"-"`
 	// Entitlements and Replaces are the vendored catalog's entitlement block and
 	// renamed slugs, carried so the one import writes them onto the row. Neither
@@ -428,8 +434,22 @@ func parsePlans(data []byte) ([]staticPlan, error) {
 		}
 		sp.Limits = cp.Limits
 		sp.Licensing = licensingOf(&canonical[i])
-		if cp.Usage != nil && cp.Usage.Multiple != nil {
-			sp.Multiple = *cp.Usage.Multiple
+		if cp.Usage != nil {
+			if cp.Usage.Multiple != nil {
+				m := *cp.Usage.Multiple
+				sp.Multiple = m
+				sp.Multiplier = &m
+			}
+			switch {
+			case cp.Usage.Policy != "":
+				sp.UsagePolicy = cp.Usage.Policy
+			case cp.Usage.Unlimited:
+				sp.UsagePolicy = "unlimited"
+			case cp.Usage.Multiple != nil && *cp.Usage.Multiple > 0:
+				sp.UsagePolicy = "metered"
+			}
+		} else if cp.Category == categoryPersonal && sp.Price == 0 && !cp.ContactSales {
+			sp.UsagePolicy = "daily"
 		}
 		sp.Replaces = cp.Replaces
 

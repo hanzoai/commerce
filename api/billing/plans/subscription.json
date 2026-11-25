@@ -3,16 +3,15 @@
     "id": "free",
     "name": "Free",
     "category": "personal",
-    "description": "Chat and build with Hanzo, free.",
+    "description": "Discover intelligence. Explore, learn, create and experience Hanzo.",
     "priceMonthly": 0,
     "priceAnnual": 0,
     "features": [
-      "Chat on the web with Enso Auto",
-      "50 free requests every day",
-      "Search the web from chat",
-      "Write, edit and create content",
-      "Make code, pages and charts beside the chat",
-      "Choose how hard it thinks"
+      "Daily allowance across free models and Kai",
+      "Chat on web, desktop, and mobile",
+      "Search the web, write, and create code",
+      "Memory across conversations",
+      "Choose reasoning depth per message"
     ],
     "limits": {
       "agents": 1,
@@ -30,6 +29,10 @@
       "ai.models": [
         "enso-auto"
       ]
+    },
+    "usage": {
+      "multiple": null,
+      "policy": "daily"
     }
   },
   {
@@ -104,22 +107,22 @@
     ],
     "name": "Pro",
     "category": "personal",
-    "description": "For serious builders running agents, shipping code, and needing substantially higher limits.",
+    "description": "Intelligence for everything you do. Frontier models, intelligent development, autonomous agents and collaboration.",
     "priceMonthly": 15,
     "priceAnnual": null,
-    "popular": true,
+    "popular": false,
     "features": [
-      "Everything in Go, plus:",
-      "3x more usage than Go",
-      "3x higher limits every 5 hours and every day",
-      "Hanzo Bot: 1 bot of your own",
-      "Early access to new models and features",
-      "Train custom models on your data",
-      "Hanzo Engine to run models on your own hardware",
-      "Dedicated support"
+      "Everything in Free, plus:",
+      "1× usage across the full model catalog (Enso, Zen, Kai)",
+      "Hanzo Dev — autonomous coding IDE, Hanzo CLI, and MCP",
+      "Hanzo Bot — unlimited bot creation",
+      "Hanzo Team — collaborative intelligence and shared workspaces",
+      "Design, Science, Cyber, Autopilot, and Hanzo Engine",
+      "Custom training access and early access to new releases"
     ],
     "usage": {
-      "multiple": 3,
+      "multiple": 1,
+      "policy": "metered",
       "session": 150,
       "day": 450,
       "premiumCents": 1500,
@@ -140,7 +143,9 @@
         "hanzo"
       ],
       "licensing.product_ids": [
+        "bot",
         "crm",
+        "dev",
         "engine",
         "team"
       ],
@@ -156,12 +161,12 @@
       "commerce.idle_resale_percent": 20,
       "team.guests": 3,
       "ai.agents": 10,
-      "ai.bots": 1
+      "ai.bots": -1
     },
     "limits": {
       "teamGuests": 3,
       "agents": 10,
-      "bots": 1
+      "bots": -1
     },
     "price_ref": {
       "currency": "USD",
@@ -264,21 +269,20 @@
     ],
     "name": "Max",
     "category": "personal",
-    "description": "For serious builders running agents, shipping code, and needing substantially higher limits.",
+    "description": "Your unfair advantage. For professionals who build, create and work with intelligence every day.",
     "priceMonthly": 95,
     "priceAnnual": null,
     "features": [
-      "Everything in Dev, plus:",
-      "15x more usage than Go",
-      "15x higher limits every 5 hours and every day",
-      "Hanzo Bot: 5 bots of your own",
-      "Early access to new models and features",
-      "Train custom models on your data",
-      "Hanzo Engine to run models on your own hardware",
+      "Everything in Pro, plus:",
+      "5× Pro usage across every model",
+      "Full Hanzo ecosystem — Dev, Bot, Team, Design, Science, Cyber, Engine, Training, Autopilot",
+      "Unlimited bot creation and shared Hanzo Team workspace",
+      "Custom training access and early access to new releases",
       "Dedicated support"
     ],
     "usage": {
-      "multiple": 15,
+      "multiple": 5,
+      "policy": "metered",
       "session": 750,
       "day": 2250,
       "premiumCents": 7500,
@@ -299,7 +303,9 @@
         "hanzo"
       ],
       "licensing.product_ids": [
+        "bot",
         "crm",
+        "dev",
         "engine",
         "team"
       ],
@@ -315,12 +321,12 @@
       "commerce.idle_resale_percent": 20,
       "team.guests": 3,
       "ai.agents": 10,
-      "ai.bots": 5
+      "ai.bots": -1
     },
     "limits": {
       "teamGuests": 3,
       "agents": 10,
-      "bots": 5
+      "bots": -1
     },
     "price_ref": {
       "currency": "USD",
@@ -336,30 +342,29 @@
           "included": -1
         }
       ]
-    }
+    },
+    "popular": true
   },
   {
     "id": "ultra",
     "name": "Ultra",
     "category": "personal",
-    "description": "For the biggest workloads. Usage beyond what is included is paid from your prepaid balance at list price",
+    "description": "Go beyond what's possible alone. Exceptional performance for complex engineering, advanced research and autonomous workflows.",
     "priceMonthly": 195,
     "priceAnnual": null,
     "features": [
-      "Everything in Max, plus:",
-      "25x more usage than Go",
-      "25x higher limits every 5 hours and every day",
-      "Usage beyond what is included is paid from your prepaid balance at list price",
-      "Hanzo Bot: 10 bots of your own",
-      "Early access to new models and features",
-      "Train custom models on your data",
-      "Hanzo Engine to run models on your own hardware",
+      "Everything in Pro, plus:",
+      "10× Pro usage across every model",
+      "Full Hanzo ecosystem — Dev, Bot, Team, Design, Science, Cyber, Engine, Training, Autopilot",
+      "Unlimited bot creation and shared Hanzo Team workspace",
+      "Custom training access and early access to new releases",
       "Dedicated support"
     ],
     "usage": {
-      "multiple": 25,
-      "session": 1250,
-      "day": 3750,
+      "multiple": 10,
+      "policy": "metered",
+      "session": 1500,
+      "day": 4500,
       "premiumCents": 12500,
       "oursCents": 12500
     },
@@ -378,7 +383,9 @@
         "hanzo"
       ],
       "licensing.product_ids": [
+        "bot",
         "crm",
+        "dev",
         "engine",
         "team"
       ],
@@ -394,12 +401,12 @@
       "commerce.idle_resale_percent": 20,
       "team.guests": 3,
       "ai.agents": 10,
-      "ai.bots": 10
+      "ai.bots": -1
     },
     "limits": {
       "teamGuests": 3,
       "agents": 10,
-      "bots": 10
+      "bots": -1
     },
     "price_ref": {
       "currency": "USD",
@@ -415,30 +422,29 @@
           "included": -1
         }
       ]
-    }
+    },
+    "popular": false
   },
   {
     "id": "ultimate",
     "name": "Ultimate",
     "category": "personal",
-    "description": "Everything in Ultra, with 50x the usage.",
+    "description": "Build what comes next. Extraordinary intelligence capacity for your most ambitious projects.",
     "priceMonthly": 495,
     "priceAnnual": null,
     "features": [
-      "Everything in Ultra, plus:",
-      "50x more usage than Go",
-      "50x higher limits every 5 hours and every day",
-      "Usage beyond what is included is paid from your prepaid balance at list price",
-      "Hanzo Bot: 10 bots of your own",
-      "Early access to new models and features",
-      "Train custom models on your data",
-      "Hanzo Engine to run models on your own hardware",
+      "Everything in Pro, plus:",
+      "25× Pro usage across every model",
+      "Full Hanzo ecosystem — Dev, Bot, Team, Design, Science, Cyber, Engine, Training, Autopilot",
+      "Unlimited bot creation and shared Hanzo Team workspace",
+      "Custom training access and early access to new releases",
       "Dedicated support"
     ],
     "usage": {
-      "multiple": 50,
-      "session": 2500,
-      "day": 7500,
+      "multiple": 25,
+      "policy": "metered",
+      "session": 3750,
+      "day": 11250,
       "premiumCents": 25000,
       "oursCents": 25000
     },
@@ -457,7 +463,9 @@
         "hanzo"
       ],
       "licensing.product_ids": [
+        "bot",
         "crm",
+        "dev",
         "engine",
         "team"
       ],
@@ -473,12 +481,12 @@
       "commerce.idle_resale_percent": 20,
       "team.guests": 3,
       "ai.agents": 10,
-      "ai.bots": 10
+      "ai.bots": -1
     },
     "limits": {
       "teamGuests": 3,
       "agents": 10,
-      "bots": 10
+      "bots": -1
     },
     "price_ref": {
       "currency": "USD",
@@ -494,27 +502,27 @@
           "included": -1
         }
       ]
-    }
+    },
+    "popular": false
   },
   {
     "id": "unlimited",
     "name": "Unlimited",
     "category": "personal",
-    "description": "Everything in Ultra, with no usage caps.",
+    "description": "Ambition without limits. The fullest expression of Hanzo. Command your own AI workforce and build at extraordinary scale.",
     "priceMonthly": 995,
     "priceAnnual": null,
     "features": [
-      "Everything in Ultimate, plus:",
-      "No usage caps on any model",
-      "No limits every 5 hours or every day",
-      "Hanzo Bot: 10 bots of your own",
-      "Early access to new models and features",
-      "Train custom models on your data",
-      "Hanzo Engine to run models on your own hardware",
+      "Everything in Pro, plus:",
+      "Unlimited eligible usage across Enso, Zen, Kai, Dev, Bot, and Team",
+      "Eligible models and interactive/agent workloads included; dedicated compute, bulk API, and custom training compute metered separately",
+      "Full Hanzo ecosystem — Design, Science, Cyber, Engine, Training, Autopilot",
+      "Unlimited bot creation and early access to new releases",
       "Dedicated support"
     ],
     "usage": {
       "multiple": null,
+      "policy": "unlimited",
       "unlimited": true
     },
     "payouts": {
@@ -532,7 +540,9 @@
         "hanzo"
       ],
       "licensing.product_ids": [
+        "bot",
         "crm",
+        "dev",
         "engine",
         "team"
       ],
@@ -548,12 +558,12 @@
       "commerce.idle_resale_percent": 20,
       "team.guests": 3,
       "ai.agents": 10,
-      "ai.bots": 10
+      "ai.bots": -1
     },
     "limits": {
       "teamGuests": 3,
       "agents": 10,
-      "bots": 10
+      "bots": -1
     },
     "price_ref": {
       "currency": "USD",
@@ -569,7 +579,8 @@
           "included": -1
         }
       ]
-    }
+    },
+    "popular": false
   },
   {
     "id": "team",
