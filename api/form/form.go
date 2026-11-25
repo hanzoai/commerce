@@ -43,11 +43,10 @@ func handleForm(c *zip.Ctx) error {
 	// Get namespaced db
 	db = f.Datastore()
 
-	switch f.Type {
-	case form.Submit:
-		return submit(c, db, org, f)
-	default:
-		//case form.Subscribe:
-		return subscribe(c, db, org, f)
+	// Subscribing to a list is cloud's mailing lists (POST /v1/marketing/subscribe);
+	// a form here only takes submissions.
+	if f.Type != form.Submit {
+		return http.Fail(c, 404, fmt.Sprintf("Form '%v' takes no submissions", id), nil)
 	}
+	return submit(c, db, org, f)
 }
