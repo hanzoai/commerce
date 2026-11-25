@@ -121,7 +121,8 @@
     "popular": false,
     "features": [
       "Everything in Free, plus:",
-      "1× usage across the full model catalog — Enso, Zen, and Kai",
+      "Usage across every Hanzo model — Enso, Zen, and Kai",
+      "Third-party models are pay as you go (outside Enso routing)",
       "Hanzo Dev — autonomous coding IDE, Hanzo CLI, and MCP",
       "Hanzo Bot — unlimited bot creation",
       "Hanzo Team — collaborative intelligence and shared workspaces",
@@ -290,7 +291,8 @@
     "priceAnnual": null,
     "features": [
       "Everything in Pro, plus:",
-      "5× Pro usage across every model",
+      "5× Pro usage across every Hanzo model",
+      "Third-party models pay as you go (outside Enso routing)",
       "Expanded agent execution, parallel workflows, and research capacity",
       "Elevated inference priority",
       "Full Hanzo ecosystem — Dev, Bot, Team, Design, Science, Cyber, Engine, Training, Autopilot",
@@ -377,7 +379,8 @@
     "priceAnnual": null,
     "features": [
       "Everything in Pro, plus:",
-      "10× Pro usage across every model",
+      "10× Pro usage across every Hanzo model",
+      "Third-party models pay as you go (outside Enso routing)",
       "High agent execution and parallel workflow capacity",
       "Priority inference and advanced research capacity",
       "Full Hanzo ecosystem — Dev, Bot, Team, Design, Science, Cyber, Engine, Training, Autopilot",
@@ -464,7 +467,8 @@
     "priceAnnual": null,
     "features": [
       "Everything in Pro, plus:",
-      "25× Pro usage across every model",
+      "25× Pro usage across every Hanzo model",
+      "Third-party models pay as you go (outside Enso routing)",
       "Very high agent execution and parallel workflow capacity",
       "High-priority inference and extensive research capacity",
       "Full Hanzo ecosystem — Dev, Bot, Team, Design, Science, Cyber, Engine, Training, Autopilot",
@@ -551,8 +555,8 @@
     "priceAnnual": null,
     "features": [
       "Everything in Pro, plus:",
-      "Unlimited eligible usage across Enso, Zen, Kai, Dev, Bot, and Team",
-      "Eligible models and interactive/agent workloads included; dedicated compute, bulk API, and custom training compute metered separately",
+      "Unlimited eligible usage across every Hanzo model — Enso, Zen, Kai, Dev, Bot, and Team",
+      "Eligible Hanzo models and interactive/agent workloads included; third-party models (outside Enso routing), bulk API, and custom training compute metered separately",
       "Highest agent execution, parallel workflow, inference priority, and research capacity",
       "Full Hanzo ecosystem — Design, Science, Cyber, Engine, Training, Autopilot",
       "Concierge support"
