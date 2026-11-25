@@ -11,8 +11,16 @@
       "Chat on web, desktop, and mobile",
       "Search the web, write, and create code",
       "Memory across conversations",
-      "Choose reasoning depth per message"
+      "Choose reasoning depth per message",
+      "Community support"
     ],
+    "capabilities": {
+      "agentExecution": "—",
+      "parallelExecution": "—",
+      "inferencePriority": "—",
+      "researchCapacity": "—",
+      "support": "Community"
+    },
     "limits": {
       "agents": 1,
       "bots": 0
@@ -113,13 +121,21 @@
     "popular": false,
     "features": [
       "Everything in Free, plus:",
-      "1× usage across the full model catalog (Enso, Zen, Kai)",
+      "1× usage across the full model catalog — Enso, Zen, and Kai",
       "Hanzo Dev — autonomous coding IDE, Hanzo CLI, and MCP",
       "Hanzo Bot — unlimited bot creation",
       "Hanzo Team — collaborative intelligence and shared workspaces",
       "Design, Science, Cyber, Autopilot, and Hanzo Engine",
-      "Custom training access and early access to new releases"
+      "Standard agent execution, parallel workflows, inference priority, and research capacity",
+      "Custom training access, early access to new releases, and standard support"
     ],
+    "capabilities": {
+      "agentExecution": "Standard",
+      "parallelExecution": "Standard",
+      "inferencePriority": "Standard",
+      "researchCapacity": "Standard",
+      "support": "Standard"
+    },
     "usage": {
       "multiple": 1,
       "policy": "metered",
@@ -275,11 +291,18 @@
     "features": [
       "Everything in Pro, plus:",
       "5× Pro usage across every model",
+      "Expanded agent execution, parallel workflows, and research capacity",
+      "Elevated inference priority",
       "Full Hanzo ecosystem — Dev, Bot, Team, Design, Science, Cyber, Engine, Training, Autopilot",
-      "Unlimited bot creation and shared Hanzo Team workspace",
-      "Custom training access and early access to new releases",
-      "Dedicated support"
+      "Priority support"
     ],
+    "capabilities": {
+      "agentExecution": "Expanded",
+      "parallelExecution": "Expanded",
+      "inferencePriority": "Elevated",
+      "researchCapacity": "Expanded",
+      "support": "Priority"
+    },
     "usage": {
       "multiple": 5,
       "policy": "metered",
@@ -355,11 +378,18 @@
     "features": [
       "Everything in Pro, plus:",
       "10× Pro usage across every model",
+      "High agent execution and parallel workflow capacity",
+      "Priority inference and advanced research capacity",
       "Full Hanzo ecosystem — Dev, Bot, Team, Design, Science, Cyber, Engine, Training, Autopilot",
-      "Unlimited bot creation and shared Hanzo Team workspace",
-      "Custom training access and early access to new releases",
-      "Dedicated support"
+      "Priority support"
     ],
+    "capabilities": {
+      "agentExecution": "High",
+      "parallelExecution": "High",
+      "inferencePriority": "Priority",
+      "researchCapacity": "Advanced",
+      "support": "Priority"
+    },
     "usage": {
       "multiple": 10,
       "policy": "metered",
@@ -435,11 +465,18 @@
     "features": [
       "Everything in Pro, plus:",
       "25× Pro usage across every model",
+      "Very high agent execution and parallel workflow capacity",
+      "High-priority inference and extensive research capacity",
       "Full Hanzo ecosystem — Dev, Bot, Team, Design, Science, Cyber, Engine, Training, Autopilot",
-      "Unlimited bot creation and shared Hanzo Team workspace",
-      "Custom training access and early access to new releases",
       "Dedicated support"
     ],
+    "capabilities": {
+      "agentExecution": "Very high",
+      "parallelExecution": "Very high",
+      "inferencePriority": "High priority",
+      "researchCapacity": "Extensive",
+      "support": "Dedicated"
+    },
     "usage": {
       "multiple": 25,
       "policy": "metered",
@@ -516,10 +553,17 @@
       "Everything in Pro, plus:",
       "Unlimited eligible usage across Enso, Zen, Kai, Dev, Bot, and Team",
       "Eligible models and interactive/agent workloads included; dedicated compute, bulk API, and custom training compute metered separately",
+      "Highest agent execution, parallel workflow, inference priority, and research capacity",
       "Full Hanzo ecosystem — Design, Science, Cyber, Engine, Training, Autopilot",
-      "Unlimited bot creation and early access to new releases",
-      "Dedicated support"
+      "Concierge support"
     ],
+    "capabilities": {
+      "agentExecution": "Highest",
+      "parallelExecution": "Highest",
+      "inferencePriority": "Highest",
+      "researchCapacity": "Highest",
+      "support": "Concierge"
+    },
     "usage": {
       "multiple": null,
       "policy": "unlimited",

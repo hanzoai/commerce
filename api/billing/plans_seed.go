@@ -24,7 +24,7 @@ import (
 // the seed writes and resolveSubscriptionPlan charges) fails CI loudly.
 // NOTE: the vendored plans/package.json is gitignored (a broad package.json
 // ignore), so it is NOT the pin — this const + the digest test are.
-const PinnedPlansVersion = "1.11.0"
+const PinnedPlansVersion = "1.12.0"
 
 // The display envelope (features/bundles/includedIn/limits) is the MODEL's, not
 // this package's: plan.Plan carries those fields and packs them itself. This file
@@ -72,6 +72,7 @@ func planFromStatic(sp *staticPlan) *plan.Plan {
 		Licensing:     sp.Licensing,
 		Multiplier:    sp.Multiplier,
 		UsagePolicy:   sp.UsagePolicy,
+		Capabilities:  sp.Capabilities,
 		Entitlements:  sp.Entitlements,
 		Replaces:      sp.Replaces,
 	}
@@ -156,6 +157,7 @@ func staticPlanFromModel(p *plan.Plan) staticPlan {
 		Licensing:     p.Licensing,
 		Multiplier:    p.Multiplier,
 		UsagePolicy:   p.UsagePolicy,
+		Capabilities:  p.Capabilities,
 	}
 }
 

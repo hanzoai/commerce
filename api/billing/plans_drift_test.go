@@ -20,6 +20,10 @@ import (
 // entry whose digests must equal the new bytes, and editing the bytes under the
 // current version breaks the current entry.
 var versionDigests = map[string]struct{ subscription, dns string }{
+	"1.12.0": {
+		subscription: "67536e8f4445a71b1b0329426d0730b6ffcde025ecf9ae567a0ade7e53ac7c04",
+		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
+	},
 	"1.11.0": {
 		subscription: "786ef36c04da6f4b3e58990ff8eb73c26deabebbcb1d79c93b7efc7318ad3053",
 		dns:          "620485fd5fcda4bb860021167f8f9c91a9b0dfe4dcc498d1b91cf8641bfcacbc",
@@ -233,8 +237,8 @@ func TestVendoredPlanPrices(t *testing.T) {
 // would pass while the exported answer was wrong.
 func TestVendoredPlanRoster(t *testing.T) {
 	cases := map[string]struct{ agents, bots int }{
-		"free":         {1, 0},  // one personal agent, no bot
-		"go":           {10, 0}, // archived $8 entry rung
+		"free":         {1, 0},   // one personal agent, no bot
+		"go":           {10, 0},  // archived $8 entry rung
 		"pro-3x":       {10, -1}, // unlimited bot creation on every paid personal tier from Pro upward
 		"dev-5x":       {10, 2},  // archived
 		"max-15x":      {10, -1},
@@ -243,8 +247,8 @@ func TestVendoredPlanRoster(t *testing.T) {
 		"unlimited":    {10, -1},
 		"pro-2x":       {10, -1}, // renamed, and answered by pro-3x for its holders
 		"max-10x":      {10, -1}, // renamed, and answered by max-15x for its holders
-		"dev":          {10, 0}, // archived: the old $20 Pro
-		"max-5x":       {10, 1}, // archived Max rungs keep the bots they were sold with
+		"dev":          {10, 0},  // archived: the old $20 Pro
+		"max-5x":       {10, 1},  // archived Max rungs keep the bots they were sold with
 		"max-20x":      {10, 3},
 		"max-50x":      {10, 5},
 		"max":          {10, 1}, // retired, and answered by max-5x for its holders

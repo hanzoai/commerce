@@ -67,8 +67,9 @@ type canonicalPlan struct {
 	// (retired) are listed nowhere and refused by every purchase entrypoint (see
 	// plan.Listed). A deploy that carries such a row creates it unlisted, so no
 	// checkout charges its list price until the catalog makes it active.
-	Status   string   `json:"status,omitempty"`
-	Features []string `json:"features"`
+	Status       string            `json:"status,omitempty"`
+	Features     []string          `json:"features"`
+	Capabilities map[string]string `json:"capabilities,omitempty"`
 	// Usage is the catalog's display block for a rung of the personal ladder.
 	// Commerce reads only its multiple, which says the plan is a rung a retired
 	// holder may be moved onto (migrateRetired); the figures are cloud's usage
@@ -177,8 +178,9 @@ type staticPlan struct {
 	Licensing *plan.Licensing `json:"licensing,omitempty"`
 	// Multiplier is the plan's usage multiple relative to Pro (1, 5, 10, 25; nil for Free and Unlimited).
 	// UsagePolicy distinguishes Free ("daily") from Unlimited ("unlimited") and metered tiers ("metered").
-	Multiplier  *int   `json:"multiplier,omitempty"`
-	UsagePolicy string `json:"usagePolicy,omitempty"`
+	Multiplier   *int              `json:"multiplier,omitempty"`
+	UsagePolicy  string            `json:"usagePolicy,omitempty"`
+	Capabilities map[string]string `json:"capabilities,omitempty"`
 	// Multiple is the rung's usage multiple as the catalog states it, 0 for a
 	// plan that is no rung of the ladder or has no caps. Internal to migrateRetired.
 	Multiple int `json:"-"`
@@ -406,6 +408,7 @@ func parsePlans(data []byte) ([]staticPlan, error) {
 			Popular:       cp.Popular,
 			Status:        cp.Status,
 			Features:      cp.Features,
+			Capabilities:  cp.Capabilities,
 			Bundles:       cp.Bundles,
 			IncludedIn:    cp.IncludedIn,
 		}
