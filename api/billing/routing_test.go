@@ -1200,6 +1200,28 @@ func TestASavedCardOnlyHoldsTheBuyerWhereItsProcessorCanCharge(t *testing.T) {
 	if _, f := WriteRouting(ctx, org.Name, stripeOnly, "z", "100% stripe"); f != nil {
 		t.Fatal(f.Err)
 	}
+
+	// Choosing ACH while holding a saved Stripe card routes to Stripe (never 422 "local payment methods not offered").
+	// Change the saved card to Stripe.
+	pm.ProviderType = "stripe"
+	if err := pm.Create(); err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range []string{"ach", "us_bank_account"} {
+		d, f := Place(ctx, org, RouteIn{Subject: "holder", Country: "US", Currency: "usd", Method: m})
+		if f != nil || d.Processor != processor.Stripe || d.Reason != "method" {
+			t.Fatalf("a saved Stripe card paying via %s: %+v %v; want Stripe (method)", m, d, f)
+		}
+	}
+	if _, f := OpenTopupIntent(ctx, org, TopupIntentIn{Subject: "holder", Country: "US", AmountCents: 2000, Method: "ach"}); f != nil && f.Status == 422 {
+		t.Fatalf("an ACH top-up with a saved Stripe card hit 422: %v", f.Message)
+	}
+	// Reset to saved Square card for the next test
+	pm.ProviderType = "square"
+	if err := pm.Create(); err != nil {
+		t.Fatal(err)
+	}
+
 	if d, f := Place(ctx, org, RouteIn{Subject: "holder", Country: "US", Currency: "usd"}); f != nil || d.Processor != processor.Stripe || d.Reason == "saved" {
 		t.Fatalf("with Square switched off, a saved Square card holder routed to %+v %v; want Stripe", d, f)
 	}
