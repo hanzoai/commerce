@@ -13,7 +13,6 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/types/country"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/models/types/thankyou"
 	"github.com/hanzoai/commerce/util/fs"
 	"github.com/hanzoai/commerce/util/json"
 )
@@ -70,12 +69,10 @@ func createTemplateSet() *pongo2.TemplateSet {
 		CountriesByISOCode map[string]country.Country
 		Countries          []country.Country
 		CurrencyTypes      []currency.Type
-		ThankYouTypes      []thankyou.Type
 	}{
 		CountriesByISOCode: country.ByISO(),
 		Countries:          country.All(),
 		CurrencyTypes:      currency.Types,
-		ThankYouTypes:      thankyou.Types,
 	}
 	return set
 }

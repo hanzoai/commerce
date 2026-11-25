@@ -161,15 +161,6 @@ var DefaultPermissions = map[string]Permissions{
 		"list": masks(Admin, Store, Published),
 	},
 
-	"subscriber": Permissions{
-		"create": masks(Admin, WriteSubscriber),
-		"delete": masks(Admin, WriteSubscriber),
-		"get":    masks(Admin, ReadSubscriber),
-		"list":   masks(Admin, Subscriber),
-		"patch":  masks(Admin, ReadSubscriber|WriteSubscriber),
-		"update": masks(Admin, ReadSubscriber|WriteSubscriber),
-	},
-
 	"user": Permissions{
 		"create": masks(Admin, WriteUser),
 		"delete": masks(Admin, WriteUser),
