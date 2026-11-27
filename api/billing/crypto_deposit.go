@@ -1092,38 +1092,56 @@ func GetCryptoDeposit(ctx context.Context, org *organization.Organization, payer
 		if chain == "" {
 			chain = "base"
 		}
-		// If the Stripe webhook was delayed or missed, check Stripe live and settle synchronously on poll.
-		if !p.Done {
-			if sp, serr := processorsForOrg(org).Existing(ctx, processor.Stripe); serr == nil {
-				if tx, terr := sp.GetTransaction(ctx, id); terr == nil && tx != nil {
-					switch tx.Status {
-					case "succeeded":
-						if reconcileIntent(ctx, p) == nil {
-							if updated, ok, _ := pendingintent.Get(id); ok && updated != nil {
-								p = updated
-							}
-						}
-					case "canceled":
-						_, _ = pendingintent.Settle(id)
-						return CryptoDeposit{
-							ID:          p.Id(),
-							Status:      string(cryptopaymentintent.Expired),
-							Chain:       chain,
-							Token:       "usdc",
-							AmountCents: p.Cents,
-						}, nil
-					}
+		// Done closes the reconciliation record; it does not prove that money
+		// arrived (cancellation and refund also close it). Read Stripe even for
+		// closed rows, including legacy canceled rows without a terminal reason.
+		st := string(cryptopaymentintent.Pending)
+		var planID, subID string
+		sp, serr := processorsForOrg(org).Existing(ctx, processor.Stripe)
+		if serr != nil {
+			return CryptoDeposit{}, fmt.Errorf("crypto deposit: Stripe unavailable: %w", serr)
+		}
+		tx, terr := sp.GetTransaction(ctx, id)
+		if terr != nil {
+			return CryptoDeposit{}, fmt.Errorf("crypto deposit: Stripe transaction read: %w", terr)
+		}
+		if tx == nil {
+			return CryptoDeposit{}, errors.New("crypto deposit: Stripe returned no transaction")
+		}
+		switch tx.Status {
+		case "canceled":
+			if !p.Done {
+				if _, err := pendingintent.Settle(id); err != nil {
+					return CryptoDeposit{}, err
 				}
 			}
-		}
-		st := string(cryptopaymentintent.Pending)
-		if p.Done {
-			st = string(cryptopaymentintent.Succeeded)
-		}
-		var planID, subID string
-		if p.Purpose == pendingintent.Plan && p.Ref != "" {
-			if s, ok, _ := checkoutsession.Get(p.Ref); ok && s != nil {
-				planID, subID = s.Plan, s.SubscriptionID
+			st = string(cryptopaymentintent.Expired)
+		case "succeeded":
+			if !p.Done {
+				if err := reconcileIntent(ctx, p); err != nil {
+					return CryptoDeposit{}, err
+				}
+				if updated, ok, err := pendingintent.Get(id); err != nil {
+					return CryptoDeposit{}, err
+				} else if ok && updated != nil {
+					p = updated
+				}
+			}
+			// A completed Stripe transaction is not itself proof of ledger
+			// credit or plan activation. Require the corresponding receipt.
+			if p.Purpose == pendingintent.Plan && p.Ref != "" {
+				if s, ok, _ := checkoutsession.Get(p.Ref); ok && s != nil {
+					planID, subID = s.Plan, s.SubscriptionID
+					if p.Done && subID != "" {
+						st = string(cryptopaymentintent.Succeeded)
+					}
+				}
+			} else if p.Purpose == pendingintent.Topup && p.Done && tx.ProcessorRef != "" {
+				if _, credited, err := paymentorg.Get(tx.ProcessorRef); err != nil {
+					return CryptoDeposit{}, err
+				} else if credited {
+					st = string(cryptopaymentintent.Succeeded)
+				}
 			}
 		}
 		return CryptoDeposit{
