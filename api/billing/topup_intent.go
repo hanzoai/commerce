@@ -2,6 +2,7 @@ package billing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -169,59 +170,68 @@ func OpenTopupIntent(ctx context.Context, org *organization.Organization, in Top
 		// after paying (or after it was cancelled or is processing) gets a new one, not
 		// the finished payment their browser cannot confirm. The intents already opened
 		// for this amount in the window number the key.
-		prior, perr := pendingintent.Since(strings.ToLower(in.Subject), pendingintent.Topup, time.Now().Add(-idemWindowSec*time.Second))
-		if perr != nil {
-			return nil, fault(503, "billing is temporarily unavailable; please retry", perr)
-		}
-		paidCur := cur
-		if cur == "usd" {
-			paidCur = ""
-		}
-		n := 0
-		for _, p := range prior {
-			if p.Cents != in.AmountCents || p.PaidCurrency != paidCur || in.Method != "" {
-				// (a checkout for one method is its own intent, never an all-methods one replayed)
-				continue
+		wantACH := strings.EqualFold(in.Method, "us_bank_account")
+		canReplay := planSlug == "" && (in.Method == "" || wantACH)
+		if canReplay {
+			prior, perr := pendingintent.Since(strings.ToLower(in.Subject), pendingintent.Topup, time.Now().Add(-idemWindowSec*time.Second))
+			if perr != nil {
+				return nil, fault(503, "billing is temporarily unavailable; please retry", perr)
 			}
-			n++
-			if p.Done {
-				continue
+			paidCur := cur
+			if cur == "usd" {
+				paidCur = ""
 			}
-			if p.LockExpiresAt > 0 && time.Now().Unix() >= p.LockExpiresAt-30 {
-				// The rate lock has lapsed (or is about to): the old intent is not replayed at
-				// a rate Stripe will refuse. A new one is opened below on a fresh quote, and the
-				// buyer is shown its amount before they authorize.
-				continue
-			}
-			tx, terr := sp.GetTransaction(ctx, p.Id())
-			if terr != nil {
-				continue
-			}
-			switch tx.Status {
-			case "requires_payment_method", "requires_confirmation", "requires_action":
-				secret, _ := tx.Metadata["client_secret"].(string)
-				if secret == "" {
+			n := 0
+			for _, p := range prior {
+				if p.Cents != in.AmountCents || p.PaidCurrency != paidCur {
 					continue
 				}
-				amount, dec, rate := p.Cents, int32(2), 1.0
-				if p.PaidCurrency != "" {
-					// The rate is per major unit: yen paid per dollar, not yen-minor per cent.
-					dec = currency.Type(p.PaidCurrency).Decimals()
-					amount, rate = p.PaidCents, (float64(p.PaidCents)/math.Pow10(int(dec)))/(float64(p.Cents)/100)
-					if p.Rate > 0 {
-						rate = p.Rate // the rate bound when the attempt was opened
-					}
+				n++
+				if p.Done {
+					continue
 				}
-				return &TopupIntentOut{
-					IntentID: p.Id(), ClientSecret: secret, PublishableKey: payment.StripePublicConfig(org).PublishableKey,
-					Currency: cur, Amount: amount, UsdCents: in.AmountCents, Rate: rate,
-					Quote: routing.Quote{Amount: amount, Decimals: int(dec), Currency: cur, UsdCents: in.AmountCents, Rate: rate,
-						Source: p.RateSource, FXFee: p.FXFee, ExchangeRate: p.ExchangeRate, LockExpiresAt: p.LockExpiresAt, QuoteID: p.QuoteID, BaseRate: p.BaseRate, FeeRate: p.FeeRate, Premium: p.Premium, Disclosure: routing.Disclosure},
-				}, nil
+				if p.LockExpiresAt > 0 && time.Now().Unix() >= p.LockExpiresAt-30 {
+					// The rate lock has lapsed (or is about to): the old intent is not replayed at
+					// a rate Stripe will refuse. A new one is opened below on a fresh quote, and the
+					// buyer is shown its amount before they authorize.
+					continue
+				}
+				tx, terr := sp.GetTransaction(ctx, p.Id())
+				if terr != nil {
+					continue
+				}
+				// Keep bank-only (ACH) intents separate from all-methods intents so neither
+				// replays the other, while avoiding duplicate ACH intents on tab reload.
+				bankOnly := isBankOnlyIntent(tx)
+				if wantACH != bankOnly {
+					continue
+				}
+				switch tx.Status {
+				case "requires_payment_method", "requires_confirmation", "requires_action":
+					secret, _ := tx.Metadata["client_secret"].(string)
+					if secret == "" {
+						continue
+					}
+					amount, dec, rate := p.Cents, int32(2), 1.0
+					if p.PaidCurrency != "" {
+						// The rate is per major unit: yen paid per dollar, not yen-minor per cent.
+						dec = currency.Type(p.PaidCurrency).Decimals()
+						amount, rate = p.PaidCents, (float64(p.PaidCents)/math.Pow10(int(dec)))/(float64(p.Cents)/100)
+						if p.Rate > 0 {
+							rate = p.Rate // the rate bound when the attempt was opened
+						}
+					}
+					return &TopupIntentOut{
+						IntentID: p.Id(), ClientSecret: secret, PublishableKey: payment.StripePublicConfig(org).PublishableKey,
+						Currency: cur, Amount: amount, UsdCents: in.AmountCents, Rate: rate,
+						Quote: routing.Quote{Amount: amount, Decimals: int(dec), Currency: cur, UsdCents: in.AmountCents, Rate: rate,
+							Source: p.RateSource, FXFee: p.FXFee, ExchangeRate: p.ExchangeRate, LockExpiresAt: p.LockExpiresAt, QuoteID: p.QuoteID, BaseRate: p.BaseRate, FeeRate: p.FeeRate, Premium: p.Premium, Disclosure: routing.Disclosure},
+					}, nil
+				}
 			}
-		}
-		if n > 0 {
-			key = fmt.Sprintf("%s:%d", key, n)
+			if n > 0 {
+				key = fmt.Sprintf("%s:%d", key, n)
+			}
 		}
 	}
 	// The payer's one customer at Stripe, named and addressed, so the issuer and Radar
@@ -282,7 +292,34 @@ func OpenTopupIntent(ctx context.Context, org *organization.Organization, in Top
 		Desc:              desc,
 		Metadata:          map[string]interface{}{"hanzo_subject": in.Subject, "hanzo_usd_cents": in.AmountCents, "hanzo_org": org.Name, "org": org.Name, "user": strings.ToLower(in.Subject)},
 	})
+	if errors.Is(err, processor.ErrNoPaymentMethods) && cur != "usd" && in.Method == "" && planSlug == "" {
+		// If Stripe offers zero enabled payment methods for the local currency (e.g. INR),
+		// fall back cleanly to USD rather than stranding the buyer on an empty Element.
+		log.Warn("topup intent: stripe offered no payment methods for %s; falling back to usd for %s", cur, in.Subject)
+		cur, paid, rate, quote = "usd", in.AmountCents, 1, nativeQuote(in.AmountCents)
+		excluded, ach = bankExclusions(ctx, sp, pol, cur, in.AmountCents)
+		excluded = withoutCrypto(ctx, reg, excluded)
+		verification = ""
+		if ach {
+			verification = "automatic"
+		}
+		out, err = maker.CreateLocalIntent(ctx, processor.LocalIntent{
+			Customer:      customer,
+			ReceiptEmail:  payer.Email,
+			Verification:  verification,
+			Amount:        paid,
+			Currency:      cur,
+			Excluded:      excluded,
+			Configuration: walletConfig,
+			Key:           gatewayKey("topup-local", in.Subject, fmt.Sprintf("%s:usd:%d:%s", key, paid, planSlug)),
+			Desc:          desc,
+			Metadata:      map[string]interface{}{"hanzo_subject": in.Subject, "hanzo_usd_cents": in.AmountCents, "hanzo_org": org.Name, "org": org.Name, "user": strings.ToLower(in.Subject)},
+		})
+	}
 	if err != nil {
+		if errors.Is(err, processor.ErrNoPaymentMethods) {
+			return nil, fault(422, "no payment methods are available for this currency right now", err)
+		}
 		return nil, fault(502, "the payment could not be opened", err)
 	}
 	paidCents, paidCur := paid, cur
@@ -499,6 +536,24 @@ func policyMethod(m string) string {
 		return "us_bank_account"
 	}
 	return m
+}
+
+// isBankOnlyIntent reports whether a PaymentIntent's metadata restricts it solely to us_bank_account.
+func isBankOnlyIntent(tx *processor.Transaction) bool {
+	if tx == nil || tx.Metadata == nil {
+		return false
+	}
+	switch v := tx.Metadata["payment_method_types"].(type) {
+	case []string:
+		return len(v) == 1 && v[0] == "us_bank_account"
+	case []interface{}:
+		if len(v) != 1 {
+			return false
+		}
+		s, ok := v[0].(string)
+		return ok && s == "us_bank_account"
+	}
+	return false
 }
 
 // withoutCrypto adds crypto to the excluded types when Stripe cannot actually take

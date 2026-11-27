@@ -434,7 +434,7 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 		CustomerID:   pi.Customer,
 		CreatedAt:    pi.Created,
 		UpdatedAt:    pi.Created,
-		Metadata:     withSecret(withPaymentMethod(pi.Metadata, pi.PaymentMethod), pi.ClientSecret),
+		Metadata:     withPaymentMethodTypes(withSecret(withPaymentMethod(pi.Metadata, pi.PaymentMethod), pi.ClientSecret), pi.PaymentMethodTypes),
 	}, nil
 }
 
@@ -770,16 +770,17 @@ func (p *Provider) doRequest(req *http.Request, result interface{}) error {
 // ---------------------------------------------------------------------------
 
 type paymentIntent struct {
-	ID            string                 `json:"id"`
-	Status        string                 `json:"status"`
-	Amount        int64                  `json:"amount"`
-	Currency      string                 `json:"currency"`
-	Customer      string                 `json:"customer"`
-	LatestCharge  string                 `json:"latest_charge"`
-	ClientSecret  string                 `json:"client_secret"`
-	PaymentMethod string                 `json:"payment_method"`
-	Created       int64                  `json:"created"`
-	Metadata      map[string]interface{} `json:"metadata"`
+	ID                 string                 `json:"id"`
+	Status             string                 `json:"status"`
+	Amount             int64                  `json:"amount"`
+	Currency           string                 `json:"currency"`
+	Customer           string                 `json:"customer"`
+	LatestCharge       string                 `json:"latest_charge"`
+	ClientSecret       string                 `json:"client_secret"`
+	PaymentMethod      string                 `json:"payment_method"`
+	PaymentMethodTypes []string               `json:"payment_method_types"`
+	Created            int64                  `json:"created"`
+	Metadata           map[string]interface{} `json:"metadata"`
 }
 
 type refund struct {
@@ -1024,6 +1025,13 @@ func (p *Provider) ChargeSound(ctx context.Context, chargeID string, amount int6
 func withSecret(meta map[string]interface{}, secret string) map[string]interface{} {
 	if secret != "" {
 		meta["client_secret"] = secret
+	}
+	return meta
+}
+
+func withPaymentMethodTypes(meta map[string]interface{}, types []string) map[string]interface{} {
+	if len(types) > 0 {
+		meta["payment_method_types"] = types
 	}
 	return meta
 }

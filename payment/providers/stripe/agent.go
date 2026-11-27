@@ -169,20 +169,21 @@ func (p *Provider) cryptoConfiguration(ctx context.Context) (string, string) {
 	id, why := "", "stablecoin payments are not enabled on this Stripe account"
 	q := url.Values{}
 	q.Set("limit", "100")
-	if err := p.get(ctx, "/payment_method_configurations", q, &list); err != nil {
-		id, why = "", "the payment method configurations could not be read: "+err.Error()
-	} else {
-		for _, c := range list.Data {
-			if !c.Active || !c.Crypto.Available || c.Crypto.DisplayPreference.Value == "off" {
-				continue
-			}
-			if id == "" || c.IsDefault {
-				id = c.ID
-			}
+	// Use agentVersion: Stripe added crypto to payment_method_configurations in Oct 2025
+	// (after the base 2024-12-18.acacia version). Do not cache transient API errors.
+	if err := p.getVersion(ctx, "/payment_method_configurations", q, agentVersion, &list); err != nil {
+		return "", "the payment method configurations could not be read: " + err.Error()
+	}
+	for _, c := range list.Data {
+		if !c.Active || !c.Crypto.Available || c.Crypto.DisplayPreference.Value == "off" {
+			continue
 		}
-		if id != "" {
-			why = ""
+		if id == "" || c.IsDefault {
+			id = c.ID
 		}
+	}
+	if id != "" {
+		why = ""
 	}
 	p.crypto.at, p.crypto.id, p.crypto.why = time.Now(), id, why
 	return id, why

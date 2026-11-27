@@ -19,9 +19,10 @@ func (p *Provider) CreateLocalIntent(ctx context.Context, in processor.LocalInte
 	if in.Amount <= 0 || in.Currency == "" {
 		return nil, fmt.Errorf("stripe local intent: amount and currency are required")
 	}
+	cur := strings.ToLower(in.Currency)
 	params := url.Values{}
 	params.Set("amount", strconv.FormatInt(in.Amount, 10))
-	params.Set("currency", strings.ToLower(in.Currency))
+	params.Set("currency", cur)
 	if len(in.Only) > 0 {
 		for i, m := range in.Only {
 			params.Set(fmt.Sprintf("payment_method_types[%d]", i), m)
@@ -30,9 +31,13 @@ func (p *Provider) CreateLocalIntent(ctx context.Context, in processor.LocalInte
 		params.Set("automatic_payment_methods[enabled]", "true")
 	}
 	// A voucher lives three days and a Pix code one, so an unpaid one ends by itself.
-	params.Set("payment_method_options[boleto][expires_after_days]", "3")
-	params.Set("payment_method_options[oxxo][expires_after_days]", "3")
-	params.Set("payment_method_options[pix][expires_after_seconds]", "86400")
+	// Only attach regional options to intents in the currencies that support them.
+	if cur == "brl" {
+		params.Set("payment_method_options[boleto][expires_after_days]", "3")
+		params.Set("payment_method_options[pix][expires_after_seconds]", "86400")
+	} else if cur == "mxn" {
+		params.Set("payment_method_options[oxxo][expires_after_days]", "3")
+	}
 	if in.Verification != "" {
 		// A bank debit is verified instantly through the bank's login (Financial
 		// Connections) and by microdeposits when the bank is not covered.
@@ -64,17 +69,25 @@ func (p *Provider) CreateLocalIntent(ctx context.Context, in processor.LocalInte
 		params.Set("metadata["+k+"]", fmt.Sprintf("%v", v))
 	}
 	var pi paymentIntent
+	var err error
 	if in.QuoteID != "" {
 		// A payment bound to a locked FX quote is converted at the quoted rate; Stripe
 		// takes the quote on the PaymentIntent in its preview API version.
 		params.Set("fx_quote", in.QuoteID)
-		if err := p.postVersion(ctx, "/payment_intents", params, in.Key, fxVersion, &pi); err != nil {
-			return nil, err
-		}
-		return &processor.LocalIntentOut{ID: pi.ID, ClientSecret: pi.ClientSecret}, nil
+		err = p.postVersion(ctx, "/payment_intents", params, in.Key, fxVersion, &pi)
+	} else {
+		err = p.postKey(ctx, "/payment_intents", params, in.Key, &pi)
 	}
-	if err := p.postKey(ctx, "/payment_intents", params, in.Key, &pi); err != nil {
+	if err != nil {
 		return nil, err
+	}
+	// If Stripe returns an explicit empty payment_method_types list for this currency/config,
+	// cancel the unusable intent immediately so the buyer never lands on a broken checkout.
+	if len(in.Only) == 0 && pi.PaymentMethodTypes != nil && len(pi.PaymentMethodTypes) == 0 {
+		if pi.ID != "" {
+			_ = p.CancelIntent(ctx, pi.ID)
+		}
+		return nil, processor.ErrNoPaymentMethods
 	}
 	return &processor.LocalIntentOut{ID: pi.ID, ClientSecret: pi.ClientSecret}, nil
 }
