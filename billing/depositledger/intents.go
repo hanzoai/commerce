@@ -106,10 +106,11 @@ func (intentStore) Watched(_ context.Context, chain, token string) ([]depositwat
 				// Empty on every chain that mints one address per payer; the
 				// destination tag on XRPL, where the address is shared and this
 				// is the only thing that says whose deposit it is.
-				Tag:    in.AddressTag,
-				Status: in.Status,
-				TxHash: in.TxHash,
-				Block:  uint64(in.BlockNumber),
+				Tag:       in.AddressTag,
+				Status:    in.Status,
+				TxHash:    in.TxHash,
+				Block:     uint64(in.BlockNumber),
+				CreatedAt: in.CreatedAt,
 			})
 		}
 	}
@@ -148,6 +149,9 @@ func (intentStore) Sight(_ context.Context, s depositwatch.Sighting) error {
 	}
 	in.Confirmations = s.Confirmations
 	in.BlockNumber = int64(s.Block)
+	if minHold := time.Now().Add(24 * time.Hour); in.ExpiresAt.Before(minHold) {
+		in.ExpiresAt = minHold
+	}
 	if err := in.Update(); err != nil {
 		log.Warn("depositledger: cannot record sighting on intent %s: %v", s.IntentID, err)
 	}
@@ -248,6 +252,12 @@ func (intentStore) Credit(ctx context.Context, c depositwatch.Credit) (bool, err
 			}
 		}
 	case errors.Is(err, datastore.ErrNoSuchEntity):
+		if alreadyCreditedCrossRail(db, c) {
+			if addr, rotate, aerr := advanceIntent(db, c); aerr == nil && rotate {
+				Default().NotifySettled(ctx, c.Chain, c.Token, addr)
+			}
+			return false, nil
+		}
 	default:
 		// Cannot tell a first credit from a repeat: refuse rather than risk
 		// either double-crediting or losing the deposit.
@@ -318,6 +328,7 @@ func (intentStore) Credit(ctx context.Context, c depositwatch.Credit) (bool, err
 		trans.Notes = fmt.Sprintf("Crypto deposit: %s %s on %s (%s)", c.Units, strings.ToUpper(c.Token), c.Chain, c.TxHash)
 		trans.Metadata = types.Map{
 			"source": "crypto-deposit",
+			"rail":   railOfDedup(c.DedupKey),
 			"chain":  c.Chain,
 			"token":  c.Token,
 			"txHash": c.TxHash,
@@ -357,8 +368,11 @@ func (intentStore) Credit(ctx context.Context, c depositwatch.Credit) (bool, err
 	// The money is safe from here. An intent that will not advance is a DISPLAY
 	// defect, so it is logged and not returned: failing the pass would leave the
 	// cursor parked and stop crediting everyone else behind one stale row.
-	if err := advanceIntent(db, c); err != nil {
+	settledAddr, shouldRotate, err := advanceIntent(db, c)
+	if err != nil {
 		log.Warn("depositledger: credit %s written, intent %s not advanced: %v", c.DedupKey, c.IntentID, err)
+	} else if shouldRotate {
+		Default().NotifySettled(ctx, c.Chain, c.Token, settledAddr)
 	}
 	return written, nil
 }
@@ -409,21 +423,21 @@ func (intentStore) RecordUnattributed(_ context.Context, u depositwatch.Unattrib
 // It never reports a problem as fatal to the money: the ledger row is already
 // written, so a stale intent is a display defect, and the error is returned only
 // so it is visible in logs and retried on the next pass.
-func advanceIntent(db *datastore.Datastore, c depositwatch.Credit) error {
+func advanceIntent(db *datastore.Datastore, c depositwatch.Credit) (string, bool, error) {
 	in := cryptopaymentintent.New(db)
 	if err := in.GetById(c.IntentID); err != nil {
-		return fmt.Errorf("depositledger: credit %s written, but intent %s could not be loaded: %w", c.DedupKey, c.IntentID, err)
+		return "", false, fmt.Errorf("depositledger: credit %s written, but intent %s could not be loaded: %w", c.DedupKey, c.IntentID, err)
 	}
 	switch in.Status {
 	case cryptopaymentintent.Succeeded, cryptopaymentintent.Refunded:
-		return nil // terminal; a repeat deposit is carried by its own ledger row
+		return "", false, nil // terminal; a repeat deposit is carried by its own ledger row
 	case cryptopaymentintent.Confirming:
-		if !strings.EqualFold(in.TxHash, c.TxHash) {
-			return nil // confirming a different deposit; leave that narrative alone
+		if !strings.EqualFold(in.TxHash, c.TxHash) && !sameTxHash(in.TxHash, c.TxHash) {
+			return "", false, nil // confirming a different deposit; leave that narrative alone
 		}
 	default:
 		if err := in.MarkConfirming(c.TxHash, int64(c.Block)); err != nil {
-			return err
+			return "", false, err
 		}
 	}
 	// Record the policy actually applied, so the intent cannot disagree with the
@@ -435,7 +449,74 @@ func advanceIntent(db *datastore.Datastore, c depositwatch.Credit) error {
 	in.CryptoAmount = c.Units
 	in.SettlementCurrency = "usd"
 	if err := in.MarkSucceeded(c.AmountCents, c.PegRate); err != nil {
-		return err
+		return "", false, err
 	}
-	return in.Update()
+	if err := in.Update(); err != nil {
+		return "", false, err
+	}
+	rotate := strings.HasPrefix(in.WalletID, "kraken:") || strings.HasPrefix(c.DedupKey, "kraken:")
+	return in.DepositAddress, rotate, nil
+}
+
+func railOfDedup(dedup string) string {
+	if strings.HasPrefix(dedup, "kraken:") {
+		return "kraken"
+	}
+	return "chain"
+}
+
+func normTxHash(h string) string {
+	s := strings.TrimSpace(h)
+	if strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X") {
+		return strings.ToLower(s[2:])
+	}
+	return strings.ToLower(s)
+}
+
+func sameTxHash(a, b string) bool {
+	na, nb := normTxHash(a), normTxHash(b)
+	return na != "" && na == nb
+}
+
+func metaString(m types.Map, key string) string {
+	if m == nil {
+		return ""
+	}
+	v, _ := m[key].(string)
+	return v
+}
+
+// alreadyCreditedCrossRail prevents double-crediting when BOTH the on-chain RPC watcher
+// (DedupKey = "<chain>:<txHash>:<eventIndex>") and syncKraken (DedupKey = "kraken:<chain>:<refId>:<txHash>")
+// observe the exact same customer deposit transaction. Same-rail distinct EventIndex logs
+// in a single transaction remain independent.
+func alreadyCreditedCrossRail(db *datastore.Datastore, c depositwatch.Credit) bool {
+	if strings.TrimSpace(c.TxHash) == "" {
+		return false
+	}
+	fromKraken := strings.HasPrefix(c.DedupKey, "kraken:")
+	rows := make([]*transaction.Transaction, 0)
+	if _, err := transaction.Query(db).
+		Filter("DestinationId=", c.Subject).
+		Filter("Tags=", depositTag).
+		GetAll(&rows); err != nil {
+		return false
+	}
+	for _, r := range rows {
+		if r == nil || r.Metadata == nil {
+			continue
+		}
+		if !strings.EqualFold(metaString(r.Metadata, "chain"), c.Chain) {
+			continue
+		}
+		if !sameTxHash(metaString(r.Metadata, "txHash"), c.TxHash) {
+			continue
+		}
+		rowIsKraken := metaString(r.Metadata, "rail") == "kraken"
+		if rowIsKraken != fromKraken {
+			log.Info("depositledger: skipping cross-rail duplicate credit %s — tx %s on %s already credited", c.DedupKey, c.TxHash, c.Chain)
+			return true
+		}
+	}
+	return false
 }

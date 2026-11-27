@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/hanzoai/commerce/models/cryptopaymentintent"
 )
@@ -107,10 +108,11 @@ type Watched struct {
 	// address is shared. Empty everywhere else. Address and Tag are never
 	// compared separately — Asset.Identity combines them, once, for both the
 	// minted side and the observed side.
-	Tag    string
-	Status cryptopaymentintent.Status
-	TxHash string // the sighting currently recorded on the intent
-	Block  uint64
+	Tag       string
+	Status    cryptopaymentintent.Status
+	TxHash    string // the sighting currently recorded on the intent
+	Block     uint64
+	CreatedAt time.Time
 }
 
 // Sighting is a deposit seen on chain but not yet deep enough to credit. It

@@ -109,6 +109,27 @@ func AddressFreeFromContext(ctx context.Context) func(address string) bool {
 	return f
 }
 
+type addressFreshKey struct{}
+
+// WithAddressFresh attaches the freshness test an exchange-backed processor applies
+// before handing out an address from its rolling pool: fresh reports that no completed
+// payment has ever settled on the address, preventing post-settlement wallet reuse.
+func WithAddressFresh(ctx context.Context, fresh func(address string) bool) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return context.WithValue(ctx, addressFreshKey{}, fresh)
+}
+
+// AddressFreshFromContext reads the test attached by WithAddressFresh, or nil.
+func AddressFreshFromContext(ctx context.Context) func(address string) bool {
+	if ctx == nil {
+		return nil
+	}
+	f, _ := ctx.Value(addressFreshKey{}).(func(address string) bool)
+	return f
+}
+
 // TokenFromContext reads the crypto token symbol attached by WithToken, or "".
 func TokenFromContext(ctx context.Context) string {
 	if ctx == nil {

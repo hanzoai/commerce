@@ -14,20 +14,13 @@ import (
 	"github.com/hanzoai/commerce/api/promo"
 	"github.com/hanzoai/commerce/billing/depositledger"
 	"github.com/hanzoai/commerce/billing/depositwatch"
-	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/billing/gateway"
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
-	"github.com/hanzoai/commerce/models/checkoutsession"
 	"github.com/hanzoai/commerce/models/cryptopaymentintent"
 	"github.com/hanzoai/commerce/models/organization"
-	"github.com/hanzoai/commerce/models/paymentorg"
 	"github.com/hanzoai/commerce/models/pendingintent"
-	"github.com/hanzoai/commerce/models/subscription"
-	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
-	orgpkg "github.com/hanzoai/commerce/pkg/org"
 	types "github.com/hanzoai/commerce/types"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 )
@@ -682,294 +675,31 @@ func CreateCryptoDeposit(ctx context.Context, org *organization.Organization, pa
 	// only thing the two kinds of chain answer differently; everything after it
 	// is one path, so a field can never be recorded on one kind of chain and
 	// quietly forgotten on the other.
-	var wallet processor.Wallet
-	var tag string
 	if pooled {
-		// The account is configured, never invented — and never asked of the
-		// custody signer, which would mint a fresh wallet per deposit and
-		// strand a non-refundable reserve on each one. If nothing is
-		// configured, nothing is handed out.
 		addr := pooledAddressFor(watched, chain, token)
 		if addr == "" {
 			return CryptoDeposit{}, depositRefusal{msg: fmt.Sprintf(
 				"Crypto deposits on %s are not configured — no custody account is set for %s.", chain, strings.ToUpper(token))}
 		}
-		// The tag is allocated BY THE DATABASE and never chosen here — see
-		// depositledger.NextTag for what makes it unique across replicas, and
-		// why a random tag with a uniqueness check would not be. Allocating one
-		// and not using it costs nothing, since the sequence simply moves on;
-		// issuing one twice halts the asset for every customer. So this refuses
-		// rather than falls back.
-		var err error
-		if tag, err = depositledger.NextTag(ctx, chain); err != nil {
+		tag, err := depositledger.NextTag(ctx, chain)
+		if err != nil {
 			return CryptoDeposit{}, depositRefusal{
 				msg:   "Crypto deposits are temporarily unavailable — a deposit reference could not be issued. Try again shortly or choose another way to pay.",
 				cause: fmt.Errorf("crypto deposit tag allocation failed for %q on %s: %w", payer, chain, err),
 			}
 		}
-		// No wallet ID. The custody signer holds no per-deposit wallet here —
-		// the pooled account IS the wallet, and it is the operator's rather
-		// than this intent's. Empty is the honest answer, not a missing one.
-		wallet = processor.Wallet{Address: addr}
-	} else {
-		var err error
-		mintCtx := processor.WithAddressFree(processor.WithToken(ctx, token), func(addr string) bool { return !addressSpokenFor(db, addr, "") })
-		if wallet, err = cp.GenerateAddress(mintCtx, payer, chain); err != nil {
-			return CryptoDeposit{}, depositRefusal{
-				msg:   "Crypto deposits are temporarily unavailable — the custody service is not accepting new addresses. Try again shortly or choose another way to pay.",
-				cause: fmt.Errorf("crypto deposit address generation failed for %q on %s: %w", payer, chain, err),
-			}
+		intent, err := recordIntent(db, payer, chain, token, amountCents, processor.Wallet{Address: addr}, tag)
+		if err != nil {
+			return CryptoDeposit{}, err
 		}
-		if tag == "" && wallet.Tag != "" {
-			tag = wallet.Tag
-		}
+		return toCryptoDepositResponse(intent), nil
 	}
 
-	intent, err := recordIntent(db, payer, chain, token, amountCents, wallet, tag)
+	intent, err := mintPerPaymentIntent(ctx, db, cp, payer, chain, token, amountCents)
 	if err != nil {
 		return CryptoDeposit{}, err
 	}
-	if !pooled && addressSpokenFor(db, wallet.Address, intent.Id()) {
-		// Another open payment holds this address (two requests chose it at once, or the
-		// processor handed back one already in use): this one is withdrawn, never both.
-		intent.Status = cryptopaymentintent.Expired
-		_ = intent.Update()
-		return CryptoDeposit{}, depositRefusal{msg: "Crypto deposits are temporarily unavailable — no deposit address is free right now. Try again shortly or choose another way to pay."}
-	}
-
 	return toCryptoDepositResponse(intent), nil
-}
-
-// CreateCryptoDepositForPlan opens a crypto deposit address priced from the plan
-// catalog so an on-chain confirmation opens the plan's first period automatically.
-func CreateCryptoDepositForPlan(ctx context.Context, org *organization.Organization, payer, chain, token string, amountCents int64, planIn CryptoPlanIn) (CryptoDeposit, error) {
-	if strings.TrimSpace(planIn.PlanID) == "" {
-		return CreateCryptoDeposit(ctx, org, payer, chain, token, amountCents)
-	}
-	if org == nil {
-		return CryptoDeposit{}, errors.New("crypto deposit: no organization")
-	}
-	if payer == "" {
-		return CryptoDeposit{}, errors.New("crypto deposit: no payer")
-	}
-	db := datastore.New(org.Namespaced(ctx))
-	subIn := SubscribeIn{
-		SourceID: "crypto-plan-quote",
-		PlanID:   strings.TrimSpace(planIn.PlanID),
-		Subject:  payer,
-		Quantity: planIn.Quantity,
-		Level:    planIn.Level,
-		Interval: planIn.Interval,
-		Wallet:   true,
-		Promo:    planIn.Promo,
-	}
-	q, perr := price(db, org, subIn, subIn.PlanID, subIn.SourceID)
-	if perr != nil {
-		return CryptoDeposit{}, depositValidationError{perr.Error()}
-	}
-	chargeCents := q.charge
-	couponCode := ""
-	if raw := strings.TrimSpace(planIn.Coupon); raw != "" {
-		couponCode = promo.CouponCode(raw)
-		if couponCode == "" || !engine.BillsMonthly(q.plan) {
-			return CryptoDeposit{}, depositValidationError{"coupon is not valid for this plan"}
-		}
-		offer, reason := promo.FindCoupon(ctx, couponCode, time.Now())
-		if reason == "" && !everyLine(q.slug, q.lines, offer.AppliesTo) {
-			reason = promo.CouponNotApplicable
-		}
-		if reason != "" {
-			return CryptoDeposit{}, depositValidationError{couponRefusal(couponCode, q.slug, reason)}
-		}
-		if promo.Redeemed(ctx, couponCode, org.Name) {
-			return CryptoDeposit{}, depositValidationError{fmt.Sprintf("%v (%s)", promo.ErrCouponRedeemedByOrg, couponCode)}
-		}
-		chargeCents = engine.Discounted(chargeCents, offer.Coupon().Percent)
-		if chargeCents <= 0 {
-			return CryptoDeposit{}, depositValidationError{"coupon leaves nothing to charge"}
-		}
-	}
-	normChain := strings.ToLower(strings.TrimSpace(chain))
-	if normChain == "" {
-		normChain = "base"
-	}
-	normToken := strings.ToLower(strings.TrimSpace(token))
-	if normToken == "" {
-		normToken = "usdc"
-	}
-	if normToken == "usdc" && (normChain == "base" || normChain == "solana" || normChain == "tempo") {
-		if pol, _, perr := ReadRoutingVersioned(ctx, org.Name); perr == nil && pol.StripeCrypto() && stripeStablecoins(ctx, processorsForOrg(org)).On {
-			dep, net, f := stripeDeposit(ctx, org, payer, chargeCents, normChain,
-				fmt.Sprintf("crypto-plan:%s:%s:%d", q.slug, normChain, time.Now().Unix()/idemWindowSec),
-				fmt.Sprintf("Subscription %s — first period for %s", q.slug, payer))
-			if f == nil && dep != nil && len(dep.Addresses) > 0 {
-				addr := dep.Addresses[0].Address
-				for _, a := range dep.Addresses {
-					if strings.EqualFold(a.Network, net) && a.Address != "" {
-						addr = a.Address
-						break
-					}
-				}
-				sess := new(checkoutsession.Session)
-				sess.SetId(newSessionID())
-				sess.Org, sess.Subject, sess.Test, sess.Status = org.Name, strings.ToLower(payer), org.TestMode(), checkoutsession.Pending
-				sess.Line, sess.Plan, sess.Interval, sess.TotalCents, sess.Intent = checkoutsession.Plan, q.slug, string(q.plan.Interval), chargeCents, dep.ID
-				if serr := checkoutsession.Put(sess); serr != nil {
-					cancelDeposit(ctx, org, dep.ID)
-					return CryptoDeposit{}, serr
-				}
-				if rerr := pendingintent.PutRef(dep.ID, org.Name, strings.ToLower(payer), pendingintent.Plan, sess.Id(), chargeCents, "usd", org.TestMode()); rerr != nil {
-					cancelDeposit(ctx, org, dep.ID)
-					return CryptoDeposit{}, rerr
-				}
-				_ = pendingintent.Bind(dep.ID, pendingintent.Terms{Delayed: true, Network: net})
-				return CryptoDeposit{
-					ID:             dep.ID,
-					Status:         string(cryptopaymentintent.Pending),
-					Chain:          net,
-					Token:          normToken,
-					DepositAddress: addr,
-					ExpiresAt:      time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339),
-					AmountCents:    chargeCents,
-					PlanID:         q.slug,
-				}, nil
-			}
-		}
-	}
-	dep, err := CreateCryptoDeposit(ctx, org, payer, chain, token, chargeCents)
-	if err != nil {
-		return CryptoDeposit{}, err
-	}
-	intent := cryptopaymentintent.New(db)
-	if err := intent.GetById(dep.ID); err == nil {
-		if intent.Metadata == nil {
-			intent.Metadata = types.Map{}
-		}
-		intent.Amount = chargeCents
-		intent.Metadata["planId"] = q.slug
-		intent.Metadata["quantity"] = q.qty
-		intent.Metadata["level"] = planIn.Level
-		intent.Metadata["interval"] = string(q.plan.Interval)
-		intent.Metadata["coupon"] = couponCode
-		intent.Metadata["chargeCents"] = chargeCents
-		_ = intent.Update()
-		dep = toCryptoDepositResponse(intent)
-	}
-	return dep, nil
-}
-
-// activateCryptoPlan opens a plan subscription once a plan-bound crypto deposit confirms.
-func activateCryptoPlan(ctx context.Context, orgName, subject string, intent *cryptopaymentintent.CryptoPaymentIntent, depositedCents int64, txHash string) (string, int64, error) {
-	if intent == nil || intent.Metadata == nil {
-		return "", 0, nil
-	}
-	planID, _ := intent.Metadata["planId"].(string)
-	planID = strings.TrimSpace(planID)
-	if planID == "" {
-		return "", 0, nil
-	}
-	chargeCents := intent.Amount
-	switch v := intent.Metadata["chargeCents"].(type) {
-	case float64:
-		if int64(v) > 0 {
-			chargeCents = int64(v)
-		}
-	case int64:
-		if v > 0 {
-			chargeCents = v
-		}
-	}
-	if chargeCents <= 0 || depositedCents < chargeCents {
-		// Underpaid deposit: credit the full amount to cash balance so nothing is lost.
-		return "", 0, nil
-	}
-	org, err := orgpkg.Resolve(ctx, orgName)
-	if err != nil || org == nil {
-		return "", 0, fmt.Errorf("resolve org %q: %w", orgName, err)
-	}
-	db := datastore.New(org.Namespaced(ctx))
-	// If subject already holds an active subscription for this plan, leave deposit in balance.
-	if held := billingSubscription(db, subject, org.TestMode()); held != nil && held.Status != subscription.Trialing {
-		heldSlug := held.Plan.Slug
-		if heldSlug == "" {
-			heldSlug = held.PlanId
-		}
-		if strings.EqualFold(heldSlug, planID) {
-			return held.Id(), 0, nil
-		}
-	}
-	qty := 1
-	switch v := intent.Metadata["quantity"].(type) {
-	case float64:
-		if int(v) > 0 {
-			qty = int(v)
-		}
-	case int:
-		if v > 0 {
-			qty = v
-		}
-	}
-	level := 0
-	switch v := intent.Metadata["level"].(type) {
-	case float64:
-		level = int(v)
-	case int:
-		level = v
-	}
-	intervalStr, _ := intent.Metadata["interval"].(string)
-	interval := types.Monthly
-	if intervalStr == string(types.Yearly) || intervalStr == "year" {
-		interval = types.Yearly
-	}
-	pl, err := resolveSubscriptionPlan(db, planID)
-	if err != nil {
-		return "", 0, err
-	}
-	if pl, err = planAt(pl, level, interval); err != nil {
-		return "", 0, err
-	}
-	lines, err := linesAt(db, pl, nil, pl.Interval, currency.USD)
-	if err != nil {
-		return "", 0, err
-	}
-	meta := map[string]interface{}{
-		"source":   "subscribe/crypto",
-		"intentId": intent.Id(),
-		"txHash":   txHash,
-	}
-	couponCode, _ := intent.Metadata["coupon"].(string)
-	var cpn engine.Coupon
-	var couponPlans []string
-	if couponCode != "" {
-		if offer, reason := promo.FindCoupon(ctx, couponCode, time.Now()); reason == "" {
-			cpn, couponPlans = offer.Coupon(), offer.Plans
-			meta["coupon"] = couponCode
-		}
-	}
-	sub, err := createSubscription(db, pl, &createSubscriptionRequest{
-		UserId:               subject,
-		PlanId:               pl.Slug,
-		DefaultPaymentMethod: "credits",
-		Quantity:             qty,
-		Metadata:             meta,
-		Test:                 org.TestMode(),
-		priced:               lines,
-	})
-	if err != nil {
-		return "", 0, err
-	}
-	sub.ProviderType = "credit"
-	engine.Grant(sub, cpn, couponPlans, sub.PeriodStart)
-	ref := txHash
-	if ref == "" {
-		ref = intent.Id()
-	}
-	if inv, ierr := engine.CreatePaidFirstInvoice(db, sub, "crypto", ref); ierr == nil && inv != nil {
-		_ = paymentorg.Put(ref, org.Name, subject, inv.Id(), 0, org.TestMode())
-	} else {
-		log.Warn("crypto plan %s: paid first invoice not recorded for sub %s: %v", intent.Id(), sub.Id(), ierr)
-	}
-	return sub.Id(), chargeCents, nil
 }
 
 // CreateBillingCryptoDeposit is the payer's endpoint for the crypto rail. It
@@ -1034,25 +764,24 @@ func CreateBillingCryptoDeposit(c *zip.Ctx) error {
 // later: on a pooled chain the address is real and ours, so a payment to it
 // arrives whether or not we recorded who it belongs to.
 func recordIntent(db *datastore.Datastore, payer, chain, token string, amountCents int64, wallet processor.Wallet, tag string) (*cryptopaymentintent.CryptoPaymentIntent, error) {
+	return recordIntentWithTTL(db, payer, chain, token, amountCents, wallet, tag, 24*time.Hour)
+}
+
+func recordIntentWithTTL(db *datastore.Datastore, payer, chain, token string, amountCents int64, wallet processor.Wallet, tag string, ttl time.Duration) (*cryptopaymentintent.CryptoPaymentIntent, error) {
+	if ttl <= 0 {
+		ttl = 24 * time.Hour
+	}
 	intent := cryptopaymentintent.New(db)
 	intent.Amount = amountCents
 	intent.Currency = "usd"
 	intent.Chain = cryptopaymentintent.Chain(chain)
 	intent.Token = token
 	intent.DepositAddress = wallet.Address
-	// The other half of the destination on a pooled chain, and empty on every
-	// chain where the address is the whole answer. Written in the SAME record
-	// as the address, because an intent holding one without the other names an
-	// identity the watcher can never match.
 	intent.AddressTag = tag
-	// Recorded at mint time because this is the only moment the signer offers
-	// it. Without it a deposit can be credited and never swept.
 	intent.WalletID = wallet.ID
 	intent.CustomerRef = payer
 	intent.Status = cryptopaymentintent.Pending
-	// A top-up address is a standing destination, not a checkout hold — give it
-	// a day rather than the model's 30-minute checkout default.
-	intent.ExpiresAt = time.Now().Add(24 * time.Hour)
+	intent.ExpiresAt = time.Now().Add(ttl)
 	intent.Defaults()
 
 	if intent.DepositAddress == "" {
@@ -1065,229 +794,4 @@ func recordIntent(db *datastore.Datastore, payer, chain, token string, amountCen
 		return nil, err
 	}
 	return intent, nil
-}
-
-// GetCryptoDeposit reports an intent's state (pending → confirming →
-// succeeded) — the READ, with no HTTP in it.
-//
-// It takes the payer as a value because the read is SCOPED to them and the scope
-// is the point: the same lookup answered over the internal plane must refuse a
-// foreign id there too, and a second copy of "is this yours" is a copy that can
-// be written without the check. An id that names nothing and an id that names
-// somebody else return the SAME error, so neither endpoint can be made to confirm
-// that a foreign intent exists.
-func GetCryptoDeposit(ctx context.Context, org *organization.Organization, payer, id string) (CryptoDeposit, error) {
-	if org == nil {
-		return CryptoDeposit{}, errors.New("crypto deposit: no organization")
-	}
-	if payer == "" {
-		return CryptoDeposit{}, errors.New("crypto deposit: no payer")
-	}
-	if strings.HasPrefix(id, "pi_") {
-		p, found, err := pendingintent.Get(id)
-		if err != nil || !found || !strings.EqualFold(p.Subject, payer) || !strings.EqualFold(p.Org, org.Name) {
-			return CryptoDeposit{}, errDepositNotFound
-		}
-		chain := strings.TrimSpace(p.Network)
-		if chain == "" {
-			chain = "base"
-		}
-		// Done closes the reconciliation record; it does not prove that money
-		// arrived (cancellation and refund also close it). Read Stripe even for
-		// closed rows, including legacy canceled rows without a terminal reason.
-		st := string(cryptopaymentintent.Pending)
-		var planID, subID string
-		sp, serr := processorsForOrg(org).Existing(ctx, processor.Stripe)
-		if serr != nil {
-			return CryptoDeposit{}, fmt.Errorf("crypto deposit: Stripe unavailable: %w", serr)
-		}
-		tx, terr := sp.GetTransaction(ctx, id)
-		if terr != nil {
-			return CryptoDeposit{}, fmt.Errorf("crypto deposit: Stripe transaction read: %w", terr)
-		}
-		if tx == nil {
-			return CryptoDeposit{}, errors.New("crypto deposit: Stripe returned no transaction")
-		}
-		switch tx.Status {
-		case "canceled":
-			if !p.Done {
-				if _, err := pendingintent.Settle(id); err != nil {
-					return CryptoDeposit{}, err
-				}
-			}
-			st = string(cryptopaymentintent.Expired)
-		case "succeeded":
-			if !p.Done {
-				if err := reconcileIntent(ctx, p); err != nil {
-					return CryptoDeposit{}, err
-				}
-				if updated, ok, err := pendingintent.Get(id); err != nil {
-					return CryptoDeposit{}, err
-				} else if ok && updated != nil {
-					p = updated
-				}
-			}
-			// A completed Stripe transaction is not itself proof of ledger
-			// credit or plan activation. Require the corresponding receipt.
-			if p.Purpose == pendingintent.Plan && p.Ref != "" {
-				if s, ok, _ := checkoutsession.Get(p.Ref); ok && s != nil {
-					planID, subID = s.Plan, s.SubscriptionID
-					if p.Done && subID != "" {
-						st = string(cryptopaymentintent.Succeeded)
-					}
-				}
-			} else if p.Purpose == pendingintent.Topup && p.Done && tx.ProcessorRef != "" {
-				if _, credited, err := paymentorg.Get(tx.ProcessorRef); err != nil {
-					return CryptoDeposit{}, err
-				} else if credited {
-					st = string(cryptopaymentintent.Succeeded)
-				}
-			}
-		}
-		// Preserve the plan identity even while payment is pending or expired.
-		if p.Purpose == pendingintent.Plan && p.Ref != "" && planID == "" {
-			if s, ok, _ := checkoutsession.Get(p.Ref); ok && s != nil {
-				planID = s.Plan
-			}
-		}
-		return CryptoDeposit{
-			ID:             p.Id(),
-			Status:         st,
-			Chain:          chain,
-			Token:          "usdc",
-			AmountCents:    p.Cents,
-			PlanID:         planID,
-			SubscriptionID: subID,
-		}, nil
-	}
-	db := datastore.New(org.Namespaced(ctx))
-	intent := cryptopaymentintent.New(db)
-	if err := intent.GetById(id); err != nil {
-		return CryptoDeposit{}, errDepositNotFound
-	}
-	if intent.CustomerRef != payer {
-		return CryptoDeposit{}, errDepositNotFound
-	}
-	if (intent.Status == cryptopaymentintent.Pending || intent.Status == cryptopaymentintent.Confirming) &&
-		strings.HasPrefix(intent.WalletID, "kraken:") {
-		if svc := depositledger.Default(); svc != nil && svc.Running() {
-			_, _ = svc.SyncOnce(ctx)
-			_ = intent.GetById(id)
-		}
-	}
-	return toCryptoDepositResponse(intent), nil
-}
-
-// GetBillingCryptoDeposit is the payer's endpoint for their own deposit.
-//
-//	GET /v1/billing/crypto/deposit/:id
-func GetBillingCryptoDeposit(c *zip.Ctx) error {
-	payer := userBillingKey(c)
-	if payer == "" {
-		return jsonhttp.Fail(c, 401, "Authentication required", nil)
-	}
-	out, err := GetCryptoDeposit(c.Context(), middleware.GetOrganization(c), payer, c.Param("id"))
-	if err != nil {
-		return jsonhttp.Fail(c, 404, "deposit not found", err)
-	}
-	return c.JSON(200, out)
-}
-
-func toCryptoDepositResponse(i *cryptopaymentintent.CryptoPaymentIntent) CryptoDeposit {
-	out := CryptoDeposit{
-		ID:             i.Id(),
-		Status:         string(i.Status),
-		Chain:          string(i.Chain),
-		Token:          i.Token,
-		DepositAddress: i.DepositAddress,
-		AddressTag:     i.AddressTag,
-		ExpiresAt:      i.ExpiresAt.UTC().Format(time.RFC3339),
-		AmountCents:    i.Amount,
-		// The depth the watcher judges by now, which is the chain's policy and not
-		// the number stamped on an intent minted under an older one.
-		RequiredConfirmations: cryptopaymentintent.RequiredConfirmationsForChain(i.Chain),
-		Confirmations:         i.Confirmations,
-	}
-	if i.Status == cryptopaymentintent.Succeeded {
-		out.CreditedCents = i.SettlementAmount
-	}
-	if i.Metadata != nil {
-		if p, _ := i.Metadata["planId"].(string); p != "" {
-			out.PlanID = p
-		}
-		if s, _ := i.Metadata["subscriptionId"].(string); s != "" {
-			out.SubscriptionID = s
-		}
-	}
-	if terms, ok := termsFor(watchedAssets(), string(i.Chain), i.Token); ok {
-		out.FeeCents = terms.FeeCents
-		out.MinimumCents = minimumCents(terms)
-	}
-	return out
-}
-
-// termsFor answers what a deposit of (chain, token) has deducted before it is
-// credited, from the watched asset — where the deduction is configured
-// (CRYPTO_DEPOSIT_FEE_<CHAIN>). ok is false when nothing watches the asset.
-func termsFor(assets []depositwatch.Asset, chain, token string) (depositwatch.Terms, bool) {
-	for _, a := range assets {
-		if strings.EqualFold(a.Chain, chain) && strings.EqualFold(a.Token, token) {
-			return a.Terms, true
-		}
-	}
-	return depositwatch.Terms{}, false
-}
-
-// minimumCents is the smallest deposit, in USD cents of what was sent, that
-// depositwatch.AmountCents credits under t: the haircut leaves it at least one
-// cent more than the fee. Anything less is dust or under the fee and credits
-// nothing.
-func minimumCents(t depositwatch.Terms) int64 {
-	const bps = 10_000
-	keep := int64(bps - t.SlippageBps)
-	return ((t.FeeCents+1)*bps + keep - 1) / keep
-}
-
-func supportedChain(cp processor.CryptoProcessor, chain string) bool {
-	for _, s := range cp.SupportedChains() {
-		if s == chain {
-			return true
-		}
-	}
-	return false
-}
-
-// addressSpokenFor says an open payment other than except holds the deposit address: an
-// intent still pending or confirming and not past its expiry. A per-payment address is
-// bound to exactly one of them at a time.
-func addressSpokenFor(db *datastore.Datastore, address, except string) bool {
-	rows := make([]*cryptopaymentintent.CryptoPaymentIntent, 0)
-	if _, err := cryptopaymentintent.Query(db).Filter("DepositAddress=", address).GetAll(&rows); err != nil {
-		return true // an unreadable store is not proof the address is free
-	}
-	now := time.Now()
-	var holder *cryptopaymentintent.CryptoPaymentIntent
-	for _, r := range rows {
-		if r.Id() == except || (r.Status != cryptopaymentintent.Pending && r.Status != cryptopaymentintent.Confirming) || now.After(r.ExpiresAt) {
-			continue
-		}
-		if except == "" {
-			return true
-		}
-		// A race between two requests: the one made first keeps the address, so exactly one
-		// of them is withdrawn whichever runs this check.
-		if holder == nil || r.CreatedAt.Before(holder.CreatedAt) {
-			holder = r
-		}
-	}
-	if except == "" || holder == nil {
-		return false
-	}
-	var mine *cryptopaymentintent.CryptoPaymentIntent
-	for _, r := range rows {
-		if r.Id() == except {
-			mine = r
-		}
-	}
-	return mine != nil && !mine.CreatedAt.Before(holder.CreatedAt)
 }

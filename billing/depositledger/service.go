@@ -10,6 +10,7 @@ import (
 
 	"github.com/hanzoai/commerce/billing/depositwatch"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/payment/providers/kraken"
 	"github.com/hanzoai/commerce/payment/routing"
 )
@@ -46,9 +47,10 @@ type Service struct {
 // state is one reading of the policy's deposit accounts: the assets, the chain watcher
 // over them, and the exchange processor when an exchange account is on.
 type state struct {
-	assets  []depositwatch.Asset
-	watcher *depositwatch.Watcher
-	kraken  *kraken.Processor
+	assets      []depositwatch.Asset
+	watcher     *depositwatch.Watcher
+	kraken      *kraken.Processor
+	poolsWarmed atomic.Bool
 }
 
 // Option configures a Service (seams for tests: a fake chain, a fake store).
@@ -382,3 +384,29 @@ func SetDefault(s *Service) { defaultService = s }
 
 // Default returns the process-wide watcher (may be a disabled Service).
 func Default() *Service { return defaultService }
+
+// NotifySettled retires a settled deposit address from the active Kraken rolling pool
+// and triggers immediate minting of a fresh replacement address so future buyers never
+// reuse a previously deposited wallet.
+func (s *Service) NotifySettled(ctx context.Context, chain, token, address string) {
+	if strings.TrimSpace(address) == "" {
+		return
+	}
+	var kp *kraken.Processor
+	if s != nil {
+		kp = s.state().kraken
+	}
+	if kp == nil {
+		if reg, err := processor.Global().Registered(processor.Kraken); err == nil {
+			if candidate, ok := reg.(*kraken.Processor); ok && candidate.IsAvailable(ctx) {
+				kp = candidate
+			}
+		}
+	}
+	if kp == nil {
+		return
+	}
+	if err := kp.RetireAndRotate(ctx, chain, token, address); err != nil {
+		log.Warn("depositledger: kraken post-settlement rotation for %s (%s/%s) queued for retry: %v", address, chain, token, err)
+	}
+}

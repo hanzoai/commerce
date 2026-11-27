@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hanzoai/commerce/billing/depositwatch"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/cryptopaymentintent"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
@@ -34,10 +36,9 @@ var defaultKrakenPairs = []struct {
 }
 
 // krakenFromAccounts is the exchange processor and the assets it takes deposits in, when
-// the policy has a kraken account on. The credential is read from the account's
-// SecretRef at this call: the KMS folder holding KRAKEN_API_KEY, KRAKEN_API_SECRET and
-// optionally KRAKEN_OTP. The
-// account's Endpoint, when set, is the exchange's API origin.
+// the policy has a kraken account on. It configures and returns the global registered
+// *kraken.Processor so HTTP checkouts and depositledger share one monotonic API nonce,
+// one rolling 5-address pool cursor, one retired-address set and one method cache.
 func krakenFromAccounts(ctx context.Context, accounts []routing.Account) (*kraken.Processor, []depositwatch.Asset) {
 	for _, a := range accounts {
 		if !a.On || a.Processor != string(processor.Kraken) || a.SecretRef == "" {
@@ -45,12 +46,24 @@ func krakenFromAccounts(ctx context.Context, accounts []routing.Account) (*krake
 		}
 		folder := strings.TrimRight(a.SecretRef, "/")
 		cred := struct{ APIKey, APISecret, OTP string }{
-			APIKey: secrets.String(ctx, folder+"/KRAKEN_API_KEY"), APISecret: secrets.String(ctx, folder+"/KRAKEN_API_SECRET"), OTP: secrets.String(ctx, folder+"/KRAKEN_OTP"),
+			APIKey:    secrets.String(ctx, folder+"/KRAKEN_API_KEY"),
+			APISecret: secrets.String(ctx, folder+"/KRAKEN_API_SECRET"),
+			OTP:       secrets.String(ctx, folder+"/KRAKEN_OTP"),
 		}
 		if cred.APIKey == "" || cred.APISecret == "" {
 			continue
 		}
-		kp := kraken.NewProcessor(kraken.Config{APIKey: cred.APIKey, APISecret: cred.APISecret, APIURL: a.Endpoint, OTP: cred.OTP})
+		cfg := kraken.Config{APIKey: cred.APIKey, APISecret: cred.APISecret, APIURL: a.Endpoint, OTP: cred.OTP}
+		var kp *kraken.Processor
+		if reg, err := processor.Global().Registered(processor.Kraken); err == nil {
+			if shared, ok := reg.(*kraken.Processor); ok {
+				shared.Configure(cfg)
+				kp = shared
+			}
+		}
+		if kp == nil {
+			kp = kraken.NewProcessor(cfg)
+		}
 		if !kp.IsAvailable(ctx) {
 			continue
 		}
@@ -67,10 +80,49 @@ func krakenFromAccounts(ctx context.Context, accounts []routing.Account) (*krake
 	return nil, nil
 }
 
+func warmKrakenAddressPools(ctx context.Context, st *state) {
+	if st == nil || st.kraken == nil || !st.poolsWarmed.CompareAndSwap(false, true) {
+		return
+	}
+	seenFamily := make(map[string]bool)
+	for _, a := range st.assets {
+		if !strings.HasPrefix(a.Contract, "kraken:") {
+			continue
+		}
+		fam := "evm"
+		if strings.EqualFold(a.Chain, "solana") {
+			fam = "solana"
+		} else if !isEVMChainName(a.Chain) {
+			fam = strings.ToLower(a.Chain) + ":" + strings.ToLower(a.Token)
+		}
+		if seenFamily[fam] {
+			continue
+		}
+		seenFamily[fam] = true
+		if n, err := st.kraken.EnsurePool(ctx, a.Chain, a.Token, kraken.DefaultAddressPoolSize); err != nil {
+			log.Warn("depositledger: kraken pool warm for %s/%s (%d/%d): %v", a.Chain, a.Token, n, kraken.DefaultAddressPoolSize, err)
+		} else {
+			log.Info("depositledger: kraken %s/%s deposit pool ready (%d/%d unused addresses)", a.Chain, a.Token, n, kraken.DefaultAddressPoolSize)
+		}
+	}
+}
+
+func isEVMChainName(chain string) bool {
+	switch strings.ToLower(strings.TrimSpace(chain)) {
+	case "ethereum", "base", "arbitrum", "optimism", "polygon", "avalanche":
+		return true
+	default:
+		return false
+	}
+}
+
 func (s *Service) syncKraken(ctx context.Context, st *state) (int, error) {
 	if s == nil || st.kraken == nil || s.store == nil {
 		return 0, nil
 	}
+
+	warmKrakenAddressPools(ctx, st)
+	_ = st.kraken.ReplenishPendingPools(ctx)
 
 	type watchedPair struct {
 		chain string
@@ -121,10 +173,16 @@ func (s *Service) syncKraken(ctx context.Context, st *state) (int, error) {
 					if !strings.EqualFold(strings.TrimSpace(r.Info), strings.TrimSpace(w.Address)) {
 						continue
 					}
+					if r.Time > 0 && !w.CreatedAt.IsZero() && time.Unix(r.Time, 0).Before(w.CreatedAt.Add(-10*time.Minute)) {
+						continue
+					}
 					status := strings.ToLower(strings.TrimSpace(r.Status))
 					txHash := strings.TrimSpace(r.TxID)
 					if txHash == "" {
 						txHash = strings.TrimSpace(r.RefID)
+					}
+					if w.Status == cryptopaymentintent.Succeeded && sameTxHash(w.TxHash, txHash) {
+						continue
 					}
 					switch status {
 					case "pending", "initial":

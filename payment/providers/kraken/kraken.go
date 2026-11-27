@@ -73,6 +73,11 @@ type Config struct {
 	Timeout   time.Duration
 }
 
+var (
+	globalNonceMu   sync.Mutex
+	globalLastNonce int64
+)
+
 // Processor implements processor.PaymentProcessor and processor.CryptoProcessor
 // backed by the Kraken Exchange Funding REST API.
 type Processor struct {
@@ -83,11 +88,13 @@ type Processor struct {
 	otp        string
 	httpClient *http.Client
 
-	nonceMu   sync.Mutex
-	lastNonce int64
-
 	methodMu    sync.RWMutex
 	methodCache map[string][]DepositMethod
+
+	poolMu           sync.Mutex
+	pools            map[string]*addressPool
+	retired          map[string]bool
+	pendingReplenish map[string]poolTarget
 }
 
 // DepositMethod represents a single entry returned by Kraken's
@@ -149,26 +156,42 @@ func NewProcessor(cfg Config) *Processor {
 	}
 
 	p := &Processor{
-		BaseProcessor: processor.NewBaseProcessor(processor.Kraken, supportedCurrencies),
-		apiKey:        strings.TrimSpace(cfg.APIKey),
-		baseURL:       baseURL,
-		otp:           strings.TrimSpace(cfg.OTP),
-		httpClient:    &http.Client{Timeout: timeout},
-		methodCache:   make(map[string][]DepositMethod),
+		BaseProcessor:    processor.NewBaseProcessor(processor.Kraken, supportedCurrencies),
+		apiKey:           strings.TrimSpace(cfg.APIKey),
+		baseURL:          baseURL,
+		otp:              strings.TrimSpace(cfg.OTP),
+		httpClient:       &http.Client{Timeout: timeout},
+		methodCache:      make(map[string][]DepositMethod),
+		pools:            make(map[string]*addressPool),
+		retired:          make(map[string]bool),
+		pendingReplenish: make(map[string]poolTarget),
 	}
 	p.configureCredentials(cfg.APIKey, cfg.APISecret)
 	return p
 }
 
-// Configure reloads credentials at runtime.
+// Configure reloads credentials at runtime, preserving the rolling pool cursor,
+// retired address set and method cache when the account key and API origin match.
 func (p *Processor) Configure(cfg Config) {
+	nextURL := p.baseURL
 	if strings.TrimSpace(cfg.APIURL) != "" {
-		p.baseURL = strings.TrimRight(strings.TrimSpace(cfg.APIURL), "/")
+		nextURL = strings.TrimRight(strings.TrimSpace(cfg.APIURL), "/")
 	}
+	changed := nextURL != p.baseURL || strings.TrimSpace(cfg.APIKey) != p.apiKey
+	p.baseURL = nextURL
 	if strings.TrimSpace(cfg.OTP) != "" {
 		p.otp = strings.TrimSpace(cfg.OTP)
 	}
 	p.configureCredentials(cfg.APIKey, cfg.APISecret)
+	if changed {
+		p.methodMu.Lock()
+		p.methodCache = make(map[string][]DepositMethod)
+		p.methodMu.Unlock()
+		p.poolMu.Lock()
+		p.pools = make(map[string]*addressPool)
+		p.pendingReplenish = make(map[string]poolTarget)
+		p.poolMu.Unlock()
+	}
 }
 
 func (p *Processor) configureCredentials(apiKey, apiSecret string) {
@@ -228,27 +251,9 @@ func (p *Processor) GenerateAddress(ctx context.Context, customerID string, chai
 		return processor.Wallet{}, err
 	}
 
-	// Always request a brand-new deposit address (new=true) for each payment so
-	// every crypto payment receives a unique, single-use address. If Kraken
-	// reports EFunding:Too many addresses (when 5 consecutive unused addresses
-	// have already been minted on that network without a deposit landing yet),
-	// fall back to new=false and select one of the unused addresses.
-	addrs, err := p.fetchDepositAddresses(ctx, asset, method, true)
-	if err != nil && strings.Contains(strings.ToLower(err.Error()), "too many addresses") {
-		addrs, err = p.fetchDepositAddresses(ctx, asset, method, false)
-	}
+	chosen, err := p.acquirePoolAddress(ctx, chain, asset, method)
 	if err != nil {
 		return processor.Wallet{}, err
-	}
-
-	// An address is bound to exactly one open payment: the new=false fallback hands back
-	// addresses that were minted earlier, and one of them may be waiting on another
-	// payment. Only an address bound to no open payment is chosen; when there is none the
-	// payment is refused, never attributed to an address already spoken for.
-	chosen, ok := pickFreeAddress(addrs, processor.AddressFreeFromContext(ctx))
-	if !ok {
-		return processor.Wallet{}, processor.NewPaymentError(processor.Kraken, "NO_FREE_ADDRESS",
-			fmt.Sprintf("kraken: no deposit address for asset=%s method=%q is free of an open payment", asset, method), nil)
 	}
 
 	tag := strings.TrimSpace(chosen.Tag)
@@ -479,6 +484,13 @@ func (p *Processor) depositMethodsForAsset(ctx context.Context, asset string) ([
 // "Solana", "Base") as well as Unified EVM Deposit Methods where all EVM
 // networks share an "Ethereum" / "ERC-20" / unified method on the account.
 func matchMethodForChain(methods []DepositMethod, chain string) (string, bool) {
+	if dm, ok := matchDepositMethodForChain(methods, chain); ok {
+		return dm.Method, true
+	}
+	return "", false
+}
+
+func matchDepositMethodForChain(methods []DepositMethod, chain string) (DepositMethod, bool) {
 	candidates := chainMethodKeywords(chain)
 	// First pass: prefer canonical native asset methods over bridged/variant
 	// prefixes (such as "USDC.e", "USDT0", "USDCx").
@@ -497,12 +509,56 @@ func matchMethodForChain(methods []DepositMethod, chain string) (string, bool) {
 					continue
 				}
 				if strings.Contains(name, kw) {
-					return m.Method, true
+					return m, true
 				}
 			}
 		}
 	}
-	return "", false
+	return DepositMethod{}, false
+}
+
+func isUSDStableToken(token string) bool {
+	switch strings.ToLower(strings.TrimSpace(token)) {
+	case "usdc", "usdt", "rlusd", "dai", "pyusd":
+		return true
+	default:
+		return false
+	}
+}
+
+// CachedMinimumUSDCents returns Kraken's deposit minimum in USD cents for a 1:1 USD
+// stablecoin on chain when DepositMethods for the asset is already cached, or 0.
+func (p *Processor) CachedMinimumUSDCents(chain, token string) int64 {
+	if !isUSDStableToken(token) {
+		return 0
+	}
+	asset := krakenAsset(token, chain)
+	p.methodMu.RLock()
+	methods := p.methodCache[asset]
+	p.methodMu.RUnlock()
+	if len(methods) == 0 {
+		return 0
+	}
+	if dm, ok := matchDepositMethodForChain(methods, strings.ToLower(strings.TrimSpace(chain))); ok {
+		return int64(parseDecimalToCents(dm.Minimum))
+	}
+	return 0
+}
+
+// MinimumUSDCents resolves Kraken's deposit minimum in USD cents for a 1:1 USD stablecoin.
+func (p *Processor) MinimumUSDCents(ctx context.Context, chain, token string) int64 {
+	if !p.IsAvailable(ctx) || !isUSDStableToken(token) {
+		return 0
+	}
+	asset := krakenAsset(token, chain)
+	methods, err := p.depositMethodsForAsset(ctx, asset)
+	if err != nil || len(methods) == 0 {
+		return 0
+	}
+	if dm, ok := matchDepositMethodForChain(methods, strings.ToLower(strings.TrimSpace(chain))); ok {
+		return int64(parseDecimalToCents(dm.Minimum))
+	}
+	return 0
 }
 
 func chainMethodKeywords(chain string) []string {
@@ -609,14 +665,24 @@ func pickFreeAddress(addrs []DepositAddress, free func(string) bool) (DepositAdd
 }
 
 func (p *Processor) nextNonce() string {
-	p.nonceMu.Lock()
-	defer p.nonceMu.Unlock()
+	globalNonceMu.Lock()
+	defer globalNonceMu.Unlock()
 	now := time.Now().UnixNano()
-	if now <= p.lastNonce {
-		now = p.lastNonce + 1
+	if now <= globalLastNonce {
+		now = globalLastNonce + 1
 	}
-	p.lastNonce = now
+	globalLastNonce = now
 	return strconv.FormatInt(now, 10)
+}
+
+func bumpNonceAfterInvalid() {
+	globalNonceMu.Lock()
+	defer globalNonceMu.Unlock()
+	target := time.Now().UnixNano() + int64(time.Millisecond)
+	if target <= globalLastNonce {
+		target = globalLastNonce + int64(time.Millisecond)
+	}
+	globalLastNonce = target
 }
 
 // signKrakenRequest computes the Kraken API-Sign header value:
@@ -631,16 +697,33 @@ func signKrakenRequest(uriPath, nonce, postData string, secret []byte) string {
 }
 
 func (p *Processor) privatePost(ctx context.Context, uriPath string, form url.Values, out interface{}) error {
-	if form == nil {
-		form = url.Values{}
+	err := p.privatePostOnce(ctx, uriPath, form, out)
+	if err != nil && strings.Contains(strings.ToLower(err.Error()), "invalid nonce") {
+		bumpNonceAfterInvalid()
+		select {
+		case <-ctx.Done():
+			return err
+		case <-time.After(100 * time.Millisecond):
+		}
+		return p.privatePostOnce(ctx, uriPath, form, out)
+	}
+	return err
+}
+
+func (p *Processor) privatePostOnce(ctx context.Context, uriPath string, form url.Values, out interface{}) error {
+	vals := url.Values{}
+	for k, vs := range form {
+		for _, v := range vs {
+			vals.Add(k, v)
+		}
 	}
 	nonce := p.nextNonce()
-	form.Set("nonce", nonce)
-	if p.otp != "" && form.Get("otp") == "" {
-		form.Set("otp", p.otp)
+	vals.Set("nonce", nonce)
+	if p.otp != "" && vals.Get("otp") == "" {
+		vals.Set("otp", p.otp)
 	}
 
-	postData := form.Encode()
+	postData := vals.Encode()
 	sig := signKrakenRequest(uriPath, nonce, postData, p.apiSecret)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL+uriPath, strings.NewReader(postData))
