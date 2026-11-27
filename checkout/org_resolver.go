@@ -90,10 +90,11 @@ func (r *OrgResolver) Resolve(host string) (Org, error) {
 	hasPayPal := paypalAllowed && pp.ClientID != ""
 
 	// Stripe is shown on the same terms as Square: the deployment's own brand, or
-	// a brand with an account of its own — and only with a publishable key, the
-	// one thing its card form cannot mount without.
+	// a brand with an account of its own — only when not disabled by policy and
+	// with a publishable key, the one thing its card form cannot mount without.
+	stripeAllowed := (b.slug == defaultBrand().slug || payment.StripeOwned(org)) && !processor.DisabledByPolicy(processor.Stripe)
 	var st payment.StripePublic
-	if b.slug == defaultBrand().slug || payment.StripeOwned(org) {
+	if stripeAllowed {
 		st = payment.StripePublicConfig(org)
 	}
 
@@ -105,7 +106,7 @@ func (r *OrgResolver) Resolve(host string) (Org, error) {
 	if !card {
 		reg.Unregister(processor.Square)
 	}
-	if st.PublishableKey == "" {
+	if !stripeAllowed || st.PublishableKey == "" {
 		reg.Unregister(processor.Stripe)
 	}
 

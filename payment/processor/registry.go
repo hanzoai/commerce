@@ -143,10 +143,42 @@ func disabledProcessors() map[ProcessorType]bool {
 	return disabled
 }
 
+// hardDisabledPolicy is an optional deployment-level kill-switch installed by the
+// host (api/billing from COMMERCE_DISABLED_PROCESSORS). Unlike ChargePolicy, it
+// cannot be overridden by a persisted routing policy or saved cards.
+var hardDisabledPolicy atomic.Pointer[ChargePolicy]
+
+// SetHardDisabledPolicy installs the hard-disabled processor policy and returns a
+// function restoring the previous one.
+func SetHardDisabledPolicy(f ChargePolicy) (restore func()) {
+	old := hardDisabledPolicy.Load()
+	if f == nil {
+		hardDisabledPolicy.Store(nil)
+	} else {
+		hardDisabledPolicy.Store(&f)
+	}
+	return func() { hardDisabledPolicy.Store(old) }
+}
+
+// DisabledByEnv reports whether processor t is hard-disabled by the deployment
+// kill-switch (COMMERCE_DISABLED_PROCESSORS). A hard-disabled processor cannot take
+// new charges, cannot charge saved cards, never loads its secrets from KMS, and is
+// never advertised to browsers — even if an earlier persisted routing policy still
+// lists it as on.
+func DisabledByEnv(t ProcessorType) bool {
+	if f := hardDisabledPolicy.Load(); f != nil {
+		return (*f)()[t]
+	}
+	return false
+}
+
 // DisabledByPolicy reports whether the charge policy keeps processor t from taking a
 // NEW charge. It is the SINGLE source of truth for "is this processor off for new
 // charges," shared by the registry AND by surfaces that list processors without one.
 func DisabledByPolicy(t ProcessorType) bool {
+	if DisabledByEnv(t) {
+		return true
+	}
 	return disabledProcessors()[t]
 }
 
@@ -215,6 +247,9 @@ func (r *Registry) Get(t ProcessorType) (PaymentProcessor, error) {
 // policy decides where NEW money goes, not whether a subscription renews on the
 // card it was bought with.
 func (r *Registry) Existing(ctx context.Context, t ProcessorType) (PaymentProcessor, error) {
+	if DisabledByEnv(t) {
+		return nil, fmt.Errorf("processor %s is disabled", t)
+	}
 	p, err := r.Registered(t)
 	if err != nil {
 		return nil, err

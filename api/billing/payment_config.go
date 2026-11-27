@@ -72,7 +72,10 @@ type PaymentConfig struct {
 func ReadPaymentConfig(ctx context.Context, org *organization.Organization) *PaymentConfig {
 	sq := payment.SquarePublicConfig(org)
 	pp := payment.PayPalPublicConfig(org)
-	st := payment.StripePublicConfig(org)
+	var st payment.StripePublic
+	if !processor.DisabledByPolicy(processor.Stripe) {
+		st = payment.StripePublicConfig(org)
+	}
 	cards := map[string]string{}
 	for cur, t := range processorsForOrg(orgOrZero(org)).Cards(ctx, "") {
 		cards[string(cur)] = string(t)
@@ -81,7 +84,7 @@ func ReadPaymentConfig(ctx context.Context, org *organization.Organization) *Pay
 		Stripe: StripePublicConfig{
 			PublishableKey: st.PublishableKey,
 			Environment:    st.Environment,
-			Enabled:        st.PublishableKey != "" && served(cards, processor.Stripe),
+			Enabled:        !processor.DisabledByPolicy(processor.Stripe) && st.PublishableKey != "" && served(cards, processor.Stripe),
 		},
 		Cards:         cards,
 		Provider:      "square",

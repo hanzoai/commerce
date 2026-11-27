@@ -46,13 +46,26 @@ var (
 	runtimeMu      sync.Mutex
 )
 
+func init() {
+	processor.SetHardDisabledPolicy(envDisabledProcessors)
+}
+
+func envDisabledProcessors() map[processor.ProcessorType]bool {
+	raw := strings.TrimSpace(os.Getenv("COMMERCE_DISABLED_PROCESSORS"))
+	if raw == "" {
+		return nil
+	}
+	return processor.ChargeNames(raw)
+}
+
 // chargeFromPolicy is the processor charge policy for a routing policy: the processors
 // it lists as on. The crypto rail's own switch is not a processor.
 func chargeFromPolicy(p routing.Policy) map[processor.ProcessorType]bool {
 	allowed := map[processor.ProcessorType]bool{}
 	for _, r := range p.Processors {
-		if r.On && processor.KnownType(r.Processor) {
-			allowed[processor.ProcessorType(r.Processor)] = true
+		t := processor.ProcessorType(r.Processor)
+		if r.On && processor.KnownType(r.Processor) && !processor.DisabledByEnv(t) {
+			allowed[t] = true
 		}
 	}
 	return allowed
@@ -127,7 +140,7 @@ func chargeProblems(ctx context.Context, pol routing.Policy) []string {
 	var problems []string
 	on, ready := 0, 0
 	for _, r := range pol.Processors {
-		if !r.On {
+		if !r.On || processor.DisabledByEnv(processor.ProcessorType(r.Processor)) {
 			continue
 		}
 		if _, needs := requiredFields[r.Processor]; !needs {
@@ -185,7 +198,7 @@ const settlementPrefix = "settlement: "
 func settlementProblems(ctx context.Context, pol routing.Policy) []string {
 	var out []string
 	for _, r := range pol.Processors {
-		if !r.On {
+		if !r.On || processor.DisabledByEnv(processor.ProcessorType(r.Processor)) {
 			continue
 		}
 		for _, a := range pol.Accounts {
@@ -280,7 +293,7 @@ var accountedProcessors []processor.ProcessorType
 func applyAccounts(ctx context.Context, pol routing.Policy) {
 	by := map[processor.ProcessorType][]processor.Account{}
 	for _, a := range pol.Accounts {
-		if !a.On || a.Network != "" || a.Processor == "" {
+		if !a.On || a.Network != "" || a.Processor == "" || processor.DisabledByEnv(processor.ProcessorType(a.Processor)) {
 			continue
 		}
 		acct := processor.Account{ID: a.ID, Settings: map[string]string{}, Secrets: map[string]string{}}

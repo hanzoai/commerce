@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/payment/providers/stripe"
 )
 
@@ -23,6 +24,9 @@ type StripePublic struct {
 // the publishable key always come from ONE account, so the card the browser
 // tokenizes is a card the server can charge.
 func StripeKeys(org *organization.Organization) stripe.Credentials {
+	if processor.DisabledByEnv(processor.Stripe) {
+		return stripe.Credentials{}
+	}
 	if org == nil {
 		org = &organization.Organization{}
 	}
