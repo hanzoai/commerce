@@ -65,4 +65,30 @@ func TestGetCryptoDeposit_StripeIntentReconcilesSucceededAndCanceled(t *testing.
 	if p, _, _ := pendingintent.Get("pi_crypto_poll_cancel"); p == nil || !p.Done {
 		t.Fatalf("canceled pendingintent should be marked done, got %+v", p)
 	}
+	// Closed is not credited: every later read must still report expired.
+	for range 3 {
+		dep, err = GetCryptoDeposit(ctx, org, "buyer", "pi_crypto_poll_cancel")
+		if err != nil || dep.Status != "expired" {
+			t.Fatalf("repeat canceled poll = %+v (%v), want expired", dep, err)
+		}
+	}
+	if got, _ := led.Balance(ctx, orgKey, "buyer", "usd", false); got != 500 {
+		t.Fatalf("canceled deposit altered ledger: %d, want 500", got)
+	}
+	// A successful processor status with a closed row but no credit receipt
+	// must not be reported as settled.
+	if err := pendingintent.PutQuoted("pi_crypto_no_receipt", org.Name, "buyer", pendingintent.Topup, 5000, "usd", 0, "", 1, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pendingintent.Settle("pi_crypto_no_receipt"); err != nil {
+		t.Fatal(err)
+	}
+	useStripe(t, &stripeDouble{
+		tx: &processor.Transaction{ID: "pi_crypto_no_receipt", ProcessorRef: "ch_no_receipt", Amount: 5000, Currency: "usd", Status: "succeeded"},
+	})
+	dep, err = GetCryptoDeposit(ctx, org, "buyer", "pi_crypto_no_receipt")
+	if err != nil || dep.Status == "succeeded" {
+		t.Fatalf("uncredited closed row = %+v (%v), must not report success", dep, err)
+	}
+
 }
