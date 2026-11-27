@@ -263,7 +263,7 @@ func OpenTopupIntent(ctx context.Context, org *organization.Organization, in Top
 		}
 		only = []string{"us_bank_account"}
 	}
-	desc := fmt.Sprintf("Top-up %d usd for %s", in.AmountCents, in.Subject)
+	desc := fmt.Sprintf("Top-up $%.2f USD for %s", float64(in.AmountCents)/100, in.Subject)
 	if planSlug != "" {
 		desc = fmt.Sprintf("Subscription %s — first period for %s", planSlug, in.Subject)
 	}

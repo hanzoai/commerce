@@ -243,7 +243,7 @@ func OpenCryptoTopup(ctx context.Context, org *organization.Organization, in Cry
 	if key == "" {
 		key = windowKey(fmt.Sprintf("crypto:%d:%s", in.AmountCents, in.Network))
 	}
-	dep, network, f := stripeDeposit(ctx, org, in.Subject, in.AmountCents, in.Network, key, fmt.Sprintf("Top-up %d usd for %s", in.AmountCents, in.Subject))
+	dep, network, f := stripeDeposit(ctx, org, in.Subject, in.AmountCents, in.Network, key, fmt.Sprintf("Top-up $%.2f USD for %s", float64(in.AmountCents)/100, in.Subject))
 	if f != nil {
 		return nil, f
 	}

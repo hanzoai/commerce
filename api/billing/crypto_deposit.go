@@ -590,7 +590,7 @@ func CreateCryptoDeposit(ctx context.Context, org *organization.Organization, pa
 		if pol, polVer, perr := ReadRoutingVersioned(ctx, org.Name); perr == nil && pol.StripeCrypto() && stripeStablecoins(ctx, processorsForOrg(org)).On {
 			dep, net, f := stripeDeposit(ctx, org, payer, amountCents, chain,
 				fmt.Sprintf("crypto-topup:%s:%s:%d", chain, token, time.Now().Unix()/idemWindowSec),
-				fmt.Sprintf("Top-up %d usd for %s", amountCents, payer))
+				fmt.Sprintf("Top-up $%.2f USD for %s", float64(amountCents)/100, payer))
 			if f == nil && dep != nil && len(dep.Addresses) > 0 {
 				addr := dep.Addresses[0].Address
 				for _, a := range dep.Addresses {
@@ -1088,6 +1088,34 @@ func GetCryptoDeposit(ctx context.Context, org *organization.Organization, payer
 		if err != nil || !found || !strings.EqualFold(p.Subject, payer) || !strings.EqualFold(p.Org, org.Name) {
 			return CryptoDeposit{}, errDepositNotFound
 		}
+		chain := strings.TrimSpace(p.Network)
+		if chain == "" {
+			chain = "base"
+		}
+		// If the Stripe webhook was delayed or missed, check Stripe live and settle synchronously on poll.
+		if !p.Done {
+			if sp, serr := processorsForOrg(org).Existing(ctx, processor.Stripe); serr == nil {
+				if tx, terr := sp.GetTransaction(ctx, id); terr == nil && tx != nil {
+					switch tx.Status {
+					case "succeeded":
+						if reconcileIntent(ctx, p) == nil {
+							if updated, ok, _ := pendingintent.Get(id); ok && updated != nil {
+								p = updated
+							}
+						}
+					case "canceled":
+						_, _ = pendingintent.Settle(id)
+						return CryptoDeposit{
+							ID:          p.Id(),
+							Status:      string(cryptopaymentintent.Expired),
+							Chain:       chain,
+							Token:       "usdc",
+							AmountCents: p.Cents,
+						}, nil
+					}
+				}
+			}
+		}
 		st := string(cryptopaymentintent.Pending)
 		if p.Done {
 			st = string(cryptopaymentintent.Succeeded)
@@ -1097,10 +1125,6 @@ func GetCryptoDeposit(ctx context.Context, org *organization.Organization, payer
 			if s, ok, _ := checkoutsession.Get(p.Ref); ok && s != nil {
 				planID, subID = s.Plan, s.SubscriptionID
 			}
-		}
-		chain := strings.TrimSpace(p.Network)
-		if chain == "" {
-			chain = "base"
 		}
 		return CryptoDeposit{
 			ID:             p.Id(),
