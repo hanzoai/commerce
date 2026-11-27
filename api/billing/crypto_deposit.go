@@ -1144,6 +1144,12 @@ func GetCryptoDeposit(ctx context.Context, org *organization.Organization, payer
 				}
 			}
 		}
+		// Preserve the plan identity even while payment is pending or expired.
+		if p.Purpose == pendingintent.Plan && p.Ref != "" && planID == "" {
+			if s, ok, _ := checkoutsession.Get(p.Ref); ok && s != nil {
+				planID = s.Plan
+			}
+		}
 		return CryptoDeposit{
 			ID:             p.Id(),
 			Status:         st,
