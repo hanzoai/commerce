@@ -228,11 +228,10 @@ func rowOf(ctx context.Context, slug string) *plan.Plan {
 }
 
 // DefaultReload is the automatic reload every paid plan switches on when its row
-// states none of its own: the buyer's card is charged $50 whenever the prepaid
-// balance falls below $10 (owner, 2026-11-12; the figures cloud's
-// scripts/ladder-writes.sh ultra step states). It is the one place the default
-// lives: no catalog rung and no row restates it.
-var DefaultReload = plan.Reload{ThresholdCents: 1000, AmountCents: 5000}
+// states none of its own: the buyer's card is charged $5 whenever the prepaid
+// balance falls below $5 (matching the $5 minimum top-up and reload). It is the
+// one place the default lives: no catalog rung and no row restates it.
+var DefaultReload = plan.Reload{ThresholdCents: 500, AmountCents: 500}
 
 // planReload is the reload buying a plan priced at price, whose row's limits are
 // l, switches on: the row's own when it states one, none when it states an amount

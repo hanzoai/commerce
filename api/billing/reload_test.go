@@ -182,8 +182,8 @@ func TestThePublicCatalogServesTheReloadTerms(t *testing.T) {
 	}
 }
 
-// Buying a paid plan whose row states no reload switches the default on — $50
-// whenever the balance falls below $10, at the package's daily bound — unless the
+// Buying a paid plan whose row states no reload switches the default on — $5
+// whenever the balance falls below $5, at the package's daily bound — unless the
 // buyer turns it off at checkout, which switches nothing on and says so.
 func TestBuyingAPaidPlanSwitchesTheDefaultReloadOn(t *testing.T) {
 	for _, decline := range []bool{false, true} {
@@ -205,7 +205,7 @@ func TestBuyingAPaidPlanSwitchesTheDefaultReloadOn(t *testing.T) {
 			}
 		case reloadState(out) != armed || cfg == nil || !cfg.Enabled ||
 			cfg.ThresholdCents != DefaultReload.ThresholdCents || cfg.AmountCents != DefaultReload.AmountCents || cfg.Plan != "steady":
-			t.Errorf("the default reload: receipt %q, rule %+v; want armed at $50 below $10 for steady", reloadState(out), cfg)
+			t.Errorf("the default reload: receipt %q, rule %+v; want armed at $5 below $5 for steady", reloadState(out), cfg)
 		default:
 			if v, err := ReadAutoRecharge(ctx, org, ""); err != nil || v.PerDay != ReloadsPerDay {
 				t.Errorf("the default reload reads %+v (%v), want %d reloads a day", v, err, ReloadsPerDay)
