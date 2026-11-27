@@ -1,0 +1,19 @@
+[
+    {
+        "id": 25,
+        "email": "John.Doe@Example.com",
+        "role": "customer",
+        "date_created_gmt": "2026-02-01T09:00:00",
+        "date_modified_gmt": "2026-02-04T12:00:00",
+        "meta_data": [
+            {
+                "key": "_wc_other/hanzo/marketing",
+                "value": "1"
+            },
+            {
+                "key": "hanzo_consent_at",
+                "value": "2026-02-03T09:00:00Z"
+            }
+        ]
+    }
+]

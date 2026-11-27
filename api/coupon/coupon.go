@@ -13,6 +13,7 @@ import (
 	"github.com/hanzoai/commerce/models/coupon"
 	"github.com/hanzoai/commerce/models/couponredemption"
 	"github.com/hanzoai/commerce/models/creditgrant"
+	"github.com/hanzoai/commerce/source"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/permission"
@@ -329,5 +330,5 @@ func Route(router *zip.Group, args ...zip.Handler) {
 	api.POST("/validate", validateCoupon)
 	api.POST("/redeem", tokenRequired, redeemCoupon)
 
-	api.Route(router, args...)
+	api.Route(router, append(args, source.ObserveCouponREST)...)
 }

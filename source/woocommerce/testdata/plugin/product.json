@@ -1,0 +1,74 @@
+[
+    {
+        "id": 799,
+        "name": "Ship Your Idea",
+        "type": "variable",
+        "status": "publish",
+        "permalink": "https://shop.example.com/product/ship-your-idea/",
+        "sku": "SYI",
+        "price": "8.50",
+        "regular_price": "",
+        "sale_price": "",
+        "manage_stock": false,
+        "stock_quantity": null,
+        "stock_status": "instock",
+        "date_created_gmt": "2026-01-02T03:04:05",
+        "date_modified_gmt": "2026-03-01T10:00:00",
+        "images": [
+            {
+                "id": 795,
+                "src": "https://shop.example.com/wp-content/uploads/795.jpg"
+            },
+            {
+                "id": 796,
+                "src": "https://shop.example.com/wp-content/uploads/796.jpg"
+            }
+        ],
+        "currency": "USD",
+        "variations": [
+            {
+                "id": 732,
+                "permalink": "https://shop.example.com/product/ship-your-idea/?attribute_pa_color=black",
+                "sku": "SYI-BLK",
+                "price": "9.00",
+                "regular_price": "9.00",
+                "sale_price": "",
+                "status": "publish",
+                "manage_stock": true,
+                "stock_quantity": 7,
+                "stock_status": "instock",
+                "date_modified_gmt": "2026-03-02T08:15:00",
+                "image": {
+                    "id": 795,
+                    "src": "https://shop.example.com/wp-content/uploads/795.jpg"
+                },
+                "attributes": [
+                    {
+                        "name": "pa_color",
+                        "option": "black"
+                    }
+                ]
+            },
+            {
+                "id": 733,
+                "permalink": "https://shop.example.com/product/ship-your-idea/?attribute_pa_color=green",
+                "sku": "SYI-GRN",
+                "price": "8.50",
+                "regular_price": "8.50",
+                "sale_price": "",
+                "status": "publish",
+                "manage_stock": false,
+                "stock_quantity": null,
+                "stock_status": "instock",
+                "date_modified_gmt": "2026-03-01T10:00:00",
+                "image": null,
+                "attributes": [
+                    {
+                        "name": "pa_color",
+                        "option": "green"
+                    }
+                ]
+            }
+        ]
+    }
+]

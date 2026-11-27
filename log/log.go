@@ -55,6 +55,8 @@ func Debug(formatOrError interface{}, args ...interface{}) {
 	if !std.Verbose() {
 		return
 	}
+	std.mu.Lock()
+	defer std.mu.Unlock()
 	args = std.parseArgs(args...)
 
 	switch v := formatOrError.(type) {
@@ -66,6 +68,8 @@ func Debug(formatOrError interface{}, args ...interface{}) {
 }
 
 func Info(formatOrError interface{}, args ...interface{}) {
+	std.mu.Lock()
+	defer std.mu.Unlock()
 	args = std.parseArgs(args...)
 
 	switch v := formatOrError.(type) {
@@ -77,6 +81,8 @@ func Info(formatOrError interface{}, args ...interface{}) {
 }
 
 func Warn(formatOrError interface{}, args ...interface{}) {
+	std.mu.Lock()
+	defer std.mu.Unlock()
 	args = std.parseArgs(args...)
 
 	switch v := formatOrError.(type) {
@@ -88,6 +94,8 @@ func Warn(formatOrError interface{}, args ...interface{}) {
 }
 
 func Error(formatOrError interface{}, args ...interface{}) error {
+	std.mu.Lock()
+	defer std.mu.Unlock()
 	args = std.parseArgs(args...)
 
 	switch v := formatOrError.(type) {

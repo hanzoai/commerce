@@ -11,6 +11,7 @@ import (
 	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/source"
 )
 
 // product_events.go publishes catalog lifecycle events from the product REST path —
@@ -45,6 +46,11 @@ func publishProductEvents(c *zip.Ctx) error {
 	}
 	if st := c.Fiber().Response().StatusCode(); st < 200 || st >= 300 {
 		return nil // the create/update did not commit — publish nothing
+	}
+	if org, ok := middleware.GetOrganizationOK(c); ok && org != nil && org.Name != "" {
+		if pid := eventProductID(c); pid != "" {
+			source.SyncCanonicalProductByID(c.Context(), nil, org.Name, pid)
+		}
 	}
 	pub := c.Locals("publisher")
 	if pub == nil {

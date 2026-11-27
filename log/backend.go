@@ -32,7 +32,7 @@ type Backend struct {
 	errLogger  *log.Logger
 }
 
-func (b Backend) Verbose() bool {
+func (b *Backend) Verbose() bool {
 	return b.verbose
 }
 
@@ -47,7 +47,7 @@ func NewBackend(ctx context.Context) *Backend {
 }
 
 // logToStdout writes log messages to stdout/stderr based on level
-func (b Backend) logToStdout(level logging.Level, formatted string) error {
+func (b *Backend) logToStdout(level logging.Level, formatted string) error {
 	prefix := levelPrefix(level)
 	message := fmt.Sprintf("%s %s", prefix, formatted)
 
@@ -80,7 +80,7 @@ func levelPrefix(level logging.Level) string {
 }
 
 // Log method that outputs to stdout/stderr
-func (b Backend) Log(level logging.Level, calldepth int, record *logging.Record) error {
+func (b *Backend) Log(level logging.Level, calldepth int, record *logging.Record) error {
 	// Create formatted log output
 	formatted := record.Formatted(calldepth + 2)
 

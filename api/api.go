@@ -63,6 +63,7 @@ import (
 	searchApi "github.com/hanzoai/commerce/api/search"
 	storeApi "github.com/hanzoai/commerce/api/store"
 	subscriptionApi "github.com/hanzoai/commerce/api/subscription"
+	"github.com/hanzoai/commerce/source"
 	taxApi "github.com/hanzoai/commerce/api/tax"
 	transactionApi "github.com/hanzoai/commerce/api/transaction"
 	uploadApi "github.com/hanzoai/commerce/api/upload"
@@ -249,6 +250,9 @@ func Route(api *zip.Group) {
 
 	// Mercury bank webhook
 	mercuryApi.Route(api)
+
+	// Storefront source connectors (/v1/source/{sources,publish,shopify,woocommerce})
+	source.Route(api)
 
 	// Extra routes registered by optional sub-modules (e.g. luxfi/cevm)
 	applyExtraRoutes(api)
