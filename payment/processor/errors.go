@@ -15,6 +15,9 @@ var (
 	// ErrCurrencyNotSupported is returned when a currency is not supported
 	ErrCurrencyNotSupported = errors.New("currency not supported by processor")
 
+	// ErrNoPaymentMethods is returned when a processor opens an intent with zero enabled payment methods
+	ErrNoPaymentMethods = errors.New("no payment methods available for currency")
+
 	// ErrInvalidPaymentRequest is returned when a payment request is invalid
 	ErrInvalidPaymentRequest = errors.New("invalid payment request")
 
