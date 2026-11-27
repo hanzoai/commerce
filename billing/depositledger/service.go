@@ -2,6 +2,7 @@ package depositledger
 
 import (
 	"context"
+	"errors"
 	"net/url"
 	"strings"
 	"sync"
@@ -39,9 +40,10 @@ type Service struct {
 	interval time.Duration
 	reader   func(depositwatch.Asset) (depositwatch.Reader, error)
 
-	mu     sync.Mutex
-	cancel context.CancelFunc
-	done   chan struct{}
+	mu             sync.Mutex
+	cancel         context.CancelFunc
+	done           chan struct{}
+	lastKrakenNano atomic.Int64
 }
 
 // state is one reading of the policy's deposit accounts: the assets, the chain watcher
@@ -274,28 +276,49 @@ func rpcHost(raw string) string {
 }
 
 // SyncOnce runs one pass. Idempotent, and safe to run concurrently with the
-// schedule or with another replica.
+// schedule or with another replica. The on-chain RPC watcher and the Kraken
+// DepositStatus / pool-replenishment pass run independently so a rate-limited
+// chain RPC never starves Kraken crediting, pool warming or post-tx rotation.
 func (s *Service) SyncOnce(ctx context.Context) (int, error) {
 	if !s.Enabled() {
 		return 0, nil
 	}
 	var total int
+	var wErr, kErr error
 	st := s.state()
 	if st.watcher != nil {
-		n, err := st.watcher.Sync(ctx)
+		var n int
+		n, wErr = st.watcher.Sync(ctx)
 		total += n
-		if err != nil {
-			return total, err
-		}
 	}
 	if st.kraken != nil {
-		n, err := s.syncKraken(ctx, st)
+		var n int
+		n, kErr = s.syncKraken(ctx, st)
+		s.lastKrakenNano.Store(time.Now().UnixNano())
 		total += n
-		if err != nil {
-			return total, err
+	}
+	return total, errors.Join(wErr, kErr)
+}
+
+// SyncKrakenIfStale runs only the Kraken DepositStatus / pool pass (without scanning
+// chain RPCs) when at least minAge has elapsed since the previous Kraken sync.
+func (s *Service) SyncKrakenIfStale(ctx context.Context, minAge time.Duration) (int, error) {
+	if s == nil {
+		return 0, nil
+	}
+	st := s.state()
+	if st.kraken == nil {
+		return 0, nil
+	}
+	if minAge > 0 {
+		last := s.lastKrakenNano.Load()
+		if last > 0 && time.Since(time.Unix(0, last)) < minAge {
+			return 0, nil
 		}
 	}
-	return total, nil
+	n, err := s.syncKraken(ctx, st)
+	s.lastKrakenNano.Store(time.Now().UnixNano())
+	return n, err
 }
 
 // Start begins the schedule.

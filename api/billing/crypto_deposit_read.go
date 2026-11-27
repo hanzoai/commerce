@@ -120,7 +120,7 @@ func GetCryptoDeposit(ctx context.Context, org *organization.Organization, payer
 	if (intent.Status == cryptopaymentintent.Pending || intent.Status == cryptopaymentintent.Confirming) &&
 		strings.HasPrefix(intent.WalletID, "kraken:") {
 		if svc := depositledger.Default(); svc != nil && svc.Running() {
-			_, _ = svc.SyncOnce(ctx)
+			_, _ = svc.SyncKrakenIfStale(ctx, 10*time.Second)
 			_ = intent.GetById(id)
 		}
 	}

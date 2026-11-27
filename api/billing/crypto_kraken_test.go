@@ -493,3 +493,136 @@ func TestKrakenCrossWatcherIdempotency_ChainRPCAndKrakenStatusCreditOnce(t *test
 		t.Fatalf("balance = %d cents, want 5000 ($50.00 credited ONCE, not double-credited)", split.Balance)
 	}
 }
+
+type failingRPCChain struct{}
+
+func (failingRPCChain) BlockNumber(context.Context) (uint64, error) {
+	return 0, fmt.Errorf("rpc eth_getLogs error -32011: request limit reached")
+}
+func (failingRPCChain) Decimals(context.Context) (int, error)  { return 6, nil }
+func (failingRPCChain) Symbol(context.Context) (string, error) { return "USDC", nil }
+func (failingRPCChain) TransfersTo(context.Context, []string, uint64, uint64) ([]depositwatch.Transfer, error) {
+	return nil, fmt.Errorf("rpc eth_getLogs error -32011: request limit reached")
+}
+
+// TestSyncOnce_KrakenCreditsAndWarmsPoolEvenWhenChainRPCErrors proves that a rate-limited
+// chain RPC in st.watcher never blocks syncKraken from warming the 5-address pool or
+// crediting and rotating settled Kraken deposits.
+func TestSyncOnce_KrakenCreditsAndWarmsPoolEvenWhenChainRPCErrors(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+
+	const settledAddr = "0x00000000000000000000000000000000000000b1"
+	var warmMints int64
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		vals, _ := url.ParseQuery(string(body))
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/0/private/DepositMethods":
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":  []string{},
+				"result": []kraken.DepositMethod{{Method: "USDC - Base (Unified)", GenAddress: true, Minimum: "2.50"}, {Method: "USDC (SPL)", GenAddress: true, Minimum: "0.40"}},
+			})
+		case "/0/private/DepositAddresses":
+			if vals.Get("new") == "true" {
+				n := atomic.AddInt64(&warmMints, 1)
+				if n > 5 {
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": []string{"EFunding:Too many addresses"}, "result": []kraken.DepositAddress{}})
+					return
+				}
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{
+					"error":  []string{},
+					"result": []kraken.DepositAddress{{Address: fmt.Sprintf("0x%040x", 100+n), New: true}},
+				})
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":  []string{},
+				"result": []kraken.DepositAddress{{Address: settledAddr, New: false}},
+			})
+		case "/0/private/DepositStatus":
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": []string{},
+				"result": []kraken.DepositRecord{{
+					Method: "USDC - Base (Unified)",
+					Asset:  "USDC",
+					RefID:  "KRAKEN-RPC-DOWN-1",
+					TxID:   "0xrpcdowntx1",
+					Info:   settledAddr,
+					Amount: "15.00",
+					Status: "Success",
+					Time:   time.Now().Unix(),
+				}},
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	secret := base64.StdEncoding.EncodeToString([]byte("test-kraken-secret-key-for-rpc-isolation-test!!"))
+	useSecrets(t, mapSecrets{
+		"/orgs/hanzo/commerce-secrets/KRAKEN_API_KEY":    "test-kraken-key",
+		"/orgs/hanzo/commerce-secrets/KRAKEN_API_SECRET": secret,
+	})
+	processor.Register(kraken.NewProcessor(kraken.Config{APIKey: "test-kraken-key", APISecret: secret, APIURL: srv.URL}))
+	t.Cleanup(func() { processor.Register(kraken.NewProcessor(kraken.Config{})) })
+
+	org := organization.New(datastore.New(c))
+	org.Name = "rpcdownorg"
+	org.Live = true
+	if err := org.Create(); err != nil {
+		t.Fatal(err)
+	}
+	orgNS := datastore.New(nscontext.WithNamespace(context.Background(), org.Name))
+	in := cryptopaymentintent.New(orgNS)
+	in.Currency = "usd"
+	in.Chain = cryptopaymentintent.Base
+	in.Token = "usdc"
+	in.DepositAddress = settledAddr
+	in.WalletID = "kraken:base:usdc:" + settledAddr
+	in.CustomerRef = "rpcdownorg/bob"
+	in.Status = cryptopaymentintent.Pending
+	in.ExpiresAt = time.Now().Add(30 * time.Minute)
+	in.Defaults()
+	if err := in.Create(); err != nil {
+		t.Fatal(err)
+	}
+
+	accts := append(accountsOf(baseUSDCEnv()), routing.Account{
+		Processor: "kraken",
+		ID:        "exchange",
+		Endpoint:  srv.URL,
+		SecretRef: "/orgs/hanzo/commerce-secrets",
+		On:        true,
+	})
+	svc, err := depositledger.New(accts, depositledger.WithReader(func(depositwatch.Asset) (depositwatch.Reader, error) {
+		return failingRPCChain{}, nil
+	}))
+	if err != nil {
+		t.Fatalf("depositledger.New: %v", err)
+	}
+
+	credited, syncErr := svc.SyncOnce(context.Background())
+	if syncErr == nil {
+		t.Fatal("expected RPC error to still be reported from SyncOnce")
+	}
+	if credited != 1 {
+		t.Fatalf("credited = %d, want 1 even while RPC errored", credited)
+	}
+	if atomic.LoadInt64(&warmMints) == 0 {
+		t.Fatal("expected Kraken pool warming to execute even while RPC errored")
+	}
+
+	raw, err := txutil.GetRawByCurrency(orgNS.Context, "rpcdownorg/bob", "iam-user", "usd", false)
+	if err != nil {
+		t.Fatalf("read balance: %v", err)
+	}
+	split := bucket.Compute(raw, "rpcdownorg/bob", time.Now())
+	if int64(split.Balance) != 1500 {
+		t.Fatalf("balance = %d cents, want 1500", split.Balance)
+	}
+}
+
