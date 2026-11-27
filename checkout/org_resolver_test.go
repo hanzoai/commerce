@@ -214,6 +214,44 @@ func TestEnabledProviders_SquareOffWhenDisabled(t *testing.T) {
 	}
 }
 
+func TestEnabledProviders_CryptoSurfacedWhenAnyCryptoProcessorEnabled(t *testing.T) {
+	hasCrypto := func(ps []Provider) bool {
+		for _, p := range ps {
+			if p.Name == "crypto" && p.Enabled {
+				return true
+			}
+		}
+		return false
+	}
+
+	t.Run("kraken enabled without mpc", func(t *testing.T) {
+		t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool {
+			return processor.ChargeNames("square,stripe,paypal,kraken")
+		}))
+		if !hasCrypto(enabledProviders(true, true, true)) {
+			t.Errorf("crypto missing when kraken is enabled by policy")
+		}
+	})
+
+	t.Run("mpc enabled without kraken", func(t *testing.T) {
+		t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool {
+			return processor.ChargeNames("square,stripe,paypal,mpc")
+		}))
+		if !hasCrypto(enabledProviders(true, true, true)) {
+			t.Errorf("crypto missing when mpc is enabled by policy")
+		}
+	})
+
+	t.Run("fiat only omits crypto", func(t *testing.T) {
+		t.Cleanup(processor.SetChargePolicy(func() map[processor.ProcessorType]bool {
+			return processor.ChargeNames("square,stripe,paypal")
+		}))
+		if hasCrypto(enabledProviders(true, true, true)) {
+			t.Errorf("crypto surfaced despite fiat-only policy")
+		}
+	})
+}
+
 // A logo belongs to ONE brand, and a brand without one shows its name.
 //
 // The failure this guards is not a missing image, it is a Hanzo mark appearing

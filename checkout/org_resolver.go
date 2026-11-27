@@ -238,8 +238,9 @@ func returnHostsFor(slug string) []string {
 // the deploy-wide disabled policy. Square is surfaced where the brand has a
 // card account (`card`), Stripe where it has a Stripe account (`stripe`), and
 // PayPal when configured (`paypal`); applyCountryPolicy then turns each card
-// processor on only where the selection rule chooses it. Crypto (MPC) and bank
-// wire are always available.
+// processor on only where the selection rule chooses it. Crypto is surfaced
+// whenever any crypto custody or exchange processor (MPC, Kraken, etc.) is
+// enabled by policy; bank wire when wire is enabled.
 func enabledProviders(card, paypal, stripe bool) []Provider {
 	out := make([]Provider, 0, 5)
 	if card && !processor.DisabledByPolicy(processor.Square) {
@@ -251,13 +252,32 @@ func enabledProviders(card, paypal, stripe bool) []Provider {
 	if paypal && !processor.DisabledByPolicy(processor.PayPal) {
 		out = append(out, Provider{Name: "paypal", Enabled: true})
 	}
-	if !processor.DisabledByPolicy(processor.MPC) {
+	if cryptoAllowedByPolicy() {
 		out = append(out, Provider{Name: "crypto", Enabled: true})
 	}
 	if !processor.DisabledByPolicy(processor.Wire) {
 		out = append(out, Provider{Name: "wire", Enabled: true})
 	}
 	return out
+}
+
+func cryptoAllowedByPolicy() bool {
+	for _, p := range []processor.ProcessorType{
+		processor.MPC,
+		processor.Kraken,
+		processor.SolanaPay,
+		processor.Bitcoin,
+		processor.Ethereum,
+		processor.CoinbaseCommerce,
+		processor.OpenNode,
+		processor.BitPay,
+		processor.MoonPay,
+	} {
+		if !processor.DisabledByPolicy(p) {
+			return true
+		}
+	}
+	return false
 }
 
 // ─── Brand map (ONE place) ───────────────────────────────────────────────────
