@@ -140,33 +140,6 @@ func ReadRouting(ctx context.Context, org string) (routing.Policy, error) {
 	return p, err
 }
 
-// applyEnvDisabledProcessors clamps any processor named in COMMERCE_DISABLED_PROCESSORS
-// off in the returned policy copy so routing decisions, crypto rails, and accounts never
-// use a hard-disabled processor even when an older stored policy still lists it as on.
-func applyEnvDisabledProcessors(p routing.Policy) routing.Policy {
-	if len(p.Processors) > 0 {
-		procs := make([]routing.ProcessorRule, len(p.Processors))
-		copy(procs, p.Processors)
-		for i := range procs {
-			if processor.DisabledByEnv(processor.ProcessorType(procs[i].Processor)) {
-				procs[i].On = false
-			}
-		}
-		p.Processors = procs
-	}
-	if len(p.Accounts) > 0 {
-		accts := make([]routing.Account, len(p.Accounts))
-		copy(accts, p.Accounts)
-		for i := range accts {
-			if processor.DisabledByEnv(processor.ProcessorType(accts[i].Processor)) {
-				accts[i].On = false
-			}
-		}
-		p.Accounts = accts
-	}
-	return p
-}
-
 // ReadRoutingVersioned is ReadRouting with the version of the policy it read, so a
 // decision, an intent and an attempt can say which policy they were made under.
 func ReadRoutingVersioned(ctx context.Context, org string) (routing.Policy, int, error) {

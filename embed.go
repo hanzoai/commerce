@@ -24,6 +24,7 @@ import (
 
 	"github.com/zap-proto/zip"
 
+	billingPkg "github.com/hanzoai/commerce/api/billing"
 	"github.com/hanzoai/commerce/billing/creditledger"
 	"github.com/hanzoai/commerce/billing/depositledger"
 	"github.com/hanzoai/commerce/billing/gateway"
@@ -252,6 +253,10 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 	// tests that Embed a bare commerce spin up nothing.
 	depositWatcher := depositledger.Default()
 	depositWatcher.Start()
+	if stopRuntime != nil {
+		stopRuntime()
+	}
+	stopRuntime = billingPkg.StartRuntimeRefresh()
 	// The USDC authorization reconciler: follows every relayed payment to its
 	// confirmation and credit. A no-op unless USDC_TREASURY armed the rail.
 	gateway.Default().Start()

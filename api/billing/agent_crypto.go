@@ -220,7 +220,7 @@ func finishPlanDeposit(ctx context.Context, org *organization.Organization, p *p
 				}); ok {
 					card, _ = r.ReadPaymentMethod(ctx, pmRef)
 				}
-				if match := duplicateOf(db, s.Subject, card); match != nil {
+				if match := duplicateOf(db, s.Subject, processor.Stripe, card); match != nil {
 					pm = match
 				} else {
 					saved := paymentmethod.New(db)

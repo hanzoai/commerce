@@ -246,7 +246,7 @@ func saveCard(ctx context.Context, db *datastore.Datastore, cp cardVault, subjec
 		return nil, false, err
 	}
 
-	if match := duplicateOf(db, subject, cof.Card); match != nil {
+	if match := duplicateOf(db, subject, cp.Type(), cof.Card); match != nil {
 		// The vault call was still necessary — it is what validated the card and
 		// revealed the fingerprint — but its product is redundant; detach it so
 		// the Square vault holds one copy too. Best-effort: a failure leaves an
@@ -272,9 +272,9 @@ func saveCard(ctx context.Context, db *datastore.Datastore, cp cardVault, subjec
 	stampPayer(pm, payer)
 
 	// The first card a subject saves is its default; a card saved while it has
-	// one leaves that default alone. Decided and persisted under the subject's
-	// default lock, so two saves at once cannot both find none. A default that
-	// cannot be read is left alone too: in doubt, nothing is taken over.
+	// one leaves that default alone unless every existing default belongs to a
+	// disabled processor (such as frozen Stripe), in which case the new card
+	// takes over as default so auto-recharge and renewals stay healthy.
 	mu := defaultLock(db, subject)
 	mu.Lock()
 	defer mu.Unlock()
@@ -282,18 +282,39 @@ func saveCard(ctx context.Context, db *datastore.Datastore, cp cardVault, subjec
 	if herr != nil {
 		log.Warn("saveCard: the default of %s could not be read, so the new card is not made default: %v", subject, herr)
 	}
-	pm.IsDefault = herr == nil && len(held) == 0
+	activeHeld := 0
+	for _, h := range held {
+		if !processor.DisabledByPolicy(providerOf(h)) {
+			activeHeld++
+		}
+	}
+	if herr == nil && activeHeld == 0 {
+		pm.IsDefault = true
+	}
 	if err := pm.Create(); err != nil {
 		return nil, false, fmt.Errorf("persist payment method: %w", err)
+	}
+	if pm.IsDefault {
+		for _, h := range held {
+			if h.Id() == "" || h.Id() == pm.Id() {
+				continue
+			}
+			was := paymentmethod.New(db)
+			if err := was.GetById(h.Id()); err == nil {
+				was.IsDefault = false
+				_ = rewrite(db, was)
+			}
+		}
 	}
 	return pm, true, nil
 }
 
-// duplicateOf returns the subject's existing payment-method row holding the
-// same underlying card, or nil. Fingerprint is the key; brand+last4+expiry is
-// the fallback for rows vaulted before fingerprints were stored. A zero card
-// (no facts reported) can never match — absent evidence is not a duplicate.
-func duplicateOf(db *datastore.Datastore, subject string, card processor.Card) *paymentmethod.PaymentMethod {
+// duplicateOf returns the subject's existing payment-method row on processor via
+// holding the same underlying card, or nil. Fingerprint is the key;
+// brand+last4+expiry is the fallback for rows vaulted before fingerprints were
+// stored. Scoped to via so a physical card re-entered on Square is never matched
+// against an unchargeable row previously vaulted on Stripe.
+func duplicateOf(db *datastore.Datastore, subject string, via processor.ProcessorType, card processor.Card) *paymentmethod.PaymentMethod {
 	if card.Fingerprint == "" && (card.Last4 == "" || card.Brand == "") {
 		return nil
 	}
@@ -304,7 +325,7 @@ func duplicateOf(db *datastore.Datastore, subject string, card processor.Card) *
 		if _, err := iter.Next(pm); err != nil {
 			break
 		}
-		if !strings.EqualFold(strings.TrimSpace(pm.Type), "card") {
+		if !strings.EqualFold(strings.TrimSpace(pm.Type), "card") || providerOf(pm) != via {
 			continue
 		}
 		if fp := metaStr(pm, "fingerprint"); fp != "" && card.Fingerprint != "" {

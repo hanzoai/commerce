@@ -269,8 +269,10 @@ func CreateMethod(ctx context.Context, org *organization.Organization, email str
 			// Any subscription paid by crypto or a single-use wallet (credits/stablecoin)
 			// now auto-renews on this newly saved Square/Stripe card or bank account.
 			armUnbackedRenewals(ctx, org, in.CustomerId, pm)
-			// A Stripe card saved is where a Square holder's renewals move to.
-			if providerOf(pm) == processor.Stripe {
+			// A Stripe card saved is where a Square holder's renewals move to — and a
+			// Square card saved while Stripe is disabled moves frozen-Stripe renewals
+			// onto Square so active subscriptions keep renewing.
+			if providerOf(pm) == processor.Stripe || (providerOf(pm) == processor.Square && processor.DisabledByPolicy(processor.Stripe)) {
 				repointRenewals(ctx, org, in.CustomerId, pm)
 			}
 			// Caller-supplied extras land on whichever row answered.
@@ -478,6 +480,9 @@ func ListMethods(ctx context.Context, org *organization.Organization, subject, k
 	}
 
 	for _, pm := range rows {
+		if processor.DisabledByEnv(providerOf(pm)) {
+			continue
+		}
 		methods = append(methods, methodOf(pm))
 	}
 	return methods, nil
@@ -797,7 +802,7 @@ func SetDefaultMethod(ctx context.Context, org *organization.Organization, id, s
 			return nil, err
 		}
 	}
-	if providerOf(pm) == processor.Stripe {
+	if providerOf(pm) == processor.Stripe || (providerOf(pm) == processor.Square && processor.DisabledByPolicy(processor.Stripe)) {
 		repointRenewals(ctx, org, subject, pm)
 	}
 	return &DefaultChange{Method: methodOf(pm), Previous: previous}, nil
@@ -896,6 +901,7 @@ type Method struct {
 	PayPal         *paymentmethod.PayPalDetails      `json:"paypal,omitempty"`
 	BillingAddress *types.Address                    `json:"billingAddress,omitempty"`
 	ProviderRef    string                            `json:"providerRef,omitempty"`
+	ProviderType   string                            `json:"providerType,omitempty"`
 	// Metadata is the row's free-form extras, carried raw: it renders exactly as
 	// the map did, including an empty object for a row that holds an empty one,
 	// and raw JSON is the one free-form shape the typed plane can carry.
@@ -918,6 +924,7 @@ func methodOf(pm *paymentmethod.PaymentMethod) Method {
 		PayPal:         pm.PayPal,
 		BillingAddress: pm.BillingAddress,
 		ProviderRef:    pm.ProviderRef,
+		ProviderType:   strings.ToLower(strings.TrimSpace(pm.ProviderType)),
 	}
 	if pm.Metadata != nil {
 		if raw, err := json.Marshal(pm.Metadata); err == nil {
