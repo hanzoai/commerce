@@ -13,6 +13,7 @@ import (
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/payment/processor"
 )
 
 // What Square can charge is a fact about the MERCHANT's location, not about a list
@@ -179,6 +180,41 @@ type Place struct {
 	Methods []string `json:"methods"`
 	// Charging marks the location commerce charges against: the one configured.
 	Charging bool `json:"charging"`
+}
+
+// ActiveLocation implements processor.MerchantLocationLister for the configured charging location.
+func (p *Provider) ActiveLocation(ctx context.Context) (processor.MerchantAccountLocation, bool) {
+	s, ok := p.Location(ctx)
+	if !ok {
+		return processor.MerchantAccountLocation{}, false
+	}
+	return processor.MerchantAccountLocation{
+		ID:       s.ID,
+		Country:  s.Country,
+		Currency: string(s.Currency),
+		Cards:    s.Cards,
+		Active:   true,
+	}, true
+}
+
+// MerchantLocations implements processor.MerchantLocationLister without leaking
+// Square-specific types into core billing views.
+func (p *Provider) MerchantLocations(ctx context.Context) ([]processor.MerchantAccountLocation, error) {
+	places, err := p.Locations(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]processor.MerchantAccountLocation, 0, len(places))
+	for _, pl := range places {
+		out = append(out, processor.MerchantAccountLocation{
+			ID:       pl.ID,
+			Country:  pl.Country,
+			Currency: strings.ToLower(pl.Currency),
+			Cards:    len(pl.Methods) > 0,
+			Active:   strings.EqualFold(pl.Status, "ACTIVE"),
+		})
+	}
+	return out, nil
 }
 
 // Locations lists every location the account holds, read from Square now.

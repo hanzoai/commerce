@@ -78,8 +78,8 @@ type CryptoProcessor interface {
 type tokenCtxKey struct{}
 
 // WithToken attaches the requested crypto token symbol (e.g. "usdc", "usdt")
-// to a context passed into CryptoProcessor.GenerateAddress, so exchange-backed
-// processors (such as Kraken) can resolve the exact asset + network method
+// to a context passed into CryptoProcessor.GenerateAddress, so multi-asset
+// custody and exchange processors can resolve the exact asset + network method
 // without changing the CryptoProcessor interface signature.
 func WithToken(ctx context.Context, token string) context.Context {
 	if ctx == nil {

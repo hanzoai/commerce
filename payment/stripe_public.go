@@ -73,7 +73,7 @@ func StripePublicConfig(org *organization.Organization) StripePublic {
 // StripeOwned reports whether the org holds Stripe keys of its own, the same
 // test StripeKeys makes before it falls back to the deployment's.
 func StripeOwned(org *organization.Organization) bool {
-	if org == nil {
+	if org == nil || processor.DisabledByEnv(processor.Stripe) {
 		return false
 	}
 	own := org.Stripe.Live
@@ -97,7 +97,7 @@ func kind(key, want string, prefixes ...string) string {
 // checks it, and never the deployment's: a merchant's hosted checkout charges the
 // merchant's account only. "" when it holds none, or one of the wrong mode.
 func OwnStripeSecret(org *organization.Organization) string {
-	if org == nil {
+	if org == nil || processor.DisabledByEnv(processor.Stripe) {
 		return ""
 	}
 	own, want := org.Stripe.Live, "_live_"

@@ -921,7 +921,7 @@ func AssetsFromAccounts(accounts []routing.Account) ([]Asset, error) {
 	var pairs []string
 	rpcOf := map[string]string{}
 	for _, a := range accounts {
-		if !a.On || a.Network == "" || a.Asset == "" || a.Processor == string(processor.Kraken) {
+		if !a.On || a.Network == "" || a.Asset == "" || processor.IsDepositPoolProcessor(a.Processor) {
 			continue
 		}
 		net, asset := strings.ToUpper(a.Network), strings.ToUpper(a.Asset)

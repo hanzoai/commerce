@@ -118,9 +118,9 @@ func GetCryptoDeposit(ctx context.Context, org *organization.Organization, payer
 		return CryptoDeposit{}, errDepositNotFound
 	}
 	if (intent.Status == cryptopaymentintent.Pending || intent.Status == cryptopaymentintent.Confirming) &&
-		strings.HasPrefix(intent.WalletID, "kraken:") {
+		processor.PoolOwnerOfWallet(intent.WalletID) != nil {
 		if svc := depositledger.Default(); svc != nil && svc.Running() {
-			_, _ = svc.SyncKrakenIfStale(ctx, 10*time.Second)
+			_, _ = svc.SyncPoolsIfStale(ctx, 10*time.Second)
 			_ = intent.GetById(id)
 		}
 	}
@@ -170,9 +170,9 @@ func toCryptoDepositResponse(i *cryptopaymentintent.CryptoPaymentIntent) CryptoD
 		out.FeeCents = terms.FeeCents
 		out.MinimumCents = minimumCents(terms)
 	}
-	if strings.HasPrefix(i.WalletID, "kraken:") {
-		if kMin := krakenCachedMinimumCents(string(i.Chain), i.Token); kMin > out.MinimumCents {
-			out.MinimumCents = kMin
+	if dp := processor.PoolOwnerOfWallet(i.WalletID); dp != nil {
+		if pMin := dp.CachedMinimumCents(string(i.Chain), i.Token); pMin > out.MinimumCents {
+			out.MinimumCents = pMin
 		}
 	}
 	return out

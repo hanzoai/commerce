@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/btcsuite/btcd/chaincfg"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/hanzoai/commerce/billing/custody/evm"
 	"github.com/hanzoai/commerce/billing/custody/solana"
 	"github.com/hanzoai/commerce/billing/depositwatch"
+	"github.com/hanzoai/commerce/payment/processor"
 )
 
 // The other direction. This file is to money leaving what the rest of the
@@ -98,9 +98,9 @@ func Sweep(ctx context.Context, c custody.Chain, s custody.Signer, a depositwatc
 		}
 		seen[w.Org+"\x00"+w.Address] = true
 
-		if strings.HasPrefix(w.Wallet, "kraken:") {
-			// Kraken deposit addresses are exchange-custodied and swept by Kraken
-			// automatically; the MPC signer holds no key for them.
+		if processor.PoolOwnerOfWallet(w.Wallet) != nil {
+			// Provider-managed pool addresses are swept internally by the custody or
+			// exchange provider; the MPC signer holds no key for them.
 			continue
 		}
 

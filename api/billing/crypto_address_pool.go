@@ -11,32 +11,10 @@ import (
 	"github.com/hanzoai/commerce/models/cryptopaymentintent"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/payment/processor"
-	"github.com/hanzoai/commerce/payment/providers/kraken"
 	"github.com/hanzoai/commerce/util/nscontext"
 )
 
-const (
-	// krakenPendingTTL bounds how long an un-sighted Pending checkout holds one of
-	// Kraken's 5 rolling pool addresses before releasing the lease for another buyer.
-	// Once an on-chain sighting lands, Sight extends ExpiresAt to 24h, and
-	// depositledger.Watched observes all minted addresses permanently regardless of expiry.
-	krakenPendingTTL     = 30 * time.Minute
-	krakenEvictIdleAfter = 15 * time.Minute
-)
-
-var krakenMintMu sync.Mutex
-
-func krakenCachedMinimumCents(chain, token string) int64 {
-	reg, err := processor.Global().Registered(processor.Kraken)
-	if err != nil {
-		return 0
-	}
-	kp, ok := reg.(*kraken.Processor)
-	if !ok {
-		return 0
-	}
-	return kp.CachedMinimumUSDCents(chain, token)
-}
+var poolMintMu sync.Mutex
 
 func normalizeDepositAddr(addr string) string {
 	a := strings.TrimSpace(addr)
@@ -94,8 +72,8 @@ func allOrgDatastores(localDB *datastore.Datastore) ([]*datastore.Datastore, err
 
 // globalAddressSpokenFor reports whether any open (Pending or Confirming, non-expired)
 // payment across ANY organization and ANY chain holds address, excluding exceptID.
-// Cross-org and cross-chain scope is required because all tenants share the platform
-// Kraken account and Kraken Unified EVM shares the same 5 0x addresses across EVM chains.
+// Cross-org and cross-chain scope prevents address collisions on shared platform custody
+// accounts and unified multi-chain address pools.
 func globalAddressSpokenFor(localDB *datastore.Datastore, address, exceptID string) bool {
 	dbs, err := allOrgDatastores(localDB)
 	if err != nil {
@@ -132,8 +110,8 @@ func globalAddressSpokenFor(localDB *datastore.Datastore, address, exceptID stri
 }
 
 // globalAddressEverSettled reports whether address has EVER completed a deposit
-// (Succeeded or Refunded, or recorded an on-chain sighting that closed) across any org,
-// so settled Kraken wallets are retired permanently and never handed to a new customer.
+// (Succeeded or Refunded) across any organization, ensuring settled pool wallets
+// are retired permanently and never handed to a subsequent payer.
 func globalAddressEverSettled(localDB *datastore.Datastore, address string) bool {
 	dbs, err := allOrgDatastores(localDB)
 	if err != nil {
@@ -153,14 +131,19 @@ func globalAddressEverSettled(localDB *datastore.Datastore, address string) bool
 	return false
 }
 
-// addressSpokenFor preserves the single-org helper signature used by existing tests
-// while enforcing global cross-org exclusivity.
+// addressSpokenFor preserves the single-org helper signature while enforcing global
+// cross-org exclusivity.
 func addressSpokenFor(db *datastore.Datastore, address, except string) bool {
 	return globalAddressSpokenFor(db, address, except)
 }
 
-func openSameQuoteKrakenIntent(db *datastore.Datastore, payer, chain, token string, amountCents int64) (*cryptopaymentintent.CryptoPaymentIntent, bool) {
-	if amountCents <= 0 {
+func openSameQuotePoolIntent(
+	db *datastore.Datastore,
+	poolProc processor.DepositPoolProcessor,
+	payer, chain, token string,
+	amountCents int64,
+) (*cryptopaymentintent.CryptoPaymentIntent, bool) {
+	if poolProc == nil || amountCents <= 0 {
 		return nil, false
 	}
 	rows := make([]*cryptopaymentintent.CryptoPaymentIntent, 0)
@@ -173,7 +156,7 @@ func openSameQuoteKrakenIntent(db *datastore.Datastore, payer, chain, token stri
 		return nil, false
 	}
 	for _, r := range rows {
-		if r == nil || r.IsExpired() || r.DepositAddress == "" || !strings.HasPrefix(r.WalletID, "kraken:") {
+		if r == nil || r.IsExpired() || r.DepositAddress == "" || !poolProc.OwnsWallet(r.WalletID) {
 			continue
 		}
 		if r.TxHash == "" && r.Amount == amountCents && !globalAddressEverSettled(db, r.DepositAddress) {
@@ -183,10 +166,13 @@ func openSameQuoteKrakenIntent(db *datastore.Datastore, payer, chain, token stri
 	return nil, false
 }
 
-// evictOldestIdleKrakenIntent expires one un-sighted Pending Kraken intent that has
-// sat idle past krakenEvictIdleAfter when all 5 pool addresses are occupied, so 5
-// abandoned browser tabs cannot block active depositors.
-func evictOldestIdleKrakenIntent(localDB *datastore.Datastore) bool {
+// evictOldestIdlePoolIntent expires one un-sighted Pending intent belonging to poolProc
+// that has sat idle past idleEvictAfter when all pool slots are occupied, so abandoned
+// tabs cannot starve active depositors.
+func evictOldestIdlePoolIntent(localDB *datastore.Datastore, poolProc processor.DepositPoolProcessor, idleEvictAfter time.Duration) bool {
+	if poolProc == nil || idleEvictAfter <= 0 {
+		return false
+	}
 	dbs, err := allOrgDatastores(localDB)
 	if err != nil {
 		return false
@@ -202,13 +188,13 @@ func evictOldestIdleKrakenIntent(localDB *datastore.Datastore) bool {
 			continue
 		}
 		for _, r := range rows {
-			if r == nil || now.After(r.ExpiresAt) || !strings.HasPrefix(r.WalletID, "kraken:") {
+			if r == nil || now.After(r.ExpiresAt) || !poolProc.OwnsWallet(r.WalletID) {
 				continue
 			}
 			if r.TxHash != "" || r.Confirmations > 0 {
 				continue
 			}
-			if now.Sub(r.CreatedAt) < krakenEvictIdleAfter {
+			if now.Sub(r.CreatedAt) < idleEvictAfter {
 				continue
 			}
 			if oldest == nil || r.CreatedAt.Before(oldest.CreatedAt) {
@@ -235,11 +221,13 @@ func mintPerPaymentIntent(
 	payer, chain, token string,
 	amountCents int64,
 ) (*cryptopaymentintent.CryptoPaymentIntent, error) {
-	isKraken := cp.Type() == processor.Kraken
-	if isKraken {
-		krakenMintMu.Lock()
-		defer krakenMintMu.Unlock()
-		if existing, ok := openSameQuoteKrakenIntent(db, payer, chain, token, amountCents); ok {
+	poolProc, isPool := cp.(processor.DepositPoolProcessor)
+	var pendingTTL, idleEvictAfter time.Duration
+	if isPool {
+		pendingTTL, idleEvictAfter = poolProc.PoolLeaseTerms()
+		poolMintMu.Lock()
+		defer poolMintMu.Unlock()
+		if existing, ok := openSameQuotePoolIntent(db, poolProc, payer, chain, token, amountCents); ok {
 			return existing, nil
 		}
 	}
@@ -248,15 +236,15 @@ func mintPerPaymentIntent(
 	mintCtx = processor.WithAddressFree(mintCtx, func(addr string) bool {
 		return !globalAddressSpokenFor(db, addr, "")
 	})
-	if isKraken {
+	if isPool {
 		mintCtx = processor.WithAddressFresh(mintCtx, func(addr string) bool {
 			return !globalAddressEverSettled(db, addr)
 		})
 	}
 
 	wallet, err := cp.GenerateAddress(mintCtx, payer, chain)
-	if err != nil && isKraken && strings.Contains(strings.ToLower(err.Error()), "no fresh deposit address") {
-		if evictOldestIdleKrakenIntent(db) {
+	if err != nil && isPool && idleEvictAfter > 0 && isNoFreeAddressError(err) {
+		if evictOldestIdlePoolIntent(db, poolProc, idleEvictAfter) {
 			wallet, err = cp.GenerateAddress(mintCtx, payer, chain)
 		}
 	}
@@ -268,8 +256,8 @@ func mintPerPaymentIntent(
 	}
 
 	ttl := 24 * time.Hour
-	if isKraken {
-		ttl = krakenPendingTTL
+	if pendingTTL > 0 {
+		ttl = pendingTTL
 	}
 	intent, err := recordIntentWithTTL(db, payer, chain, token, amountCents, wallet, wallet.Tag, ttl)
 	if err != nil {
@@ -281,4 +269,15 @@ func mintPerPaymentIntent(
 		return nil, depositRefusal{msg: "Crypto deposits are temporarily unavailable — no deposit address is free right now. Try again shortly or choose another way to pay."}
 	}
 	return intent, nil
+}
+
+func isNoFreeAddressError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if pe, ok := err.(*processor.PaymentError); ok && pe.Code == "NO_FREE_ADDRESS" {
+		return true
+	}
+	return strings.Contains(strings.ToLower(err.Error()), "no free") ||
+		strings.Contains(strings.ToLower(err.Error()), "no fresh deposit address")
 }

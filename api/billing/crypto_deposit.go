@@ -648,9 +648,8 @@ func CreateCryptoDeposit(ctx context.Context, org *organization.Organization, pa
 
 	// On a POOLED chain (e.g. XRPL), reuse the payer's open intent for this asset
 	// so page refreshes cannot spray the finite destination-tag space.
-	// On per-payment chains (Kraken / MPC), always mint a fresh wallet address
-	// per payment (1 address per payment) so external observers cannot track or
-	// correlate our wallets across payments.
+	// On per-payment chains (address-pool or MPC custody), mint a fresh wallet
+	// address per payment so external observers cannot correlate wallets across buyers.
 	if pooled {
 		if existing, ok := openIntentFor(db, payer, chain, token); ok {
 			// A pooled destination missing its tag names NOBODY: the payment would

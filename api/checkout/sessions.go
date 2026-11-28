@@ -350,6 +350,9 @@ func squareCheckoutClientForOrg(org *organization.Organization) (*sqpaymentlinks
 // squareCheckoutCredentials is the Square account a hosted checkout charges:
 // the org's own, or — in sandbox only — the deployment's sandbox account.
 func squareCheckoutCredentials(org *organization.Organization) (token, locationID string, err error) {
+	if processor.DisabledByEnv(processor.Square) {
+		return "", "", errors.New("square is disabled")
+	}
 	isSandbox := org.TestMode()
 	sqCfg := org.SquareConfig(isSandbox)
 

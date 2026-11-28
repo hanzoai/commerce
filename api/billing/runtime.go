@@ -16,7 +16,6 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/routingpolicy"
 	"github.com/hanzoai/commerce/payment/processor"
-	"github.com/hanzoai/commerce/payment/providers/kraken"
 	"github.com/hanzoai/commerce/payment/routing"
 	"github.com/hanzoai/commerce/secrets"
 	"github.com/hanzoai/commerce/thirdparty/mpc"
@@ -279,7 +278,7 @@ func applyRuntime(ctx context.Context, pol routing.Policy, version int) error {
 	}
 	applyAccounts(ctx, pol)
 	configureMPC(ctx, pol)
-	configureKraken(ctx, pol)
+	configureManagedAccounts(ctx, pol)
 	return first
 }
 
@@ -345,26 +344,23 @@ func configureMPC(ctx context.Context, pol routing.Policy) {
 	c.Configure(mpc.Settings{})
 }
 
-// configureKraken gives the exchange processor the policy's kraken account: the API
-// credentials read from the KMS folder at its secretRef, and its endpoint. No such
-// account on leaves it unconfigured.
-func configureKraken(ctx context.Context, pol routing.Policy) {
-	p, err := processor.Global().Registered(processor.Kraken)
-	if err != nil {
-		return
-	}
-	c, ok := p.(interface{ Configure(kraken.Config) })
-	if !ok {
-		return
-	}
-	for _, a := range pol.Accounts {
-		if a.Processor == string(processor.Kraken) && a.On && a.SecretRef != "" {
-			folder := strings.TrimRight(a.SecretRef, "/")
-			c.Configure(kraken.Config{APIKey: secrets.String(ctx, folder+"/KRAKEN_API_KEY"), APISecret: secrets.String(ctx, folder+"/KRAKEN_API_SECRET"), APIURL: a.Endpoint, OTP: secrets.String(ctx, folder+"/KRAKEN_OTP")})
-			return
+// configureManagedAccounts configures each registered ManagedAccountProcessor from
+// its active account in pol.Accounts, or clears it when no account for it is on.
+func configureManagedAccounts(ctx context.Context, pol routing.Policy) {
+	for _, mp := range processor.ManagedAccountProcessors() {
+		name := string(mp.Type())
+		configured := false
+		for _, a := range pol.Accounts {
+			if a.Processor == name && a.On && a.SecretRef != "" {
+				mp.ConfigureAccount(ctx, a.Endpoint, a.SecretRef, secrets.String)
+				configured = true
+				break
+			}
+		}
+		if !configured {
+			mp.ClearAccount()
 		}
 	}
-	c.Configure(kraken.Config{})
 }
 
 // StartRuntimeRefresh rereads the platform policy every runtimeRefresh and applies it
@@ -397,7 +393,7 @@ func StartRuntimeRefresh() (stop func()) {
 					runtimeMu.Lock()
 					applyAccounts(ctx, pol)
 					configureMPC(ctx, pol)
-					configureKraken(ctx, pol)
+					configureManagedAccounts(ctx, pol)
 					runtimeMu.Unlock()
 				}
 				reportUnchargeableOnChange(ctx, pol)
@@ -417,9 +413,9 @@ func StartRuntimeRefresh() (stop func()) {
 }
 
 // currentSeedLevel is what the seed knows how to make today: 1 the processors, the crypto
-// deposit accounts, MPC and Kraken; 2 every processor's own account as well (Stripe,
-// Square, PayPal and the rest). A policy seeded at a lower level was made by a build that
-// did not know these accounts, and is topped up once (topUpSeed).
+// deposit accounts, and managed custody/exchange accounts; 2 every processor's own account
+// as well (Stripe, Square, PayPal and the rest). A policy seeded at a lower level was made
+// by a build that did not know these accounts, and is topped up once (topUpSeed).
 const currentSeedLevel = 2
 
 // seedRuntime writes the platform policy's first version from the environment the
@@ -433,9 +429,9 @@ const currentSeedLevel = 2
 //
 // What it carries over: the processors COMMERCE_CHARGE_PROCESSORS named (Stripe alone
 // where it was unset and a Stripe key was set, every processor where neither was), the
-// crypto deposit accounts CRYPTO_DEPOSIT_* described, the MPC endpoint, an exchange
-// account where Kraken keys were set, and every processor's own account. Secrets are never
-// copied: an account holds the KMS path they live at.
+// crypto deposit accounts CRYPTO_DEPOSIT_* described, the MPC endpoint, any managed
+// exchange/custody account whose credentials were set, and every processor's own account.
+// Secrets are never copied: an account holds the KMS path they live at.
 // holdsAccounts says the stored policy has at least one account: a policy with none, however
 // it came to be, is topped up from the environment, since nothing can charge without one.
 func holdsAccounts(row *routingpolicy.Row) bool {
@@ -633,11 +629,25 @@ func seedFromEnvironment(ctx context.Context, pol *routing.Policy, environ []str
 			}
 		}
 	}
-	if env["KRAKEN_API_KEY"] != "" && env["KRAKEN_API_SECRET"] != "" {
-		pol.Accounts = append(pol.Accounts, routing.Account{Processor: string(processor.Kraken), ID: "exchange", Endpoint: env["KRAKEN_API_URL"], On: true, SecretRef: kmsFolder(ctx, "KRAKEN_API_KEY")})
-		for i := range pol.Processors {
-			if pol.Processors[i].Processor == string(processor.Kraken) {
-				pol.Processors[i].On = allowed[processor.Kraken]
+	for _, mp := range processor.ManagedAccountProcessors() {
+		seeded, enableProc, ok := mp.SeedAccountFromEnv(env, func(secretEnv string) string {
+			return kmsFolder(ctx, secretEnv)
+		})
+		if !ok || seeded.SecretRef == "" {
+			continue
+		}
+		pol.Accounts = append(pol.Accounts, routing.Account{
+			Processor: string(mp.Type()),
+			ID:        seeded.ID,
+			Endpoint:  seeded.Endpoint,
+			On:        seeded.On,
+			SecretRef: seeded.SecretRef,
+		})
+		if enableProc {
+			for i := range pol.Processors {
+				if pol.Processors[i].Processor == string(mp.Type()) {
+					pol.Processors[i].On = allowed[mp.Type()]
+				}
 			}
 		}
 	}
@@ -660,13 +670,13 @@ func takesCardsAccount(proc string) bool {
 	return false
 }
 
-// dropInvalidSeeds removes from a seed the crypto accounts (MPC, Kraken) that an admin write
+// dropInvalidSeeds removes from a seed the custody/exchange accounts that an admin write
 // would refuse, naming each in the log, so a seeded policy always validates. Charge accounts
 // stay even when their secrets do not resolve: problems reports those.
 func dropInvalidSeeds(ctx context.Context, pol *routing.Policy) {
 	kept := pol.Accounts[:0]
 	for _, a := range pol.Accounts {
-		if a.Processor == string(processor.MPC) || a.Processor == string(processor.Kraken) {
+		if a.Processor == string(processor.MPC) || isManagedAccountProcessor(a.Processor) {
 			if why := validateAccounts(ctx, routing.Policy{Accounts: []routing.Account{a}}); why != "" {
 				log.Warn("routing seed: leaving out %s account %s: %s", a.Processor, a.ID, why)
 				continue
@@ -675,6 +685,15 @@ func dropInvalidSeeds(ctx context.Context, pol *routing.Policy) {
 		kept = append(kept, a)
 	}
 	pol.Accounts = kept
+}
+
+func isManagedAccountProcessor(name string) bool {
+	p, err := processor.Global().Registered(processor.ProcessorType(name))
+	if err != nil {
+		return false
+	}
+	_, ok := p.(processor.ManagedAccountProcessor)
+	return ok
 }
 
 // ownValue says the account already holds a value named name.
@@ -740,16 +759,18 @@ func validateAccounts(ctx context.Context, p routing.Policy) string {
 	return ""
 }
 
-// resolveRef checks a secret reference reads a value now. A kraken account's reference
-// is the KMS folder holding KRAKEN_API_KEY and KRAKEN_API_SECRET; every other account's
-// is the secret itself. The value is never kept or returned.
+// resolveRef checks a secret reference reads a value now. A ManagedAccountProcessor
+// supplies the concrete KMS paths required under its SecretRef; every other account's
+// reference is the secret path itself. The value is never kept or returned.
 func resolveRef(ctx context.Context, a routing.Account) string {
 	if !strings.HasPrefix(a.SecretRef, "/") {
 		return "secretRef must be a KMS path beginning with /"
 	}
 	refs := []string{a.SecretRef}
-	if a.Processor == string(processor.Kraken) {
-		refs = []string{strings.TrimRight(a.SecretRef, "/") + "/KRAKEN_API_KEY", strings.TrimRight(a.SecretRef, "/") + "/KRAKEN_API_SECRET"}
+	if p, err := processor.Global().Registered(processor.ProcessorType(a.Processor)); err == nil {
+		if mp, ok := p.(processor.ManagedAccountProcessor); ok {
+			refs = mp.RequiredSecretRefs(a.SecretRef)
+		}
 	}
 	for _, r := range refs {
 		if secrets.String(ctx, r) == "" {
@@ -769,10 +790,14 @@ func resolveRef(ctx context.Context, a routing.Account) string {
 var kmsFolders = []string{"/commerce-secrets", "/orgs/hanzo/commerce-secrets", "/orgs/hanzo/cloud", "/cloud"}
 
 // kmsRoot is the network's secret root: the first of kmsFolders in which any secret this
-// deployment knows of (every processor's, MPC's, Kraken's) resolves. Every ref of a seed is
-// derived from it, so one unreadable or unsealed secret cannot land in another network's folder.
+// deployment knows of (every processor's, MPC's, or managed custody/exchange accounts')
+// resolves. Every ref of a seed is derived from it, so one unreadable or unsealed secret
+// cannot land in another network's folder.
 func kmsRoot(ctx context.Context) string {
-	names := []string{"MPC_API_KEY", "KRAKEN_API_KEY"}
+	names := []string{"MPC_API_KEY"}
+	for _, mp := range processor.ManagedAccountProcessors() {
+		names = append(names, mp.SeedSecretEnvNames()...)
+	}
 	for _, sp := range processor.Seeds {
 		for _, f := range sp.Fields {
 			if f.Secret {
@@ -859,23 +884,33 @@ func seedProcessorAccounts(ctx context.Context, pol *routing.Policy, env map[str
 		}
 		pol.Accounts = append(pol.Accounts, a)
 	}
-	// Kraken's explicit deposit-method overrides ride on its exchange account.
-	for k, v := range env {
-		rest, ok := strings.CutPrefix(k, "KRAKEN_DEPOSIT_METHOD_")
-		if !ok {
+	// Apply any provider-specific account setting overrides declared by ManagedAccountProcessors.
+	for _, mp := range processor.ManagedAccountProcessors() {
+		seeded, _, ok := mp.SeedAccountFromEnv(env, nil)
+		if !ok || len(seeded.Settings) == 0 {
 			continue
 		}
-		parts := strings.Split(strings.ToLower(rest), "_")
-		name := "depositMethod." + strings.Join(parts, ".")
+		procName := string(mp.Type())
 		found := false
 		for i := range pol.Accounts {
-			if pol.Accounts[i].Processor == string(processor.Kraken) && pol.Accounts[i].ID == "exchange" {
-				pol.Accounts[i].Settings = append(pol.Accounts[i].Settings, routing.Named{Name: name, Value: v})
+			if pol.Accounts[i].Processor == procName && pol.Accounts[i].ID == seeded.ID {
+				for k, v := range seeded.Settings {
+					pol.Accounts[i].Settings = append(pol.Accounts[i].Settings, routing.Named{Name: k, Value: v})
+				}
 				found = true
 			}
 		}
 		if !found {
-			pol.Accounts = append(pol.Accounts, routing.Account{Processor: string(processor.Kraken), ID: "exchange", On: true, Settings: []routing.Named{{Name: name, Value: v}}})
+			var settings []routing.Named
+			for k, v := range seeded.Settings {
+				settings = append(settings, routing.Named{Name: k, Value: v})
+			}
+			pol.Accounts = append(pol.Accounts, routing.Account{
+				Processor: procName,
+				ID:        seeded.ID,
+				On:        true,
+				Settings:  settings,
+			})
 		}
 	}
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/models/unattributeddeposit"
+	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/util/nscontext"
 )
@@ -253,8 +254,8 @@ func (intentStore) Credit(ctx context.Context, c depositwatch.Credit) (bool, err
 		}
 	case errors.Is(err, datastore.ErrNoSuchEntity):
 		if alreadyCreditedCrossRail(db, c) {
-			if addr, rotate, aerr := advanceIntent(db, c); aerr == nil && rotate {
-				Default().NotifySettled(ctx, c.Chain, c.Token, addr)
+			if walletID, addr, rotate, aerr := advanceIntent(db, c); aerr == nil && rotate {
+				Default().NotifySettled(ctx, walletID, c.Chain, c.Token, addr)
 			}
 			return false, nil
 		}
@@ -328,7 +329,7 @@ func (intentStore) Credit(ctx context.Context, c depositwatch.Credit) (bool, err
 		trans.Notes = fmt.Sprintf("Crypto deposit: %s %s on %s (%s)", c.Units, strings.ToUpper(c.Token), c.Chain, c.TxHash)
 		trans.Metadata = types.Map{
 			"source": "crypto-deposit",
-			"rail":   railOfDedup(c.DedupKey),
+			"rail":   railOfCredit(c),
 			"chain":  c.Chain,
 			"token":  c.Token,
 			"txHash": c.TxHash,
@@ -368,11 +369,11 @@ func (intentStore) Credit(ctx context.Context, c depositwatch.Credit) (bool, err
 	// The money is safe from here. An intent that will not advance is a DISPLAY
 	// defect, so it is logged and not returned: failing the pass would leave the
 	// cursor parked and stop crediting everyone else behind one stale row.
-	settledAddr, shouldRotate, err := advanceIntent(db, c)
+	walletID, settledAddr, shouldRotate, err := advanceIntent(db, c)
 	if err != nil {
 		log.Warn("depositledger: credit %s written, intent %s not advanced: %v", c.DedupKey, c.IntentID, err)
 	} else if shouldRotate {
-		Default().NotifySettled(ctx, c.Chain, c.Token, settledAddr)
+		Default().NotifySettled(ctx, walletID, c.Chain, c.Token, settledAddr)
 	}
 	return written, nil
 }
@@ -423,21 +424,21 @@ func (intentStore) RecordUnattributed(_ context.Context, u depositwatch.Unattrib
 // It never reports a problem as fatal to the money: the ledger row is already
 // written, so a stale intent is a display defect, and the error is returned only
 // so it is visible in logs and retried on the next pass.
-func advanceIntent(db *datastore.Datastore, c depositwatch.Credit) (string, bool, error) {
+func advanceIntent(db *datastore.Datastore, c depositwatch.Credit) (string, string, bool, error) {
 	in := cryptopaymentintent.New(db)
 	if err := in.GetById(c.IntentID); err != nil {
-		return "", false, fmt.Errorf("depositledger: credit %s written, but intent %s could not be loaded: %w", c.DedupKey, c.IntentID, err)
+		return "", "", false, fmt.Errorf("depositledger: credit %s written, but intent %s could not be loaded: %w", c.DedupKey, c.IntentID, err)
 	}
 	switch in.Status {
 	case cryptopaymentintent.Succeeded, cryptopaymentintent.Refunded:
-		return "", false, nil // terminal; a repeat deposit is carried by its own ledger row
+		return "", "", false, nil // terminal; a repeat deposit is carried by its own ledger row
 	case cryptopaymentintent.Confirming:
 		if !strings.EqualFold(in.TxHash, c.TxHash) && !sameTxHash(in.TxHash, c.TxHash) {
-			return "", false, nil // confirming a different deposit; leave that narrative alone
+			return "", "", false, nil // confirming a different deposit; leave that narrative alone
 		}
 	default:
 		if err := in.MarkConfirming(c.TxHash, int64(c.Block)); err != nil {
-			return "", false, err
+			return "", "", false, err
 		}
 	}
 	// Record the policy actually applied, so the intent cannot disagree with the
@@ -449,18 +450,18 @@ func advanceIntent(db *datastore.Datastore, c depositwatch.Credit) (string, bool
 	in.CryptoAmount = c.Units
 	in.SettlementCurrency = "usd"
 	if err := in.MarkSucceeded(c.AmountCents, c.PegRate); err != nil {
-		return "", false, err
+		return "", "", false, err
 	}
 	if err := in.Update(); err != nil {
-		return "", false, err
+		return "", "", false, err
 	}
-	rotate := strings.HasPrefix(in.WalletID, "kraken:") || strings.HasPrefix(c.DedupKey, "kraken:")
-	return in.DepositAddress, rotate, nil
+	rotate := processor.PoolOwnerOfWallet(in.WalletID) != nil || c.Provider != ""
+	return in.WalletID, in.DepositAddress, rotate, nil
 }
 
-func railOfDedup(dedup string) string {
-	if strings.HasPrefix(dedup, "kraken:") {
-		return "kraken"
+func railOfCredit(c depositwatch.Credit) string {
+	if c.Provider != "" {
+		return "provider"
 	}
 	return "chain"
 }
@@ -486,15 +487,14 @@ func metaString(m types.Map, key string) string {
 	return v
 }
 
-// alreadyCreditedCrossRail prevents double-crediting when BOTH the on-chain RPC watcher
-// (DedupKey = "<chain>:<txHash>:<eventIndex>") and syncKraken (DedupKey = "kraken:<chain>:<refId>:<txHash>")
-// observe the exact same customer deposit transaction. Same-rail distinct EventIndex logs
-// in a single transaction remain independent.
+// alreadyCreditedCrossRail prevents double-crediting when BOTH the direct on-chain RPC
+// watcher and a DepositPoolProcessor's status API observe the exact same customer deposit
+// transaction. Same-rail distinct EventIndex logs in a single transaction stay independent.
 func alreadyCreditedCrossRail(db *datastore.Datastore, c depositwatch.Credit) bool {
 	if strings.TrimSpace(c.TxHash) == "" {
 		return false
 	}
-	fromKraken := strings.HasPrefix(c.DedupKey, "kraken:")
+	fromProvider := c.Provider != ""
 	rows := make([]*transaction.Transaction, 0)
 	if _, err := transaction.Query(db).
 		Filter("DestinationId=", c.Subject).
@@ -512,8 +512,9 @@ func alreadyCreditedCrossRail(db *datastore.Datastore, c depositwatch.Credit) bo
 		if !sameTxHash(metaString(r.Metadata, "txHash"), c.TxHash) {
 			continue
 		}
-		rowIsKraken := metaString(r.Metadata, "rail") == "kraken"
-		if rowIsKraken != fromKraken {
+		rowRail := metaString(r.Metadata, "rail")
+		rowFromProvider := rowRail != "" && rowRail != "chain"
+		if rowFromProvider != fromProvider {
 			log.Info("depositledger: skipping cross-rail duplicate credit %s — tx %s on %s already credited", c.DedupKey, c.TxHash, c.Chain)
 			return true
 		}

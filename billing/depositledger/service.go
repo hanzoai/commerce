@@ -12,7 +12,6 @@ import (
 	"github.com/hanzoai/commerce/billing/depositwatch"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/payment/processor"
-	"github.com/hanzoai/commerce/payment/providers/kraken"
 	"github.com/hanzoai/commerce/payment/routing"
 )
 
@@ -40,18 +39,18 @@ type Service struct {
 	interval time.Duration
 	reader   func(depositwatch.Asset) (depositwatch.Reader, error)
 
-	mu             sync.Mutex
-	cancel         context.CancelFunc
-	done           chan struct{}
-	lastKrakenNano atomic.Int64
+	mu               sync.Mutex
+	cancel           context.CancelFunc
+	done             chan struct{}
+	lastPoolSyncNano atomic.Int64
 }
 
 // state is one reading of the policy's deposit accounts: the assets, the chain watcher
-// over them, and the exchange processor when an exchange account is on.
+// over them, and any address-pool deposit processors enabled in the policy.
 type state struct {
 	assets      []depositwatch.Asset
 	watcher     *depositwatch.Watcher
-	kraken      *kraken.Processor
+	pools       []processor.DepositPoolProcessor
 	poolsWarmed atomic.Bool
 }
 
@@ -114,8 +113,8 @@ func (s *Service) build(ctx context.Context, accounts []routing.Account) (*state
 	if err != nil {
 		return nil, err
 	}
-	kp, krakenAssets := krakenFromAccounts(ctx, accounts)
-	st := &state{assets: assets, kraken: kp}
+	pools, poolAssets := poolProcessorsFromAccounts(ctx, accounts)
+	st := &state{assets: assets, pools: pools}
 	if len(assets) > 0 {
 		bound := make([]depositwatch.Bound, 0, len(assets))
 		for _, a := range assets {
@@ -127,14 +126,14 @@ func (s *Service) build(ctx context.Context, accounts []routing.Account) (*state
 		}
 		st.watcher = depositwatch.New(bound, s.store, s.cursor)
 	}
-	if len(krakenAssets) > 0 {
+	if len(poolAssets) > 0 {
 		existing := make(map[string]bool, len(st.assets))
 		for _, a := range st.assets {
 			existing[strings.ToLower(a.Chain)+":"+strings.ToLower(a.Token)] = true
 		}
-		for _, ka := range krakenAssets {
-			if !existing[ka.Chain+":"+ka.Token] {
-				st.assets = append(st.assets, ka)
+		for _, pa := range poolAssets {
+			if !existing[pa.Chain+":"+pa.Token] {
+				st.assets = append(st.assets, pa)
 			}
 		}
 	}
@@ -170,7 +169,7 @@ func (s *Service) state() *state {
 // Enabled reports whether any asset is being watched.
 func (s *Service) Enabled() bool {
 	st := s.state()
-	return s != nil && (st.watcher != nil || st.kraken != nil)
+	return s != nil && (st.watcher != nil || len(st.pools) > 0)
 }
 
 // Assets reports the watched assets (boot log / diagnostics).
@@ -191,7 +190,7 @@ func (s *Service) Assets() []depositwatch.Asset {
 // would follow the money to a balance. So this, not Enabled, is what the mint
 // gate consults (api/billing.watchedAssets).
 func (s *Service) Running() bool {
-	if st := s.state(); s == nil || (st.watcher == nil && st.kraken == nil) {
+	if st := s.state(); s == nil || (st.watcher == nil && len(st.pools) == 0) {
 		return false
 	}
 	s.mu.Lock()
@@ -276,48 +275,48 @@ func rpcHost(raw string) string {
 }
 
 // SyncOnce runs one pass. Idempotent, and safe to run concurrently with the
-// schedule or with another replica. The on-chain RPC watcher and the Kraken
-// DepositStatus / pool-replenishment pass run independently so a rate-limited
-// chain RPC never starves Kraken crediting, pool warming or post-tx rotation.
+// schedule or with another replica. The on-chain RPC watcher and any configured
+// DepositPoolProcessor status/replenishment passes run independently so a
+// rate-limited chain RPC never starves provider crediting, pool warming or rotation.
 func (s *Service) SyncOnce(ctx context.Context) (int, error) {
 	if !s.Enabled() {
 		return 0, nil
 	}
 	var total int
-	var wErr, kErr error
+	var wErr, pErr error
 	st := s.state()
 	if st.watcher != nil {
 		var n int
 		n, wErr = st.watcher.Sync(ctx)
 		total += n
 	}
-	if st.kraken != nil {
+	if len(st.pools) > 0 {
 		var n int
-		n, kErr = s.syncKraken(ctx, st)
-		s.lastKrakenNano.Store(time.Now().UnixNano())
+		n, pErr = s.syncPools(ctx, st)
+		s.lastPoolSyncNano.Store(time.Now().UnixNano())
 		total += n
 	}
-	return total, errors.Join(wErr, kErr)
+	return total, errors.Join(wErr, pErr)
 }
 
-// SyncKrakenIfStale runs only the Kraken DepositStatus / pool pass (without scanning
-// chain RPCs) when at least minAge has elapsed since the previous Kraken sync.
-func (s *Service) SyncKrakenIfStale(ctx context.Context, minAge time.Duration) (int, error) {
+// SyncPoolsIfStale runs only the DepositPoolProcessor status / pool pass (without
+// scanning chain RPCs) when at least minAge has elapsed since the previous pool sync.
+func (s *Service) SyncPoolsIfStale(ctx context.Context, minAge time.Duration) (int, error) {
 	if s == nil {
 		return 0, nil
 	}
 	st := s.state()
-	if st.kraken == nil {
+	if len(st.pools) == 0 {
 		return 0, nil
 	}
 	if minAge > 0 {
-		last := s.lastKrakenNano.Load()
+		last := s.lastPoolSyncNano.Load()
 		if last > 0 && time.Since(time.Unix(0, last)) < minAge {
 			return 0, nil
 		}
 	}
-	n, err := s.syncKraken(ctx, st)
-	s.lastKrakenNano.Store(time.Now().UnixNano())
+	n, err := s.syncPools(ctx, st)
+	s.lastPoolSyncNano.Store(time.Now().UnixNano())
 	return n, err
 }
 
@@ -408,28 +407,26 @@ func SetDefault(s *Service) { defaultService = s }
 // Default returns the process-wide watcher (may be a disabled Service).
 func Default() *Service { return defaultService }
 
-// NotifySettled retires a settled deposit address from the active Kraken rolling pool
-// and triggers immediate minting of a fresh replacement address so future buyers never
-// reuse a previously deposited wallet.
-func (s *Service) NotifySettled(ctx context.Context, chain, token, address string) {
+// NotifySettled retires a settled deposit address from the owning DepositPoolProcessor's
+// rolling pool and triggers rotation of a fresh replacement address so future buyers
+// never reuse a previously deposited wallet.
+func (s *Service) NotifySettled(ctx context.Context, walletID, chain, token, address string) {
 	if strings.TrimSpace(address) == "" {
 		return
 	}
-	var kp *kraken.Processor
-	if s != nil {
-		kp = s.state().kraken
-	}
-	if kp == nil {
-		if reg, err := processor.Global().Registered(processor.Kraken); err == nil {
-			if candidate, ok := reg.(*kraken.Processor); ok && candidate.IsAvailable(ctx) {
-				kp = candidate
+	owner := processor.PoolOwnerOfWallet(walletID)
+	if owner == nil && s != nil {
+		for _, dp := range s.state().pools {
+			if dp.IsAvailable(ctx) {
+				owner = dp
+				break
 			}
 		}
 	}
-	if kp == nil {
+	if owner == nil || !owner.IsAvailable(ctx) {
 		return
 	}
-	if err := kp.RetireAndRotate(ctx, chain, token, address); err != nil {
-		log.Warn("depositledger: kraken post-settlement rotation for %s (%s/%s) queued for retry: %v", address, chain, token, err)
+	if err := owner.RetireAddress(ctx, chain, token, address); err != nil {
+		log.Warn("depositledger: post-settlement address rotation (%s %s/%s %s) queued for retry: %v", owner.Type(), chain, token, address, err)
 	}
 }

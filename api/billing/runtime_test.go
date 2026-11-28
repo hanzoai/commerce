@@ -989,13 +989,13 @@ func TestKrakenAvailabilityFollowsTheDepositRailsCredentials(t *testing.T) {
 	ctx := heldStore(t)
 	installRuntime(t, ctx)
 	org := routingOrg(ctx, t)
-	t.Cleanup(func() { configureKraken(ctx, routing.Policy{}) })
+	t.Cleanup(func() { configureManagedAccounts(ctx, routing.Policy{}) })
 
 	pol := routing.Default()
 	setOn(&pol, "kraken", true)
 	pol.Accounts = []routing.Account{{Processor: "kraken", ID: "exchange", On: true, SecretRef: "/orgs/hanzo/commerce-secrets"}}
 	available := func() bool {
-		configureKraken(ctx, pol)
+		configureManagedAccounts(ctx, pol)
 		v, f := ReadRoutingView(ctx, org, "")
 		if f != nil {
 			t.Fatal(f.Err)

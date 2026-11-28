@@ -147,6 +147,7 @@ type Credit struct {
 	Confirmations int
 	Test          bool
 	DedupKey      string // chain:txHash:eventIndex
+	Provider      string // optional DepositPoolProcessor type when settled via provider status API
 }
 
 // Unattributed is money that arrived at a custody address we own and named

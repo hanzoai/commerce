@@ -7,15 +7,16 @@ import (
 
 // applyEnvDisabledProcessors clamps any processor named in COMMERCE_DISABLED_PROCESSORS
 // off in the returned policy copy so routing decisions, fallbacks, local-currency offers,
-// crypto rails, and accounts never use a hard-disabled processor even when an older
-// stored policy still lists it as on.
+// crypto rails, and accounts never use a hard-disabled processor — symmetrically across
+// all card, alternative, and custody providers without hardcoding any provider name.
 func applyEnvDisabledProcessors(p routing.Policy) routing.Policy {
 	anyDisabled := false
+	var enabledCardNames []string
 	if len(p.Processors) > 0 {
 		procs := make([]routing.ProcessorRule, len(p.Processors))
 		copy(procs, p.Processors)
-		squareIdx := -1
-		otherCardWeight := 0
+		firstEnabledCardIdx := -1
+		totalCardWeight := 0
 		for i := range procs {
 			t := processor.ProcessorType(procs[i].Processor)
 			if processor.DisabledByEnv(t) {
@@ -24,14 +25,16 @@ func applyEnvDisabledProcessors(p routing.Policy) routing.Policy {
 				anyDisabled = true
 				continue
 			}
-			if t == processor.Square && procs[i].On {
-				squareIdx = i
-			} else if t == processor.Stripe && procs[i].On {
-				otherCardWeight += procs[i].Weight
+			if procs[i].On && takesCardsAccount(procs[i].Processor) {
+				if firstEnabledCardIdx < 0 {
+					firstEnabledCardIdx = i
+				}
+				totalCardWeight += procs[i].Weight
+				enabledCardNames = append(enabledCardNames, procs[i].Processor)
 			}
 		}
-		if anyDisabled && squareIdx >= 0 && procs[squareIdx].Weight == 0 && otherCardWeight == 0 {
-			procs[squareIdx].Weight = 100
+		if anyDisabled && firstEnabledCardIdx >= 0 && totalCardWeight == 0 {
+			procs[firstEnabledCardIdx].Weight = 100
 		}
 		p.Processors = procs
 	}
@@ -52,8 +55,8 @@ func applyEnvDisabledProcessors(p routing.Policy) routing.Policy {
 				fb = append(fb, f)
 			}
 		}
-		if len(fb) == 0 && p.On(processor.Square) && !processor.DisabledByEnv(processor.Square) {
-			fb = []string{string(processor.Square)}
+		if len(fb) == 0 && len(enabledCardNames) > 0 {
+			fb = append(fb, enabledCardNames...)
 		}
 		p.Fallback = fb
 	}
@@ -66,9 +69,29 @@ func applyEnvDisabledProcessors(p routing.Policy) routing.Policy {
 		}
 		p.CryptoRails = cr
 	}
-	if processor.DisabledByEnv(processor.Stripe) {
-		p.LocalOn = false
-		p.FXSource = routing.FXReference
+	if anyDisabled {
+		if !hasEnabledProcessorWithCapability[processor.LocalIntentMaker](p) {
+			p.LocalOn = false
+		}
+		if !hasEnabledProcessorWithCapability[processor.RateQuoter](p) {
+			p.FXSource = routing.FXReference
+		}
 	}
 	return p
+}
+
+func hasEnabledProcessorWithCapability[T any](p routing.Policy) bool {
+	for _, r := range p.Processors {
+		if !r.On || processor.DisabledByEnv(processor.ProcessorType(r.Processor)) {
+			continue
+		}
+		reg, err := processor.Global().Registered(processor.ProcessorType(r.Processor))
+		if err != nil {
+			continue
+		}
+		if _, ok := reg.(T); ok {
+			return true
+		}
+	}
+	return false
 }
