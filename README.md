@@ -60,7 +60,12 @@ go test ./billing/... ./payment/...
 go run github.com/onsi/ginkgo/v2/ginkgo -r test/
 ```
 
-The same gates run in CI from `hanzo.yml`.
+The same gates run in CI from `hanzo.yml` (where KMS supplies a cross-org token for private transitive modules such as `zap-proto/mcp` and `luxfi/*`). Without private module credentials, contributors can still run deterministic race checks on the self-contained billing ledger packages directly:
+
+```bash
+GOWORK=off CGO_ENABLED=1 GOFLAGS=-tags=sqlite_math_functions \
+  go test -race -count=10 ./billing/ledger/... ./billing/creditledger/... ./billing/credit/...
+```
 
 ## License
 

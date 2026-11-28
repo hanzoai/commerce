@@ -224,6 +224,47 @@ func acctNameKey(tenantID, name string) string {
 	return tenantID + ":" + name
 }
 
+func cloneMetadata(src map[string]interface{}) map[string]interface{} {
+	if src == nil {
+		return nil
+	}
+	dst := make(map[string]interface{}, len(src))
+	for k, v := range src {
+		dst[k] = v
+	}
+	return dst
+}
+
+func cloneAccount(a *Account) *Account {
+	if a == nil {
+		return nil
+	}
+	cp := *a
+	cp.Metadata = cloneMetadata(a.Metadata)
+	return &cp
+}
+
+func cloneEntry(e *Entry) *Entry {
+	if e == nil {
+		return nil
+	}
+	cp := *e
+	cp.Metadata = cloneMetadata(e.Metadata)
+	if e.Postings != nil {
+		cp.Postings = make([]Posting, len(e.Postings))
+		copy(cp.Postings, e.Postings)
+	}
+	return &cp
+}
+
+func cloneBalance(b *Balance) *Balance {
+	if b == nil {
+		return nil
+	}
+	cp := *b
+	return &cp
+}
+
 // ---------------------------------------------------------------------------
 // Accounts
 // ---------------------------------------------------------------------------
@@ -248,7 +289,7 @@ func (m *MemLedger) CreateAccount(_ context.Context, a *Account) error {
 		return fmt.Errorf("ledger: account %q already exists for tenant %s", a.Name, a.TenantID)
 	}
 
-	m.accounts[a.ID] = a
+	m.accounts[a.ID] = cloneAccount(a)
 	m.acctName[nk] = a.ID
 	return nil
 }
@@ -261,7 +302,7 @@ func (m *MemLedger) GetAccount(_ context.Context, id string) (*Account, error) {
 	if !ok {
 		return nil, ErrAccountNotFound
 	}
-	return a, nil
+	return cloneAccount(a), nil
 }
 
 // getAccountByName is a helper to find an account by tenant+name (lock must be held).
@@ -280,7 +321,7 @@ func (m *MemLedger) EnsureAccount(ctx context.Context, tenantID, name string, ac
 
 	nk := acctNameKey(tenantID, name)
 	if id, ok := m.acctName[nk]; ok {
-		return m.accounts[id], nil
+		return cloneAccount(m.accounts[id]), nil
 	}
 
 	a := &Account{
@@ -294,7 +335,7 @@ func (m *MemLedger) EnsureAccount(ctx context.Context, tenantID, name string, ac
 	}
 	m.accounts[a.ID] = a
 	m.acctName[nk] = a.ID
-	return a, nil
+	return cloneAccount(a), nil
 }
 
 // ---------------------------------------------------------------------------
@@ -318,6 +359,24 @@ func (m *MemLedger) PostEntry(_ context.Context, e *Entry) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	return m.postEntryLocked(e)
+}
+
+// postEntryLocked validates accounts and idempotency, records e, and updates
+// balances. Caller must hold m.mu.Lock().
+func (m *MemLedger) postEntryLocked(e *Entry) error {
+	if len(e.Postings) < 2 {
+		return ErrEmptyPostings
+	}
+
+	var sum int64
+	for _, p := range e.Postings {
+		sum += p.Amount
+	}
+	if sum != 0 {
+		return fmt.Errorf("%w: sum=%d", ErrPostingsNotBalanced, sum)
+	}
+
 	// Validate accounts exist
 	for i := range e.Postings {
 		if _, ok := m.accounts[e.Postings[i].AccountID]; !ok {
@@ -326,12 +385,15 @@ func (m *MemLedger) PostEntry(_ context.Context, e *Entry) error {
 	}
 
 	// Idempotency check
-	ik := idempKey(e.TenantID, e.IdempotencyKey)
-	if existingID, ok := m.idemp[ik]; ok {
-		// Return the existing entry (idempotent replay)
-		existing := m.entries[existingID]
-		*e = *existing
-		return ErrDuplicateEntry
+	var ik string
+	if e.IdempotencyKey != "" {
+		ik = idempKey(e.TenantID, e.IdempotencyKey)
+		if existingID, ok := m.idemp[ik]; ok {
+			// Return a deep copy of the existing entry (idempotent replay)
+			existing := m.entries[existingID]
+			*e = *cloneEntry(existing)
+			return ErrDuplicateEntry
+		}
 	}
 
 	now := time.Now()
@@ -350,12 +412,15 @@ func (m *MemLedger) PostEntry(_ context.Context, e *Entry) error {
 		e.Postings[i].CreatedAt = now
 	}
 
-	m.entries[e.ID] = e
-	m.idemp[ik] = e.ID
-	m.postings[e.ID] = e.Postings
+	stored := cloneEntry(e)
+	m.entries[stored.ID] = stored
+	if ik != "" {
+		m.idemp[ik] = stored.ID
+	}
+	m.postings[stored.ID] = append([]Posting(nil), stored.Postings...)
 
 	// Update balances
-	for _, p := range e.Postings {
+	for _, p := range stored.Postings {
 		m.applyPosting(p)
 	}
 
@@ -386,7 +451,7 @@ func (m *MemLedger) GetEntry(_ context.Context, id string) (*Entry, error) {
 	if !ok {
 		return nil, ErrEntryNotFound
 	}
-	return e, nil
+	return cloneEntry(e), nil
 }
 
 func (m *MemLedger) ListEntries(_ context.Context, f EntryFilter) ([]*Entry, error) {
@@ -416,7 +481,7 @@ func (m *MemLedger) ListEntries(_ context.Context, f EntryFilter) ([]*Entry, err
 		if !f.CreatedBefore.IsZero() && !e.CreatedAt.Before(f.CreatedBefore) {
 			continue
 		}
-		result = append(result, e)
+		result = append(result, cloneEntry(e))
 		if f.Limit > 0 && len(result) >= f.Limit {
 			break
 		}
@@ -467,52 +532,33 @@ func (m *MemLedger) CreateHold(_ context.Context, h *Hold) error {
 	return nil
 }
 
-func (m *MemLedger) CaptureHold(ctx context.Context, holdID string, amount int64) (*Entry, error) {
+func (m *MemLedger) CaptureHold(_ context.Context, holdID string, amount int64) (*Entry, error) {
 	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	h, ok := m.holds[holdID]
 	if !ok {
-		m.mu.Unlock()
 		return nil, ErrHoldNotFound
 	}
 	if h.Status != HoldPending {
-		m.mu.Unlock()
 		return nil, ErrHoldNotPending
 	}
 	if amount <= 0 {
 		amount = h.Amount
 	}
 	if amount > h.Amount {
-		m.mu.Unlock()
 		return nil, ErrCaptureExceedsHold
 	}
 
-	// Release the hold
-	h.Status = HoldCaptured
-	h.UpdatedAt = time.Now()
-
-	bk := balKey(h.AccountID, h.Currency)
-	if b, ok := m.balances[bk]; ok {
-		b.HeldBalance -= h.Amount
-		b.AvailableBalance = b.PostedBalance - b.HeldBalance
-		b.UpdatedAt = time.Now()
-	}
-
-	m.mu.Unlock()
-
-	// Create a journal entry for the captured amount.
-	// Debit the held account, credit platform cash.
-	// The caller should have set up platform:cash; we look it up by tenant.
-	acct := m.holds[holdID]
-	tenantID := acct.TenantID
-
-	// Find platform:cash for this tenant
-	cashAcct, err := m.findOrFailAccount(tenantID, "platform:cash")
+	// Resolve platform:cash before mutating hold or balance state so a missing
+	// account never leaves the hold half-captured.
+	cashAcct, err := m.getAccountByName(h.TenantID, "platform:cash")
 	if err != nil {
 		return nil, fmt.Errorf("ledger: cannot capture hold without platform:cash account: %w", err)
 	}
 
 	entry := &Entry{
-		TenantID:        tenantID,
+		TenantID:        h.TenantID,
 		IdempotencyKey:  "capture:" + holdID,
 		Description:     fmt.Sprintf("Capture hold %s for %d", holdID, amount),
 		PaymentIntentID: h.PaymentIntentID,
@@ -522,15 +568,23 @@ func (m *MemLedger) CaptureHold(ctx context.Context, holdID string, amount int64
 		},
 	}
 
-	if err := m.PostEntry(ctx, entry); err != nil {
+	if err := m.postEntryLocked(entry); err != nil {
 		return nil, err
 	}
 
-	m.mu.Lock()
+	now := time.Now()
+	h.Status = HoldCaptured
+	h.UpdatedAt = now
 	h.CapturedEntryID = entry.ID
-	m.mu.Unlock()
 
-	return entry, nil
+	bk := balKey(h.AccountID, h.Currency)
+	if b, ok := m.balances[bk]; ok {
+		b.HeldBalance -= h.Amount
+		b.AvailableBalance = b.PostedBalance - b.HeldBalance
+		b.UpdatedAt = now
+	}
+
+	return cloneEntry(entry), nil
 }
 
 func (m *MemLedger) VoidHold(_ context.Context, holdID string) error {
@@ -592,7 +646,7 @@ func (m *MemLedger) GetBalance(_ context.Context, accountID string, currency str
 			UpdatedAt:        time.Now(),
 		}, nil
 	}
-	return b, nil
+	return cloneBalance(b), nil
 }
 
 // ---------------------------------------------------------------------------
